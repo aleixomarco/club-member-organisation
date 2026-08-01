@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ERG Iserlohn Vereins-App",
-  description: "Mitglieder, Teams, Events und Verwaltung der ERG Iserlohn an einem Ort.",
+  title: "Club Member Organisation",
+  description: "Mitglieder, Teams, Events und Vereinsverwaltung an einem Ort.",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",

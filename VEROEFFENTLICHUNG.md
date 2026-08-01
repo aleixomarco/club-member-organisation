@@ -1,4 +1,4 @@
-# ERG Iserlohn App veröffentlichen
+# Club Member Organisation veröffentlichen
 
 ## 1. Projekt in GitHub Desktop aufnehmen
 
@@ -7,7 +7,7 @@
 3. Diesen Ordner auswählen:
    `/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app`
 4. Oben auf **Publish repository** klicken.
-5. Als Namen zum Beispiel `erg-iserlohn-app` eintragen.
+5. Als Namen `club-member-organisation` eintragen.
 6. **Keep this code private** aktiviert lassen, wenn der Quellcode nicht
    öffentlich sein soll.
 7. **Publish Repository** bestätigen.
@@ -20,7 +20,7 @@ anschließend **Push origin** zu GitHub übertragen.
 1. Bei [Vercel](https://vercel.com/) anmelden.
 2. **Add New → Project** öffnen.
 3. Falls gefragt, das GitHub-Konto mit Vercel verbinden.
-4. Das Repository `erg-iserlohn-app` auswählen und auf **Import** klicken.
+4. Das Repository `club-member-organisation` auswählen und auf **Import** klicken.
 5. Diese Einstellungen prüfen:
 
    - Framework Preset: **Next.js**

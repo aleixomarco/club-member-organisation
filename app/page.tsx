@@ -119,7 +119,7 @@ function age(birthdate) {
 /* Vereine (mandantenfähig)                                            */
 /* ------------------------------------------------------------------ */
 const INITIAL_CLUBS = [
-  { id: "ergi", name: "ERG Iserlohn", shortName: "ERGI", city: "Iserlohn", foundedYear: 1965 },
+  { id: "cmo", name: "Club Member Organisation", shortName: "CMO", city: "Iserlohn", foundedYear: 1965 },
   { id: "tsv-musterstadt", name: "TSV Musterstadt", shortName: "TSVM", city: "Musterstadt", foundedYear: 1902 },
   { id: "sv-beispiel", name: "SV Beispiel 04", shortName: "SVB", city: "Beispielhausen", foundedYear: 1904 },
 ];
@@ -128,16 +128,16 @@ const INITIAL_CLUBS = [
 /* Mock accounts                                                       */
 /* ------------------------------------------------------------------ */
 const INITIAL_MEMBERS = [
-  { id: "m1", clubId: "ergi", name: "Marco Schulte", email: "marco@ergi.de", password: "demo", team: "Herren 1", number: 14, since: 2019, roles: ["sysadmin", "vorstand", "spieler", "mitglied"], color: C.red, points: 740, tippPoints: 14, badges: ["streak", "loyalty", "fairplay", "referrer"], birthdate: "1994-05-12" },
-  { id: "m2", clubId: "ergi", name: "Jasmin Reiter", email: "jasmin@ergi.de", password: "demo", team: "Damen 1", number: 7, since: 2021, roles: ["kapitaen", "spieler", "mitglied"], color: C.amber, points: 410, tippPoints: 9, badges: ["loyalty"], birthdate: "1998-03-02" },
-  { id: "m3", clubId: "ergi", name: "Sabine Thomas", email: "sabine@ergi.de", password: "demo", team: "Eltern / Angehörige", managedTeam: "U11", number: null, since: 2023, roles: ["eltern", "teammanager", "mitglied"], color: C.green, points: 120, tippPoints: 5, badges: [], birthdate: "1985-09-14", familyId: "fam-thomas", familyRole: "eltern" },
-  { id: "v1", clubId: "ergi", name: "Peter Vogt", email: "vorstand@ergi.de", password: "demo", team: "Vorstand", number: null, since: 2015, roles: ["vorstand", "mitglied"], color: C.ink, points: 60, tippPoints: 2, badges: ["loyalty"], birthdate: "1975-01-20" },
-  { id: "m4", clubId: "ergi", name: "Mia Thomas", email: "mia@ergi.de", password: "demo", team: "U11", number: 5, since: 2024, roles: ["spieler", "mitglied"], color: "#7C6FE0", points: 30, tippPoints: 0, badges: [], birthdate: "2015-06-01", familyId: "fam-thomas", familyRole: "kind" },
-  { id: "m5", clubId: "ergi", name: "Helga Thomas", email: "helga@ergi.de", password: "demo", team: "Eltern / Angehörige", number: null, since: 2023, roles: ["mitglied"], color: "#B98B3E", points: 20, tippPoints: 0, badges: [], birthdate: "1952-02-11", familyId: "fam-thomas", familyRole: "großeltern" },
-  { id: "m6", clubId: "ergi", name: "Claudia Berg", email: "geschaeftsfuehrung@ergi.de", password: "demo", team: "Geschäftsstelle", number: null, since: 2020, roles: ["geschaeftsfuehrung", "mitglied"], color: "#3E7CB1", points: 60, tippPoints: 4, badges: [], birthdate: "1980-11-03" },
-  { id: "m7", clubId: "ergi", name: "Nina Weber", email: "redaktion@ergi.de", password: "demo", team: "Geschäftsstelle", number: null, since: 2022, roles: ["redakteur", "sponsorenmanager", "mitglied"], color: "#B15CC9", points: 40, tippPoints: 0, badges: [], birthdate: "1990-07-08" },
-  { id: "m8", clubId: "ergi", name: "Daniel Krüger", email: "finanzen@ergi.de", password: "demo", team: "Geschäftsstelle", number: null, since: 2024, roles: ["finanzmanager", "mitglied"], color: "#176B87", points: 20, tippPoints: 0, badges: [], birthdate: "1988-04-19" },
-  { id: "m9", clubId: "ergi", name: "Tobias Kern", email: "trainer@ergi.de", password: "demo", team: "Herren 1", teams: ["Herren 1", "U15"], number: null, since: 2021, roles: ["trainer", "mitglied"], color: "#2D6F8E", points: 35, tippPoints: 0, badges: [], birthdate: "1983-02-08" },
+  { id: "m1", clubId: "cmo", name: "Marco Schulte", email: "marco@cmo.app", password: "demo", team: "Herren 1", number: 14, since: 2019, roles: ["sysadmin", "vorstand", "spieler", "mitglied"], color: C.red, points: 740, tippPoints: 14, badges: ["streak", "loyalty", "fairplay", "referrer"], birthdate: "1994-05-12" },
+  { id: "m2", clubId: "cmo", name: "Jasmin Reiter", email: "jasmin@cmo.app", password: "demo", team: "Damen 1", number: 7, since: 2021, roles: ["kapitaen", "spieler", "mitglied"], color: C.amber, points: 410, tippPoints: 9, badges: ["loyalty"], birthdate: "1998-03-02" },
+  { id: "m3", clubId: "cmo", name: "Sabine Thomas", email: "sabine@cmo.app", password: "demo", team: "Eltern / Angehörige", managedTeam: "U11", number: null, since: 2023, roles: ["eltern", "teammanager", "mitglied"], color: C.green, points: 120, tippPoints: 5, badges: [], birthdate: "1985-09-14", familyId: "fam-thomas", familyRole: "eltern" },
+  { id: "v1", clubId: "cmo", name: "Peter Vogt", email: "vorstand@cmo.app", password: "demo", team: "Vorstand", number: null, since: 2015, roles: ["vorstand", "mitglied"], color: C.ink, points: 60, tippPoints: 2, badges: ["loyalty"], birthdate: "1975-01-20" },
+  { id: "m4", clubId: "cmo", name: "Mia Thomas", email: "mia@cmo.app", password: "demo", team: "U11", number: 5, since: 2024, roles: ["spieler", "mitglied"], color: "#7C6FE0", points: 30, tippPoints: 0, badges: [], birthdate: "2015-06-01", familyId: "fam-thomas", familyRole: "kind" },
+  { id: "m5", clubId: "cmo", name: "Helga Thomas", email: "helga@cmo.app", password: "demo", team: "Eltern / Angehörige", number: null, since: 2023, roles: ["mitglied"], color: "#B98B3E", points: 20, tippPoints: 0, badges: [], birthdate: "1952-02-11", familyId: "fam-thomas", familyRole: "großeltern" },
+  { id: "m6", clubId: "cmo", name: "Claudia Berg", email: "geschaeftsfuehrung@cmo.app", password: "demo", team: "Geschäftsstelle", number: null, since: 2020, roles: ["geschaeftsfuehrung", "mitglied"], color: "#3E7CB1", points: 60, tippPoints: 4, badges: [], birthdate: "1980-11-03" },
+  { id: "m7", clubId: "cmo", name: "Nina Weber", email: "redaktion@cmo.app", password: "demo", team: "Geschäftsstelle", number: null, since: 2022, roles: ["redakteur", "sponsorenmanager", "mitglied"], color: "#B15CC9", points: 40, tippPoints: 0, badges: [], birthdate: "1990-07-08" },
+  { id: "m8", clubId: "cmo", name: "Daniel Krüger", email: "finanzen@cmo.app", password: "demo", team: "Geschäftsstelle", number: null, since: 2024, roles: ["finanzmanager", "mitglied"], color: "#176B87", points: 20, tippPoints: 0, badges: [], birthdate: "1988-04-19" },
+  { id: "m9", clubId: "cmo", name: "Tobias Kern", email: "trainer@cmo.app", password: "demo", team: "Herren 1", teams: ["Herren 1", "U15"], number: null, since: 2021, roles: ["trainer", "mitglied"], color: "#2D6F8E", points: 35, tippPoints: 0, badges: [], birthdate: "1983-02-08" },
 ];
 
 const INITIAL_FEE_PAID = { m1: false, m2: true, m3: false, v1: true, m4: true, m5: true, m6: true, m7: true, m8: true, m9: true };
@@ -282,10 +282,10 @@ function seasonResults(seasonVotes) {
 /* Tippspiel                                                            */
 /* ------------------------------------------------------------------ */
 const TIPP_MATCHES = [
-  { id: 1, home: "ERG Iserlohn", away: "Herringen", date: "2026-08-09T19:00:00" },
-  { id: 2, home: "ERC Wimbern", away: "ERG Iserlohn", date: "2026-08-16T20:00:00" },
-  { id: 3, home: "ERG Iserlohn", away: "Cronenberg", date: "2026-08-30T19:00:00" },
-  { id: 4, home: "SG Bielefeld", away: "ERG Iserlohn", date: "2026-09-06T19:00:00" },
+  { id: 1, home: "Club Member Organisation", away: "Herringen", date: "2026-08-09T19:00:00" },
+  { id: 2, home: "ERC Wimbern", away: "Club Member Organisation", date: "2026-08-16T20:00:00" },
+  { id: 3, home: "Club Member Organisation", away: "Cronenberg", date: "2026-08-30T19:00:00" },
+  { id: 4, home: "SG Bielefeld", away: "Club Member Organisation", date: "2026-09-06T19:00:00" },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -799,7 +799,7 @@ function Dashboard({ user, members, feePaid, channels, dutyPlan, seasonVotes, po
 
   const leaderboard = [...members].sort((a, b) => b.tippPoints - a.tippPoints);
   const myRank = leaderboard.findIndex((m) => m.id === user.id) + 1;
-  const tippSubtitle = `Platz ${myRank} von ${leaderboard.length} · Gewinn: ERGI-Artikel`;
+  const tippSubtitle = `Platz ${myRank} von ${leaderboard.length} · Gewinn: CMO-Artikel`;
 
   let dutySubtitle = isFormalMember(user) ? "Theke, Grill, Kuchenbuffet …" : "Nur für Vereinsmitglieder";
   if (isFormalMember(user)) {
@@ -963,7 +963,7 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
   const [filter, setFilter] = useState("alle");
   const [showCreate, setShowCreate] = useState(false);
   const [eventDraft, setEventDraft] = useState({ type: "training", team: "", title: "", date: "", location: "", desc: "" });
-  const preferenceKey = `ergi-match-team-${currentUser.id}`;
+  const preferenceKey = `cmo-match-team-${currentUser.id}`;
   const [teamFilter, setTeamFilter] = useState(() => {
     if (typeof window === "undefined") return "alle";
     try { return window.localStorage.getItem(preferenceKey) || "alle"; } catch { return "alle"; }
@@ -1486,7 +1486,7 @@ function ProfileView({ user, members, setMembers, sponsorBookings, onSponsorImpr
         <Gift size={22} style={{ color: C.amber, flexShrink: 0 }} />
         <div>
           <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Mitglied wirbt Mitglied</div>
-          <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>Lade Freunde ein — für jede Anmeldung gibt's 100 Vereinspunkte. Code: <b>ERGI-{initialsOf(user.name)}</b></div>
+          <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>Lade Freunde ein — für jede Anmeldung gibt's 100 Vereinspunkte. Code: <b>CMO-{initialsOf(user.name)}</b></div>
         </div>
       </div>
 
@@ -1585,7 +1585,7 @@ function TippView({ members, currentUser, tippPredictions, setTippPredictions })
     <div className="px-4 pt-4 pb-10">
       <div className="rounded-2xl p-4 mb-5 flex items-center gap-3" style={{ background: "#FFF6E4", border: "1px solid #F2DDA8" }}>
         <Gift size={20} style={{ color: C.amber }} />
-        <div className="text-xs" style={{ color: C.ink, fontFamily: "Inter" }}><b>Platz 1</b> am Saisonende gewinnt einen ERGI-Artikel nach Wahl — Schal, Trikot oder mehr.</div>
+        <div className="text-xs" style={{ color: C.ink, fontFamily: "Inter" }}><b>Platz 1</b> am Saisonende gewinnt einen CMO-Artikel nach Wahl — Schal, Trikot oder mehr.</div>
       </div>
 
       <SectionTitle eyebrow="Rangliste" title="Tippspiel-Tabelle" />
@@ -2246,7 +2246,7 @@ function baseTabs(isAdminUser, canEditNews, canEditSponsors, canManageFees) {
 }
 const SUBVIEW_TITLES = { season: "Spieler der Saison", tipp: "Tippspiel", duty: "Helferplanung" };
 
-export default function ERGIserlohnApp() {
+export default function ClubMemberOrganisationApp() {
   const [clubs, setClubs] = useState(INITIAL_CLUBS);
   const [selectedClubId, setSelectedClubId] = useState(null);
   const [members, setMembers] = useState(INITIAL_MEMBERS);

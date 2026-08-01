@@ -1,4 +1,4 @@
-# ERG Iserlohn Vereins-App
+# Club Member Organisation
 
 Die Vereins-App ist als Next.js-Projekt für GitHub und Vercel vorbereitet.
 
