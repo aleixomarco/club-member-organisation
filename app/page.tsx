@@ -69,6 +69,22 @@ const isAdmin = (m) => !!m && m.roles.some((r) => ROLE_META[r]?.admin);
 const isFormalMember = (m) => !!m && m.roles.some((r) => ROLE_META[r]?.formalMember);
 const isSysAdmin = (m) => !!m && m.roles.includes("sysadmin");
 const canWriteNews = (m) => isAdmin(m) || (!!m && m.roles.includes("redakteur"));
+function linkFamilyRecords(list, firstId, secondId, firstRelation) {
+  const first = list.find((m) => m.id === firstId);
+  const second = list.find((m) => m.id === secondId);
+  if (!first || !second || first.id === second.id) return list;
+  const familyId = first.familyId || second.familyId || `fam-${Date.now()}`;
+  const oldFamilyIds = [first.familyId, second.familyId].filter(Boolean);
+  const opposite = firstRelation === "eltern" ? "kind" : "eltern";
+  return list.map((m) => {
+    const belongs = m.id === firstId || m.id === secondId || oldFamilyIds.includes(m.familyId);
+    if (!belongs) return m;
+    const links = [...(m.familyLinks || [])];
+    if (m.id === firstId && !links.some((l) => l.memberId === secondId)) links.push({ memberId: secondId, relation: opposite });
+    if (m.id === secondId && !links.some((l) => l.memberId === firstId)) links.push({ memberId: firstId, relation: firstRelation });
+    return { ...m, familyId, familyRole: m.id === firstId ? firstRelation : m.id === secondId ? opposite : m.familyRole, familyLinks: links };
+  });
+}
 function age(birthdate) {
   if (!birthdate) return 0;
   const b = new Date(birthdate);
@@ -516,7 +532,7 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub }) {
       <div className="mt-8">
         <div className="text-xs uppercase tracking-widest font-semibold mb-2.5" style={{ color: C.textDim, fontFamily: "Inter" }}>Demo-Zugänge zum Ausprobieren</div>
         <div className="space-y-2">
-          {members.map((m) => (
+          {members.filter((m) => !m.accountPending).map((m) => (
             <button key={m.id} onClick={() => quick(m)} className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
               <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0" style={{ background: m.color, color: "#fff", fontFamily: "Inter" }}>{initialsOf(m.name)}</div>
               <div className="text-left flex-1">
@@ -535,11 +551,13 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub }) {
 const SELF_SERVICE_ROLES = Object.keys(ROLE_META).filter((r) => ROLE_META[r].selfService && !ROLE_META[r].alwaysOn);
 
 function RegisterScreen({ onRegister, members, club, goLogin }) {
-  const [form, setForm] = useState({ name: "", email: "", team: TEAMS[0], birthdate: "", password: "", password2: "", parentId: "", roles: [] });
+  const [form, setForm] = useState({ name: "", email: "", team: TEAMS[0], birthdate: "", password: "", password2: "", accountType: "mitglied", relativeId: "", childName: "", childBirthdate: "", childTeam: "U11" });
   const [error, setError] = useState("");
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
-  const toggleRole = (r) => setForm((f) => ({ ...f, roles: f.roles.includes(r) ? f.roles.filter((x) => x !== r) : [...f.roles, r] }));
-  const possibleParents = members.filter((m) => m.familyRole !== "kind");
+  const [relativeSearch, setRelativeSearch] = useState("");
+  const possibleRelatives = members.filter((m) => !m.accountPending && m.id && (
+    form.accountType === "eltern" ? m.roles.includes("spieler") : form.accountType === "spieler" ? m.roles.includes("eltern") : false
+  )).filter((m) => m.name.toLowerCase().includes(relativeSearch.toLowerCase()));
   const isFirstAccount = members.length === 0;
 
   const submit = (e) => {
@@ -548,6 +566,7 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
     if (form.password !== form.password2) { setError("Die Passwörter stimmen nicht überein."); return; }
     if (members.some((m) => m.email.toLowerCase() === form.email.trim().toLowerCase())) { setError("Für diese E-Mail existiert bei diesem Verein bereits ein Konto."); return; }
     setError("");
+    const typeRoles = form.accountType === "spieler" ? ["mitglied", "spieler"] : form.accountType === "eltern" ? ["mitglied", "eltern"] : ["mitglied"];
     onRegister({
       id: "m" + Date.now(),
       clubId: club.id,
@@ -557,13 +576,13 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
       team: form.team,
       number: null,
       since: new Date().getFullYear(),
-      roles: isFirstAccount ? ["vereinsadmin", "mitglied"] : [...new Set(["mitglied", ...form.roles])],
+      roles: isFirstAccount ? ["vereinsadmin", ...typeRoles] : typeRoles,
       color: [C.red, C.amber, C.green, C.ink, "#7C6FE0", "#B98B3E"][Math.floor(Math.random() * 6)],
       points: 0,
       tippPoints: 0,
       badges: [],
       birthdate: form.birthdate,
-    }, form.parentId || null);
+    }, { relativeId: form.relativeId || null, accountType: form.accountType, child: form.accountType === "eltern" && !form.relativeId && form.childName.trim() ? { name: form.childName.trim(), birthdate: form.childBirthdate, team: form.childTeam } : null });
   };
 
   return (
@@ -581,6 +600,15 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
         <Field icon={Mail} type="email" placeholder="E-Mail-Adresse" value={form.email} onChange={set("email")} />
         <Field icon={Cake} type="date" value={form.birthdate} onChange={set("birthdate")} />
 
+        <div className="text-xs font-semibold mb-2" style={{ color: C.ink, fontFamily: "Inter" }}>Ich registriere mich als</div>
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          {[{ id: "mitglied", label: "Mitglied", icon: User }, { id: "spieler", label: "Spieler/in", icon: Trophy }, { id: "eltern", label: "Elternteil", icon: Users }].map((type) => {
+            const Icon = type.icon; const active = form.accountType === type.id;
+            return <button type="button" key={type.id} onClick={() => setForm((f) => ({ ...f, accountType: type.id, relativeId: "" }))} className="rounded-xl py-3 px-1 flex flex-col items-center gap-1.5"
+              style={{ background: active ? "#FCEBEE" : C.paperDim, border: active ? `1px solid ${C.red}` : "1px solid transparent", color: active ? C.red : C.textDim }}><Icon size={17}/><span className="text-[11px] font-bold">{type.label}</span></button>;
+          })}
+        </div>
+
         <div className="flex items-center gap-2 rounded-xl px-3.5 py-3 mb-3" style={{ background: C.paperDim }}>
           <Users size={16} style={{ color: C.textDim, flexShrink: 0 }} />
           <select value={form.team} onChange={set("team")} className="flex-1 bg-transparent outline-none text-sm" style={{ fontFamily: "Inter", color: C.ink }}>
@@ -588,27 +616,17 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
           </select>
         </div>
 
-        <div className="text-xs font-semibold mb-2" style={{ color: C.ink, fontFamily: "Inter" }}>Zusätzliche Rolle(n) (optional)</div>
-        <div className="flex flex-wrap gap-2 mb-1">
-          {SELF_SERVICE_ROLES.map((r) => {
-            const active = form.roles.includes(r);
-            return (
-              <button type="button" key={r} onClick={() => toggleRole(r)} className="px-3 py-1.5 rounded-full text-xs"
-                style={{ fontFamily: "Inter", fontWeight: 700, background: active ? ROLE_META[r].color : C.paperDim, color: active ? "#fff" : C.textDim }}>
-                {ROLE_META[r].label}
-              </button>
-            );
-          })}
-        </div>
-        <div className="text-[11px] mb-4" style={{ color: C.textDim, fontFamily: "Inter" }}>Du wirst automatisch Mitglied. Vorstand, Geschäftsführung & Redakteur werden vom Vorstand in der Verwaltung vergeben.</div>
-
-        <div className="flex items-center gap-2 rounded-xl px-3.5 py-3 mb-3" style={{ background: C.paperDim }}>
-          <Users size={16} style={{ color: C.textDim, flexShrink: 0 }} />
-          <select value={form.parentId} onChange={set("parentId")} className="flex-1 bg-transparent outline-none text-sm" style={{ fontFamily: "Inter", color: C.ink }}>
-            <option value="">Kein Elternteil im Verein hinterlegen</option>
-            {possibleParents.map((p) => <option key={p.id} value={p.id}>Kind von {p.name}</option>)}
-          </select>
-        </div>
+        {form.accountType !== "mitglied" && <div className="rounded-2xl p-3 mb-4" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+          <div className="text-xs font-bold mb-1" style={{ color: C.ink }}>{form.accountType === "eltern" ? "Kind / Spieler verknüpfen" : "Elternteil verknüpfen"}</div>
+          <div className="text-[11px] mb-2" style={{ color: C.textDim }}>Ist das Profil bereits vorhanden, suche es hier. Die Verbindung wird automatisch auf beiden Profilen angezeigt.</div>
+          <div className="flex items-center gap-2 rounded-xl px-3 py-2 mb-2" style={{ background: C.paperDim }}><Users size={14}/><input value={relativeSearch} onChange={(e)=>setRelativeSearch(e.target.value)} placeholder={form.accountType === "eltern" ? "Spieler suchen …" : "Elternteil suchen …"} className="flex-1 bg-transparent outline-none text-xs"/></div>
+          {relativeSearch && <div className="space-y-1 mb-2">{possibleRelatives.slice(0,4).map((m)=><button type="button" key={m.id} onClick={()=>setForm((f)=>({...f,relativeId:m.id}))} className="w-full flex items-center justify-between p-2 rounded-lg text-xs" style={{ background: form.relativeId===m.id ? "#FCEBEE" : C.paperDim, color:C.ink }}><span>{m.name} · {m.team}</span>{form.relativeId===m.id&&<Check size={13}/>}</button>)}</div>}
+          {form.accountType === "eltern" && !form.relativeId && <div className="pt-2" style={{ borderTop:`1px solid ${C.line}` }}>
+            <div className="text-[11px] font-bold mb-2" style={{color:C.ink}}>Kind noch nicht registriert? Optional vorläufig anlegen</div>
+            <input value={form.childName} onChange={set("childName")} placeholder="Name des Kindes" className="w-full px-3 py-2 rounded-lg text-xs mb-2 outline-none" style={{background:C.paperDim}}/>
+            {form.childName && <div className="grid grid-cols-2 gap-2"><input type="date" value={form.childBirthdate} onChange={set("childBirthdate")} className="px-2 py-2 rounded-lg text-xs" style={{background:C.paperDim}}/><select value={form.childTeam} onChange={set("childTeam")} className="px-2 py-2 rounded-lg text-xs" style={{background:C.paperDim}}>{TEAMS.filter(t=>t!=="Eltern / Angehörige").map(t=><option key={t}>{t}</option>)}</select></div>}
+          </div>}
+        </div>}
 
         <Field icon={Lock} type="password" placeholder="Passwort" value={form.password} onChange={set("password")} />
         <Field icon={Lock} type="password" placeholder="Passwort bestätigen" value={form.password2} onChange={set("password2")} />
@@ -1178,6 +1196,33 @@ function FamilyTree({ user, members }) {
   );
 }
 
+function FamilyLinkManager({ user, members, setMembers }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [newName, setNewName] = useState("");
+  const userIsParent = user.roles.includes("eltern");
+  const userIsPlayer = user.roles.includes("spieler");
+  if (!userIsParent && !userIsPlayer) return null;
+  const wantedRole = userIsParent ? "spieler" : "eltern";
+  const linkedIds = (user.familyLinks || []).map((l) => l.memberId);
+  const results = members.filter((m) => m.id !== user.id && !linkedIds.includes(m.id) && !m.accountPending && m.roles.includes(wantedRole) && m.name.toLowerCase().includes(query.toLowerCase())).slice(0, 5);
+  const connect = (targetId) => {
+    setMembers((ms) => linkFamilyRecords(ms, user.id, targetId, userIsParent ? "eltern" : "kind"));
+    setQuery(""); setOpen(false);
+  };
+  const createDependent = () => {
+    if (!newName.trim() || !userIsParent) return;
+    const id = `dependent-${Date.now()}`;
+    const child = { id, clubId: user.clubId, name: newName.trim(), email: "", password: "", team: "U11", number: null, since: new Date().getFullYear(), roles: ["mitglied", "spieler"], color: "#7C6FE0", points: 0, tippPoints: 0, badges: [], birthdate: "", accountPending: true };
+    setMembers((ms) => linkFamilyRecords([...ms, child], user.id, id, "eltern"));
+    setNewName(""); setOpen(false);
+  };
+  return <div className="rounded-2xl p-4 mb-5" style={{background:C.white,border:`1px solid ${C.line}`}}>
+    <div className="flex items-center justify-between"><div><div className="text-sm font-bold" style={{color:C.ink}}>Familienverknüpfung</div><div className="text-[11px]" style={{color:C.textDim}}>Verknüpfungen gelten immer automatisch für beide Profile.</div></div><button onClick={()=>setOpen(!open)} className="px-3 py-1.5 rounded-full text-xs font-bold" style={{background:C.paperDim,color:C.ink}}>{open?"Schließen":"＋ Verknüpfen"}</button></div>
+    {open&&<div className="mt-3 pt-3" style={{borderTop:`1px solid ${C.line}`}}><input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder={userIsParent?"Vorhandenen Spieler suchen …":"Vorhandenes Elternteil suchen …"} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim}}/>{query&&<div className="space-y-1">{results.map(m=><button key={m.id} onClick={()=>connect(m.id)} className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs" style={{background:C.paperDim,color:C.ink}}><span>{m.name} · {m.team}</span><span style={{color:C.red}}>Verbinden</span></button>)}{results.length===0&&<div className="text-[11px] py-2" style={{color:C.textDim}}>Kein passendes Profil gefunden.</div>}</div>}{userIsParent&&<div className="mt-3 pt-3" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[11px] font-bold mb-2">Kind ohne Account vorläufig anlegen</div><div className="flex gap-2"><input value={newName} onChange={(e)=>setNewName(e.target.value)} placeholder="Vor- und Nachname" className="flex-1 px-3 py-2 rounded-lg text-xs outline-none" style={{background:C.paperDim}}/><button onClick={createDependent} disabled={!newName.trim()} className="px-3 rounded-lg text-xs font-bold" style={{background:newName.trim()?C.red:C.line,color:"#fff"}}>Anlegen</button></div><div className="text-[10px] mt-2" style={{color:C.textDim}}>Das Kind kann sein vorläufiges Profil später beim Erstellen des eigenen Kontos übernehmen.</div></div>}</div>}
+  </div>;
+}
+
 /* ------------------------------------------------------------------ */
 /* Profil                                                                */
 /* ------------------------------------------------------------------ */
@@ -1290,6 +1335,7 @@ function ProfileView({ user, members, setMembers, sponsorBookings, onSponsorImpr
       <div className="text-[11px] mb-5" style={{ color: C.textDim, fontFamily: "Inter" }}>
         {eligible ? "Helferdienst-berechtigt ✓ (16+)" : "Für Heimspiel-Helferdienste noch nicht 16 Jahre alt — beim Sommerfest darfst du trotzdem schon anpacken."}
       </div>
+      <FamilyLinkManager user={user} members={members} setMembers={setMembers} />
 
       <div className="rounded-2xl p-4 mb-5 flex items-center gap-3" style={{ background: "#FFF6E4", border: `1px solid #F2DDA8` }}>
         <Gift size={22} style={{ color: C.amber, flexShrink: 0 }} />
@@ -2088,17 +2134,18 @@ export default function ERGIserlohnApp() {
   const changeClub = () => { setSelectedClubId(null); setAuthScreen("club"); };
 
   const login = (id) => { setCurrentUserId(id); setTab("home"); setTabHistory([]); setSubView(null); };
-  const register = (draft, parentId) => {
+  const register = (draft, familySetup) => {
     setMembers((ms) => {
       let next = [...ms];
-      let familyId = null, familyRole = null;
-      if (parentId) {
-        const parent = next.find((m) => m.id === parentId);
-        const fid = parent.familyId || parent.id;
-        familyId = fid; familyRole = "kind";
-        next = next.map((m) => (m.id === parentId ? { ...m, familyId: fid, familyRole: m.familyRole || "eltern" } : m));
+      next.push({ ...draft, familyId: null, familyRole: null, familyLinks: [] });
+      if (familySetup?.relativeId) {
+        next = linkFamilyRecords(next, draft.id, familySetup.relativeId, familySetup.accountType === "eltern" ? "eltern" : "kind");
       }
-      next.push({ ...draft, familyId, familyRole });
+      if (familySetup?.child) {
+        const childId = `dependent-${Date.now()}`;
+        const child = { id: childId, clubId: draft.clubId, name: familySetup.child.name, email: "", password: "", team: familySetup.child.team || "U11", number: null, since: new Date().getFullYear(), roles: ["mitglied", "spieler"], color: "#7C6FE0", points: 0, tippPoints: 0, badges: [], birthdate: familySetup.child.birthdate || "", accountPending: true, familyLinks: [] };
+        next = linkFamilyRecords([...next, child], draft.id, childId, "eltern");
+      }
       return next;
     });
     setFeePaid((f) => ({ ...f, [draft.id]: false }));
@@ -2226,4 +2273,3 @@ export default function ERGIserlohnApp() {
     </div>
   );
 }
-
