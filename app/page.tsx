@@ -965,8 +965,14 @@ function EventsView({ currentUser, members, rsvps, setRsvps, carpools, setCarpoo
     try { return window.localStorage.getItem(preferenceKey) || "alle"; } catch { return "alle"; }
   });
   const [savedTeam, setSavedTeam] = useState(teamFilter);
-  const gameTeams = YOUTH_CLASSES.map((t) => t.name);
-  const filtered = EVENTS.filter((e) => (filter === "alle" || e.type === filter) && (filter !== "spiel" || teamFilter === "alle" || e.team === teamFilter));
+  const filterTeams = YOUTH_CLASSES.map((t) => t.name);
+  const teamFilterActive = filter === "spiel" || filter === "training";
+  const filtered = EVENTS.filter((e) => {
+    if (filter !== "alle" && e.type !== filter) return false;
+    if (!teamFilterActive || teamFilter === "alle") return true;
+    if (filter === "spiel") return e.team === teamFilter;
+    return e.youthClassIds?.includes(TEAM_TO_YOUTHCLASS[teamFilter]);
+  });
   const userId = currentUser.id;
   const myRsvps = rsvps[userId] || {};
   const myCarpools = carpools[userId] || {};
@@ -1000,12 +1006,12 @@ function EventsView({ currentUser, members, rsvps, setRsvps, carpools, setCarpoo
             style={{ fontFamily: "Inter", fontWeight: 700, background: filter === k ? C.ink : C.paperDim, color: filter === k ? C.white : C.textDim }}>{l}</button>
         ))}
       </div>
-      {filter === "spiel" && <div className="rounded-2xl p-3 mb-4" style={{background:C.white,border:`1px solid ${C.line}`}}>
-        <div className="flex items-center justify-between mb-2"><div><div className="text-xs font-bold" style={{color:C.ink}}>Mannschaft auswählen</div><div className="text-[10px]" style={{color:C.textDim}}>Alle Spiele oder eine feste Mannschaft anzeigen</div></div>{savedTeam===teamFilter&&<span className="text-[9px] font-bold px-2 py-1 rounded-full" style={{background:"#E7F3EC",color:C.green}}>STANDARD</span>}</div>
-        <select value={teamFilter} onChange={(e)=>setTeamFilter(e.target.value)} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim,color:C.ink,border:`1px solid ${C.line}`}}>
-          <option value="alle">Alle Mannschaften</option>{gameTeams.map((team)=><option key={team} value={team}>{team}</option>)}
+      {teamFilterActive && <div className="flex items-center gap-2 mb-4 px-2.5 py-2 rounded-xl" style={{background:C.white,border:`1px solid ${C.line}`}}>
+        <Users size={13} style={{color:C.textDim,flexShrink:0}}/>
+        <select aria-label="Mannschaft filtern" value={teamFilter} onChange={(e)=>setTeamFilter(e.target.value)} className="flex-1 min-w-0 bg-transparent text-[11px] font-bold outline-none" style={{color:C.ink}}>
+          <option value="alle">Alle Mannschaften</option>{filterTeams.map((team)=><option key={team} value={team}>{team}</option>)}
         </select>
-        <button onClick={saveDefaultTeam} disabled={savedTeam===teamFilter} className="w-full py-2 rounded-lg text-[11px] font-bold" style={{background:savedTeam===teamFilter?C.paperDim:C.ink,color:savedTeam===teamFilter?C.textDim:C.white}}>Als meine Standardansicht speichern</button>
+        <button aria-label="Als Standardansicht speichern" title="Als Standard speichern" onClick={saveDefaultTeam} disabled={savedTeam===teamFilter} className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{background:savedTeam===teamFilter?"#E7F3EC":C.paperDim,color:savedTeam===teamFilter?C.green:C.textDim}}><Star size={13} fill={savedTeam===teamFilter?C.green:"none"}/></button>
       </div>}
       {filtered.map((ev) => (
         <EventCard key={ev.id} ev={ev}
@@ -1016,7 +1022,7 @@ function EventsView({ currentUser, members, rsvps, setRsvps, carpools, setCarpoo
           dutyPlan={dutyPlan} setDutyPlan={setDutyPlan}
         />
       ))}
-      {filtered.length===0&&<div className="rounded-2xl p-6 text-center text-xs" style={{background:C.paperDim,color:C.textDim}}>Für diese Mannschaft sind aktuell keine Spiele hinterlegt.</div>}
+      {filtered.length===0&&<div className="rounded-2xl p-6 text-center text-xs" style={{background:C.paperDim,color:C.textDim}}>Für diese Mannschaft sind aktuell keine {filter === "training" ? "Trainingstermine" : "Spiele"} hinterlegt.</div>}
     </div>
   );
 }
