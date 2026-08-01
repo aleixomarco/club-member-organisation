@@ -119,7 +119,7 @@ function age(birthdate) {
 /* Vereine (mandantenfähig)                                            */
 /* ------------------------------------------------------------------ */
 const INITIAL_CLUBS = [
-  { id: "cmo", name: "Club Member Organisation", shortName: "CMO", city: "Iserlohn", foundedYear: 1965 },
+  { id: "cmo", name: "ERG Iserlohn", shortName: "ERGI", city: "Iserlohn", foundedYear: 1965 },
   { id: "tsv-musterstadt", name: "TSV Musterstadt", shortName: "TSVM", city: "Musterstadt", foundedYear: 1902 },
   { id: "sv-beispiel", name: "SV Beispiel 04", shortName: "SVB", city: "Beispielhausen", foundedYear: 1904 },
 ];
