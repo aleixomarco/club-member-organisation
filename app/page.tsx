@@ -765,7 +765,7 @@ function NextTrainingCard({ user }) {
   );
 }
 function Dashboard({ user, members, feePaid, channels, dutyPlan, seasonVotes, sponsorBookings, onSponsorImpression, onSponsorClick, goEvents, goFees, goSeason, goTipp, goDuty, goNews }) {
-  const nextEvent = EVENTS[0];
+  const nextEvent = EVENTS.filter((e) => e.type === "spiel" && e.team === user.team && new Date(e.date) > new Date()).sort((a,b)=>new Date(a.date)-new Date(b.date))[0] || getNextMatch();
   const newsMsgs = (channels.find((c) => c.id === "news")?.messages || []).slice(-2).reverse();
 
   const seasonClosed = new Date() > new Date(SEASON_VOTE_DEADLINE);
@@ -957,7 +957,7 @@ function EventCard({ ev, rsvp, onRsvp, carpoolOn, onCarpool, guestCount, onGuest
     </div>
   );
 }
-function EventsView({ currentUser, members, rsvps, setRsvps, carpools, setCarpools, guestCounts, setGuestCounts, dutyPlan, setDutyPlan, sponsorBookings, onSponsorImpression, onSponsorClick, onRsvpPoint }) {
+function EventsView({ currentUser, members, rsvps, setRsvps, carpools, setCarpools, guestCounts, setGuestCounts, dutyPlan, setDutyPlan, sponsorBookings, onSponsorImpression, onSponsorClick, onRsvpPoint, focusRequest, onFocusApplied }) {
   const [filter, setFilter] = useState("alle");
   const preferenceKey = `ergi-match-team-${currentUser.id}`;
   const [teamFilter, setTeamFilter] = useState(() => {
@@ -965,6 +965,12 @@ function EventsView({ currentUser, members, rsvps, setRsvps, carpools, setCarpoo
     try { return window.localStorage.getItem(preferenceKey) || "alle"; } catch { return "alle"; }
   });
   const [savedTeam, setSavedTeam] = useState(teamFilter);
+  useEffect(() => {
+    if (!focusRequest) return;
+    setFilter("spiel");
+    setTeamFilter(focusRequest.team || "alle");
+    onFocusApplied?.();
+  }, [focusRequest]);
   const filterTeams = YOUTH_CLASSES.map((t) => t.name);
   const teamFilterActive = filter === "spiel" || filter === "training";
   const filtered = EVENTS.filter((e) => {
@@ -2159,6 +2165,7 @@ export default function ERGIserlohnApp() {
   const [authScreen, setAuthScreen] = useState("club"); // club | newclub | login | register
   const [tab, setTab] = useState("home");
   const [tabHistory, setTabHistory] = useState([]);
+  const [eventFocusRequest, setEventFocusRequest] = useState(null);
   const navigateTab = (nextTab) => {
     setTab((current) => {
       if (current !== nextTab) setTabHistory((h) => [...h, current]);
@@ -2227,6 +2234,7 @@ export default function ERGIserlohnApp() {
   const awardRsvpPoint = () => setMembers((ms) => ms.map((m) => (m.id === currentUserId ? { ...m, points: m.points + 10 } : m)));
   const payFee = () => setFeePaid((f) => ({ ...f, [currentUserId]: true }));
   const goNews = () => { setChatChannelId("news"); navigateTab("chat"); };
+  const goToMyNextMatch = () => { setEventFocusRequest({ team: currentUser?.team || "alle", requestedAt: Date.now() }); navigateTab("events"); };
   const onSponsorImpression = (slotKey) => setSponsorStats((s) => ({ ...s, [slotKey]: { impressions: (s[slotKey]?.impressions || 0) + 1, clicks: s[slotKey]?.clicks || 0 } }));
   const onSponsorClick = (slotKey) => setSponsorStats((s) => ({ ...s, [slotKey]: { impressions: s[slotKey]?.impressions || 0, clicks: (s[slotKey]?.clicks || 0) + 1 } }));
   const resetDemoData = () => {
@@ -2301,12 +2309,13 @@ export default function ERGIserlohnApp() {
               {!subView && tab === "home" && (
                 <Dashboard user={currentUser} members={clubMembers} feePaid={!!feePaid[currentUser.id]} channels={channels} dutyPlan={dutyPlan} seasonVotes={seasonVotes}
                   sponsorBookings={sponsorBookings} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick}
-                  goEvents={() => navigateTab("events")} goFees={() => navigateTab("fees")} goSeason={() => setSubView("season")} goTipp={() => setSubView("tipp")} goDuty={() => setSubView("duty")} goNews={goNews} />
+                  goEvents={goToMyNextMatch} goFees={() => navigateTab("fees")} goSeason={() => setSubView("season")} goTipp={() => setSubView("tipp")} goDuty={() => setSubView("duty")} goNews={goNews} />
               )}
               {!subView && tab === "events" && (
                 <EventsView currentUser={currentUser} members={clubMembers} rsvps={rsvps} setRsvps={setRsvps} carpools={carpools} setCarpools={setCarpools}
                   guestCounts={guestCounts} setGuestCounts={setGuestCounts} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan}
-                  sponsorBookings={sponsorBookings} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick} onRsvpPoint={awardRsvpPoint} />
+                  sponsorBookings={sponsorBookings} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick} onRsvpPoint={awardRsvpPoint}
+                  focusRequest={eventFocusRequest} onFocusApplied={()=>setEventFocusRequest(null)} />
               )}
               {!subView && tab === "fees" && <FeesView user={currentUser} paid={!!feePaid[currentUser.id]} onPay={payFee} />}
               {!subView && tab === "chat" && <ChatView user={currentUser} channels={channels} setChannels={setChannels} activeId={chatChannelId} setActiveId={setChatChannelId} />}
