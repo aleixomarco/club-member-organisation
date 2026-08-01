@@ -5,7 +5,7 @@
 1. GitHub Desktop öffnen und mit dem GitHub-Konto anmelden.
 2. **File → Add Local Repository** wählen.
 3. Diesen Ordner auswählen:
-   `/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app`
+   `/Users/marcoaleixo/Documents/Codex/2026-08-01/er/club-member-organisation`
 4. Oben auf **Publish repository** klicken.
 5. Als Namen `club-member-organisation` eintragen.
 6. **Keep this code private** aktiviert lassen, wenn der Quellcode nicht
@@ -57,7 +57,16 @@ er ausschließlich als `SUPABASE_SECRET_KEY` in Vercel hinterlegt.
 3. Jeder spätere Push auf den Branch `main` veröffentlicht automatisch eine
    neue Produktionsversion. Andere Branches erzeugen Vorschau-Versionen.
 
-## 5. Eigene Domain verbinden (optional)
+## 5. Supabase-Datenbank einrichten
+
+1. Im Supabase-Projekt den **SQL Editor** öffnen.
+2. **New query** wählen.
+3. Den vollständigen Inhalt von
+   `supabase/migrations/20260801160000_initial_schema.sql` einfügen.
+4. **Run** drücken und danach im **Table Editor** kontrollieren, dass die
+   Tabellen angelegt wurden.
+
+## 6. Eigene Domain verbinden (optional)
 
 Im Vercel-Projekt unter **Settings → Domains** die gewünschte Domain eintragen.
 Vercel zeigt danach die DNS-Einträge an, die beim Domain-Anbieter übernommen
@@ -72,8 +81,6 @@ werden müssen.
 
 ## Aktueller Datenstand
 
-Die App ist jetzt technisch für GitHub und Vercel vorbereitet. Die sichtbaren
-Mitglieder-, Beitrags- und Termindaten sind derzeit jedoch noch Demo-Daten in
-der Oberfläche. Für echte Konten und dauerhafte, geräteübergreifende Speicherung
-muss die App in einem weiteren Schritt mit den Supabase-Tabellen und Supabase
-Auth verbunden werden.
+Supabase Auth, Vereinsprofile und das vollständige abgesicherte Datenbankschema
+sind vorbereitet. Bis echte Vereinsdaten erfasst wurden, bleiben einige
+Ansichten mit Beispieldaten gefüllt.

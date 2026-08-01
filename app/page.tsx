@@ -8,6 +8,7 @@ import {
   ShieldCheck, ArrowRight, ArrowLeft, AlertCircle, UserPlus, Eye, EyeOff,
   Target, ClipboardList, Newspaper
 } from "lucide-react";
+import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
 /* ------------------------------------------------------------------ */
 /* Tokens                                                              */
@@ -496,9 +497,9 @@ function ClubSelectScreen({ clubs, onSelect, goNewClub }) {
         ))}
       </div>
 
-      <button onClick={goNewClub} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm mb-6" style={{ background: C.ink, color: "#fff", fontFamily: "Inter", fontWeight: 700 }}>
+      {!isSupabaseConfigured && <button onClick={goNewClub} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm mb-6" style={{ background: C.ink, color: "#fff", fontFamily: "Inter", fontWeight: 700 }}>
         <UserPlus size={15} /> Neuen Verein registrieren
-      </button>
+      </button>}
 
       <div className="mt-auto pt-2 text-center text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>
         Bereits registrierter Verein? Einfach oben auswählen.
@@ -546,14 +547,16 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub }) {
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e && e.preventDefault();
-    const found = members.find((m) => m.email.toLowerCase() === email.trim().toLowerCase() && m.password === password);
-    if (found) { setError(""); onLogin(found.id); }
-    else setError("E-Mail oder Passwort ist falsch.");
+    setBusy(true);
+    const result = await onLogin(email.trim(), password);
+    setBusy(false);
+    setError(result?.error || "");
   };
-  const quick = (m) => { setEmail(m.email); setPassword(m.password); onLogin(m.id); };
+  const quick = (m) => { setEmail(m.email); setPassword(m.password); onLogin(m.email, m.password); };
 
   return (
     <AuthShell
@@ -579,12 +582,12 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub }) {
         </div>
         {error && <div className="flex items-center gap-1.5 text-xs mb-3" style={{ color: C.red, fontFamily: "Inter" }}><AlertCircle size={13} /> {error}</div>}
         <button type="button" className="text-xs mb-4" style={{ color: C.textDim, fontFamily: "Inter" }}>Passwort vergessen?</button>
-        <button type="submit" className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm" style={{ background: C.ink, color: "#fff", fontFamily: "Inter", fontWeight: 700 }}>
-          Anmelden <ArrowRight size={15} />
+        <button type="submit" disabled={busy} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm" style={{ background: C.ink, color: "#fff", fontFamily: "Inter", fontWeight: 700, opacity: busy ? 0.65 : 1 }}>
+          {busy ? "Anmeldung läuft …" : "Anmelden"} {!busy && <ArrowRight size={15} />}
         </button>
       </form>
 
-      <div className="mt-8">
+      {!isSupabaseConfigured && <div className="mt-8">
         <div className="text-xs uppercase tracking-widest font-semibold mb-2.5" style={{ color: C.textDim, fontFamily: "Inter" }}>Demo-Zugänge zum Ausprobieren</div>
         <div className="space-y-2">
           {members.filter((m) => !m.accountPending).map((m) => (
@@ -598,7 +601,7 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub }) {
             </button>
           ))}
         </div>
-      </div>
+      </div>}
     </AuthShell>
   );
 }
@@ -608,6 +611,8 @@ const SELF_SERVICE_ROLES = Object.keys(ROLE_META).filter((r) => ROLE_META[r].sel
 function RegisterScreen({ onRegister, members, club, goLogin }) {
   const [form, setForm] = useState({ name: "", email: "", team: TEAMS[0], birthdate: "", password: "", password2: "", accountType: "mitglied", relativeId: "", childName: "", childBirthdate: "", childTeam: "U11" });
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [busy, setBusy] = useState(false);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const [relativeSearch, setRelativeSearch] = useState("");
   const possibleRelatives = members.filter((m) => !m.accountPending && m.id && (
@@ -615,14 +620,15 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
   )).filter((m) => m.name.toLowerCase().includes(relativeSearch.toLowerCase()));
   const isFirstAccount = members.length === 0;
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     if (!form.name.trim() || !form.email.trim() || !form.password || !form.birthdate) { setError("Bitte fülle alle Pflichtfelder aus."); return; }
     if (form.password !== form.password2) { setError("Die Passwörter stimmen nicht überein."); return; }
     if (members.some((m) => m.email.toLowerCase() === form.email.trim().toLowerCase())) { setError("Für diese E-Mail existiert bei diesem Verein bereits ein Konto."); return; }
     setError("");
     const typeRoles = form.accountType === "spieler" ? ["mitglied", "spieler"] : form.accountType === "eltern" ? ["mitglied", "eltern"] : ["mitglied"];
-    onRegister({
+    setBusy(true);
+    const result = await onRegister({
       id: "m" + Date.now(),
       clubId: club.id,
       name: form.name.trim(),
@@ -638,6 +644,9 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
       badges: [],
       birthdate: form.birthdate,
     }, { relativeId: form.relativeId || null, accountType: form.accountType, child: form.accountType === "eltern" && !form.relativeId && form.childName.trim() ? { name: form.childName.trim(), birthdate: form.childBirthdate, team: form.childTeam } : null });
+    setBusy(false);
+    if (result?.error) setError(result.error);
+    if (result?.message) setNotice(result.message);
   };
 
   return (
@@ -687,12 +696,13 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
         <Field icon={Lock} type="password" placeholder="Passwort bestätigen" value={form.password2} onChange={set("password2")} />
 
         {error && <div className="flex items-center gap-1.5 text-xs mb-3" style={{ color: C.red, fontFamily: "Inter" }}><AlertCircle size={13} /> {error}</div>}
+        {notice && <div className="flex items-center gap-1.5 text-xs mb-3" style={{ color: C.green, fontFamily: "Inter" }}><CheckCircle2 size={13} /> {notice}</div>}
 
-        <button type="submit" className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm" style={{ background: C.red, color: "#fff", fontFamily: "Inter", fontWeight: 700 }}>
-          <UserPlus size={15} /> Konto erstellen
+        <button type="submit" disabled={busy} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm" style={{ background: C.red, color: "#fff", fontFamily: "Inter", fontWeight: 700, opacity: busy ? 0.65 : 1 }}>
+          <UserPlus size={15} /> {busy ? "Konto wird erstellt …" : "Konto erstellen"}
         </button>
       </form>
-      <div className="text-[11px] mt-4 text-center" style={{ color: C.textDim, fontFamily: "Inter" }}>Demo-Prototyp — es werden keine echten Daten übertragen.</div>
+      <div className="text-[11px] mt-4 text-center" style={{ color: C.textDim, fontFamily: "Inter" }}>{isSupabaseConfigured ? "Sichere Registrierung über Supabase" : "Demo-Prototyp — es werden keine echten Daten übertragen."}</div>
     </AuthShell>
   );
 }
@@ -2288,6 +2298,19 @@ export default function ClubMemberOrganisationApp() {
   const [sponsorStats, setSponsorStats] = useState({});
   const [polls, setPolls] = useState(INITIAL_POLLS);
 
+  useEffect(() => {
+    if (!supabase) return;
+    supabase.from("clubs").select("id,name,short_name,city,founded_year").order("name").then(({ data }) => {
+      if (data?.length) setClubs(data.map((club) => ({
+        id: club.id,
+        name: club.name,
+        shortName: club.short_name,
+        city: club.city || "—",
+        foundedYear: club.founded_year || new Date().getFullYear(),
+      })));
+    });
+  }, []);
+
   const currentUser = members.find((m) => m.id === currentUserId);
   const currentClub = clubs.find((c) => c.id === selectedClubId) || clubs.find((c) => c.id === currentUser?.clubId);
   const clubMembers = members.filter((m) => m.clubId === selectedClubId);
@@ -2296,8 +2319,85 @@ export default function ClubMemberOrganisationApp() {
   const createClub = (club) => { setClubs((cs) => [...cs, club]); setSelectedClubId(club.id); setAuthScreen("register"); };
   const changeClub = () => { setSelectedClubId(null); setAuthScreen("club"); };
 
-  const login = (id) => { setCurrentUserId(id); setTab("home"); setTabHistory([]); setSubView(null); };
-  const register = (draft, familySetup) => {
+  const enterApp = (member) => {
+    setMembers((current) => [...current.filter((item) => item.id !== member.id), member]);
+    setSelectedClubId(member.clubId);
+    setCurrentUserId(member.id);
+    setTab("home"); setTabHistory([]); setSubView(null);
+  };
+  const loadSupabaseMembership = async (profileId, clubId) => {
+    const { data, error } = await supabase.from("club_memberships")
+      .select("id,club_id,display_name,email,member_since,status,membership_roles(role),team_members(function,teams(name))")
+      .eq("profile_id", profileId).eq("club_id", clubId).maybeSingle();
+    if (error) return { error: "Das Vereinsprofil konnte nicht geladen werden." };
+    if (!data) return { error: "Für dieses Konto besteht noch keine Mitgliedschaft in diesem Verein.", code: "membership_missing" };
+    if (data.status === "pending") return { error: "Deine Registrierung wartet noch auf die Freigabe durch den Vereins-Administrator." };
+    if (data.status !== "active") return { error: "Dieses Vereinsprofil ist derzeit nicht aktiv." };
+    const roles = (data.membership_roles || []).map((entry) => entry.role);
+    const assignments = data.team_members || [];
+    const teamNames = assignments.map((entry) => entry.teams?.name).filter(Boolean);
+    const primaryTeam = teamNames[0] || "Mitglied";
+    const member = {
+      id: data.id, authProfileId: profileId, clubId: data.club_id,
+      name: data.display_name, email: data.email || "", password: "",
+      team: primaryTeam, teams: teamNames, number: null,
+      since: data.member_since || new Date().getFullYear(), roles,
+      color: C.red, points: 0, tippPoints: 0, badges: [], birthdate: "",
+    };
+    enterApp(member);
+    return { ok: true };
+  };
+  const login = async (email, password) => {
+    if (!supabase) {
+      const found = members.find((m) => m.email.toLowerCase() === email.toLowerCase() && m.password === password && m.clubId === selectedClubId);
+      if (!found) return { error: "E-Mail oder Passwort ist falsch." };
+      enterApp(found);
+      return { ok: true };
+    }
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error || !data.user) return { error: "E-Mail oder Passwort ist falsch." };
+    const loaded = await loadSupabaseMembership(data.user.id, selectedClubId);
+    if (loaded?.code !== "membership_missing") return loaded;
+    const metadata = data.user.user_metadata || {};
+    if (metadata.pending_club_id !== selectedClubId) return loaded;
+    const { error: registrationError } = await supabase.rpc("register_for_club", {
+      target_club: selectedClubId,
+      member_name: metadata.full_name || email.split("@")[0],
+      account_role: metadata.account_role || "mitglied",
+      member_birthdate: metadata.birthdate || null,
+    });
+    if (registrationError) return { error: "Das Vereinsprofil konnte nicht fertiggestellt werden." };
+    return loadSupabaseMembership(data.user.id, selectedClubId);
+  };
+  const register = async (draft, familySetup) => {
+    if (supabase) {
+      const { data, error } = await supabase.auth.signUp({
+        email: draft.email,
+        password: draft.password,
+        options: { data: {
+          full_name: draft.name,
+          pending_club_id: draft.clubId,
+          account_role: familySetup?.accountType || "mitglied",
+          birthdate: draft.birthdate || null,
+        } },
+      });
+      if (error) return { error: error.message === "User already registered" ? "Für diese E-Mail existiert bereits ein Konto." : error.message };
+      if (!data.session || !data.user) {
+        return { ok: true, message: "Bitte bestätige jetzt die E-Mail. Danach kannst du dich anmelden und die Vereinsregistrierung abschließen." };
+      }
+      const { data: registration, error: registrationError } = await supabase.rpc("register_for_club", {
+        target_club: draft.clubId,
+        member_name: draft.name,
+        account_role: familySetup?.accountType || "mitglied",
+        member_birthdate: draft.birthdate || null,
+      });
+      if (registrationError) return { error: "Das Konto wurde erstellt, aber das Vereinsprofil konnte nicht angelegt werden." };
+      if (registration?.[0]?.membership_status === "pending") {
+        await supabase.auth.signOut();
+        return { ok: true, message: "Dein Konto wurde erstellt. Der Vereins-Administrator muss deine Mitgliedschaft noch freigeben." };
+      }
+      return loadSupabaseMembership(data.user.id, draft.clubId);
+    }
     setMembers((ms) => {
       let next = [...ms];
       next.push({ ...draft, familyId: null, familyRole: null, familyLinks: [] });
@@ -2319,8 +2419,9 @@ export default function ClubMemberOrganisationApp() {
     }
     setCurrentUserId(draft.id);
     setTab("home");
+    return { ok: true };
   };
-  const logout = () => { setCurrentUserId(null); setSelectedClubId(null); setAuthScreen("club"); setTab("home"); setTabHistory([]); setSubView(null); };
+  const logout = async () => { if (supabase) await supabase.auth.signOut(); setCurrentUserId(null); setSelectedClubId(null); setAuthScreen("club"); setTab("home"); setTabHistory([]); setSubView(null); };
   const returnToClubOverview = () => { setCurrentUserId(null); setSelectedClubId(null); setAuthScreen("club"); setTab("home"); setTabHistory([]); setSubView(null); setEventFocusRequest(null); };
   const goNews = () => { setChatChannelId("news"); navigateTab("chat"); };
   const goToMyNextMatch = () => { setEventFocusRequest({ team: currentUser?.team || "alle", requestedAt: Date.now() }); navigateTab("events"); };
