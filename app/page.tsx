@@ -1289,13 +1289,12 @@ function FamilyLinkManager({ user, members, setMembers }) {
 function PlayerDataCard({ user, setMembers }) {
   const [editing, setEditing] = useState(false);
   const [number, setNumber] = useState(user.number ?? "");
-  const [position, setPosition] = useState(user.position ?? "");
 
   const save = () => {
-    setMembers((ms) => ms.map((m) => (m.id === user.id ? { ...m, number: number === "" ? null : Number(number), position: position.trim() || null } : m)));
+    setMembers((ms) => ms.map((m) => (m.id === user.id ? { ...m, number: number === "" ? null : Number(number) } : m)));
     setEditing(false);
   };
-  const cancel = () => { setNumber(user.number ?? ""); setPosition(user.position ?? ""); setEditing(false); };
+  const cancel = () => { setNumber(user.number ?? ""); setEditing(false); };
 
   return (
     <div className="rounded-2xl p-4 mb-5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
@@ -1307,14 +1306,10 @@ function PlayerDataCard({ user, setMembers }) {
       </div>
 
       {!editing ? (
-        <div className="flex gap-2">
-          <div className="flex-1 rounded-xl px-3 py-2.5" style={{ background: C.paperDim }}>
+        <div>
+          <div className="rounded-xl px-3 py-2.5" style={{ background: C.paperDim }}>
             <div className="text-[10px] uppercase tracking-widest" style={{ color: C.textDim, fontFamily: "Inter" }}>Rückennummer</div>
             <div className="text-sm" style={{ fontFamily: "JetBrains Mono", fontWeight: 700, color: C.ink }}>{user.number ?? "—"}</div>
-          </div>
-          <div className="flex-1 rounded-xl px-3 py-2.5" style={{ background: C.paperDim }}>
-            <div className="text-[10px] uppercase tracking-widest" style={{ color: C.textDim, fontFamily: "Inter" }}>Position</div>
-            <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{user.position || "—"}</div>
           </div>
         </div>
       ) : (
@@ -1323,11 +1318,6 @@ function PlayerDataCard({ user, setMembers }) {
             <div className="text-[11px] mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>Rückennummer</div>
             <input type="number" min="0" max="99" value={number} onChange={(e) => setNumber(e.target.value)} placeholder="z. B. 14"
               className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={{ background: C.paperDim, fontFamily: "JetBrains Mono", color: C.ink }} />
-          </div>
-          <div>
-            <div className="text-[11px] mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>Position</div>
-            <input value={position} onChange={(e) => setPosition(e.target.value)} placeholder="z. B. Verteidigung"
-              className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={{ background: C.paperDim, fontFamily: "Inter", color: C.ink }} />
           </div>
           <div className="flex gap-2">
             <button onClick={save} className="flex-1 py-2 rounded-lg text-xs" style={{ background: C.red, color: "#fff", fontFamily: "Inter", fontWeight: 700 }}>Speichern</button>
