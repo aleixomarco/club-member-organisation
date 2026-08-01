@@ -62,6 +62,8 @@ const ROLE_META = {
   geschaeftsfuehrung: { label: "Geschäftsführung", color: C.ink, admin: true, formalMember: true, selfService: false },
   redakteur: { label: "Redakteur", color: "#B15CC9", admin: false, formalMember: true, selfService: false },
   sponsorenmanager: { label: "Sponsorenmanager", color: "#B17912", admin: false, formalMember: true, selfService: false },
+  trainer: { label: "Trainer/in", color: "#2D6F8E", admin: false, formalMember: true, selfService: false },
+  kapitaen: { label: "Kapitän/in", color: "#D66B1F", admin: false, formalMember: true, selfService: false },
   spieler: { label: "Spieler/in", color: C.green, admin: false, formalMember: true, selfService: true },
   eltern: { label: "Eltern", color: C.amber, admin: false, formalMember: true, selfService: true },
   mitglied: { label: "Mitglied", color: "#8B8A85", admin: false, formalMember: true, selfService: true, alwaysOn: true },
@@ -111,7 +113,7 @@ const INITIAL_CLUBS = [
 /* ------------------------------------------------------------------ */
 const INITIAL_MEMBERS = [
   { id: "m1", clubId: "ergi", name: "Marco Schulte", email: "marco@ergi.de", password: "demo", team: "Herren 1", number: 14, since: 2019, roles: ["sysadmin", "vorstand", "spieler", "mitglied"], color: C.red, points: 740, tippPoints: 14, badges: ["streak", "loyalty", "fairplay", "referrer"], birthdate: "1994-05-12" },
-  { id: "m2", clubId: "ergi", name: "Jasmin Reiter", email: "jasmin@ergi.de", password: "demo", team: "Damen 1", number: 7, since: 2021, roles: ["spieler", "mitglied"], color: C.amber, points: 410, tippPoints: 9, badges: ["loyalty"], birthdate: "1998-03-02" },
+  { id: "m2", clubId: "ergi", name: "Jasmin Reiter", email: "jasmin@ergi.de", password: "demo", team: "Damen 1", number: 7, since: 2021, roles: ["kapitaen", "spieler", "mitglied"], color: C.amber, points: 410, tippPoints: 9, badges: ["loyalty"], birthdate: "1998-03-02" },
   { id: "m3", clubId: "ergi", name: "Sabine Thomas", email: "sabine@ergi.de", password: "demo", team: "Eltern / Angehörige", number: null, since: 2023, roles: ["eltern", "mitglied"], color: C.green, points: 120, tippPoints: 5, badges: [], birthdate: "1985-09-14", familyId: "fam-thomas", familyRole: "eltern" },
   { id: "v1", clubId: "ergi", name: "Peter Vogt", email: "vorstand@ergi.de", password: "demo", team: "Vorstand", number: null, since: 2015, roles: ["vorstand", "mitglied"], color: C.ink, points: 60, tippPoints: 2, badges: ["loyalty"], birthdate: "1975-01-20" },
   { id: "m4", clubId: "ergi", name: "Mia Thomas", email: "mia@ergi.de", password: "demo", team: "U11", number: 5, since: 2024, roles: ["spieler", "mitglied"], color: "#7C6FE0", points: 30, tippPoints: 0, badges: [], birthdate: "2015-06-01", familyId: "fam-thomas", familyRole: "kind" },
@@ -192,11 +194,15 @@ const SPONSORS = ["Sparkasse Iserlohn", "Stadtwerke Iserlohn", "Autohaus Meyer",
 
 const INITIAL_CHANNELS = [
   {
-    id: "team", name: "Herren 1", emoji: "🏒", adminOnly: false, visibleRoles: ["spieler"],
+    id: "team", name: "Herren 1", emoji: "🏒", team: "Herren 1", adminOnly: false, visibleRoles: ["spieler", "trainer", "kapitaen"], writeRoles: ["spieler", "trainer", "kapitaen"],
     messages: [
       { who: "Marco S.", init: "MS", color: C.red, text: "Denkt an die Schienbeinschoner morgen, Trainer checkt das 😅", time: "09:14" },
       { who: "Jasmin R.", init: "JR", color: C.amber, text: "Bin heute 10 Min später da, hab Meeting.", time: "09:20" },
     ],
+  },
+  {
+    id: "damen1", name: "Damen 1", emoji: "🏒", team: "Damen 1", adminOnly: false, visibleRoles: ["spieler", "trainer", "kapitaen"], writeRoles: ["spieler", "trainer", "kapitaen"],
+    messages: [{ who: "Jasmin R.", init: "JR", color: C.amber, text: "Trainingsstart heute um 19 Uhr — bis später!", time: "08:45" }],
   },
   {
     id: "news", name: "Vereins-News", emoji: "📣", adminOnly: true, visibleRoles: null,
@@ -1040,9 +1046,9 @@ function FeesView({ user, paid, onPay }) {
 /* ------------------------------------------------------------------ */
 function ChatView({ user, channels, setChannels, activeId, setActiveId }) {
   const [text, setText] = useState("");
-  const visibleChannels = channels.filter((c) => !c.visibleRoles || isAdmin(user) || c.visibleRoles.some((r) => user.roles.includes(r)));
+  const visibleChannels = channels.filter((c) => isAdmin(user) || ((!c.team || c.team === user.team) && (!c.visibleRoles || c.visibleRoles.some((r) => user.roles.includes(r)))));
   const active = visibleChannels.find((c) => c.id === activeId) || visibleChannels[0];
-  const canPost = !active.adminOnly || isAdmin(user) || (active.id === "news" && user.roles.includes("redakteur"));
+  const canPost = isAdmin(user) || (active.id === "news" && user.roles.includes("redakteur")) || (!active.adminOnly && (!active.writeRoles || active.writeRoles.some((r) => user.roles.includes(r))));
 
   const send = () => {
     if (!text.trim() || !canPost) return;
@@ -1086,7 +1092,7 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId }) {
       </div>
       <div className="px-4 pt-3">
         {!canPost ? (
-          <div className="text-xs text-center py-2 rounded-lg" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>Nur der Vorstand kann hier schreiben</div>
+          <div className="text-xs text-center py-2 rounded-lg" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>{active.writeRoles ? "In dieser Gruppe schreiben Trainer, Kapitäne und freigegebene Teammitglieder." : "Nur berechtigte Rollen können hier schreiben."}</div>
         ) : (
           <div className="flex items-center gap-2">
             <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder="Nachricht schreiben…"
