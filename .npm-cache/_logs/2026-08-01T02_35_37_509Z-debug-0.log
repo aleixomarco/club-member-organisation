@@ -1,0 +1,1963 @@
+0 verbose cli /usr/local/bin/node /usr/local/bin/npm
+1 info using npm@11.13.0
+2 info using node@v24.16.0
+3 silly config load:file:/usr/local/lib/node_modules/npm/npmrc
+4 silly config load:file:/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/.npmrc
+5 silly config load:file:/Users/marcoaleixo/.npmrc
+6 silly config load:file:/usr/local/etc/npmrc
+7 verbose title npm install
+8 verbose argv "install"
+9 verbose logfile logs-max:10 dir:/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/.npm-cache/_logs/2026-08-01T02_35_37_509Z-
+10 verbose logfile /Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/.npm-cache/_logs/2026-08-01T02_35_37_509Z-debug-0.log
+11 silly logfile done cleaning log files
+12 silly packumentCache heap:2348810240 maxSize:587202560 maxEntrySize:293601280
+13 silly idealTree buildDeps
+14 http fetch GET https://registry.npmjs.org/npm attempt 1 failed with ENOTFOUND
+15 silly reify mark retired [
+15 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/acorn-import-phases'
+15 silly reify ]
+16 silly reify mark retired [
+16 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/acorn-loose'
+16 silly reify ]
+17 silly reify mark retired [
+17 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/ajv-formats'
+17 silly reify ]
+18 silly reify mark retired [
+18 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/axe-core'
+18 silly reify ]
+19 silly reify mark retired [
+19 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/base64-js'
+19 silly reify ]
+20 silly reify mark retired [
+20 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/baseline-browser-mapping'
+20 silly reify ]
+21 silly reify mark retired [
+21 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/blake3-wasm'
+21 silly reify ]
+22 silly reify mark retired [
+22 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/buffer-from'
+22 silly reify ]
+23 silly reify mark retired [
+23 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/brace-expansion'
+23 silly reify ]
+24 silly reify mark retired [
+24 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/camelize'
+24 silly reify ]
+25 silly reify mark retired [
+25 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/chrome-trace-event'
+25 silly reify ]
+26 silly reify mark retired [
+26 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/commander'
+26 silly reify ]
+27 silly reify mark retired [
+27 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/cookie'
+27 silly reify ]
+28 silly reify mark retired [
+28 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/css-background-parser'
+28 silly reify ]
+29 silly reify mark retired [
+29 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/css-box-shadow'
+29 silly reify ]
+30 silly reify mark retired [
+30 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/css-color-keywords'
+30 silly reify ]
+31 silly reify mark retired [
+31 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/css-gradient-parser'
+31 silly reify ]
+32 silly reify mark retired [
+32 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/css-to-react-native'
+32 silly reify ]
+33 silly reify mark retired [
+33 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/drizzle-kit'
+33 silly reify ]
+34 silly reify mark retired [
+34 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/drizzle-orm'
+34 silly reify ]
+35 silly reify mark retired [
+35 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/electron-to-chromium'
+35 silly reify ]
+36 silly reify mark retired [
+36 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/emoji-regex-xs'
+36 silly reify ]
+37 silly reify mark retired [
+37 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/enhanced-resolve'
+37 silly reify ]
+38 silly reify mark retired [
+38 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/error-stack-parser-es'
+38 silly reify ]
+39 silly reify mark retired [
+39 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/es-object-atoms'
+39 silly reify ]
+40 silly reify mark retired [
+40 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/esbuild'
+40 silly reify ]
+41 silly reify mark retired [
+41 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/escape-html'
+41 silly reify ]
+42 silly reify mark retired [
+42 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/eslint-config-next'
+42 silly reify ]
+43 silly reify mark retired [
+43 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/es-module-lexer'
+43 silly reify ]
+44 silly reify mark retired [
+44 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/eslint-module-utils'
+44 silly reify ]
+45 silly reify mark retired [
+45 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/estree-walker'
+45 silly reify ]
+46 silly reify mark retired [
+46 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/events'
+46 silly reify ]
+47 silly reify mark retired [
+47 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/fast-uri'
+47 silly reify ]
+48 silly reify mark retired [
+48 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/fflate'
+48 silly reify ]
+49 silly reify mark retired [
+49 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/fsevents'
+49 silly reify ]
+50 silly reify mark retired [
+50 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/glob-to-regexp'
+50 silly reify ]
+51 silly reify mark retired [
+51 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/globrex'
+51 silly reify ]
+52 silly reify mark retired [
+52 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/hasown'
+52 silly reify ]
+53 silly reify mark retired [
+53 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/hex-rgb'
+53 silly reify ]
+54 silly reify mark retired [
+54 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/image-size'
+54 silly reify ]
+55 silly reify mark retired [
+55 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/ipaddr.js'
+55 silly reify ]
+56 silly reify mark retired [
+56 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/jest-worker'
+56 silly reify ]
+57 silly reify mark retired [
+57 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/js-yaml'
+57 silly reify ]
+58 silly reify mark retired [
+58 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/kleur'
+58 silly reify ]
+59 silly reify mark retired [
+59 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/lightningcss'
+59 silly reify ]
+60 silly reify mark retired [
+60 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/lightningcss-darwin-arm64'
+60 silly reify ]
+61 silly reify mark retired [
+61 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/loader-runner'
+61 silly reify ]
+62 silly reify mark retired [
+62 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/linebreak'
+62 silly reify ]
+63 silly reify mark retired [
+63 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/merge-stream'
+63 silly reify ]
+64 silly reify mark retired [
+64 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/mime-db'
+64 silly reify ]
+65 silly reify mark retired [
+65 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/miniflare'
+65 silly reify ]
+66 silly reify mark retired [
+66 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/next'
+66 silly reify ]
+67 silly reify mark retired [
+67 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/neo-async'
+67 silly reify ]
+68 silly reify mark retired [
+68 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/node-releases'
+68 silly reify ]
+69 silly reify mark retired [
+69 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/pako'
+69 silly reify ]
+70 silly reify mark retired [
+70 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/path-to-regexp'
+70 silly reify ]
+71 silly reify mark retired [
+71 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/pathe'
+71 silly reify ]
+72 silly reify mark retired [
+72 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/parse-css-color'
+72 silly reify ]
+73 silly reify mark retired [
+73 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/postcss'
+73 silly reify ]
+74 silly reify mark retired [
+74 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/postcss-value-parser'
+74 silly reify ]
+75 silly reify mark retired [
+75 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/react'
+75 silly reify ]
+76 silly reify mark retired [
+76 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/react-dom'
+76 silly reify ]
+77 silly reify mark retired [
+77 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/react-loading-skeleton'
+77 silly reify ]
+78 silly reify mark retired [
+78 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/react-server-dom-webpack'
+78 silly reify ]
+79 silly reify mark retired [
+79 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/require-from-string'
+79 silly reify ]
+80 silly reify mark retired [
+80 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/rolldown'
+80 silly reify ]
+81 silly reify mark retired [
+81 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/satori'
+81 silly reify ]
+82 silly reify mark retired [
+82 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/schema-utils'
+82 silly reify ]
+83 silly reify mark retired [
+83 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/source-map'
+83 silly reify ]
+84 silly reify mark retired [
+84 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/source-map-support'
+84 silly reify ]
+85 silly reify mark retired [
+85 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/srvx'
+85 silly reify ]
+86 silly reify mark retired [
+86 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/string.prototype.codepointat'
+86 silly reify ]
+87 silly reify mark retired [
+87 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/strip-literal'
+87 silly reify ]
+88 silly reify mark retired [
+88 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/tailwindcss'
+88 silly reify ]
+89 silly reify mark retired [
+89 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/terser'
+89 silly reify ]
+90 silly reify mark retired [
+90 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/terser-webpack-plugin'
+90 silly reify ]
+91 silly reify mark retired [
+91 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/tinyglobby'
+91 silly reify ]
+92 silly reify mark retired [
+92 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/tsconfck'
+92 silly reify ]
+93 silly reify mark retired [
+93 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/tiny-inflate'
+93 silly reify ]
+94 silly reify mark retired [
+94 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/tsx'
+94 silly reify ]
+95 silly reify mark retired [
+95 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/turbo-stream'
+95 silly reify ]
+96 silly reify mark retired [
+96 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/typed-array-length'
+96 silly reify ]
+97 silly reify mark retired [
+97 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/typescript-eslint'
+97 silly reify ]
+98 silly reify mark retired [
+98 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/undici'
+98 silly reify ]
+99 silly reify mark retired [
+99 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/unenv'
+99 silly reify ]
+100 silly reify mark retired [
+100 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/unpic'
+100 silly reify ]
+101 silly reify mark retired [
+101 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/unrs-resolver'
+101 silly reify ]
+102 silly reify mark retired [
+102 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/vinext'
+102 silly reify ]
+103 silly reify mark retired [
+103 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/vite'
+103 silly reify ]
+104 silly reify mark retired [
+104 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/vite-plugin-commonjs'
+104 silly reify ]
+105 silly reify mark retired [
+105 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/vite-plugin-dynamic-import'
+105 silly reify ]
+106 silly reify mark retired [
+106 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/unicode-trie'
+106 silly reify ]
+107 silly reify mark retired [
+107 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/vite-tsconfig-paths'
+107 silly reify ]
+108 silly reify mark retired [
+108 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/vitefu'
+108 silly reify ]
+109 silly reify mark retired [
+109 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/watchpack'
+109 silly reify ]
+110 silly reify mark retired [
+110 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/web-vitals'
+110 silly reify ]
+111 silly reify mark retired [
+111 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/webpack'
+111 silly reify ]
+112 silly reify mark retired [
+112 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/webpack-sources'
+112 silly reify ]
+113 silly reify mark retired [
+113 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/which-typed-array'
+113 silly reify ]
+114 silly reify mark retired [
+114 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/workerd'
+114 silly reify ]
+115 silly reify mark retired [
+115 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/ws'
+115 silly reify ]
+116 silly reify mark retired [
+116 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/wrangler'
+116 silly reify ]
+117 silly reify mark retired [
+117 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/yoga-layout'
+117 silly reify ]
+118 silly reify mark retired [
+118 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/youch'
+118 silly reify ]
+119 silly reify mark retired [
+119 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/youch-core'
+119 silly reify ]
+120 silly reify mark retired [
+120 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/code-frame'
+120 silly reify ]
+121 silly reify mark retired [
+121 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/compat-data'
+121 silly reify ]
+122 silly reify mark retired [
+122 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/core'
+122 silly reify ]
+123 silly reify mark retired [
+123 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/generator'
+123 silly reify ]
+124 silly reify mark retired [
+124 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/helper-compilation-targets'
+124 silly reify ]
+125 silly reify mark retired [
+125 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/helper-globals'
+125 silly reify ]
+126 silly reify mark retired [
+126 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/helper-module-imports'
+126 silly reify ]
+127 silly reify mark retired [
+127 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/helper-module-transforms'
+127 silly reify ]
+128 silly reify mark retired [
+128 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/helper-string-parser'
+128 silly reify ]
+129 silly reify mark retired [
+129 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/helper-validator-identifier'
+129 silly reify ]
+130 silly reify mark retired [
+130 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/helpers'
+130 silly reify ]
+131 silly reify mark retired [
+131 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/helper-validator-option'
+131 silly reify ]
+132 silly reify mark retired [
+132 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/traverse'
+132 silly reify ]
+133 silly reify mark retired [
+133 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/types'
+133 silly reify ]
+134 silly reify mark retired [
+134 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/parser'
+134 silly reify ]
+135 silly reify mark retired [
+135 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@cloudflare/kv-asset-handler'
+135 silly reify ]
+136 silly reify mark retired [
+136 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@cloudflare/unenv-preset'
+136 silly reify ]
+137 silly reify mark retired [
+137 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@cloudflare/vite-plugin'
+137 silly reify ]
+138 silly reify mark retired [
+138 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/template'
+138 silly reify ]
+139 silly reify mark retired [
+139 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@cspotcode/source-map-support'
+139 silly reify ]
+140 silly reify mark retired [
+140 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@cloudflare/workerd-darwin-arm64'
+140 silly reify ]
+141 silly reify mark retired [
+141 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@drizzle-team/brocli'
+141 silly reify ]
+142 silly reify mark retired [
+142 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@esbuild/darwin-arm64'
+142 silly reify ]
+143 silly reify mark retired [
+143 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@esbuild-kit/core-utils'
+143 silly reify ]
+144 silly reify mark retired [
+144 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@esbuild-kit/esm-loader'
+144 silly reify ]
+145 silly reify mark retired [
+145 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@jridgewell/source-map'
+145 silly reify ]
+146 silly reify mark retired [
+146 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@next/env'
+146 silly reify ]
+147 silly reify mark retired [
+147 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@next/eslint-plugin-next'
+147 silly reify ]
+148 silly reify mark retired [
+148 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@next/swc-darwin-arm64'
+148 silly reify ]
+149 silly reify mark retired [
+149 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@oxc-project/types'
+149 silly reify ]
+150 silly reify mark retired [
+150 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@poppinss/colors'
+150 silly reify ]
+151 silly reify mark retired [
+151 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@poppinss/dumper'
+151 silly reify ]
+152 silly reify mark retired [
+152 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@poppinss/exception'
+152 silly reify ]
+153 silly reify mark retired [
+153 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@resvg/resvg-wasm'
+153 silly reify ]
+154 silly reify mark retired [
+154 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@rolldown/binding-darwin-arm64'
+154 silly reify ]
+155 silly reify mark retired [
+155 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@rolldown/pluginutils'
+155 silly reify ]
+156 silly reify mark retired [
+156 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@sindresorhus/is'
+156 silly reify ]
+157 silly reify mark retired [
+157 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@tailwindcss/node'
+157 silly reify ]
+158 silly reify mark retired [
+158 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@tailwindcss/oxide'
+158 silly reify ]
+159 silly reify mark retired [
+159 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@tailwindcss/postcss'
+159 silly reify ]
+160 silly reify mark retired [
+160 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@types/eslint'
+160 silly reify ]
+161 silly reify mark retired [
+161 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@types/eslint-scope'
+161 silly reify ]
+162 silly reify mark retired [
+162 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@tailwindcss/oxide-darwin-arm64'
+162 silly reify ]
+163 silly reify mark retired [
+163 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@types/node'
+163 silly reify ]
+164 silly reify mark retired [
+164 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@types/react'
+164 silly reify ]
+165 silly reify mark retired [
+165 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@typescript-eslint/eslint-plugin'
+165 silly reify ]
+166 silly reify mark retired [
+166 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@typescript-eslint/parser'
+166 silly reify ]
+167 silly reify mark retired [
+167 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@typescript-eslint/project-service'
+167 silly reify ]
+168 silly reify mark retired [
+168 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@typescript-eslint/tsconfig-utils'
+168 silly reify ]
+169 silly reify mark retired [
+169 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@typescript-eslint/type-utils'
+169 silly reify ]
+170 silly reify mark retired [
+170 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@shuding/opentype.js'
+170 silly reify ]
+171 silly reify mark retired [
+171 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@typescript-eslint/typescript-estree'
+171 silly reify ]
+172 silly reify mark retired [
+172 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@typescript-eslint/types'
+172 silly reify ]
+173 silly reify mark retired [
+173 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@typescript-eslint/scope-manager'
+173 silly reify ]
+174 silly reify mark retired [
+174 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@typescript-eslint/visitor-keys'
+174 silly reify ]
+175 silly reify mark retired [
+175 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@speed-highlight/core'
+175 silly reify ]
+176 silly reify mark retired [
+176 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@typescript-eslint/utils'
+176 silly reify ]
+177 silly reify mark retired [
+177 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@unpic/core'
+177 silly reify ]
+178 silly reify mark retired [
+178 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@unpic/react'
+178 silly reify ]
+179 silly reify mark retired [
+179 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@unrs/resolver-binding-darwin-arm64'
+179 silly reify ]
+180 silly reify mark retired [
+180 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@vercel/og'
+180 silly reify ]
+181 silly reify mark retired [
+181 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@vitejs/plugin-react'
+181 silly reify ]
+182 silly reify mark retired [
+182 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@vitejs/plugin-rsc'
+182 silly reify ]
+183 silly reify mark retired [
+183 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/ast'
+183 silly reify ]
+184 silly reify mark retired [
+184 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/floating-point-hex-parser'
+184 silly reify ]
+185 silly reify mark retired [
+185 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/helper-api-error'
+185 silly reify ]
+186 silly reify mark retired [
+186 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/helper-buffer'
+186 silly reify ]
+187 silly reify mark retired [
+187 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/helper-wasm-bytecode'
+187 silly reify ]
+188 silly reify mark retired [
+188 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/helper-wasm-section'
+188 silly reify ]
+189 silly reify mark retired [
+189 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/ieee754'
+189 silly reify ]
+190 silly reify mark retired [
+190 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/leb128'
+190 silly reify ]
+191 silly reify mark retired [
+191 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/utf8'
+191 silly reify ]
+192 silly reify mark retired [
+192 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/wasm-edit'
+192 silly reify ]
+193 silly reify mark retired [
+193 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/helper-numbers'
+193 silly reify ]
+194 silly reify mark retired [
+194 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/wasm-gen'
+194 silly reify ]
+195 silly reify mark retired [
+195 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/wasm-parser'
+195 silly reify ]
+196 silly reify mark retired [
+196 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/wasm-opt'
+196 silly reify ]
+197 silly reify mark retired [
+197 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/wast-printer'
+197 silly reify ]
+198 silly reify mark retired [
+198 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@xtuc/long'
+198 silly reify ]
+199 silly reify mark retired [
+199 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@xtuc/ieee754'
+199 silly reify ]
+200 silly reify mark retired [
+200 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/acorn',
+200 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/acorn'
+200 silly reify ]
+201 silly reify mark retired [
+201 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/browserslist',
+201 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/browserslist'
+201 silly reify ]
+202 silly reify mark retired [
+202 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/eslint',
+202 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/eslint'
+202 silly reify ]
+203 silly reify mark retired [
+203 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/is-bun-module/node_modules/semver'
+203 silly reify ]
+204 silly reify mark retired [
+204 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/jsesc',
+204 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/jsesc'
+204 silly reify ]
+205 silly reify mark retired [
+205 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/jiti',
+205 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/jiti'
+205 silly reify ]
+206 silly reify mark retired [
+206 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/loose-envify',
+206 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/loose-envify'
+206 silly reify ]
+207 silly reify mark retired [
+207 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/json5',
+207 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/json5'
+207 silly reify ]
+208 silly reify mark retired [
+208 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/nanoid',
+208 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/nanoid'
+208 silly reify ]
+209 silly reify mark retired [
+209 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/napi-postinstall',
+209 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/napi-postinstall'
+209 silly reify ]
+210 silly reify mark retired [
+210 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/resolve',
+210 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/resolve'
+210 silly reify ]
+211 silly reify mark retired [
+211 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/semver',
+211 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/semver'
+211 silly reify ]
+212 silly reify mark retired [
+212 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/sharp/node_modules/semver'
+212 silly reify ]
+213 silly reify mark retired [
+213 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/tsconfig-paths/node_modules/json5',
+213 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/tsconfig-paths/node_modules/.bin/json5'
+213 silly reify ]
+214 silly reify mark retired [
+214 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/typescript',
+214 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/tsc',
+214 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/tsserver'
+214 silly reify ]
+215 silly reify mark retired [
+215 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/update-browserslist-db',
+215 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/update-browserslist-db'
+215 silly reify ]
+216 silly reify mark retired [
+216 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/which',
+216 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/node-which'
+216 silly reify ]
+217 silly reify moves {
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/acorn-import-phases': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.acorn-import-phases-fxhCcCqH',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/acorn-loose': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.acorn-loose-MMYVJGRt',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/ajv-formats': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.ajv-formats-4XVDBLT1',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/axe-core': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.axe-core-QqvEYvLy',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/base64-js': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.base64-js-IgczNdX4',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/baseline-browser-mapping': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.baseline-browser-mapping-gMSYvtaN',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/blake3-wasm': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.blake3-wasm-Xpsum0lc',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/buffer-from': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.buffer-from-4g1bSTZD',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/brace-expansion': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.brace-expansion-ajmyl3tw',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/camelize': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.camelize-8tBfj958',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/chrome-trace-event': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.chrome-trace-event-mdXykRl9',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/commander': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.commander-tt0uUXVx',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/cookie': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.cookie-nPOCU1vw',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/css-background-parser': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.css-background-parser-tFx8oXsH',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/css-box-shadow': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.css-box-shadow-aZFvc8fv',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/css-color-keywords': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.css-color-keywords-HfVSP7ke',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/css-gradient-parser': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.css-gradient-parser-78yD8quL',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/css-to-react-native': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.css-to-react-native-zZIwP714',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/drizzle-kit': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.drizzle-kit-8TT3NcB3',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/drizzle-orm': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.drizzle-orm-sgtszuxp',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/electron-to-chromium': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.electron-to-chromium-Y2Nfc8Kn',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/emoji-regex-xs': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.emoji-regex-xs-u3hCv2tX',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/enhanced-resolve': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.enhanced-resolve-A46OEfE0',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/error-stack-parser-es': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.error-stack-parser-es-f3xJOH3S',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/es-object-atoms': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.es-object-atoms-2mVNPA8n',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/esbuild': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.esbuild-2cdpjyL7',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/escape-html': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.escape-html-ughp7NAn',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/eslint-config-next': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.eslint-config-next-A0bn6uzF',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/es-module-lexer': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.es-module-lexer-MJqTG9pW',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/eslint-module-utils': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.eslint-module-utils-7foL4Woa',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/estree-walker': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.estree-walker-CRSbmiMZ',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/events': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.events-7xxsuB6w',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/fast-uri': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.fast-uri-12ZzwMZ3',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/fflate': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.fflate-ojQXtO2z',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/fsevents': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.fsevents-JSpFUej7',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/glob-to-regexp': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.glob-to-regexp-JAldEDAN',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/globrex': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.globrex-H6xulHsJ',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/hasown': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.hasown-z2zF9XLh',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/hex-rgb': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.hex-rgb-3gYtyzYi',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/image-size': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.image-size-mehwsYn7',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/ipaddr.js': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.ipaddr.js-Et2j1i0A',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/jest-worker': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.jest-worker-dSOTLBSh',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/js-yaml': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.js-yaml-ls3YT81P',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/kleur': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.kleur-iT04kD2O',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/lightningcss': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.lightningcss-fP7R4Qrx',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/lightningcss-darwin-arm64': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.lightningcss-darwin-arm64-DUf1eUFw',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/loader-runner': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.loader-runner-9Kkf6C3h',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/linebreak': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.linebreak-IdnXf7gj',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/merge-stream': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.merge-stream-2tsU0jj4',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/mime-db': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.mime-db-VVdYX5TY',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/miniflare': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.miniflare-d8vuQ58B',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/next': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.next-6tdH7RWU',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/neo-async': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.neo-async-ZCfplB7U',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/node-releases': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.node-releases-QG1ogZBT',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/pako': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.pako-txsSZ8n4',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/path-to-regexp': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.path-to-regexp-KvQx7I0Q',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/pathe': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.pathe-BrCbt0V2',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/parse-css-color': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.parse-css-color-VHR8yujT',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/postcss': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.postcss-BK9iVHwc',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/postcss-value-parser': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.postcss-value-parser-XVs7zIo1',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/react': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.react-dkY4GR5E',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/react-dom': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.react-dom-ehShhL3c',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/react-loading-skeleton': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.react-loading-skeleton-hvOEGRvs',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/react-server-dom-webpack': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.react-server-dom-webpack-yFGEnAUm',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/require-from-string': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.require-from-string-QhMufxa5',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/rolldown': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.rolldown-fcKoAuUQ',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/satori': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.satori-FqXuSqrj',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/schema-utils': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.schema-utils-8yotkoYS',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/source-map': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.source-map-V8vMrlQx',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/source-map-support': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.source-map-support-dFwSIuLK',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/srvx': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.srvx-T4G19Jp8',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/string.prototype.codepointat': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.string.prototype.codepointat-y7Tl95Gf',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/strip-literal': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.strip-literal-bGTlkiFI',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/tailwindcss': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.tailwindcss-Aq7SKa1n',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/terser': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.terser-W2B2NXlc',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/terser-webpack-plugin': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.terser-webpack-plugin-XmaFvlHg',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/tinyglobby': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.tinyglobby-EQNZjcUx',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/tsconfck': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.tsconfck-2fAm8XM9',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/tiny-inflate': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.tiny-inflate-pAmfGWWy',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/tsx': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.tsx-Dj1rIxp1',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/turbo-stream': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.turbo-stream-pCTmK0WV',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/typed-array-length': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.typed-array-length-87iCJRWj',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/typescript-eslint': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.typescript-eslint-pq7AJVVp',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/undici': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.undici-RaQrCBAC',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/unenv': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.unenv-JSByQAJz',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/unpic': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.unpic-N38uatSn',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/unrs-resolver': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.unrs-resolver-BSkY6CG8',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/vinext': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.vinext-cQ4fnbtW',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/vite': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.vite-8NQ3ameQ',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/vite-plugin-commonjs': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.vite-plugin-commonjs-fBWApXOL',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/vite-plugin-dynamic-import': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.vite-plugin-dynamic-import-2wmq1hnL',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/unicode-trie': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.unicode-trie-pWWHeLBN',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/vite-tsconfig-paths': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.vite-tsconfig-paths-eN9vciyV',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/vitefu': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.vitefu-TFdqN3yd',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/watchpack': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.watchpack-AHlo0RZd',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/web-vitals': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.web-vitals-qabRya7N',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/webpack': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.webpack-PTGxs6U9',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/webpack-sources': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.webpack-sources-4T3wLkvG',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/which-typed-array': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.which-typed-array-TCYziMbR',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/workerd': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.workerd-KwsgXMH6',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/ws': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.ws-onCilFLh',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/wrangler': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.wrangler-00e48GYY',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/yoga-layout': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.yoga-layout-gS5aqSgf',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/youch': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.youch-xaMb5rmi',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/youch-core': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.youch-core-cbrTmO2a',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/code-frame': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/.code-frame-CoJT4NVS',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/compat-data': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/.compat-data-drPREDLA',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/core': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/.core-rdVnNyoS',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/generator': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/.generator-LihVHvHG',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/helper-compilation-targets': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/.helper-compilation-targets-2L2h4JUK',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/helper-globals': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/.helper-globals-2EKbWpiy',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/helper-module-imports': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/.helper-module-imports-4fItJOvo',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/helper-module-transforms': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/.helper-module-transforms-6nOsJXDH',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/helper-string-parser': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/.helper-string-parser-ivQe3vLh',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/helper-validator-identifier': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/.helper-validator-identifier-arZ8BeMJ',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/helpers': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/.helpers-F6Z2MEs6',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/helper-validator-option': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/.helper-validator-option-Gp263MPb',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/traverse': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/.traverse-Ix5eriIn',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/types': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/.types-9Zxs8cT1',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/parser': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/.parser-LxtPS3Yq',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@cloudflare/kv-asset-handler': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@cloudflare/.kv-asset-handler-JGuWZy9T',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@cloudflare/unenv-preset': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@cloudflare/.unenv-preset-C8uNUVP5',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@cloudflare/vite-plugin': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@cloudflare/.vite-plugin-rgD39aCR',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/template': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@babel/.template-VX64VOvz',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@cspotcode/source-map-support': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@cspotcode/.source-map-support-tuh4hLJz',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@cloudflare/workerd-darwin-arm64': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@cloudflare/.workerd-darwin-arm64-Mx4w5Mtm',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@drizzle-team/brocli': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@drizzle-team/.brocli-tgZGc21f',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@esbuild/darwin-arm64': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@esbuild/.darwin-arm64-R561HfFZ',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@esbuild-kit/core-utils': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@esbuild-kit/.core-utils-cuEgSTLy',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@esbuild-kit/esm-loader': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@esbuild-kit/.esm-loader-mNdtCDG9',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@jridgewell/source-map': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@jridgewell/.source-map-oGCxlrF0',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@next/env': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@next/.env-8nv2JCNf',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@next/eslint-plugin-next': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@next/.eslint-plugin-next-5lk9T3Nz',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@next/swc-darwin-arm64': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@next/.swc-darwin-arm64-RPGc1Yuc',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@oxc-project/types': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@oxc-project/.types-u0tvo7k9',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@poppinss/colors': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@poppinss/.colors-QKR96Lcd',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@poppinss/dumper': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@poppinss/.dumper-6m1BMTSv',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@poppinss/exception': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@poppinss/.exception-w1uOBWUe',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@resvg/resvg-wasm': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@resvg/.resvg-wasm-N8FlsCY7',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@rolldown/binding-darwin-arm64': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@rolldown/.binding-darwin-arm64-WoSewFid',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@rolldown/pluginutils': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@rolldown/.pluginutils-a2mJBopk',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@sindresorhus/is': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@sindresorhus/.is-TL1pvphB',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@tailwindcss/node': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@tailwindcss/.node-Q2DGlvgD',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@tailwindcss/oxide': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@tailwindcss/.oxide-2GZWCVGx',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@tailwindcss/postcss': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@tailwindcss/.postcss-rXHylLFe',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@types/eslint': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@types/.eslint-4g3Fgq5v',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@types/eslint-scope': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@types/.eslint-scope-aG9kxs5N',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@tailwindcss/oxide-darwin-arm64': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@tailwindcss/.oxide-darwin-arm64-P14Su7xq',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@types/node': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@types/.node-R4Vl3lxz',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@types/react': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@types/.react-wx2DugYG',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@typescript-eslint/eslint-plugin': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@typescript-eslint/.eslint-plugin-XyP1eHA4',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@typescript-eslint/parser': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@typescript-eslint/.parser-UwksBSCj',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@typescript-eslint/project-service': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@typescript-eslint/.project-service-471X6Whn',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@typescript-eslint/tsconfig-utils': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@typescript-eslint/.tsconfig-utils-k1eFmUMv',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@typescript-eslint/type-utils': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@typescript-eslint/.type-utils-gYk7Of7Y',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@shuding/opentype.js': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@shuding/.opentype.js-yZ0dwEhM',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@typescript-eslint/typescript-estree': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@typescript-eslint/.typescript-estree-D17esqMq',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@typescript-eslint/types': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@typescript-eslint/.types-BC2TidWr',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@typescript-eslint/scope-manager': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@typescript-eslint/.scope-manager-0UiO84Jz',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@typescript-eslint/visitor-keys': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@typescript-eslint/.visitor-keys-T5GFqwl5',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@speed-highlight/core': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@speed-highlight/.core-iHemNHAz',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@typescript-eslint/utils': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@typescript-eslint/.utils-dGwbe1nV',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@unpic/core': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@unpic/.core-1T8g6kWg',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@unpic/react': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@unpic/.react-Ea3Clxjm',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@unrs/resolver-binding-darwin-arm64': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@unrs/.resolver-binding-darwin-arm64-IP2dvoOO',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@vercel/og': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@vercel/.og-VTO4w7bW',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@vitejs/plugin-react': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@vitejs/.plugin-react-u8BAE8oj',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@vitejs/plugin-rsc': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@vitejs/.plugin-rsc-rpOCuXlR',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/ast': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/.ast-mr5ttlhx',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/floating-point-hex-parser': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/.floating-point-hex-parser-R7J3GsHS',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/helper-api-error': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/.helper-api-error-Xuo2QGTV',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/helper-buffer': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/.helper-buffer-BjKsVF53',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/helper-wasm-bytecode': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/.helper-wasm-bytecode-nWbCF8cN',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/helper-wasm-section': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/.helper-wasm-section-2Yz5Xnmv',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/ieee754': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/.ieee754-goOfEcRc',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/leb128': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/.leb128-wip3wtzQ',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/utf8': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/.utf8-miqlupFy',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/wasm-edit': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/.wasm-edit-pJ92cAdA',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/helper-numbers': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/.helper-numbers-6PqbsqGI',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/wasm-gen': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/.wasm-gen-1FMvCf68',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/wasm-parser': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/.wasm-parser-kHo2yg3J',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/wasm-opt': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/.wasm-opt-1bc1XjZ0',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/wast-printer': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@webassemblyjs/.wast-printer-5XY35oYA',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@xtuc/long': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@xtuc/.long-YepxFEgK',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@xtuc/ieee754': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/@xtuc/.ieee754-LRxqU6nZ',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/acorn': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.acorn-fq11yr3L',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/acorn': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/.acorn-e7X1njR4',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/browserslist': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.browserslist-FZJWgO5s',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/browserslist': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/.browserslist-dTD0njBb',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/eslint': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.eslint-7sEcYDiK',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/eslint': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/.eslint-56pDFx0b',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/is-bun-module/node_modules/semver': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/is-bun-module/node_modules/.semver-u6jrhBIY',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/jsesc': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.jsesc-Gj4DG4IP',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/jsesc': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/.jsesc-0DbTFRas',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/jiti': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.jiti-PNfQRzCx',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/jiti': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/.jiti-xWHrv8lW',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/loose-envify': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.loose-envify-S3YvX8qy',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/loose-envify': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/.loose-envify-bJTAKgIV',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/json5': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.json5-VLFrV7Ri',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/json5': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/.json5-Ded2FoAS',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/nanoid': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.nanoid-S3E8TsLu',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/nanoid': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/.nanoid-yJg3aMrZ',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/napi-postinstall': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.napi-postinstall-rYQoORV3',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/napi-postinstall': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/.napi-postinstall-A6hs4fqN',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/resolve': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.resolve-FhA5oRrp',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/resolve': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/.resolve-zGxpCILk',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/semver': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.semver-gBgLRlgr',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/semver': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/.semver-21bHUg22',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/sharp/node_modules/semver': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/sharp/node_modules/.semver-CWXuCQSn',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/tsconfig-paths/node_modules/json5': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/tsconfig-paths/node_modules/.json5-fOqUGX5f',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/tsconfig-paths/node_modules/.bin/json5': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/tsconfig-paths/node_modules/.bin/.json5-0ZnbHIPG',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/typescript': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.typescript-guMmCpH7',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/tsc': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/.tsc-qEnYaBAt',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/tsserver': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/.tsserver-gFfODytQ',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/update-browserslist-db': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.update-browserslist-db-6yCY5llG',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/update-browserslist-db': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/.update-browserslist-db-UpKGULJS',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/which': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.which-IjobCB97',
+217 silly reify   '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/node-which': '/Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/node_modules/.bin/.node-which-6gg6AUsT'
+217 silly reify }
+218 silly audit bulk request {
+218 silly audit   '@alloc/quick-lru': [ '5.2.0' ],
+218 silly audit   '@babel/code-frame': [ '7.29.0' ],
+218 silly audit   '@babel/compat-data': [ '7.29.3' ],
+218 silly audit   '@babel/core': [ '7.29.0' ],
+218 silly audit   '@babel/generator': [ '7.29.1' ],
+218 silly audit   '@babel/helper-compilation-targets': [ '7.28.6' ],
+218 silly audit   '@babel/helper-globals': [ '7.28.0' ],
+218 silly audit   '@babel/helper-module-imports': [ '7.28.6' ],
+218 silly audit   '@babel/helper-module-transforms': [ '7.28.6' ],
+218 silly audit   '@babel/helper-string-parser': [ '7.27.1' ],
+218 silly audit   '@babel/helper-validator-identifier': [ '7.28.5' ],
+218 silly audit   '@babel/helper-validator-option': [ '7.27.1' ],
+218 silly audit   '@babel/helpers': [ '7.29.2' ],
+218 silly audit   '@babel/parser': [ '7.29.3' ],
+218 silly audit   '@babel/template': [ '7.28.6' ],
+218 silly audit   '@babel/traverse': [ '7.29.0' ],
+218 silly audit   '@babel/types': [ '7.29.0' ],
+218 silly audit   '@cloudflare/kv-asset-handler': [ '0.5.0' ],
+218 silly audit   '@cloudflare/unenv-preset': [ '2.16.1' ],
+218 silly audit   '@cloudflare/vite-plugin': [ '1.37.1' ],
+218 silly audit   '@cloudflare/workerd-darwin-64': [ '1.20260515.1' ],
+218 silly audit   '@cloudflare/workerd-darwin-arm64': [ '1.20260515.1' ],
+218 silly audit   '@cloudflare/workerd-linux-64': [ '1.20260515.1' ],
+218 silly audit   '@cloudflare/workerd-linux-arm64': [ '1.20260515.1' ],
+218 silly audit   '@cloudflare/workerd-windows-64': [ '1.20260515.1' ],
+218 silly audit   '@cspotcode/source-map-support': [ '0.8.1' ],
+218 silly audit   '@jridgewell/trace-mapping': [ '0.3.9', '0.3.31' ],
+218 silly audit   '@drizzle-team/brocli': [ '0.10.2' ],
+218 silly audit   '@emnapi/core': [ '1.10.0', '1.8.1' ],
+218 silly audit   '@emnapi/runtime': [ '1.10.0', '1.8.1' ],
+218 silly audit   '@emnapi/wasi-threads': [ '1.2.1', '1.1.0' ],
+218 silly audit   '@esbuild-kit/core-utils': [ '3.3.2' ],
+218 silly audit   '@esbuild/android-arm': [ '0.18.20', '0.28.0', '0.25.12', '0.27.3' ],
+218 silly audit   '@esbuild/android-arm64': [ '0.18.20', '0.28.0', '0.25.12', '0.27.3' ],
+218 silly audit   '@esbuild/android-x64': [ '0.18.20', '0.28.0', '0.25.12', '0.27.3' ],
+218 silly audit   '@esbuild/darwin-arm64': [ '0.18.20', '0.28.0', '0.25.12', '0.27.3' ],
+218 silly audit   '@esbuild/darwin-x64': [ '0.18.20', '0.28.0', '0.25.12', '0.27.3' ],
+218 silly audit   '@esbuild/freebsd-arm64': [ '0.18.20', '0.28.0', '0.25.12', '0.27.3' ],
+218 silly audit   '@esbuild/freebsd-x64': [ '0.18.20', '0.28.0', '0.25.12', '0.27.3' ],
+218 silly audit   '@esbuild/linux-arm': [ '0.18.20', '0.28.0', '0.25.12', '0.27.3' ],
+218 silly audit   '@esbuild/linux-arm64': [ '0.18.20', '0.28.0', '0.25.12', '0.27.3' ],
+218 silly audit   '@esbuild/linux-ia32': [ '0.18.20', '0.28.0', '0.25.12', '0.27.3' ],
+218 silly audit   '@esbuild/linux-loong64': [ '0.18.20', '0.28.0', '0.25.12', '0.27.3' ],
+218 silly audit   '@esbuild/linux-mips64el': [ '0.18.20', '0.28.0', '0.25.12', '0.27.3' ],
+218 silly audit   '@esbuild/linux-ppc64': [ '0.18.20', '0.28.0', '0.25.12', '0.27.3' ],
+218 silly audit   '@esbuild/linux-riscv64': [ '0.18.20', '0.28.0', '0.25.12', '0.27.3' ],
+218 silly audit   '@esbuild/linux-s390x': [ '0.18.20', '0.28.0', '0.25.12', '0.27.3' ],
+218 silly audit   '@esbuild/linux-x64': [ '0.18.20', '0.28.0', '0.25.12', '0.27.3' ],
+218 silly audit   '@esbuild/netbsd-x64': [ '0.18.20', '0.28.0', '0.25.12', '0.27.3' ],
+218 silly audit   '@esbuild/openbsd-x64': [ '0.18.20', '0.28.0', '0.25.12', '0.27.3' ],
+218 silly audit   '@esbuild/sunos-x64': [ '0.18.20', '0.28.0', '0.25.12', '0.27.3' ],
+218 silly audit   '@esbuild/win32-arm64': [ '0.18.20', '0.28.0', '0.25.12', '0.27.3' ],
+218 silly audit   '@esbuild/win32-ia32': [ '0.18.20', '0.28.0', '0.25.12', '0.27.3' ],
+218 silly audit   '@esbuild/win32-x64': [ '0.18.20', '0.28.0', '0.25.12', '0.27.3' ],
+218 silly audit   esbuild: [ '0.18.20', '0.25.12', '0.28.0', '0.27.3' ],
+218 silly audit   '@esbuild-kit/esm-loader': [ '2.6.5' ],
+218 silly audit   '@esbuild/aix-ppc64': [ '0.28.0', '0.25.12', '0.27.3' ],
+218 silly audit   '@esbuild/netbsd-arm64': [ '0.28.0', '0.25.12', '0.27.3' ],
+218 silly audit   '@esbuild/openbsd-arm64': [ '0.28.0', '0.25.12', '0.27.3' ],
+218 silly audit   '@esbuild/openharmony-arm64': [ '0.28.0', '0.25.12', '0.27.3' ],
+218 silly audit   '@eslint-community/eslint-utils': [ '4.9.1' ],
+218 silly audit   'eslint-visitor-keys': [ '3.4.3', '5.0.1', '4.2.1' ],
+218 silly audit   '@eslint-community/regexpp': [ '4.12.2' ],
+218 silly audit   '@eslint/config-array': [ '0.21.2' ],
+218 silly audit   '@eslint/config-helpers': [ '0.4.2' ],
+218 silly audit   '@eslint/core': [ '0.17.0' ],
+218 silly audit   '@eslint/eslintrc': [ '3.3.5' ],
+218 silly audit   '@eslint/js': [ '9.39.4' ],
+218 silly audit   '@eslint/object-schema': [ '2.1.7' ],
+218 silly audit   '@eslint/plugin-kit': [ '0.4.1' ],
+218 silly audit   '@humanfs/core': [ '0.19.2' ],
+218 silly audit   '@humanfs/node': [ '0.16.8' ],
+218 silly audit   '@humanfs/types': [ '0.15.0' ],
+218 silly audit   '@humanwhocodes/module-importer': [ '1.0.1' ],
+218 silly audit   '@humanwhocodes/retry': [ '0.4.3' ],
+218 silly audit   '@img/colour': [ '1.1.0' ],
+218 silly audit   '@img/sharp-darwin-arm64': [ '0.34.5' ],
+218 silly audit   '@img/sharp-darwin-x64': [ '0.34.5' ],
+218 silly audit   '@img/sharp-libvips-darwin-arm64': [ '1.2.4' ],
+218 silly audit   '@img/sharp-libvips-darwin-x64': [ '1.2.4' ],
+218 silly audit   '@img/sharp-libvips-linux-arm': [ '1.2.4' ],
+218 silly audit   '@img/sharp-libvips-linux-arm64': [ '1.2.4' ],
+218 silly audit   '@img/sharp-libvips-linux-ppc64': [ '1.2.4' ],
+218 silly audit   '@img/sharp-libvips-linux-riscv64': [ '1.2.4' ],
+218 silly audit   '@img/sharp-libvips-linux-s390x': [ '1.2.4' ],
+218 silly audit   '@img/sharp-libvips-linux-x64': [ '1.2.4' ],
+218 silly audit   '@img/sharp-libvips-linuxmusl-arm64': [ '1.2.4' ],
+218 silly audit   '@img/sharp-libvips-linuxmusl-x64': [ '1.2.4' ],
+218 silly audit   '@img/sharp-linux-arm': [ '0.34.5' ],
+218 silly audit   '@img/sharp-linux-arm64': [ '0.34.5' ],
+218 silly audit   '@img/sharp-linux-ppc64': [ '0.34.5' ],
+218 silly audit   '@img/sharp-linux-riscv64': [ '0.34.5' ],
+218 silly audit   '@img/sharp-linux-s390x': [ '0.34.5' ],
+218 silly audit   '@img/sharp-linux-x64': [ '0.34.5' ],
+218 silly audit   '@img/sharp-linuxmusl-arm64': [ '0.34.5' ],
+218 silly audit   '@img/sharp-linuxmusl-x64': [ '0.34.5' ],
+218 silly audit   '@img/sharp-wasm32': [ '0.34.5' ],
+218 silly audit   '@img/sharp-win32-arm64': [ '0.34.5' ],
+218 silly audit   '@img/sharp-win32-ia32': [ '0.34.5' ],
+218 silly audit   '@img/sharp-win32-x64': [ '0.34.5' ],
+218 silly audit   '@jridgewell/gen-mapping': [ '0.3.13' ],
+218 silly audit   '@jridgewell/remapping': [ '2.3.5' ],
+218 silly audit   '@jridgewell/resolve-uri': [ '3.1.2' ],
+218 silly audit   '@jridgewell/source-map': [ '0.3.11' ],
+218 silly audit   '@jridgewell/sourcemap-codec': [ '1.5.5' ],
+218 silly audit   '@napi-rs/wasm-runtime': [ '0.2.12', '1.1.4', '1.1.1' ],
+218 silly audit   '@next/env': [ '16.2.6' ],
+218 silly audit   '@next/eslint-plugin-next': [ '16.2.6' ],
+218 silly audit   '@next/swc-darwin-arm64': [ '16.2.6' ],
+218 silly audit   '@next/swc-darwin-x64': [ '16.2.6' ],
+218 silly audit   '@next/swc-linux-arm64-gnu': [ '16.2.6' ],
+218 silly audit   '@next/swc-linux-arm64-musl': [ '16.2.6' ],
+218 silly audit   '@next/swc-linux-x64-gnu': [ '16.2.6' ],
+218 silly audit   '@next/swc-linux-x64-musl': [ '16.2.6' ],
+218 silly audit   '@next/swc-win32-arm64-msvc': [ '16.2.6' ],
+218 silly audit   '@next/swc-win32-x64-msvc': [ '16.2.6' ],
+218 silly audit   '@nodelib/fs.scandir': [ '2.1.5' ],
+218 silly audit   '@nodelib/fs.stat': [ '2.0.5' ],
+218 silly audit   '@nodelib/fs.walk': [ '1.2.8' ],
+218 silly audit   '@nolyfill/is-core-module': [ '1.0.39' ],
+218 silly audit   '@oxc-project/types': [ '0.130.0' ],
+218 silly audit   '@poppinss/colors': [ '4.1.6' ],
+218 silly audit   '@poppinss/dumper': [ '0.6.5' ],
+218 silly audit   'supports-color': [ '10.2.2', '8.1.1', '7.2.0' ],
+218 silly audit   '@poppinss/exception': [ '1.2.3' ],
+218 silly audit   '@resvg/resvg-wasm': [ '2.4.0' ],
+218 silly audit   '@rolldown/binding-android-arm64': [ '1.0.1' ],
+218 silly audit   '@rolldown/binding-darwin-arm64': [ '1.0.1' ],
+218 silly audit   '@rolldown/binding-darwin-x64': [ '1.0.1' ],
+218 silly audit   '@rolldown/binding-freebsd-x64': [ '1.0.1' ],
+218 silly audit   '@rolldown/binding-linux-arm-gnueabihf': [ '1.0.1' ],
+218 silly audit   '@rolldown/binding-linux-arm64-gnu': [ '1.0.1' ],
+218 silly audit   '@rolldown/binding-linux-arm64-musl': [ '1.0.1' ],
+218 silly audit   '@rolldown/binding-linux-ppc64-gnu': [ '1.0.1' ],
+218 silly audit   '@rolldown/binding-linux-s390x-gnu': [ '1.0.1' ],
+218 silly audit   '@rolldown/binding-linux-x64-gnu': [ '1.0.1' ],
+218 silly audit   '@rolldown/binding-linux-x64-musl': [ '1.0.1' ],
+218 silly audit   '@rolldown/binding-openharmony-arm64': [ '1.0.1' ],
+218 silly audit   '@rolldown/binding-wasm32-wasi': [ '1.0.1' ],
+218 silly audit   '@rolldown/binding-win32-arm64-msvc': [ '1.0.1' ],
+218 silly audit   '@rolldown/binding-win32-x64-msvc': [ '1.0.1' ],
+218 silly audit   '@rolldown/pluginutils': [ '1.0.1', '1.0.0-rc.18' ],
+218 silly audit   '@rtsao/scc': [ '1.1.0' ],
+218 silly audit   '@shuding/opentype.js': [ '1.4.0-beta.0' ],
+218 silly audit   '@sindresorhus/is': [ '7.2.0' ],
+218 silly audit   '@speed-highlight/core': [ '1.2.15' ],
+218 silly audit   '@swc/helpers': [ '0.5.15' ],
+218 silly audit   '@tailwindcss/node': [ '4.2.1' ],
+218 silly audit   '@tailwindcss/oxide': [ '4.2.1' ],
+218 silly audit   '@tailwindcss/oxide-android-arm64': [ '4.2.1' ],
+218 silly audit   '@tailwindcss/oxide-darwin-arm64': [ '4.2.1' ],
+218 silly audit   '@tailwindcss/oxide-darwin-x64': [ '4.2.1' ],
+218 silly audit   '@tailwindcss/oxide-freebsd-x64': [ '4.2.1' ],
+218 silly audit   '@tailwindcss/oxide-linux-arm-gnueabihf': [ '4.2.1' ],
+218 silly audit   '@tailwindcss/oxide-linux-arm64-gnu': [ '4.2.1' ],
+218 silly audit   '@tailwindcss/oxide-linux-arm64-musl': [ '4.2.1' ],
+218 silly audit   '@tailwindcss/oxide-linux-x64-gnu': [ '4.2.1' ],
+218 silly audit   '@tailwindcss/oxide-linux-x64-musl': [ '4.2.1' ],
+218 silly audit   '@tailwindcss/oxide-wasm32-wasi': [ '4.2.1' ],
+218 silly audit   '@tybys/wasm-util': [ '0.10.1', '0.10.2' ],
+218 silly audit   tslib: [ '2.8.1' ],
+218 silly audit   '@tailwindcss/oxide-win32-arm64-msvc': [ '4.2.1' ],
+218 silly audit   '@tailwindcss/oxide-win32-x64-msvc': [ '4.2.1' ],
+218 silly audit   '@tailwindcss/postcss': [ '4.2.1' ],
+218 silly audit   '@types/eslint': [ '9.6.1' ],
+218 silly audit   '@types/eslint-scope': [ '3.7.7' ],
+218 silly audit   '@types/estree': [ '1.0.9' ],
+218 silly audit   '@types/json-schema': [ '7.0.15' ],
+218 silly audit   '@types/json5': [ '0.0.29' ],
+218 silly audit   '@types/node': [ '22.19.19' ],
+218 silly audit   '@types/react': [ '19.2.14' ],
+218 silly audit   '@types/react-dom': [ '19.2.3' ],
+218 silly audit   '@typescript-eslint/eslint-plugin': [ '8.59.3' ],
+218 silly audit   ignore: [ '7.0.5', '5.3.2' ],
+218 silly audit   '@typescript-eslint/parser': [ '8.59.3' ],
+218 silly audit   '@typescript-eslint/project-service': [ '8.59.3' ],
+218 silly audit   '@typescript-eslint/scope-manager': [ '8.59.3' ],
+218 silly audit   '@typescript-eslint/tsconfig-utils': [ '8.59.3' ],
+218 silly audit   '@typescript-eslint/type-utils': [ '8.59.3' ],
+218 silly audit   '@typescript-eslint/types': [ '8.59.3' ],
+218 silly audit   '@typescript-eslint/typescript-estree': [ '8.59.3' ],
+218 silly audit   'balanced-match': [ '4.0.4', '1.0.2' ],
+218 silly audit   'brace-expansion': [ '5.0.6', '1.1.14' ],
+218 silly audit   minimatch: [ '10.2.5', '3.1.5' ],
+218 silly audit   semver: [ '7.8.0', '6.3.1' ],
+218 silly audit   '@typescript-eslint/utils': [ '8.59.3' ],
+218 silly audit   '@typescript-eslint/visitor-keys': [ '8.59.3' ],
+218 silly audit   '@unpic/core': [ '1.0.3' ],
+218 silly audit   '@unpic/react': [ '1.0.2' ],
+218 silly audit   '@unrs/resolver-binding-android-arm-eabi': [ '1.11.1' ],
+218 silly audit   '@unrs/resolver-binding-android-arm64': [ '1.11.1' ],
+218 silly audit   '@unrs/resolver-binding-darwin-arm64': [ '1.11.1' ],
+218 silly audit   '@unrs/resolver-binding-darwin-x64': [ '1.11.1' ],
+218 silly audit   '@unrs/resolver-binding-freebsd-x64': [ '1.11.1' ],
+218 silly audit   '@unrs/resolver-binding-linux-arm-gnueabihf': [ '1.11.1' ],
+218 silly audit   '@unrs/resolver-binding-linux-arm-musleabihf': [ '1.11.1' ],
+218 silly audit   '@unrs/resolver-binding-linux-arm64-gnu': [ '1.11.1' ],
+218 silly audit   '@unrs/resolver-binding-linux-arm64-musl': [ '1.11.1' ],
+218 silly audit   '@unrs/resolver-binding-linux-ppc64-gnu': [ '1.11.1' ],
+218 silly audit   '@unrs/resolver-binding-linux-riscv64-gnu': [ '1.11.1' ],
+218 silly audit   '@unrs/resolver-binding-linux-riscv64-musl': [ '1.11.1' ],
+218 silly audit   '@unrs/resolver-binding-linux-s390x-gnu': [ '1.11.1' ],
+218 silly audit   '@unrs/resolver-binding-linux-x64-gnu': [ '1.11.1' ],
+218 silly audit   '@unrs/resolver-binding-linux-x64-musl': [ '1.11.1' ],
+218 silly audit   '@unrs/resolver-binding-wasm32-wasi': [ '1.11.1' ],
+218 silly audit   '@unrs/resolver-binding-win32-arm64-msvc': [ '1.11.1' ],
+218 silly audit   '@unrs/resolver-binding-win32-ia32-msvc': [ '1.11.1' ],
+218 silly audit   '@unrs/resolver-binding-win32-x64-msvc': [ '1.11.1' ],
+218 silly audit   '@vercel/og': [ '0.8.6' ],
+218 silly audit   '@vitejs/plugin-react': [ '6.0.2' ],
+218 silly audit   '@vitejs/plugin-rsc': [ '0.5.26' ],
+218 silly audit   '@webassemblyjs/ast': [ '1.14.1' ],
+218 silly audit   '@webassemblyjs/floating-point-hex-parser': [ '1.13.2' ],
+218 silly audit   '@webassemblyjs/helper-api-error': [ '1.13.2' ],
+218 silly audit   '@webassemblyjs/helper-buffer': [ '1.14.1' ],
+218 silly audit   '@webassemblyjs/helper-numbers': [ '1.13.2' ],
+218 silly audit   '@webassemblyjs/helper-wasm-bytecode': [ '1.13.2' ],
+218 silly audit   '@webassemblyjs/helper-wasm-section': [ '1.14.1' ],
+218 silly audit   '@webassemblyjs/ieee754': [ '1.13.2' ],
+218 silly audit   '@webassemblyjs/leb128': [ '1.13.2' ],
+218 silly audit   '@webassemblyjs/utf8': [ '1.13.2' ],
+218 silly audit   '@webassemblyjs/wasm-edit': [ '1.14.1' ],
+218 silly audit   '@webassemblyjs/wasm-gen': [ '1.14.1' ],
+218 silly audit   '@webassemblyjs/wasm-opt': [ '1.14.1' ],
+218 silly audit   '@webassemblyjs/wasm-parser': [ '1.14.1' ],
+218 silly audit   '@webassemblyjs/wast-printer': [ '1.14.1' ],
+218 silly audit   '@xtuc/ieee754': [ '1.2.0' ],
+218 silly audit   '@xtuc/long': [ '4.2.2' ],
+218 silly audit   acorn: [ '8.16.0' ],
+218 silly audit   'acorn-import-phases': [ '1.0.4' ],
+218 silly audit   'acorn-jsx': [ '5.3.2' ],
+218 silly audit   'acorn-loose': [ '8.5.2' ],
+218 silly audit   ajv: [ '6.15.0', '8.20.0' ],
+218 silly audit   'ajv-formats': [ '2.1.1' ],
+218 silly audit   'json-schema-traverse': [ '1.0.0', '0.4.1' ],
+218 silly audit   'ansi-styles': [ '4.3.0' ],
+218 silly audit   argparse: [ '2.0.1' ],
+218 silly audit   'aria-query': [ '5.3.2' ],
+218 silly audit   'array-buffer-byte-length': [ '1.0.2' ],
+218 silly audit   'array-includes': [ '3.1.9' ],
+218 silly audit   'array.prototype.findlast': [ '1.2.5' ],
+218 silly audit   'array.prototype.findlastindex': [ '1.2.6' ],
+218 silly audit   'array.prototype.flat': [ '1.3.3' ],
+218 silly audit   'array.prototype.flatmap': [ '1.3.3' ],
+218 silly audit   'array.prototype.tosorted': [ '1.1.4' ],
+218 silly audit   'arraybuffer.prototype.slice': [ '1.0.4' ],
+218 silly audit   'ast-types-flow': [ '0.0.8' ],
+218 silly audit   'async-function': [ '1.0.0' ],
+218 silly audit   'available-typed-arrays': [ '1.0.7' ],
+218 silly audit   'axe-core': [ '4.11.4' ],
+218 silly audit   'axobject-query': [ '4.1.0' ],
+218 silly audit   'base64-js': [ '0.0.8' ],
+218 silly audit   'baseline-browser-mapping': [ '2.10.30' ],
+218 silly audit   'blake3-wasm': [ '2.1.5' ],
+218 silly audit   braces: [ '3.0.3' ],
+218 silly audit   browserslist: [ '4.28.2' ],
+218 silly audit   'buffer-from': [ '1.1.2' ],
+218 silly audit   'call-bind': [ '1.0.9' ],
+218 silly audit   'call-bind-apply-helpers': [ '1.0.2' ],
+218 silly audit   'call-bound': [ '1.0.4' ],
+218 silly audit   callsites: [ '3.1.0' ],
+218 silly audit   camelize: [ '1.0.1' ],
+218 silly audit   'caniuse-lite': [ '1.0.30001793' ],
+218 silly audit   chalk: [ '4.1.2' ],
+218 silly audit   'chrome-trace-event': [ '1.0.4' ],
+218 silly audit   'client-only': [ '0.0.1' ],
+218 silly audit   'color-convert': [ '2.0.1' ],
+218 silly audit   'color-name': [ '1.1.4' ],
+218 silly audit   commander: [ '2.20.3' ],
+218 silly audit   'concat-map': [ '0.0.1' ],
+218 silly audit   'convert-source-map': [ '2.0.0' ],
+218 silly audit   cookie: [ '1.1.1' ],
+218 silly audit   'cross-spawn': [ '7.0.6' ],
+218 silly audit   'css-background-parser': [ '0.1.0' ],
+218 silly audit   'css-box-shadow': [ '1.0.0-3' ],
+218 silly audit   'css-color-keywords': [ '1.0.0' ],
+218 silly audit   'css-gradient-parser': [ '0.0.16' ],
+218 silly audit   'css-to-react-native': [ '3.2.0' ],
+218 silly audit   csstype: [ '3.2.3' ],
+218 silly audit   'damerau-levenshtein': [ '1.0.8' ],
+218 silly audit   'data-view-buffer': [ '1.0.2' ],
+218 silly audit   'data-view-byte-length': [ '1.0.2' ],
+218 silly audit   'data-view-byte-offset': [ '1.0.1' ],
+218 silly audit   debug: [ '4.4.3', '3.2.7' ],
+218 silly audit   'deep-is': [ '0.1.4' ],
+218 silly audit   'define-data-property': [ '1.1.4' ],
+218 silly audit   'define-properties': [ '1.2.1' ],
+218 silly audit   'detect-libc': [ '2.1.2' ],
+218 silly audit   doctrine: [ '2.1.0' ],
+218 silly audit   'drizzle-kit': [ '0.31.10' ],
+218 silly audit   'drizzle-orm': [ '0.45.2' ],
+218 silly audit   'dunder-proto': [ '1.0.1' ],
+218 silly audit   'electron-to-chromium': [ '1.5.358' ],
+218 silly audit   'emoji-regex': [ '9.2.2' ],
+218 silly audit   'emoji-regex-xs': [ '2.0.1' ],
+218 silly audit   'enhanced-resolve': [ '5.21.3' ],
+218 silly audit   'error-stack-parser-es': [ '1.0.5' ],
+218 silly audit   'es-abstract': [ '1.24.2' ],
+218 silly audit   'es-define-property': [ '1.0.1' ],
+218 silly audit   'es-errors': [ '1.3.0' ],
+218 silly audit   'es-iterator-helpers': [ '1.3.2' ],
+218 silly audit   'es-module-lexer': [ '2.1.0', '1.7.0' ],
+218 silly audit   'es-object-atoms': [ '1.1.1' ],
+218 silly audit   'es-set-tostringtag': [ '2.1.0' ],
+218 silly audit   'es-shim-unscopables': [ '1.1.0' ],
+218 silly audit   'es-to-primitive': [ '1.3.0' ],
+218 silly audit   escalade: [ '3.2.0' ],
+218 silly audit   'escape-html': [ '1.0.3' ],
+218 silly audit   'escape-string-regexp': [ '4.0.0' ],
+218 silly audit   eslint: [ '9.39.4' ],
+218 silly audit   'eslint-config-next': [ '16.2.6' ],
+218 silly audit   globals: [ '16.4.0', '14.0.0' ],
+218 silly audit   'eslint-import-resolver-node': [ '0.3.10' ],
+218 silly audit   'eslint-import-resolver-typescript': [ '3.10.1' ],
+218 silly audit   'eslint-module-utils': [ '2.12.1' ],
+218 silly audit   'eslint-plugin-import': [ '2.32.0' ],
+218 silly audit   'eslint-plugin-jsx-a11y': [ '6.10.2' ],
+218 silly audit   'eslint-plugin-react': [ '7.37.5' ],
+218 silly audit   'eslint-plugin-react-hooks': [ '7.1.1' ],
+218 silly audit   'eslint-scope': [ '8.4.0', '5.1.1' ],
+218 silly audit   espree: [ '10.4.0' ],
+218 silly audit   esquery: [ '1.7.0' ],
+218 silly audit   esrecurse: [ '4.3.0' ],
+218 silly audit   estraverse: [ '5.3.0', '4.3.0' ],
+218 silly audit   'estree-walker': [ '3.0.3' ],
+218 silly audit   esutils: [ '2.0.3' ],
+218 silly audit   events: [ '3.3.0' ],
+218 silly audit   'fast-deep-equal': [ '3.1.3' ],
+218 silly audit   'fast-glob': [ '3.3.1', '3.3.3' ],
+218 silly audit   'glob-parent': [ '5.1.2', '6.0.2' ],
+218 silly audit   'fast-json-stable-stringify': [ '2.1.0' ],
+218 silly audit   'fast-levenshtein': [ '2.0.6' ],
+218 silly audit   'fast-uri': [ '3.1.2' ],
+218 silly audit   fastq: [ '1.20.1' ],
+218 silly audit   fflate: [ '0.7.4' ],
+218 silly audit   'file-entry-cache': [ '8.0.0' ],
+218 silly audit   'fill-range': [ '7.1.1' ],
+218 silly audit   'find-up': [ '5.0.0' ],
+218 silly audit   'flat-cache': [ '4.0.1' ],
+218 silly audit   flatted: [ '3.4.2' ],
+218 silly audit   'for-each': [ '0.3.5' ],
+218 silly audit   fsevents: [ '2.3.3' ],
+218 silly audit   'function-bind': [ '1.1.2' ],
+218 silly audit   'function.prototype.name': [ '1.1.8' ],
+218 silly audit   'functions-have-names': [ '1.2.3' ],
+218 silly audit   'generator-function': [ '2.0.1' ],
+218 silly audit   gensync: [ '1.0.0-beta.2' ],
+218 silly audit   'get-intrinsic': [ '1.3.0' ],
+218 silly audit   'get-proto': [ '1.0.1' ],
+218 silly audit   'get-symbol-description': [ '1.1.0' ],
+218 silly audit   'get-tsconfig': [ '4.14.0' ],
+218 silly audit   'glob-to-regexp': [ '0.4.1' ],
+218 silly audit   globalthis: [ '1.0.4' ],
+218 silly audit   globrex: [ '0.1.2' ],
+218 silly audit   gopd: [ '1.2.0' ],
+218 silly audit   'graceful-fs': [ '4.2.11' ],
+218 silly audit   'has-bigints': [ '1.1.0' ],
+218 silly audit   'has-flag': [ '4.0.0' ],
+218 silly audit   'has-property-descriptors': [ '1.0.2' ],
+218 silly audit   'has-proto': [ '1.2.0' ],
+218 silly audit   'has-symbols': [ '1.1.0' ],
+218 silly audit   'has-tostringtag': [ '1.0.2' ],
+218 silly audit   hasown: [ '2.0.3' ],
+218 silly audit   'hermes-estree': [ '0.25.1' ],
+218 silly audit   'hermes-parser': [ '0.25.1' ],
+218 silly audit   'hex-rgb': [ '4.3.0' ],
+218 silly audit   'image-size': [ '2.0.2' ],
+218 silly audit   'import-fresh': [ '3.3.1' ],
+218 silly audit   imurmurhash: [ '0.1.4' ],
+218 silly audit   'internal-slot': [ '1.1.0' ],
+218 silly audit   'ipaddr.js': [ '2.4.0' ],
+218 silly audit   'is-array-buffer': [ '3.0.5' ],
+218 silly audit   'is-async-function': [ '2.1.1' ],
+218 silly audit   'is-bigint': [ '1.1.0' ],
+218 silly audit   'is-boolean-object': [ '1.2.2' ],
+218 silly audit   'is-bun-module': [ '2.0.0' ],
+218 silly audit   'is-callable': [ '1.2.7' ],
+218 silly audit   'is-core-module': [ '2.16.2' ],
+218 silly audit   'is-data-view': [ '1.0.2' ],
+218 silly audit   'is-date-object': [ '1.1.0' ],
+218 silly audit   'is-extglob': [ '2.1.1' ],
+218 silly audit   'is-finalizationregistry': [ '1.1.1' ],
+218 silly audit   'is-generator-function': [ '1.1.2' ],
+218 silly audit   'is-glob': [ '4.0.3' ],
+218 silly audit   'is-map': [ '2.0.3' ],
+218 silly audit   'is-negative-zero': [ '2.0.3' ],
+218 silly audit   'is-number': [ '7.0.0' ],
+218 silly audit   'is-number-object': [ '1.1.1' ],
+218 silly audit   'is-regex': [ '1.2.1' ],
+218 silly audit   'is-set': [ '2.0.3' ],
+218 silly audit   'is-shared-array-buffer': [ '1.0.4' ],
+218 silly audit   'is-string': [ '1.1.1' ],
+218 silly audit   'is-symbol': [ '1.1.1' ],
+218 silly audit   'is-typed-array': [ '1.1.15' ],
+218 silly audit   'is-weakmap': [ '2.0.2' ],
+218 silly audit   'is-weakref': [ '1.1.1' ],
+218 silly audit   'is-weakset': [ '2.0.4' ],
+218 silly audit   isarray: [ '2.0.5' ],
+218 silly audit   isexe: [ '2.0.0' ],
+218 silly audit   'iterator.prototype': [ '1.1.5' ],
+218 silly audit   'jest-worker': [ '27.5.1' ],
+218 silly audit   jiti: [ '2.7.0' ],
+218 silly audit   'js-tokens': [ '4.0.0', '9.0.1' ],
+218 silly audit   'js-yaml': [ '4.1.1' ],
+218 silly audit   jsesc: [ '3.1.0' ],
+218 silly audit   'json-buffer': [ '3.0.1' ],
+218 silly audit   'json-stable-stringify-without-jsonify': [ '1.0.1' ],
+218 silly audit   json5: [ '2.2.3', '1.0.2' ],
+218 silly audit   'jsx-ast-utils': [ '3.3.5' ],
+218 silly audit   keyv: [ '4.5.4' ],
+218 silly audit   kleur: [ '4.1.5' ],
+218 silly audit   'language-subtag-registry': [ '0.3.23' ],
+218 silly audit   'language-tags': [ '1.0.9' ],
+218 silly audit   levn: [ '0.4.1' ],
+218 silly audit   lightningcss: [ '1.31.1', '1.32.0' ],
+218 silly audit   'lightningcss-android-arm64': [ '1.31.1', '1.32.0' ],
+218 silly audit   'lightningcss-darwin-arm64': [ '1.31.1', '1.32.0' ],
+218 silly audit   'lightningcss-darwin-x64': [ '1.31.1', '1.32.0' ],
+218 silly audit   'lightningcss-freebsd-x64': [ '1.31.1', '1.32.0' ],
+218 silly audit   'lightningcss-linux-arm-gnueabihf': [ '1.31.1', '1.32.0' ],
+218 silly audit   'lightningcss-linux-arm64-gnu': [ '1.31.1', '1.32.0' ],
+218 silly audit   'lightningcss-linux-arm64-musl': [ '1.31.1', '1.32.0' ],
+218 silly audit   'lightningcss-linux-x64-gnu': [ '1.31.1', '1.32.0' ],
+218 silly audit   'lightningcss-linux-x64-musl': [ '1.31.1', '1.32.0' ],
+218 silly audit   'lightningcss-win32-arm64-msvc': [ '1.31.1', '1.32.0' ],
+218 silly audit   'lightningcss-win32-x64-msvc': [ '1.31.1', '1.32.0' ],
+218 silly audit   linebreak: [ '1.1.0' ],
+218 silly audit   'loader-runner': [ '4.3.2' ],
+218 silly audit   'locate-path': [ '6.0.0' ],
+218 silly audit   'lodash.merge': [ '4.6.2' ],
+218 silly audit   'loose-envify': [ '1.4.0' ],
+218 silly audit   'lru-cache': [ '5.1.1' ],
+218 silly audit   'magic-string': [ '0.30.21' ],
+218 silly audit   'math-intrinsics': [ '1.1.0' ],
+218 silly audit   'merge-stream': [ '2.0.0' ],
+218 silly audit   merge2: [ '1.4.1' ],
+218 silly audit   micromatch: [ '4.0.8' ],
+218 silly audit   'mime-db': [ '1.54.0' ],
+218 silly audit   miniflare: [ '4.20260515.0' ],
+218 silly audit   minimist: [ '1.2.8' ],
+218 silly audit   ms: [ '2.1.3' ],
+218 silly audit   nanoid: [ '3.3.12' ],
+218 silly audit   'napi-postinstall': [ '0.3.4' ],
+218 silly audit   'natural-compare': [ '1.4.0' ],
+218 silly audit   'neo-async': [ '2.6.2' ],
+218 silly audit   next: [ '16.2.6' ],
+218 silly audit   postcss: [ '8.4.31', '8.5.14' ],
+218 silly audit   'node-exports-info': [ '1.6.0' ],
+218 silly audit   'node-releases': [ '2.0.44' ],
+218 silly audit   'object-assign': [ '4.1.1' ],
+218 silly audit   'object-inspect': [ '1.13.4' ],
+218 silly audit   'object-keys': [ '1.1.1' ],
+218 silly audit   'object.assign': [ '4.1.7' ],
+218 silly audit   'object.entries': [ '1.1.9' ],
+218 silly audit   'object.fromentries': [ '2.0.8' ],
+218 silly audit   'object.groupby': [ '1.0.3' ],
+218 silly audit   'object.values': [ '1.2.1' ],
+218 silly audit   optionator: [ '0.9.4' ],
+218 silly audit   'own-keys': [ '1.0.1' ],
+218 silly audit   'p-limit': [ '3.1.0' ],
+218 silly audit   'p-locate': [ '5.0.0' ],
+218 silly audit   pako: [ '0.2.9' ],
+218 silly audit   'parent-module': [ '1.0.1' ],
+218 silly audit   'parse-css-color': [ '0.2.1' ],
+218 silly audit   'path-exists': [ '4.0.0' ],
+218 silly audit   'path-key': [ '3.1.1' ],
+218 silly audit   'path-parse': [ '1.0.7' ],
+218 silly audit   'path-to-regexp': [ '6.3.0' ],
+218 silly audit   pathe: [ '2.0.3' ],
+218 silly audit   picocolors: [ '1.1.1' ],
+218 silly audit   picomatch: [ '2.3.2', '4.0.4' ],
+218 silly audit   'possible-typed-array-names': [ '1.1.0' ],
+218 silly audit   'postcss-value-parser': [ '4.2.0' ],
+218 silly audit   'prelude-ls': [ '1.2.1' ],
+218 silly audit   'prop-types': [ '15.8.1' ],
+218 silly audit   punycode: [ '2.3.1' ],
+218 silly audit   'queue-microtask': [ '1.2.3' ],
+218 silly audit   react: [ '19.2.6' ],
+218 silly audit   'react-dom': [ '19.2.6' ],
+218 silly audit   'react-is': [ '16.13.1' ],
+218 silly audit   'react-loading-skeleton': [ '3.5.0' ],
+218 silly audit   'react-server-dom-webpack': [ '19.2.6' ],
+218 silly audit   'reflect.getprototypeof': [ '1.0.10' ],
+218 silly audit   'regexp.prototype.flags': [ '1.5.4' ],
+218 silly audit   'require-from-string': [ '2.0.2' ],
+218 silly audit   resolve: [ '2.0.0-next.7' ],
+218 silly audit   'resolve-from': [ '4.0.0' ],
+218 silly audit   'resolve-pkg-maps': [ '1.0.0' ],
+218 silly audit   reusify: [ '1.1.0' ],
+218 silly audit   rolldown: [ '1.0.1' ],
+218 silly audit   'run-parallel': [ '1.2.0' ],
+218 silly audit   'safe-array-concat': [ '1.1.4' ],
+218 silly audit   'safe-push-apply': [ '1.0.0' ],
+218 silly audit   'safe-regex-test': [ '1.1.0' ],
+218 silly audit   satori: [ '0.16.0' ],
+218 silly audit   scheduler: [ '0.27.0' ],
+218 silly audit   'schema-utils': [ '4.3.3' ],
+218 silly audit   'ajv-keywords': [ '5.1.0' ],
+218 silly audit   'set-function-length': [ '1.2.2' ],
+218 silly audit   'set-function-name': [ '2.0.2' ],
+218 silly audit   'set-proto': [ '1.0.0' ],
+218 silly audit   sharp: [ '0.34.5' ],
+218 silly audit   'shebang-command': [ '2.0.0' ],
+218 silly audit   'shebang-regex': [ '3.0.0' ],
+218 silly audit   'side-channel': [ '1.1.0' ],
+218 silly audit   'side-channel-list': [ '1.0.1' ],
+218 silly audit   'side-channel-map': [ '1.0.1' ],
+218 silly audit   'side-channel-weakmap': [ '1.0.2' ],
+218 silly audit   'source-map': [ '0.6.1' ],
+218 silly audit   'source-map-js': [ '1.2.1' ],
+218 silly audit   'source-map-support': [ '0.5.21' ],
+218 silly audit   srvx: [ '0.11.15' ],
+218 silly audit   'stable-hash': [ '0.0.5' ],
+218 silly audit   'stop-iteration-iterator': [ '1.1.0' ],
+218 silly audit   'string.prototype.codepointat': [ '0.2.1' ],
+218 silly audit   'string.prototype.includes': [ '2.0.1' ],
+218 silly audit   'string.prototype.matchall': [ '4.0.12' ],
+218 silly audit   'string.prototype.repeat': [ '1.0.0' ],
+218 silly audit   'string.prototype.trim': [ '1.2.10' ],
+218 silly audit   'string.prototype.trimend': [ '1.0.9' ],
+218 silly audit   'string.prototype.trimstart': [ '1.0.8' ],
+218 silly audit   'strip-bom': [ '3.0.0' ],
+218 silly audit   'strip-json-comments': [ '3.1.1' ],
+218 silly audit   'strip-literal': [ '3.1.0' ],
+218 silly audit   'styled-jsx': [ '5.1.6' ],
+218 silly audit   'supports-preserve-symlinks-flag': [ '1.0.0' ],
+218 silly audit   tailwindcss: [ '4.2.1' ],
+218 silly audit   tapable: [ '2.3.3' ],
+218 silly audit   terser: [ '5.47.1' ],
+218 silly audit   'terser-webpack-plugin': [ '5.6.0' ],
+218 silly audit   'tiny-inflate': [ '1.0.3' ],
+218 silly audit   tinyglobby: [ '0.2.16' ],
+218 silly audit   fdir: [ '6.5.0' ],
+218 silly audit   'to-regex-range': [ '5.0.1' ],
+218 silly audit   'ts-api-utils': [ '2.5.0' ],
+218 silly audit   tsconfck: [ '3.1.6' ],
+218 silly audit   'tsconfig-paths': [ '3.15.0' ],
+218 silly audit   tsx: [ '4.22.1' ],
+218 silly audit   'turbo-stream': [ '3.2.0' ],
+218 silly audit   'type-check': [ '0.4.0' ],
+218 silly audit   'typed-array-buffer': [ '1.0.3' ],
+218 silly audit   'typed-array-byte-length': [ '1.0.3' ],
+218 silly audit   'typed-array-byte-offset': [ '1.0.4' ],
+218 silly audit   'typed-array-length': [ '1.0.7' ],
+218 silly audit   typescript: [ '5.9.3' ],
+218 silly audit   'typescript-eslint': [ '8.59.3' ],
+218 silly audit   'unbox-primitive': [ '1.1.0' ],
+218 silly audit   undici: [ '7.24.8' ],
+218 silly audit   'undici-types': [ '6.21.0' ],
+218 silly audit   unenv: [ '2.0.0-rc.24' ],
+218 silly audit   'unicode-trie': [ '2.0.0' ],
+218 silly audit   unpic: [ '4.2.2' ],
+218 silly audit   'unrs-resolver': [ '1.11.1' ],
+218 silly audit   'update-browserslist-db': [ '1.2.3' ],
+218 silly audit   'uri-js': [ '4.4.1' ],
+218 silly audit   vinext: [ '0.0.50' ],
+218 silly audit   vite: [ '8.0.13' ],
+218 silly audit   'vite-plugin-commonjs': [ '0.10.4' ],
+218 silly audit   'vite-plugin-dynamic-import': [ '1.6.0' ],
+218 silly audit   'vite-tsconfig-paths': [ '6.1.1' ],
+218 silly audit   vitefu: [ '1.1.3' ],
+218 silly audit   watchpack: [ '2.5.1' ],
+218 silly audit   'web-vitals': [ '4.2.4' ],
+218 silly audit   webpack: [ '5.106.2' ],
+218 silly audit   'webpack-sources': [ '3.4.1' ],
+218 silly audit   which: [ '2.0.2' ],
+218 silly audit   'which-boxed-primitive': [ '1.1.1' ],
+218 silly audit   'which-builtin-type': [ '1.2.1' ],
+218 silly audit   'which-collection': [ '1.0.2' ],
+218 silly audit   'which-typed-array': [ '1.1.20' ],
+218 silly audit   'word-wrap': [ '1.2.5' ],
+218 silly audit   workerd: [ '1.20260515.1' ],
+218 silly audit   wrangler: [ '4.92.0' ],
+218 silly audit   ws: [ '8.18.0' ],
+218 silly audit   yallist: [ '3.1.1' ],
+218 silly audit   'yocto-queue': [ '0.1.0' ],
+218 silly audit   'yoga-layout': [ '3.2.1' ],
+218 silly audit   youch: [ '4.1.0-beta.10' ],
+218 silly audit   'youch-core': [ '0.3.3' ],
+218 silly audit   zod: [ '4.4.3' ],
+218 silly audit   'zod-validation-error': [ '4.0.2' ]
+218 silly audit }
+219 verbose audit error FetchError: request to https://registry.npmjs.org/-/npm/v1/security/advisories/bulk failed, reason: getaddrinfo ENOTFOUND registry.npmjs.org
+219 verbose audit error     at ClientRequest.<anonymous> (/usr/local/lib/node_modules/npm/node_modules/minipass-fetch/lib/index.js:130:14)
+219 verbose audit error     at ClientRequest.emit (node:events:509:28)
+219 verbose audit error     at emitErrorEvent (node:_http_client:109:11)
+219 verbose audit error     at _destroy (node:_http_client:993:9)
+219 verbose audit error     at onSocketNT (node:_http_client:1014:5)
+219 verbose audit error     at process.processTicksAndRejections (node:internal/process/task_queues:91:21) {
+219 verbose audit error   code: 'ENOTFOUND',
+219 verbose audit error   errno: 'ENOTFOUND',
+219 verbose audit error   syscall: 'getaddrinfo',
+219 verbose audit error   hostname: 'registry.npmjs.org',
+219 verbose audit error   type: 'system'
+219 verbose audit error }
+220 silly audit error undefined
+221 silly audit report null
+222 http cache which@https://registry.npmjs.org/which/-/which-2.0.2.tgz 0ms (cache hit)
+223 http cache semver@https://registry.npmjs.org/semver/-/semver-6.3.1.tgz 0ms (cache hit)
+224 http cache typescript@https://registry.npmjs.org/typescript/-/typescript-5.9.3.tgz 0ms (cache hit)
+225 http cache update-browserslist-db@https://registry.npmjs.org/update-browserslist-db/-/update-browserslist-db-1.2.3.tgz 0ms (cache hit)
+226 http cache nanoid@https://registry.npmjs.org/nanoid/-/nanoid-3.3.12.tgz 0ms (cache hit)
+227 http cache resolve@https://registry.npmjs.org/resolve/-/resolve-2.0.0-next.7.tgz 0ms (cache hit)
+228 http cache napi-postinstall@https://registry.npmjs.org/napi-postinstall/-/napi-postinstall-0.3.4.tgz 0ms (cache hit)
+229 http cache json5@https://registry.npmjs.org/json5/-/json5-2.2.3.tgz 0ms (cache hit)
+230 http cache jsesc@https://registry.npmjs.org/jsesc/-/jsesc-3.1.0.tgz 0ms (cache hit)
+231 http cache jiti@https://registry.npmjs.org/jiti/-/jiti-2.7.0.tgz 0ms (cache hit)
+232 http cache loose-envify@https://registry.npmjs.org/loose-envify/-/loose-envify-1.4.0.tgz 0ms (cache hit)
+233 http cache eslint@https://registry.npmjs.org/eslint/-/eslint-9.39.4.tgz 0ms (cache hit)
+234 http cache browserslist@https://registry.npmjs.org/browserslist/-/browserslist-4.28.2.tgz 0ms (cache hit)
+235 http cache @xtuc/ieee754@https://registry.npmjs.org/@xtuc/ieee754/-/ieee754-1.2.0.tgz 0ms (cache hit)
+236 http cache acorn@https://registry.npmjs.org/acorn/-/acorn-8.16.0.tgz 0ms (cache hit)
+237 http cache @xtuc/long@https://registry.npmjs.org/@xtuc/long/-/long-4.2.2.tgz 0ms (cache hit)
+238 http cache @webassemblyjs/wast-printer@https://registry.npmjs.org/@webassemblyjs/wast-printer/-/wast-printer-1.14.1.tgz 0ms (cache hit)
+239 http cache @webassemblyjs/wasm-opt@https://registry.npmjs.org/@webassemblyjs/wasm-opt/-/wasm-opt-1.14.1.tgz 0ms (cache hit)
+240 http cache @webassemblyjs/wasm-parser@https://registry.npmjs.org/@webassemblyjs/wasm-parser/-/wasm-parser-1.14.1.tgz 0ms (cache hit)
+241 http cache @webassemblyjs/wasm-gen@https://registry.npmjs.org/@webassemblyjs/wasm-gen/-/wasm-gen-1.14.1.tgz 0ms (cache hit)
+242 http cache @webassemblyjs/wasm-edit@https://registry.npmjs.org/@webassemblyjs/wasm-edit/-/wasm-edit-1.14.1.tgz 0ms (cache hit)
+243 http cache @webassemblyjs/helper-numbers@https://registry.npmjs.org/@webassemblyjs/helper-numbers/-/helper-numbers-1.13.2.tgz 0ms (cache hit)
+244 http cache @webassemblyjs/utf8@https://registry.npmjs.org/@webassemblyjs/utf8/-/utf8-1.13.2.tgz 0ms (cache hit)
+245 http cache @webassemblyjs/ieee754@https://registry.npmjs.org/@webassemblyjs/ieee754/-/ieee754-1.13.2.tgz 0ms (cache hit)
+246 http cache @webassemblyjs/helper-wasm-section@https://registry.npmjs.org/@webassemblyjs/helper-wasm-section/-/helper-wasm-section-1.14.1.tgz 0ms (cache hit)
+247 http cache @webassemblyjs/helper-wasm-bytecode@https://registry.npmjs.org/@webassemblyjs/helper-wasm-bytecode/-/helper-wasm-bytecode-1.13.2.tgz 0ms (cache hit)
+248 http cache @webassemblyjs/helper-buffer@https://registry.npmjs.org/@webassemblyjs/helper-buffer/-/helper-buffer-1.14.1.tgz 0ms (cache hit)
+249 http cache @webassemblyjs/ast@https://registry.npmjs.org/@webassemblyjs/ast/-/ast-1.14.1.tgz 0ms (cache hit)
+250 http cache @webassemblyjs/helper-api-error@https://registry.npmjs.org/@webassemblyjs/helper-api-error/-/helper-api-error-1.13.2.tgz 0ms (cache hit)
+251 http cache @vitejs/plugin-rsc@https://registry.npmjs.org/@vitejs/plugin-rsc/-/plugin-rsc-0.5.26.tgz 0ms (cache hit)
+252 http cache @webassemblyjs/floating-point-hex-parser@https://registry.npmjs.org/@webassemblyjs/floating-point-hex-parser/-/floating-point-hex-parser-1.13.2.tgz 0ms (cache hit)
+253 http cache @unrs/resolver-binding-darwin-arm64@https://registry.npmjs.org/@unrs/resolver-binding-darwin-arm64/-/resolver-binding-darwin-arm64-1.11.1.tgz 0ms (cache hit)
+254 http cache @vitejs/plugin-react@https://registry.npmjs.org/@vitejs/plugin-react/-/plugin-react-6.0.2.tgz 0ms (cache hit)
+255 http cache @unpic/react@https://registry.npmjs.org/@unpic/react/-/react-1.0.2.tgz 0ms (cache hit)
+256 http cache @unpic/core@https://registry.npmjs.org/@unpic/core/-/core-1.0.3.tgz 0ms (cache hit)
+257 http cache @vercel/og@https://registry.npmjs.org/@vercel/og/-/og-0.8.6.tgz 0ms (cache hit)
+258 http cache @typescript-eslint/utils@https://registry.npmjs.org/@typescript-eslint/utils/-/utils-8.59.3.tgz 0ms (cache hit)
+259 http cache @speed-highlight/core@https://registry.npmjs.org/@speed-highlight/core/-/core-1.2.15.tgz 0ms (cache hit)
+260 http cache @typescript-eslint/scope-manager@https://registry.npmjs.org/@typescript-eslint/scope-manager/-/scope-manager-8.59.3.tgz 0ms (cache hit)
+261 http cache @typescript-eslint/visitor-keys@https://registry.npmjs.org/@typescript-eslint/visitor-keys/-/visitor-keys-8.59.3.tgz 0ms (cache hit)
+262 http cache @typescript-eslint/types@https://registry.npmjs.org/@typescript-eslint/types/-/types-8.59.3.tgz 0ms (cache hit)
+263 http cache @shuding/opentype.js@https://registry.npmjs.org/@shuding/opentype.js/-/opentype.js-1.4.0-beta.0.tgz 0ms (cache hit)
+264 http cache @typescript-eslint/typescript-estree@https://registry.npmjs.org/@typescript-eslint/typescript-estree/-/typescript-estree-8.59.3.tgz 0ms (cache hit)
+265 http cache @typescript-eslint/type-utils@https://registry.npmjs.org/@typescript-eslint/type-utils/-/type-utils-8.59.3.tgz 0ms (cache hit)
+266 http cache @typescript-eslint/project-service@https://registry.npmjs.org/@typescript-eslint/project-service/-/project-service-8.59.3.tgz 0ms (cache hit)
+267 http cache @typescript-eslint/tsconfig-utils@https://registry.npmjs.org/@typescript-eslint/tsconfig-utils/-/tsconfig-utils-8.59.3.tgz 0ms (cache hit)
+268 http cache @typescript-eslint/parser@https://registry.npmjs.org/@typescript-eslint/parser/-/parser-8.59.3.tgz 0ms (cache hit)
+269 http cache @typescript-eslint/eslint-plugin@https://registry.npmjs.org/@typescript-eslint/eslint-plugin/-/eslint-plugin-8.59.3.tgz 0ms (cache hit)
+270 http cache @types/react@https://registry.npmjs.org/@types/react/-/react-19.2.14.tgz 0ms (cache hit)
+271 http cache @types/node@https://registry.npmjs.org/@types/node/-/node-22.19.19.tgz 0ms (cache hit)
+272 http cache @tailwindcss/oxide-darwin-arm64@https://registry.npmjs.org/@tailwindcss/oxide-darwin-arm64/-/oxide-darwin-arm64-4.2.1.tgz 0ms (cache hit)
+273 http cache @types/eslint@https://registry.npmjs.org/@types/eslint/-/eslint-9.6.1.tgz 0ms (cache hit)
+274 http cache @types/eslint-scope@https://registry.npmjs.org/@types/eslint-scope/-/eslint-scope-3.7.7.tgz 0ms (cache hit)
+275 http cache @tailwindcss/postcss@https://registry.npmjs.org/@tailwindcss/postcss/-/postcss-4.2.1.tgz 0ms (cache hit)
+276 http cache @sindresorhus/is@https://registry.npmjs.org/@sindresorhus/is/-/is-7.2.0.tgz 0ms (cache hit)
+277 http cache @tailwindcss/oxide@https://registry.npmjs.org/@tailwindcss/oxide/-/oxide-4.2.1.tgz 0ms (cache hit)
+278 http cache @tailwindcss/node@https://registry.npmjs.org/@tailwindcss/node/-/node-4.2.1.tgz 0ms (cache hit)
+279 http cache @rolldown/pluginutils@https://registry.npmjs.org/@rolldown/pluginutils/-/pluginutils-1.0.1.tgz 0ms (cache hit)
+280 http cache @rolldown/binding-darwin-arm64@https://registry.npmjs.org/@rolldown/binding-darwin-arm64/-/binding-darwin-arm64-1.0.1.tgz 0ms (cache hit)
+281 http cache @poppinss/exception@https://registry.npmjs.org/@poppinss/exception/-/exception-1.2.3.tgz 0ms (cache hit)
+282 http cache @resvg/resvg-wasm@https://registry.npmjs.org/@resvg/resvg-wasm/-/resvg-wasm-2.4.0.tgz 0ms (cache hit)
+283 http cache @poppinss/dumper@https://registry.npmjs.org/@poppinss/dumper/-/dumper-0.6.5.tgz 0ms (cache hit)
+284 http cache @poppinss/colors@https://registry.npmjs.org/@poppinss/colors/-/colors-4.1.6.tgz 0ms (cache hit)
+285 http cache @next/eslint-plugin-next@https://registry.npmjs.org/@next/eslint-plugin-next/-/eslint-plugin-next-16.2.6.tgz 0ms (cache hit)
+286 http cache @next/swc-darwin-arm64@https://registry.npmjs.org/@next/swc-darwin-arm64/-/swc-darwin-arm64-16.2.6.tgz 0ms (cache hit)
+287 http cache @jridgewell/source-map@https://registry.npmjs.org/@jridgewell/source-map/-/source-map-0.3.11.tgz 0ms (cache hit)
+288 http cache @next/env@https://registry.npmjs.org/@next/env/-/env-16.2.6.tgz 0ms (cache hit)
+289 http cache @esbuild-kit/esm-loader@https://registry.npmjs.org/@esbuild-kit/esm-loader/-/esm-loader-2.6.5.tgz 0ms (cache hit)
+290 http cache @webassemblyjs/leb128@https://registry.npmjs.org/@webassemblyjs/leb128/-/leb128-1.13.2.tgz 0ms (cache hit)
+291 http cache @esbuild-kit/core-utils@https://registry.npmjs.org/@esbuild-kit/core-utils/-/core-utils-3.3.2.tgz 0ms (cache hit)
+292 http cache @esbuild/darwin-arm64@https://registry.npmjs.org/@esbuild/darwin-arm64/-/darwin-arm64-0.28.0.tgz 0ms (cache hit)
+293 http cache @cloudflare/workerd-darwin-arm64@https://registry.npmjs.org/@cloudflare/workerd-darwin-arm64/-/workerd-darwin-arm64-1.20260515.1.tgz 0ms (cache hit)
+294 http cache @drizzle-team/brocli@https://registry.npmjs.org/@drizzle-team/brocli/-/brocli-0.10.2.tgz 0ms (cache hit)
+295 http cache @cspotcode/source-map-support@https://registry.npmjs.org/@cspotcode/source-map-support/-/source-map-support-0.8.1.tgz 0ms (cache hit)
+296 http cache @babel/template@https://registry.npmjs.org/@babel/template/-/template-7.28.6.tgz 0ms (cache hit)
+297 http cache @cloudflare/kv-asset-handler@https://registry.npmjs.org/@cloudflare/kv-asset-handler/-/kv-asset-handler-0.5.0.tgz 0ms (cache hit)
+298 http cache @babel/parser@https://registry.npmjs.org/@babel/parser/-/parser-7.29.3.tgz 0ms (cache hit)
+299 http cache @cloudflare/unenv-preset@https://registry.npmjs.org/@cloudflare/unenv-preset/-/unenv-preset-2.16.1.tgz 0ms (cache hit)
+300 http cache @cloudflare/vite-plugin@https://registry.npmjs.org/@cloudflare/vite-plugin/-/vite-plugin-1.37.1.tgz 0ms (cache hit)
+301 http cache @babel/types@https://registry.npmjs.org/@babel/types/-/types-7.29.0.tgz 0ms (cache hit)
+302 http cache @babel/helper-validator-option@https://registry.npmjs.org/@babel/helper-validator-option/-/helper-validator-option-7.27.1.tgz 0ms (cache hit)
+303 http cache @babel/traverse@https://registry.npmjs.org/@babel/traverse/-/traverse-7.29.0.tgz 0ms (cache hit)
+304 http cache @babel/helpers@https://registry.npmjs.org/@babel/helpers/-/helpers-7.29.2.tgz 0ms (cache hit)
+305 http cache @oxc-project/types@https://registry.npmjs.org/@oxc-project/types/-/types-0.130.0.tgz 0ms (cache hit)
+306 http cache @babel/helper-module-imports@https://registry.npmjs.org/@babel/helper-module-imports/-/helper-module-imports-7.28.6.tgz 0ms (cache hit)
+307 http cache @babel/helper-globals@https://registry.npmjs.org/@babel/helper-globals/-/helper-globals-7.28.0.tgz 0ms (cache hit)
+308 http cache @babel/helper-validator-identifier@https://registry.npmjs.org/@babel/helper-validator-identifier/-/helper-validator-identifier-7.28.5.tgz 0ms (cache hit)
+309 http cache @babel/helper-string-parser@https://registry.npmjs.org/@babel/helper-string-parser/-/helper-string-parser-7.27.1.tgz 0ms (cache hit)
+310 http cache @babel/core@https://registry.npmjs.org/@babel/core/-/core-7.29.0.tgz 0ms (cache hit)
+311 http cache @babel/generator@https://registry.npmjs.org/@babel/generator/-/generator-7.29.1.tgz 0ms (cache hit)
+312 http cache @babel/code-frame@https://registry.npmjs.org/@babel/code-frame/-/code-frame-7.29.0.tgz 0ms (cache hit)
+313 http cache @babel/helper-module-transforms@https://registry.npmjs.org/@babel/helper-module-transforms/-/helper-module-transforms-7.28.6.tgz 0ms (cache hit)
+314 http cache @babel/compat-data@https://registry.npmjs.org/@babel/compat-data/-/compat-data-7.29.3.tgz 0ms (cache hit)
+315 http cache @babel/helper-compilation-targets@https://registry.npmjs.org/@babel/helper-compilation-targets/-/helper-compilation-targets-7.28.6.tgz 0ms (cache hit)
+316 http cache youch-core@https://registry.npmjs.org/youch-core/-/youch-core-0.3.3.tgz 0ms (cache hit)
+317 http cache wrangler@https://registry.npmjs.org/wrangler/-/wrangler-4.92.0.tgz 0ms (cache hit)
+318 http cache workerd@https://registry.npmjs.org/workerd/-/workerd-1.20260515.1.tgz 0ms (cache hit)
+319 http cache youch@https://registry.npmjs.org/youch/-/youch-4.1.0-beta.10.tgz 0ms (cache hit)
+320 http cache webpack@https://registry.npmjs.org/webpack/-/webpack-5.106.2.tgz 0ms (cache hit)
+321 http cache webpack-sources@https://registry.npmjs.org/webpack-sources/-/webpack-sources-3.4.1.tgz 0ms (cache hit)
+322 http cache yoga-layout@https://registry.npmjs.org/yoga-layout/-/yoga-layout-3.2.1.tgz 0ms (cache hit)
+323 http cache ws@https://registry.npmjs.org/ws/-/ws-8.18.0.tgz 0ms (cache hit)
+324 http cache which-typed-array@https://registry.npmjs.org/which-typed-array/-/which-typed-array-1.1.20.tgz 0ms (cache hit)
+325 http cache web-vitals@https://registry.npmjs.org/web-vitals/-/web-vitals-4.2.4.tgz 0ms (cache hit)
+326 http cache watchpack@https://registry.npmjs.org/watchpack/-/watchpack-2.5.1.tgz 0ms (cache hit)
+327 http cache vitefu@https://registry.npmjs.org/vitefu/-/vitefu-1.1.3.tgz 0ms (cache hit)
+328 http cache vite-tsconfig-paths@https://registry.npmjs.org/vite-tsconfig-paths/-/vite-tsconfig-paths-6.1.1.tgz 0ms (cache hit)
+329 http cache unicode-trie@https://registry.npmjs.org/unicode-trie/-/unicode-trie-2.0.0.tgz 0ms (cache hit)
+330 http cache vite@https://registry.npmjs.org/vite/-/vite-8.0.13.tgz 0ms (cache hit)
+331 http cache vite-plugin-dynamic-import@https://registry.npmjs.org/vite-plugin-dynamic-import/-/vite-plugin-dynamic-import-1.6.0.tgz 0ms (cache hit)
+332 http cache vinext@https://registry.npmjs.org/vinext/-/vinext-0.0.50.tgz 0ms (cache hit)
+333 http cache vite-plugin-commonjs@https://registry.npmjs.org/vite-plugin-commonjs/-/vite-plugin-commonjs-0.10.4.tgz 0ms (cache hit)
+334 http cache unpic@https://registry.npmjs.org/unpic/-/unpic-4.2.2.tgz 0ms (cache hit)
+335 http cache typed-array-length@https://registry.npmjs.org/typed-array-length/-/typed-array-length-1.0.7.tgz 0ms (cache hit)
+336 http cache undici@https://registry.npmjs.org/undici/-/undici-7.24.8.tgz 0ms (cache hit)
+337 http cache typescript-eslint@https://registry.npmjs.org/typescript-eslint/-/typescript-eslint-8.59.3.tgz 0ms (cache hit)
+338 http cache tsx@https://registry.npmjs.org/tsx/-/tsx-4.22.1.tgz 0ms (cache hit)
+339 http cache turbo-stream@https://registry.npmjs.org/turbo-stream/-/turbo-stream-3.2.0.tgz 0ms (cache hit)
+340 http cache unrs-resolver@https://registry.npmjs.org/unrs-resolver/-/unrs-resolver-1.11.1.tgz 0ms (cache hit)
+341 http cache tiny-inflate@https://registry.npmjs.org/tiny-inflate/-/tiny-inflate-1.0.3.tgz 0ms (cache hit)
+342 http cache tinyglobby@https://registry.npmjs.org/tinyglobby/-/tinyglobby-0.2.16.tgz 0ms (cache hit)
+343 http cache tsconfck@https://registry.npmjs.org/tsconfck/-/tsconfck-3.1.6.tgz 0ms (cache hit)
+344 http cache terser@https://registry.npmjs.org/terser/-/terser-5.47.1.tgz 0ms (cache hit)
+345 http cache string.prototype.codepointat@https://registry.npmjs.org/string.prototype.codepointat/-/string.prototype.codepointat-0.2.1.tgz 0ms (cache hit)
+346 http cache strip-literal@https://registry.npmjs.org/strip-literal/-/strip-literal-3.1.0.tgz 0ms (cache hit)
+347 http cache unenv@https://registry.npmjs.org/unenv/-/unenv-2.0.0-rc.24.tgz 0ms (cache hit)
+348 http cache tailwindcss@https://registry.npmjs.org/tailwindcss/-/tailwindcss-4.2.1.tgz 0ms (cache hit)
+349 http cache srvx@https://registry.npmjs.org/srvx/-/srvx-0.11.15.tgz 0ms (cache hit)
+350 http cache terser-webpack-plugin@https://registry.npmjs.org/terser-webpack-plugin/-/terser-webpack-plugin-5.6.0.tgz 0ms (cache hit)
+351 http cache satori@https://registry.npmjs.org/satori/-/satori-0.16.0.tgz 0ms (cache hit)
+352 http cache source-map-support@https://registry.npmjs.org/source-map-support/-/source-map-support-0.5.21.tgz 0ms (cache hit)
+353 http cache rolldown@https://registry.npmjs.org/rolldown/-/rolldown-1.0.1.tgz 0ms (cache hit)
+354 http cache source-map@https://registry.npmjs.org/source-map/-/source-map-0.6.1.tgz 0ms (cache hit)
+355 http cache require-from-string@https://registry.npmjs.org/require-from-string/-/require-from-string-2.0.2.tgz 0ms (cache hit)
+356 http cache react@https://registry.npmjs.org/react/-/react-19.2.6.tgz 0ms (cache hit)
+357 http cache react-dom@https://registry.npmjs.org/react-dom/-/react-dom-19.2.6.tgz 0ms (cache hit)
+358 http cache postcss-value-parser@https://registry.npmjs.org/postcss-value-parser/-/postcss-value-parser-4.2.0.tgz 0ms (cache hit)
+359 http cache react-server-dom-webpack@https://registry.npmjs.org/react-server-dom-webpack/-/react-server-dom-webpack-19.2.6.tgz 0ms (cache hit)
+360 http cache postcss@https://registry.npmjs.org/postcss/-/postcss-8.5.14.tgz 0ms (cache hit)
+361 http cache parse-css-color@https://registry.npmjs.org/parse-css-color/-/parse-css-color-0.2.1.tgz 0ms (cache hit)
+362 http cache path-to-regexp@https://registry.npmjs.org/path-to-regexp/-/path-to-regexp-6.3.0.tgz 0ms (cache hit)
+363 http cache pathe@https://registry.npmjs.org/pathe/-/pathe-2.0.3.tgz 0ms (cache hit)
+364 http cache pako@https://registry.npmjs.org/pako/-/pako-0.2.9.tgz 0ms (cache hit)
+365 http cache node-releases@https://registry.npmjs.org/node-releases/-/node-releases-2.0.44.tgz 0ms (cache hit)
+366 http cache neo-async@https://registry.npmjs.org/neo-async/-/neo-async-2.6.2.tgz 0ms (cache hit)
+367 http cache schema-utils@https://registry.npmjs.org/schema-utils/-/schema-utils-4.3.3.tgz 0ms (cache hit)
+368 http cache miniflare@https://registry.npmjs.org/miniflare/-/miniflare-4.20260515.0.tgz 0ms (cache hit)
+369 http cache react-loading-skeleton@https://registry.npmjs.org/react-loading-skeleton/-/react-loading-skeleton-3.5.0.tgz 0ms (cache hit)
+370 http cache merge-stream@https://registry.npmjs.org/merge-stream/-/merge-stream-2.0.0.tgz 0ms (cache hit)
+371 http cache next@https://registry.npmjs.org/next/-/next-16.2.6.tgz 0ms (cache hit)
+372 http cache loader-runner@https://registry.npmjs.org/loader-runner/-/loader-runner-4.3.2.tgz 0ms (cache hit)
+373 http cache linebreak@https://registry.npmjs.org/linebreak/-/linebreak-1.1.0.tgz 0ms (cache hit)
+374 http cache lightningcss@https://registry.npmjs.org/lightningcss/-/lightningcss-1.31.1.tgz 0ms (cache hit)
+375 http cache lightningcss-darwin-arm64@https://registry.npmjs.org/lightningcss-darwin-arm64/-/lightningcss-darwin-arm64-1.31.1.tgz 0ms (cache hit)
+376 http cache kleur@https://registry.npmjs.org/kleur/-/kleur-4.1.5.tgz 0ms (cache hit)
+377 http cache js-yaml@https://registry.npmjs.org/js-yaml/-/js-yaml-4.1.1.tgz 0ms (cache hit)
+378 http cache jest-worker@https://registry.npmjs.org/jest-worker/-/jest-worker-27.5.1.tgz 0ms (cache hit)
+379 http cache ipaddr.js@https://registry.npmjs.org/ipaddr.js/-/ipaddr.js-2.4.0.tgz 0ms (cache hit)
+380 http cache image-size@https://registry.npmjs.org/image-size/-/image-size-2.0.2.tgz 0ms (cache hit)
+381 http cache hex-rgb@https://registry.npmjs.org/hex-rgb/-/hex-rgb-4.3.0.tgz 0ms (cache hit)
+382 http cache globrex@https://registry.npmjs.org/globrex/-/globrex-0.1.2.tgz 0ms (cache hit)
+383 http cache glob-to-regexp@https://registry.npmjs.org/glob-to-regexp/-/glob-to-regexp-0.4.1.tgz 0ms (cache hit)
+384 http cache fsevents@https://registry.npmjs.org/fsevents/-/fsevents-2.3.3.tgz 0ms (cache hit)
+385 http cache hasown@https://registry.npmjs.org/hasown/-/hasown-2.0.3.tgz 0ms (cache hit)
+386 http cache fflate@https://registry.npmjs.org/fflate/-/fflate-0.7.4.tgz 0ms (cache hit)
+387 http cache fast-uri@https://registry.npmjs.org/fast-uri/-/fast-uri-3.1.2.tgz 0ms (cache hit)
+388 http cache events@https://registry.npmjs.org/events/-/events-3.3.0.tgz 0ms (cache hit)
+389 http cache eslint-module-utils@https://registry.npmjs.org/eslint-module-utils/-/eslint-module-utils-2.12.1.tgz 0ms (cache hit)
+390 http cache es-module-lexer@https://registry.npmjs.org/es-module-lexer/-/es-module-lexer-2.1.0.tgz 0ms (cache hit)
+391 http cache estree-walker@https://registry.npmjs.org/estree-walker/-/estree-walker-3.0.3.tgz 0ms (cache hit)
+392 http cache escape-html@https://registry.npmjs.org/escape-html/-/escape-html-1.0.3.tgz 0ms (cache hit)
+393 http cache eslint-config-next@https://registry.npmjs.org/eslint-config-next/-/eslint-config-next-16.2.6.tgz 0ms (cache hit)
+394 http cache esbuild@https://registry.npmjs.org/esbuild/-/esbuild-0.28.0.tgz 0ms (cache hit)
+395 http cache es-object-atoms@https://registry.npmjs.org/es-object-atoms/-/es-object-atoms-1.1.1.tgz 0ms (cache hit)
+396 http cache error-stack-parser-es@https://registry.npmjs.org/error-stack-parser-es/-/error-stack-parser-es-1.0.5.tgz 0ms (cache hit)
+397 http cache enhanced-resolve@https://registry.npmjs.org/enhanced-resolve/-/enhanced-resolve-5.21.3.tgz 0ms (cache hit)
+398 http cache emoji-regex-xs@https://registry.npmjs.org/emoji-regex-xs/-/emoji-regex-xs-2.0.1.tgz 0ms (cache hit)
+399 http cache electron-to-chromium@https://registry.npmjs.org/electron-to-chromium/-/electron-to-chromium-1.5.358.tgz 0ms (cache hit)
+400 http cache drizzle-orm@https://registry.npmjs.org/drizzle-orm/-/drizzle-orm-0.45.2.tgz 0ms (cache hit)
+401 http cache drizzle-kit@https://registry.npmjs.org/drizzle-kit/-/drizzle-kit-0.31.10.tgz 0ms (cache hit)
+402 http cache css-to-react-native@https://registry.npmjs.org/css-to-react-native/-/css-to-react-native-3.2.0.tgz 0ms (cache hit)
+403 http cache css-gradient-parser@https://registry.npmjs.org/css-gradient-parser/-/css-gradient-parser-0.0.16.tgz 0ms (cache hit)
+404 http cache css-color-keywords@https://registry.npmjs.org/css-color-keywords/-/css-color-keywords-1.0.0.tgz 0ms (cache hit)
+405 http cache css-background-parser@https://registry.npmjs.org/css-background-parser/-/css-background-parser-0.1.0.tgz 0ms (cache hit)
+406 http cache cookie@https://registry.npmjs.org/cookie/-/cookie-1.1.1.tgz 0ms (cache hit)
+407 http cache css-box-shadow@https://registry.npmjs.org/css-box-shadow/-/css-box-shadow-1.0.0-3.tgz 0ms (cache hit)
+408 http cache commander@https://registry.npmjs.org/commander/-/commander-2.20.3.tgz 0ms (cache hit)
+409 http cache chrome-trace-event@https://registry.npmjs.org/chrome-trace-event/-/chrome-trace-event-1.0.4.tgz 0ms (cache hit)
+410 http cache camelize@https://registry.npmjs.org/camelize/-/camelize-1.0.1.tgz 0ms (cache hit)
+411 http cache brace-expansion@https://registry.npmjs.org/brace-expansion/-/brace-expansion-1.1.14.tgz 0ms (cache hit)
+412 http cache buffer-from@https://registry.npmjs.org/buffer-from/-/buffer-from-1.1.2.tgz 0ms (cache hit)
+413 http cache blake3-wasm@https://registry.npmjs.org/blake3-wasm/-/blake3-wasm-2.1.5.tgz 0ms (cache hit)
+414 http cache baseline-browser-mapping@https://registry.npmjs.org/baseline-browser-mapping/-/baseline-browser-mapping-2.10.30.tgz 0ms (cache hit)
+415 http cache axe-core@https://registry.npmjs.org/axe-core/-/axe-core-4.11.4.tgz 0ms (cache hit)
+416 http cache base64-js@https://registry.npmjs.org/base64-js/-/base64-js-0.0.8.tgz 0ms (cache hit)
+417 http cache acorn-loose@https://registry.npmjs.org/acorn-loose/-/acorn-loose-8.5.2.tgz 0ms (cache hit)
+418 http cache ajv-formats@https://registry.npmjs.org/ajv-formats/-/ajv-formats-2.1.1.tgz 0ms (cache hit)
+419 http cache acorn-import-phases@https://registry.npmjs.org/acorn-import-phases/-/acorn-import-phases-1.0.4.tgz 0ms (cache hit)
+420 http cache semver@https://registry.npmjs.org/semver/-/semver-7.8.0.tgz 0ms (cache hit)
+421 http cache semver@https://registry.npmjs.org/semver/-/semver-7.8.0.tgz 0ms (cache hit)
+422 http cache json5@https://registry.npmjs.org/json5/-/json5-1.0.2.tgz 0ms (cache hit)
+423 http cache @rolldown/pluginutils@https://registry.npmjs.org/@rolldown/pluginutils/-/pluginutils-1.0.0-rc.18.tgz 0ms (cache hit)
+424 http cache semver@https://registry.npmjs.org/semver/-/semver-7.8.0.tgz 0ms (cache hit)
+425 http cache supports-color@https://registry.npmjs.org/supports-color/-/supports-color-10.2.2.tgz 0ms (cache hit)
+426 http cache esbuild@https://registry.npmjs.org/esbuild/-/esbuild-0.18.20.tgz 0ms (cache hit)
+427 http cache @esbuild/darwin-arm64@https://registry.npmjs.org/@esbuild/darwin-arm64/-/darwin-arm64-0.18.20.tgz 0ms (cache hit)
+428 http cache esbuild@https://registry.npmjs.org/esbuild/-/esbuild-0.27.3.tgz 0ms (cache hit)
+429 http cache @jridgewell/trace-mapping@https://registry.npmjs.org/@jridgewell/trace-mapping/-/trace-mapping-0.3.9.tgz 0ms (cache hit)
+430 http cache @esbuild/darwin-arm64@https://registry.npmjs.org/@esbuild/darwin-arm64/-/darwin-arm64-0.27.3.tgz 0ms (cache hit)
+431 http cache eslint-scope@https://registry.npmjs.org/eslint-scope/-/eslint-scope-5.1.1.tgz 0ms (cache hit)
+432 http cache estraverse@https://registry.npmjs.org/estraverse/-/estraverse-4.3.0.tgz 0ms (cache hit)
+433 http cache fast-glob@https://registry.npmjs.org/fast-glob/-/fast-glob-3.3.3.tgz 0ms (cache hit)
+434 http cache js-tokens@https://registry.npmjs.org/js-tokens/-/js-tokens-9.0.1.tgz 0ms (cache hit)
+435 http cache json-schema-traverse@https://registry.npmjs.org/json-schema-traverse/-/json-schema-traverse-1.0.0.tgz 0ms (cache hit)
+436 http cache es-module-lexer@https://registry.npmjs.org/es-module-lexer/-/es-module-lexer-1.7.0.tgz 0ms (cache hit)
+437 http cache ajv-keywords@https://registry.npmjs.org/ajv-keywords/-/ajv-keywords-5.1.0.tgz 0ms (cache hit)
+438 http cache ajv@https://registry.npmjs.org/ajv/-/ajv-8.20.0.tgz 0ms (cache hit)
+439 http cache supports-color@https://registry.npmjs.org/supports-color/-/supports-color-8.1.1.tgz 0ms (cache hit)
+440 http cache @esbuild/darwin-arm64@https://registry.npmjs.org/@esbuild/darwin-arm64/-/darwin-arm64-0.25.12.tgz 0ms (cache hit)
+441 http cache mime-db@https://registry.npmjs.org/mime-db/-/mime-db-1.54.0.tgz 0ms (cache hit)
+442 silly tarball no local data for which@https://registry.npmjs.org/which/-/which-2.0.2.tgz. Extracting by manifest.
+443 silly tarball no local data for semver@https://registry.npmjs.org/semver/-/semver-6.3.1.tgz. Extracting by manifest.
+444 silly tarball no local data for typescript@https://registry.npmjs.org/typescript/-/typescript-5.9.3.tgz. Extracting by manifest.
+445 silly tarball no local data for update-browserslist-db@https://registry.npmjs.org/update-browserslist-db/-/update-browserslist-db-1.2.3.tgz. Extracting by manifest.
+446 silly tarball no local data for nanoid@https://registry.npmjs.org/nanoid/-/nanoid-3.3.12.tgz. Extracting by manifest.
+447 silly tarball no local data for resolve@https://registry.npmjs.org/resolve/-/resolve-2.0.0-next.7.tgz. Extracting by manifest.
+448 silly tarball no local data for napi-postinstall@https://registry.npmjs.org/napi-postinstall/-/napi-postinstall-0.3.4.tgz. Extracting by manifest.
+449 silly tarball no local data for json5@https://registry.npmjs.org/json5/-/json5-2.2.3.tgz. Extracting by manifest.
+450 silly tarball no local data for jsesc@https://registry.npmjs.org/jsesc/-/jsesc-3.1.0.tgz. Extracting by manifest.
+451 silly tarball no local data for jiti@https://registry.npmjs.org/jiti/-/jiti-2.7.0.tgz. Extracting by manifest.
+452 silly tarball no local data for loose-envify@https://registry.npmjs.org/loose-envify/-/loose-envify-1.4.0.tgz. Extracting by manifest.
+453 silly tarball no local data for eslint@https://registry.npmjs.org/eslint/-/eslint-9.39.4.tgz. Extracting by manifest.
+454 silly tarball no local data for browserslist@https://registry.npmjs.org/browserslist/-/browserslist-4.28.2.tgz. Extracting by manifest.
+455 silly tarball no local data for @xtuc/ieee754@https://registry.npmjs.org/@xtuc/ieee754/-/ieee754-1.2.0.tgz. Extracting by manifest.
+456 silly tarball no local data for acorn@https://registry.npmjs.org/acorn/-/acorn-8.16.0.tgz. Extracting by manifest.
+457 silly tarball no local data for @xtuc/long@https://registry.npmjs.org/@xtuc/long/-/long-4.2.2.tgz. Extracting by manifest.
+458 silly tarball no local data for @webassemblyjs/wast-printer@https://registry.npmjs.org/@webassemblyjs/wast-printer/-/wast-printer-1.14.1.tgz. Extracting by manifest.
+459 silly tarball no local data for @webassemblyjs/wasm-opt@https://registry.npmjs.org/@webassemblyjs/wasm-opt/-/wasm-opt-1.14.1.tgz. Extracting by manifest.
+460 silly tarball no local data for @webassemblyjs/wasm-parser@https://registry.npmjs.org/@webassemblyjs/wasm-parser/-/wasm-parser-1.14.1.tgz. Extracting by manifest.
+461 silly tarball no local data for @webassemblyjs/wasm-gen@https://registry.npmjs.org/@webassemblyjs/wasm-gen/-/wasm-gen-1.14.1.tgz. Extracting by manifest.
+462 silly tarball no local data for @webassemblyjs/wasm-edit@https://registry.npmjs.org/@webassemblyjs/wasm-edit/-/wasm-edit-1.14.1.tgz. Extracting by manifest.
+463 silly tarball no local data for @webassemblyjs/helper-numbers@https://registry.npmjs.org/@webassemblyjs/helper-numbers/-/helper-numbers-1.13.2.tgz. Extracting by manifest.
+464 silly tarball no local data for @webassemblyjs/utf8@https://registry.npmjs.org/@webassemblyjs/utf8/-/utf8-1.13.2.tgz. Extracting by manifest.
+465 http cache esbuild@https://registry.npmjs.org/esbuild/-/esbuild-0.25.12.tgz 0ms (cache hit)
+466 silly tarball no local data for @webassemblyjs/ieee754@https://registry.npmjs.org/@webassemblyjs/ieee754/-/ieee754-1.13.2.tgz. Extracting by manifest.
+467 silly tarball no local data for @webassemblyjs/helper-wasm-section@https://registry.npmjs.org/@webassemblyjs/helper-wasm-section/-/helper-wasm-section-1.14.1.tgz. Extracting by manifest.
+468 silly tarball no local data for @webassemblyjs/helper-wasm-bytecode@https://registry.npmjs.org/@webassemblyjs/helper-wasm-bytecode/-/helper-wasm-bytecode-1.13.2.tgz. Extracting by manifest.
+469 silly tarball no local data for @webassemblyjs/helper-buffer@https://registry.npmjs.org/@webassemblyjs/helper-buffer/-/helper-buffer-1.14.1.tgz. Extracting by manifest.
+470 http cache json-schema-traverse@https://registry.npmjs.org/json-schema-traverse/-/json-schema-traverse-1.0.0.tgz 0ms (cache hit)
+471 silly tarball no local data for @webassemblyjs/ast@https://registry.npmjs.org/@webassemblyjs/ast/-/ast-1.14.1.tgz. Extracting by manifest.
+472 silly tarball no local data for @webassemblyjs/helper-api-error@https://registry.npmjs.org/@webassemblyjs/helper-api-error/-/helper-api-error-1.13.2.tgz. Extracting by manifest.
+473 silly tarball no local data for @vitejs/plugin-rsc@https://registry.npmjs.org/@vitejs/plugin-rsc/-/plugin-rsc-0.5.26.tgz. Extracting by manifest.
+474 silly tarball no local data for @webassemblyjs/floating-point-hex-parser@https://registry.npmjs.org/@webassemblyjs/floating-point-hex-parser/-/floating-point-hex-parser-1.13.2.tgz. Extracting by manifest.
+475 silly tarball no local data for @unrs/resolver-binding-darwin-arm64@https://registry.npmjs.org/@unrs/resolver-binding-darwin-arm64/-/resolver-binding-darwin-arm64-1.11.1.tgz. Extracting by manifest.
+476 silly tarball no local data for @vitejs/plugin-react@https://registry.npmjs.org/@vitejs/plugin-react/-/plugin-react-6.0.2.tgz. Extracting by manifest.
+477 silly tarball no local data for @unpic/react@https://registry.npmjs.org/@unpic/react/-/react-1.0.2.tgz. Extracting by manifest.
+478 silly tarball no local data for @unpic/core@https://registry.npmjs.org/@unpic/core/-/core-1.0.3.tgz. Extracting by manifest.
+479 silly tarball no local data for @vercel/og@https://registry.npmjs.org/@vercel/og/-/og-0.8.6.tgz. Extracting by manifest.
+480 silly tarball no local data for @typescript-eslint/utils@https://registry.npmjs.org/@typescript-eslint/utils/-/utils-8.59.3.tgz. Extracting by manifest.
+481 silly tarball no local data for @speed-highlight/core@https://registry.npmjs.org/@speed-highlight/core/-/core-1.2.15.tgz. Extracting by manifest.
+482 silly tarball no local data for @typescript-eslint/scope-manager@https://registry.npmjs.org/@typescript-eslint/scope-manager/-/scope-manager-8.59.3.tgz. Extracting by manifest.
+483 silly tarball no local data for @typescript-eslint/visitor-keys@https://registry.npmjs.org/@typescript-eslint/visitor-keys/-/visitor-keys-8.59.3.tgz. Extracting by manifest.
+484 silly tarball no local data for @typescript-eslint/types@https://registry.npmjs.org/@typescript-eslint/types/-/types-8.59.3.tgz. Extracting by manifest.
+485 silly tarball no local data for @shuding/opentype.js@https://registry.npmjs.org/@shuding/opentype.js/-/opentype.js-1.4.0-beta.0.tgz. Extracting by manifest.
+486 silly tarball no local data for @typescript-eslint/typescript-estree@https://registry.npmjs.org/@typescript-eslint/typescript-estree/-/typescript-estree-8.59.3.tgz. Extracting by manifest.
+487 silly tarball no local data for @typescript-eslint/type-utils@https://registry.npmjs.org/@typescript-eslint/type-utils/-/type-utils-8.59.3.tgz. Extracting by manifest.
+488 silly tarball no local data for @typescript-eslint/project-service@https://registry.npmjs.org/@typescript-eslint/project-service/-/project-service-8.59.3.tgz. Extracting by manifest.
+489 silly tarball no local data for @typescript-eslint/tsconfig-utils@https://registry.npmjs.org/@typescript-eslint/tsconfig-utils/-/tsconfig-utils-8.59.3.tgz. Extracting by manifest.
+490 silly tarball no local data for @typescript-eslint/parser@https://registry.npmjs.org/@typescript-eslint/parser/-/parser-8.59.3.tgz. Extracting by manifest.
+491 silly tarball no local data for @typescript-eslint/eslint-plugin@https://registry.npmjs.org/@typescript-eslint/eslint-plugin/-/eslint-plugin-8.59.3.tgz. Extracting by manifest.
+492 silly tarball no local data for @types/react@https://registry.npmjs.org/@types/react/-/react-19.2.14.tgz. Extracting by manifest.
+493 silly tarball no local data for @types/node@https://registry.npmjs.org/@types/node/-/node-22.19.19.tgz. Extracting by manifest.
+494 silly tarball no local data for @tailwindcss/oxide-darwin-arm64@https://registry.npmjs.org/@tailwindcss/oxide-darwin-arm64/-/oxide-darwin-arm64-4.2.1.tgz. Extracting by manifest.
+495 silly tarball no local data for @types/eslint@https://registry.npmjs.org/@types/eslint/-/eslint-9.6.1.tgz. Extracting by manifest.
+496 silly tarball no local data for @types/eslint-scope@https://registry.npmjs.org/@types/eslint-scope/-/eslint-scope-3.7.7.tgz. Extracting by manifest.
+497 silly tarball no local data for @tailwindcss/postcss@https://registry.npmjs.org/@tailwindcss/postcss/-/postcss-4.2.1.tgz. Extracting by manifest.
+498 silly tarball no local data for @sindresorhus/is@https://registry.npmjs.org/@sindresorhus/is/-/is-7.2.0.tgz. Extracting by manifest.
+499 silly tarball no local data for @tailwindcss/oxide@https://registry.npmjs.org/@tailwindcss/oxide/-/oxide-4.2.1.tgz. Extracting by manifest.
+500 silly tarball no local data for @tailwindcss/node@https://registry.npmjs.org/@tailwindcss/node/-/node-4.2.1.tgz. Extracting by manifest.
+501 silly tarball no local data for @rolldown/pluginutils@https://registry.npmjs.org/@rolldown/pluginutils/-/pluginutils-1.0.1.tgz. Extracting by manifest.
+502 silly tarball no local data for @rolldown/binding-darwin-arm64@https://registry.npmjs.org/@rolldown/binding-darwin-arm64/-/binding-darwin-arm64-1.0.1.tgz. Extracting by manifest.
+503 silly tarball no local data for @poppinss/exception@https://registry.npmjs.org/@poppinss/exception/-/exception-1.2.3.tgz. Extracting by manifest.
+504 silly tarball no local data for @resvg/resvg-wasm@https://registry.npmjs.org/@resvg/resvg-wasm/-/resvg-wasm-2.4.0.tgz. Extracting by manifest.
+505 silly tarball no local data for @poppinss/dumper@https://registry.npmjs.org/@poppinss/dumper/-/dumper-0.6.5.tgz. Extracting by manifest.
+506 silly tarball no local data for @poppinss/colors@https://registry.npmjs.org/@poppinss/colors/-/colors-4.1.6.tgz. Extracting by manifest.
+507 silly tarball no local data for @next/eslint-plugin-next@https://registry.npmjs.org/@next/eslint-plugin-next/-/eslint-plugin-next-16.2.6.tgz. Extracting by manifest.
+508 silly tarball no local data for @next/swc-darwin-arm64@https://registry.npmjs.org/@next/swc-darwin-arm64/-/swc-darwin-arm64-16.2.6.tgz. Extracting by manifest.
+509 silly tarball no local data for @jridgewell/source-map@https://registry.npmjs.org/@jridgewell/source-map/-/source-map-0.3.11.tgz. Extracting by manifest.
+510 silly tarball no local data for @next/env@https://registry.npmjs.org/@next/env/-/env-16.2.6.tgz. Extracting by manifest.
+511 silly tarball no local data for @esbuild-kit/esm-loader@https://registry.npmjs.org/@esbuild-kit/esm-loader/-/esm-loader-2.6.5.tgz. Extracting by manifest.
+512 http cache ajv@https://registry.npmjs.org/ajv/-/ajv-8.20.0.tgz 0ms (cache hit)
+513 silly tarball no local data for @webassemblyjs/leb128@https://registry.npmjs.org/@webassemblyjs/leb128/-/leb128-1.13.2.tgz. Extracting by manifest.
+514 silly tarball no local data for @esbuild-kit/core-utils@https://registry.npmjs.org/@esbuild-kit/core-utils/-/core-utils-3.3.2.tgz. Extracting by manifest.
+515 silly tarball no local data for @esbuild/darwin-arm64@https://registry.npmjs.org/@esbuild/darwin-arm64/-/darwin-arm64-0.28.0.tgz. Extracting by manifest.
+516 silly tarball no local data for @cloudflare/workerd-darwin-arm64@https://registry.npmjs.org/@cloudflare/workerd-darwin-arm64/-/workerd-darwin-arm64-1.20260515.1.tgz. Extracting by manifest.
+517 silly tarball no local data for @drizzle-team/brocli@https://registry.npmjs.org/@drizzle-team/brocli/-/brocli-0.10.2.tgz. Extracting by manifest.
+518 silly tarball no local data for @cspotcode/source-map-support@https://registry.npmjs.org/@cspotcode/source-map-support/-/source-map-support-0.8.1.tgz. Extracting by manifest.
+519 silly tarball no local data for @babel/template@https://registry.npmjs.org/@babel/template/-/template-7.28.6.tgz. Extracting by manifest.
+520 silly tarball no local data for @cloudflare/kv-asset-handler@https://registry.npmjs.org/@cloudflare/kv-asset-handler/-/kv-asset-handler-0.5.0.tgz. Extracting by manifest.
+521 silly tarball no local data for @babel/parser@https://registry.npmjs.org/@babel/parser/-/parser-7.29.3.tgz. Extracting by manifest.
+522 silly tarball no local data for @cloudflare/unenv-preset@https://registry.npmjs.org/@cloudflare/unenv-preset/-/unenv-preset-2.16.1.tgz. Extracting by manifest.
+523 silly tarball no local data for @cloudflare/vite-plugin@https://registry.npmjs.org/@cloudflare/vite-plugin/-/vite-plugin-1.37.1.tgz. Extracting by manifest.
+524 silly tarball no local data for @babel/types@https://registry.npmjs.org/@babel/types/-/types-7.29.0.tgz. Extracting by manifest.
+525 silly tarball no local data for @babel/helper-validator-option@https://registry.npmjs.org/@babel/helper-validator-option/-/helper-validator-option-7.27.1.tgz. Extracting by manifest.
+526 silly tarball no local data for @babel/traverse@https://registry.npmjs.org/@babel/traverse/-/traverse-7.29.0.tgz. Extracting by manifest.
+527 silly tarball no local data for @babel/helpers@https://registry.npmjs.org/@babel/helpers/-/helpers-7.29.2.tgz. Extracting by manifest.
+528 silly tarball no local data for @oxc-project/types@https://registry.npmjs.org/@oxc-project/types/-/types-0.130.0.tgz. Extracting by manifest.
+529 silly tarball no local data for @babel/helper-module-imports@https://registry.npmjs.org/@babel/helper-module-imports/-/helper-module-imports-7.28.6.tgz. Extracting by manifest.
+530 silly tarball no local data for @babel/helper-globals@https://registry.npmjs.org/@babel/helper-globals/-/helper-globals-7.28.0.tgz. Extracting by manifest.
+531 silly tarball no local data for @babel/helper-validator-identifier@https://registry.npmjs.org/@babel/helper-validator-identifier/-/helper-validator-identifier-7.28.5.tgz. Extracting by manifest.
+532 silly tarball no local data for @babel/helper-string-parser@https://registry.npmjs.org/@babel/helper-string-parser/-/helper-string-parser-7.27.1.tgz. Extracting by manifest.
+533 silly tarball no local data for @babel/core@https://registry.npmjs.org/@babel/core/-/core-7.29.0.tgz. Extracting by manifest.
+534 silly tarball no local data for @babel/generator@https://registry.npmjs.org/@babel/generator/-/generator-7.29.1.tgz. Extracting by manifest.
+535 silly tarball no local data for @babel/code-frame@https://registry.npmjs.org/@babel/code-frame/-/code-frame-7.29.0.tgz. Extracting by manifest.
+536 silly tarball no local data for @babel/helper-module-transforms@https://registry.npmjs.org/@babel/helper-module-transforms/-/helper-module-transforms-7.28.6.tgz. Extracting by manifest.
+537 silly tarball no local data for @babel/compat-data@https://registry.npmjs.org/@babel/compat-data/-/compat-data-7.29.3.tgz. Extracting by manifest.
+538 silly tarball no local data for @babel/helper-compilation-targets@https://registry.npmjs.org/@babel/helper-compilation-targets/-/helper-compilation-targets-7.28.6.tgz. Extracting by manifest.
+539 silly tarball no local data for youch-core@https://registry.npmjs.org/youch-core/-/youch-core-0.3.3.tgz. Extracting by manifest.
+540 silly tarball no local data for wrangler@https://registry.npmjs.org/wrangler/-/wrangler-4.92.0.tgz. Extracting by manifest.
+541 silly tarball no local data for workerd@https://registry.npmjs.org/workerd/-/workerd-1.20260515.1.tgz. Extracting by manifest.
+542 silly tarball no local data for youch@https://registry.npmjs.org/youch/-/youch-4.1.0-beta.10.tgz. Extracting by manifest.
+543 silly tarball no local data for webpack@https://registry.npmjs.org/webpack/-/webpack-5.106.2.tgz. Extracting by manifest.
+544 silly tarball no local data for webpack-sources@https://registry.npmjs.org/webpack-sources/-/webpack-sources-3.4.1.tgz. Extracting by manifest.
+545 silly tarball no local data for yoga-layout@https://registry.npmjs.org/yoga-layout/-/yoga-layout-3.2.1.tgz. Extracting by manifest.
+546 silly tarball no local data for ws@https://registry.npmjs.org/ws/-/ws-8.18.0.tgz. Extracting by manifest.
+547 silly tarball no local data for which-typed-array@https://registry.npmjs.org/which-typed-array/-/which-typed-array-1.1.20.tgz. Extracting by manifest.
+548 silly tarball no local data for web-vitals@https://registry.npmjs.org/web-vitals/-/web-vitals-4.2.4.tgz. Extracting by manifest.
+549 silly tarball no local data for watchpack@https://registry.npmjs.org/watchpack/-/watchpack-2.5.1.tgz. Extracting by manifest.
+550 silly tarball no local data for vitefu@https://registry.npmjs.org/vitefu/-/vitefu-1.1.3.tgz. Extracting by manifest.
+551 silly tarball no local data for vite-tsconfig-paths@https://registry.npmjs.org/vite-tsconfig-paths/-/vite-tsconfig-paths-6.1.1.tgz. Extracting by manifest.
+552 silly tarball no local data for unicode-trie@https://registry.npmjs.org/unicode-trie/-/unicode-trie-2.0.0.tgz. Extracting by manifest.
+553 silly tarball no local data for vite@https://registry.npmjs.org/vite/-/vite-8.0.13.tgz. Extracting by manifest.
+554 silly tarball no local data for vite-plugin-dynamic-import@https://registry.npmjs.org/vite-plugin-dynamic-import/-/vite-plugin-dynamic-import-1.6.0.tgz. Extracting by manifest.
+555 silly tarball no local data for vinext@https://registry.npmjs.org/vinext/-/vinext-0.0.50.tgz. Extracting by manifest.
+556 silly tarball no local data for vite-plugin-commonjs@https://registry.npmjs.org/vite-plugin-commonjs/-/vite-plugin-commonjs-0.10.4.tgz. Extracting by manifest.
+557 silly tarball no local data for unpic@https://registry.npmjs.org/unpic/-/unpic-4.2.2.tgz. Extracting by manifest.
+558 silly tarball no local data for typed-array-length@https://registry.npmjs.org/typed-array-length/-/typed-array-length-1.0.7.tgz. Extracting by manifest.
+559 silly tarball no local data for undici@https://registry.npmjs.org/undici/-/undici-7.24.8.tgz. Extracting by manifest.
+560 silly tarball no local data for typescript-eslint@https://registry.npmjs.org/typescript-eslint/-/typescript-eslint-8.59.3.tgz. Extracting by manifest.
+561 silly tarball no local data for tsx@https://registry.npmjs.org/tsx/-/tsx-4.22.1.tgz. Extracting by manifest.
+562 silly tarball no local data for turbo-stream@https://registry.npmjs.org/turbo-stream/-/turbo-stream-3.2.0.tgz. Extracting by manifest.
+563 silly tarball no local data for unrs-resolver@https://registry.npmjs.org/unrs-resolver/-/unrs-resolver-1.11.1.tgz. Extracting by manifest.
+564 silly tarball no local data for tiny-inflate@https://registry.npmjs.org/tiny-inflate/-/tiny-inflate-1.0.3.tgz. Extracting by manifest.
+565 silly tarball no local data for tinyglobby@https://registry.npmjs.org/tinyglobby/-/tinyglobby-0.2.16.tgz. Extracting by manifest.
+566 silly tarball no local data for tsconfck@https://registry.npmjs.org/tsconfck/-/tsconfck-3.1.6.tgz. Extracting by manifest.
+567 silly tarball no local data for terser@https://registry.npmjs.org/terser/-/terser-5.47.1.tgz. Extracting by manifest.
+568 silly tarball no local data for string.prototype.codepointat@https://registry.npmjs.org/string.prototype.codepointat/-/string.prototype.codepointat-0.2.1.tgz. Extracting by manifest.
+569 silly tarball no local data for strip-literal@https://registry.npmjs.org/strip-literal/-/strip-literal-3.1.0.tgz. Extracting by manifest.
+570 silly tarball no local data for unenv@https://registry.npmjs.org/unenv/-/unenv-2.0.0-rc.24.tgz. Extracting by manifest.
+571 silly tarball no local data for tailwindcss@https://registry.npmjs.org/tailwindcss/-/tailwindcss-4.2.1.tgz. Extracting by manifest.
+572 silly tarball no local data for srvx@https://registry.npmjs.org/srvx/-/srvx-0.11.15.tgz. Extracting by manifest.
+573 silly tarball no local data for terser-webpack-plugin@https://registry.npmjs.org/terser-webpack-plugin/-/terser-webpack-plugin-5.6.0.tgz. Extracting by manifest.
+574 silly tarball no local data for satori@https://registry.npmjs.org/satori/-/satori-0.16.0.tgz. Extracting by manifest.
+575 silly tarball no local data for source-map-support@https://registry.npmjs.org/source-map-support/-/source-map-support-0.5.21.tgz. Extracting by manifest.
+576 silly tarball no local data for rolldown@https://registry.npmjs.org/rolldown/-/rolldown-1.0.1.tgz. Extracting by manifest.
+577 silly tarball no local data for source-map@https://registry.npmjs.org/source-map/-/source-map-0.6.1.tgz. Extracting by manifest.
+578 silly tarball no local data for require-from-string@https://registry.npmjs.org/require-from-string/-/require-from-string-2.0.2.tgz. Extracting by manifest.
+579 silly tarball no local data for react@https://registry.npmjs.org/react/-/react-19.2.6.tgz. Extracting by manifest.
+580 silly tarball no local data for react-dom@https://registry.npmjs.org/react-dom/-/react-dom-19.2.6.tgz. Extracting by manifest.
+581 silly tarball no local data for postcss-value-parser@https://registry.npmjs.org/postcss-value-parser/-/postcss-value-parser-4.2.0.tgz. Extracting by manifest.
+582 silly tarball no local data for react-server-dom-webpack@https://registry.npmjs.org/react-server-dom-webpack/-/react-server-dom-webpack-19.2.6.tgz. Extracting by manifest.
+583 silly tarball no local data for postcss@https://registry.npmjs.org/postcss/-/postcss-8.5.14.tgz. Extracting by manifest.
+584 silly tarball no local data for parse-css-color@https://registry.npmjs.org/parse-css-color/-/parse-css-color-0.2.1.tgz. Extracting by manifest.
+585 silly tarball no local data for path-to-regexp@https://registry.npmjs.org/path-to-regexp/-/path-to-regexp-6.3.0.tgz. Extracting by manifest.
+586 silly tarball no local data for pathe@https://registry.npmjs.org/pathe/-/pathe-2.0.3.tgz. Extracting by manifest.
+587 silly tarball no local data for pako@https://registry.npmjs.org/pako/-/pako-0.2.9.tgz. Extracting by manifest.
+588 silly tarball no local data for node-releases@https://registry.npmjs.org/node-releases/-/node-releases-2.0.44.tgz. Extracting by manifest.
+589 silly tarball no local data for neo-async@https://registry.npmjs.org/neo-async/-/neo-async-2.6.2.tgz. Extracting by manifest.
+590 silly tarball no local data for schema-utils@https://registry.npmjs.org/schema-utils/-/schema-utils-4.3.3.tgz. Extracting by manifest.
+591 silly tarball no local data for miniflare@https://registry.npmjs.org/miniflare/-/miniflare-4.20260515.0.tgz. Extracting by manifest.
+592 silly tarball no local data for react-loading-skeleton@https://registry.npmjs.org/react-loading-skeleton/-/react-loading-skeleton-3.5.0.tgz. Extracting by manifest.
+593 silly tarball no local data for merge-stream@https://registry.npmjs.org/merge-stream/-/merge-stream-2.0.0.tgz. Extracting by manifest.
+594 silly tarball no local data for next@https://registry.npmjs.org/next/-/next-16.2.6.tgz. Extracting by manifest.
+595 silly tarball no local data for loader-runner@https://registry.npmjs.org/loader-runner/-/loader-runner-4.3.2.tgz. Extracting by manifest.
+596 silly tarball no local data for linebreak@https://registry.npmjs.org/linebreak/-/linebreak-1.1.0.tgz. Extracting by manifest.
+597 silly tarball no local data for lightningcss@https://registry.npmjs.org/lightningcss/-/lightningcss-1.31.1.tgz. Extracting by manifest.
+598 silly tarball no local data for lightningcss-darwin-arm64@https://registry.npmjs.org/lightningcss-darwin-arm64/-/lightningcss-darwin-arm64-1.31.1.tgz. Extracting by manifest.
+599 silly tarball no local data for kleur@https://registry.npmjs.org/kleur/-/kleur-4.1.5.tgz. Extracting by manifest.
+600 silly tarball no local data for js-yaml@https://registry.npmjs.org/js-yaml/-/js-yaml-4.1.1.tgz. Extracting by manifest.
+601 silly tarball no local data for jest-worker@https://registry.npmjs.org/jest-worker/-/jest-worker-27.5.1.tgz. Extracting by manifest.
+602 silly tarball no local data for ipaddr.js@https://registry.npmjs.org/ipaddr.js/-/ipaddr.js-2.4.0.tgz. Extracting by manifest.
+603 silly tarball no local data for image-size@https://registry.npmjs.org/image-size/-/image-size-2.0.2.tgz. Extracting by manifest.
+604 silly tarball no local data for hex-rgb@https://registry.npmjs.org/hex-rgb/-/hex-rgb-4.3.0.tgz. Extracting by manifest.
+605 silly tarball no local data for globrex@https://registry.npmjs.org/globrex/-/globrex-0.1.2.tgz. Extracting by manifest.
+606 silly tarball no local data for glob-to-regexp@https://registry.npmjs.org/glob-to-regexp/-/glob-to-regexp-0.4.1.tgz. Extracting by manifest.
+607 silly tarball no local data for fsevents@https://registry.npmjs.org/fsevents/-/fsevents-2.3.3.tgz. Extracting by manifest.
+608 silly tarball no local data for hasown@https://registry.npmjs.org/hasown/-/hasown-2.0.3.tgz. Extracting by manifest.
+609 silly tarball no local data for fflate@https://registry.npmjs.org/fflate/-/fflate-0.7.4.tgz. Extracting by manifest.
+610 silly tarball no local data for fast-uri@https://registry.npmjs.org/fast-uri/-/fast-uri-3.1.2.tgz. Extracting by manifest.
+611 silly tarball no local data for events@https://registry.npmjs.org/events/-/events-3.3.0.tgz. Extracting by manifest.
+612 silly tarball no local data for eslint-module-utils@https://registry.npmjs.org/eslint-module-utils/-/eslint-module-utils-2.12.1.tgz. Extracting by manifest.
+613 silly tarball no local data for es-module-lexer@https://registry.npmjs.org/es-module-lexer/-/es-module-lexer-2.1.0.tgz. Extracting by manifest.
+614 silly tarball no local data for estree-walker@https://registry.npmjs.org/estree-walker/-/estree-walker-3.0.3.tgz. Extracting by manifest.
+615 silly tarball no local data for escape-html@https://registry.npmjs.org/escape-html/-/escape-html-1.0.3.tgz. Extracting by manifest.
+616 silly tarball no local data for eslint-config-next@https://registry.npmjs.org/eslint-config-next/-/eslint-config-next-16.2.6.tgz. Extracting by manifest.
+617 silly tarball no local data for es-object-atoms@https://registry.npmjs.org/es-object-atoms/-/es-object-atoms-1.1.1.tgz. Extracting by manifest.
+618 silly tarball no local data for esbuild@https://registry.npmjs.org/esbuild/-/esbuild-0.28.0.tgz. Extracting by manifest.
+619 silly tarball no local data for error-stack-parser-es@https://registry.npmjs.org/error-stack-parser-es/-/error-stack-parser-es-1.0.5.tgz. Extracting by manifest.
+620 silly tarball no local data for enhanced-resolve@https://registry.npmjs.org/enhanced-resolve/-/enhanced-resolve-5.21.3.tgz. Extracting by manifest.
+621 silly tarball no local data for emoji-regex-xs@https://registry.npmjs.org/emoji-regex-xs/-/emoji-regex-xs-2.0.1.tgz. Extracting by manifest.
+622 silly tarball no local data for electron-to-chromium@https://registry.npmjs.org/electron-to-chromium/-/electron-to-chromium-1.5.358.tgz. Extracting by manifest.
+623 silly tarball no local data for drizzle-orm@https://registry.npmjs.org/drizzle-orm/-/drizzle-orm-0.45.2.tgz. Extracting by manifest.
+624 silly tarball no local data for drizzle-kit@https://registry.npmjs.org/drizzle-kit/-/drizzle-kit-0.31.10.tgz. Extracting by manifest.
+625 silly tarball no local data for css-to-react-native@https://registry.npmjs.org/css-to-react-native/-/css-to-react-native-3.2.0.tgz. Extracting by manifest.
+626 silly tarball no local data for css-gradient-parser@https://registry.npmjs.org/css-gradient-parser/-/css-gradient-parser-0.0.16.tgz. Extracting by manifest.
+627 silly tarball no local data for css-color-keywords@https://registry.npmjs.org/css-color-keywords/-/css-color-keywords-1.0.0.tgz. Extracting by manifest.
+628 silly tarball no local data for css-background-parser@https://registry.npmjs.org/css-background-parser/-/css-background-parser-0.1.0.tgz. Extracting by manifest.
+629 silly tarball no local data for cookie@https://registry.npmjs.org/cookie/-/cookie-1.1.1.tgz. Extracting by manifest.
+630 silly tarball no local data for css-box-shadow@https://registry.npmjs.org/css-box-shadow/-/css-box-shadow-1.0.0-3.tgz. Extracting by manifest.
+631 silly tarball no local data for commander@https://registry.npmjs.org/commander/-/commander-2.20.3.tgz. Extracting by manifest.
+632 silly tarball no local data for chrome-trace-event@https://registry.npmjs.org/chrome-trace-event/-/chrome-trace-event-1.0.4.tgz. Extracting by manifest.
+633 silly tarball no local data for camelize@https://registry.npmjs.org/camelize/-/camelize-1.0.1.tgz. Extracting by manifest.
+634 silly tarball no local data for brace-expansion@https://registry.npmjs.org/brace-expansion/-/brace-expansion-1.1.14.tgz. Extracting by manifest.
+635 silly tarball no local data for buffer-from@https://registry.npmjs.org/buffer-from/-/buffer-from-1.1.2.tgz. Extracting by manifest.
+636 silly tarball no local data for blake3-wasm@https://registry.npmjs.org/blake3-wasm/-/blake3-wasm-2.1.5.tgz. Extracting by manifest.
+637 silly tarball no local data for baseline-browser-mapping@https://registry.npmjs.org/baseline-browser-mapping/-/baseline-browser-mapping-2.10.30.tgz. Extracting by manifest.
+638 silly tarball no local data for axe-core@https://registry.npmjs.org/axe-core/-/axe-core-4.11.4.tgz. Extracting by manifest.
+639 silly tarball no local data for base64-js@https://registry.npmjs.org/base64-js/-/base64-js-0.0.8.tgz. Extracting by manifest.
+640 silly tarball no local data for acorn-loose@https://registry.npmjs.org/acorn-loose/-/acorn-loose-8.5.2.tgz. Extracting by manifest.
+641 silly tarball no local data for ajv-formats@https://registry.npmjs.org/ajv-formats/-/ajv-formats-2.1.1.tgz. Extracting by manifest.
+642 silly tarball no local data for acorn-import-phases@https://registry.npmjs.org/acorn-import-phases/-/acorn-import-phases-1.0.4.tgz. Extracting by manifest.
+643 silly tarball no local data for semver@https://registry.npmjs.org/semver/-/semver-7.8.0.tgz. Extracting by manifest.
+644 silly tarball no local data for semver@https://registry.npmjs.org/semver/-/semver-7.8.0.tgz. Extracting by manifest.
+645 silly tarball no local data for json5@https://registry.npmjs.org/json5/-/json5-1.0.2.tgz. Extracting by manifest.
+646 silly tarball no local data for @rolldown/pluginutils@https://registry.npmjs.org/@rolldown/pluginutils/-/pluginutils-1.0.0-rc.18.tgz. Extracting by manifest.
+647 silly tarball no local data for semver@https://registry.npmjs.org/semver/-/semver-7.8.0.tgz. Extracting by manifest.
+648 silly tarball no local data for supports-color@https://registry.npmjs.org/supports-color/-/supports-color-10.2.2.tgz. Extracting by manifest.
+649 silly tarball no local data for esbuild@https://registry.npmjs.org/esbuild/-/esbuild-0.18.20.tgz. Extracting by manifest.
+650 silly tarball no local data for @esbuild/darwin-arm64@https://registry.npmjs.org/@esbuild/darwin-arm64/-/darwin-arm64-0.18.20.tgz. Extracting by manifest.
+651 silly tarball no local data for esbuild@https://registry.npmjs.org/esbuild/-/esbuild-0.27.3.tgz. Extracting by manifest.
+652 silly tarball no local data for @jridgewell/trace-mapping@https://registry.npmjs.org/@jridgewell/trace-mapping/-/trace-mapping-0.3.9.tgz. Extracting by manifest.
+653 silly tarball no local data for @esbuild/darwin-arm64@https://registry.npmjs.org/@esbuild/darwin-arm64/-/darwin-arm64-0.27.3.tgz. Extracting by manifest.
+654 silly tarball no local data for eslint-scope@https://registry.npmjs.org/eslint-scope/-/eslint-scope-5.1.1.tgz. Extracting by manifest.
+655 silly tarball no local data for estraverse@https://registry.npmjs.org/estraverse/-/estraverse-4.3.0.tgz. Extracting by manifest.
+656 silly tarball no local data for fast-glob@https://registry.npmjs.org/fast-glob/-/fast-glob-3.3.3.tgz. Extracting by manifest.
+657 silly tarball no local data for js-tokens@https://registry.npmjs.org/js-tokens/-/js-tokens-9.0.1.tgz. Extracting by manifest.
+658 silly tarball no local data for json-schema-traverse@https://registry.npmjs.org/json-schema-traverse/-/json-schema-traverse-1.0.0.tgz. Extracting by manifest.
+659 silly tarball no local data for es-module-lexer@https://registry.npmjs.org/es-module-lexer/-/es-module-lexer-1.7.0.tgz. Extracting by manifest.
+660 silly tarball no local data for ajv-keywords@https://registry.npmjs.org/ajv-keywords/-/ajv-keywords-5.1.0.tgz. Extracting by manifest.
+661 silly tarball no local data for ajv@https://registry.npmjs.org/ajv/-/ajv-8.20.0.tgz. Extracting by manifest.
+662 silly tarball no local data for supports-color@https://registry.npmjs.org/supports-color/-/supports-color-8.1.1.tgz. Extracting by manifest.
+663 silly tarball no local data for @esbuild/darwin-arm64@https://registry.npmjs.org/@esbuild/darwin-arm64/-/darwin-arm64-0.25.12.tgz. Extracting by manifest.
+664 silly tarball no local data for mime-db@https://registry.npmjs.org/mime-db/-/mime-db-1.54.0.tgz. Extracting by manifest.
+665 silly tarball no local data for esbuild@https://registry.npmjs.org/esbuild/-/esbuild-0.25.12.tgz. Extracting by manifest.
+666 silly tarball no local data for json-schema-traverse@https://registry.npmjs.org/json-schema-traverse/-/json-schema-traverse-1.0.0.tgz. Extracting by manifest.
+667 silly tarball no local data for ajv@https://registry.npmjs.org/ajv/-/ajv-8.20.0.tgz. Extracting by manifest.
+668 http fetch GET https://registry.npmjs.org/which/-/which-2.0.2.tgz attempt 1 failed with ENOTFOUND
+669 http fetch GET https://registry.npmjs.org/semver/-/semver-6.3.1.tgz attempt 1 failed with ENOTFOUND
+670 http fetch GET https://registry.npmjs.org/typescript/-/typescript-5.9.3.tgz attempt 1 failed with ENOTFOUND
+671 http fetch GET https://registry.npmjs.org/update-browserslist-db/-/update-browserslist-db-1.2.3.tgz attempt 1 failed with ENOTFOUND
+672 http fetch GET https://registry.npmjs.org/nanoid/-/nanoid-3.3.12.tgz attempt 1 failed with ENOTFOUND
+673 http fetch GET https://registry.npmjs.org/resolve/-/resolve-2.0.0-next.7.tgz attempt 1 failed with ENOTFOUND
+674 http fetch GET https://registry.npmjs.org/napi-postinstall/-/napi-postinstall-0.3.4.tgz attempt 1 failed with ENOTFOUND
+675 http fetch GET https://registry.npmjs.org/json5/-/json5-2.2.3.tgz attempt 1 failed with ENOTFOUND
+676 http fetch GET https://registry.npmjs.org/jsesc/-/jsesc-3.1.0.tgz attempt 1 failed with ENOTFOUND
+677 http fetch GET https://registry.npmjs.org/jiti/-/jiti-2.7.0.tgz attempt 1 failed with ENOTFOUND
+678 http fetch GET https://registry.npmjs.org/loose-envify/-/loose-envify-1.4.0.tgz attempt 1 failed with ENOTFOUND
+679 http fetch GET https://registry.npmjs.org/eslint/-/eslint-9.39.4.tgz attempt 1 failed with ENOTFOUND
+680 http fetch GET https://registry.npmjs.org/browserslist/-/browserslist-4.28.2.tgz attempt 1 failed with ENOTFOUND
+681 http fetch GET https://registry.npmjs.org/@xtuc/ieee754/-/ieee754-1.2.0.tgz attempt 1 failed with ENOTFOUND
+682 http fetch GET https://registry.npmjs.org/acorn/-/acorn-8.16.0.tgz attempt 1 failed with ENOTFOUND
+683 http fetch GET https://registry.npmjs.org/esbuild/-/esbuild-0.25.12.tgz attempt 1 failed with ENOTFOUND
+684 http fetch GET https://registry.npmjs.org/json-schema-traverse/-/json-schema-traverse-1.0.0.tgz attempt 1 failed with ENOTFOUND
+685 http fetch GET https://registry.npmjs.org/ajv/-/ajv-8.20.0.tgz attempt 1 failed with ENOTFOUND
+686 http fetch GET https://registry.npmjs.org/npm attempt 2 failed with ENOTFOUND
+687 http fetch GET https://registry.npmjs.org/which/-/which-2.0.2.tgz attempt 2 failed with ENOTFOUND
+688 http fetch GET https://registry.npmjs.org/semver/-/semver-6.3.1.tgz attempt 2 failed with ENOTFOUND
+689 http fetch GET https://registry.npmjs.org/typescript/-/typescript-5.9.3.tgz attempt 2 failed with ENOTFOUND
+690 http fetch GET https://registry.npmjs.org/update-browserslist-db/-/update-browserslist-db-1.2.3.tgz attempt 2 failed with ENOTFOUND
+691 http fetch GET https://registry.npmjs.org/nanoid/-/nanoid-3.3.12.tgz attempt 2 failed with ENOTFOUND
+692 http fetch GET https://registry.npmjs.org/resolve/-/resolve-2.0.0-next.7.tgz attempt 2 failed with ENOTFOUND
+693 http fetch GET https://registry.npmjs.org/napi-postinstall/-/napi-postinstall-0.3.4.tgz attempt 2 failed with ENOTFOUND
+694 http fetch GET https://registry.npmjs.org/json5/-/json5-2.2.3.tgz attempt 2 failed with ENOTFOUND
+695 http fetch GET https://registry.npmjs.org/jsesc/-/jsesc-3.1.0.tgz attempt 2 failed with ENOTFOUND
+696 http fetch GET https://registry.npmjs.org/jiti/-/jiti-2.7.0.tgz attempt 2 failed with ENOTFOUND
+697 http fetch GET https://registry.npmjs.org/loose-envify/-/loose-envify-1.4.0.tgz attempt 2 failed with ENOTFOUND
+698 http fetch GET https://registry.npmjs.org/eslint/-/eslint-9.39.4.tgz attempt 2 failed with ENOTFOUND
+699 http fetch GET https://registry.npmjs.org/browserslist/-/browserslist-4.28.2.tgz attempt 2 failed with ENOTFOUND
+700 http fetch GET https://registry.npmjs.org/@xtuc/ieee754/-/ieee754-1.2.0.tgz attempt 2 failed with ENOTFOUND
+701 http fetch GET https://registry.npmjs.org/acorn/-/acorn-8.16.0.tgz attempt 2 failed with ENOTFOUND
+702 http fetch GET https://registry.npmjs.org/esbuild/-/esbuild-0.25.12.tgz attempt 2 failed with ENOTFOUND
+703 http fetch GET https://registry.npmjs.org/json-schema-traverse/-/json-schema-traverse-1.0.0.tgz attempt 2 failed with ENOTFOUND
+704 http fetch GET https://registry.npmjs.org/ajv/-/ajv-8.20.0.tgz attempt 2 failed with ENOTFOUND
+705 http fetch GET https://registry.npmjs.org/npm attempt 3 failed with ENOTFOUND
+706 http fetch GET https://registry.npmjs.org/which/-/which-2.0.2.tgz attempt 3 failed with ENOTFOUND
+707 http fetch GET https://registry.npmjs.org/semver/-/semver-6.3.1.tgz attempt 3 failed with ENOTFOUND
+708 http fetch GET https://registry.npmjs.org/typescript/-/typescript-5.9.3.tgz attempt 3 failed with ENOTFOUND
+709 http fetch GET https://registry.npmjs.org/update-browserslist-db/-/update-browserslist-db-1.2.3.tgz attempt 3 failed with ENOTFOUND
+710 http fetch GET https://registry.npmjs.org/nanoid/-/nanoid-3.3.12.tgz attempt 3 failed with ENOTFOUND
+711 http fetch GET https://registry.npmjs.org/resolve/-/resolve-2.0.0-next.7.tgz attempt 3 failed with ENOTFOUND
+712 http fetch GET https://registry.npmjs.org/napi-postinstall/-/napi-postinstall-0.3.4.tgz attempt 3 failed with ENOTFOUND
+713 http fetch GET https://registry.npmjs.org/json5/-/json5-2.2.3.tgz attempt 3 failed with ENOTFOUND
+714 http fetch GET https://registry.npmjs.org/jsesc/-/jsesc-3.1.0.tgz attempt 3 failed with ENOTFOUND
+715 http fetch GET https://registry.npmjs.org/jiti/-/jiti-2.7.0.tgz attempt 3 failed with ENOTFOUND
+716 http fetch GET https://registry.npmjs.org/loose-envify/-/loose-envify-1.4.0.tgz attempt 3 failed with ENOTFOUND
+717 http fetch GET https://registry.npmjs.org/eslint/-/eslint-9.39.4.tgz attempt 3 failed with ENOTFOUND
+718 http fetch GET https://registry.npmjs.org/browserslist/-/browserslist-4.28.2.tgz attempt 3 failed with ENOTFOUND
+719 http fetch GET https://registry.npmjs.org/@xtuc/ieee754/-/ieee754-1.2.0.tgz attempt 3 failed with ENOTFOUND
+720 verbose cwd /Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app
+721 verbose os Darwin 25.5.0
+722 verbose node v24.16.0
+723 verbose npm  v11.13.0
+724 error Exit handler never called!
+725 error This is an error with npm itself. Please report this error at:
+726 error   <https://github.com/npm/cli/issues>
+727 verbose exit 1
+728 verbose code 1
+729 error A complete log of this run can be found in: /Users/marcoaleixo/Documents/Codex/2026-08-01/er/erg-iserlohn-app/.npm-cache/_logs/2026-08-01T02_35_37_509Z-debug-0.log
