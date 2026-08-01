@@ -61,6 +61,7 @@ const ROLE_META = {
   vorstand: { label: "Vorstand", color: C.red, admin: true, formalMember: true, selfService: false },
   geschaeftsfuehrung: { label: "Geschäftsführung", color: C.ink, admin: true, formalMember: true, selfService: false },
   redakteur: { label: "Redakteur", color: "#B15CC9", admin: false, formalMember: true, selfService: false },
+  sponsorenmanager: { label: "Sponsorenmanager", color: "#B17912", admin: false, formalMember: true, selfService: false },
   spieler: { label: "Spieler/in", color: C.green, admin: false, formalMember: true, selfService: true },
   eltern: { label: "Eltern", color: C.amber, admin: false, formalMember: true, selfService: true },
   mitglied: { label: "Mitglied", color: "#8B8A85", admin: false, formalMember: true, selfService: true, alwaysOn: true },
@@ -69,6 +70,7 @@ const isAdmin = (m) => !!m && m.roles.some((r) => ROLE_META[r]?.admin);
 const isFormalMember = (m) => !!m && m.roles.some((r) => ROLE_META[r]?.formalMember);
 const isSysAdmin = (m) => !!m && m.roles.includes("sysadmin");
 const canWriteNews = (m) => isAdmin(m) || (!!m && m.roles.includes("redakteur"));
+const canManageSponsors = (m) => isAdmin(m) || (!!m && m.roles.includes("sponsorenmanager"));
 function linkFamilyRecords(list, firstId, secondId, firstRelation) {
   const first = list.find((m) => m.id === firstId);
   const second = list.find((m) => m.id === secondId);
@@ -115,7 +117,7 @@ const INITIAL_MEMBERS = [
   { id: "m4", clubId: "ergi", name: "Mia Thomas", email: "mia@ergi.de", password: "demo", team: "U11", number: 5, since: 2024, roles: ["spieler", "mitglied"], color: "#7C6FE0", points: 30, tippPoints: 0, badges: [], birthdate: "2015-06-01", familyId: "fam-thomas", familyRole: "kind" },
   { id: "m5", clubId: "ergi", name: "Helga Thomas", email: "helga@ergi.de", password: "demo", team: "Eltern / Angehörige", number: null, since: 2023, roles: ["mitglied"], color: "#B98B3E", points: 20, tippPoints: 0, badges: [], birthdate: "1952-02-11", familyId: "fam-thomas", familyRole: "großeltern" },
   { id: "m6", clubId: "ergi", name: "Claudia Berg", email: "geschaeftsfuehrung@ergi.de", password: "demo", team: "Geschäftsstelle", number: null, since: 2020, roles: ["geschaeftsfuehrung", "mitglied"], color: "#3E7CB1", points: 60, tippPoints: 4, badges: [], birthdate: "1980-11-03" },
-  { id: "m7", clubId: "ergi", name: "Nina Weber", email: "redaktion@ergi.de", password: "demo", team: "Geschäftsstelle", number: null, since: 2022, roles: ["redakteur", "mitglied"], color: "#B15CC9", points: 40, tippPoints: 0, badges: [], birthdate: "1990-07-08" },
+  { id: "m7", clubId: "ergi", name: "Nina Weber", email: "redaktion@ergi.de", password: "demo", team: "Geschäftsstelle", number: null, since: 2022, roles: ["redakteur", "sponsorenmanager", "mitglied"], color: "#B15CC9", points: 40, tippPoints: 0, badges: [], birthdate: "1990-07-08" },
 ];
 
 const INITIAL_FEE_PAID = { m1: false, m2: true, m3: false, v1: true, m4: true, m5: true, m6: true, m7: true };
@@ -180,7 +182,10 @@ const SPONSOR_SLOT_DEFS = [
   { key: "events_header", label: "Termine – Kopfbereich" },
   { key: "profile_bottom", label: "Profil unten" },
 ];
-const INITIAL_SPONSOR_BOOKINGS = { dashboard_top: "Sparkasse Iserlohn", events_header: "Stadtwerke Iserlohn" };
+const INITIAL_SPONSOR_BOOKINGS = {
+  dashboard_top: { title: "Sparkasse Iserlohn", text: "Gemeinsam für den Sport in unserer Region.", imageUrl: "", landingUrl: "https://www.sparkasse-iserlohn.de" },
+  events_header: { title: "Stadtwerke Iserlohn", text: "Energie, die unsere Mannschaften bewegt.", imageUrl: "", landingUrl: "https://www.stadtwerke-iserlohn.de" },
+};
 
 const BIRTHDAYS_TODAY = ["Lena K. (U15)", "Timo B. (Herren 1)"];
 const SPONSORS = ["Sparkasse Iserlohn", "Stadtwerke Iserlohn", "Autohaus Meyer", "Fitness Point Hemberg", "Bäckerei Sauerland"];
@@ -367,19 +372,33 @@ function ToggleCard({ title, desc, value, onChange }) {
 }
 function SponsorSlot({ slotKey, bookings, onImpression, onClick }) {
   const sponsor = bookings[slotKey];
+  const [showDetails, setShowDetails] = useState(false);
   useEffect(() => { if (sponsor) onImpression(slotKey); }, [sponsor, slotKey]);
   if (!sponsor) return null;
+  const data = typeof sponsor === "string" ? { title: sponsor, text: "", imageUrl: "", landingUrl: "" } : sponsor;
+  const open = () => { onClick(slotKey); setShowDetails(true); };
   return (
-    <button onClick={() => onClick(slotKey)} className="w-full rounded-2xl px-4 py-3 mb-5 flex items-center gap-3 text-left" style={{ background: C.paperDim, border: `1px dashed ${C.line}` }}>
+    <>
+    <button onClick={open} className="w-full rounded-2xl px-4 py-3 mb-5 flex items-center gap-3 text-left overflow-hidden" style={{ background: C.paperDim, border: `1px dashed ${C.line}` }}>
       <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.white, border: `1px solid ${C.line}` }}>
-        <Sparkles size={14} style={{ color: C.amber }} />
+        {data.imageUrl ? <img src={data.imageUrl} alt="" className="w-full h-full object-cover rounded-lg"/> : <Sparkles size={14} style={{ color: C.amber }} />}
       </div>
       <div className="flex-1 min-w-0">
         <div className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: C.textDim, fontFamily: "Inter" }}>Anzeige</div>
-        <div className="text-xs truncate" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{sponsor}</div>
+        <div className="text-xs truncate" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{data.title}</div>
+        {data.text&&<div className="text-[10px] truncate mt-0.5" style={{color:C.textDim}}>{data.text}</div>}
       </div>
       <ChevronRight size={14} style={{ color: C.textDim, flexShrink: 0 }} />
     </button>
+    {showDetails&&<div className="absolute inset-0 z-50 flex items-end p-3" style={{background:"rgba(20,21,26,.72)"}} onClick={()=>setShowDetails(false)}>
+      <div role="dialog" aria-modal="true" aria-label={`Sponsor ${data.title}`} onClick={(e)=>e.stopPropagation()} className="w-full rounded-3xl overflow-hidden" style={{background:C.white,maxHeight:"88%"}}>
+        <div className="p-4 flex items-start justify-between"><div><div className="text-[9px] uppercase tracking-widest font-bold mb-1" style={{color:C.amber}}>Sponsor der ERG</div><h2 className="text-xl m-0" style={{fontFamily:"Oswald",color:C.ink}}>{data.title}</h2></div><button onClick={()=>setShowDetails(false)} aria-label="Overlay schließen" className="w-8 h-8 rounded-full flex items-center justify-center" style={{background:C.paperDim}}><X size={15}/></button></div>
+        {data.text&&<p className="px-4 pb-3 text-sm leading-relaxed" style={{color:C.textDim}}>{data.text}</p>}
+        {data.landingUrl&&<div className="px-4 pb-4"><a href={data.landingUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between rounded-xl px-3 py-2.5 text-xs font-bold" style={{background:"#FCEBEE",color:C.red}}>Zur Landingpage des Sponsors <ArrowRight size={14}/></a></div>}
+        {data.imageUrl?<img src={data.imageUrl} alt={`Anzeige von ${data.title}`} className="w-full block" style={{maxHeight:280,objectFit:"cover"}}/>:<div className="h-36 flex flex-col items-center justify-center" style={{background:C.paperDim,color:C.textDim}}><ImageIcon size={28}/><span className="text-xs mt-2">Kein Anzeigenbild hinterlegt</span></div>}
+      </div>
+    </div>}
+    </>
   );
 }
 
@@ -1830,23 +1849,34 @@ function OverviewPanel({ members, feePaid, protocols, dutyPlan, seasonVotes, goP
 /* Sponsoring                                                            */
 /* ------------------------------------------------------------------ */
 function SponsoringPanel({ bookings, setBookings, stats }) {
+  const update = (key, field, value) => setBookings((all) => ({ ...all, [key]: { ...(typeof all[key] === "object" ? all[key] : { title: all[key] || "" }), [field]: value } }));
+  const uploadImage = (key, file) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = () => update(key, "imageUrl", reader.result);
+    reader.readAsDataURL(file);
+  };
   return (
     <div className="space-y-3">
-      <div className="text-xs mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>Weise Sponsoren feste Werbeflächen (Slots) in der App zu. Leere Slots bleiben für Mitglieder unsichtbar.</div>
+      <div className="text-xs mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>Erstelle Anzeigen mit Titel, Text, Bild und optionaler Landingpage. Leere Slots bleiben für Mitglieder unsichtbar.</div>
       {SPONSOR_SLOT_DEFS.map((slot) => {
         const s = stats[slot.key] || { impressions: 0, clicks: 0 };
         const ctr = s.impressions ? ((s.clicks / s.impressions) * 100).toFixed(1) : "0.0";
+        const raw = bookings[slot.key];
+        const ad = typeof raw === "object" && raw ? raw : { title: raw || "", text: "", imageUrl: "", landingUrl: "" };
         return (
           <div key={slot.key} className="rounded-2xl p-3" style={{ background: C.white, border: `1px solid ${C.line}` }}>
             <div className="flex items-center justify-between mb-2">
               <div className="text-xs" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{slot.label}</div>
               <span className="text-[10px]" style={{ fontFamily: "JetBrains Mono", color: C.textDim }}>{slot.key}</span>
             </div>
-            <select value={bookings[slot.key] || ""} onChange={(e) => setBookings((b) => ({ ...b, [slot.key]: e.target.value || undefined }))}
-              className="w-full px-2.5 py-1.5 rounded-lg text-xs outline-none mb-2" style={{ background: C.paperDim, fontFamily: "Inter", border: `1px solid ${C.line}` }}>
-              <option value="">— Slot frei —</option>
-              {SPONSORS.map((s2) => <option key={s2} value={s2}>{s2}</option>)}
-            </select>
+            <input value={ad.title} onChange={(e)=>update(slot.key,"title",e.target.value)} placeholder="Titel des Sponsors" className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2" style={{background:C.paperDim,border:`1px solid ${C.line}`}}/>
+            <textarea value={ad.text||""} onChange={(e)=>update(slot.key,"text",e.target.value)} placeholder="Beschreibung / Anzeigentext" rows={3} className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2 resize-none" style={{background:C.paperDim,border:`1px solid ${C.line}`}}/>
+            <input type="url" value={ad.landingUrl||""} onChange={(e)=>update(slot.key,"landingUrl",e.target.value)} placeholder="https://landingpage.de" className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2" style={{background:C.paperDim,border:`1px solid ${C.line}`}}/>
+            <label className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs cursor-pointer mb-2" style={{background:C.paperDim,color:C.ink,border:`1px solid ${C.line}`}}><ImageIcon size={14}/><span className="flex-1">{ad.imageUrl?"Bild ersetzen":"Anzeigenbild hochladen"}</span><input type="file" accept="image/*" className="hidden" onChange={(e)=>uploadImage(slot.key,e.target.files?.[0])}/></label>
+            {ad.imageUrl&&<div className="relative mb-2"><img src={ad.imageUrl} alt="Vorschau" className="w-full h-24 object-cover rounded-lg"/><button onClick={()=>update(slot.key,"imageUrl","")} className="absolute top-1 right-1 w-7 h-7 rounded-full flex items-center justify-center" style={{background:"rgba(20,21,26,.8)",color:"white"}}><X size={13}/></button></div>}
+            <button onClick={()=>setBookings((b)=>({...b,[slot.key]:undefined}))} className="text-[10px] mb-2" style={{color:C.red}}>Slot leeren</button>
             <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{s.impressions} Impressionen · {s.clicks} Klicks · {ctr}% CTR</div>
           </div>
         );
@@ -1986,21 +2016,22 @@ function AdminView({
   welcomeAutomation, setWelcomeAutomation, billingAutomation, setBillingAutomation,
   sponsorBookings, setSponsorBookings, sponsorStats,
 }) {
-  const [panel, setPanel] = useState("overview");
+  const sponsorOnly = !isAdmin(currentUser) && canManageSponsors(currentUser);
+  const [panel, setPanel] = useState(sponsorOnly ? "sponsoring" : "overview");
   const openCount = members.filter((m) => !feePaid[m.id]).length;
-  const panels = [["overview", "Übersicht"], ["fees", "Beiträge"], ["automation", "Automatisierung"], ["duty", "Helferplanung"], ["protokolle", "Protokolle"], ["sponsoring", "Sponsoring"], ["season", "Spieler der Saison"], ["roles", "Rollen"]];
+  const panels = sponsorOnly ? [["sponsoring", "Sponsoring"]] : [["overview", "Übersicht"], ["fees", "Beiträge"], ["automation", "Automatisierung"], ["duty", "Helferplanung"], ["protokolle", "Protokolle"], ["sponsoring", "Sponsoring"], ["season", "Spieler der Saison"], ["roles", "Rollen"]];
   if (isSysAdmin(currentUser)) panels.push(["system", "System"]);
 
   return (
     <div className="px-4 pt-4 pb-24">
-      <SectionTitle title="Verwaltung" eyebrow="Vorstand" />
-      <div className="rounded-2xl p-4 mb-5 flex items-center gap-3" style={{ background: C.ink }}>
+      <SectionTitle title={sponsorOnly ? "Sponsorenmanager" : "Verwaltung"} eyebrow={sponsorOnly ? "Anzeigen & Kampagnen" : "Vorstand"} />
+      {!sponsorOnly && <div className="rounded-2xl p-4 mb-5 flex items-center gap-3" style={{ background: C.ink }}>
         <ShieldCheck size={22} style={{ color: C.amber }} />
         <div>
           <div className="text-white text-sm" style={{ fontFamily: "Inter", fontWeight: 700 }}>{members.length} Mitglieder</div>
           <div className="text-xs" style={{ color: "#B7B6BC", fontFamily: "Inter" }}>{openCount} Beiträge für August noch offen</div>
         </div>
-      </div>
+      </div>}
 
       <div className="flex gap-2 mb-4 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
         {panels.map(([k, l]) => (
@@ -2071,7 +2102,7 @@ function AdminView({
 /* ------------------------------------------------------------------ */
 /* App shell                                                            */
 /* ------------------------------------------------------------------ */
-function baseTabs(isAdminUser, canEditNews) {
+function baseTabs(isAdminUser, canEditNews, canEditSponsors) {
   const tabs = [
     { id: "home", label: "Home", icon: Home },
     { id: "events", label: "Termine", icon: CalendarDays },
@@ -2080,7 +2111,7 @@ function baseTabs(isAdminUser, canEditNews) {
     { id: "profile", label: "Profil", icon: User },
   ];
   if (canEditNews) tabs.splice(3, 0, { id: "redaktion", label: "Redaktion", icon: Newspaper });
-  if (isAdminUser) tabs.splice(canEditNews ? 5 : 4, 0, { id: "admin", label: "Verwaltung", icon: ShieldCheck });
+  if (isAdminUser || canEditSponsors) tabs.splice(canEditNews ? 5 : 4, 0, { id: "admin", label: canEditSponsors && !isAdminUser ? "Sponsoren" : "Verwaltung", icon: ShieldCheck });
   return tabs;
 }
 const SUBVIEW_TITLES = { season: "Spieler der Saison", tipp: "Tippspiel", duty: "Helferplanung" };
@@ -2171,7 +2202,8 @@ export default function ERGIserlohnApp() {
 
   const currentUserIsAdmin = isAdmin(currentUser);
   const currentUserCanEditNews = canWriteNews(currentUser);
-  const TABS = baseTabs(currentUserIsAdmin, currentUserCanEditNews);
+  const currentUserCanEditSponsors = canManageSponsors(currentUser);
+  const TABS = baseTabs(currentUserIsAdmin, currentUserCanEditNews, currentUserCanEditSponsors);
 
   return (
     <div className="erg-app w-full min-h-screen flex items-center justify-center p-4" style={{ background: "#DEDAD0", fontFamily: "Inter" }}>
@@ -2244,7 +2276,7 @@ export default function ERGIserlohnApp() {
               {!subView && tab === "fees" && <FeesView user={currentUser} paid={!!feePaid[currentUser.id]} onPay={payFee} />}
               {!subView && tab === "chat" && <ChatView user={currentUser} channels={channels} setChannels={setChannels} activeId={chatChannelId} setActiveId={setChatChannelId} />}
               {!subView && tab === "redaktion" && currentUserCanEditNews && <RedaktionView user={currentUser} channels={channels} setChannels={setChannels} />}
-              {!subView && tab === "admin" && currentUserIsAdmin && (
+              {!subView && tab === "admin" && (currentUserIsAdmin || currentUserCanEditSponsors) && (
                 <AdminView members={clubMembers} setMembers={setMembers} feePaid={feePaid} setFeePaid={setFeePaid} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} seasonVotes={seasonVotes}
                   currentUser={currentUser} channels={channels} setChannels={setChannels} maintenanceMode={maintenanceMode} setMaintenanceMode={setMaintenanceMode} onResetDemo={resetDemoData}
                   protocols={protocols} setProtocols={setProtocols} remindersSent={remindersSent} setRemindersSent={setRemindersSent}
