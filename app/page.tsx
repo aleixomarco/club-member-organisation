@@ -2236,6 +2236,7 @@ export default function ERGIserlohnApp() {
     setTab("home");
   };
   const logout = () => { setCurrentUserId(null); setSelectedClubId(null); setAuthScreen("club"); setTab("home"); setTabHistory([]); setSubView(null); };
+  const returnToClubOverview = () => { setCurrentUserId(null); setSelectedClubId(null); setAuthScreen("club"); setTab("home"); setTabHistory([]); setSubView(null); setEventFocusRequest(null); };
   const awardRsvpPoint = () => setMembers((ms) => ms.map((m) => (m.id === currentUserId ? { ...m, points: m.points + 10 } : m)));
   const payFee = () => setFeePaid((f) => ({ ...f, [currentUserId]: true }));
   const goNews = () => { setChatChannelId("news"); navigateTab("chat"); };
@@ -2292,6 +2293,7 @@ export default function ERGIserlohnApp() {
                     <div className="text-xs leading-none" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink, letterSpacing: 0.5 }}>{currentClub?.shortName}</div>
                     <div className="text-[10px]" style={{ color: C.textDim }}>seit {currentClub?.foundedYear}</div>
                   </div>
+                  <button onClick={returnToClubOverview} className="ml-1 px-2 py-1.5 rounded-lg text-[9px] leading-tight font-bold text-left" style={{background:C.paperDim,color:C.textDim,maxWidth:88}}>Zur Vereinsübersicht</button>
                 </div>
                 <button className="relative w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.white, border: `1px solid ${C.line}` }}>
                   <Bell size={14} style={{ color: C.ink }} />
