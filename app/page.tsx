@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import {
   Home, CalendarDays, Wallet, MessageCircle, User, ChevronRight,
-  Check, X, HelpCircle, Users, Award, Gift, MapPin, Clock, Send,
+  Check, X, Users, Award, Gift, MapPin, Clock, Send,
   Trophy, Flame, Cake, Megaphone, Euro, CheckCircle2, Circle, Car,
   Sparkles, Image as ImageIcon, ChevronDown, Star, Mail, Lock, LogOut,
   ShieldCheck, ArrowRight, ArrowLeft, AlertCircle, UserPlus, Eye, EyeOff,
@@ -153,16 +153,16 @@ const INITIAL_DUTY_PLAN = {
 /* Mock content data                                                   */
 /* ------------------------------------------------------------------ */
 const EVENTS = [
-  { id: 1, type: "training", title: "Training Herren 1", date: "2026-08-04T18:30:00", location: "Hemberghalle, Iserlohn", desc: "Reguläres Mannschaftstraining. Schienbeinschoner nicht vergessen!", going: 14, maybe: 2, no: 1, carpool: false, youthClassIds: ["herren1"] },
-  { id: 2, type: "spiel", team: "Herren 1", title: "Heimspiel vs. Herringen", date: "2026-08-09T19:00:00", location: "Hemberghalle, Iserlohn", desc: "Bundesliga, Spieltag 3. Support von den Rängen ist gewünscht!", going: 11, maybe: 1, no: 0, carpool: false, home: true, helperSlots: ["Theke", "Zeitnahme", "Grill", "Kasse"] },
-  { id: 3, type: "spiel", team: "Herren 1", title: "Auswärtsspiel bei ERC Wimbern", date: "2026-08-16T20:00:00", location: "Wimbern · 85 km", desc: "Gemeinsame Abfahrt ab Hemberghalle. Fahrgemeinschaft bitte eintragen.", going: 9, maybe: 3, no: 0, carpool: true, home: false },
-  { id: 4, type: "event", title: "Sommerfest & Saisonabschluss", date: "2026-08-23T15:00:00", location: "Vereinsheim am Hemberg", desc: "Grillen, Siegerehrung U11–U15, abends DJ. Familien sind herzlich willkommen.", going: 38, maybe: 6, no: 0, carpool: false, helperSlots: ["Aufbau", "Kuchenbuffet", "Abbau"] },
-  { id: 5, type: "training", title: "Torwarttraining Spezial", date: "2026-08-11T19:00:00", location: "Hemberghalle", desc: "Extra-Einheit mit Torwarttrainer Miguel Costa.", going: 3, maybe: 1, no: 0, carpool: false, youthClassIds: ["herren1", "damen1"] },
-  { id: 6, type: "spiel", team: "Herren 1", title: "Heimspiel vs. Cronenberg", date: "2026-08-30T19:00:00", location: "Hemberghalle, Iserlohn", desc: "Bundesliga, Spieltag 5.", going: 10, maybe: 2, no: 0, carpool: false, home: true, helperSlots: ["Theke", "Zeitnahme", "Grill", "Kasse"] },
-  { id: 7, type: "spiel", team: "U11", title: "U11 Heimspiel vs. Hüls", date: "2026-08-15T11:00:00", location: "Hemberghalle, Iserlohn", desc: "Jugendspieltag der U11.", going: 13, maybe: 1, no: 0, carpool: false, home: true },
-  { id: 8, type: "spiel", team: "U15", title: "U15 bei RSC Cronenberg", date: "2026-08-22T13:30:00", location: "Wuppertal", desc: "Auswärtsspiel der U15.", going: 10, maybe: 2, no: 1, carpool: true, home: false },
-  { id: 9, type: "spiel", team: "Herren 2", title: "Herren 2 vs. SC Bison Calenberg", date: "2026-08-23T18:00:00", location: "Hemberghalle, Iserlohn", desc: "Heimspiel der zweiten Mannschaft.", going: 9, maybe: 3, no: 0, carpool: false, home: true },
-  { id: 10, type: "spiel", team: "Damen 1", title: "Damen 1 vs. RSC Gera", date: "2026-08-29T16:00:00", location: "Hemberghalle, Iserlohn", desc: "Heimspiel der Damenmannschaft.", going: 11, maybe: 1, no: 0, carpool: false, home: true },
+  { id: 1, type: "training", team: "Herren 1", title: "Training Herren 1", date: "2026-08-04T18:30:00", location: "Hemberghalle, Iserlohn", desc: "Reguläres Mannschaftstraining. Schienbeinschoner nicht vergessen!", carpool: false, youthClassIds: ["herren1"] },
+  { id: 2, type: "spiel", team: "Herren 1", title: "Heimspiel vs. Herringen", date: "2026-08-09T19:00:00", location: "Hemberghalle, Iserlohn", desc: "Bundesliga, Spieltag 3. Support von den Rängen ist gewünscht!", carpool: false, home: true, helperSlots: ["Theke", "Zeitnahme", "Grill", "Kasse"] },
+  { id: 3, type: "spiel", team: "Herren 1", title: "Auswärtsspiel bei ERC Wimbern", date: "2026-08-16T20:00:00", location: "Wimbern · 85 km", desc: "Gemeinsame Abfahrt ab Hemberghalle. Fahrgemeinschaft bitte eintragen.", carpool: true, home: false },
+  { id: 4, type: "event", title: "Sommerfest & Saisonabschluss", date: "2026-08-23T15:00:00", location: "Vereinsheim am Hemberg", desc: "Grillen, Siegerehrung U11–U15, abends DJ. Familien sind herzlich willkommen.", carpool: false, helperSlots: ["Aufbau", "Kuchenbuffet", "Abbau"] },
+  { id: 5, type: "training", team: "Herren 1", title: "Torwarttraining Spezial", date: "2026-08-11T19:00:00", location: "Hemberghalle", desc: "Extra-Einheit mit Torwarttrainer Miguel Costa.", carpool: false, youthClassIds: ["herren1", "damen1"] },
+  { id: 6, type: "spiel", team: "Herren 1", title: "Heimspiel vs. Cronenberg", date: "2026-08-30T19:00:00", location: "Hemberghalle, Iserlohn", desc: "Bundesliga, Spieltag 5.", carpool: false, home: true, helperSlots: ["Theke", "Zeitnahme", "Grill", "Kasse"] },
+  { id: 7, type: "spiel", team: "U11", title: "U11 Heimspiel vs. Hüls", date: "2026-08-15T11:00:00", location: "Hemberghalle, Iserlohn", desc: "Jugendspieltag der U11.", carpool: false, home: true },
+  { id: 8, type: "spiel", team: "U15", title: "U15 bei RSC Cronenberg", date: "2026-08-22T13:30:00", location: "Wuppertal", desc: "Auswärtsspiel der U15.", carpool: true, home: false },
+  { id: 9, type: "spiel", team: "Herren 2", title: "Herren 2 vs. SC Bison Calenberg", date: "2026-08-23T18:00:00", location: "Hemberghalle, Iserlohn", desc: "Heimspiel der zweiten Mannschaft.", carpool: false, home: true },
+  { id: 10, type: "spiel", team: "Damen 1", title: "Damen 1 vs. RSC Gera", date: "2026-08-29T16:00:00", location: "Hemberghalle, Iserlohn", desc: "Heimspiel der Damenmannschaft.", carpool: false, home: true },
 ];
 
 const YOUTH_CLASSES = [
@@ -896,7 +896,7 @@ function HelperSlots({ ev, members, currentUser, dutyPlan, setDutyPlan, eligible
 /* ------------------------------------------------------------------ */
 /* Events                                                               */
 /* ------------------------------------------------------------------ */
-function EventCard({ ev, rsvp, onRsvp, carpoolOn, onCarpool, guestCount, onGuestChange, currentUser, members, isAdminUser, dutyPlan, setDutyPlan, canCancelTraining, onCancelTraining }) {
+function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser, dutyPlan, setDutyPlan, canCancelTraining, onCancelTraining }) {
   const [open, setOpen] = useState(false);
   const meta = typeMeta[ev.type];
 
@@ -912,7 +912,7 @@ function EventCard({ ev, rsvp, onRsvp, carpoolOn, onCarpool, guestCount, onGuest
               <span className="text-lg" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>{new Date(ev.date).getDate()}</span>
             </div>
             <div>
-              <div className="flex flex-wrap gap-1 mb-1"><Pill bg={meta.color}>{meta.label}{ev.team ? ` · ${ev.team}` : ""}{ev.home ? " · Heim" : ""}</Pill>{ev.cancelled&&<Pill bg={C.red}>ABGESAGT</Pill>}</div>
+              <div className="flex flex-wrap gap-1 mb-1"><Pill bg={meta.color}>{meta.label}{ev.team ? ` · ${ev.team}` : ""}{ev.type === "spiel" ? ` · ${ev.home ? "Heim" : "Auswärts"}` : ""}</Pill>{ev.cancelled&&<Pill bg={C.red}>ABGESAGT</Pill>}</div>
               <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{ev.title}</div>
               <div className="flex items-center gap-1 text-xs mt-1" style={{ color: C.textDim, fontFamily: "Inter" }}>
                 <Clock size={11} /> {formatTime(ev.date)} <span className="mx-0.5">·</span> <MapPin size={11} /> {ev.location}
@@ -926,33 +926,7 @@ function EventCard({ ev, rsvp, onRsvp, carpoolOn, onCarpool, guestCount, onGuest
         <div className="px-4 pb-4">
           {ev.cancelled&&<div className="rounded-xl p-3 mb-3 text-xs font-bold" style={{background:"#FCEBEE",color:C.red,border:"1px solid #F3B9B9"}}>Dieses Training wurde für {ev.team} abgesagt.</div>}
           <p className="text-sm mb-3" style={{ color: C.textDim, fontFamily: "Inter" }}>{ev.desc}</p>
-          {!ev.cancelled&&<div className="flex gap-2 mb-3">
-            {[{ key: "yes", label: "Zusage", icon: Check, active: C.green }, { key: "maybe", label: "Vielleicht", icon: HelpCircle, active: C.amber }, { key: "no", label: "Absage", icon: X, active: C.red }].map((b) => {
-              const isActive = rsvp === b.key;
-              return (
-                <button key={b.key} onClick={() => onRsvp(ev.id, b.key)} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs"
-                  style={{ fontFamily: "Inter", fontWeight: 700, background: isActive ? b.active : C.paper, color: isActive ? C.white : C.textDim, border: `1px solid ${isActive ? b.active : C.line}` }}>
-                  <b.icon size={13} /> {b.label}
-                </button>
-              );
-            })}
-          </div>}
-
-          <div className="flex items-center justify-between text-xs mb-3" style={{ color: C.textDim, fontFamily: "Inter" }}>
-            <span>{ev.going} zugesagt · {ev.maybe} vielleicht · {ev.no} abgesagt</span>
-          </div>
           {canCancelTraining&&!ev.cancelled&&<button onClick={()=>onCancelTraining(ev.id)} className="w-full py-2.5 rounded-xl text-xs font-bold mb-3" style={{background:"#FCEBEE",color:C.red,border:"1px solid #F3B9B9"}}>Training für {ev.team} absagen</button>}
-
-          {ev.type === "event" && rsvp === "yes" && (
-            <div className="flex items-center justify-between px-3 py-2 rounded-lg mb-3" style={{ background: C.paper }}>
-              <span className="text-xs" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Begleitpersonen</span>
-              <div className="flex items-center gap-3">
-                <button onClick={() => onGuestChange(ev.id, -1)} className="w-6 h-6 rounded-full flex items-center justify-center text-sm" style={{ background: C.paperDim, color: C.ink, fontFamily: "Inter", fontWeight: 700 }}>−</button>
-                <span className="text-sm w-4 text-center" style={{ fontFamily: "JetBrains Mono", fontWeight: 700, color: C.ink }}>{guestCount}</span>
-                <button onClick={() => onGuestChange(ev.id, 1)} className="w-6 h-6 rounded-full flex items-center justify-center text-sm" style={{ background: C.paperDim, color: C.ink, fontFamily: "Inter", fontWeight: 700 }}>+</button>
-              </div>
-            </div>
-          )}
 
           {ev.carpool && (
             <button onClick={() => onCarpool(ev.id)} className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs mb-1"
@@ -972,7 +946,7 @@ function EventCard({ ev, rsvp, onRsvp, carpoolOn, onCarpool, guestCount, onGuest
     </div>
   );
 }
-function EventsView({ currentUser, members, events, setEvents, rsvps, setRsvps, carpools, setCarpools, guestCounts, setGuestCounts, dutyPlan, setDutyPlan, sponsorBookings, onSponsorImpression, onSponsorClick, onRsvpPoint, focusRequest, onFocusApplied }) {
+function EventsView({ currentUser, members, events, setEvents, carpools, setCarpools, dutyPlan, setDutyPlan, sponsorBookings, onSponsorImpression, onSponsorClick, focusRequest, onFocusApplied }) {
   const [filter, setFilter] = useState("alle");
   const [showCreate, setShowCreate] = useState(false);
   const [eventDraft, setEventDraft] = useState({ type: "training", team: "", title: "", date: "", location: "", desc: "" });
@@ -997,9 +971,7 @@ function EventsView({ currentUser, members, events, setEvents, rsvps, setRsvps, 
     return e.youthClassIds?.includes(TEAM_TO_YOUTHCLASS[teamFilter]);
   });
   const userId = currentUser.id;
-  const myRsvps = rsvps[userId] || {};
   const myCarpools = carpools[userId] || {};
-  const myGuests = guestCounts[userId] || {};
   const isAdminUser = isAdmin(currentUser);
   const canCreateSportEvent = isSysAdmin(currentUser) || currentUser.roles.includes("trainer") || currentUser.roles.includes("kapitaen");
   const allowedEventTeams = isSysAdmin(currentUser) ? filterTeams : currentUser.roles.includes("trainer") ? (currentUser.teams?.length ? currentUser.teams : [currentUser.team]).filter((team) => filterTeams.includes(team)) : [currentUser.team].filter((team) => filterTeams.includes(team));
@@ -1010,7 +982,7 @@ function EventsView({ currentUser, members, events, setEvents, rsvps, setRsvps, 
   const createSportEvent = (event) => {
     event.preventDefault();
     if (!eventDraft.team || !allowedEventTeams.includes(eventDraft.team) || !eventDraft.title.trim() || !eventDraft.date || !eventDraft.location.trim()) return;
-    const created = { id: Date.now(), type: eventDraft.type, team: eventDraft.team, title: eventDraft.title.trim(), date: eventDraft.date, location: eventDraft.location.trim(), desc: eventDraft.desc.trim(), going: 0, maybe: 0, no: 0, carpool: false, home: true, ...(eventDraft.type === "training" ? { youthClassIds: [TEAM_TO_YOUTHCLASS[eventDraft.team]] } : {}) };
+    const created = { id: Date.now(), type: eventDraft.type, team: eventDraft.team, title: eventDraft.title.trim(), date: eventDraft.date, location: eventDraft.location.trim(), desc: eventDraft.desc.trim(), carpool: false, home: true, ...(eventDraft.type === "training" ? { youthClassIds: [TEAM_TO_YOUTHCLASS[eventDraft.team]] } : {}) };
     setEvents((all) => [...all, created].sort((a, b) => new Date(a.date) - new Date(b.date)));
     setFilter(eventDraft.type);
     setTeamFilter(eventDraft.team);
@@ -1023,18 +995,7 @@ function EventsView({ currentUser, members, events, setEvents, rsvps, setRsvps, 
     setSavedTeam(teamFilter);
   };
 
-  const handleRsvp = (id, val) => {
-    const prev = myRsvps[id];
-    const next = prev === val ? null : val;
-    setRsvps((r) => ({ ...r, [userId]: { ...(r[userId] || {}), [id]: next } }));
-    if (next === "yes" && prev !== "yes") onRsvpPoint();
-  };
   const handleCarpool = (id) => setCarpools((c) => ({ ...c, [userId]: { ...(c[userId] || {}), [id]: !myCarpools[id] } }));
-  const handleGuestChange = (id, delta) => setGuestCounts((g) => {
-    const cur = g[userId]?.[id] || 0;
-    const next = Math.max(0, Math.min(6, cur + delta));
-    return { ...g, [userId]: { ...(g[userId] || {}), [id]: next } };
-  });
 
   return (
     <div className="px-4 pt-4 pb-24">
@@ -1060,9 +1021,7 @@ function EventsView({ currentUser, members, events, setEvents, rsvps, setRsvps, 
           const canCancelTraining = ev.type === "training" && ((currentUser.roles.includes("trainer") && trainerTeams.includes(ev.team)) || (currentUser.roles.includes("kapitaen") && currentUser.team === ev.team) || (currentUser.roles.includes("teammanager") && currentUser.managedTeam === ev.team));
           return (
         <EventCard key={ev.id} ev={ev}
-          rsvp={myRsvps[ev.id]} onRsvp={handleRsvp}
           carpoolOn={!!myCarpools[ev.id]} onCarpool={handleCarpool}
-          guestCount={myGuests[ev.id] || 0} onGuestChange={handleGuestChange}
           currentUser={currentUser} members={members} isAdminUser={isAdminUser}
           dutyPlan={dutyPlan} setDutyPlan={setDutyPlan}
           canCancelTraining={canCancelTraining} onCancelTraining={cancelTraining}
@@ -1475,7 +1434,7 @@ function ProfileView({ user, members, setMembers, sponsorBookings, onSponsorImpr
           <div className="h-full rounded-full" style={{ width: `${Math.min(100, (user.points / goal) * 100)}%`, background: C.amber, transition: "width .4s" }} />
         </div>
         <div className="text-xs mt-2" style={{ color: C.textDim, fontFamily: "Inter" }}>
-          {user.points >= goal ? "Prämie freigeschaltet — sprich den Vorstand an! 🎉" : `Noch ${goal - user.points} Punkte bis zum kostenlosen Vereins-Hoodie 🧥 (Zusagen bringen Punkte)`}
+          {user.points >= goal ? "Prämie freigeschaltet — sprich den Vorstand an! 🎉" : `Noch ${goal - user.points} Punkte bis zum kostenlosen Vereins-Hoodie 🧥`}
         </div>
       </div>
 
@@ -2156,7 +2115,7 @@ function SystemPanel({ members, channels, setChannels, maintenanceMode, setMaint
         <div className="text-sm mb-2" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Demo-Daten</div>
         {!confirmReset ? (
           <button onClick={() => setConfirmReset(true)} className="w-full py-3 rounded-2xl text-sm" style={{ background: C.paperDim, color: C.red, fontFamily: "Inter", fontWeight: 700 }}>
-            Zusagen, Tipps, Beiträge & Helfer zurücksetzen
+            Tipps, Beiträge & Helfer zurücksetzen
           </button>
         ) : (
           <div className="rounded-2xl p-3" style={{ background: "#FDECEC", border: "1px solid #F3B9B9" }}>
@@ -2295,9 +2254,7 @@ export default function ERGIserlohnApp() {
   const [feePaid, setFeePaid] = useState(INITIAL_FEE_PAID);
   const [feeRecords, setFeeRecords] = useState(INITIAL_FEE_RECORDS);
   const [events, setEvents] = useState(EVENTS);
-  const [rsvps, setRsvps] = useState({});
   const [carpools, setCarpools] = useState({});
-  const [guestCounts, setGuestCounts] = useState({});
   const [channels, setChannels] = useState(INITIAL_CHANNELS);
   const [chatChannelId, setChatChannelId] = useState("team");
   const [seasonVotes, setSeasonVotes] = useState({});
@@ -2346,14 +2303,13 @@ export default function ERGIserlohnApp() {
   };
   const logout = () => { setCurrentUserId(null); setSelectedClubId(null); setAuthScreen("club"); setTab("home"); setTabHistory([]); setSubView(null); };
   const returnToClubOverview = () => { setCurrentUserId(null); setSelectedClubId(null); setAuthScreen("club"); setTab("home"); setTabHistory([]); setSubView(null); setEventFocusRequest(null); };
-  const awardRsvpPoint = () => setMembers((ms) => ms.map((m) => (m.id === currentUserId ? { ...m, points: m.points + 10 } : m)));
   const goNews = () => { setChatChannelId("news"); navigateTab("chat"); };
   const goToMyNextMatch = () => { setEventFocusRequest({ team: currentUser?.team || "alle", requestedAt: Date.now() }); navigateTab("events"); };
   const onSponsorImpression = (slotKey) => setSponsorStats((s) => ({ ...s, [slotKey]: { impressions: (s[slotKey]?.impressions || 0) + 1, clicks: s[slotKey]?.clicks || 0 } }));
   const onSponsorClick = (slotKey) => setSponsorStats((s) => ({ ...s, [slotKey]: { impressions: s[slotKey]?.impressions || 0, clicks: (s[slotKey]?.clicks || 0) + 1 } }));
   const resetDemoData = () => {
-    setRsvps({}); setCarpools({}); setSeasonVotes({}); setTippPredictions({});
-    setGuestCounts({}); setRemindersSent({});
+    setCarpools({}); setSeasonVotes({}); setTippPredictions({});
+    setRemindersSent({});
     setFeePaid(INITIAL_FEE_PAID); setFeeRecords(INITIAL_FEE_RECORDS); setEvents(EVENTS); setDutyPlan(INITIAL_DUTY_PLAN); setChannels(INITIAL_CHANNELS);
   };
 
@@ -2424,9 +2380,9 @@ export default function ERGIserlohnApp() {
                   goEvents={goToMyNextMatch} goSeason={() => setSubView("season")} goTipp={() => setSubView("tipp")} goDuty={() => setSubView("duty")} goNews={goNews} />
               )}
               {!subView && tab === "events" && (
-                <EventsView currentUser={currentUser} members={clubMembers} events={events} setEvents={setEvents} rsvps={rsvps} setRsvps={setRsvps} carpools={carpools} setCarpools={setCarpools}
-                  guestCounts={guestCounts} setGuestCounts={setGuestCounts} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan}
-                  sponsorBookings={sponsorBookings} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick} onRsvpPoint={awardRsvpPoint}
+                <EventsView currentUser={currentUser} members={clubMembers} events={events} setEvents={setEvents} carpools={carpools} setCarpools={setCarpools}
+                  dutyPlan={dutyPlan} setDutyPlan={setDutyPlan}
+                  sponsorBookings={sponsorBookings} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick}
                   focusRequest={eventFocusRequest} onFocusApplied={()=>setEventFocusRequest(null)} />
               )}
               {!subView && tab === "fees" && currentUserCanManageFees && <FeesView members={clubMembers} records={feeRecords} setRecords={setFeeRecords} />}
