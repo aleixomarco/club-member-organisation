@@ -65,6 +65,7 @@ const ROLE_META = {
   sponsorenmanager: { label: "Sponsorenmanager", color: "#B17912", admin: false, formalMember: true, selfService: false },
   trainer: { label: "Trainer/in", color: "#2D6F8E", admin: false, formalMember: true, selfService: false },
   kapitaen: { label: "Kapitän/in", color: "#D66B1F", admin: false, formalMember: true, selfService: false },
+  teammanager: { label: "Teammanager/in", color: "#6F5B9A", admin: false, formalMember: true, selfService: false },
   spieler: { label: "Spieler/in", color: C.green, admin: false, formalMember: true, selfService: true },
   eltern: { label: "Eltern", color: C.amber, admin: false, formalMember: true, selfService: true },
   mitglied: { label: "Mitglied", color: "#8B8A85", admin: false, formalMember: true, selfService: true, alwaysOn: true },
@@ -116,7 +117,7 @@ const INITIAL_CLUBS = [
 const INITIAL_MEMBERS = [
   { id: "m1", clubId: "ergi", name: "Marco Schulte", email: "marco@ergi.de", password: "demo", team: "Herren 1", number: 14, since: 2019, roles: ["sysadmin", "vorstand", "spieler", "mitglied"], color: C.red, points: 740, tippPoints: 14, badges: ["streak", "loyalty", "fairplay", "referrer"], birthdate: "1994-05-12" },
   { id: "m2", clubId: "ergi", name: "Jasmin Reiter", email: "jasmin@ergi.de", password: "demo", team: "Damen 1", number: 7, since: 2021, roles: ["kapitaen", "spieler", "mitglied"], color: C.amber, points: 410, tippPoints: 9, badges: ["loyalty"], birthdate: "1998-03-02" },
-  { id: "m3", clubId: "ergi", name: "Sabine Thomas", email: "sabine@ergi.de", password: "demo", team: "Eltern / Angehörige", number: null, since: 2023, roles: ["eltern", "mitglied"], color: C.green, points: 120, tippPoints: 5, badges: [], birthdate: "1985-09-14", familyId: "fam-thomas", familyRole: "eltern" },
+  { id: "m3", clubId: "ergi", name: "Sabine Thomas", email: "sabine@ergi.de", password: "demo", team: "Eltern / Angehörige", managedTeam: "U11", number: null, since: 2023, roles: ["eltern", "teammanager", "mitglied"], color: C.green, points: 120, tippPoints: 5, badges: [], birthdate: "1985-09-14", familyId: "fam-thomas", familyRole: "eltern" },
   { id: "v1", clubId: "ergi", name: "Peter Vogt", email: "vorstand@ergi.de", password: "demo", team: "Vorstand", number: null, since: 2015, roles: ["vorstand", "mitglied"], color: C.ink, points: 60, tippPoints: 2, badges: ["loyalty"], birthdate: "1975-01-20" },
   { id: "m4", clubId: "ergi", name: "Mia Thomas", email: "mia@ergi.de", password: "demo", team: "U11", number: 5, since: 2024, roles: ["spieler", "mitglied"], color: "#7C6FE0", points: 30, tippPoints: 0, badges: [], birthdate: "2015-06-01", familyId: "fam-thomas", familyRole: "kind" },
   { id: "m5", clubId: "ergi", name: "Helga Thomas", email: "helga@ergi.de", password: "demo", team: "Eltern / Angehörige", number: null, since: 2023, roles: ["mitglied"], color: "#B98B3E", points: 20, tippPoints: 0, badges: [], birthdate: "1952-02-11", familyId: "fam-thomas", familyRole: "großeltern" },
@@ -895,7 +896,7 @@ function HelperSlots({ ev, members, currentUser, dutyPlan, setDutyPlan, eligible
 /* ------------------------------------------------------------------ */
 /* Events                                                               */
 /* ------------------------------------------------------------------ */
-function EventCard({ ev, rsvp, onRsvp, carpoolOn, onCarpool, guestCount, onGuestChange, currentUser, members, isAdminUser, dutyPlan, setDutyPlan }) {
+function EventCard({ ev, rsvp, onRsvp, carpoolOn, onCarpool, guestCount, onGuestChange, currentUser, members, isAdminUser, dutyPlan, setDutyPlan, canCancelTraining, onCancelTraining }) {
   const [open, setOpen] = useState(false);
   const meta = typeMeta[ev.type];
 
@@ -911,7 +912,7 @@ function EventCard({ ev, rsvp, onRsvp, carpoolOn, onCarpool, guestCount, onGuest
               <span className="text-lg" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>{new Date(ev.date).getDate()}</span>
             </div>
             <div>
-              <Pill bg={meta.color} style={{ marginBottom: 5 }}>{meta.label}{ev.team ? ` · ${ev.team}` : ""}{ev.home ? " · Heim" : ""}</Pill>
+              <div className="flex flex-wrap gap-1 mb-1"><Pill bg={meta.color}>{meta.label}{ev.team ? ` · ${ev.team}` : ""}{ev.home ? " · Heim" : ""}</Pill>{ev.cancelled&&<Pill bg={C.red}>ABGESAGT</Pill>}</div>
               <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{ev.title}</div>
               <div className="flex items-center gap-1 text-xs mt-1" style={{ color: C.textDim, fontFamily: "Inter" }}>
                 <Clock size={11} /> {formatTime(ev.date)} <span className="mx-0.5">·</span> <MapPin size={11} /> {ev.location}
@@ -923,8 +924,9 @@ function EventCard({ ev, rsvp, onRsvp, carpoolOn, onCarpool, guestCount, onGuest
       </button>
       {open && (
         <div className="px-4 pb-4">
+          {ev.cancelled&&<div className="rounded-xl p-3 mb-3 text-xs font-bold" style={{background:"#FCEBEE",color:C.red,border:"1px solid #F3B9B9"}}>Dieses Training wurde für {ev.team} abgesagt.</div>}
           <p className="text-sm mb-3" style={{ color: C.textDim, fontFamily: "Inter" }}>{ev.desc}</p>
-          <div className="flex gap-2 mb-3">
+          {!ev.cancelled&&<div className="flex gap-2 mb-3">
             {[{ key: "yes", label: "Zusage", icon: Check, active: C.green }, { key: "maybe", label: "Vielleicht", icon: HelpCircle, active: C.amber }, { key: "no", label: "Absage", icon: X, active: C.red }].map((b) => {
               const isActive = rsvp === b.key;
               return (
@@ -934,11 +936,12 @@ function EventCard({ ev, rsvp, onRsvp, carpoolOn, onCarpool, guestCount, onGuest
                 </button>
               );
             })}
-          </div>
+          </div>}
 
           <div className="flex items-center justify-between text-xs mb-3" style={{ color: C.textDim, fontFamily: "Inter" }}>
             <span>{ev.going} zugesagt · {ev.maybe} vielleicht · {ev.no} abgesagt</span>
           </div>
+          {canCancelTraining&&!ev.cancelled&&<button onClick={()=>onCancelTraining(ev.id)} className="w-full py-2.5 rounded-xl text-xs font-bold mb-3" style={{background:"#FCEBEE",color:C.red,border:"1px solid #F3B9B9"}}>Training für {ev.team} absagen</button>}
 
           {ev.type === "event" && rsvp === "yes" && (
             <div className="flex items-center justify-between px-3 py-2 rounded-lg mb-3" style={{ background: C.paper }}>
@@ -1014,6 +1017,7 @@ function EventsView({ currentUser, members, events, setEvents, rsvps, setRsvps, 
     setEventDraft({ type: "training", team: allowedEventTeams[0] || "", title: "", date: "", location: "", desc: "" });
     setShowCreate(false);
   };
+  const cancelTraining = (eventId) => setEvents((all) => all.map((item) => item.id === eventId ? { ...item, cancelled: true, cancelledBy: currentUser.id } : item));
   const saveDefaultTeam = () => {
     try { window.localStorage.setItem(preferenceKey, teamFilter); } catch {}
     setSavedTeam(teamFilter);
@@ -1051,13 +1055,20 @@ function EventsView({ currentUser, members, events, setEvents, rsvps, setRsvps, 
         <button aria-label="Als Standardansicht speichern" title="Als Standard speichern" onClick={saveDefaultTeam} disabled={savedTeam===teamFilter} className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{background:savedTeam===teamFilter?"#E7F3EC":C.paperDim,color:savedTeam===teamFilter?C.green:C.textDim}}><Star size={13} fill={savedTeam===teamFilter?C.green:"none"}/></button>
       </div>}
       {filtered.map((ev) => (
+        (() => {
+          const trainerTeams = currentUser.teams?.length ? currentUser.teams : [currentUser.team];
+          const canCancelTraining = ev.type === "training" && ((currentUser.roles.includes("trainer") && trainerTeams.includes(ev.team)) || (currentUser.roles.includes("kapitaen") && currentUser.team === ev.team) || (currentUser.roles.includes("teammanager") && currentUser.managedTeam === ev.team));
+          return (
         <EventCard key={ev.id} ev={ev}
           rsvp={myRsvps[ev.id]} onRsvp={handleRsvp}
           carpoolOn={!!myCarpools[ev.id]} onCarpool={handleCarpool}
           guestCount={myGuests[ev.id] || 0} onGuestChange={handleGuestChange}
           currentUser={currentUser} members={members} isAdminUser={isAdminUser}
           dutyPlan={dutyPlan} setDutyPlan={setDutyPlan}
+          canCancelTraining={canCancelTraining} onCancelTraining={cancelTraining}
         />
+          );
+        })()
       ))}
       {filtered.length===0&&<div className="rounded-2xl p-6 text-center text-xs" style={{background:C.paperDim,color:C.textDim}}>Für diese Mannschaft sind aktuell keine {filter === "training" ? "Trainingstermine" : "Spiele"} hinterlegt.</div>}
     </div>
@@ -2044,9 +2055,14 @@ function RolesPanel({ members, setMembers }) {
       if (m.id !== memberId) return m;
       const has = m.roles.includes(role);
       if (has && m.roles.length === 1) return m; // mindestens eine Rolle behalten
-      return { ...m, roles: has ? m.roles.filter((r) => r !== role) : [...m.roles, role] };
+      return { ...m, roles: has ? m.roles.filter((r) => r !== role) : [...m.roles, role], ...(role === "teammanager" && has ? { managedTeam: null } : {}) };
     }));
   };
+  const assignManagedTeam = (memberId, team) => setMembers((all) => all.map((member) => {
+    if (member.id === memberId) return { ...member, managedTeam: team };
+    if (team && member.managedTeam === team && member.roles.includes("teammanager")) return { ...member, managedTeam: null, roles: member.roles.filter((role) => role !== "teammanager") };
+    return member;
+  }));
   return (
     <div className="space-y-3">
       <div className="text-xs mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>Tippe eine Rolle an, um sie zu vergeben oder zu entziehen. Vereins-Administrator, Vorstand & Geschäftsführung können nur hier zugewiesen werden.</div>
@@ -2067,6 +2083,7 @@ function RolesPanel({ members, setMembers }) {
               );
             })}
           </div>
+          {m.roles.includes("teammanager")&&<div className="mt-2.5 pt-2.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] mb-1 font-bold" style={{color:C.textDim}}>Betreute Mannschaft · maximal ein Teammanager je Mannschaft</div><select value={m.managedTeam||""} onChange={(e)=>assignManagedTeam(m.id,e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{background:C.paperDim}}><option value="">Mannschaft auswählen …</option>{YOUTH_CLASSES.map((team)=><option key={team.name} value={team.name}>{team.name}</option>)}</select></div>}
         </div>
       ))}
     </div>
