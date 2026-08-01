@@ -123,9 +123,10 @@ const INITIAL_MEMBERS = [
   { id: "m6", clubId: "ergi", name: "Claudia Berg", email: "geschaeftsfuehrung@ergi.de", password: "demo", team: "Geschäftsstelle", number: null, since: 2020, roles: ["geschaeftsfuehrung", "mitglied"], color: "#3E7CB1", points: 60, tippPoints: 4, badges: [], birthdate: "1980-11-03" },
   { id: "m7", clubId: "ergi", name: "Nina Weber", email: "redaktion@ergi.de", password: "demo", team: "Geschäftsstelle", number: null, since: 2022, roles: ["redakteur", "sponsorenmanager", "mitglied"], color: "#B15CC9", points: 40, tippPoints: 0, badges: [], birthdate: "1990-07-08" },
   { id: "m8", clubId: "ergi", name: "Daniel Krüger", email: "finanzen@ergi.de", password: "demo", team: "Geschäftsstelle", number: null, since: 2024, roles: ["finanzmanager", "mitglied"], color: "#176B87", points: 20, tippPoints: 0, badges: [], birthdate: "1988-04-19" },
+  { id: "m9", clubId: "ergi", name: "Tobias Kern", email: "trainer@ergi.de", password: "demo", team: "Herren 1", teams: ["Herren 1", "U15"], number: null, since: 2021, roles: ["trainer", "mitglied"], color: "#2D6F8E", points: 35, tippPoints: 0, badges: [], birthdate: "1983-02-08" },
 ];
 
-const INITIAL_FEE_PAID = { m1: false, m2: true, m3: false, v1: true, m4: true, m5: true, m6: true, m7: true, m8: true };
+const INITIAL_FEE_PAID = { m1: false, m2: true, m3: false, v1: true, m4: true, m5: true, m6: true, m7: true, m8: true, m9: true };
 const INITIAL_FEE_RECORDS = [
   { id: "fee-1", memberId: "m1", year: "2026", type: "Mitgliedsbeitrag", amount: "120,00", paid: false, invoiceNumber: "RG-2026-001" },
   { id: "fee-2", memberId: "m2", year: "2026", type: "Mitgliedsbeitrag", amount: "120,00", paid: true, invoiceNumber: "RG-2026-002" },
@@ -968,8 +969,10 @@ function EventCard({ ev, rsvp, onRsvp, carpoolOn, onCarpool, guestCount, onGuest
     </div>
   );
 }
-function EventsView({ currentUser, members, rsvps, setRsvps, carpools, setCarpools, guestCounts, setGuestCounts, dutyPlan, setDutyPlan, sponsorBookings, onSponsorImpression, onSponsorClick, onRsvpPoint, focusRequest, onFocusApplied }) {
+function EventsView({ currentUser, members, events, setEvents, rsvps, setRsvps, carpools, setCarpools, guestCounts, setGuestCounts, dutyPlan, setDutyPlan, sponsorBookings, onSponsorImpression, onSponsorClick, onRsvpPoint, focusRequest, onFocusApplied }) {
   const [filter, setFilter] = useState("alle");
+  const [showCreate, setShowCreate] = useState(false);
+  const [eventDraft, setEventDraft] = useState({ type: "training", team: "", title: "", date: "", location: "", desc: "" });
   const preferenceKey = `ergi-match-team-${currentUser.id}`;
   const [teamFilter, setTeamFilter] = useState(() => {
     if (typeof window === "undefined") return "alle";
@@ -984,7 +987,7 @@ function EventsView({ currentUser, members, rsvps, setRsvps, carpools, setCarpoo
   }, [focusRequest]);
   const filterTeams = YOUTH_CLASSES.map((t) => t.name);
   const teamFilterActive = filter === "spiel" || filter === "training";
-  const filtered = EVENTS.filter((e) => {
+  const filtered = events.filter((e) => {
     if (filter !== "alle" && e.type !== filter) return false;
     if (!teamFilterActive || teamFilter === "alle") return true;
     if (filter === "spiel") return e.team === teamFilter;
@@ -995,6 +998,22 @@ function EventsView({ currentUser, members, rsvps, setRsvps, carpools, setCarpoo
   const myCarpools = carpools[userId] || {};
   const myGuests = guestCounts[userId] || {};
   const isAdminUser = isAdmin(currentUser);
+  const canCreateSportEvent = isSysAdmin(currentUser) || currentUser.roles.includes("trainer") || currentUser.roles.includes("kapitaen");
+  const allowedEventTeams = isSysAdmin(currentUser) ? filterTeams : currentUser.roles.includes("trainer") ? (currentUser.teams?.length ? currentUser.teams : [currentUser.team]).filter((team) => filterTeams.includes(team)) : [currentUser.team].filter((team) => filterTeams.includes(team));
+  const openCreate = () => {
+    setEventDraft((draft) => ({ ...draft, team: allowedEventTeams[0] || "" }));
+    setShowCreate(true);
+  };
+  const createSportEvent = (event) => {
+    event.preventDefault();
+    if (!eventDraft.team || !allowedEventTeams.includes(eventDraft.team) || !eventDraft.title.trim() || !eventDraft.date || !eventDraft.location.trim()) return;
+    const created = { id: Date.now(), type: eventDraft.type, team: eventDraft.team, title: eventDraft.title.trim(), date: eventDraft.date, location: eventDraft.location.trim(), desc: eventDraft.desc.trim(), going: 0, maybe: 0, no: 0, carpool: false, home: true, ...(eventDraft.type === "training" ? { youthClassIds: [TEAM_TO_YOUTHCLASS[eventDraft.team]] } : {}) };
+    setEvents((all) => [...all, created].sort((a, b) => new Date(a.date) - new Date(b.date)));
+    setFilter(eventDraft.type);
+    setTeamFilter(eventDraft.team);
+    setEventDraft({ type: "training", team: allowedEventTeams[0] || "", title: "", date: "", location: "", desc: "" });
+    setShowCreate(false);
+  };
   const saveDefaultTeam = () => {
     try { window.localStorage.setItem(preferenceKey, teamFilter); } catch {}
     setSavedTeam(teamFilter);
@@ -1015,7 +1034,8 @@ function EventsView({ currentUser, members, rsvps, setRsvps, carpools, setCarpoo
 
   return (
     <div className="px-4 pt-4 pb-24">
-      <SectionTitle title="Termine" />
+      <div className="flex items-start justify-between gap-3"><SectionTitle title="Termine" />{canCreateSportEvent&&<button onClick={openCreate} className="px-3 py-1.5 rounded-full text-xs flex-shrink-0" style={{background:C.red,color:C.white,fontWeight:700}}>＋ Eintragen</button>}</div>
+      {showCreate&&<form onSubmit={createSportEvent} className="rounded-2xl p-4 mb-4 space-y-2.5" style={{background:C.white,border:`1px solid ${C.line}`}}><div className="text-sm font-bold">Training oder Spiel eintragen</div><div className="text-[10px]" style={{color:C.textDim}}>{isSysAdmin(currentUser)?"Als Vereins-Sysadmin kannst du jede Mannschaft auswählen.":currentUser.roles.includes("trainer")?"Du kannst nur deine im Profil hinterlegten Mannschaften auswählen.":"Als Kapitän kannst du nur für deine Profilmannschaft eintragen."}</div><div className="grid grid-cols-2 gap-2"><select value={eventDraft.type} onChange={(e)=>setEventDraft({...eventDraft,type:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}><option value="training">Training</option><option value="spiel">Spiel</option></select><select value={eventDraft.team} onChange={(e)=>setEventDraft({...eventDraft,team:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}>{allowedEventTeams.map((team)=><option key={team} value={team}>{team}</option>)}</select></div><input value={eventDraft.title} onChange={(e)=>setEventDraft({...eventDraft,title:e.target.value})} placeholder={eventDraft.type==="training"?"Titel des Trainings":"Titel des Spiels"} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><input type="datetime-local" value={eventDraft.date} onChange={(e)=>setEventDraft({...eventDraft,date:e.target.value})} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><input value={eventDraft.location} onChange={(e)=>setEventDraft({...eventDraft,location:e.target.value})} placeholder="Ort" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><textarea value={eventDraft.desc} onChange={(e)=>setEventDraft({...eventDraft,desc:e.target.value})} placeholder="Beschreibung (optional)" rows={2} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none" style={{background:C.paperDim}}/><div className="flex gap-2"><button type="submit" className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{background:C.ink,color:C.white}}>Speichern</button><button type="button" onClick={()=>setShowCreate(false)} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{background:C.paperDim,color:C.textDim}}>Abbrechen</button></div></form>}
       <SponsorSlot slotKey="events_header" bookings={sponsorBookings} onImpression={onSponsorImpression} onClick={onSponsorClick} />
       <div className="flex gap-2 mb-4 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
         {[["alle", "Alle"], ["training", "Training"], ["spiel", "Spiele"], ["event", "Events"]].map(([k, l]) => (
@@ -2257,6 +2277,7 @@ export default function ERGIserlohnApp() {
 
   const [feePaid, setFeePaid] = useState(INITIAL_FEE_PAID);
   const [feeRecords, setFeeRecords] = useState(INITIAL_FEE_RECORDS);
+  const [events, setEvents] = useState(EVENTS);
   const [rsvps, setRsvps] = useState({});
   const [carpools, setCarpools] = useState({});
   const [guestCounts, setGuestCounts] = useState({});
@@ -2316,7 +2337,7 @@ export default function ERGIserlohnApp() {
   const resetDemoData = () => {
     setRsvps({}); setCarpools({}); setSeasonVotes({}); setTippPredictions({});
     setGuestCounts({}); setRemindersSent({});
-    setFeePaid(INITIAL_FEE_PAID); setFeeRecords(INITIAL_FEE_RECORDS); setDutyPlan(INITIAL_DUTY_PLAN); setChannels(INITIAL_CHANNELS);
+    setFeePaid(INITIAL_FEE_PAID); setFeeRecords(INITIAL_FEE_RECORDS); setEvents(EVENTS); setDutyPlan(INITIAL_DUTY_PLAN); setChannels(INITIAL_CHANNELS);
   };
 
   const currentUserIsAdmin = isAdmin(currentUser);
@@ -2386,7 +2407,7 @@ export default function ERGIserlohnApp() {
                   goEvents={goToMyNextMatch} goSeason={() => setSubView("season")} goTipp={() => setSubView("tipp")} goDuty={() => setSubView("duty")} goNews={goNews} />
               )}
               {!subView && tab === "events" && (
-                <EventsView currentUser={currentUser} members={clubMembers} rsvps={rsvps} setRsvps={setRsvps} carpools={carpools} setCarpools={setCarpools}
+                <EventsView currentUser={currentUser} members={clubMembers} events={events} setEvents={setEvents} rsvps={rsvps} setRsvps={setRsvps} carpools={carpools} setCarpools={setCarpools}
                   guestCounts={guestCounts} setGuestCounts={setGuestCounts} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan}
                   sponsorBookings={sponsorBookings} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick} onRsvpPoint={awardRsvpPoint}
                   focusRequest={eventFocusRequest} onFocusApplied={()=>setEventFocusRequest(null)} />
