@@ -127,11 +127,11 @@ const INITIAL_MEMBERS = [
 
 const INITIAL_FEE_PAID = { m1: false, m2: true, m3: false, v1: true, m4: true, m5: true, m6: true, m7: true, m8: true };
 const INITIAL_FEE_RECORDS = [
-  { id: "fee-1", memberId: "m1", year: "2026", type: "Aktivenbeitrag", amount: "120,00", paid: false, invoiceNumber: "RG-2026-001" },
-  { id: "fee-2", memberId: "m2", year: "2026", type: "Aktivenbeitrag", amount: "120,00", paid: true, invoiceNumber: "RG-2026-002" },
-  { id: "fee-3", memberId: "m3", year: "2026", type: "Familienbeitrag", amount: "85,00", paid: false, invoiceNumber: "RG-2026-003" },
+  { id: "fee-1", memberId: "m1", year: "2026", type: "Mitgliedsbeitrag", amount: "120,00", paid: false, invoiceNumber: "RG-2026-001" },
+  { id: "fee-2", memberId: "m2", year: "2026", type: "Mitgliedsbeitrag", amount: "120,00", paid: true, invoiceNumber: "RG-2026-002" },
+  { id: "fee-3", memberId: "m3", year: "2026", type: "Familienbeitrag", amount: "85,00", paid: false, invoiceNumber: "RG-2026-003", linkedMemberIds: ["m4", "m5"], manualNames: ["Thomas Thomas"], personCount: 4 },
   { id: "fee-4", memberId: "v1", year: "2026", type: "Mitgliedsbeitrag", amount: "60,00", paid: true, invoiceNumber: "RG-2026-004" },
-  { id: "fee-5", memberId: "m4", year: "2026", type: "Jugendbeitrag", amount: "75,00", paid: true, invoiceNumber: "RG-2026-005" },
+  { id: "fee-5", memberId: "m4", year: "2026", type: "Mitgliedsbeitrag", amount: "75,00", paid: true, invoiceNumber: "RG-2026-005" },
 ];
 const OVERDUE_DAYS = { m1: 5, m3: 14 };
 function reminderStage(days) {
@@ -1049,15 +1049,17 @@ function EventsView({ currentUser, members, rsvps, setRsvps, carpools, setCarpoo
 /* ------------------------------------------------------------------ */
 function FeesView({ members, records, setRecords }) {
   const [selectedMemberId, setSelectedMemberId] = useState(null);
-  const [form, setForm] = useState({ year: "2026", type: "Mitgliedsbeitrag", amount: "", paid: "offen", invoiceNumber: "" });
+  const [form, setForm] = useState({ year: "2026", type: "Mitgliedsbeitrag", amount: "", paid: "offen", invoiceNumber: "", linkedMemberIds: [], manualNames: "", personCount: "1" });
   const selectedMember = members.find((member) => member.id === selectedMemberId);
   const memberRecords = records.filter((record) => record.memberId === selectedMemberId);
   const addRecord = (event) => {
     event.preventDefault();
     if (!selectedMemberId || !form.year || !form.type.trim() || !form.amount.trim()) return;
-    setRecords((all) => [{ id: `fee-${Date.now()}`, memberId: selectedMemberId, year: form.year, type: form.type.trim(), amount: form.amount.trim(), paid: form.paid === "bezahlt", invoiceNumber: form.invoiceNumber.trim() }, ...all]);
-    setForm((current) => ({ ...current, amount: "", invoiceNumber: "" }));
+    const manualNames = form.type === "Familienbeitrag" ? form.manualNames.split(",").map((name) => name.trim()).filter(Boolean) : [];
+    setRecords((all) => [{ id: `fee-${Date.now()}`, memberId: selectedMemberId, year: form.year, type: form.type, amount: form.amount.trim(), paid: form.paid === "bezahlt", invoiceNumber: form.invoiceNumber.trim(), linkedMemberIds: form.type === "Familienbeitrag" ? form.linkedMemberIds : [], manualNames, personCount: form.type === "Familienbeitrag" ? Math.max(1, Number(form.personCount) || 1) : 1 }, ...all]);
+    setForm((current) => ({ ...current, amount: "", invoiceNumber: "", linkedMemberIds: [], manualNames: "", personCount: current.type === "Familienbeitrag" ? "2" : "1" }));
   };
+  const toggleFamilyMember = (memberId) => setForm((current) => ({ ...current, linkedMemberIds: current.linkedMemberIds.includes(memberId) ? current.linkedMemberIds.filter((id) => id !== memberId) : [...current.linkedMemberIds, memberId] }));
 
   if (!selectedMember) {
     return (
@@ -1099,6 +1101,14 @@ function FeesView({ members, records, setRecords }) {
               <div><div className="text-sm" style={{ fontWeight: 700, color: C.ink }}>{record.type}</div><div className="text-[11px]" style={{ color: C.textDim }}>Jahr {record.year} · {record.invoiceNumber || "ohne Rechnungsnummer"}</div></div>
               <div className="text-right"><div className="text-sm" style={{ fontFamily: "JetBrains Mono", fontWeight: 700 }}>{record.amount} €</div></div>
             </div>
+            {record.type === "Familienbeitrag" && (
+              <div className="mt-2 rounded-xl px-3 py-2 text-[11px]" style={{ background: C.paperDim, color: C.textDim }}>
+                <div style={{ fontWeight: 700, color: C.ink }}>{record.personCount || 1} Personen im Familienbeitrag</div>
+                {[...(record.linkedMemberIds || []).map((id) => members.find((member) => member.id === id)?.name).filter(Boolean), ...(record.manualNames || [])].length > 0 && (
+                  <div className="mt-0.5">{[...(record.linkedMemberIds || []).map((id) => members.find((member) => member.id === id)?.name).filter(Boolean), ...(record.manualNames || [])].join(", ")}</div>
+                )}
+              </div>
+            )}
             <button onClick={() => setRecords((all) => all.map((item) => item.id === record.id ? { ...item, paid: !item.paid } : item))} className="mt-2 px-2.5 py-1 rounded-full text-[11px]" style={{ background: record.paid ? "#E7F3EC" : "#FCEBEE", color: record.paid ? C.green : C.red, fontWeight: 700 }}>{record.paid ? "Bezahlt ✓" : "Noch nicht bezahlt"}</button>
           </div>
         ))}
@@ -1110,7 +1120,35 @@ function FeesView({ members, records, setRecords }) {
           <input value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} placeholder="Jahr" inputMode="numeric" className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }} />
           <input value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder="Beitragshöhe €" inputMode="decimal" className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }} />
         </div>
-        <input value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} placeholder="Art des Beitrags" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }} />
+        <div>
+          <label className="block text-[10px] mb-1" style={{ color: C.textDim, fontWeight: 700 }}>Beitragsart</label>
+          <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value, linkedMemberIds: [], manualNames: "", personCount: e.target.value === "Familienbeitrag" ? "2" : "1" })} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}><option value="Mitgliedsbeitrag">Mitgliedsbeitrag</option><option value="Familienbeitrag">Familienbeitrag</option></select>
+        </div>
+        {form.type === "Familienbeitrag" && (
+          <div className="rounded-xl p-3 space-y-3" style={{ background: "#F3F0E8", border: `1px solid ${C.line}` }}>
+            <div>
+              <div className="text-xs" style={{ fontWeight: 700, color: C.ink }}>Weitere Vereinsmitglieder</div>
+              <div className="text-[10px] mt-0.5 mb-2" style={{ color: C.textDim }}>Alle Personen auswählen, die ebenfalls zu diesem Familienbeitrag gehören.</div>
+              <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                {members.filter((member) => member.id !== selectedMemberId).map((member) => (
+                  <label key={member.id} className="flex items-center gap-2 text-xs cursor-pointer">
+                    <input type="checkbox" checked={form.linkedMemberIds.includes(member.id)} onChange={() => toggleFamilyMember(member.id)} />
+                    <span style={{ color: C.ink }}>{member.name}</span><span className="text-[10px]" style={{ color: C.textDim }}>({member.team})</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-[10px] mb-1" style={{ color: C.textDim, fontWeight: 700 }}>Weitere Namen ohne Benutzerkonto</label>
+              <textarea value={form.manualNames} onChange={(e) => setForm({ ...form, manualNames: e.target.value })} placeholder="z. B. Max Mustermann, Lea Mustermann" rows={2} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none" style={{ background: C.white }} />
+              <div className="text-[9px] mt-1" style={{ color: C.textDim }}>Mehrere Namen bitte durch Komma trennen.</div>
+            </div>
+            <div>
+              <label className="block text-[10px] mb-1" style={{ color: C.textDim, fontWeight: 700 }}>Anzahl der Personen insgesamt</label>
+              <input value={form.personCount} onChange={(e) => setForm({ ...form, personCount: e.target.value })} min="1" type="number" inputMode="numeric" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.white }} />
+            </div>
+          </div>
+        )}
         <input value={form.invoiceNumber} onChange={(e) => setForm({ ...form, invoiceNumber: e.target.value })} placeholder="Rechnungsnummer (optional)" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }} />
         <select value={form.paid} onChange={(e) => setForm({ ...form, paid: e.target.value })} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}><option value="offen">Noch nicht bezahlt</option><option value="bezahlt">Bezahlt</option></select>
         <button type="submit" className="w-full py-2.5 rounded-xl text-xs" style={{ background: C.ink, color: C.white, fontWeight: 700 }}>Datensatz anlegen</button>
