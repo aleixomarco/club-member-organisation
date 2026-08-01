@@ -142,11 +142,15 @@ const INITIAL_DUTY_PLAN = {
 /* ------------------------------------------------------------------ */
 const EVENTS = [
   { id: 1, type: "training", title: "Training Herren 1", date: "2026-08-04T18:30:00", location: "Hemberghalle, Iserlohn", desc: "Reguläres Mannschaftstraining. Schienbeinschoner nicht vergessen!", going: 14, maybe: 2, no: 1, carpool: false, youthClassIds: ["herren1"] },
-  { id: 2, type: "spiel", title: "Heimspiel vs. Herringen", date: "2026-08-09T19:00:00", location: "Hemberghalle, Iserlohn", desc: "Bundesliga, Spieltag 3. Support von den Rängen ist gewünscht!", going: 11, maybe: 1, no: 0, carpool: false, home: true, helperSlots: ["Theke", "Zeitnahme", "Grill", "Kasse"] },
-  { id: 3, type: "spiel", title: "Auswärtsspiel bei ERC Wimbern", date: "2026-08-16T20:00:00", location: "Wimbern · 85 km", desc: "Gemeinsame Abfahrt ab Hemberghalle. Fahrgemeinschaft bitte eintragen.", going: 9, maybe: 3, no: 0, carpool: true, home: false },
+  { id: 2, type: "spiel", team: "Herren 1", title: "Heimspiel vs. Herringen", date: "2026-08-09T19:00:00", location: "Hemberghalle, Iserlohn", desc: "Bundesliga, Spieltag 3. Support von den Rängen ist gewünscht!", going: 11, maybe: 1, no: 0, carpool: false, home: true, helperSlots: ["Theke", "Zeitnahme", "Grill", "Kasse"] },
+  { id: 3, type: "spiel", team: "Herren 1", title: "Auswärtsspiel bei ERC Wimbern", date: "2026-08-16T20:00:00", location: "Wimbern · 85 km", desc: "Gemeinsame Abfahrt ab Hemberghalle. Fahrgemeinschaft bitte eintragen.", going: 9, maybe: 3, no: 0, carpool: true, home: false },
   { id: 4, type: "event", title: "Sommerfest & Saisonabschluss", date: "2026-08-23T15:00:00", location: "Vereinsheim am Hemberg", desc: "Grillen, Siegerehrung U11–U15, abends DJ. Familien sind herzlich willkommen.", going: 38, maybe: 6, no: 0, carpool: false, helperSlots: ["Aufbau", "Kuchenbuffet", "Abbau"] },
   { id: 5, type: "training", title: "Torwarttraining Spezial", date: "2026-08-11T19:00:00", location: "Hemberghalle", desc: "Extra-Einheit mit Torwarttrainer Miguel Costa.", going: 3, maybe: 1, no: 0, carpool: false, youthClassIds: ["herren1", "damen1"] },
-  { id: 6, type: "spiel", title: "Heimspiel vs. Cronenberg", date: "2026-08-30T19:00:00", location: "Hemberghalle, Iserlohn", desc: "Bundesliga, Spieltag 5.", going: 10, maybe: 2, no: 0, carpool: false, home: true, helperSlots: ["Theke", "Zeitnahme", "Grill", "Kasse"] },
+  { id: 6, type: "spiel", team: "Herren 1", title: "Heimspiel vs. Cronenberg", date: "2026-08-30T19:00:00", location: "Hemberghalle, Iserlohn", desc: "Bundesliga, Spieltag 5.", going: 10, maybe: 2, no: 0, carpool: false, home: true, helperSlots: ["Theke", "Zeitnahme", "Grill", "Kasse"] },
+  { id: 7, type: "spiel", team: "U11", title: "U11 Heimspiel vs. Hüls", date: "2026-08-15T11:00:00", location: "Hemberghalle, Iserlohn", desc: "Jugendspieltag der U11.", going: 13, maybe: 1, no: 0, carpool: false, home: true },
+  { id: 8, type: "spiel", team: "U15", title: "U15 bei RSC Cronenberg", date: "2026-08-22T13:30:00", location: "Wuppertal", desc: "Auswärtsspiel der U15.", going: 10, maybe: 2, no: 1, carpool: true, home: false },
+  { id: 9, type: "spiel", team: "Herren 2", title: "Herren 2 vs. SC Bison Calenberg", date: "2026-08-23T18:00:00", location: "Hemberghalle, Iserlohn", desc: "Heimspiel der zweiten Mannschaft.", going: 9, maybe: 3, no: 0, carpool: false, home: true },
+  { id: 10, type: "spiel", team: "Damen 1", title: "Damen 1 vs. RSC Gera", date: "2026-08-29T16:00:00", location: "Hemberghalle, Iserlohn", desc: "Heimspiel der Damenmannschaft.", going: 11, maybe: 1, no: 0, carpool: false, home: true },
 ];
 
 const YOUTH_CLASSES = [
@@ -895,7 +899,7 @@ function EventCard({ ev, rsvp, onRsvp, carpoolOn, onCarpool, guestCount, onGuest
               <span className="text-lg" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>{new Date(ev.date).getDate()}</span>
             </div>
             <div>
-              <Pill bg={meta.color} style={{ marginBottom: 5 }}>{meta.label}{ev.home ? " · Heim" : ""}</Pill>
+              <Pill bg={meta.color} style={{ marginBottom: 5 }}>{meta.label}{ev.team ? ` · ${ev.team}` : ""}{ev.home ? " · Heim" : ""}</Pill>
               <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{ev.title}</div>
               <div className="flex items-center gap-1 text-xs mt-1" style={{ color: C.textDim, fontFamily: "Inter" }}>
                 <Clock size={11} /> {formatTime(ev.date)} <span className="mx-0.5">·</span> <MapPin size={11} /> {ev.location}
@@ -955,12 +959,23 @@ function EventCard({ ev, rsvp, onRsvp, carpoolOn, onCarpool, guestCount, onGuest
 }
 function EventsView({ currentUser, members, rsvps, setRsvps, carpools, setCarpools, guestCounts, setGuestCounts, dutyPlan, setDutyPlan, sponsorBookings, onSponsorImpression, onSponsorClick, onRsvpPoint }) {
   const [filter, setFilter] = useState("alle");
-  const filtered = EVENTS.filter((e) => filter === "alle" || e.type === filter);
+  const preferenceKey = `ergi-match-team-${currentUser.id}`;
+  const [teamFilter, setTeamFilter] = useState(() => {
+    if (typeof window === "undefined") return "alle";
+    try { return window.localStorage.getItem(preferenceKey) || "alle"; } catch { return "alle"; }
+  });
+  const [savedTeam, setSavedTeam] = useState(teamFilter);
+  const gameTeams = YOUTH_CLASSES.map((t) => t.name);
+  const filtered = EVENTS.filter((e) => (filter === "alle" || e.type === filter) && (filter !== "spiel" || teamFilter === "alle" || e.team === teamFilter));
   const userId = currentUser.id;
   const myRsvps = rsvps[userId] || {};
   const myCarpools = carpools[userId] || {};
   const myGuests = guestCounts[userId] || {};
   const isAdminUser = isAdmin(currentUser);
+  const saveDefaultTeam = () => {
+    try { window.localStorage.setItem(preferenceKey, teamFilter); } catch {}
+    setSavedTeam(teamFilter);
+  };
 
   const handleRsvp = (id, val) => {
     const prev = myRsvps[id];
@@ -985,6 +1000,13 @@ function EventsView({ currentUser, members, rsvps, setRsvps, carpools, setCarpoo
             style={{ fontFamily: "Inter", fontWeight: 700, background: filter === k ? C.ink : C.paperDim, color: filter === k ? C.white : C.textDim }}>{l}</button>
         ))}
       </div>
+      {filter === "spiel" && <div className="rounded-2xl p-3 mb-4" style={{background:C.white,border:`1px solid ${C.line}`}}>
+        <div className="flex items-center justify-between mb-2"><div><div className="text-xs font-bold" style={{color:C.ink}}>Mannschaft auswählen</div><div className="text-[10px]" style={{color:C.textDim}}>Alle Spiele oder eine feste Mannschaft anzeigen</div></div>{savedTeam===teamFilter&&<span className="text-[9px] font-bold px-2 py-1 rounded-full" style={{background:"#E7F3EC",color:C.green}}>STANDARD</span>}</div>
+        <select value={teamFilter} onChange={(e)=>setTeamFilter(e.target.value)} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim,color:C.ink,border:`1px solid ${C.line}`}}>
+          <option value="alle">Alle Mannschaften</option>{gameTeams.map((team)=><option key={team} value={team}>{team}</option>)}
+        </select>
+        <button onClick={saveDefaultTeam} disabled={savedTeam===teamFilter} className="w-full py-2 rounded-lg text-[11px] font-bold" style={{background:savedTeam===teamFilter?C.paperDim:C.ink,color:savedTeam===teamFilter?C.textDim:C.white}}>Als meine Standardansicht speichern</button>
+      </div>}
       {filtered.map((ev) => (
         <EventCard key={ev.id} ev={ev}
           rsvp={myRsvps[ev.id]} onRsvp={handleRsvp}
@@ -994,6 +1016,7 @@ function EventsView({ currentUser, members, rsvps, setRsvps, carpools, setCarpoo
           dutyPlan={dutyPlan} setDutyPlan={setDutyPlan}
         />
       ))}
+      {filtered.length===0&&<div className="rounded-2xl p-6 text-center text-xs" style={{background:C.paperDim,color:C.textDim}}>Für diese Mannschaft sind aktuell keine Spiele hinterlegt.</div>}
     </div>
   );
 }
