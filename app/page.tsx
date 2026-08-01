@@ -194,6 +194,7 @@ const INITIAL_SPONSOR_BOOKINGS = {
 };
 
 const BIRTHDAYS_TODAY = ["Lena K. (U15)", "Timo B. (Herren 1)"];
+const INITIAL_POLLS = [{ id: "poll-1", title: "Termin für die Weihnachtsfeier", active: true, options: [{ label: "Fr, 11.12.", votes: 23 }, { label: "Sa, 12.12.", votes: 31 }, { label: "Fr, 18.12.", votes: 9 }], voterIds: [] }];
 const SPONSORS = ["Sparkasse Iserlohn", "Stadtwerke Iserlohn", "Autohaus Meyer", "Fitness Point Hemberg", "Bäckerei Sauerland"];
 
 const INITIAL_CHANNELS = [
@@ -700,32 +701,32 @@ function Scoreboard({ nextEvent, goTo }) {
     </div>
   );
 }
-function PollWidget() {
-  const [options, setOptions] = useState([{ label: "Fr, 11.12.", votes: 23 }, { label: "Sa, 12.12.", votes: 31 }, { label: "Fr, 18.12.", votes: 9 }]);
-  const [voted, setVoted] = useState(null);
+function PollWidget({ poll, userId, setPolls }) {
+  const options = poll.options;
+  const voted = poll.voterIds?.includes(userId);
   const total = options.reduce((a, o) => a + o.votes, 0);
-  const vote = (i) => { if (voted !== null) return; setOptions((o) => o.map((x, idx) => (idx === i ? { ...x, votes: x.votes + 1 } : x))); setVoted(i); };
+  const vote = (i) => { if (voted) return; setPolls((ps)=>ps.map((p)=>p.id===poll.id?{...p,options:p.options.map((x,idx)=>idx===i?{...x,votes:x.votes+1}:x),voterIds:[...(p.voterIds||[]),userId]}:p)); };
   return (
     <div className="rounded-2xl p-4" style={{ background: C.white, border: `1px solid ${C.line}` }}>
       <div className="flex items-center gap-2 mb-3">
         <div className="rounded-full p-1.5" style={{ background: C.paperDim }}><Megaphone size={14} style={{ color: C.red }} /></div>
-        <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Umfrage: Weihnachtsfeier</div>
+        <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{poll.title}</div>
       </div>
       <div className="space-y-2">
         {options.map((o, i) => {
           const pct = total ? Math.round((o.votes / total) * 100) : 0;
           return (
-            <button key={o.label} onClick={() => vote(i)} className="w-full text-left relative overflow-hidden rounded-lg" style={{ border: `1px solid ${C.line}`, cursor: voted !== null ? "default" : "pointer" }}>
-              {voted !== null && <div className="absolute inset-y-0 left-0" style={{ width: `${pct}%`, background: i === voted ? "#FCEBEE" : C.paperDim, transition: "width .4s" }} />}
+            <button key={o.label} onClick={() => vote(i)} className="w-full text-left relative overflow-hidden rounded-lg" style={{ border: `1px solid ${C.line}`, cursor: voted ? "default" : "pointer" }}>
+              {voted && <div className="absolute inset-y-0 left-0" style={{ width: `${pct}%`, background: C.paperDim, transition: "width .4s" }} />}
               <div className="relative flex items-center justify-between px-3 py-2 text-sm" style={{ fontFamily: "Inter", color: C.ink }}>
-                <span className="flex items-center gap-2 font-medium">{voted === i && <CheckCircle2 size={14} style={{ color: C.red }} />}{o.label}</span>
-                {voted !== null && <span className="text-xs" style={{ color: C.textDim }}>{pct}% · {o.votes}</span>}
+                <span className="flex items-center gap-2 font-medium">{o.label}</span>
+                {voted && <span className="text-xs" style={{ color: C.textDim }}>{pct}% · {o.votes}</span>}
               </div>
             </button>
           );
         })}
       </div>
-      {voted === null && <div className="text-xs mt-2" style={{ color: C.textDim, fontFamily: "Inter" }}>Tippe, um abzustimmen</div>}
+      {!voted && <div className="text-xs mt-2" style={{ color: C.textDim, fontFamily: "Inter" }}>Tippe, um abzustimmen</div>}
     </div>
   );
 }
@@ -764,7 +765,7 @@ function NextTrainingCard({ user }) {
     </div>
   );
 }
-function Dashboard({ user, members, feePaid, channels, dutyPlan, seasonVotes, sponsorBookings, onSponsorImpression, onSponsorClick, goEvents, goFees, goSeason, goTipp, goDuty, goNews }) {
+function Dashboard({ user, members, feePaid, channels, dutyPlan, seasonVotes, polls, setPolls, sponsorBookings, onSponsorImpression, onSponsorClick, goEvents, goFees, goSeason, goTipp, goDuty, goNews }) {
   const nextEvent = EVENTS.filter((e) => e.type === "spiel" && e.team === user.team && new Date(e.date) > new Date()).sort((a,b)=>new Date(a.date)-new Date(b.date))[0] || getNextMatch();
   const newsMsgs = (channels.find((c) => c.id === "news")?.messages || []).slice(-2).reverse();
 
@@ -823,7 +824,7 @@ function Dashboard({ user, members, feePaid, channels, dutyPlan, seasonVotes, sp
       </div>
 
       <SectionTitle eyebrow="Mitmachen" title="Deine Stimme zählt" />
-      <div className="mb-6"><PollWidget /></div>
+      <div className="mb-6 space-y-3">{polls.filter((p)=>p.active).map((poll)=><PollWidget key={poll.id} poll={poll} userId={user.id} setPolls={setPolls}/>)}</div>
 
       <SectionTitle eyebrow="Partner" title="Unsere Sponsoren" />
       <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
@@ -1916,6 +1917,18 @@ function SponsoringPanel({ bookings, setBookings, stats }) {
   );
 }
 
+function PollManagerPanel({ polls, setPolls }) {
+  const [title, setTitle] = useState("");
+  const [options, setOptions] = useState(["", ""]);
+  const create = () => {
+    const clean = options.map((o)=>o.trim()).filter(Boolean);
+    if (!title.trim() || clean.length < 2) return;
+    setPolls((ps)=>[{ id:`poll-${Date.now()}`, title:title.trim(), active:true, options:clean.map((label)=>({label,votes:0})), voterIds:[] },...ps]);
+    setTitle(""); setOptions(["",""]);
+  };
+  return <div className="space-y-4"><div className="rounded-2xl p-4" style={{background:C.white,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">Neue Mitmach-Umfrage</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>Mindestens zwei Antwortmöglichkeiten eintragen.</div><input value={title} onChange={(e)=>setTitle(e.target.value)} placeholder="Frage oder Titel" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim}}/>{options.map((o,i)=><input key={i} value={o} onChange={(e)=>setOptions((all)=>all.map((x,idx)=>idx===i?e.target.value:x))} placeholder={`Antwort ${i+1}`} className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2" style={{background:C.paperDim}}/>)}<div className="flex gap-2"><button onClick={()=>setOptions((o)=>[...o,""])} className="px-3 py-2 rounded-lg text-xs font-bold" style={{background:C.paperDim,color:C.ink}}>＋ Antwort</button><button onClick={create} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{background:C.red,color:C.white}}>Veröffentlichen</button></div></div><div className="space-y-2">{polls.map((poll)=><div key={poll.id} className="rounded-xl p-3 flex items-center gap-3" style={{background:C.white,border:`1px solid ${C.line}`}}><div className="flex-1"><div className="text-xs font-bold">{poll.title}</div><div className="text-[10px] mt-1" style={{color:C.textDim}}>{poll.options.length} Antworten · {poll.options.reduce((n,o)=>n+o.votes,0)} Stimmen</div></div><button onClick={()=>setPolls((ps)=>ps.map((p)=>p.id===poll.id?{...p,active:!p.active}:p))} className="px-2.5 py-1.5 rounded-full text-[10px] font-bold" style={{background:poll.active?"#E7F3EC":C.paperDim,color:poll.active?C.green:C.textDim}}>{poll.active?"Aktiv":"Inaktiv"}</button></div>)}</div></div>;
+}
+
 /* ------------------------------------------------------------------ */
 /* Rollenverwaltung                                                     */
 /* ------------------------------------------------------------------ */
@@ -2045,12 +2058,12 @@ function AdminView({
   channels, setChannels, maintenanceMode, setMaintenanceMode, onResetDemo,
   protocols, setProtocols, remindersSent, setRemindersSent,
   welcomeAutomation, setWelcomeAutomation, billingAutomation, setBillingAutomation,
-  sponsorBookings, setSponsorBookings, sponsorStats,
+  sponsorBookings, setSponsorBookings, sponsorStats, polls, setPolls,
 }) {
   const sponsorOnly = !isAdmin(currentUser) && canManageSponsors(currentUser);
   const [panel, setPanel] = useState(sponsorOnly ? "sponsoring" : "overview");
   const openCount = members.filter((m) => !feePaid[m.id]).length;
-  const panels = sponsorOnly ? [["sponsoring", "Sponsoring"]] : [["overview", "Übersicht"], ["fees", "Beiträge"], ["automation", "Automatisierung"], ["duty", "Helferplanung"], ["protokolle", "Protokolle"], ["sponsoring", "Sponsoring"], ["season", "Spieler der Saison"], ["roles", "Rollen"]];
+  const panels = sponsorOnly ? [["sponsoring", "Sponsoring"], ["polls", "Umfragen"]] : [["overview", "Übersicht"], ["fees", "Beiträge"], ["automation", "Automatisierung"], ["duty", "Helferplanung"], ["protokolle", "Protokolle"], ["polls", "Umfragen"], ["sponsoring", "Sponsoring"], ["season", "Spieler der Saison"], ["roles", "Rollen"]];
   if (isSysAdmin(currentUser)) panels.push(["system", "System"]);
 
   return (
@@ -2099,6 +2112,7 @@ function AdminView({
       {panel === "duty" && <AdminDutyPanel members={members} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} />}
       {panel === "protokolle" && <ProtokollePanel members={members} protocols={protocols} setProtocols={setProtocols} />}
       {panel === "sponsoring" && <SponsoringPanel bookings={sponsorBookings} setBookings={setSponsorBookings} stats={sponsorStats} />}
+      {panel === "polls" && <PollManagerPanel polls={polls} setPolls={setPolls} />}
       {panel === "roles" && <RolesPanel members={members} setMembers={setMembers} />}
       {panel === "system" && isSysAdmin(currentUser) && (
         <SystemPanel members={members} channels={channels} setChannels={setChannels} maintenanceMode={maintenanceMode} setMaintenanceMode={setMaintenanceMode} onResetDemo={onResetDemo} />
@@ -2187,6 +2201,7 @@ export default function ERGIserlohnApp() {
   const [billingAutomation, setBillingAutomation] = useState(true);
   const [sponsorBookings, setSponsorBookings] = useState(INITIAL_SPONSOR_BOOKINGS);
   const [sponsorStats, setSponsorStats] = useState({});
+  const [polls, setPolls] = useState(INITIAL_POLLS);
 
   const currentUser = members.find((m) => m.id === currentUserId);
   const currentClub = clubs.find((c) => c.id === selectedClubId) || clubs.find((c) => c.id === currentUser?.clubId);
@@ -2297,7 +2312,7 @@ export default function ERGIserlohnApp() {
               {subView === "duty" && <DutyView members={clubMembers} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} />}
 
               {!subView && tab === "home" && (
-                <Dashboard user={currentUser} members={clubMembers} feePaid={!!feePaid[currentUser.id]} channels={channels} dutyPlan={dutyPlan} seasonVotes={seasonVotes}
+                <Dashboard user={currentUser} members={clubMembers} feePaid={!!feePaid[currentUser.id]} channels={channels} dutyPlan={dutyPlan} seasonVotes={seasonVotes} polls={polls} setPolls={setPolls}
                   sponsorBookings={sponsorBookings} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick}
                   goEvents={goToMyNextMatch} goFees={() => navigateTab("fees")} goSeason={() => setSubView("season")} goTipp={() => setSubView("tipp")} goDuty={() => setSubView("duty")} goNews={goNews} />
               )}
@@ -2315,7 +2330,7 @@ export default function ERGIserlohnApp() {
                   currentUser={currentUser} channels={channels} setChannels={setChannels} maintenanceMode={maintenanceMode} setMaintenanceMode={setMaintenanceMode} onResetDemo={resetDemoData}
                   protocols={protocols} setProtocols={setProtocols} remindersSent={remindersSent} setRemindersSent={setRemindersSent}
                   welcomeAutomation={welcomeAutomation} setWelcomeAutomation={setWelcomeAutomation} billingAutomation={billingAutomation} setBillingAutomation={setBillingAutomation}
-                  sponsorBookings={sponsorBookings} setSponsorBookings={setSponsorBookings} sponsorStats={sponsorStats} />
+                  sponsorBookings={sponsorBookings} setSponsorBookings={setSponsorBookings} sponsorStats={sponsorStats} polls={polls} setPolls={setPolls} />
               )}
               {!subView && tab === "profile" && <ProfileView user={currentUser} members={clubMembers} setMembers={setMembers} sponsorBookings={sponsorBookings} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick} onLogout={logout} />}
             </div>
