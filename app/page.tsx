@@ -92,6 +92,19 @@ function linkFamilyRecords(list, firstId, secondId, firstRelation) {
     return { ...m, familyId, familyRole: m.id === firstId ? firstRelation : m.id === secondId ? opposite : m.familyRole, familyLinks: links };
   });
 }
+function unlinkFamilyRecords(list, firstId, secondId) {
+  const first = list.find((member) => member.id === firstId);
+  const second = list.find((member) => member.id === secondId);
+  if (!first || !second || first.id === second.id) return list;
+  const sharedFamilyId = first.familyId && first.familyId === second.familyId ? first.familyId : null;
+  const remainingFamily = sharedFamilyId ? list.filter((member) => member.familyId === sharedFamilyId && member.id !== secondId) : [];
+  return list.map((member) => {
+    const familyLinks = (member.familyLinks || []).filter((link) => link.memberId !== secondId && !(member.id === secondId && link.memberId === firstId));
+    if (member.id === secondId) return { ...member, familyId: null, familyRole: null, familyLinks };
+    if (sharedFamilyId && member.familyId === sharedFamilyId && remainingFamily.length <= 1) return { ...member, familyId: null, familyRole: null, familyLinks };
+    return familyLinks.length !== (member.familyLinks || []).length ? { ...member, familyLinks } : member;
+  });
+}
 function age(birthdate) {
   if (!birthdate) return 0;
   const b = new Date(birthdate);
@@ -1334,6 +1347,7 @@ function FamilyLinkManager({ user, members, setMembers, adminMode = false }) {
   const [relationMode, setRelationMode] = useState(user.roles.includes("eltern") ? "eltern" : "kind");
   const userIsParent = relationMode === "eltern";
   const wantedRole = userIsParent ? "spieler" : "eltern";
+  const familyConnections = user.familyId ? members.filter((member) => member.familyId === user.familyId && member.id !== user.id) : [];
   const linkedIds = (user.familyLinks || []).map((l) => l.memberId);
   const results = members.filter((m) => m.id !== user.id && !linkedIds.includes(m.id) && !m.accountPending && m.roles.includes(wantedRole) && m.name.toLowerCase().includes(query.toLowerCase())).slice(0, 5);
   const connect = (targetId) => {
@@ -1347,8 +1361,13 @@ function FamilyLinkManager({ user, members, setMembers, adminMode = false }) {
     setMembers((ms) => linkFamilyRecords([...ms, child], user.id, id, "eltern"));
     setNewName(""); setOpen(false);
   };
+  const removeConnection = (target) => {
+    if (!window.confirm(`Familienverknüpfung zu ${target.name} wirklich löschen? Die Verbindung wird in beiden Profilen entfernt.`)) return;
+    setMembers((all) => unlinkFamilyRecords(all, user.id, target.id));
+  };
   return <div className="rounded-2xl p-4 mb-5" style={{background:C.white,border:`1px solid ${C.line}`}}>
     <div className="flex items-center justify-between"><div><div className="text-sm font-bold" style={{color:C.ink}}>Familienverknüpfung</div><div className="text-[11px]" style={{color:C.textDim}}>{adminMode ? `Sysadmin bearbeitet das Profil von ${user.name}.` : "Du verwaltest dein Familienprofil selbst."} Verknüpfungen gelten automatisch für beide Profile.</div></div><button onClick={()=>setOpen(!open)} className="px-3 py-1.5 rounded-full text-xs font-bold" style={{background:C.paperDim,color:C.ink}}>{open?"Schließen":"＋ Verknüpfen"}</button></div>
+    {familyConnections.length>0&&<div className="mt-3 pt-3 space-y-1.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] font-bold mb-1" style={{color:C.textDim}}>BESTEHENDE VERKNÜPFUNGEN</div>{familyConnections.map((member)=><div key={member.id} className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{background:C.paperDim}}><div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold" style={{background:member.color,color:C.white}}>{initialsOf(member.name)}</div><div className="flex-1 min-w-0"><div className="text-xs font-bold truncate" style={{color:C.ink}}>{member.name}</div><div className="text-[10px]" style={{color:C.textDim}}>{member.familyRole||"Familie"}</div></div><button onClick={()=>removeConnection(member)} className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold" style={{background:"#FCEBEE",color:C.red}}>Löschen</button></div>)}</div>}
     {open&&<div className="mt-3 pt-3" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[11px] font-bold mb-1">Rolle in der Verknüpfung</div><select value={relationMode} onChange={(e)=>{setRelationMode(e.target.value);setQuery("");}} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim}}><option value="eltern">Elternteil – Spieler oder Kind hinzufügen</option><option value="kind">Spieler/Kind – Elternteil hinzufügen</option></select><input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder={userIsParent?"Vorhandenen Spieler suchen …":"Vorhandenes Elternteil suchen …"} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim}}/>{query&&<div className="space-y-1">{results.map(m=><button key={m.id} onClick={()=>connect(m.id)} className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs" style={{background:C.paperDim,color:C.ink}}><span>{m.name} · {m.team}</span><span style={{color:C.red}}>Verbinden</span></button>)}{results.length===0&&<div className="text-[11px] py-2" style={{color:C.textDim}}>Kein passendes Profil gefunden.</div>}</div>}{userIsParent&&<div className="mt-3 pt-3" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[11px] font-bold mb-2">Kind ohne Account vorläufig anlegen</div><div className="flex gap-2"><input value={newName} onChange={(e)=>setNewName(e.target.value)} placeholder="Vor- und Nachname" className="flex-1 px-3 py-2 rounded-lg text-xs outline-none" style={{background:C.paperDim}}/><button onClick={createDependent} disabled={!newName.trim()} className="px-3 rounded-lg text-xs font-bold" style={{background:newName.trim()?C.red:C.line,color:"#fff"}}>Anlegen</button></div><div className="text-[10px] mt-2" style={{color:C.textDim}}>Das Kind kann sein vorläufiges Profil später beim Erstellen des eigenen Kontos übernehmen.</div></div>}</div>}
   </div>;
 }
