@@ -1,10 +1,2229 @@
 "use client";
-import {useState} from "react";
-const nav=["Übersicht","Kalender","Teams","Events","Chat","Mitglieder","Beiträge","Protokolle","Verwaltung"];
-const events=[["06","AUG","Training Herren I","18:30 · Hemberghalle"],["09","AUG","Heimspiel vs. RSC Cronenberg","16:00 · Hemberghalle"],["12","AUG","Vorstandssitzung","19:30 · Vereinsheim"]];
-const members=[["Marco Schulte","marco@ergi.de","Sys-Admin · Vorstand · Spieler","Herren I","Bezahlt"],["Claudia Berg","claudia@ergi.de","Geschäftsführung · Mitglied","—","Bezahlt"],["Sabine Thomas","sabine@ergi.de","Eltern · Mitglied","U11","Offen"],["Timo Krüger","timo@ergi.de","Trainer · Mitglied","U15","Bezahlt"],["Helga Thomas","helga@ergi.de","Fan","—","Bezahlt"]];
-function Sponsor(){return <div className="sponsor"><span>PARTNER DER ERG</span><b>Ihre Marke im Mittelpunkt</b><button>Slot anfragen →</button></div>}
-function Dashboard({notify}:{notify:(x:string)=>void}){return <><header><div><small>SAMSTAG, 1. AUGUST</small><h1>Guten Morgen, Marco.</h1><p>Alles Wichtige rund um deinen Verein – auf einen Blick.</p></div><button className="primary" onClick={()=>notify("Ein neuer Eintrag kann angelegt werden")}>＋ Neu anlegen</button></header><section className="countdown"><div><label>NÄCHSTES TRAINING</label><h2>Herren I · Mannschaftstraining</h2><p>Donnerstag, 6. August · 18:30 Uhr · Hemberghalle</p></div><div className="timer"><b>04</b><i>Tage</i><b>06</b><i>Std.</i><b>24</b><i>Min.</i></div><button onClick={()=>notify("Zusage gespeichert")}>Zusagen</button></section><div className="stats">{[["MITGLIEDER","247","↑ 8 dieses Jahr"],["BEITRÄGE 2026","92%","19 noch offen"],["ANSTEHENDE EVENTS","8","Nächste 30 Tage"],["OFFENE AUFGABEN","12","3 überfällig"]].map(x=><article key={x[0]}><span>{x[0]}</span><b>{x[1]}</b><em>{x[2]}</em></article>)}</div><Sponsor/><div className="columns"><section className="panel"><div className="title"><h2>Was als Nächstes ansteht</h2><button>Alle Termine →</button></div>{events.map((e,i)=><div className="event" key={e[2]}><div className={`date d${i}`}><b>{e[0]}</b><small>{e[1]}</small></div><div><span>{i===0?"TRAINING":i===1?"SPIELTAG":"SITZUNG"}</span><h3>{e[2]}</h3><p>{e[3]}</p></div><button>•••</button></div>)}</section><aside><section className="panel"><div className="title"><h2>Aufgaben</h2><button>Alle →</button></div>{["Catering für Heimspiel klären","Trikots U11 bestellen","Protokoll freigeben"].map((x,i)=><label className="task" key={x}><input type="checkbox"/><div><b>{x}</b><small>{i===0?"Heute · Marco Schulte":"Diese Woche · Vorstand"}</small></div></label>)}</section><Sponsor/></aside></div></>}
-function Members(){return <><header><div><small>VERWALTUNG</small><h1>Mitglieder</h1><p>Profile, Mannschaften und Rollen zentral verwalten.</p></div><button className="primary">＋ Mitglied einladen</button></header><div className="filters"><input placeholder="Mitglied suchen …"/><button>Alle Rollen⌄</button><button>Exportieren</button></div><section className="panel table"><table><thead><tr><th>MITGLIED</th><th>ROLLEN</th><th>TEAM</th><th>BEITRAG</th></tr></thead><tbody>{members.map(m=><tr key={m[1]}><td><i>{m[0].split(" ").map(x=>x[0]).join("")}</i><div><b>{m[0]}</b><small>{m[1]}</small></div></td><td>{m[2].split(" · ").map(r=><span className="role" key={r}>{r}</span>)}</td><td>{m[3]}</td><td><span className={m[4]==="Offen"?"open":"paid"}>{m[4]}</span></td></tr>)}</tbody></table></section></>}
-function Module({name}:{name:string}){let data:Record<string,string[]>={Kalender:["Training Herren I","Heimspiel am 9. August","Vorstandssitzung"],Teams:["Herren I · 18 Aktive","U15 · 14 Aktive","U11 · 17 Aktive"],Events:["Heimspiel & Helferplanung","Sommerfest 2026","Jugendturnier U11"],Chat:["Vereins-News","Herren I","Vorstand · Intern"],Beiträge:["226 Beiträge bezahlt","19 Zahlungen offen","4 Erinnerungen versendet"],Protokolle:["Vorstandssitzung 12.07.","Jahreshauptversammlung","Sportausschuss"],Verwaltung:["Rollen & Rechte","Sponsor-Slots","System & Kanäle"]};return <><header><div><small>ERG ISERLOHN</small><h1>{name}</h1><p>Alles aktuell, übersichtlich und an einem Ort.</p></div><button className="primary">＋ Neu anlegen</button></header><div className="cards">{(data[name]||[]).map((x,i)=><article key={x}><strong>{["◇","◎","≡"][i]}</strong><span>AKTUELL</span><h2>{x}</h2><p>Details, Zuständigkeiten und Rückmeldungen anzeigen und bearbeiten.</p><button>Details ansehen →</button></article>)}</div><Sponsor/></>}
-export default function Home(){const[a,setA]=useState("Übersicht"),[toast,setToast]=useState("");const notify=(x:string)=>{setToast(x);setTimeout(()=>setToast(""),2400)};return <div className="app"><aside className="side"><div className="brand"><b>ERG</b><div><strong>ERG ISERLOHN</strong><small>Rollhockey. Seit 1965.</small></div></div><nav>{nav.map((n,i)=><button key={n} className={a===n?"active":""} onClick={()=>setA(n)}><span>{["⌂","□","◎","◇","◌","♙","€","≡","⚙"][i]}</span>{n}{n==="Chat"&&<em>3</em>}</button>)}</nav><div className="profile"><i>MS</i><div><b>Marco Schulte</b><small>Sys-Admin · Vorstand</small></div></div></aside><main><div className="top"><input placeholder="⌕  Suchen …"/><button>♢</button></div><div className="content">{a==="Übersicht"?<Dashboard notify={notify}/>:a==="Mitglieder"?<Members/>:<Module name={a}/>}</div></main>{toast&&<div className="toast">✓ {toast}</div>}</div>}
+import React, { useState, useEffect } from "react";
+import {
+  Home, CalendarDays, Wallet, MessageCircle, User, Bell, ChevronRight,
+  Check, X, HelpCircle, Users, Award, Gift, MapPin, Clock, Send,
+  Trophy, Flame, Cake, Megaphone, Euro, CheckCircle2, Circle, Car,
+  Sparkles, Image as ImageIcon, ChevronDown, Star, Mail, Lock, LogOut,
+  ShieldCheck, ArrowRight, ArrowLeft, AlertCircle, UserPlus, Eye, EyeOff,
+  Target, ClipboardList, Newspaper
+} from "lucide-react";
+
+/* ------------------------------------------------------------------ */
+/* Tokens                                                              */
+/* ------------------------------------------------------------------ */
+const C = {
+  red: "#C8102E",
+  redDark: "#8E0C21",
+  ink: "#14151A",
+  asphalt: "#202127",
+  paper: "#F6F3EC",
+  paperDim: "#EDE9DF",
+  white: "#FFFFFF",
+  amber: "#F2B134",
+  green: "#2F9E58",
+  line: "#E1DCD0",
+  textDim: "#6B6A66",
+};
+
+const FONTS = `
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap');
+* { -webkit-tap-highlight-color: transparent; }
+html { scroll-behavior: smooth; }
+button { transition: transform .12s ease, opacity .12s ease, background-color .15s ease; }
+button:active { transform: scale(0.97); }
+.tabFade { animation: tabFadeIn .22s ease; }
+@keyframes tabFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+.erg-app ::-webkit-scrollbar { width: 0px; height: 0px; }
+`;
+
+const TEAMS = ["Herren 1", "Herren 2", "Damen 1", "U15", "U11", "Eltern / Angehörige"];
+const STATION_CAP = 2;
+
+/* ------------------------------------------------------------------ */
+/* Badge library                                                       */
+/* ------------------------------------------------------------------ */
+const BADGE_LIBRARY = {
+  streak: { icon: Flame, label: "10x in Folge da", desc: "Trainings-Streak" },
+  loyalty: { icon: Trophy, label: "Vereinstreue", descFor: (m) => `Mitglied seit ${m.since}` },
+  fairplay: { icon: Award, label: "Fair-Play Award", desc: "Saison 2025" },
+  referrer: { icon: Users, label: "Werber", desc: "2 Freunde eingeladen" },
+};
+
+function initialsOf(name) {
+  return name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
+}
+
+/* Rollen: jedes Profil kann mehrere Rollen gleichzeitig haben */
+const ROLE_META = {
+  vereinsadmin: { label: "Vereins-Administrator", color: "#1F7A5C", admin: true, formalMember: true, selfService: false },
+  sysadmin: { label: "Sys-Admin", color: "#4A4E9E", admin: true, formalMember: true, selfService: false },
+  vorstand: { label: "Vorstand", color: C.red, admin: true, formalMember: true, selfService: false },
+  geschaeftsfuehrung: { label: "Geschäftsführung", color: C.ink, admin: true, formalMember: true, selfService: false },
+  redakteur: { label: "Redakteur", color: "#B15CC9", admin: false, formalMember: true, selfService: false },
+  spieler: { label: "Spieler/in", color: C.green, admin: false, formalMember: true, selfService: true },
+  eltern: { label: "Eltern", color: C.amber, admin: false, formalMember: true, selfService: true },
+  mitglied: { label: "Mitglied", color: "#8B8A85", admin: false, formalMember: true, selfService: true, alwaysOn: true },
+};
+const isAdmin = (m) => !!m && m.roles.some((r) => ROLE_META[r]?.admin);
+const isFormalMember = (m) => !!m && m.roles.some((r) => ROLE_META[r]?.formalMember);
+const isSysAdmin = (m) => !!m && m.roles.includes("sysadmin");
+const canWriteNews = (m) => isAdmin(m) || (!!m && m.roles.includes("redakteur"));
+function age(birthdate) {
+  if (!birthdate) return 0;
+  const b = new Date(birthdate);
+  const t = new Date();
+  let a = t.getFullYear() - b.getFullYear();
+  const m = t.getMonth() - b.getMonth();
+  if (m < 0 || (m === 0 && t.getDate() < b.getDate())) a--;
+  return a;
+}
+
+/* ------------------------------------------------------------------ */
+/* Vereine (mandantenfähig)                                            */
+/* ------------------------------------------------------------------ */
+const INITIAL_CLUBS = [
+  { id: "ergi", name: "ERG Iserlohn", shortName: "ERGI", city: "Iserlohn", foundedYear: 1965 },
+  { id: "tsv-musterstadt", name: "TSV Musterstadt", shortName: "TSVM", city: "Musterstadt", foundedYear: 1902 },
+  { id: "sv-beispiel", name: "SV Beispiel 04", shortName: "SVB", city: "Beispielhausen", foundedYear: 1904 },
+];
+
+/* ------------------------------------------------------------------ */
+/* Mock accounts                                                       */
+/* ------------------------------------------------------------------ */
+const INITIAL_MEMBERS = [
+  { id: "m1", clubId: "ergi", name: "Marco Schulte", email: "marco@ergi.de", password: "demo", team: "Herren 1", number: 14, since: 2019, roles: ["sysadmin", "vorstand", "spieler", "mitglied"], color: C.red, points: 740, tippPoints: 14, badges: ["streak", "loyalty", "fairplay", "referrer"], birthdate: "1994-05-12" },
+  { id: "m2", clubId: "ergi", name: "Jasmin Reiter", email: "jasmin@ergi.de", password: "demo", team: "Damen 1", number: 7, since: 2021, roles: ["spieler", "mitglied"], color: C.amber, points: 410, tippPoints: 9, badges: ["loyalty"], birthdate: "1998-03-02" },
+  { id: "m3", clubId: "ergi", name: "Sabine Thomas", email: "sabine@ergi.de", password: "demo", team: "Eltern / Angehörige", number: null, since: 2023, roles: ["eltern", "mitglied"], color: C.green, points: 120, tippPoints: 5, badges: [], birthdate: "1985-09-14", familyId: "fam-thomas", familyRole: "eltern" },
+  { id: "v1", clubId: "ergi", name: "Peter Vogt", email: "vorstand@ergi.de", password: "demo", team: "Vorstand", number: null, since: 2015, roles: ["vorstand", "mitglied"], color: C.ink, points: 60, tippPoints: 2, badges: ["loyalty"], birthdate: "1975-01-20" },
+  { id: "m4", clubId: "ergi", name: "Mia Thomas", email: "mia@ergi.de", password: "demo", team: "U11", number: 5, since: 2024, roles: ["spieler", "mitglied"], color: "#7C6FE0", points: 30, tippPoints: 0, badges: [], birthdate: "2015-06-01", familyId: "fam-thomas", familyRole: "kind" },
+  { id: "m5", clubId: "ergi", name: "Helga Thomas", email: "helga@ergi.de", password: "demo", team: "Eltern / Angehörige", number: null, since: 2023, roles: ["mitglied"], color: "#B98B3E", points: 20, tippPoints: 0, badges: [], birthdate: "1952-02-11", familyId: "fam-thomas", familyRole: "großeltern" },
+  { id: "m6", clubId: "ergi", name: "Claudia Berg", email: "geschaeftsfuehrung@ergi.de", password: "demo", team: "Geschäftsstelle", number: null, since: 2020, roles: ["geschaeftsfuehrung", "mitglied"], color: "#3E7CB1", points: 60, tippPoints: 4, badges: [], birthdate: "1980-11-03" },
+  { id: "m7", clubId: "ergi", name: "Nina Weber", email: "redaktion@ergi.de", password: "demo", team: "Geschäftsstelle", number: null, since: 2022, roles: ["redakteur", "mitglied"], color: "#B15CC9", points: 40, tippPoints: 0, badges: [], birthdate: "1990-07-08" },
+];
+
+const INITIAL_FEE_PAID = { m1: false, m2: true, m3: false, v1: true, m4: true, m5: true, m6: true, m7: true };
+const OVERDUE_DAYS = { m1: 5, m3: 14 };
+function reminderStage(days) {
+  if (days >= 20) return { n: 3, label: "Vorstand informiert", color: C.red };
+  if (days >= 10) return { n: 2, label: "Mahnung", color: C.amber };
+  if (days >= 3) return { n: 1, label: "Freundliche Erinnerung", color: C.green };
+  return { n: 0, label: "Noch nicht fällig", color: C.textDim };
+}
+
+const INITIAL_DUTY_PLAN = {
+  2: { Theke: ["m2"], Zeitnahme: [], Grill: ["v1"], Kasse: [] },
+  4: { Aufbau: [], Kuchenbuffet: ["m3"], Abbau: [] },
+  6: { Theke: [], Zeitnahme: [], Grill: [], Kasse: [] },
+};
+
+/* ------------------------------------------------------------------ */
+/* Mock content data                                                   */
+/* ------------------------------------------------------------------ */
+const EVENTS = [
+  { id: 1, type: "training", title: "Training Herren 1", date: "2026-08-04T18:30:00", location: "Hemberghalle, Iserlohn", desc: "Reguläres Mannschaftstraining. Schienbeinschoner nicht vergessen!", going: 14, maybe: 2, no: 1, carpool: false, youthClassIds: ["herren1"] },
+  { id: 2, type: "spiel", title: "Heimspiel vs. Herringen", date: "2026-08-09T19:00:00", location: "Hemberghalle, Iserlohn", desc: "Bundesliga, Spieltag 3. Support von den Rängen ist gewünscht!", going: 11, maybe: 1, no: 0, carpool: false, home: true, helperSlots: ["Theke", "Zeitnahme", "Grill", "Kasse"] },
+  { id: 3, type: "spiel", title: "Auswärtsspiel bei ERC Wimbern", date: "2026-08-16T20:00:00", location: "Wimbern · 85 km", desc: "Gemeinsame Abfahrt ab Hemberghalle. Fahrgemeinschaft bitte eintragen.", going: 9, maybe: 3, no: 0, carpool: true, home: false },
+  { id: 4, type: "event", title: "Sommerfest & Saisonabschluss", date: "2026-08-23T15:00:00", location: "Vereinsheim am Hemberg", desc: "Grillen, Siegerehrung U11–U15, abends DJ. Familien sind herzlich willkommen.", going: 38, maybe: 6, no: 0, carpool: false, helperSlots: ["Aufbau", "Kuchenbuffet", "Abbau"] },
+  { id: 5, type: "training", title: "Torwarttraining Spezial", date: "2026-08-11T19:00:00", location: "Hemberghalle", desc: "Extra-Einheit mit Torwarttrainer Miguel Costa.", going: 3, maybe: 1, no: 0, carpool: false, youthClassIds: ["herren1", "damen1"] },
+  { id: 6, type: "spiel", title: "Heimspiel vs. Cronenberg", date: "2026-08-30T19:00:00", location: "Hemberghalle, Iserlohn", desc: "Bundesliga, Spieltag 5.", going: 10, maybe: 2, no: 0, carpool: false, home: true, helperSlots: ["Theke", "Zeitnahme", "Grill", "Kasse"] },
+];
+
+const YOUTH_CLASSES = [
+  { id: "herren1", name: "Herren 1" },
+  { id: "herren2", name: "Herren 2" },
+  { id: "damen1", name: "Damen 1" },
+  { id: "u15", name: "U15" },
+  { id: "u11", name: "U11" },
+];
+const TEAM_TO_YOUTHCLASS = { "Herren 1": "herren1", "Herren 2": "herren2", "Damen 1": "damen1", U15: "u15", U11: "u11" };
+const TRAINERS = [
+  { id: "tr1", name: "Uwe Fischer", youthClassIds: ["herren1"] },
+  { id: "tr2", name: "Miguel Costa", youthClassIds: ["herren1", "damen1"] },
+  { id: "tr3", name: "Sandra Klein", youthClassIds: ["u11"] },
+];
+function getNextTraining(user) {
+  const ycId = TEAM_TO_YOUTHCLASS[user.team];
+  if (!ycId) return null;
+  const now = new Date();
+  const upcoming = EVENTS.filter((e) => e.type === "training" && e.youthClassIds?.includes(ycId) && new Date(e.date) > now)
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+  if (!upcoming.length) return null;
+  return { event: upcoming[0], trainers: TRAINERS.filter((t) => t.youthClassIds.includes(ycId)), youthClass: YOUTH_CLASSES.find((y) => y.id === ycId) };
+}
+function getNextMatch() {
+  const now = new Date();
+  const upcoming = EVENTS.filter((e) => e.type === "spiel" && new Date(e.date) > now).sort((a, b) => new Date(a.date) - new Date(b.date));
+  return upcoming[0] || null;
+}
+
+/* Sponsor-Slots: reservierte, buchbare Werbeflächen zwischen den Layout-Bereichen */
+const SPONSOR_SLOT_DEFS = [
+  { key: "dashboard_top", label: "Dashboard oben" },
+  { key: "dashboard_bottom", label: "Dashboard unten" },
+  { key: "events_header", label: "Termine – Kopfbereich" },
+  { key: "profile_bottom", label: "Profil unten" },
+];
+const INITIAL_SPONSOR_BOOKINGS = { dashboard_top: "Sparkasse Iserlohn", events_header: "Stadtwerke Iserlohn" };
+
+const BIRTHDAYS_TODAY = ["Lena K. (U15)", "Timo B. (Herren 1)"];
+const SPONSORS = ["Sparkasse Iserlohn", "Stadtwerke Iserlohn", "Autohaus Meyer", "Fitness Point Hemberg", "Bäckerei Sauerland"];
+
+const INITIAL_CHANNELS = [
+  {
+    id: "team", name: "Herren 1", emoji: "🏒", adminOnly: false, visibleRoles: ["spieler"],
+    messages: [
+      { who: "Marco S.", init: "MS", color: C.red, text: "Denkt an die Schienbeinschoner morgen, Trainer checkt das 😅", time: "09:14" },
+      { who: "Jasmin R.", init: "JR", color: C.amber, text: "Bin heute 10 Min später da, hab Meeting.", time: "09:20" },
+    ],
+  },
+  {
+    id: "news", name: "Vereins-News", emoji: "📣", adminOnly: true, visibleRoles: null,
+    messages: [
+      { who: "Vorstand", init: "V", color: C.ink, text: "Neue Trikots sind da — Abholung diese Woche im Vereinsheim.", time: "Mo" },
+      { who: "Vorstand", init: "V", color: C.ink, text: "Erinnerung: Mitgliederversammlung am 12.09., 19 Uhr, Hemberghalle.", time: "Di" },
+      { who: "Vorstand", init: "V", color: C.ink, text: "Helferplan für Heimspiele & Sommerfest ist online — bitte eintragen!", time: "Heute" },
+    ],
+  },
+  {
+    id: "eltern", name: "Eltern U11", emoji: "👨‍👩‍👧", adminOnly: false, visibleRoles: ["eltern"],
+    messages: [
+      { who: "Sabine T.", init: "ST", color: C.green, text: "Wer kann Samstag zum Turnier nach Hagen mitfahren?", time: "18:02" },
+    ],
+  },
+];
+
+const FEE_HISTORY = [
+  { month: "Juli 2026", amount: "45,00 €", date: "02.07.2026" },
+  { month: "Juni 2026", amount: "45,00 €", date: "01.06.2026" },
+  { month: "Mai 2026", amount: "45,00 €", date: "03.05.2026" },
+];
+
+/* ------------------------------------------------------------------ */
+/* Spieler der Saison                                                  */
+/* ------------------------------------------------------------------ */
+const SEASON_VOTE_DEADLINE = "2026-08-31T23:59:59";
+const CANDIDATES = [
+  { id: "c1", name: "Marco Schulte", team: "Herren 1", number: 14 },
+  { id: "c2", name: "Jasmin Reiter", team: "Damen 1", number: 7 },
+  { id: "c3", name: "Luca Fischer", team: "Herren 1", number: 9 },
+  { id: "c4", name: "Nina König", team: "Damen 1", number: 11 },
+  { id: "c5", name: "Elias Brandt", team: "Herren 1", number: 3 },
+];
+const BASE_VOTE_COUNTS = { c1: 34, c2: 29, c3: 41, c4: 22, c5: 18 };
+function seasonResults(seasonVotes) {
+  const counts = CANDIDATES.reduce((acc, c) => {
+    acc[c.id] = (BASE_VOTE_COUNTS[c.id] || 0) + Object.values(seasonVotes).filter((v) => v === c.id).length;
+    return acc;
+  }, {});
+  const total = Object.values(counts).reduce((a, b) => a + b, 0);
+  const sorted = [...CANDIDATES].sort((a, b) => counts[b.id] - counts[a.id]);
+  return { counts, total, sorted };
+}
+
+/* ------------------------------------------------------------------ */
+/* Tippspiel                                                            */
+/* ------------------------------------------------------------------ */
+const TIPP_MATCHES = [
+  { id: 1, home: "ERG Iserlohn", away: "Herringen", date: "2026-08-09T19:00:00" },
+  { id: 2, home: "ERC Wimbern", away: "ERG Iserlohn", date: "2026-08-16T20:00:00" },
+  { id: 3, home: "ERG Iserlohn", away: "Cronenberg", date: "2026-08-30T19:00:00" },
+  { id: 4, home: "SG Bielefeld", away: "ERG Iserlohn", date: "2026-09-06T19:00:00" },
+];
+
+/* ------------------------------------------------------------------ */
+/* Vorstandsprotokolle                                                  */
+/* ------------------------------------------------------------------ */
+const INITIAL_PROTOCOLS = [
+  {
+    id: "p1",
+    title: "Vorstandssitzung Juli",
+    date: "2026-07-14",
+    attendees: ["v1", "m6", "m1"],
+    rawText: "Kurzprotokoll Vorstandssitzung 14.07.2026, anwesend: Peter, Claudia, Marco. TOP 1 Bandenwerbung: Peter holt bis 15.08. drei Angebote für neue Bandenwerbung ein. TOP 2 Hallenzeiten: Claudia klärt bis 10.08. mit der Stadt die Hallenzeiten für September. TOP 3 Sommerfest: Planung läuft nach Plan, keine offenen Punkte.",
+    tasks: [
+      { id: "t1", text: "Angebote für neue Bandenwerbung einholen", assignee: "v1", due: "2026-08-15", done: false },
+      { id: "t2", text: "Hallenzeiten für September mit der Stadt klären", assignee: "m6", due: "2026-08-10", done: true },
+    ],
+  },
+];
+
+/* ------------------------------------------------------------------ */
+/* Helpers                                                              */
+/* ------------------------------------------------------------------ */
+function useCountdown(target) {
+  const [now, setNow] = useState(new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const diff = Math.max(0, new Date(target).getTime() - now.getTime());
+  return {
+    d: Math.floor(diff / 86400000),
+    h: Math.floor((diff % 86400000) / 3600000),
+    m: Math.floor((diff % 3600000) / 60000),
+    s: Math.floor((diff % 60000) / 1000),
+  };
+}
+function formatDate(iso) {
+  return new Date(iso).toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" });
+}
+function formatTime(iso) {
+  return new Date(iso).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+}
+const typeMeta = {
+  training: { label: "Training", color: C.ink },
+  spiel: { label: "Spiel", color: C.red },
+  event: { label: "Vereinsevent", color: C.amber },
+};
+
+/* ------------------------------------------------------------------ */
+/* Small building blocks                                               */
+/* ------------------------------------------------------------------ */
+function Pill({ children, bg, fg = C.white, style }) {
+  return (
+    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold tracking-wide"
+      style={{ background: bg, color: fg, fontFamily: "Inter", ...style }}>
+      {children}
+    </span>
+  );
+}
+function SectionTitle({ eyebrow, title, right }) {
+  return (
+    <div className="flex items-end justify-between mb-3">
+      <div>
+        {eyebrow && <div className="text-xs font-semibold tracking-widest uppercase mb-0.5" style={{ color: C.red, fontFamily: "Inter" }}>{eyebrow}</div>}
+        <div className="text-lg" style={{ fontFamily: "Oswald", fontWeight: 600, color: C.ink }}>{title}</div>
+      </div>
+      {right}
+    </div>
+  );
+}
+function Field({ icon: Icon, ...props }) {
+  return (
+    <div className="flex items-center gap-2 rounded-xl px-3.5 py-3 mb-3" style={{ background: C.paperDim }}>
+      <Icon size={16} style={{ color: C.textDim, flexShrink: 0 }} />
+      <input {...props} className="flex-1 bg-transparent outline-none text-sm" style={{ fontFamily: "Inter", color: C.ink }} />
+    </div>
+  );
+}
+function FeatureRow({ icon: Icon, title, subtitle, onClick, accent }) {
+  return (
+    <button onClick={onClick} className="w-full flex items-center justify-between px-4 py-3 rounded-2xl mb-2" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+      <span className="flex items-center gap-3">
+        <span className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: C.paper }}>
+          <Icon size={15} style={{ color: accent || C.red }} />
+        </span>
+        <span className="text-left">
+          <span className="block text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{title}</span>
+          <span className="block text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{subtitle}</span>
+        </span>
+      </span>
+      <ChevronRight size={15} style={{ color: C.textDim, flexShrink: 0 }} />
+    </button>
+  );
+}
+function StatCard({ icon: Icon, label, value, sub, accent, onClick }) {
+  const Tag = onClick ? "button" : "div";
+  return (
+    <Tag onClick={onClick} className="rounded-2xl p-3.5 text-left w-full" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+      <div className="w-8 h-8 rounded-full flex items-center justify-center mb-2.5" style={{ background: C.paper }}>
+        <Icon size={15} style={{ color: accent || C.red }} />
+      </div>
+      <div className="text-lg leading-tight" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>{value}</div>
+      <div className="text-[11px]" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{label}</div>
+      {sub && <div className="text-[10px] mt-0.5" style={{ color: C.textDim, fontFamily: "Inter" }}>{sub}</div>}
+    </Tag>
+  );
+}
+function ToggleCard({ title, desc, value, onChange }) {
+  return (
+    <div>
+      <div className="text-sm mb-2" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{title}</div>
+      <button onClick={() => onChange((v) => !v)} className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-2xl" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+        <span className="text-xs text-left" style={{ fontFamily: "Inter", color: C.textDim }}>{desc}</span>
+        <span className="w-10 h-6 rounded-full relative flex-shrink-0" style={{ background: value ? C.green : C.paperDim }}>
+          <span className="absolute top-0.5 w-5 h-5 rounded-full" style={{ background: "#fff", left: value ? 18 : 2, transition: "left .2s" }} />
+        </span>
+      </button>
+    </div>
+  );
+}
+function SponsorSlot({ slotKey, bookings, onImpression, onClick }) {
+  const sponsor = bookings[slotKey];
+  useEffect(() => { if (sponsor) onImpression(slotKey); }, [sponsor, slotKey]);
+  if (!sponsor) return null;
+  return (
+    <button onClick={() => onClick(slotKey)} className="w-full rounded-2xl px-4 py-3 mb-5 flex items-center gap-3 text-left" style={{ background: C.paperDim, border: `1px dashed ${C.line}` }}>
+      <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+        <Sparkles size={14} style={{ color: C.amber }} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: C.textDim, fontFamily: "Inter" }}>Anzeige</div>
+        <div className="text-xs truncate" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{sponsor}</div>
+      </div>
+      <ChevronRight size={14} style={{ color: C.textDim, flexShrink: 0 }} />
+    </button>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Auth: Login & Register                                              */
+/* ------------------------------------------------------------------ */
+function AuthShell({ children, footer, club }) {
+  return (
+    <div className="flex flex-col h-full px-6 pt-8 pb-6 overflow-y-auto" style={{ background: C.paper }}>
+      <div className="flex flex-col items-center mb-8">
+        <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-3" style={{ background: C.red }}>
+          <span style={{ color: "#fff", fontFamily: "Oswald", fontWeight: 700, fontSize: 22 }}>{club ? club.shortName[0] : "V"}</span>
+        </div>
+        <div className="text-sm tracking-widest" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>{club ? club.shortName : "VEREINS-APP"}</div>
+        <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{club ? `Mitglieder-App · seit ${club.foundedYear}` : "Mitglieder-App für Vereine"}</div>
+      </div>
+      {children}
+      <div className="mt-auto pt-6">{footer}</div>
+    </div>
+  );
+}
+
+function ClubSelectScreen({ clubs, onSelect, goNewClub }) {
+  const [query, setQuery] = useState("");
+  const filtered = query.trim()
+    ? clubs.filter((c) => c.name.toLowerCase().includes(query.trim().toLowerCase()) || c.shortName.toLowerCase().includes(query.trim().toLowerCase()))
+    : clubs;
+
+  return (
+    <div className="flex flex-col h-full px-6 pt-10 pb-6 overflow-y-auto" style={{ background: C.paper }}>
+      <div className="flex flex-col items-center mb-8">
+        <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-3" style={{ background: C.ink }}>
+          <Users size={22} style={{ color: "#fff" }} />
+        </div>
+        <div className="text-xl text-center" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>Willkommen</div>
+        <div className="text-xs text-center mt-1" style={{ color: C.textDim, fontFamily: "Inter" }}>Wähle deinen Verein, um dich anzumelden oder zu registrieren.</div>
+      </div>
+
+      <div className="flex items-center gap-2 rounded-xl px-3.5 py-3 mb-4" style={{ background: C.paperDim }}>
+        <Users size={16} style={{ color: C.textDim, flexShrink: 0 }} />
+        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Verein auswählen …"
+          className="flex-1 bg-transparent outline-none text-sm" style={{ fontFamily: "Inter", color: C.ink }} autoFocus />
+      </div>
+
+      <div className="space-y-2 mb-6">
+        {filtered.length === 0 ? (
+          <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>Kein Verein gefunden.</div>
+        ) : filtered.map((c) => (
+          <button key={c.id} onClick={() => onSelect(c.id)} className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.red }}>
+              <span style={{ color: "#fff", fontFamily: "Oswald", fontWeight: 700, fontSize: 14 }}>{c.shortName[0]}</span>
+            </div>
+            <div className="text-left flex-1">
+              <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{c.name}</div>
+              <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{c.city} · seit {c.foundedYear}</div>
+            </div>
+            <ChevronRight size={16} style={{ color: C.textDim, flexShrink: 0 }} />
+          </button>
+        ))}
+      </div>
+
+      <button onClick={goNewClub} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm mb-6" style={{ background: C.ink, color: "#fff", fontFamily: "Inter", fontWeight: 700 }}>
+        <UserPlus size={15} /> Neuen Verein registrieren
+      </button>
+
+      <div className="mt-auto pt-2 text-center text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>
+        Bereits registrierter Verein? Einfach oben auswählen.
+      </div>
+    </div>
+  );
+}
+
+function NewClubScreen({ onCreate, goBack }) {
+  const [form, setForm] = useState({ name: "", shortName: "", city: "" });
+  const [error, setError] = useState("");
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  const submit = (e) => {
+    e.preventDefault();
+    if (!form.name.trim() || !form.shortName.trim()) { setError("Bitte Vereinsname und Kurzname angeben."); return; }
+    onCreate({
+      id: form.name.trim().toLowerCase().replace(/[^a-z0-9äöüß]+/g, "-").replace(/^-+|-+$/g, "") + "-" + Date.now(),
+      name: form.name.trim(),
+      shortName: form.shortName.trim().toUpperCase(),
+      city: form.city.trim() || "—",
+      foundedYear: new Date().getFullYear(),
+    });
+  };
+
+  return (
+    <AuthShell footer={<div className="text-center text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}><button onClick={goBack} className="font-bold" style={{ color: C.red }}>Zurück zur Vereinsauswahl</button></div>}>
+      <div className="text-xl mb-1" style={{ fontFamily: "Oswald", fontWeight: 600, color: C.ink }}>Neuen Verein registrieren</div>
+      <div className="text-xs mb-5" style={{ color: C.textDim, fontFamily: "Inter" }}>Danach legst du das erste Konto an — es wird automatisch Vereins-Administrator.</div>
+      <form onSubmit={submit}>
+        <Field icon={Users} placeholder="Vereinsname, z. B. TuS Beispieldorf" value={form.name} onChange={set("name")} />
+        <Field icon={ShieldCheck} placeholder="Kurzname, z. B. TUSB" value={form.shortName} onChange={set("shortName")} maxLength={6} />
+        <Field icon={MapPin} placeholder="Stadt" value={form.city} onChange={set("city")} />
+        {error && <div className="flex items-center gap-1.5 text-xs mb-3" style={{ color: C.red, fontFamily: "Inter" }}><AlertCircle size={13} /> {error}</div>}
+        <button type="submit" className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm" style={{ background: C.red, color: "#fff", fontFamily: "Inter", fontWeight: 700 }}>
+          Verein anlegen <ArrowRight size={15} />
+        </button>
+      </form>
+    </AuthShell>
+  );
+}
+
+function LoginScreen({ onLogin, members, club, goRegister, goChangeClub }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [error, setError] = useState("");
+
+  const submit = (e) => {
+    e && e.preventDefault();
+    const found = members.find((m) => m.email.toLowerCase() === email.trim().toLowerCase() && m.password === password);
+    if (found) { setError(""); onLogin(found.id); }
+    else setError("E-Mail oder Passwort ist falsch.");
+  };
+  const quick = (m) => { setEmail(m.email); setPassword(m.password); onLogin(m.id); };
+
+  return (
+    <AuthShell
+      club={club}
+      footer={
+        <div className="text-center text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>
+          Neu bei {club.shortName}?{" "}
+          <button onClick={goRegister} className="font-bold" style={{ color: C.red }}>Jetzt registrieren</button>
+        </div>
+      }
+    >
+      <div className="flex items-center justify-between mb-5">
+        <div className="text-xl" style={{ fontFamily: "Oswald", fontWeight: 600, color: C.ink }}>Willkommen zurück</div>
+        <button onClick={goChangeClub} className="text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>Verein wechseln</button>
+      </div>
+      <form onSubmit={submit}>
+        <Field icon={Mail} type="email" placeholder="E-Mail-Adresse" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <div className="flex items-center gap-2 rounded-xl px-3.5 py-3 mb-2" style={{ background: C.paperDim }}>
+          <Lock size={16} style={{ color: C.textDim, flexShrink: 0 }} />
+          <input type={showPw ? "text" : "password"} placeholder="Passwort" value={password} onChange={(e) => setPassword(e.target.value)}
+            className="flex-1 bg-transparent outline-none text-sm" style={{ fontFamily: "Inter", color: C.ink }} />
+          <button type="button" onClick={() => setShowPw((s) => !s)}>{showPw ? <EyeOff size={15} style={{ color: C.textDim }} /> : <Eye size={15} style={{ color: C.textDim }} />}</button>
+        </div>
+        {error && <div className="flex items-center gap-1.5 text-xs mb-3" style={{ color: C.red, fontFamily: "Inter" }}><AlertCircle size={13} /> {error}</div>}
+        <button type="button" className="text-xs mb-4" style={{ color: C.textDim, fontFamily: "Inter" }}>Passwort vergessen?</button>
+        <button type="submit" className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm" style={{ background: C.ink, color: "#fff", fontFamily: "Inter", fontWeight: 700 }}>
+          Anmelden <ArrowRight size={15} />
+        </button>
+      </form>
+
+      <div className="mt-8">
+        <div className="text-xs uppercase tracking-widest font-semibold mb-2.5" style={{ color: C.textDim, fontFamily: "Inter" }}>Demo-Zugänge zum Ausprobieren</div>
+        <div className="space-y-2">
+          {members.map((m) => (
+            <button key={m.id} onClick={() => quick(m)} className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+              <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0" style={{ background: m.color, color: "#fff", fontFamily: "Inter" }}>{initialsOf(m.name)}</div>
+              <div className="text-left flex-1">
+                <div className="text-xs" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{m.name}</div>
+                <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{m.roles.map((r) => ROLE_META[r].label).join(" · ")}</div>
+              </div>
+              {isAdmin(m) && <ShieldCheck size={14} style={{ color: C.red }} />}
+            </button>
+          ))}
+        </div>
+      </div>
+    </AuthShell>
+  );
+}
+
+const SELF_SERVICE_ROLES = Object.keys(ROLE_META).filter((r) => ROLE_META[r].selfService && !ROLE_META[r].alwaysOn);
+
+function RegisterScreen({ onRegister, members, club, goLogin }) {
+  const [form, setForm] = useState({ name: "", email: "", team: TEAMS[0], birthdate: "", password: "", password2: "", parentId: "", roles: [] });
+  const [error, setError] = useState("");
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  const toggleRole = (r) => setForm((f) => ({ ...f, roles: f.roles.includes(r) ? f.roles.filter((x) => x !== r) : [...f.roles, r] }));
+  const possibleParents = members.filter((m) => m.familyRole !== "kind");
+  const isFirstAccount = members.length === 0;
+
+  const submit = (e) => {
+    e.preventDefault();
+    if (!form.name.trim() || !form.email.trim() || !form.password || !form.birthdate) { setError("Bitte fülle alle Pflichtfelder aus."); return; }
+    if (form.password !== form.password2) { setError("Die Passwörter stimmen nicht überein."); return; }
+    if (members.some((m) => m.email.toLowerCase() === form.email.trim().toLowerCase())) { setError("Für diese E-Mail existiert bei diesem Verein bereits ein Konto."); return; }
+    setError("");
+    onRegister({
+      id: "m" + Date.now(),
+      clubId: club.id,
+      name: form.name.trim(),
+      email: form.email.trim(),
+      password: form.password,
+      team: form.team,
+      number: null,
+      since: new Date().getFullYear(),
+      roles: isFirstAccount ? ["vereinsadmin", "mitglied"] : [...new Set(["mitglied", ...form.roles])],
+      color: [C.red, C.amber, C.green, C.ink, "#7C6FE0", "#B98B3E"][Math.floor(Math.random() * 6)],
+      points: 0,
+      tippPoints: 0,
+      badges: [],
+      birthdate: form.birthdate,
+    }, form.parentId || null);
+  };
+
+  return (
+    <AuthShell
+      club={club}
+      footer={<div className="text-center text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>Schon Mitglied?{" "}<button onClick={goLogin} className="font-bold" style={{ color: C.red }}>Zum Login</button></div>}
+    >
+      <div className="text-xl mb-1" style={{ fontFamily: "Oswald", fontWeight: 600, color: C.ink }}>Konto erstellen</div>
+      <div className="text-xs mb-5" style={{ color: C.textDim, fontFamily: "Inter" }}>
+        {isFirstAccount ? `Du bist das erste Konto bei ${club.name} — automatisch Vereins-Administrator.` : `Für aktive Mitglieder von ${club.name}`}
+      </div>
+
+      <form onSubmit={submit}>
+        <Field icon={User} placeholder="Vor- und Nachname" value={form.name} onChange={set("name")} />
+        <Field icon={Mail} type="email" placeholder="E-Mail-Adresse" value={form.email} onChange={set("email")} />
+        <Field icon={Cake} type="date" value={form.birthdate} onChange={set("birthdate")} />
+
+        <div className="flex items-center gap-2 rounded-xl px-3.5 py-3 mb-3" style={{ background: C.paperDim }}>
+          <Users size={16} style={{ color: C.textDim, flexShrink: 0 }} />
+          <select value={form.team} onChange={set("team")} className="flex-1 bg-transparent outline-none text-sm" style={{ fontFamily: "Inter", color: C.ink }}>
+            {TEAMS.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
+
+        <div className="text-xs font-semibold mb-2" style={{ color: C.ink, fontFamily: "Inter" }}>Zusätzliche Rolle(n) (optional)</div>
+        <div className="flex flex-wrap gap-2 mb-1">
+          {SELF_SERVICE_ROLES.map((r) => {
+            const active = form.roles.includes(r);
+            return (
+              <button type="button" key={r} onClick={() => toggleRole(r)} className="px-3 py-1.5 rounded-full text-xs"
+                style={{ fontFamily: "Inter", fontWeight: 700, background: active ? ROLE_META[r].color : C.paperDim, color: active ? "#fff" : C.textDim }}>
+                {ROLE_META[r].label}
+              </button>
+            );
+          })}
+        </div>
+        <div className="text-[11px] mb-4" style={{ color: C.textDim, fontFamily: "Inter" }}>Du wirst automatisch Mitglied. Vorstand, Geschäftsführung & Redakteur werden vom Vorstand in der Verwaltung vergeben.</div>
+
+        <div className="flex items-center gap-2 rounded-xl px-3.5 py-3 mb-3" style={{ background: C.paperDim }}>
+          <Users size={16} style={{ color: C.textDim, flexShrink: 0 }} />
+          <select value={form.parentId} onChange={set("parentId")} className="flex-1 bg-transparent outline-none text-sm" style={{ fontFamily: "Inter", color: C.ink }}>
+            <option value="">Kein Elternteil im Verein hinterlegen</option>
+            {possibleParents.map((p) => <option key={p.id} value={p.id}>Kind von {p.name}</option>)}
+          </select>
+        </div>
+
+        <Field icon={Lock} type="password" placeholder="Passwort" value={form.password} onChange={set("password")} />
+        <Field icon={Lock} type="password" placeholder="Passwort bestätigen" value={form.password2} onChange={set("password2")} />
+
+        {error && <div className="flex items-center gap-1.5 text-xs mb-3" style={{ color: C.red, fontFamily: "Inter" }}><AlertCircle size={13} /> {error}</div>}
+
+        <button type="submit" className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm" style={{ background: C.red, color: "#fff", fontFamily: "Inter", fontWeight: 700 }}>
+          <UserPlus size={15} /> Konto erstellen
+        </button>
+      </form>
+      <div className="text-[11px] mt-4 text-center" style={{ color: C.textDim, fontFamily: "Inter" }}>Demo-Prototyp — es werden keine echten Daten übertragen.</div>
+    </AuthShell>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Dashboard                                                            */
+/* ------------------------------------------------------------------ */
+function Scoreboard({ nextEvent, goTo }) {
+  const { d, h, m } = useCountdown(nextEvent.date);
+  const digit = (n) => String(n).padStart(2, "0");
+  return (
+    <div className="rounded-2xl p-4 mb-5 relative overflow-hidden cursor-pointer" style={{ background: `linear-gradient(160deg, ${C.ink} 0%, ${C.asphalt} 100%)` }} onClick={goTo}>
+      <div className="absolute inset-0 opacity-[0.06] pointer-events-none" style={{ backgroundImage: `repeating-linear-gradient(115deg, ${C.white} 0px, ${C.white} 2px, transparent 2px, transparent 26px)` }} />
+      <div className="relative flex items-center justify-between mb-3">
+        <Pill bg={typeMeta[nextEvent.type].color}>NÄCHSTES SPIEL</Pill>
+        <span className="text-xs" style={{ color: "#9A9AA2", fontFamily: "Inter" }}>{formatDate(nextEvent.date)} · {formatTime(nextEvent.date)}</span>
+      </div>
+      <div className="relative text-white text-base mb-3" style={{ fontFamily: "Oswald", fontWeight: 600 }}>{nextEvent.title}</div>
+      <div className="relative flex items-center gap-1.5" style={{ fontFamily: "JetBrains Mono" }}>
+        {[["TAGE", d], ["STD", h], ["MIN", m]].map(([label, val], i) => (
+          <React.Fragment key={label}>
+            <div className="flex flex-col items-center">
+              <div className="rounded-md px-2.5 py-1.5 text-2xl font-bold" style={{ background: "#000", color: C.red, minWidth: 46, textAlign: "center", boxShadow: `inset 0 0 0 1px ${C.redDark}` }}>{digit(val)}</div>
+              <div className="text-[9px] mt-1 tracking-widest" style={{ color: "#8B8B93" }}>{label}</div>
+            </div>
+            {i < 2 && <span className="text-xl pb-4" style={{ color: C.red }}>:</span>}
+          </React.Fragment>
+        ))}
+      </div>
+      <div className="relative flex items-center gap-1 mt-3 text-xs" style={{ color: "#9A9AA2", fontFamily: "Inter" }}><MapPin size={12} /> {nextEvent.location}</div>
+    </div>
+  );
+}
+function PollWidget() {
+  const [options, setOptions] = useState([{ label: "Fr, 11.12.", votes: 23 }, { label: "Sa, 12.12.", votes: 31 }, { label: "Fr, 18.12.", votes: 9 }]);
+  const [voted, setVoted] = useState(null);
+  const total = options.reduce((a, o) => a + o.votes, 0);
+  const vote = (i) => { if (voted !== null) return; setOptions((o) => o.map((x, idx) => (idx === i ? { ...x, votes: x.votes + 1 } : x))); setVoted(i); };
+  return (
+    <div className="rounded-2xl p-4" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+      <div className="flex items-center gap-2 mb-3">
+        <div className="rounded-full p-1.5" style={{ background: C.paperDim }}><Megaphone size={14} style={{ color: C.red }} /></div>
+        <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Umfrage: Weihnachtsfeier</div>
+      </div>
+      <div className="space-y-2">
+        {options.map((o, i) => {
+          const pct = total ? Math.round((o.votes / total) * 100) : 0;
+          return (
+            <button key={o.label} onClick={() => vote(i)} className="w-full text-left relative overflow-hidden rounded-lg" style={{ border: `1px solid ${C.line}`, cursor: voted !== null ? "default" : "pointer" }}>
+              {voted !== null && <div className="absolute inset-y-0 left-0" style={{ width: `${pct}%`, background: i === voted ? "#FCEBEE" : C.paperDim, transition: "width .4s" }} />}
+              <div className="relative flex items-center justify-between px-3 py-2 text-sm" style={{ fontFamily: "Inter", color: C.ink }}>
+                <span className="flex items-center gap-2 font-medium">{voted === i && <CheckCircle2 size={14} style={{ color: C.red }} />}{o.label}</span>
+                {voted !== null && <span className="text-xs" style={{ color: C.textDim }}>{pct}% · {o.votes}</span>}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+      {voted === null && <div className="text-xs mt-2" style={{ color: C.textDim, fontFamily: "Inter" }}>Tippe, um abzustimmen</div>}
+    </div>
+  );
+}
+function NextTrainingCard({ user }) {
+  const isPlayer = user.roles.includes("spieler");
+  const info = isPlayer ? getNextTraining(user) : null;
+  const { d, h, m } = useCountdown(info ? info.event.date : "2099-01-01T00:00:00");
+  if (!isPlayer || !info) return null;
+  const digit = (n) => String(n).padStart(2, "0");
+  return (
+    <div className="rounded-2xl p-4 mb-5" style={{ background: `linear-gradient(160deg, ${C.green}, #237A44)` }}>
+      <div className="text-xs uppercase tracking-widest font-semibold mb-2" style={{ color: "#D9F2E1", fontFamily: "Inter" }}>Nächstes Training · {info.youthClass?.name}</div>
+      <div className="text-white text-base mb-2" style={{ fontFamily: "Oswald", fontWeight: 600 }}>{formatDate(info.event.date)} · {formatTime(info.event.date)}</div>
+      <div className="flex items-center gap-1 text-xs mb-3" style={{ color: "#D9F2E1", fontFamily: "Inter" }}><MapPin size={12} /> {info.event.location}</div>
+      <div className="flex items-center gap-1.5" style={{ fontFamily: "JetBrains Mono" }}>
+        {[["TAGE", d], ["STD", h], ["MIN", m]].map(([label, val], i) => (
+          <React.Fragment key={label}>
+            <div className="flex flex-col items-center">
+              <div className="rounded-md px-2.5 py-1.5 text-xl font-bold" style={{ background: "#0C3D22", color: "#fff", minWidth: 42, textAlign: "center" }}>{digit(val)}</div>
+              <div className="text-[8px] mt-1 tracking-widest" style={{ color: "#B9E6CB" }}>{label}</div>
+            </div>
+            {i < 2 && <span className="text-lg pb-4" style={{ color: "#B9E6CB" }}>:</span>}
+          </React.Fragment>
+        ))}
+      </div>
+      {info.trainers.length > 0 && (
+        <div className="flex items-center gap-3 mt-3 pt-3" style={{ borderTop: "1px solid rgba(255,255,255,0.2)" }}>
+          {info.trainers.map((t) => (
+            <div key={t.id} className="flex items-center gap-1.5">
+              <div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold" style={{ background: "#fff", color: C.green }}>{initialsOf(t.name)}</div>
+              <span className="text-xs" style={{ color: "#fff", fontFamily: "Inter", fontWeight: 600 }}>{t.name}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+function Dashboard({ user, members, feePaid, channels, dutyPlan, seasonVotes, sponsorBookings, onSponsorImpression, onSponsorClick, goEvents, goFees, goSeason, goTipp, goDuty, goNews }) {
+  const nextEvent = EVENTS[0];
+  const newsMsgs = (channels.find((c) => c.id === "news")?.messages || []).slice(-2).reverse();
+
+  const seasonClosed = new Date() > new Date(SEASON_VOTE_DEADLINE);
+  const seasonSubtitle = seasonClosed ? `🏆 ${seasonResults(seasonVotes).sorted[0]?.name}` : "Bis 31.08. abstimmen";
+
+  const leaderboard = [...members].sort((a, b) => b.tippPoints - a.tippPoints);
+  const myRank = leaderboard.findIndex((m) => m.id === user.id) + 1;
+  const tippSubtitle = `Platz ${myRank} von ${leaderboard.length} · Gewinn: ERGI-Artikel`;
+
+  let dutySubtitle = isFormalMember(user) ? "Theke, Grill, Kuchenbuffet …" : "Nur für Vereinsmitglieder";
+  if (isFormalMember(user)) {
+    let assigned = null;
+    Object.entries(dutyPlan).forEach(([eid, stations]) => {
+      Object.entries(stations).forEach(([station, list]) => { if (list.includes(user.id)) assigned = { eid, station }; });
+    });
+    dutySubtitle = assigned ? `${assigned.station} · ${formatDate(EVENTS.find((e) => e.id === Number(assigned.eid))?.date)}` : "Jetzt eintragen";
+  }
+
+  return (
+    <div className="px-4 pt-4 pb-24">
+      <div className="mb-1" style={{ fontFamily: "Inter", color: C.textDim, fontSize: 13 }}>Willkommen zurück,</div>
+      <div className="mb-4" style={{ fontFamily: "Oswald", fontWeight: 700, fontSize: 24, color: C.ink }}>{user.name.split(" ")[0]} 👋</div>
+
+      <SponsorSlot slotKey="dashboard_top" bookings={sponsorBookings} onImpression={onSponsorImpression} onClick={onSponsorClick} />
+
+      <Scoreboard nextEvent={nextEvent} goTo={goEvents} />
+      <NextTrainingCard user={user} />
+
+      {BIRTHDAYS_TODAY.length > 0 && (
+        <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 mb-5" style={{ background: "#FFF6E4", border: `1px solid #F2DDA8` }}>
+          <Cake size={16} style={{ color: C.amber }} />
+          <div className="text-sm" style={{ fontFamily: "Inter", color: C.ink }}><b>Heute Geburtstag:</b> {BIRTHDAYS_TODAY.join(" · ")} 🎉</div>
+        </div>
+      )}
+
+      <SectionTitle eyebrow="Mitmachen" title="Aktionen & Abstimmungen" />
+      <div className="mb-6">
+        <FeatureRow icon={Trophy} title="Spieler der Saison" subtitle={seasonSubtitle} onClick={goSeason} accent={C.amber} />
+        <FeatureRow icon={Target} title="Tippspiel" subtitle={tippSubtitle} onClick={goTipp} accent={C.red} />
+        <FeatureRow icon={ClipboardList} title="Helferplanung" subtitle={dutySubtitle} onClick={goDuty} accent={C.green} />
+      </div>
+
+      <SectionTitle eyebrow="Vereins-News" title="Neueste Nachrichten" right={<button onClick={goNews} className="text-xs font-bold" style={{ color: C.red, fontFamily: "Inter" }}>Alle ansehen</button>} />
+      <div className="mb-6">
+        {newsMsgs.length === 0 ? (
+          <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>Noch keine News.</div>
+        ) : newsMsgs.map((m, i) => (
+          <div key={i} className="py-3" style={{ borderBottom: i < newsMsgs.length - 1 ? `1px solid ${C.line}` : "none" }}>
+            <div className="text-[11px] mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>{m.who} · {m.time}</div>
+            {m.imageUrl && <img src={m.imageUrl} alt="" className="w-full rounded-xl mb-2" style={{ maxHeight: 140, objectFit: "cover" }} />}
+            {m.title && <div className="text-sm mb-0.5" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>{m.title}</div>}
+            <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: m.title ? 400 : 600, color: m.title ? C.textDim : C.ink }}>{m.text}</div>
+          </div>
+        ))}
+      </div>
+
+      <SectionTitle eyebrow="Mitmachen" title="Deine Stimme zählt" />
+      <div className="mb-6"><PollWidget /></div>
+
+      <SectionTitle eyebrow="Partner" title="Unsere Sponsoren" />
+      <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+        {SPONSORS.map((s) => <div key={s} className="flex-shrink-0 px-3 py-2.5 rounded-xl text-xs whitespace-nowrap" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter", fontWeight: 600 }}>{s}</div>)}
+      </div>
+
+      <div className="mt-5">
+        <SponsorSlot slotKey="dashboard_bottom" bookings={sponsorBookings} onImpression={onSponsorImpression} onClick={onSponsorClick} />
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Helferplanung (wiederverwendbar: Event-Karte, Helferplanung-Tab, Admin) */
+/* ------------------------------------------------------------------ */
+function toggleHelperSelf(setDutyPlan, eventId, station, userId) {
+  setDutyPlan((dp) => {
+    const plan = dp[eventId] || {};
+    const list = plan[station] || [];
+    const already = list.includes(userId);
+    let nextList;
+    if (already) nextList = list.filter((id) => id !== userId);
+    else { if (list.length >= STATION_CAP) return dp; nextList = [...list, userId]; }
+    return { ...dp, [eventId]: { ...plan, [station]: nextList } };
+  });
+}
+function HelperSlots({ ev, members, currentUser, dutyPlan, setDutyPlan, eligible }) {
+  const plan = dutyPlan[ev.id] || {};
+  return (
+    <div className="space-y-2">
+      {ev.helperSlots.map((station) => {
+        const list = plan[station] || [];
+        const names = list.map((id) => members.find((m) => m.id === id)?.name).filter(Boolean);
+        const imIn = list.includes(currentUser.id);
+        const full = list.length >= STATION_CAP;
+        return (
+          <div key={station} className="flex items-center justify-between px-3 py-2 rounded-lg" style={{ background: C.paper }}>
+            <div>
+              <div className="text-xs" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{station}</div>
+              <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{names.length ? names.join(", ") : "Noch niemand eingetragen"} · {list.length}/{STATION_CAP}</div>
+            </div>
+            {eligible && (
+              <button onClick={() => toggleHelperSelf(setDutyPlan, ev.id, station, currentUser.id)} disabled={!imIn && full}
+                className="px-2.5 py-1 rounded-full text-[11px] flex-shrink-0"
+                style={{ fontFamily: "Inter", fontWeight: 700, background: imIn ? C.green : full ? C.paperDim : C.ink, color: imIn ? "#fff" : full ? C.textDim : "#fff" }}>
+                {imIn ? "Eingetragen ✓" : full ? "Voll" : "Übernehmen"}
+              </button>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Events                                                               */
+/* ------------------------------------------------------------------ */
+function EventCard({ ev, rsvp, onRsvp, carpoolOn, onCarpool, guestCount, onGuestChange, currentUser, members, isAdminUser, dutyPlan, setDutyPlan }) {
+  const [open, setOpen] = useState(false);
+  const meta = typeMeta[ev.type];
+
+  const helperEligible = ev.helperSlots ? (isFormalMember(currentUser) && (ev.type !== "spiel" || age(currentUser.birthdate) >= 16)) : false;
+
+  return (
+    <div className="rounded-2xl mb-3 overflow-hidden" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+      <button className="w-full text-left p-4" onClick={() => setOpen((o) => !o)}>
+        <div className="flex items-start justify-between">
+          <div className="flex gap-3">
+            <div className="flex flex-col items-center justify-center rounded-xl px-2.5 py-1.5" style={{ background: C.paper, minWidth: 50 }}>
+              <span className="text-[10px] uppercase font-bold" style={{ color: C.red, fontFamily: "Inter" }}>{formatDate(ev.date).split(" ")[0]}</span>
+              <span className="text-lg" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>{new Date(ev.date).getDate()}</span>
+            </div>
+            <div>
+              <Pill bg={meta.color} style={{ marginBottom: 5 }}>{meta.label}{ev.home ? " · Heim" : ""}</Pill>
+              <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{ev.title}</div>
+              <div className="flex items-center gap-1 text-xs mt-1" style={{ color: C.textDim, fontFamily: "Inter" }}>
+                <Clock size={11} /> {formatTime(ev.date)} <span className="mx-0.5">·</span> <MapPin size={11} /> {ev.location}
+              </div>
+            </div>
+          </div>
+          <ChevronDown size={16} style={{ color: C.textDim, transform: open ? "rotate(180deg)" : "none", transition: "transform .2s", flexShrink: 0 }} />
+        </div>
+      </button>
+      {open && (
+        <div className="px-4 pb-4">
+          <p className="text-sm mb-3" style={{ color: C.textDim, fontFamily: "Inter" }}>{ev.desc}</p>
+          <div className="flex gap-2 mb-3">
+            {[{ key: "yes", label: "Zusage", icon: Check, active: C.green }, { key: "maybe", label: "Vielleicht", icon: HelpCircle, active: C.amber }, { key: "no", label: "Absage", icon: X, active: C.red }].map((b) => {
+              const isActive = rsvp === b.key;
+              return (
+                <button key={b.key} onClick={() => onRsvp(ev.id, b.key)} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs"
+                  style={{ fontFamily: "Inter", fontWeight: 700, background: isActive ? b.active : C.paper, color: isActive ? C.white : C.textDim, border: `1px solid ${isActive ? b.active : C.line}` }}>
+                  <b.icon size={13} /> {b.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center justify-between text-xs mb-3" style={{ color: C.textDim, fontFamily: "Inter" }}>
+            <span>{ev.going} zugesagt · {ev.maybe} vielleicht · {ev.no} abgesagt</span>
+          </div>
+
+          {ev.type === "event" && rsvp === "yes" && (
+            <div className="flex items-center justify-between px-3 py-2 rounded-lg mb-3" style={{ background: C.paper }}>
+              <span className="text-xs" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Begleitpersonen</span>
+              <div className="flex items-center gap-3">
+                <button onClick={() => onGuestChange(ev.id, -1)} className="w-6 h-6 rounded-full flex items-center justify-center text-sm" style={{ background: C.paperDim, color: C.ink, fontFamily: "Inter", fontWeight: 700 }}>−</button>
+                <span className="text-sm w-4 text-center" style={{ fontFamily: "JetBrains Mono", fontWeight: 700, color: C.ink }}>{guestCount}</span>
+                <button onClick={() => onGuestChange(ev.id, 1)} className="w-6 h-6 rounded-full flex items-center justify-center text-sm" style={{ background: C.paperDim, color: C.ink, fontFamily: "Inter", fontWeight: 700 }}>+</button>
+              </div>
+            </div>
+          )}
+
+          {ev.carpool && (
+            <button onClick={() => onCarpool(ev.id)} className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs mb-1"
+              style={{ fontFamily: "Inter", fontWeight: 700, background: carpoolOn ? "#E7F3EC" : C.ink, color: carpoolOn ? C.green : C.white, border: carpoolOn ? `1px solid ${C.green}` : "none" }}>
+              <Car size={14} /> {carpoolOn ? "Du bietest einen Platz an ✓" : "Fahrgemeinschaft: Platz anbieten"}
+            </button>
+          )}
+
+          {ev.helperSlots && (
+            <div className="mt-3">
+              <div className="text-xs font-semibold mb-2" style={{ fontFamily: "Inter", color: C.ink }}>Helfer:innen gesucht</div>
+              <HelperSlots ev={ev} members={members} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} eligible={helperEligible} />
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+function EventsView({ currentUser, members, rsvps, setRsvps, carpools, setCarpools, guestCounts, setGuestCounts, dutyPlan, setDutyPlan, sponsorBookings, onSponsorImpression, onSponsorClick, onRsvpPoint }) {
+  const [filter, setFilter] = useState("alle");
+  const filtered = EVENTS.filter((e) => filter === "alle" || e.type === filter);
+  const userId = currentUser.id;
+  const myRsvps = rsvps[userId] || {};
+  const myCarpools = carpools[userId] || {};
+  const myGuests = guestCounts[userId] || {};
+  const isAdminUser = isAdmin(currentUser);
+
+  const handleRsvp = (id, val) => {
+    const prev = myRsvps[id];
+    const next = prev === val ? null : val;
+    setRsvps((r) => ({ ...r, [userId]: { ...(r[userId] || {}), [id]: next } }));
+    if (next === "yes" && prev !== "yes") onRsvpPoint();
+  };
+  const handleCarpool = (id) => setCarpools((c) => ({ ...c, [userId]: { ...(c[userId] || {}), [id]: !myCarpools[id] } }));
+  const handleGuestChange = (id, delta) => setGuestCounts((g) => {
+    const cur = g[userId]?.[id] || 0;
+    const next = Math.max(0, Math.min(6, cur + delta));
+    return { ...g, [userId]: { ...(g[userId] || {}), [id]: next } };
+  });
+
+  return (
+    <div className="px-4 pt-4 pb-24">
+      <SectionTitle title="Termine" />
+      <SponsorSlot slotKey="events_header" bookings={sponsorBookings} onImpression={onSponsorImpression} onClick={onSponsorClick} />
+      <div className="flex gap-2 mb-4 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+        {[["alle", "Alle"], ["training", "Training"], ["spiel", "Spiele"], ["event", "Events"]].map(([k, l]) => (
+          <button key={k} onClick={() => setFilter(k)} className="px-3 py-1.5 rounded-full text-xs flex-shrink-0"
+            style={{ fontFamily: "Inter", fontWeight: 700, background: filter === k ? C.ink : C.paperDim, color: filter === k ? C.white : C.textDim }}>{l}</button>
+        ))}
+      </div>
+      {filtered.map((ev) => (
+        <EventCard key={ev.id} ev={ev}
+          rsvp={myRsvps[ev.id]} onRsvp={handleRsvp}
+          carpoolOn={!!myCarpools[ev.id]} onCarpool={handleCarpool}
+          guestCount={myGuests[ev.id] || 0} onGuestChange={handleGuestChange}
+          currentUser={currentUser} members={members} isAdminUser={isAdminUser}
+          dutyPlan={dutyPlan} setDutyPlan={setDutyPlan}
+        />
+      ))}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Beiträge                                                             */
+/* ------------------------------------------------------------------ */
+function FeesView({ user, paid, onPay }) {
+  return (
+    <div className="px-4 pt-4 pb-24">
+      <SectionTitle title="Beiträge" />
+      <div className="rounded-2xl p-5 mb-5" style={{ background: paid ? `linear-gradient(160deg, ${C.green}, #237A44)` : `linear-gradient(160deg, ${C.ink}, ${C.asphalt})` }}>
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-xs uppercase tracking-widest font-semibold" style={{ color: "#D9D9DE", fontFamily: "Inter" }}>Status August 2026</span>
+          {paid ? <CheckCircle2 size={20} color="#fff" /> : <Circle size={20} color="#fff" opacity={0.6} />}
+        </div>
+        <div className="text-3xl mb-1" style={{ fontFamily: "Oswald", fontWeight: 700, color: "#fff" }}>45,00 €</div>
+        <div className="text-sm mb-4" style={{ color: "#D9D9DE", fontFamily: "Inter" }}>{paid ? "Beitrag beglichen — danke!" : "Fällig zum 01.08.2026"}</div>
+        {!paid ? (
+          <button onClick={onPay} className="w-full py-2.5 rounded-lg text-sm" style={{ background: C.white, color: C.ink, fontFamily: "Inter", fontWeight: 700 }}>Jetzt bezahlen</button>
+        ) : (
+          <div className="text-xs" style={{ color: "#D9F2E1", fontFamily: "Inter" }}>Automatische Zahlungsbestätigung an deine E-Mail versendet.</div>
+        )}
+      </div>
+      <SectionTitle eyebrow="Verlauf" title="Zahlungshistorie" />
+      <div className="rounded-2xl overflow-hidden mb-5" style={{ border: `1px solid ${C.line}` }}>
+        {(paid ? [{ month: "August 2026", amount: "45,00 €", date: "01.08.2026" }, ...FEE_HISTORY] : FEE_HISTORY).map((f, i, arr) => (
+          <div key={i} className="flex items-center justify-between px-4 py-3" style={{ background: C.white, borderBottom: i < arr.length - 1 ? `1px solid ${C.line}` : "none" }}>
+            <div>
+              <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 600, color: C.ink }}>{f.month}</div>
+              <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{f.date}</div>
+            </div>
+            <div className="text-right">
+              <div className="text-sm" style={{ fontFamily: "JetBrains Mono", fontWeight: 700, color: C.ink }}>{f.amount}</div>
+              <Pill bg={C.green} style={{ marginTop: 2 }}>bezahlt</Pill>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="rounded-2xl p-4" style={{ background: C.paperDim }}>
+        <div className="text-sm mb-1" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Familien- & Ermäßigung</div>
+        <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>Geschwisterkinder erhalten 20% Rabatt. Fragen zur Beitragsordnung? Schreib dem Vorstand im Chat "Vereins-News".</div>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Chat                                                                  */
+/* ------------------------------------------------------------------ */
+function ChatView({ user, channels, setChannels, activeId, setActiveId }) {
+  const [text, setText] = useState("");
+  const visibleChannels = channels.filter((c) => !c.visibleRoles || isAdmin(user) || c.visibleRoles.some((r) => user.roles.includes(r)));
+  const active = visibleChannels.find((c) => c.id === activeId) || visibleChannels[0];
+  const canPost = !active.adminOnly || isAdmin(user) || (active.id === "news" && user.roles.includes("redakteur"));
+
+  const send = () => {
+    if (!text.trim() || !canPost) return;
+    setChannels((cs) => cs.map((c) => c.id === active.id
+      ? { ...c, messages: [...c.messages, { who: user.name, init: initialsOf(user.name), color: user.color, text, time: "jetzt", me: true }].slice(active.id === "news" ? -10 : -200) }
+      : c));
+    setText("");
+  };
+
+  return (
+    <div className="pt-4 pb-24 flex flex-col" style={{ height: "calc(100% - 16px)" }}>
+      <div className="px-4"><SectionTitle title="Chat" /></div>
+      <div className="flex gap-2 px-4 mb-3 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+        {visibleChannels.map((c) => (
+          <button key={c.id} onClick={() => setActiveId(c.id)} className="px-3 py-1.5 rounded-full text-xs flex-shrink-0"
+            style={{ fontFamily: "Inter", fontWeight: 700, background: activeId === c.id ? C.ink : C.paperDim, color: activeId === c.id ? C.white : C.textDim }}>
+            {c.emoji} {c.name}
+          </button>
+        ))}
+      </div>
+      <div className="flex-1 overflow-y-auto px-4 space-y-3">
+        {active.messages.map((m, i) => {
+          const mine = m.who === user.name;
+          return (
+            <div key={i} className={`flex gap-2 ${mine ? "flex-row-reverse" : ""}`}>
+              <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0" style={{ background: m.color, color: C.white, fontFamily: "Inter" }}>{m.init}</div>
+              <div className={`max-w-[75%] ${mine ? "items-end" : "items-start"} flex flex-col`}>
+                {!mine && <div className="text-[11px] mb-0.5" style={{ color: C.textDim, fontFamily: "Inter" }}>{m.who}</div>}
+                <div className="rounded-2xl text-sm overflow-hidden" style={{ fontFamily: "Inter", background: mine ? C.red : C.white, color: mine ? C.white : C.ink, border: mine ? "none" : `1px solid ${C.line}`, borderBottomRightRadius: mine ? 4 : 16, borderBottomLeftRadius: mine ? 16 : 4 }}>
+                  {m.imageUrl && <img src={m.imageUrl} alt="" className="w-full block" style={{ maxHeight: 180, objectFit: "cover" }} />}
+                  <div className="px-3 py-2">
+                    {m.title && <div className="mb-1" style={{ fontFamily: "Oswald", fontWeight: 700, fontSize: 14 }}>{m.title}</div>}
+                    {m.text}
+                  </div>
+                </div>
+                <div className="text-[10px] mt-0.5" style={{ color: C.textDim, fontFamily: "Inter" }}>{m.time}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="px-4 pt-3">
+        {!canPost ? (
+          <div className="text-xs text-center py-2 rounded-lg" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>Nur der Vorstand kann hier schreiben</div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder="Nachricht schreiben…"
+              className="flex-1 px-3 py-2.5 rounded-full text-sm outline-none" style={{ background: C.paperDim, fontFamily: "Inter", color: C.ink }} />
+            <button onClick={send} className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: C.red }}><Send size={16} color="#fff" /></button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Redaktion (News schreiben)                                           */
+/* ------------------------------------------------------------------ */
+function RedaktionView({ user, channels, setChannels }) {
+  const [showForm, setShowForm] = useState(false);
+  const [title, setTitle] = useState("");
+  const [text, setText] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const news = channels.find((c) => c.id === "news");
+  const items = (news?.messages || []).map((m, idx) => ({ ...m, idx })).reverse();
+
+  const deleteNews = (idx) => {
+    setChannels((cs) => cs.map((c) => (c.id === "news" ? { ...c, messages: c.messages.filter((_, i) => i !== idx) } : c)));
+  };
+
+  const onFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setImageUrl(reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  const publish = () => {
+    if (!title.trim() || !text.trim()) return;
+    setChannels((cs) => cs.map((c) => (c.id === "news"
+      ? { ...c, messages: [...c.messages, { who: user.name, init: initialsOf(user.name), color: user.color, title: title.trim(), text: text.trim(), imageUrl: imageUrl || undefined, time: "jetzt" }].slice(-10) }
+      : c)));
+    setTitle(""); setText(""); setImageUrl(""); setShowForm(false);
+  };
+
+  return (
+    <div className="px-4 pt-4 pb-24">
+      <SectionTitle title="Redaktion" eyebrow="Vereins-News" right={
+        !showForm && <button onClick={() => setShowForm(true)} className="text-xs font-bold px-3 py-1.5 rounded-full" style={{ background: C.ink, color: "#fff", fontFamily: "Inter" }}>+ Neue News</button>
+      } />
+
+      {showForm && (
+        <div className="rounded-2xl p-3 mb-5 space-y-2.5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Titel"
+            className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={{ background: C.paperDim, fontFamily: "Inter", color: C.ink }} />
+          <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Text der News…" rows={4}
+            className="w-full px-3 py-2.5 rounded-lg text-sm outline-none resize-none" style={{ background: C.paperDim, fontFamily: "Inter", color: C.ink }} />
+          <label className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs cursor-pointer" style={{ background: C.paperDim, fontFamily: "Inter", color: C.textDim }}>
+            <ImageIcon size={14} /> {imageUrl ? "Bild ändern" : "Bild auswählen (optional)"}
+            <input type="file" accept="image/*" onChange={onFile} className="hidden" />
+          </label>
+          {imageUrl && <img src={imageUrl} alt="" className="w-full rounded-lg" style={{ maxHeight: 160, objectFit: "cover" }} />}
+          <div className="flex gap-2">
+            <button onClick={publish} disabled={!title.trim() || !text.trim()} className="flex-1 py-2.5 rounded-lg text-xs" style={{ background: C.red, color: "#fff", fontFamily: "Inter", fontWeight: 700, opacity: (!title.trim() || !text.trim()) ? 0.5 : 1 }}>Veröffentlichen</button>
+            <button onClick={() => { setShowForm(false); setTitle(""); setText(""); setImageUrl(""); }} className="px-4 py-2.5 rounded-lg text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter", fontWeight: 700 }}>Abbrechen</button>
+          </div>
+        </div>
+      )}
+
+      <SectionTitle eyebrow="Veröffentlicht" title="Alle News" />
+      <div className="space-y-2">
+        {items.length === 0 ? (
+          <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>Noch keine News veröffentlicht.</div>
+        ) : items.map((m) => (
+          <div key={m.idx} className="rounded-2xl overflow-hidden" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+            {m.imageUrl && <img src={m.imageUrl} alt="" className="w-full block" style={{ maxHeight: 160, objectFit: "cover" }} />}
+            <div className="p-3">
+              <div className="flex items-center justify-between mb-1">
+                <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{m.who} · {m.time}</div>
+                <button onClick={() => deleteNews(m.idx)} className="text-[11px] px-2 py-1 rounded-full" style={{ background: "#FDECEC", color: C.red, fontFamily: "Inter", fontWeight: 700 }}>Löschen</button>
+              </div>
+              {m.title ? <div className="text-sm mb-0.5" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>{m.title}</div> : null}
+              <div className="text-xs" style={{ fontFamily: "Inter", color: C.textDim }}>{m.text}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Familien-Stammbaum                                                   */
+/* ------------------------------------------------------------------ */
+function FamilyTree({ user, members }) {
+  if (!user.familyId) {
+    return (
+      <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>
+        Für dich ist noch kein Familienprofil hinterlegt. Der Vorstand kann Eltern, Kinder und Großeltern für die Helferplanung miteinander verknüpfen.
+      </div>
+    );
+  }
+  const family = members.filter((m) => m.familyId === user.familyId);
+  const gen = (role) => family.filter((m) => m.familyRole === role);
+  const rows = [
+    { role: "großeltern", label: "Großeltern", list: gen("großeltern") },
+    { role: "eltern", label: "Eltern", list: gen("eltern") },
+    { role: "kind", label: "Kinder", list: gen("kind") },
+  ].filter((r) => r.list.length);
+
+  return (
+    <div className="rounded-2xl p-4" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+      {rows.map((r, i) => (
+        <div key={r.role}>
+          <div className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: C.textDim, fontFamily: "Inter" }}>{r.label}</div>
+          <div className="flex flex-wrap gap-2 mb-2">
+            {r.list.map((m) => (
+              <div key={m.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-full" style={{ background: m.id === user.id ? "#FCEBEE" : C.paperDim, border: m.id === user.id ? `1px solid ${C.red}` : "none" }}>
+                <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold" style={{ background: m.color, color: "#fff" }}>{initialsOf(m.name)}</div>
+                <span className="text-xs" style={{ fontFamily: "Inter", fontWeight: 600, color: C.ink }}>{m.name}{m.id === user.id ? " (Du)" : ""}</span>
+              </div>
+            ))}
+          </div>
+          {i < rows.length - 1 && <div className="w-px h-3 ml-4 mb-1" style={{ background: C.line }} />}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Profil                                                                */
+/* ------------------------------------------------------------------ */
+function PlayerDataCard({ user, setMembers }) {
+  const [editing, setEditing] = useState(false);
+  const [number, setNumber] = useState(user.number ?? "");
+  const [position, setPosition] = useState(user.position ?? "");
+
+  const save = () => {
+    setMembers((ms) => ms.map((m) => (m.id === user.id ? { ...m, number: number === "" ? null : Number(number), position: position.trim() || null } : m)));
+    setEditing(false);
+  };
+  const cancel = () => { setNumber(user.number ?? ""); setPosition(user.position ?? ""); setEditing(false); };
+
+  return (
+    <div className="rounded-2xl p-4 mb-5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2 text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}><Star size={15} style={{ color: C.green }} /> Spielerdaten</div>
+        {!editing && (
+          <button onClick={() => setEditing(true)} className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: C.paperDim, color: C.ink, fontFamily: "Inter" }}>Bearbeiten</button>
+        )}
+      </div>
+
+      {!editing ? (
+        <div className="flex gap-2">
+          <div className="flex-1 rounded-xl px-3 py-2.5" style={{ background: C.paperDim }}>
+            <div className="text-[10px] uppercase tracking-widest" style={{ color: C.textDim, fontFamily: "Inter" }}>Rückennummer</div>
+            <div className="text-sm" style={{ fontFamily: "JetBrains Mono", fontWeight: 700, color: C.ink }}>{user.number ?? "—"}</div>
+          </div>
+          <div className="flex-1 rounded-xl px-3 py-2.5" style={{ background: C.paperDim }}>
+            <div className="text-[10px] uppercase tracking-widest" style={{ color: C.textDim, fontFamily: "Inter" }}>Position</div>
+            <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{user.position || "—"}</div>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-2.5">
+          <div>
+            <div className="text-[11px] mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>Rückennummer</div>
+            <input type="number" min="0" max="99" value={number} onChange={(e) => setNumber(e.target.value)} placeholder="z. B. 14"
+              className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={{ background: C.paperDim, fontFamily: "JetBrains Mono", color: C.ink }} />
+          </div>
+          <div>
+            <div className="text-[11px] mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>Position</div>
+            <input value={position} onChange={(e) => setPosition(e.target.value)} placeholder="z. B. Verteidigung"
+              className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={{ background: C.paperDim, fontFamily: "Inter", color: C.ink }} />
+          </div>
+          <div className="flex gap-2">
+            <button onClick={save} className="flex-1 py-2 rounded-lg text-xs" style={{ background: C.red, color: "#fff", fontFamily: "Inter", fontWeight: 700 }}>Speichern</button>
+            <button onClick={cancel} className="px-4 py-2 rounded-lg text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter", fontWeight: 700 }}>Abbrechen</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProfileView({ user, members, setMembers, sponsorBookings, onSponsorImpression, onSponsorClick, onLogout }) {
+  const goal = 1000;
+  const eligible = isFormalMember(user) && age(user.birthdate) >= 16;
+  return (
+    <div className="px-4 pt-4 pb-24">
+      <SectionTitle title="Profil" />
+      <div className="rounded-2xl p-5 mb-5 flex items-center gap-4" style={{ background: `linear-gradient(150deg, ${C.ink}, ${C.asphalt})` }}>
+        <div className="w-16 h-16 rounded-full flex items-center justify-center text-xl flex-shrink-0" style={{ background: user.color, color: "#fff", fontFamily: "Oswald", fontWeight: 700 }}>{initialsOf(user.name)}</div>
+        <div>
+          <div className="text-white text-lg" style={{ fontFamily: "Oswald", fontWeight: 700 }}>{user.name}</div>
+          <div className="text-xs" style={{ color: "#B7B6BC", fontFamily: "Inter" }}>{user.team}{user.number ? ` · Rückennummer ${user.number}` : ""}</div>
+          <div className="text-xs mt-0.5 mb-2" style={{ color: "#B7B6BC", fontFamily: "Inter" }}>Dabei seit {user.since} · {age(user.birthdate)} Jahre</div>
+          <div className="flex flex-wrap gap-1.5">
+            {user.roles.map((r) => <Pill key={r} bg={ROLE_META[r].color}>{ROLE_META[r].label}</Pill>)}
+          </div>
+        </div>
+      </div>
+
+      {user.roles.includes("spieler") && <PlayerDataCard user={user} setMembers={setMembers} />}
+
+      <div className="rounded-2xl p-4 mb-5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2 text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}><Sparkles size={15} style={{ color: C.amber }} /> Vereinspunkte</div>
+          <span className="text-xs" style={{ color: C.textDim, fontFamily: "JetBrains Mono" }}>{user.points} / {goal}</span>
+        </div>
+        <div className="h-2.5 rounded-full overflow-hidden" style={{ background: C.paperDim }}>
+          <div className="h-full rounded-full" style={{ width: `${Math.min(100, (user.points / goal) * 100)}%`, background: C.amber, transition: "width .4s" }} />
+        </div>
+        <div className="text-xs mt-2" style={{ color: C.textDim, fontFamily: "Inter" }}>
+          {user.points >= goal ? "Prämie freigeschaltet — sprich den Vorstand an! 🎉" : `Noch ${goal - user.points} Punkte bis zum kostenlosen Vereins-Hoodie 🧥 (Zusagen bringen Punkte)`}
+        </div>
+      </div>
+
+      <SectionTitle eyebrow="Auszeichnungen" title="Deine Badges" />
+      {user.badges.length === 0 ? (
+        <div className="rounded-2xl p-4 mb-5 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>Noch keine Badges — sag bei Trainings zu, um deine erste Auszeichnung zu sammeln!</div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3 mb-5">
+          {user.badges.map((bid) => {
+            const b = BADGE_LIBRARY[bid];
+            return (
+              <div key={bid} className="rounded-2xl p-3" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+                <div className="w-8 h-8 rounded-full flex items-center justify-center mb-2" style={{ background: C.paper }}><b.icon size={15} style={{ color: C.red }} /></div>
+                <div className="text-xs" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{b.label}</div>
+                <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{b.descFor ? b.descFor(user) : b.desc}</div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <SectionTitle eyebrow="Familie" title="Stammbaum" />
+      <div className="mb-2"><FamilyTree user={user} members={members} /></div>
+      <div className="text-[11px] mb-5" style={{ color: C.textDim, fontFamily: "Inter" }}>
+        {eligible ? "Helferdienst-berechtigt ✓ (16+)" : "Für Heimspiel-Helferdienste noch nicht 16 Jahre alt — beim Sommerfest darfst du trotzdem schon anpacken."}
+      </div>
+
+      <div className="rounded-2xl p-4 mb-5 flex items-center gap-3" style={{ background: "#FFF6E4", border: `1px solid #F2DDA8` }}>
+        <Gift size={22} style={{ color: C.amber, flexShrink: 0 }} />
+        <div>
+          <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Mitglied wirbt Mitglied</div>
+          <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>Lade Freunde ein — für jede Anmeldung gibt's 100 Vereinspunkte. Code: <b>ERGI-{initialsOf(user.name)}</b></div>
+        </div>
+      </div>
+
+      <button className="w-full flex items-center justify-between px-4 py-3 rounded-2xl mb-2" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+        <span className="flex items-center gap-2 text-sm" style={{ fontFamily: "Inter", fontWeight: 600, color: C.ink }}><ImageIcon size={15} /> Fotogalerie · Sommerfest 2025</span>
+        <ChevronRight size={15} style={{ color: C.textDim }} />
+      </button>
+      <button className="w-full flex items-center justify-between px-4 py-3 rounded-2xl mb-5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+        <span className="flex items-center gap-2 text-sm" style={{ fontFamily: "Inter", fontWeight: 600, color: C.ink }}><Star size={15} /> Anwesenheitsquote: 92%</span>
+        <ChevronRight size={15} style={{ color: C.textDim }} />
+      </button>
+
+      <SponsorSlot slotKey="profile_bottom" bookings={sponsorBookings} onImpression={onSponsorImpression} onClick={onSponsorClick} />
+
+      <button onClick={onLogout} className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm" style={{ background: C.paperDim, color: C.red, fontFamily: "Inter", fontWeight: 700 }}>
+        <LogOut size={15} /> Abmelden
+      </button>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Spieler der Saison — Wahl                                            */
+/* ------------------------------------------------------------------ */
+function SeasonVoteView({ currentUser, seasonVotes, setSeasonVotes }) {
+  const closed = new Date() > new Date(SEASON_VOTE_DEADLINE);
+  const { d, h, m } = useCountdown(SEASON_VOTE_DEADLINE);
+  const myVote = seasonVotes[currentUser.id];
+  const { counts, total, sorted } = seasonResults(seasonVotes);
+  const vote = (id) => !closed && setSeasonVotes((v) => ({ ...v, [currentUser.id]: id }));
+
+  return (
+    <div className="px-4 pt-4 pb-10">
+      <div className="rounded-2xl p-4 mb-5" style={{ background: `linear-gradient(160deg, ${C.ink}, ${C.asphalt})` }}>
+        <div className="flex items-center gap-2 mb-2"><Trophy size={16} style={{ color: C.amber }} /><span className="text-white text-sm" style={{ fontFamily: "Inter", fontWeight: 700 }}>Spieler der Saison 2025/26</span></div>
+        {!closed ? (
+          <div className="text-xs" style={{ color: "#B7B6BC", fontFamily: "Inter" }}>Abstimmung endet am 31.08.2026 · noch {d}T {h}Std {m}Min</div>
+        ) : (
+          <div className="text-xs" style={{ color: "#B7B6BC", fontFamily: "Inter" }}>Abstimmung beendet — Ergebnis final</div>
+        )}
+      </div>
+
+      {!closed && <div className="text-xs mb-3" style={{ color: C.textDim, fontFamily: "Inter" }}>{total} Stimmen bisher abgegeben. Ergebnisse werden erst nach dem Stichtag veröffentlicht.</div>}
+
+      {closed && sorted[0] && (
+        <div className="rounded-2xl p-4 mb-5 flex items-center gap-3" style={{ background: "#FFF6E4", border: "1px solid #F2DDA8" }}>
+          <Trophy size={22} style={{ color: C.amber }} />
+          <div>
+            <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>🏆 {sorted[0].name}</div>
+            <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>Spieler der Saison — Ehrung beim Sommerfest</div>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        {sorted.map((c, i) => {
+          const pct = total ? Math.round((counts[c.id] / total) * 100) : 0;
+          const mine = myVote === c.id;
+          return (
+            <button key={c.id} onClick={() => vote(c.id)} disabled={closed} className="w-full text-left relative overflow-hidden rounded-xl" style={{ border: `1px solid ${mine ? C.red : C.line}`, cursor: closed ? "default" : "pointer" }}>
+              {closed && <div className="absolute inset-y-0 left-0" style={{ width: `${pct}%`, background: i === 0 ? "#FCEBEE" : C.paperDim }} />}
+              <div className="relative flex items-center justify-between px-3.5 py-3">
+                <div className="flex items-center gap-2">
+                  {mine && <CheckCircle2 size={14} style={{ color: C.red }} />}
+                  <div>
+                    <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{c.name}</div>
+                    <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{c.team} · #{c.number}</div>
+                  </div>
+                </div>
+                {closed && <span className="text-xs" style={{ color: C.textDim, fontFamily: "JetBrains Mono" }}>{pct}%</span>}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+      {!closed && myVote && <div className="text-xs mt-3 text-center" style={{ color: C.textDim, fontFamily: "Inter" }}>Du kannst deine Stimme bis zum Stichtag noch ändern.</div>}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Tippspiel                                                            */
+/* ------------------------------------------------------------------ */
+function TippView({ members, currentUser, tippPredictions, setTippPredictions }) {
+  const mine = tippPredictions[currentUser.id] || {};
+  const setPred = (matchId, side, val) => {
+    setTippPredictions((tp) => {
+      const userPreds = tp[currentUser.id] || {};
+      const cur = userPreds[matchId] || { home: "", away: "" };
+      return { ...tp, [currentUser.id]: { ...userPreds, [matchId]: { ...cur, [side]: val } } };
+    });
+  };
+  const leaderboard = [...members].sort((a, b) => b.tippPoints - a.tippPoints);
+
+  return (
+    <div className="px-4 pt-4 pb-10">
+      <div className="rounded-2xl p-4 mb-5 flex items-center gap-3" style={{ background: "#FFF6E4", border: "1px solid #F2DDA8" }}>
+        <Gift size={20} style={{ color: C.amber }} />
+        <div className="text-xs" style={{ color: C.ink, fontFamily: "Inter" }}><b>Platz 1</b> am Saisonende gewinnt einen ERGI-Artikel nach Wahl — Schal, Trikot oder mehr.</div>
+      </div>
+
+      <SectionTitle eyebrow="Rangliste" title="Tippspiel-Tabelle" />
+      <div className="rounded-2xl overflow-hidden mb-6" style={{ border: `1px solid ${C.line}` }}>
+        {leaderboard.map((m, i) => (
+          <div key={m.id} className="flex items-center gap-3 px-4 py-2.5" style={{ background: m.id === currentUser.id ? "#FCEBEE" : C.white, borderBottom: i < leaderboard.length - 1 ? `1px solid ${C.line}` : "none" }}>
+            <div className="w-6 text-center text-sm" style={{ fontFamily: "JetBrains Mono", fontWeight: 700, color: i === 0 ? C.amber : C.textDim }}>{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}</div>
+            <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: m.color, color: "#fff" }}>{initialsOf(m.name)}</div>
+            <div className="flex-1 text-sm" style={{ fontFamily: "Inter", fontWeight: 600, color: C.ink }}>{m.name}{m.id === currentUser.id ? " (Du)" : ""}</div>
+            <div className="text-sm" style={{ fontFamily: "JetBrains Mono", fontWeight: 700, color: C.ink }}>{m.tippPoints} P</div>
+          </div>
+        ))}
+      </div>
+
+      <SectionTitle eyebrow="Punkteregeln" title="So funktioniert's" />
+      <div className="rounded-2xl p-4 mb-6 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>
+        Genaues Ergebnis = 3 Punkte · richtige Tendenz = 1 Punkt. Punkte werden nach Spielende vom Vorstand eingetragen.
+      </div>
+
+      <SectionTitle eyebrow="Nächste Spiele" title="Jetzt tippen" />
+      {TIPP_MATCHES.map((match) => {
+        const locked = new Date(match.date) < new Date();
+        const pred = mine[match.id] || { home: "", away: "" };
+        return (
+          <div key={match.id} className="rounded-2xl p-4 mb-3" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{formatDate(match.date)} · {formatTime(match.date)}</div>
+              {locked && <Pill bg={C.textDim}>gesperrt</Pill>}
+            </div>
+            <div className="flex items-center justify-center gap-3">
+              <span className="text-sm flex-1 text-right" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{match.home}</span>
+              <input type="number" min="0" disabled={locked} value={pred.home} onChange={(e) => setPred(match.id, "home", e.target.value)}
+                className="w-12 text-center py-1.5 rounded-lg text-sm outline-none" style={{ background: C.paperDim, fontFamily: "JetBrains Mono", fontWeight: 700 }} />
+              <span style={{ color: C.textDim }}>:</span>
+              <input type="number" min="0" disabled={locked} value={pred.away} onChange={(e) => setPred(match.id, "away", e.target.value)}
+                className="w-12 text-center py-1.5 rounded-lg text-sm outline-none" style={{ background: C.paperDim, fontFamily: "JetBrains Mono", fontWeight: 700 }} />
+              <span className="text-sm flex-1" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{match.away}</span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Helferplanung — eigene Ansicht                                       */
+/* ------------------------------------------------------------------ */
+function DutyView({ members, currentUser, dutyPlan, setDutyPlan }) {
+  const helperEvents = EVENTS.filter((e) => e.helperSlots && e.helperSlots.length);
+  const formalMember = isFormalMember(currentUser);
+  const oldEnough = age(currentUser.birthdate) >= 16;
+  const familyHelpers = (!formalMember || !oldEnough) ? members.filter((m) => m.familyId && m.familyId === currentUser.familyId && m.id !== currentUser.id && isFormalMember(m) && age(m.birthdate) >= 16) : [];
+
+  return (
+    <div className="px-4 pt-4 pb-10">
+      <div className="text-xs mb-4" style={{ color: C.textDim, fontFamily: "Inter" }}>Von der Theke beim Heimspiel bis zum Kuchenbuffet auf dem Sommerfest — hier findest du alle offenen Helferstellen. Trag dich direkt ein!</div>
+
+      {!oldEnough && (
+        <div className="rounded-2xl p-4 mb-5 text-xs" style={{ background: "#FFF6E4", border: "1px solid #F2DDA8", color: C.ink, fontFamily: "Inter" }}>
+          An Theke, Zeitnahme, Grill und Kasse bei Heimspielen helfen erst ab 16 Jahren mit — beim Sommerfest kannst du trotzdem schon zupacken.
+          {familyHelpers.length > 0 && <> Für Heimspiele kann deine Familie einspringen: {familyHelpers.map((f) => f.name).join(", ")}.</>}
+        </div>
+      )}
+
+      {helperEvents.map((ev) => {
+        const eligible = formalMember && (ev.type !== "spiel" || oldEnough);
+        return (
+          <div key={ev.id} className="rounded-2xl mb-4 p-4" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{ev.title}</div>
+                <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{formatDate(ev.date)} · {formatTime(ev.date)}</div>
+              </div>
+              <Pill bg={ev.home ? C.red : typeMeta[ev.type].color}>{ev.home ? "Heimspiel" : typeMeta[ev.type].label}</Pill>
+            </div>
+            <HelperSlots ev={ev} members={members} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} eligible={eligible} />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+function AdminDutyPanel({ members, dutyPlan, setDutyPlan }) {
+  const helperEvents = EVENTS.filter((e) => e.helperSlots && e.helperSlots.length);
+  const formalMembers = members.filter((m) => isFormalMember(m));
+  const add = (eventId, station, memberId) => {
+    if (!memberId) return;
+    setDutyPlan((dp) => {
+      const plan = dp[eventId] || {};
+      const list = plan[station] || [];
+      if (list.includes(memberId) || list.length >= STATION_CAP) return dp;
+      return { ...dp, [eventId]: { ...plan, [station]: [...list, memberId] } };
+    });
+  };
+  const remove = (eventId, station, memberId) => {
+    setDutyPlan((dp) => {
+      const plan = dp[eventId] || {};
+      return { ...dp, [eventId]: { ...plan, [station]: (plan[station] || []).filter((id) => id !== memberId) } };
+    });
+  };
+  return (
+    <div>
+      <div className="text-xs mb-4" style={{ color: C.textDim, fontFamily: "Inter" }}>{formalMembers.length} Vereinsmitglieder sind hinterlegt und einteilbar (Heimspiel-Stationen zusätzlich ab 16 Jahren).</div>
+      {helperEvents.map((ev) => {
+        const plan = dutyPlan[ev.id] || {};
+        const pool = ev.type === "spiel" ? formalMembers.filter((m) => age(m.birthdate) >= 16) : formalMembers;
+        return (
+          <div key={ev.id} className="rounded-2xl mb-4 p-4" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+            <div className="text-sm mb-3" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{ev.title} · {formatDate(ev.date)}</div>
+            <div className="space-y-3">
+              {ev.helperSlots.map((station) => {
+                const list = plan[station] || [];
+                return (
+                  <div key={station}>
+                    <div className="text-xs mb-1" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{station} ({list.length}/{STATION_CAP})</div>
+                    <div className="flex flex-wrap gap-1.5 mb-1.5">
+                      {list.map((id) => {
+                        const m = members.find((x) => x.id === id);
+                        return (
+                          <span key={id} className="flex items-center gap-1 px-2 py-1 rounded-full text-[11px]" style={{ background: C.paperDim, fontFamily: "Inter", color: C.ink }}>
+                            {m?.name} <button onClick={() => remove(ev.id, station, id)}><X size={11} /></button>
+                          </span>
+                        );
+                      })}
+                    </div>
+                    {list.length < STATION_CAP && (
+                      <select onChange={(e) => { add(ev.id, station, e.target.value); e.target.value = ""; }} defaultValue=""
+                        className="text-xs px-2 py-1.5 rounded-lg outline-none" style={{ background: C.paper, fontFamily: "Inter", border: `1px solid ${C.line}` }}>
+                        <option value="">+ Mitglied zuteilen</option>
+                        {pool.filter((m) => !list.includes(m.id)).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                      </select>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Vorstandsprotokolle mit Aufgabenextraktion                           */
+/* ------------------------------------------------------------------ */
+function ProtocolCard({ protocol, members, onToggleTask }) {
+  const [open, setOpen] = useState(false);
+  const openCount = protocol.tasks.filter((t) => !t.done).length;
+  return (
+    <div className="rounded-2xl overflow-hidden" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+      <button onClick={() => setOpen((o) => !o)} className="w-full text-left p-3 flex items-center justify-between">
+        <div>
+          <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{protocol.title}</div>
+          <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{protocol.date} · {protocol.attendees.length} Teilnehmer:innen · {openCount} offen</div>
+        </div>
+        <ChevronDown size={15} style={{ color: C.textDim, transform: open ? "rotate(180deg)" : "none", transition: "transform .2s", flexShrink: 0 }} />
+      </button>
+      {open && (
+        <div className="px-3 pb-3">
+          <p className="text-xs mb-2.5" style={{ color: C.textDim, fontFamily: "Inter", whiteSpace: "pre-wrap" }}>{protocol.rawText}</p>
+          <div className="space-y-1.5">
+            {protocol.tasks.map((t) => {
+              const person = members.find((m) => m.id === t.assignee);
+              return (
+                <div key={t.id} className="flex items-center gap-2 px-2.5 py-2 rounded-lg" style={{ background: C.paper }}>
+                  <button onClick={() => onToggleTask(protocol.id, t.id)} className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: t.done ? C.green : "transparent", border: `1.5px solid ${t.done ? C.green : C.line}` }}>
+                    {t.done && <Check size={10} color="#fff" />}
+                  </button>
+                  <div className="flex-1 text-[11px]" style={{ fontFamily: "Inter", color: t.done ? C.textDim : C.ink, textDecoration: t.done ? "line-through" : "none" }}>{t.text}</div>
+                  <span className="text-[10px] flex-shrink-0" style={{ color: C.textDim, fontFamily: "Inter" }}>{person ? person.name.split(" ")[0] : "–"}{t.due ? ` · ${t.due}` : ""}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+function ProtokollePanel({ members, protocols, setProtocols }) {
+  const [title, setTitle] = useState("");
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [attendees, setAttendees] = useState([]);
+  const [rawText, setRawText] = useState("");
+  const [draftTasks, setDraftTasks] = useState([]);
+  const [newTaskText, setNewTaskText] = useState("");
+  const [newTaskAssignee, setNewTaskAssignee] = useState("");
+  const [newTaskDue, setNewTaskDue] = useState("");
+
+  const toggleAttendee = (id) => setAttendees((a) => (a.includes(id) ? a.filter((x) => x !== id) : [...a, id]));
+  const openTasks = protocols.flatMap((p) => p.tasks.filter((t) => !t.done).map((t) => ({ ...t, protocolTitle: p.title, protocolId: p.id })));
+
+  const toggleTaskDone = (protocolId, taskId) => {
+    setProtocols((ps) => ps.map((p) => (p.id !== protocolId ? p : { ...p, tasks: p.tasks.map((t) => (t.id === taskId ? { ...t, done: !t.done } : t)) })));
+  };
+
+  const addDraftTask = () => {
+    if (!newTaskText.trim()) return;
+    setDraftTasks((ts) => [...ts, { id: "d" + Date.now(), text: newTaskText.trim(), assignee: newTaskAssignee, due: newTaskDue, done: false }]);
+    setNewTaskText(""); setNewTaskAssignee(""); setNewTaskDue("");
+  };
+  const updateDraftTask = (id, patch) => setDraftTasks((ts) => ts.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+  const removeDraftTask = (id) => setDraftTasks((ts) => ts.filter((t) => t.id !== id));
+
+  const saveProtocol = () => {
+    if (!title.trim() || !rawText.trim()) return;
+    setProtocols((ps) => [
+      { id: "p" + Date.now(), title: title.trim(), date, attendees, rawText, tasks: draftTasks.filter((t) => t.text.trim()) },
+      ...ps,
+    ]);
+    setTitle(""); setAttendees([]); setRawText(""); setDraftTasks([]);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <div className="text-sm mb-2" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Offene Aufgaben ({openTasks.length})</div>
+        {openTasks.length === 0 ? (
+          <div className="rounded-2xl p-3 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>Keine offenen Aufgaben — sehr gut! 🎉</div>
+        ) : (
+          <div className="space-y-1.5">
+            {openTasks.map((t) => {
+              const person = members.find((m) => m.id === t.assignee);
+              return (
+                <div key={t.id} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+                  <button onClick={() => toggleTaskDone(t.protocolId, t.id)} className="w-5 h-5 rounded-full flex-shrink-0" style={{ border: `1.5px solid ${C.line}` }} />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs" style={{ fontFamily: "Inter", fontWeight: 600, color: C.ink }}>{t.text}</div>
+                    <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{person ? person.name : "nicht zugewiesen"}{t.due ? ` · fällig ${t.due}` : ""} · {t.protocolTitle}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <div>
+        <div className="text-sm mb-2" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Neues Protokoll erfassen</div>
+        <div className="rounded-2xl p-3 space-y-2.5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Titel, z. B. Vorstandssitzung August"
+            className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={{ background: C.paperDim, fontFamily: "Inter", color: C.ink }} />
+          <input type="date" value={date} onChange={(e) => setDate(e.target.value)}
+            className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={{ background: C.paperDim, fontFamily: "Inter", color: C.ink }} />
+          <div>
+            <div className="text-[11px] mb-1.5" style={{ color: C.textDim, fontFamily: "Inter" }}>Teilnehmer:innen</div>
+            <div className="flex flex-wrap gap-1.5">
+              {members.map((m) => {
+                const active = attendees.includes(m.id);
+                return (
+                  <button type="button" key={m.id} onClick={() => toggleAttendee(m.id)} className="px-2.5 py-1 rounded-full text-[11px]"
+                    style={{ fontFamily: "Inter", fontWeight: 700, background: active ? C.ink : C.paperDim, color: active ? "#fff" : C.textDim }}>
+                    {m.name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <textarea value={rawText} onChange={(e) => setRawText(e.target.value)} placeholder="Protokolltext / Notizen der Sitzung…" rows={5}
+            className="w-full px-3 py-2.5 rounded-lg text-sm outline-none resize-none" style={{ background: C.paperDim, fontFamily: "Inter", color: C.ink }} />
+        </div>
+      </div>
+
+      <div>
+        <div className="text-sm mb-2" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Aufgaben für dieses Protokoll ({draftTasks.length})</div>
+        <div className="rounded-2xl p-3 mb-3" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+          <input value={newTaskText} onChange={(e) => setNewTaskText(e.target.value)} placeholder="Neue Aufgabe eintippen…"
+            className="w-full px-3 py-2 rounded-lg text-sm outline-none mb-2" style={{ background: C.paperDim, fontFamily: "Inter", color: C.ink }} />
+          <div className="flex gap-2 mb-2">
+            <select value={newTaskAssignee} onChange={(e) => setNewTaskAssignee(e.target.value)} className="flex-1 text-xs px-2 py-1.5 rounded-lg outline-none" style={{ background: C.paperDim, fontFamily: "Inter", border: `1px solid ${C.line}` }}>
+              <option value="">nicht zugewiesen</option>
+              {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+            </select>
+            <input type="date" value={newTaskDue} onChange={(e) => setNewTaskDue(e.target.value)} className="text-xs px-2 py-1.5 rounded-lg outline-none" style={{ background: C.paperDim, fontFamily: "Inter", border: `1px solid ${C.line}` }} />
+          </div>
+          <button onClick={addDraftTask} disabled={!newTaskText.trim()} className="w-full py-2 rounded-lg text-xs" style={{ background: C.ink, color: "#fff", fontFamily: "Inter", fontWeight: 700, opacity: !newTaskText.trim() ? 0.5 : 1 }}>+ Aufgabe hinzufügen</button>
+        </div>
+
+        {draftTasks.length > 0 && (
+          <div className="space-y-2 mb-3">
+            {draftTasks.map((t) => (
+              <div key={t.id} className="rounded-xl p-3" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <input value={t.text} onChange={(e) => updateDraftTask(t.id, { text: e.target.value })} className="flex-1 text-xs outline-none bg-transparent" style={{ fontFamily: "Inter", fontWeight: 600, color: C.ink }} />
+                  <button onClick={() => removeDraftTask(t.id)}><X size={13} style={{ color: C.textDim }} /></button>
+                </div>
+                <div className="flex gap-2">
+                  <select value={t.assignee} onChange={(e) => updateDraftTask(t.id, { assignee: e.target.value })} className="flex-1 text-[11px] px-2 py-1.5 rounded-lg outline-none" style={{ background: C.paperDim, fontFamily: "Inter", border: `1px solid ${C.line}` }}>
+                    <option value="">nicht zugewiesen</option>
+                    {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                  </select>
+                  <input type="date" value={t.due} onChange={(e) => updateDraftTask(t.id, { due: e.target.value })} className="text-[11px] px-2 py-1.5 rounded-lg outline-none" style={{ background: C.paperDim, fontFamily: "Inter", border: `1px solid ${C.line}` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <button onClick={saveProtocol} disabled={!title.trim() || !rawText.trim()} className="w-full py-2.5 rounded-lg text-xs" style={{ background: C.red, color: "#fff", fontFamily: "Inter", fontWeight: 700, opacity: (!title.trim() || !rawText.trim()) ? 0.5 : 1 }}>Protokoll & Aufgaben speichern</button>
+        {(!title.trim() || !rawText.trim()) && <div className="text-[11px] mt-1.5 text-center" style={{ color: C.textDim, fontFamily: "Inter" }}>Bitte Titel und Protokolltext ausfüllen.</div>}
+      </div>
+
+      <div>
+        <div className="text-sm mb-2" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Vergangene Protokolle</div>
+        <div className="space-y-2">
+          {protocols.map((p) => <ProtocolCard key={p.id} protocol={p} members={members} onToggleTask={toggleTaskDone} />)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Automatisierungen                                                    */
+/* ------------------------------------------------------------------ */
+function AutomationsPanel({ members, feePaid, remindersSent, setRemindersSent, welcomeAutomation, setWelcomeAutomation, billingAutomation, setBillingAutomation }) {
+  const openMembers = members.filter((m) => isFormalMember(m) && !feePaid[m.id]);
+  const sendReminder = (id) => setRemindersSent((r) => ({ ...r, [id]: true }));
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <div className="text-sm mb-2" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Automatische Zahlungserinnerungen</div>
+        <div className="text-[11px] mb-2" style={{ color: C.textDim, fontFamily: "Inter" }}>Stufe 1 ab 3 Tagen · Stufe 2 (Mahnung) ab 10 Tagen · Stufe 3 (Vorstand informiert) ab 20 Tagen überfällig.</div>
+        {openMembers.length === 0 ? (
+          <div className="rounded-2xl p-3 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>Aktuell keine offenen Beiträge. 🎉</div>
+        ) : (
+          <div className="space-y-1.5">
+            {openMembers.map((m) => {
+              const days = OVERDUE_DAYS[m.id] || 0;
+              const stage = reminderStage(days);
+              const sent = remindersSent[m.id];
+              return (
+                <div key={m.id} className="flex items-center justify-between px-3 py-2.5 rounded-xl" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+                  <div>
+                    <div className="text-xs" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{m.name}</div>
+                    <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{days} Tage überfällig · <span style={{ color: stage.color, fontWeight: 700 }}>{stage.label}</span></div>
+                  </div>
+                  <button onClick={() => sendReminder(m.id)} disabled={!!sent} className="px-2.5 py-1.5 rounded-full text-[11px] flex-shrink-0" style={{ fontFamily: "Inter", fontWeight: 700, background: sent ? C.paperDim : C.ink, color: sent ? C.textDim : "#fff" }}>
+                    {sent ? "Gesendet ✓" : "Erinnerung senden"}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <ToggleCard title="Automatische Beitragsperioden" desc="Am 1. jedes Monats werden neue Beitragsposten für alle aktiven Mitglieder erzeugt. Nächster Lauf: 01.09.2026." value={billingAutomation} onChange={setBillingAutomation} />
+      <ToggleCard title="Willkommens-Automatik" desc="Neue Mitglieder erhalten automatisch eine Begrüßung im Kanal „Vereins-News“." value={welcomeAutomation} onChange={setWelcomeAutomation} />
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Übersicht (Vorstands-Dashboard)                                      */
+/* ------------------------------------------------------------------ */
+function OverviewPanel({ members, feePaid, protocols, dutyPlan, seasonVotes, goPanel }) {
+  const paidCount = members.filter((m) => feePaid[m.id]).length;
+  const feeRate = members.length ? Math.round((paidCount / members.length) * 100) : 100;
+  const openTasks = protocols.flatMap((p) => p.tasks.filter((t) => !t.done)).length;
+
+  const helperEvents = EVENTS.filter((e) => e.helperSlots && e.helperSlots.length);
+  let openSlots = 0, totalSlots = 0;
+  helperEvents.forEach((ev) => {
+    const plan = dutyPlan[ev.id] || {};
+    ev.helperSlots.forEach((s) => { totalSlots += STATION_CAP; openSlots += STATION_CAP - (plan[s]?.length || 0); });
+  });
+  const { total: seasonTotal } = seasonResults(seasonVotes);
+  const nextEvent = EVENTS[0];
+
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      <StatCard icon={Users} label="Mitglieder" value={members.length} sub="alle formale Mitglieder" accent={C.ink} />
+      <StatCard icon={Euro} label="Beitragsquote" value={`${feeRate}%`} sub={`${formalCount - paidCount} offen`} accent={C.green} onClick={() => goPanel("fees")} />
+      <StatCard icon={ClipboardList} label="Offene Aufgaben" value={openTasks} sub="aus Protokollen" accent={C.red} onClick={() => goPanel("protokolle")} />
+      <StatCard icon={AlertCircle} label="Helfer-Lücken" value={openSlots} sub={`von ${totalSlots} Plätzen offen`} accent={C.amber} onClick={() => goPanel("duty")} />
+      <StatCard icon={Trophy} label="Saison-Stimmen" value={seasonTotal} sub="Spieler der Saison" accent={C.amber} onClick={() => goPanel("season")} />
+      <StatCard icon={CalendarDays} label="Nächstes Event" value={formatDate(nextEvent.date)} sub={nextEvent.title} accent={C.red} />
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Sponsoring                                                            */
+/* ------------------------------------------------------------------ */
+function SponsoringPanel({ bookings, setBookings, stats }) {
+  return (
+    <div className="space-y-3">
+      <div className="text-xs mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>Weise Sponsoren feste Werbeflächen (Slots) in der App zu. Leere Slots bleiben für Mitglieder unsichtbar.</div>
+      {SPONSOR_SLOT_DEFS.map((slot) => {
+        const s = stats[slot.key] || { impressions: 0, clicks: 0 };
+        const ctr = s.impressions ? ((s.clicks / s.impressions) * 100).toFixed(1) : "0.0";
+        return (
+          <div key={slot.key} className="rounded-2xl p-3" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-xs" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{slot.label}</div>
+              <span className="text-[10px]" style={{ fontFamily: "JetBrains Mono", color: C.textDim }}>{slot.key}</span>
+            </div>
+            <select value={bookings[slot.key] || ""} onChange={(e) => setBookings((b) => ({ ...b, [slot.key]: e.target.value || undefined }))}
+              className="w-full px-2.5 py-1.5 rounded-lg text-xs outline-none mb-2" style={{ background: C.paperDim, fontFamily: "Inter", border: `1px solid ${C.line}` }}>
+              <option value="">— Slot frei —</option>
+              {SPONSORS.map((s2) => <option key={s2} value={s2}>{s2}</option>)}
+            </select>
+            <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{s.impressions} Impressionen · {s.clicks} Klicks · {ctr}% CTR</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Rollenverwaltung                                                     */
+/* ------------------------------------------------------------------ */
+function RolesPanel({ members, setMembers }) {
+  const toggleRole = (memberId, role) => {
+    if (ROLE_META[role]?.alwaysOn) return; // "Mitglied" ist Basisrolle für alle
+    setMembers((ms) => ms.map((m) => {
+      if (m.id !== memberId) return m;
+      const has = m.roles.includes(role);
+      if (has && m.roles.length === 1) return m; // mindestens eine Rolle behalten
+      return { ...m, roles: has ? m.roles.filter((r) => r !== role) : [...m.roles, role] };
+    }));
+  };
+  return (
+    <div className="space-y-3">
+      <div className="text-xs mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>Tippe eine Rolle an, um sie zu vergeben oder zu entziehen. Vereins-Administrator, Vorstand & Geschäftsführung können nur hier zugewiesen werden.</div>
+      {members.map((m) => (
+        <div key={m.id} className="rounded-2xl p-3" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+          <div className="flex items-center gap-2 mb-2.5">
+            <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0" style={{ background: m.color, color: "#fff", fontFamily: "Inter" }}>{initialsOf(m.name)}</div>
+            <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{m.name}</div>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {Object.keys(ROLE_META).map((r) => {
+              const active = m.roles.includes(r);
+              return (
+                <button key={r} onClick={() => toggleRole(m.id, r)} className="px-2.5 py-1 rounded-full text-[11px]"
+                  style={{ fontFamily: "Inter", fontWeight: 700, background: active ? ROLE_META[r].color : C.paperDim, color: active ? "#fff" : C.textDim }}>
+                  {ROLE_META[r].label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* System (Sys-Admin)                                                   */
+/* ------------------------------------------------------------------ */
+function SystemPanel({ members, channels, setChannels, maintenanceMode, setMaintenanceMode, onResetDemo }) {
+  const [chName, setChName] = useState("");
+  const [chEmoji, setChEmoji] = useState("💬");
+  const [chRoles, setChRoles] = useState([]);
+  const [confirmReset, setConfirmReset] = useState(false);
+  const toggleChRole = (r) => setChRoles((rs) => (rs.includes(r) ? rs.filter((x) => x !== r) : [...rs, r]));
+
+  const createChannel = () => {
+    if (!chName.trim()) return;
+    const slug = chName.trim().toLowerCase().replace(/[^a-z0-9äöüß]+/g, "-").replace(/^-+|-+$/g, "") || "kanal";
+    const id = channels.some((c) => c.id === slug) ? `${slug}-${Date.now()}` : slug;
+    setChannels((cs) => [...cs, { id, name: chName.trim(), emoji: chEmoji || "💬", adminOnly: false, visibleRoles: chRoles.length ? chRoles : null, messages: [] }]);
+    setChName(""); setChEmoji("💬"); setChRoles([]);
+  };
+
+  return (
+    <div className="space-y-6">
+      <ToggleCard title="Wartungsmodus" desc="Hinweis-Banner für alle Nutzer:innen einblenden." value={maintenanceMode} onChange={setMaintenanceMode} />
+
+      <div>
+        <div className="text-sm mb-2" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Neuen Chat-Kanal anlegen</div>
+        <div className="rounded-2xl p-3" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+          <div className="flex gap-2 mb-2">
+            <input value={chEmoji} onChange={(e) => setChEmoji(e.target.value)} placeholder="🏒" maxLength={2}
+              className="w-12 text-center py-2 rounded-lg text-sm outline-none" style={{ background: C.paperDim, fontFamily: "Inter" }} />
+            <input value={chName} onChange={(e) => setChName(e.target.value)} placeholder="Kanalname, z. B. U15 Team"
+              className="flex-1 px-3 py-2 rounded-lg text-sm outline-none" style={{ background: C.paperDim, fontFamily: "Inter", color: C.ink }} />
+          </div>
+          <div className="text-[11px] mb-1.5" style={{ color: C.textDim, fontFamily: "Inter" }}>Sichtbar für (leer = alle Rollen):</div>
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {Object.keys(ROLE_META).map((r) => {
+              const active = chRoles.includes(r);
+              return (
+                <button key={r} type="button" onClick={() => toggleChRole(r)} className="px-2.5 py-1 rounded-full text-[11px]"
+                  style={{ fontFamily: "Inter", fontWeight: 700, background: active ? ROLE_META[r].color : C.paperDim, color: active ? "#fff" : C.textDim }}>
+                  {ROLE_META[r].label}
+                </button>
+              );
+            })}
+          </div>
+          <button onClick={createChannel} className="w-full py-2 rounded-lg text-xs" style={{ background: C.ink, color: "#fff", fontFamily: "Inter", fontWeight: 700 }}>Kanal anlegen</button>
+        </div>
+      </div>
+
+      <div>
+        <div className="text-sm mb-2" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Konten-Übersicht</div>
+        <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${C.line}` }}>
+          {members.map((m, i) => (
+            <div key={m.id} className="px-4 py-2.5" style={{ background: C.white, borderBottom: i < members.length - 1 ? `1px solid ${C.line}` : "none" }}>
+              <div className="flex items-center justify-between">
+                <span className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{m.name}</span>
+                <span className="text-[10px]" style={{ fontFamily: "JetBrains Mono", color: C.textDim }}>{m.id}</span>
+              </div>
+              <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{m.email} · {m.roles.map((r) => ROLE_META[r].label).join(", ")}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <div className="text-sm mb-2" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Demo-Daten</div>
+        {!confirmReset ? (
+          <button onClick={() => setConfirmReset(true)} className="w-full py-3 rounded-2xl text-sm" style={{ background: C.paperDim, color: C.red, fontFamily: "Inter", fontWeight: 700 }}>
+            Zusagen, Tipps, Beiträge & Helfer zurücksetzen
+          </button>
+        ) : (
+          <div className="rounded-2xl p-3" style={{ background: "#FDECEC", border: "1px solid #F3B9B9" }}>
+            <div className="text-xs mb-2" style={{ color: C.ink, fontFamily: "Inter" }}>Wirklich alle Aktivitätsdaten zurücksetzen? Konten, Rollen und Protokolle bleiben erhalten.</div>
+            <div className="flex gap-2">
+              <button onClick={() => { onResetDemo(); setConfirmReset(false); }} className="flex-1 py-2 rounded-lg text-xs" style={{ background: C.red, color: "#fff", fontFamily: "Inter", fontWeight: 700 }}>Ja, zurücksetzen</button>
+              <button onClick={() => setConfirmReset(false)} className="flex-1 py-2 rounded-lg text-xs" style={{ background: C.white, color: C.textDim, fontFamily: "Inter", fontWeight: 700, border: `1px solid ${C.line}` }}>Abbrechen</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Verwaltung (Vorstand / Geschäftsführung / Sys-Admin)                 */
+/* ------------------------------------------------------------------ */
+function AdminView({
+  members, setMembers, feePaid, setFeePaid, dutyPlan, setDutyPlan, seasonVotes, currentUser,
+  channels, setChannels, maintenanceMode, setMaintenanceMode, onResetDemo,
+  protocols, setProtocols, remindersSent, setRemindersSent,
+  welcomeAutomation, setWelcomeAutomation, billingAutomation, setBillingAutomation,
+  sponsorBookings, setSponsorBookings, sponsorStats,
+}) {
+  const [panel, setPanel] = useState("overview");
+  const openCount = members.filter((m) => !feePaid[m.id]).length;
+  const panels = [["overview", "Übersicht"], ["fees", "Beiträge"], ["automation", "Automatisierung"], ["duty", "Helferplanung"], ["protokolle", "Protokolle"], ["sponsoring", "Sponsoring"], ["season", "Spieler der Saison"], ["roles", "Rollen"]];
+  if (isSysAdmin(currentUser)) panels.push(["system", "System"]);
+
+  return (
+    <div className="px-4 pt-4 pb-24">
+      <SectionTitle title="Verwaltung" eyebrow="Vorstand" />
+      <div className="rounded-2xl p-4 mb-5 flex items-center gap-3" style={{ background: C.ink }}>
+        <ShieldCheck size={22} style={{ color: C.amber }} />
+        <div>
+          <div className="text-white text-sm" style={{ fontFamily: "Inter", fontWeight: 700 }}>{members.length} Mitglieder</div>
+          <div className="text-xs" style={{ color: "#B7B6BC", fontFamily: "Inter" }}>{openCount} Beiträge für August noch offen</div>
+        </div>
+      </div>
+
+      <div className="flex gap-2 mb-4 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+        {panels.map(([k, l]) => (
+          <button key={k} onClick={() => setPanel(k)} className="px-3 py-1.5 rounded-full text-xs flex-shrink-0"
+            style={{ fontFamily: "Inter", fontWeight: 700, background: panel === k ? C.ink : C.paperDim, color: panel === k ? C.white : C.textDim }}>{l}</button>
+        ))}
+      </div>
+
+      {panel === "overview" && <OverviewPanel members={members} feePaid={feePaid} protocols={protocols} dutyPlan={dutyPlan} seasonVotes={seasonVotes} goPanel={setPanel} />}
+
+      {panel === "fees" && (
+        <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${C.line}` }}>
+          {members.map((m, i) => (
+            <div key={m.id} className="flex items-center gap-3 px-4 py-3" style={{ background: C.white, borderBottom: i < members.length - 1 ? `1px solid ${C.line}` : "none" }}>
+              <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0" style={{ background: m.color, color: "#fff", fontFamily: "Inter" }}>{initialsOf(m.name)}</div>
+              <div className="flex-1">
+                <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 600, color: C.ink }}>{m.name}</div>
+                <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{m.team}</div>
+              </div>
+              {feePaid[m.id] ? <Pill bg={C.green}>bezahlt</Pill> : (
+                <button onClick={() => setFeePaid((f) => ({ ...f, [m.id]: true }))} className="px-2.5 py-1 rounded-full text-xs" style={{ background: C.paperDim, color: C.red, fontFamily: "Inter", fontWeight: 700 }}>als bezahlt markieren</button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {panel === "automation" && (
+        <AutomationsPanel members={members} feePaid={feePaid} remindersSent={remindersSent} setRemindersSent={setRemindersSent}
+          welcomeAutomation={welcomeAutomation} setWelcomeAutomation={setWelcomeAutomation}
+          billingAutomation={billingAutomation} setBillingAutomation={setBillingAutomation} />
+      )}
+
+      {panel === "duty" && <AdminDutyPanel members={members} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} />}
+      {panel === "protokolle" && <ProtokollePanel members={members} protocols={protocols} setProtocols={setProtocols} />}
+      {panel === "sponsoring" && <SponsoringPanel bookings={sponsorBookings} setBookings={setSponsorBookings} stats={sponsorStats} />}
+      {panel === "roles" && <RolesPanel members={members} setMembers={setMembers} />}
+      {panel === "system" && isSysAdmin(currentUser) && (
+        <SystemPanel members={members} channels={channels} setChannels={setChannels} maintenanceMode={maintenanceMode} setMaintenanceMode={setMaintenanceMode} onResetDemo={onResetDemo} />
+      )}
+
+      {panel === "season" && (() => {
+        const { counts, total, sorted } = seasonResults(seasonVotes);
+        return (
+          <div>
+            <div className="text-xs mb-3" style={{ color: C.textDim, fontFamily: "Inter" }}>Nur für den Vorstand sichtbar — {total} Stimmen bisher.</div>
+            <div className="space-y-2">
+              {sorted.map((c, i) => {
+                const pct = total ? Math.round((counts[c.id] / total) * 100) : 0;
+                return (
+                  <div key={c.id} className="relative overflow-hidden rounded-xl" style={{ border: `1px solid ${C.line}` }}>
+                    <div className="absolute inset-y-0 left-0" style={{ width: `${pct}%`, background: i === 0 ? "#FCEBEE" : C.paperDim }} />
+                    <div className="relative flex items-center justify-between px-3.5 py-2.5">
+                      <span className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{c.name}</span>
+                      <span className="text-xs" style={{ fontFamily: "JetBrains Mono", color: C.textDim }}>{pct}% · {counts[c.id]}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* App shell                                                            */
+/* ------------------------------------------------------------------ */
+function baseTabs(isAdminUser, canEditNews) {
+  const tabs = [
+    { id: "home", label: "Home", icon: Home },
+    { id: "events", label: "Termine", icon: CalendarDays },
+    { id: "fees", label: "Beiträge", icon: Wallet },
+    { id: "chat", label: "Chat", icon: MessageCircle },
+    { id: "profile", label: "Profil", icon: User },
+  ];
+  if (canEditNews) tabs.splice(3, 0, { id: "redaktion", label: "Redaktion", icon: Newspaper });
+  if (isAdminUser) tabs.splice(canEditNews ? 5 : 4, 0, { id: "admin", label: "Verwaltung", icon: ShieldCheck });
+  return tabs;
+}
+const SUBVIEW_TITLES = { season: "Spieler der Saison", tipp: "Tippspiel", duty: "Helferplanung" };
+
+export default function ERGIserlohnApp() {
+  const [clubs, setClubs] = useState(INITIAL_CLUBS);
+  const [selectedClubId, setSelectedClubId] = useState(null);
+  const [members, setMembers] = useState(INITIAL_MEMBERS);
+  const [currentUserId, setCurrentUserId] = useState(null);
+  const [authScreen, setAuthScreen] = useState("club"); // club | newclub | login | register
+  const [tab, setTab] = useState("home");
+  const [tabHistory, setTabHistory] = useState([]);
+  const navigateTab = (nextTab) => {
+    setTab((current) => {
+      if (current !== nextTab) setTabHistory((h) => [...h, current]);
+      return nextTab;
+    });
+  };
+  const goBack = () => {
+    setTabHistory((h) => {
+      if (h.length === 0) return h;
+      setTab(h[h.length - 1]);
+      return h.slice(0, -1);
+    });
+  };
+  const [subView, setSubView] = useState(null);
+
+  const [feePaid, setFeePaid] = useState(INITIAL_FEE_PAID);
+  const [rsvps, setRsvps] = useState({});
+  const [carpools, setCarpools] = useState({});
+  const [guestCounts, setGuestCounts] = useState({});
+  const [channels, setChannels] = useState(INITIAL_CHANNELS);
+  const [chatChannelId, setChatChannelId] = useState("team");
+  const [seasonVotes, setSeasonVotes] = useState({});
+  const [tippPredictions, setTippPredictions] = useState({});
+  const [dutyPlan, setDutyPlan] = useState(INITIAL_DUTY_PLAN);
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [protocols, setProtocols] = useState(INITIAL_PROTOCOLS);
+  const [remindersSent, setRemindersSent] = useState({});
+  const [welcomeAutomation, setWelcomeAutomation] = useState(true);
+  const [billingAutomation, setBillingAutomation] = useState(true);
+  const [sponsorBookings, setSponsorBookings] = useState(INITIAL_SPONSOR_BOOKINGS);
+  const [sponsorStats, setSponsorStats] = useState({});
+
+  const currentUser = members.find((m) => m.id === currentUserId);
+  const currentClub = clubs.find((c) => c.id === selectedClubId) || clubs.find((c) => c.id === currentUser?.clubId);
+  const clubMembers = members.filter((m) => m.clubId === selectedClubId);
+
+  const selectClub = (clubId) => { setSelectedClubId(clubId); setAuthScreen("login"); };
+  const createClub = (club) => { setClubs((cs) => [...cs, club]); setSelectedClubId(club.id); setAuthScreen("register"); };
+  const changeClub = () => { setSelectedClubId(null); setAuthScreen("club"); };
+
+  const login = (id) => { setCurrentUserId(id); setTab("home"); setTabHistory([]); setSubView(null); };
+  const register = (draft, parentId) => {
+    setMembers((ms) => {
+      let next = [...ms];
+      let familyId = null, familyRole = null;
+      if (parentId) {
+        const parent = next.find((m) => m.id === parentId);
+        const fid = parent.familyId || parent.id;
+        familyId = fid; familyRole = "kind";
+        next = next.map((m) => (m.id === parentId ? { ...m, familyId: fid, familyRole: m.familyRole || "eltern" } : m));
+      }
+      next.push({ ...draft, familyId, familyRole });
+      return next;
+    });
+    setFeePaid((f) => ({ ...f, [draft.id]: false }));
+    if (welcomeAutomation) {
+      setChannels((cs) => cs.map((c) => (c.id === "news"
+        ? { ...c, messages: [...c.messages, { who: "System", init: "🤖", color: C.green, text: `Herzlich willkommen im Verein, ${draft.name.split(" ")[0]}! 👋`, time: "jetzt" }].slice(-10) }
+        : c)));
+    }
+    setCurrentUserId(draft.id);
+    setTab("home");
+  };
+  const logout = () => { setCurrentUserId(null); setSelectedClubId(null); setAuthScreen("club"); setTab("home"); setTabHistory([]); setSubView(null); };
+  const awardRsvpPoint = () => setMembers((ms) => ms.map((m) => (m.id === currentUserId ? { ...m, points: m.points + 10 } : m)));
+  const payFee = () => setFeePaid((f) => ({ ...f, [currentUserId]: true }));
+  const goNews = () => { setChatChannelId("news"); navigateTab("chat"); };
+  const onSponsorImpression = (slotKey) => setSponsorStats((s) => ({ ...s, [slotKey]: { impressions: (s[slotKey]?.impressions || 0) + 1, clicks: s[slotKey]?.clicks || 0 } }));
+  const onSponsorClick = (slotKey) => setSponsorStats((s) => ({ ...s, [slotKey]: { impressions: s[slotKey]?.impressions || 0, clicks: (s[slotKey]?.clicks || 0) + 1 } }));
+  const resetDemoData = () => {
+    setRsvps({}); setCarpools({}); setSeasonVotes({}); setTippPredictions({});
+    setGuestCounts({}); setRemindersSent({});
+    setFeePaid(INITIAL_FEE_PAID); setDutyPlan(INITIAL_DUTY_PLAN); setChannels(INITIAL_CHANNELS);
+  };
+
+  const currentUserIsAdmin = isAdmin(currentUser);
+  const currentUserCanEditNews = canWriteNews(currentUser);
+  const TABS = baseTabs(currentUserIsAdmin, currentUserCanEditNews);
+
+  return (
+    <div className="erg-app w-full min-h-screen flex items-center justify-center p-4" style={{ background: "#DEDAD0", fontFamily: "Inter" }}>
+      <style>{FONTS}</style>
+      <div className="relative w-full flex flex-col overflow-hidden" style={{ maxWidth: 400, height: 820, background: C.paper, borderRadius: 36, boxShadow: "0 30px 60px rgba(0,0,0,0.25)", border: `8px solid ${C.ink}` }}>
+        {!currentUser ? (
+          authScreen === "club" ? (
+            <ClubSelectScreen clubs={clubs} onSelect={selectClub} goNewClub={() => setAuthScreen("newclub")} />
+          ) : authScreen === "newclub" ? (
+            <NewClubScreen onCreate={createClub} goBack={() => setAuthScreen("club")} />
+          ) : authScreen === "login" ? (
+            <LoginScreen onLogin={login} members={clubMembers} club={currentClub} goRegister={() => setAuthScreen("register")} goChangeClub={changeClub} />
+          ) : (
+            <RegisterScreen onRegister={register} members={clubMembers} club={currentClub} goLogin={() => setAuthScreen("login")} />
+          )
+        ) : (
+          <>
+            {subView ? (
+              <div className="flex items-center gap-3 px-4 pt-3 pb-2 flex-shrink-0" style={{ background: C.paper }}>
+                <button onClick={() => setSubView(null)} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+                  <ArrowLeft size={15} style={{ color: C.ink }} />
+                </button>
+                <div className="text-sm" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>{SUBVIEW_TITLES[subView]}</div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between px-4 pt-3 pb-2 flex-shrink-0" style={{ background: C.paper }}>
+                <div className="flex items-center gap-2">
+                  {tabHistory.length > 0 ? (
+                    <button onClick={goBack} className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+                      <ArrowLeft size={15} style={{ color: C.ink }} />
+                    </button>
+                  ) : (
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: C.red }}>
+                      <span style={{ color: "#fff", fontFamily: "Oswald", fontWeight: 700, fontSize: 14 }}>{currentClub?.shortName?.[0]}</span>
+                    </div>
+                  )}
+                  <div>
+                    <div className="text-xs leading-none" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink, letterSpacing: 0.5 }}>{currentClub?.shortName}</div>
+                    <div className="text-[10px]" style={{ color: C.textDim }}>seit {currentClub?.foundedYear}</div>
+                  </div>
+                </div>
+                <button className="relative w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+                  <Bell size={14} style={{ color: C.ink }} />
+                  <span className="absolute top-1 right-1.5 w-1.5 h-1.5 rounded-full" style={{ background: C.red }} />
+                </button>
+              </div>
+            )}
+
+            {maintenanceMode && (
+              <div className="px-4 py-2 text-xs text-center flex-shrink-0" style={{ background: "#FDECEC", color: C.red, fontFamily: "Inter", fontWeight: 600, borderBottom: "1px solid #F3B9B9" }}>
+                🔧 Wartungsmodus aktiv — einige Inhalte können sich kurzfristig ändern.
+              </div>
+            )}
+
+            <div key={`${tab}-${subView || ""}`} className="tabFade flex-1 overflow-y-auto" style={{ background: C.paper }}>
+              {subView === "season" && <SeasonVoteView currentUser={currentUser} seasonVotes={seasonVotes} setSeasonVotes={setSeasonVotes} />}
+              {subView === "tipp" && <TippView members={clubMembers} currentUser={currentUser} tippPredictions={tippPredictions} setTippPredictions={setTippPredictions} />}
+              {subView === "duty" && <DutyView members={clubMembers} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} />}
+
+              {!subView && tab === "home" && (
+                <Dashboard user={currentUser} members={clubMembers} feePaid={!!feePaid[currentUser.id]} channels={channels} dutyPlan={dutyPlan} seasonVotes={seasonVotes}
+                  sponsorBookings={sponsorBookings} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick}
+                  goEvents={() => navigateTab("events")} goFees={() => navigateTab("fees")} goSeason={() => setSubView("season")} goTipp={() => setSubView("tipp")} goDuty={() => setSubView("duty")} goNews={goNews} />
+              )}
+              {!subView && tab === "events" && (
+                <EventsView currentUser={currentUser} members={clubMembers} rsvps={rsvps} setRsvps={setRsvps} carpools={carpools} setCarpools={setCarpools}
+                  guestCounts={guestCounts} setGuestCounts={setGuestCounts} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan}
+                  sponsorBookings={sponsorBookings} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick} onRsvpPoint={awardRsvpPoint} />
+              )}
+              {!subView && tab === "fees" && <FeesView user={currentUser} paid={!!feePaid[currentUser.id]} onPay={payFee} />}
+              {!subView && tab === "chat" && <ChatView user={currentUser} channels={channels} setChannels={setChannels} activeId={chatChannelId} setActiveId={setChatChannelId} />}
+              {!subView && tab === "redaktion" && currentUserCanEditNews && <RedaktionView user={currentUser} channels={channels} setChannels={setChannels} />}
+              {!subView && tab === "admin" && currentUserIsAdmin && (
+                <AdminView members={clubMembers} setMembers={setMembers} feePaid={feePaid} setFeePaid={setFeePaid} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} seasonVotes={seasonVotes}
+                  currentUser={currentUser} channels={channels} setChannels={setChannels} maintenanceMode={maintenanceMode} setMaintenanceMode={setMaintenanceMode} onResetDemo={resetDemoData}
+                  protocols={protocols} setProtocols={setProtocols} remindersSent={remindersSent} setRemindersSent={setRemindersSent}
+                  welcomeAutomation={welcomeAutomation} setWelcomeAutomation={setWelcomeAutomation} billingAutomation={billingAutomation} setBillingAutomation={setBillingAutomation}
+                  sponsorBookings={sponsorBookings} setSponsorBookings={setSponsorBookings} sponsorStats={sponsorStats} />
+              )}
+              {!subView && tab === "profile" && <ProfileView user={currentUser} members={clubMembers} setMembers={setMembers} sponsorBookings={sponsorBookings} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick} onLogout={logout} />}
+            </div>
+
+            {!subView && (
+              <div className="absolute bottom-0 left-0 right-0 flex items-center justify-around py-2.5 px-1" style={{ background: "rgba(246,243,236,0.92)", backdropFilter: "blur(8px)", borderTop: `1px solid ${C.line}` }}>
+                {TABS.map((t) => {
+                  const activeTab = tab === t.id;
+                  return (
+                    <button key={t.id} onClick={() => navigateTab(t.id)} className="flex flex-col items-center gap-0.5 px-1.5 py-1 transition-colors duration-150">
+                      <t.icon size={18} style={{ color: activeTab ? C.red : "#A6A49C" }} strokeWidth={activeTab ? 2.4 : 2} />
+                      <span className="text-[9px]" style={{ fontFamily: "Inter", fontWeight: activeTab ? 700 : 500, color: activeTab ? C.red : "#A6A49C" }}>{t.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
