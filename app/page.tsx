@@ -123,6 +123,13 @@ const INITIAL_MEMBERS = [
 ];
 
 const INITIAL_FEE_PAID = { m1: false, m2: true, m3: false, v1: true, m4: true, m5: true, m6: true, m7: true };
+const INITIAL_FEE_RECORDS = [
+  { id: "fee-1", memberId: "m1", year: "2026", type: "Aktivenbeitrag", amount: "120,00", paid: false, invoiceNumber: "RG-2026-001" },
+  { id: "fee-2", memberId: "m2", year: "2026", type: "Aktivenbeitrag", amount: "120,00", paid: true, invoiceNumber: "RG-2026-002" },
+  { id: "fee-3", memberId: "m3", year: "2026", type: "Familienbeitrag", amount: "85,00", paid: false, invoiceNumber: "RG-2026-003" },
+  { id: "fee-4", memberId: "v1", year: "2026", type: "Mitgliedsbeitrag", amount: "60,00", paid: true, invoiceNumber: "RG-2026-004" },
+  { id: "fee-5", memberId: "m4", year: "2026", type: "Jugendbeitrag", amount: "75,00", paid: true, invoiceNumber: "RG-2026-005" },
+];
 const OVERDUE_DAYS = { m1: 5, m3: 14 };
 function reminderStage(days) {
   if (days >= 20) return { n: 3, label: "Vorstand informiert", color: C.red };
@@ -765,7 +772,7 @@ function NextTrainingCard({ user }) {
     </div>
   );
 }
-function Dashboard({ user, members, feePaid, channels, dutyPlan, seasonVotes, polls, setPolls, sponsorBookings, onSponsorImpression, onSponsorClick, goEvents, goFees, goSeason, goTipp, goDuty, goNews }) {
+function Dashboard({ user, members, feePaid, channels, dutyPlan, seasonVotes, polls, setPolls, sponsorBookings, onSponsorImpression, onSponsorClick, goEvents, goSeason, goTipp, goDuty, goNews }) {
   const nextEvent = EVENTS.filter((e) => e.type === "spiel" && e.team === user.team && new Date(e.date) > new Date()).sort((a,b)=>new Date(a.date)-new Date(b.date))[0] || getNextMatch();
   const newsMsgs = (channels.find((c) => c.id === "news")?.messages || []).slice(-2).reverse();
 
@@ -1037,42 +1044,74 @@ function EventsView({ currentUser, members, rsvps, setRsvps, carpools, setCarpoo
 /* ------------------------------------------------------------------ */
 /* Beiträge                                                             */
 /* ------------------------------------------------------------------ */
-function FeesView({ user, paid, onPay }) {
+function FeesView({ members, records, setRecords }) {
+  const [selectedMemberId, setSelectedMemberId] = useState(null);
+  const [form, setForm] = useState({ year: "2026", type: "Mitgliedsbeitrag", amount: "", paid: "offen", invoiceNumber: "" });
+  const selectedMember = members.find((member) => member.id === selectedMemberId);
+  const memberRecords = records.filter((record) => record.memberId === selectedMemberId);
+  const addRecord = (event) => {
+    event.preventDefault();
+    if (!selectedMemberId || !form.year || !form.type.trim() || !form.amount.trim()) return;
+    setRecords((all) => [{ id: `fee-${Date.now()}`, memberId: selectedMemberId, year: form.year, type: form.type.trim(), amount: form.amount.trim(), paid: form.paid === "bezahlt", invoiceNumber: form.invoiceNumber.trim() }, ...all]);
+    setForm((current) => ({ ...current, amount: "", invoiceNumber: "" }));
+  };
+
+  if (!selectedMember) {
+    return (
+      <div className="px-4 pt-4 pb-24">
+        <SectionTitle eyebrow="Nur Geschäftsführung" title="Beiträge" />
+        <div className="rounded-2xl p-4 mb-4" style={{ background: C.ink }}>
+          <div className="text-white text-sm" style={{ fontFamily: "Inter", fontWeight: 700 }}>{members.length} Vereinsmitglieder</div>
+          <div className="text-xs mt-1" style={{ color: "#B7B6BC" }}>Mitglied auswählen, um Beiträge und Rechnungen zu verwalten.</div>
+        </div>
+        <div className="space-y-2">
+          {members.map((member) => {
+            const entries = records.filter((record) => record.memberId === member.id);
+            const open = entries.filter((record) => !record.paid).length;
+            return (
+              <button key={member.id} onClick={() => setSelectedMemberId(member.id)} className="w-full flex items-center gap-3 p-3 rounded-2xl text-left" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+                <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0" style={{ background: member.color, color: C.white }}>{initialsOf(member.name)}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm truncate" style={{ fontWeight: 700, color: C.ink }}>{member.name}</div>
+                  <div className="text-[11px]" style={{ color: C.textDim }}>{member.team} · {entries.length} Datensätze</div>
+                </div>
+                <Pill bg={open ? C.red : C.green}>{open ? `${open} offen` : "bezahlt"}</Pill>
+                <ChevronRight size={15} style={{ color: C.textDim }} />
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="px-4 pt-4 pb-24">
-      <SectionTitle title="Beiträge" />
-      <div className="rounded-2xl p-5 mb-5" style={{ background: paid ? `linear-gradient(160deg, ${C.green}, #237A44)` : `linear-gradient(160deg, ${C.ink}, ${C.asphalt})` }}>
-        <div className="flex items-center justify-between mb-4">
-          <span className="text-xs uppercase tracking-widest font-semibold" style={{ color: "#D9D9DE", fontFamily: "Inter" }}>Status August 2026</span>
-          {paid ? <CheckCircle2 size={20} color="#fff" /> : <Circle size={20} color="#fff" opacity={0.6} />}
-        </div>
-        <div className="text-3xl mb-1" style={{ fontFamily: "Oswald", fontWeight: 700, color: "#fff" }}>45,00 €</div>
-        <div className="text-sm mb-4" style={{ color: "#D9D9DE", fontFamily: "Inter" }}>{paid ? "Beitrag beglichen — danke!" : "Fällig zum 01.08.2026"}</div>
-        {!paid ? (
-          <button onClick={onPay} className="w-full py-2.5 rounded-lg text-sm" style={{ background: C.white, color: C.ink, fontFamily: "Inter", fontWeight: 700 }}>Jetzt bezahlen</button>
-        ) : (
-          <div className="text-xs" style={{ color: "#D9F2E1", fontFamily: "Inter" }}>Automatische Zahlungsbestätigung an deine E-Mail versendet.</div>
-        )}
-      </div>
-      <SectionTitle eyebrow="Verlauf" title="Zahlungshistorie" />
-      <div className="rounded-2xl overflow-hidden mb-5" style={{ border: `1px solid ${C.line}` }}>
-        {(paid ? [{ month: "August 2026", amount: "45,00 €", date: "01.08.2026" }, ...FEE_HISTORY] : FEE_HISTORY).map((f, i, arr) => (
-          <div key={i} className="flex items-center justify-between px-4 py-3" style={{ background: C.white, borderBottom: i < arr.length - 1 ? `1px solid ${C.line}` : "none" }}>
-            <div>
-              <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 600, color: C.ink }}>{f.month}</div>
-              <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{f.date}</div>
+      <button onClick={() => setSelectedMemberId(null)} className="flex items-center gap-1 text-xs mb-3" style={{ color: C.textDim, fontWeight: 700 }}><ArrowLeft size={13} /> Alle Mitglieder</button>
+      <SectionTitle eyebrow={selectedMember.team} title={selectedMember.name} />
+      <div className="space-y-2 mb-5">
+        {memberRecords.map((record) => (
+          <div key={record.id} className="rounded-2xl p-3.5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+            <div className="flex items-start justify-between gap-2">
+              <div><div className="text-sm" style={{ fontWeight: 700, color: C.ink }}>{record.type}</div><div className="text-[11px]" style={{ color: C.textDim }}>Jahr {record.year} · {record.invoiceNumber || "ohne Rechnungsnummer"}</div></div>
+              <div className="text-right"><div className="text-sm" style={{ fontFamily: "JetBrains Mono", fontWeight: 700 }}>{record.amount} €</div></div>
             </div>
-            <div className="text-right">
-              <div className="text-sm" style={{ fontFamily: "JetBrains Mono", fontWeight: 700, color: C.ink }}>{f.amount}</div>
-              <Pill bg={C.green} style={{ marginTop: 2 }}>bezahlt</Pill>
-            </div>
+            <button onClick={() => setRecords((all) => all.map((item) => item.id === record.id ? { ...item, paid: !item.paid } : item))} className="mt-2 px-2.5 py-1 rounded-full text-[11px]" style={{ background: record.paid ? "#E7F3EC" : "#FCEBEE", color: record.paid ? C.green : C.red, fontWeight: 700 }}>{record.paid ? "Bezahlt ✓" : "Noch nicht bezahlt"}</button>
           </div>
         ))}
+        {memberRecords.length === 0 && <div className="rounded-2xl p-4 text-xs text-center" style={{ background: C.paperDim, color: C.textDim }}>Noch keine Beitragsdatensätze vorhanden.</div>}
       </div>
-      <div className="rounded-2xl p-4" style={{ background: C.paperDim }}>
-        <div className="text-sm mb-1" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Familien- & Ermäßigung</div>
-        <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>Geschwisterkinder erhalten 20% Rabatt. Fragen zur Beitragsordnung? Schreib dem Vorstand im Chat "Vereins-News".</div>
-      </div>
+      <SectionTitle eyebrow="Neuer Datensatz" title="Beitrag hinterlegen" />
+      <form onSubmit={addRecord} className="rounded-2xl p-4 space-y-3" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+        <div className="grid grid-cols-2 gap-2">
+          <input value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} placeholder="Jahr" inputMode="numeric" className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }} />
+          <input value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder="Beitragshöhe €" inputMode="decimal" className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }} />
+        </div>
+        <input value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} placeholder="Art des Beitrags" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }} />
+        <input value={form.invoiceNumber} onChange={(e) => setForm({ ...form, invoiceNumber: e.target.value })} placeholder="Rechnungsnummer (optional)" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }} />
+        <select value={form.paid} onChange={(e) => setForm({ ...form, paid: e.target.value })} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}><option value="offen">Noch nicht bezahlt</option><option value="bezahlt">Bezahlt</option></select>
+        <button type="submit" className="w-full py-2.5 rounded-xl text-xs" style={{ background: C.ink, color: C.white, fontWeight: 700 }}>Datensatz anlegen</button>
+      </form>
     </div>
   );
 }
@@ -1851,7 +1890,7 @@ function AutomationsPanel({ members, feePaid, remindersSent, setRemindersSent, w
 /* ------------------------------------------------------------------ */
 /* Übersicht (Vorstands-Dashboard)                                      */
 /* ------------------------------------------------------------------ */
-function OverviewPanel({ members, feePaid, protocols, dutyPlan, seasonVotes, goPanel }) {
+function OverviewPanel({ members, feePaid, protocols, dutyPlan, seasonVotes, goPanel, showFees }) {
   const paidCount = members.filter((m) => feePaid[m.id]).length;
   const feeRate = members.length ? Math.round((paidCount / members.length) * 100) : 100;
   const openTasks = protocols.flatMap((p) => p.tasks.filter((t) => !t.done)).length;
@@ -1868,7 +1907,7 @@ function OverviewPanel({ members, feePaid, protocols, dutyPlan, seasonVotes, goP
   return (
     <div className="grid grid-cols-2 gap-3">
       <StatCard icon={Users} label="Mitglieder" value={members.length} sub="alle formale Mitglieder" accent={C.ink} />
-      <StatCard icon={Euro} label="Beitragsquote" value={`${feeRate}%`} sub={`${formalCount - paidCount} offen`} accent={C.green} onClick={() => goPanel("fees")} />
+      {showFees && <StatCard icon={Euro} label="Beitragsquote" value={`${feeRate}%`} sub={`${members.length - paidCount} offen`} accent={C.green} />}
       <StatCard icon={ClipboardList} label="Offene Aufgaben" value={openTasks} sub="aus Protokollen" accent={C.red} onClick={() => goPanel("protokolle")} />
       <StatCard icon={AlertCircle} label="Helfer-Lücken" value={openSlots} sub={`von ${totalSlots} Plätzen offen`} accent={C.amber} onClick={() => goPanel("duty")} />
       <StatCard icon={Trophy} label="Saison-Stimmen" value={seasonTotal} sub="Spieler der Saison" accent={C.amber} onClick={() => goPanel("season")} />
@@ -2061,9 +2100,10 @@ function AdminView({
   sponsorBookings, setSponsorBookings, sponsorStats, polls, setPolls,
 }) {
   const sponsorOnly = !isAdmin(currentUser) && canManageSponsors(currentUser);
+  const canSeeFees = currentUser.roles.includes("geschaeftsfuehrung");
   const [panel, setPanel] = useState(sponsorOnly ? "sponsoring" : "overview");
   const openCount = members.filter((m) => !feePaid[m.id]).length;
-  const panels = sponsorOnly ? [["sponsoring", "Sponsoring"], ["polls", "Umfragen"]] : [["overview", "Übersicht"], ["fees", "Beiträge"], ["automation", "Automatisierung"], ["duty", "Helferplanung"], ["protokolle", "Protokolle"], ["polls", "Umfragen"], ["sponsoring", "Sponsoring"], ["season", "Spieler der Saison"], ["roles", "Rollen"]];
+  const panels = sponsorOnly ? [["sponsoring", "Sponsoring"], ["polls", "Umfragen"]] : [["overview", "Übersicht"], ["automation", "Automatisierung"], ["duty", "Helferplanung"], ["protokolle", "Protokolle"], ["polls", "Umfragen"], ["sponsoring", "Sponsoring"], ["season", "Spieler der Saison"], ["roles", "Rollen"]];
   if (isSysAdmin(currentUser)) panels.push(["system", "System"]);
 
   return (
@@ -2073,7 +2113,7 @@ function AdminView({
         <ShieldCheck size={22} style={{ color: C.amber }} />
         <div>
           <div className="text-white text-sm" style={{ fontFamily: "Inter", fontWeight: 700 }}>{members.length} Mitglieder</div>
-          <div className="text-xs" style={{ color: "#B7B6BC", fontFamily: "Inter" }}>{openCount} Beiträge für August noch offen</div>
+          <div className="text-xs" style={{ color: "#B7B6BC", fontFamily: "Inter" }}>{canSeeFees ? `${openCount} Beiträge noch offen` : "Vereinsverwaltung"}</div>
         </div>
       </div>}
 
@@ -2084,24 +2124,7 @@ function AdminView({
         ))}
       </div>
 
-      {panel === "overview" && <OverviewPanel members={members} feePaid={feePaid} protocols={protocols} dutyPlan={dutyPlan} seasonVotes={seasonVotes} goPanel={setPanel} />}
-
-      {panel === "fees" && (
-        <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${C.line}` }}>
-          {members.map((m, i) => (
-            <div key={m.id} className="flex items-center gap-3 px-4 py-3" style={{ background: C.white, borderBottom: i < members.length - 1 ? `1px solid ${C.line}` : "none" }}>
-              <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0" style={{ background: m.color, color: "#fff", fontFamily: "Inter" }}>{initialsOf(m.name)}</div>
-              <div className="flex-1">
-                <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 600, color: C.ink }}>{m.name}</div>
-                <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{m.team}</div>
-              </div>
-              {feePaid[m.id] ? <Pill bg={C.green}>bezahlt</Pill> : (
-                <button onClick={() => setFeePaid((f) => ({ ...f, [m.id]: true }))} className="px-2.5 py-1 rounded-full text-xs" style={{ background: C.paperDim, color: C.red, fontFamily: "Inter", fontWeight: 700 }}>als bezahlt markieren</button>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+      {panel === "overview" && <OverviewPanel members={members} feePaid={feePaid} protocols={protocols} dutyPlan={dutyPlan} seasonVotes={seasonVotes} goPanel={setPanel} showFees={canSeeFees} />}
 
       {panel === "automation" && (
         <AutomationsPanel members={members} feePaid={feePaid} remindersSent={remindersSent} setRemindersSent={setRemindersSent}
@@ -2147,16 +2170,16 @@ function AdminView({
 /* ------------------------------------------------------------------ */
 /* App shell                                                            */
 /* ------------------------------------------------------------------ */
-function baseTabs(isAdminUser, canEditNews, canEditSponsors) {
+function baseTabs(isAdminUser, canEditNews, canEditSponsors, canManageFees) {
   const tabs = [
     { id: "home", label: "Home", icon: Home },
     { id: "events", label: "Termine", icon: CalendarDays },
-    { id: "fees", label: "Beiträge", icon: Wallet },
     { id: "chat", label: "Chat", icon: MessageCircle },
     { id: "profile", label: "Profil", icon: User },
   ];
-  if (canEditNews) tabs.splice(3, 0, { id: "redaktion", label: "Redaktion", icon: Newspaper });
-  if (isAdminUser || canEditSponsors) tabs.splice(canEditNews ? 5 : 4, 0, { id: "admin", label: canEditSponsors && !isAdminUser ? "Sponsoren" : "Verwaltung", icon: ShieldCheck });
+  if (canManageFees) tabs.splice(tabs.findIndex((tab) => tab.id === "chat"), 0, { id: "fees", label: "Beiträge", icon: Wallet });
+  if (canEditNews) tabs.splice(tabs.findIndex((tab) => tab.id === "chat"), 0, { id: "redaktion", label: "Redaktion", icon: Newspaper });
+  if (isAdminUser || canEditSponsors) tabs.splice(tabs.findIndex((tab) => tab.id === "profile"), 0, { id: "admin", label: canEditSponsors && !isAdminUser ? "Sponsoren" : "Verwaltung", icon: ShieldCheck });
   return tabs;
 }
 const SUBVIEW_TITLES = { season: "Spieler der Saison", tipp: "Tippspiel", duty: "Helferplanung" };
@@ -2186,6 +2209,7 @@ export default function ERGIserlohnApp() {
   const [subView, setSubView] = useState(null);
 
   const [feePaid, setFeePaid] = useState(INITIAL_FEE_PAID);
+  const [feeRecords, setFeeRecords] = useState(INITIAL_FEE_RECORDS);
   const [rsvps, setRsvps] = useState({});
   const [carpools, setCarpools] = useState({});
   const [guestCounts, setGuestCounts] = useState({});
@@ -2238,7 +2262,6 @@ export default function ERGIserlohnApp() {
   const logout = () => { setCurrentUserId(null); setSelectedClubId(null); setAuthScreen("club"); setTab("home"); setTabHistory([]); setSubView(null); };
   const returnToClubOverview = () => { setCurrentUserId(null); setSelectedClubId(null); setAuthScreen("club"); setTab("home"); setTabHistory([]); setSubView(null); setEventFocusRequest(null); };
   const awardRsvpPoint = () => setMembers((ms) => ms.map((m) => (m.id === currentUserId ? { ...m, points: m.points + 10 } : m)));
-  const payFee = () => setFeePaid((f) => ({ ...f, [currentUserId]: true }));
   const goNews = () => { setChatChannelId("news"); navigateTab("chat"); };
   const goToMyNextMatch = () => { setEventFocusRequest({ team: currentUser?.team || "alle", requestedAt: Date.now() }); navigateTab("events"); };
   const onSponsorImpression = (slotKey) => setSponsorStats((s) => ({ ...s, [slotKey]: { impressions: (s[slotKey]?.impressions || 0) + 1, clicks: s[slotKey]?.clicks || 0 } }));
@@ -2246,13 +2269,14 @@ export default function ERGIserlohnApp() {
   const resetDemoData = () => {
     setRsvps({}); setCarpools({}); setSeasonVotes({}); setTippPredictions({});
     setGuestCounts({}); setRemindersSent({});
-    setFeePaid(INITIAL_FEE_PAID); setDutyPlan(INITIAL_DUTY_PLAN); setChannels(INITIAL_CHANNELS);
+    setFeePaid(INITIAL_FEE_PAID); setFeeRecords(INITIAL_FEE_RECORDS); setDutyPlan(INITIAL_DUTY_PLAN); setChannels(INITIAL_CHANNELS);
   };
 
   const currentUserIsAdmin = isAdmin(currentUser);
   const currentUserCanEditNews = canWriteNews(currentUser);
   const currentUserCanEditSponsors = canManageSponsors(currentUser);
-  const TABS = baseTabs(currentUserIsAdmin, currentUserCanEditNews, currentUserCanEditSponsors);
+  const currentUserCanManageFees = currentUser.roles.includes("geschaeftsfuehrung");
+  const TABS = baseTabs(currentUserIsAdmin, currentUserCanEditNews, currentUserCanEditSponsors, currentUserCanManageFees);
 
   return (
     <div className="erg-app w-full min-h-screen flex items-center justify-center p-4" style={{ background: "#DEDAD0", fontFamily: "Inter" }}>
@@ -2316,7 +2340,7 @@ export default function ERGIserlohnApp() {
               {!subView && tab === "home" && (
                 <Dashboard user={currentUser} members={clubMembers} feePaid={!!feePaid[currentUser.id]} channels={channels} dutyPlan={dutyPlan} seasonVotes={seasonVotes} polls={polls} setPolls={setPolls}
                   sponsorBookings={sponsorBookings} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick}
-                  goEvents={goToMyNextMatch} goFees={() => navigateTab("fees")} goSeason={() => setSubView("season")} goTipp={() => setSubView("tipp")} goDuty={() => setSubView("duty")} goNews={goNews} />
+                  goEvents={goToMyNextMatch} goSeason={() => setSubView("season")} goTipp={() => setSubView("tipp")} goDuty={() => setSubView("duty")} goNews={goNews} />
               )}
               {!subView && tab === "events" && (
                 <EventsView currentUser={currentUser} members={clubMembers} rsvps={rsvps} setRsvps={setRsvps} carpools={carpools} setCarpools={setCarpools}
@@ -2324,7 +2348,7 @@ export default function ERGIserlohnApp() {
                   sponsorBookings={sponsorBookings} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick} onRsvpPoint={awardRsvpPoint}
                   focusRequest={eventFocusRequest} onFocusApplied={()=>setEventFocusRequest(null)} />
               )}
-              {!subView && tab === "fees" && <FeesView user={currentUser} paid={!!feePaid[currentUser.id]} onPay={payFee} />}
+              {!subView && tab === "fees" && currentUserCanManageFees && <FeesView members={clubMembers} records={feeRecords} setRecords={setFeeRecords} />}
               {!subView && tab === "chat" && <ChatView user={currentUser} channels={channels} setChannels={setChannels} activeId={chatChannelId} setActiveId={setChatChannelId} />}
               {!subView && tab === "redaktion" && currentUserCanEditNews && <RedaktionView user={currentUser} channels={channels} setChannels={setChannels} />}
               {!subView && tab === "admin" && (currentUserIsAdmin || currentUserCanEditSponsors) && (
