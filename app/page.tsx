@@ -39,6 +39,7 @@ button:active { transform: scale(0.97); }
 `;
 
 const TEAMS = ["Herren 1", "Herren 2", "Damen 1", "U15", "U11", "Eltern / Angehörige"];
+const DEMO_CLUB_ID = "00000000-0000-4000-8000-000000000001";
 const STATION_CAP = 2;
 
 /* ------------------------------------------------------------------ */
@@ -120,7 +121,7 @@ function age(birthdate) {
 /* Vereine (mandantenfähig)                                            */
 /* ------------------------------------------------------------------ */
 const INITIAL_CLUBS = [
-  { id: "cmo", name: "ERG Iserlohn", shortName: "ERGI", city: "Iserlohn", foundedYear: 1965 },
+  { id: DEMO_CLUB_ID, name: "ERG Iserlohn", shortName: "ERGI", city: "Iserlohn", foundedYear: 1965 },
   { id: "tsv-musterstadt", name: "TSV Musterstadt", shortName: "TSVM", city: "Musterstadt", foundedYear: 1902 },
   { id: "sv-beispiel", name: "SV Beispiel 04", shortName: "SVB", city: "Beispielhausen", foundedYear: 1904 },
 ];
@@ -129,16 +130,16 @@ const INITIAL_CLUBS = [
 /* Mock accounts                                                       */
 /* ------------------------------------------------------------------ */
 const INITIAL_MEMBERS = [
-  { id: "m1", clubId: "cmo", name: "Marco Schulte", email: "marco@cmo.app", password: "demo", team: "Herren 1", number: 14, since: 2019, roles: ["sysadmin", "vorstand", "spieler", "mitglied"], color: C.red, points: 740, tippPoints: 14, badges: ["streak", "loyalty", "fairplay", "referrer"], birthdate: "1994-05-12" },
-  { id: "m2", clubId: "cmo", name: "Jasmin Reiter", email: "jasmin@cmo.app", password: "demo", team: "Damen 1", number: 7, since: 2021, roles: ["kapitaen", "spieler", "mitglied"], color: C.amber, points: 410, tippPoints: 9, badges: ["loyalty"], birthdate: "1998-03-02" },
-  { id: "m3", clubId: "cmo", name: "Sabine Thomas", email: "sabine@cmo.app", password: "demo", team: "Eltern / Angehörige", managedTeam: "U11", number: null, since: 2023, roles: ["eltern", "teammanager", "mitglied"], color: C.green, points: 120, tippPoints: 5, badges: [], birthdate: "1985-09-14", familyId: "fam-thomas", familyRole: "eltern" },
-  { id: "v1", clubId: "cmo", name: "Peter Vogt", email: "vorstand@cmo.app", password: "demo", team: "Vorstand", number: null, since: 2015, roles: ["vorstand", "mitglied"], color: C.ink, points: 60, tippPoints: 2, badges: ["loyalty"], birthdate: "1975-01-20" },
-  { id: "m4", clubId: "cmo", name: "Mia Thomas", email: "mia@cmo.app", password: "demo", team: "U11", number: 5, since: 2024, roles: ["spieler", "mitglied"], color: "#7C6FE0", points: 30, tippPoints: 0, badges: [], birthdate: "2015-06-01", familyId: "fam-thomas", familyRole: "kind" },
-  { id: "m5", clubId: "cmo", name: "Helga Thomas", email: "helga@cmo.app", password: "demo", team: "Eltern / Angehörige", number: null, since: 2023, roles: ["mitglied"], color: "#B98B3E", points: 20, tippPoints: 0, badges: [], birthdate: "1952-02-11", familyId: "fam-thomas", familyRole: "großeltern" },
-  { id: "m6", clubId: "cmo", name: "Claudia Berg", email: "geschaeftsfuehrung@cmo.app", password: "demo", team: "Geschäftsstelle", number: null, since: 2020, roles: ["geschaeftsfuehrung", "mitglied"], color: "#3E7CB1", points: 60, tippPoints: 4, badges: [], birthdate: "1980-11-03" },
-  { id: "m7", clubId: "cmo", name: "Nina Weber", email: "redaktion@cmo.app", password: "demo", team: "Geschäftsstelle", number: null, since: 2022, roles: ["redakteur", "sponsorenmanager", "mitglied"], color: "#B15CC9", points: 40, tippPoints: 0, badges: [], birthdate: "1990-07-08" },
-  { id: "m8", clubId: "cmo", name: "Daniel Krüger", email: "finanzen@cmo.app", password: "demo", team: "Geschäftsstelle", number: null, since: 2024, roles: ["finanzmanager", "mitglied"], color: "#176B87", points: 20, tippPoints: 0, badges: [], birthdate: "1988-04-19" },
-  { id: "m9", clubId: "cmo", name: "Tobias Kern", email: "trainer@cmo.app", password: "demo", team: "Herren 1", teams: ["Herren 1", "U15"], number: null, since: 2021, roles: ["trainer", "mitglied"], color: "#2D6F8E", points: 35, tippPoints: 0, badges: [], birthdate: "1983-02-08" },
+  { id: "m1", clubId: DEMO_CLUB_ID, name: "Marco Schulte", email: "marco@cmo.app", password: "demo", team: "Herren 1", number: 14, since: 2019, roles: ["sysadmin", "vorstand", "spieler", "mitglied"], color: C.red, points: 740, tippPoints: 14, badges: ["streak", "loyalty", "fairplay", "referrer"], birthdate: "1994-05-12" },
+  { id: "m2", clubId: DEMO_CLUB_ID, name: "Jasmin Reiter", email: "jasmin@cmo.app", password: "demo", team: "Damen 1", number: 7, since: 2021, roles: ["kapitaen", "spieler", "mitglied"], color: C.amber, points: 410, tippPoints: 9, badges: ["loyalty"], birthdate: "1998-03-02" },
+  { id: "m3", clubId: DEMO_CLUB_ID, name: "Sabine Thomas", email: "sabine@cmo.app", password: "demo", team: "Eltern / Angehörige", managedTeam: "U11", number: null, since: 2023, roles: ["eltern", "teammanager", "mitglied"], color: C.green, points: 120, tippPoints: 5, badges: [], birthdate: "1985-09-14", familyId: "fam-thomas", familyRole: "eltern" },
+  { id: "v1", clubId: DEMO_CLUB_ID, name: "Peter Vogt", email: "vorstand@cmo.app", password: "demo", team: "Vorstand", number: null, since: 2015, roles: ["vorstand", "mitglied"], color: C.ink, points: 60, tippPoints: 2, badges: ["loyalty"], birthdate: "1975-01-20" },
+  { id: "m4", clubId: DEMO_CLUB_ID, name: "Mia Thomas", email: "mia@cmo.app", password: "demo", team: "U11", number: 5, since: 2024, roles: ["spieler", "mitglied"], color: "#7C6FE0", points: 30, tippPoints: 0, badges: [], birthdate: "2015-06-01", familyId: "fam-thomas", familyRole: "kind" },
+  { id: "m5", clubId: DEMO_CLUB_ID, name: "Helga Thomas", email: "helga@cmo.app", password: "demo", team: "Eltern / Angehörige", number: null, since: 2023, roles: ["mitglied"], color: "#B98B3E", points: 20, tippPoints: 0, badges: [], birthdate: "1952-02-11", familyId: "fam-thomas", familyRole: "grosseltern" },
+  { id: "m6", clubId: DEMO_CLUB_ID, name: "Claudia Berg", email: "geschaeftsfuehrung@cmo.app", password: "demo", team: "Geschäftsstelle", number: null, since: 2020, roles: ["geschaeftsfuehrung", "mitglied"], color: "#3E7CB1", points: 60, tippPoints: 4, badges: [], birthdate: "1980-11-03" },
+  { id: "m7", clubId: DEMO_CLUB_ID, name: "Nina Weber", email: "redaktion@cmo.app", password: "demo", team: "Geschäftsstelle", number: null, since: 2022, roles: ["redakteur", "sponsorenmanager", "mitglied"], color: "#B15CC9", points: 40, tippPoints: 0, badges: [], birthdate: "1990-07-08" },
+  { id: "m8", clubId: DEMO_CLUB_ID, name: "Daniel Krüger", email: "finanzen@cmo.app", password: "demo", team: "Geschäftsstelle", number: null, since: 2024, roles: ["finanzmanager", "mitglied"], color: "#176B87", points: 20, tippPoints: 0, badges: [], birthdate: "1988-04-19" },
+  { id: "m9", clubId: DEMO_CLUB_ID, name: "Tobias Kern", email: "trainer@cmo.app", password: "demo", team: "Herren 1", teams: ["Herren 1", "U15"], number: null, since: 2021, roles: ["trainer", "mitglied"], color: "#2D6F8E", points: 35, tippPoints: 0, badges: [], birthdate: "1983-02-08" },
 ];
 
 const INITIAL_FEE_PAID = { m1: false, m2: true, m3: false, v1: true, m4: true, m5: true, m6: true, m7: true, m8: true, m9: true };
@@ -288,6 +289,21 @@ const TIPP_MATCHES = [
   { id: 3, home: "Club Member Organisation", away: "Cronenberg", date: "2026-08-30T19:00:00" },
   { id: 4, home: "SG Bielefeld", away: "Club Member Organisation", date: "2026-09-06T19:00:00" },
 ];
+
+function predictionPoints(prediction, result) {
+  if (!prediction || !result || prediction.home === "" || prediction.away === "") return 0;
+  const predictedHome = Number(prediction.home);
+  const predictedAway = Number(prediction.away);
+  const actualHome = Number(result.home);
+  const actualAway = Number(result.away);
+  if (predictedHome === actualHome && predictedAway === actualAway) return 3;
+  const tendency = (home, away) => home === away ? 0 : home > away ? 1 : -1;
+  return tendency(predictedHome, predictedAway) === tendency(actualHome, actualAway) ? 1 : 0;
+}
+
+function totalTippPoints(userId, predictions, results) {
+  return TIPP_MATCHES.reduce((sum, match) => sum + predictionPoints(predictions[userId]?.[match.id], results[match.id]), 0);
+}
 
 /* ------------------------------------------------------------------ */
 /* Vorstandsprotokolle                                                  */
@@ -596,7 +612,7 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub }) {
         </button>
       </form>
 
-      {!isSupabaseConfigured && <div className="mt-8">
+      <div className="mt-8">
         <div className="text-xs uppercase tracking-widest font-semibold mb-2.5" style={{ color: C.textDim, fontFamily: "Inter" }}>Demo-Zugänge zum Ausprobieren</div>
         <div className="space-y-2">
           {members.filter((m) => !m.accountPending).map((m) => (
@@ -610,7 +626,7 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub }) {
             </button>
           ))}
         </div>
-      </div>}
+      </div>
     </AuthShell>
   );
 }
@@ -1597,7 +1613,7 @@ function SeasonVoteView({ currentUser, seasonVotes, setSeasonVotes }) {
 /* ------------------------------------------------------------------ */
 /* Tippspiel                                                            */
 /* ------------------------------------------------------------------ */
-function TippView({ members, currentUser, tippPredictions, setTippPredictions }) {
+function TippView({ members, currentUser, tippPredictions, setTippPredictions, tippResults }) {
   const mine = tippPredictions[currentUser.id] || {};
   const setPred = (matchId, side, val) => {
     setTippPredictions((tp) => {
@@ -1606,7 +1622,8 @@ function TippView({ members, currentUser, tippPredictions, setTippPredictions })
       return { ...tp, [currentUser.id]: { ...userPreds, [matchId]: { ...cur, [side]: val } } };
     });
   };
-  const leaderboard = [...members].sort((a, b) => b.tippPoints - a.tippPoints);
+  const leaderboard = members.map((member) => ({ ...member, calculatedTippPoints: totalTippPoints(member.id, tippPredictions, tippResults) }))
+    .sort((a, b) => b.calculatedTippPoints - a.calculatedTippPoints);
 
   return (
     <div className="px-4 pt-4 pb-10">
@@ -1622,25 +1639,27 @@ function TippView({ members, currentUser, tippPredictions, setTippPredictions })
             <div className="w-6 text-center text-sm" style={{ fontFamily: "JetBrains Mono", fontWeight: 700, color: i === 0 ? C.amber : C.textDim }}>{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}</div>
             <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: m.color, color: "#fff" }}>{initialsOf(m.name)}</div>
             <div className="flex-1 text-sm" style={{ fontFamily: "Inter", fontWeight: 600, color: C.ink }}>{m.name}{m.id === currentUser.id ? " (Du)" : ""}</div>
-            <div className="text-sm" style={{ fontFamily: "JetBrains Mono", fontWeight: 700, color: C.ink }}>{m.tippPoints} P</div>
+            <div className="text-sm" style={{ fontFamily: "JetBrains Mono", fontWeight: 700, color: C.ink }}>{m.calculatedTippPoints} P</div>
           </div>
         ))}
       </div>
 
       <SectionTitle eyebrow="Punkteregeln" title="So funktioniert's" />
       <div className="rounded-2xl p-4 mb-6 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>
-        Genaues Ergebnis = 3 Punkte · richtige Tendenz = 1 Punkt. Punkte werden nach Spielende vom Vorstand eingetragen.
+        Genaues Ergebnis = 3 Punkte · richtige Tendenz = 1 Punkt. Nach Eintragung des Endergebnisses durch den Vereins-Administrator berechnet das System alle Punkte automatisch.
       </div>
 
       <SectionTitle eyebrow="Nächste Spiele" title="Jetzt tippen" />
       {TIPP_MATCHES.map((match) => {
-        const locked = new Date(match.date) < new Date();
+        const result = tippResults[match.id];
+        const locked = new Date(match.date) < new Date() || !!result;
         const pred = mine[match.id] || { home: "", away: "" };
+        const earned = predictionPoints(pred, result);
         return (
           <div key={match.id} className="rounded-2xl p-4 mb-3" style={{ background: C.white, border: `1px solid ${C.line}` }}>
             <div className="flex items-center justify-between mb-3">
               <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{formatDate(match.date)} · {formatTime(match.date)}</div>
-              {locked && <Pill bg={C.textDim}>gesperrt</Pill>}
+              {result ? <Pill bg={C.green}>Endstand {result.home}:{result.away} · +{earned} P</Pill> : locked ? <Pill bg={C.textDim}>Wartet auf Ergebnis</Pill> : null}
             </div>
             <div className="flex items-center justify-center gap-3">
               <span className="text-sm flex-1 text-right" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{match.home}</span>
@@ -2050,6 +2069,53 @@ function PollManagerPanel({ polls, setPolls }) {
   return <div className="space-y-4"><div className="rounded-2xl p-4" style={{background:C.white,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">Neue Mitmach-Umfrage</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>Mindestens zwei Antwortmöglichkeiten eintragen.</div><input value={title} onChange={(e)=>setTitle(e.target.value)} placeholder="Frage oder Titel" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim}}/>{options.map((o,i)=><input key={i} value={o} onChange={(e)=>setOptions((all)=>all.map((x,idx)=>idx===i?e.target.value:x))} placeholder={`Antwort ${i+1}`} className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2" style={{background:C.paperDim}}/>)}<div className="flex gap-2"><button onClick={()=>setOptions((o)=>[...o,""])} className="px-3 py-2 rounded-lg text-xs font-bold" style={{background:C.paperDim,color:C.ink}}>＋ Antwort</button><button onClick={create} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{background:C.red,color:C.white}}>Veröffentlichen</button></div></div><div className="space-y-2">{polls.map((poll)=><div key={poll.id} className="rounded-xl p-3 flex items-center gap-3" style={{background:C.white,border:`1px solid ${C.line}`}}><div className="flex-1"><div className="text-xs font-bold">{poll.title}</div><div className="text-[10px] mt-1" style={{color:C.textDim}}>{poll.options.length} Antworten · {poll.options.reduce((n,o)=>n+o.votes,0)} Stimmen</div></div><button onClick={()=>setPolls((ps)=>ps.map((p)=>p.id===poll.id?{...p,active:!p.active}:p))} className="px-2.5 py-1.5 rounded-full text-[10px] font-bold" style={{background:poll.active?"#E7F3EC":C.paperDim,color:poll.active?C.green:C.textDim}}>{poll.active?"Aktiv":"Inaktiv"}</button></div>)}</div></div>;
 }
 
+function MatchResultsPanel({ results, onSave }) {
+  const [drafts, setDrafts] = useState({});
+  const [savedId, setSavedId] = useState(null);
+  const update = (matchId, side, value) => setDrafts((current) => ({
+    ...current,
+    [matchId]: { home: current[matchId]?.home ?? "", away: current[matchId]?.away ?? "", [side]: value },
+  }));
+  const save = (match) => {
+    const draft = drafts[match.id] || results[match.id];
+    if (!draft || draft.home === "" || draft.away === "") return;
+    onSave(match.id, { home: Number(draft.home), away: Number(draft.away), enteredAt: new Date().toISOString() });
+    setSavedId(match.id);
+    setTimeout(() => setSavedId(null), 1800);
+  };
+  return (
+    <div>
+      <div className="rounded-2xl p-4 mb-4" style={{ background: "#EDF7F0", border: "1px solid #CFE8D6" }}>
+        <div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Ergebnisse & Punkte</div>
+        <div className="text-xs" style={{ color: C.textDim }}>Endstand nach dem Spiel eintragen. Das System wertet danach alle Tipps aus: exakt 3 Punkte, richtige Tendenz 1 Punkt.</div>
+      </div>
+      <div className="space-y-3">
+        {TIPP_MATCHES.map((match) => {
+          const values = drafts[match.id] || results[match.id] || { home: "", away: "" };
+          return (
+            <div key={match.id} className="rounded-2xl p-4" style={{ background: C.white, border: `1px solid ${results[match.id] ? "#A9D8B6" : C.line}` }}>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs" style={{ color: C.textDim }}>{formatDate(match.date)} · {formatTime(match.date)}</span>
+                {results[match.id] && <Pill bg={C.green}>ausgewertet</Pill>}
+              </div>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xs font-bold flex-1 text-right" style={{ color: C.ink }}>{match.home}</span>
+                <input aria-label={`Tore ${match.home}`} type="number" min="0" value={values.home} onChange={(event) => update(match.id, "home", event.target.value)} className="w-12 text-center py-2 rounded-lg outline-none" style={{ background: C.paperDim, fontFamily: "JetBrains Mono", fontWeight: 700 }} />
+                <span style={{ color: C.textDim }}>:</span>
+                <input aria-label={`Tore ${match.away}`} type="number" min="0" value={values.away} onChange={(event) => update(match.id, "away", event.target.value)} className="w-12 text-center py-2 rounded-lg outline-none" style={{ background: C.paperDim, fontFamily: "JetBrains Mono", fontWeight: 700 }} />
+                <span className="text-xs font-bold flex-1" style={{ color: C.ink }}>{match.away}</span>
+              </div>
+              <button onClick={() => save(match)} className="w-full py-2 rounded-lg text-xs font-bold" style={{ background: savedId === match.id ? C.green : C.ink, color: C.white }}>
+                {savedId === match.id ? "Punkte wurden berechnet ✓" : results[match.id] ? "Ergebnis korrigieren & neu berechnen" : "Ergebnis speichern & Punkte berechnen"}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /* Rollenverwaltung                                                     */
 /* ------------------------------------------------------------------ */
@@ -2185,13 +2251,14 @@ function AdminView({
   channels, setChannels, maintenanceMode, setMaintenanceMode, onResetDemo,
   protocols, setProtocols, remindersSent, setRemindersSent,
   welcomeAutomation, setWelcomeAutomation, billingAutomation, setBillingAutomation,
-  sponsorBookings, setSponsorBookings, sponsorStats, polls, setPolls,
+  sponsorBookings, setSponsorBookings, sponsorStats, polls, setPolls, tippResults, onSaveTippResult,
 }) {
   const sponsorOnly = !isAdmin(currentUser) && canManageSponsors(currentUser);
   const canSeeFees = canManageFees(currentUser);
   const [panel, setPanel] = useState(sponsorOnly ? "sponsoring" : "overview");
   const openCount = members.filter((m) => !feePaid[m.id]).length;
   const panels = sponsorOnly ? [["sponsoring", "Sponsoring"], ["polls", "Umfragen"]] : [["overview", "Übersicht"], ["automation", "Automatisierung"], ["duty", "Helferplanung"], ["protokolle", "Protokolle"], ["polls", "Umfragen"], ["sponsoring", "Sponsoring"], ["season", "Spieler der Saison"], ["roles", "Rollen"]];
+  if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.splice(1, 0, ["results", "Spielergebnisse"]);
   if (isSysAdmin(currentUser)) panels.push(["families", "Familienprofile"], ["system", "System"]);
 
   return (
@@ -2225,6 +2292,7 @@ function AdminView({
       {panel === "sponsoring" && <SponsoringPanel bookings={sponsorBookings} setBookings={setSponsorBookings} stats={sponsorStats} />}
       {panel === "polls" && <PollManagerPanel polls={polls} setPolls={setPolls} />}
       {panel === "roles" && <RolesPanel members={members} setMembers={setMembers} />}
+      {panel === "results" && currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role)) && <MatchResultsPanel results={tippResults} onSave={onSaveTippResult} />}
       {panel === "families" && isSysAdmin(currentUser) && <AdminFamilyPanel members={members} setMembers={setMembers} />}
       {panel === "system" && isSysAdmin(currentUser) && (
         <SystemPanel members={members} channels={channels} setChannels={setChannels} maintenanceMode={maintenanceMode} setMaintenanceMode={setMaintenanceMode} onResetDemo={onResetDemo} />
@@ -2305,6 +2373,7 @@ export default function ClubMemberOrganisationApp() {
   const [chatChannelId, setChatChannelId] = useState("team");
   const [seasonVotes, setSeasonVotes] = useState({});
   const [tippPredictions, setTippPredictions] = useState({});
+  const [tippResults, setTippResults] = useState({});
   const [dutyPlan, setDutyPlan] = useState(INITIAL_DUTY_PLAN);
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [protocols, setProtocols] = useState(INITIAL_PROTOCOLS);
@@ -2365,11 +2434,13 @@ export default function ClubMemberOrganisationApp() {
     return { ok: true };
   };
   const login = async (email, password) => {
-    if (!supabase) {
-      const found = members.find((m) => m.email.toLowerCase() === email.toLowerCase() && m.password === password && m.clubId === selectedClubId);
-      if (!found) return { error: "E-Mail oder Passwort ist falsch." };
-      enterApp(found);
+    const demoMember = members.find((m) => m.email.toLowerCase() === email.toLowerCase() && m.password === password && m.clubId === selectedClubId);
+    if (demoMember) {
+      enterApp(demoMember);
       return { ok: true };
+    }
+    if (!supabase) {
+      return { error: "E-Mail oder Passwort ist falsch." };
     }
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error || !data.user) return { error: "E-Mail oder Passwort ist falsch." };
@@ -2445,9 +2516,19 @@ export default function ClubMemberOrganisationApp() {
   const onSponsorImpression = (slotKey) => setSponsorStats((s) => ({ ...s, [slotKey]: { impressions: (s[slotKey]?.impressions || 0) + 1, clicks: s[slotKey]?.clicks || 0 } }));
   const onSponsorClick = (slotKey) => setSponsorStats((s) => ({ ...s, [slotKey]: { impressions: s[slotKey]?.impressions || 0, clicks: (s[slotKey]?.clicks || 0) + 1 } }));
   const resetDemoData = () => {
-    setCarpools({}); setSeasonVotes({}); setTippPredictions({});
+    setCarpools({}); setSeasonVotes({}); setTippPredictions({}); setTippResults({});
     setRemindersSent({});
     setFeePaid(INITIAL_FEE_PAID); setFeeRecords(INITIAL_FEE_RECORDS); setEvents(EVENTS); setDutyPlan(INITIAL_DUTY_PLAN); setChannels(INITIAL_CHANNELS);
+  };
+  const saveTippResult = (matchId, result) => {
+    setTippResults((currentResults) => {
+      const nextResults = { ...currentResults, [matchId]: result };
+      setMembers((currentMembers) => currentMembers.map((member) => ({
+        ...member,
+        tippPoints: totalTippPoints(member.id, tippPredictions, nextResults),
+      })));
+      return nextResults;
+    });
   };
 
   const currentUserIsAdmin = isAdmin(currentUser);
@@ -2508,7 +2589,7 @@ export default function ClubMemberOrganisationApp() {
 
             <div key={`${tab}-${subView || ""}`} className="tabFade flex-1 overflow-y-auto" style={{ background: C.paper }}>
               {subView === "season" && <SeasonVoteView currentUser={currentUser} seasonVotes={seasonVotes} setSeasonVotes={setSeasonVotes} />}
-              {subView === "tipp" && <TippView members={clubMembers} currentUser={currentUser} tippPredictions={tippPredictions} setTippPredictions={setTippPredictions} />}
+              {subView === "tipp" && <TippView members={clubMembers} currentUser={currentUser} tippPredictions={tippPredictions} setTippPredictions={setTippPredictions} tippResults={tippResults} />}
               {subView === "duty" && <DutyView members={clubMembers} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} />}
 
               {!subView && tab === "home" && (
@@ -2530,7 +2611,8 @@ export default function ClubMemberOrganisationApp() {
                   currentUser={currentUser} channels={channels} setChannels={setChannels} maintenanceMode={maintenanceMode} setMaintenanceMode={setMaintenanceMode} onResetDemo={resetDemoData}
                   protocols={protocols} setProtocols={setProtocols} remindersSent={remindersSent} setRemindersSent={setRemindersSent}
                   welcomeAutomation={welcomeAutomation} setWelcomeAutomation={setWelcomeAutomation} billingAutomation={billingAutomation} setBillingAutomation={setBillingAutomation}
-                  sponsorBookings={sponsorBookings} setSponsorBookings={setSponsorBookings} sponsorStats={sponsorStats} polls={polls} setPolls={setPolls} />
+                  sponsorBookings={sponsorBookings} setSponsorBookings={setSponsorBookings} sponsorStats={sponsorStats} polls={polls} setPolls={setPolls}
+                  tippResults={tippResults} onSaveTippResult={saveTippResult} />
               )}
               {!subView && tab === "profile" && <ProfileView user={currentUser} members={clubMembers} setMembers={setMembers} sponsorBookings={sponsorBookings} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick} onLogout={logout} />}
             </div>

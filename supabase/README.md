@@ -14,3 +14,9 @@ Nach erfolgreicher Ausführung unter **Table Editor** prüfen, ob unter anderem
 `clubs`, `profiles`, `club_memberships`, `teams`, `events`, `fee_records`,
 `family_links`, `sponsors`, `polls`, `channels` und `messages` vorhanden sind.
 
+## Weitere Migrationen
+
+Wenn die initiale Migration bereits ausgeführt wurde, danach die neueren Dateien
+in zeitlicher Reihenfolge ebenfalls einmal im SQL Editor ausführen:
+
+1. `migrations/20260802015000_tipp_results.sql`
