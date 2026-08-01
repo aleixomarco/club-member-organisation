@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import {
-  Home, CalendarDays, Wallet, MessageCircle, User, Bell, ChevronRight,
+  Home, CalendarDays, Wallet, MessageCircle, User, ChevronRight,
   Check, X, HelpCircle, Users, Award, Gift, MapPin, Clock, Send,
   Trophy, Flame, Cake, Megaphone, Euro, CheckCircle2, Circle, Car,
   Sparkles, Image as ImageIcon, ChevronDown, Star, Mail, Lock, LogOut,
@@ -2305,7 +2305,7 @@ export default function ERGIserlohnApp() {
                 <div className="text-sm" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>{SUBVIEW_TITLES[subView]}</div>
               </div>
             ) : (
-              <div className="flex items-center justify-between px-4 pt-3 pb-2 flex-shrink-0" style={{ background: C.paper }}>
+              <div className="flex items-center px-4 pt-3 pb-2 flex-shrink-0" style={{ background: C.paper }}>
                 <div className="flex items-center gap-2">
                   {tabHistory.length > 0 ? (
                     <button onClick={goBack} className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: C.white, border: `1px solid ${C.line}` }}>
@@ -2322,10 +2322,6 @@ export default function ERGIserlohnApp() {
                   </div>
                   <button onClick={returnToClubOverview} className="ml-1 px-2 py-1.5 rounded-lg text-[9px] leading-tight font-bold text-left" style={{background:C.paperDim,color:C.textDim,maxWidth:88}}>Zur Vereinsübersicht</button>
                 </div>
-                <button className="relative w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.white, border: `1px solid ${C.line}` }}>
-                  <Bell size={14} style={{ color: C.ink }} />
-                  <span className="absolute top-1 right-1.5 w-1.5 h-1.5 rounded-full" style={{ background: C.red }} />
-                </button>
               </div>
             )}
 
