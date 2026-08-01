@@ -60,6 +60,7 @@ const ROLE_META = {
   sysadmin: { label: "Sys-Admin", color: "#4A4E9E", admin: true, formalMember: true, selfService: false },
   vorstand: { label: "Vorstand", color: C.red, admin: true, formalMember: true, selfService: false },
   geschaeftsfuehrung: { label: "Geschäftsführung", color: C.ink, admin: true, formalMember: true, selfService: false },
+  finanzmanager: { label: "Finanzmanager", color: "#176B87", admin: false, formalMember: true, selfService: false },
   redakteur: { label: "Redakteur", color: "#B15CC9", admin: false, formalMember: true, selfService: false },
   sponsorenmanager: { label: "Sponsorenmanager", color: "#B17912", admin: false, formalMember: true, selfService: false },
   trainer: { label: "Trainer/in", color: "#2D6F8E", admin: false, formalMember: true, selfService: false },
@@ -69,6 +70,7 @@ const ROLE_META = {
   mitglied: { label: "Mitglied", color: "#8B8A85", admin: false, formalMember: true, selfService: true, alwaysOn: true },
 };
 const isAdmin = (m) => !!m && m.roles.some((r) => ROLE_META[r]?.admin);
+const canManageFees = (m) => !!m && m.roles.some((r) => ["geschaeftsfuehrung", "finanzmanager"].includes(r));
 const isFormalMember = (m) => !!m && m.roles.some((r) => ROLE_META[r]?.formalMember);
 const isSysAdmin = (m) => !!m && m.roles.includes("sysadmin");
 const canWriteNews = (m) => isAdmin(m) || (!!m && m.roles.includes("redakteur"));
@@ -120,9 +122,10 @@ const INITIAL_MEMBERS = [
   { id: "m5", clubId: "ergi", name: "Helga Thomas", email: "helga@ergi.de", password: "demo", team: "Eltern / Angehörige", number: null, since: 2023, roles: ["mitglied"], color: "#B98B3E", points: 20, tippPoints: 0, badges: [], birthdate: "1952-02-11", familyId: "fam-thomas", familyRole: "großeltern" },
   { id: "m6", clubId: "ergi", name: "Claudia Berg", email: "geschaeftsfuehrung@ergi.de", password: "demo", team: "Geschäftsstelle", number: null, since: 2020, roles: ["geschaeftsfuehrung", "mitglied"], color: "#3E7CB1", points: 60, tippPoints: 4, badges: [], birthdate: "1980-11-03" },
   { id: "m7", clubId: "ergi", name: "Nina Weber", email: "redaktion@ergi.de", password: "demo", team: "Geschäftsstelle", number: null, since: 2022, roles: ["redakteur", "sponsorenmanager", "mitglied"], color: "#B15CC9", points: 40, tippPoints: 0, badges: [], birthdate: "1990-07-08" },
+  { id: "m8", clubId: "ergi", name: "Daniel Krüger", email: "finanzen@ergi.de", password: "demo", team: "Geschäftsstelle", number: null, since: 2024, roles: ["finanzmanager", "mitglied"], color: "#176B87", points: 20, tippPoints: 0, badges: [], birthdate: "1988-04-19" },
 ];
 
-const INITIAL_FEE_PAID = { m1: false, m2: true, m3: false, v1: true, m4: true, m5: true, m6: true, m7: true };
+const INITIAL_FEE_PAID = { m1: false, m2: true, m3: false, v1: true, m4: true, m5: true, m6: true, m7: true, m8: true };
 const INITIAL_FEE_RECORDS = [
   { id: "fee-1", memberId: "m1", year: "2026", type: "Aktivenbeitrag", amount: "120,00", paid: false, invoiceNumber: "RG-2026-001" },
   { id: "fee-2", memberId: "m2", year: "2026", type: "Aktivenbeitrag", amount: "120,00", paid: true, invoiceNumber: "RG-2026-002" },
@@ -1059,7 +1062,7 @@ function FeesView({ members, records, setRecords }) {
   if (!selectedMember) {
     return (
       <div className="px-4 pt-4 pb-24">
-        <SectionTitle eyebrow="Nur Geschäftsführung" title="Beiträge" />
+        <SectionTitle eyebrow="Geschäftsführung & Finanzmanagement" title="Beiträge" />
         <div className="rounded-2xl p-4 mb-4" style={{ background: C.ink }}>
           <div className="text-white text-sm" style={{ fontFamily: "Inter", fontWeight: 700 }}>{members.length} Vereinsmitglieder</div>
           <div className="text-xs mt-1" style={{ color: "#B7B6BC" }}>Mitglied auswählen, um Beiträge und Rechnungen zu verwalten.</div>
@@ -2100,7 +2103,7 @@ function AdminView({
   sponsorBookings, setSponsorBookings, sponsorStats, polls, setPolls,
 }) {
   const sponsorOnly = !isAdmin(currentUser) && canManageSponsors(currentUser);
-  const canSeeFees = currentUser.roles.includes("geschaeftsfuehrung");
+  const canSeeFees = canManageFees(currentUser);
   const [panel, setPanel] = useState(sponsorOnly ? "sponsoring" : "overview");
   const openCount = members.filter((m) => !feePaid[m.id]).length;
   const panels = sponsorOnly ? [["sponsoring", "Sponsoring"], ["polls", "Umfragen"]] : [["overview", "Übersicht"], ["automation", "Automatisierung"], ["duty", "Helferplanung"], ["protokolle", "Protokolle"], ["polls", "Umfragen"], ["sponsoring", "Sponsoring"], ["season", "Spieler der Saison"], ["roles", "Rollen"]];
@@ -2275,7 +2278,7 @@ export default function ERGIserlohnApp() {
   const currentUserIsAdmin = isAdmin(currentUser);
   const currentUserCanEditNews = canWriteNews(currentUser);
   const currentUserCanEditSponsors = canManageSponsors(currentUser);
-  const currentUserCanManageFees = currentUser.roles.includes("geschaeftsfuehrung");
+  const currentUserCanManageFees = canManageFees(currentUser);
   const TABS = baseTabs(currentUserIsAdmin, currentUserCanEditNews, currentUserCanEditSponsors, currentUserCanManageFees);
 
   return (
