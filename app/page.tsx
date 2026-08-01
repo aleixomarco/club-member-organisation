@@ -1305,7 +1305,7 @@ function FamilyTree({ user, members }) {
   if (!user.familyId) {
     return (
       <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>
-        Für dich ist noch kein Familienprofil hinterlegt. Der Vorstand kann Eltern, Kinder und Großeltern für die Helferplanung miteinander verknüpfen.
+        Für dich ist noch kein Familienprofil hinterlegt. Du kannst es selbst ergänzen; bei Bedarf unterstützt der Sysadmin.
       </div>
     );
   }
@@ -1337,13 +1337,12 @@ function FamilyTree({ user, members }) {
   );
 }
 
-function FamilyLinkManager({ user, members, setMembers }) {
+function FamilyLinkManager({ user, members, setMembers, adminMode = false }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [newName, setNewName] = useState("");
-  const userIsParent = user.roles.includes("eltern");
-  const userIsPlayer = user.roles.includes("spieler");
-  if (!userIsParent && !userIsPlayer) return null;
+  const [relationMode, setRelationMode] = useState(user.roles.includes("eltern") ? "eltern" : "kind");
+  const userIsParent = relationMode === "eltern";
   const wantedRole = userIsParent ? "spieler" : "eltern";
   const linkedIds = (user.familyLinks || []).map((l) => l.memberId);
   const results = members.filter((m) => m.id !== user.id && !linkedIds.includes(m.id) && !m.accountPending && m.roles.includes(wantedRole) && m.name.toLowerCase().includes(query.toLowerCase())).slice(0, 5);
@@ -1359,9 +1358,15 @@ function FamilyLinkManager({ user, members, setMembers }) {
     setNewName(""); setOpen(false);
   };
   return <div className="rounded-2xl p-4 mb-5" style={{background:C.white,border:`1px solid ${C.line}`}}>
-    <div className="flex items-center justify-between"><div><div className="text-sm font-bold" style={{color:C.ink}}>Familienverknüpfung</div><div className="text-[11px]" style={{color:C.textDim}}>Verknüpfungen gelten immer automatisch für beide Profile.</div></div><button onClick={()=>setOpen(!open)} className="px-3 py-1.5 rounded-full text-xs font-bold" style={{background:C.paperDim,color:C.ink}}>{open?"Schließen":"＋ Verknüpfen"}</button></div>
-    {open&&<div className="mt-3 pt-3" style={{borderTop:`1px solid ${C.line}`}}><input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder={userIsParent?"Vorhandenen Spieler suchen …":"Vorhandenes Elternteil suchen …"} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim}}/>{query&&<div className="space-y-1">{results.map(m=><button key={m.id} onClick={()=>connect(m.id)} className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs" style={{background:C.paperDim,color:C.ink}}><span>{m.name} · {m.team}</span><span style={{color:C.red}}>Verbinden</span></button>)}{results.length===0&&<div className="text-[11px] py-2" style={{color:C.textDim}}>Kein passendes Profil gefunden.</div>}</div>}{userIsParent&&<div className="mt-3 pt-3" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[11px] font-bold mb-2">Kind ohne Account vorläufig anlegen</div><div className="flex gap-2"><input value={newName} onChange={(e)=>setNewName(e.target.value)} placeholder="Vor- und Nachname" className="flex-1 px-3 py-2 rounded-lg text-xs outline-none" style={{background:C.paperDim}}/><button onClick={createDependent} disabled={!newName.trim()} className="px-3 rounded-lg text-xs font-bold" style={{background:newName.trim()?C.red:C.line,color:"#fff"}}>Anlegen</button></div><div className="text-[10px] mt-2" style={{color:C.textDim}}>Das Kind kann sein vorläufiges Profil später beim Erstellen des eigenen Kontos übernehmen.</div></div>}</div>}
+    <div className="flex items-center justify-between"><div><div className="text-sm font-bold" style={{color:C.ink}}>Familienverknüpfung</div><div className="text-[11px]" style={{color:C.textDim}}>{adminMode ? `Sysadmin bearbeitet das Profil von ${user.name}.` : "Du verwaltest dein Familienprofil selbst."} Verknüpfungen gelten automatisch für beide Profile.</div></div><button onClick={()=>setOpen(!open)} className="px-3 py-1.5 rounded-full text-xs font-bold" style={{background:C.paperDim,color:C.ink}}>{open?"Schließen":"＋ Verknüpfen"}</button></div>
+    {open&&<div className="mt-3 pt-3" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[11px] font-bold mb-1">Rolle in der Verknüpfung</div><select value={relationMode} onChange={(e)=>{setRelationMode(e.target.value);setQuery("");}} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim}}><option value="eltern">Elternteil – Spieler oder Kind hinzufügen</option><option value="kind">Spieler/Kind – Elternteil hinzufügen</option></select><input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder={userIsParent?"Vorhandenen Spieler suchen …":"Vorhandenes Elternteil suchen …"} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim}}/>{query&&<div className="space-y-1">{results.map(m=><button key={m.id} onClick={()=>connect(m.id)} className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs" style={{background:C.paperDim,color:C.ink}}><span>{m.name} · {m.team}</span><span style={{color:C.red}}>Verbinden</span></button>)}{results.length===0&&<div className="text-[11px] py-2" style={{color:C.textDim}}>Kein passendes Profil gefunden.</div>}</div>}{userIsParent&&<div className="mt-3 pt-3" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[11px] font-bold mb-2">Kind ohne Account vorläufig anlegen</div><div className="flex gap-2"><input value={newName} onChange={(e)=>setNewName(e.target.value)} placeholder="Vor- und Nachname" className="flex-1 px-3 py-2 rounded-lg text-xs outline-none" style={{background:C.paperDim}}/><button onClick={createDependent} disabled={!newName.trim()} className="px-3 rounded-lg text-xs font-bold" style={{background:newName.trim()?C.red:C.line,color:"#fff"}}>Anlegen</button></div><div className="text-[10px] mt-2" style={{color:C.textDim}}>Das Kind kann sein vorläufiges Profil später beim Erstellen des eigenen Kontos übernehmen.</div></div>}</div>}
   </div>;
+}
+
+function AdminFamilyPanel({ members, setMembers }) {
+  const [selectedId, setSelectedId] = useState("");
+  const selected = members.find((member) => member.id === selectedId);
+  return <div className="space-y-3"><div className="text-xs" style={{color:C.textDim}}>Nur der Sysadmin kann Familienprofile anderer Mitglieder ergänzen. Vorstand und weitere Verwaltungsrollen haben keinen Zugriff.</div><select value={selectedId} onChange={(e)=>setSelectedId(e.target.value)} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.white,border:`1px solid ${C.line}`}}><option value="">Mitglied auswählen …</option>{members.map((member)=><option key={member.id} value={member.id}>{member.name} · {member.team}</option>)}</select>{selected&&<><FamilyTree user={selected} members={members}/><FamilyLinkManager user={selected} members={members} setMembers={setMembers} adminMode /></>}</div>;
 }
 
 /* ------------------------------------------------------------------ */
@@ -2145,7 +2150,7 @@ function AdminView({
   const [panel, setPanel] = useState(sponsorOnly ? "sponsoring" : "overview");
   const openCount = members.filter((m) => !feePaid[m.id]).length;
   const panels = sponsorOnly ? [["sponsoring", "Sponsoring"], ["polls", "Umfragen"]] : [["overview", "Übersicht"], ["automation", "Automatisierung"], ["duty", "Helferplanung"], ["protokolle", "Protokolle"], ["polls", "Umfragen"], ["sponsoring", "Sponsoring"], ["season", "Spieler der Saison"], ["roles", "Rollen"]];
-  if (isSysAdmin(currentUser)) panels.push(["system", "System"]);
+  if (isSysAdmin(currentUser)) panels.push(["families", "Familienprofile"], ["system", "System"]);
 
   return (
     <div className="px-4 pt-4 pb-24">
@@ -2178,6 +2183,7 @@ function AdminView({
       {panel === "sponsoring" && <SponsoringPanel bookings={sponsorBookings} setBookings={setSponsorBookings} stats={sponsorStats} />}
       {panel === "polls" && <PollManagerPanel polls={polls} setPolls={setPolls} />}
       {panel === "roles" && <RolesPanel members={members} setMembers={setMembers} />}
+      {panel === "families" && isSysAdmin(currentUser) && <AdminFamilyPanel members={members} setMembers={setMembers} />}
       {panel === "system" && isSysAdmin(currentUser) && (
         <SystemPanel members={members} channels={channels} setChannels={setChannels} maintenanceMode={maintenanceMode} setMaintenanceMode={setMaintenanceMode} onResetDemo={onResetDemo} />
       )}
