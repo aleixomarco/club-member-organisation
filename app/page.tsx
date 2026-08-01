@@ -357,6 +357,15 @@ function SectionTitle({ eyebrow, title, right }) {
     </div>
   );
 }
+
+function DashboardSection({ children, accent, background, className = "" }) {
+  return (
+    <section className={`relative overflow-hidden rounded-3xl p-4 mb-5 ${className}`} style={{ background, border: `1px solid ${accent}26`, boxShadow: "0 7px 20px rgba(20,21,26,0.055)" }}>
+      <div className="absolute left-0 top-5 bottom-5 w-1 rounded-r-full" style={{ background: accent }} />
+      {children}
+    </section>
+  );
+}
 function Field({ icon: Icon, ...props }) {
   return (
     <div className="flex items-center gap-2 rounded-xl px-3.5 py-3 mb-3" style={{ background: C.paperDim }}>
@@ -837,17 +846,20 @@ function Dashboard({ user, members, feePaid, channels, dutyPlan, seasonVotes, po
         </div>
       )}
 
-      <SectionTitle eyebrow="Mitmachen" title="Aktionen & Abstimmungen" />
-      <div className="mb-6">
-        <FeatureRow icon={Trophy} title="Spieler der Saison" subtitle={seasonSubtitle} onClick={goSeason} accent={C.amber} />
-        <FeatureRow icon={Target} title="Tippspiel" subtitle={tippSubtitle} onClick={goTipp} accent={C.red} />
-        <FeatureRow icon={ClipboardList} title="Helferplanung" subtitle={dutySubtitle} onClick={goDuty} accent={C.green} />
-      </div>
+      <DashboardSection accent={C.red} background="#FBEDEF">
+        <SectionTitle eyebrow="Mitmachen" title="Aktionen & Abstimmungen" />
+        <div>
+          <FeatureRow icon={Trophy} title="Spieler der Saison" subtitle={seasonSubtitle} onClick={goSeason} accent={C.amber} />
+          <FeatureRow icon={Target} title="Tippspiel" subtitle={tippSubtitle} onClick={goTipp} accent={C.red} />
+          <FeatureRow icon={ClipboardList} title="Helferplanung" subtitle={dutySubtitle} onClick={goDuty} accent={C.green} />
+        </div>
+      </DashboardSection>
 
-      <SectionTitle eyebrow="Vereins-News" title="Neueste Nachrichten" right={<button onClick={goNews} className="text-xs font-bold" style={{ color: C.red, fontFamily: "Inter" }}>Alle ansehen</button>} />
-      <div className="mb-6">
+      <DashboardSection accent="#2D6F8E" background="#EEF5F8">
+        <SectionTitle eyebrow="Vereins-News" title="Neueste Nachrichten" right={<button onClick={goNews} className="text-xs font-bold" style={{ color: "#2D6F8E", fontFamily: "Inter" }}>Alle ansehen</button>} />
+        <div className="rounded-2xl px-3" style={{ background: "rgba(255,255,255,0.82)", border: `1px solid ${C.white}` }}>
         {newsMsgs.length === 0 ? (
-          <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>Noch keine News.</div>
+          <div className="text-xs py-3" style={{ color: C.textDim, fontFamily: "Inter" }}>Noch keine News.</div>
         ) : newsMsgs.map((m, i) => (
           <div key={i} className="py-3" style={{ borderBottom: i < newsMsgs.length - 1 ? `1px solid ${C.line}` : "none" }}>
             <div className="text-[11px] mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>{m.who} · {m.time}</div>
@@ -856,15 +868,20 @@ function Dashboard({ user, members, feePaid, channels, dutyPlan, seasonVotes, po
             <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: m.title ? 400 : 600, color: m.title ? C.textDim : C.ink }}>{m.text}</div>
           </div>
         ))}
-      </div>
+        </div>
+      </DashboardSection>
 
-      <SectionTitle eyebrow="Mitmachen" title="Deine Stimme zählt" />
-      <div className="mb-6 space-y-3">{polls.filter((p)=>p.active).map((poll)=><PollWidget key={poll.id} poll={poll} userId={user.id} setPolls={setPolls}/>)}</div>
+      <DashboardSection accent={C.amber} background="#FFF7E7">
+        <SectionTitle eyebrow="Mitmachen" title="Deine Stimme zählt" />
+        <div className="space-y-3">{polls.filter((p)=>p.active).map((poll)=><PollWidget key={poll.id} poll={poll} userId={user.id} setPolls={setPolls}/>)}</div>
+      </DashboardSection>
 
-      <SectionTitle eyebrow="Partner" title="Unsere Sponsoren" />
-      <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
-        {SPONSORS.map((s) => <div key={s} className="flex-shrink-0 px-3 py-2.5 rounded-xl text-xs whitespace-nowrap" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter", fontWeight: 600 }}>{s}</div>)}
-      </div>
+      <DashboardSection accent={C.green} background="#EDF7F0">
+        <SectionTitle eyebrow="Partner" title="Unsere Sponsoren" />
+        <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+          {SPONSORS.map((s) => <div key={s} className="flex-shrink-0 px-3 py-2.5 rounded-xl text-xs whitespace-nowrap" style={{ background: C.white, border: "1px solid #D8EBDD", color: C.textDim, fontFamily: "Inter", fontWeight: 600 }}>{s}</div>)}
+        </div>
+      </DashboardSection>
 
       <div className="mt-5">
         <SponsorSlot slotKey="dashboard_bottom" bookings={sponsorBookings} onImpression={onSponsorImpression} onClick={onSponsorClick} />
