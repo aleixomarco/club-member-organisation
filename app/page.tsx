@@ -86,16 +86,6 @@ const isFormalMember = (m) => !!m && m.roles.some((r) => ROLE_META[r]?.formalMem
 const isSysAdmin = (m) => !!m && m.roles.includes("sysadmin");
 const canWriteNews = (m) => isAdmin(m) || (!!m && m.roles.includes("redakteur"));
 const canManageSponsors = (m) => isAdmin(m) || (!!m && m.roles.includes("sponsorenmanager"));
-function RoleBadges({ user }) {
-  if (!user?.roles?.length) return null;
-  return <div className="ml-auto flex flex-wrap justify-end gap-1" style={{ maxWidth: 150 }} aria-label="Rollen des Profils">
-    {user.roles.map((role) => {
-      const meta = ROLE_META[role];
-      if (!meta) return null;
-      return <span key={role} className="px-1.5 py-1 rounded-md leading-none whitespace-nowrap" style={{ fontSize: 8, fontFamily: "Inter", fontWeight: 700, color: meta.color, background: `${meta.color}14`, border: `1px solid ${meta.color}35` }}>{meta.label}</span>;
-    })}
-  </div>;
-}
 function linkFamilyRecords(list, firstId, secondId, firstRelation) {
   const first = list.find((m) => m.id === firstId);
   const second = list.find((m) => m.id === secondId);
@@ -2652,15 +2642,14 @@ export default function ClubMemberOrganisationApp() {
         ) : (
           <>
             {subView ? (
-              <div className="flex items-start gap-3 px-4 pt-3 pb-2 flex-shrink-0" style={{ background: C.paper }}>
+              <div className="flex items-center gap-3 px-4 pt-3 pb-2 flex-shrink-0" style={{ background: C.paper }}>
                 <button onClick={() => setSubView(null)} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.white, border: `1px solid ${C.line}` }}>
                   <ArrowLeft size={15} style={{ color: C.ink }} />
                 </button>
                 <div className="text-sm" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>{SUBVIEW_TITLES[subView]}</div>
-                <RoleBadges user={currentUser} />
               </div>
             ) : (
-              <div className="flex items-start px-4 pt-3 pb-2 flex-shrink-0" style={{ background: C.paper }}>
+              <div className="flex items-center px-4 pt-3 pb-2 flex-shrink-0" style={{ background: C.paper }}>
                 <div className="flex items-center gap-2">
                   {tabHistory.length > 0 ? (
                     <button onClick={goBack} className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: C.white, border: `1px solid ${C.line}` }}>
@@ -2675,7 +2664,6 @@ export default function ClubMemberOrganisationApp() {
                   </div>
                   <button onClick={returnToClubOverview} className="ml-1 px-2 py-1.5 rounded-lg text-[9px] leading-tight font-bold text-left" style={{background:C.paperDim,color:C.textDim,maxWidth:88}}>Zur Vereinsübersicht</button>
                 </div>
-                <RoleBadges user={currentUser} />
               </div>
             )}
 
