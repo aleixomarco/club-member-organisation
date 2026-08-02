@@ -2411,7 +2411,7 @@ function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, 
         </div>
       ) : (
         <div className="mb-6">
-          <button onClick={() => setProfileFolder("")} className="flex items-center gap-1.5 text-xs font-bold mb-3" style={{ color: C.textDim }}><ChevronRight size={14} style={{ transform: "rotate(180deg)" }}/> Zurück zur Übersicht</button>
+          <button onClick={() => setProfileFolder("")} className="flex items-center gap-1.5 text-xs font-bold mb-4 px-3 py-2 rounded-full" style={{ color: C.ink, background: C.paperDim, border: `1px solid ${C.line}` }}><ChevronRight size={14} style={{ transform: "rotate(180deg)" }}/> Zurück zur Übersicht</button>
           <div className="space-y-2">
             {profileFolder === "personal" && <>
               <ProfileSettingsCard icon={User} title="Persönliche Daten" description="Stammdaten, Kontakte, Adresse und Mitgliederausweis" color={C.green} onClick={() => setProfileUnderlay("personal")}/>
