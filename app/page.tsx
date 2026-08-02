@@ -1687,9 +1687,8 @@ function PlayerDataCard({ user, setMembers }) {
   );
 }
 
-function PayPalSubscriptionButton({ clientId, planId, customId, onApproved, onError }) {
+function PayPalSubscriptionButton({ sdkReady, planId, customId, onApproved, onError }) {
   const container = useRef(null);
-  const [sdkReady, setSdkReady] = useState(() => typeof window !== "undefined" && !!window.paypal);
 
   useEffect(() => {
     if (!sdkReady || !window.paypal || !container.current || !planId || !customId) return;
@@ -1705,25 +1704,56 @@ function PayPalSubscriptionButton({ clientId, planId, customId, onApproved, onEr
     return () => { if (buttons?.close) buttons.close().catch(() => {}); };
   }, [sdkReady, planId, customId, onApproved, onError]);
 
-  return <>
-    <Script
-      id="paypal-subscriptions-sdk"
-      src={`https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=EUR&vault=true&intent=subscription`}
-      strategy="afterInteractive"
-      onLoad={() => setSdkReady(true)}
-      onError={() => onError("PayPal konnte nicht geladen werden.")}
-    />
-    <div ref={container} className="min-h-10" />
-  </>;
+  return <div ref={container} className="min-h-10" />;
+}
+
+const SUBSCRIPTION_PRICES = {
+  member: {
+    monthly: { price: "2,99 €", setup: "1,50 €" },
+    yearly: { price: "11,88 €", setup: "1,50 €", equivalent: "0,99 € / Monat" },
+  },
+  club: {
+    monthly: { price: "29,99 €", setup: "5,00 €" },
+    yearly: { price: "299,88 €", setup: "5,00 €", equivalent: "24,99 € / Monat" },
+  },
+};
+
+function SubscriptionOffer({ title, description, badge, accountType, cycle, setCycle, config, sdkReady, customId, allowed, loading, message, setMessage, onApproved }) {
+  const selected = SUBSCRIPTION_PRICES[accountType][cycle];
+
+  return <div className="rounded-2xl p-4 mb-4" style={{ background: C.white, border: `1px solid ${accountType === "club" ? "#A8D5C2" : C.line}` }}>
+    <div className="flex items-start justify-between gap-3 mb-1">
+      <div className="flex items-center gap-2">
+        {accountType === "club" ? <ShieldCheck size={17} style={{ color: C.green }} /> : <User size={17} style={{ color: C.red }} />}
+        <div className="text-sm font-bold" style={{ color: C.ink }}>{title}</div>
+      </div>
+      {badge && <span className="rounded-full px-2 py-1 text-[9px] font-bold whitespace-nowrap" style={{ background: "#E7F3EC", color: C.green }}>{badge}</span>}
+    </div>
+    <div className="text-[11px] mb-3 leading-relaxed" style={{ color: C.textDim }}>{description}</div>
+    <div className="grid grid-cols-2 gap-2 mb-3">
+      {[["monthly", "Monatlich"], ["yearly", "Jährlich"]].map(([value, label]) => <button key={value} onClick={() => { setCycle(value); setMessage(""); }} className="py-2 rounded-xl text-xs font-bold" style={{ background: cycle === value ? "#FCEBEE" : C.paperDim, color: cycle === value ? C.red : C.textDim, border: cycle === value ? `1px solid ${C.red}` : "1px solid transparent" }}>{label}</button>)}
+    </div>
+    <div className="rounded-xl p-3 mb-3" style={{ background: C.paperDim }}>
+      <div className="flex items-end justify-between gap-3"><div><div className="text-xl font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{selected.price}</div><div className="text-[10px]" style={{ color: C.textDim }}>{cycle === "yearly" ? "jährlich im Voraus" : "pro Monat"}{selected.equivalent ? ` · ${selected.equivalent}` : ""}</div></div><div className="text-[10px] text-right" style={{ color: C.textDim }}>einmalig<br/><b>{selected.setup} Einrichtung</b></div></div>
+      <div className="text-[10px] mt-2" style={{ color: C.textDim }}>19 % Umsatzsteuer im Preis enthalten. Keine Probezeit.</div>
+    </div>
+    {loading ? <div className="text-xs py-2 text-center" style={{ color: C.textDim }}>PayPal wird geladen …</div> : config && allowed ?
+      <PayPalSubscriptionButton sdkReady={sdkReady} planId={config.plans[accountType][cycle]} customId={customId} onApproved={onApproved} onError={setMessage} /> :
+      <div className="text-[11px] rounded-xl px-3 py-2" style={{ background: "#FFF6E4", color: C.textDim }}>{message || "Der Checkout ist nur für ein angemeldetes, dauerhaft gespeichertes Konto verfügbar."}</div>}
+    {message && config && allowed && <div role="status" className="text-[11px] mt-2 rounded-xl px-3 py-2" style={{ background: message.includes("bestätigt") ? "#E7F3EC" : "#FDECEC", color: message.includes("bestätigt") ? C.green : C.red }}>{message}</div>}
+    <div className="text-[9px] mt-3 leading-relaxed" style={{ color: C.textDim }}>Mit dem Abschluss akzeptierst du die <a href="/nutzungsbedingungen" className="underline">Nutzungsbedingungen</a>. Kündigung über PayPal zum Ende des Abrechnungszeitraums.</div>
+  </div>;
 }
 
 function SubscriptionPanel({ user }) {
   const [config, setConfig] = useState(null);
-  const [accountType, setAccountType] = useState("member");
-  const [cycle, setCycle] = useState("monthly");
-  const [message, setMessage] = useState("");
+  const [memberCycle, setMemberCycle] = useState("monthly");
+  const [clubCycle, setClubCycle] = useState("monthly");
+  const [memberMessage, setMemberMessage] = useState("");
+  const [clubMessage, setClubMessage] = useState("");
   const [loading, setLoading] = useState(true);
-  const canBuyClubPlan = user.roles.some((role) => ["vereinsadmin", "sysadmin", "vorstand", "geschaeftsfuehrung"].includes(role));
+  const [sdkReady, setSdkReady] = useState(() => typeof window !== "undefined" && !!window.paypal);
+  const canBuyClubPlan = user.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role));
   const databaseProfile = user.authProfileId && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(user.authProfileId));
   const databaseClub = /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(user.clubId));
 
@@ -1734,37 +1764,59 @@ function SubscriptionPanel({ user }) {
         if (!response.ok) throw new Error(payload.error || "PayPal ist noch nicht konfiguriert.");
         setConfig(payload);
       })
-      .catch((error) => setMessage(error.message))
+      .catch((error) => { setMemberMessage(error.message); setClubMessage(error.message); })
       .finally(() => setLoading(false));
   }, []);
 
-  const selected = accountType === "club"
-    ? { monthly: { price: "29,99 €", setup: "5,00 €" }, yearly: { price: "299,88 €", setup: "5,00 €", equivalent: "24,99 € / Monat" } }[cycle]
-    : { monthly: { price: "2,99 €", setup: "1,50 €" }, yearly: { price: "11,88 €", setup: "1,50 €", equivalent: "0,99 € / Monat" } }[cycle];
-  const customId = accountType === "club" ? user.clubId : user.authProfileId;
-  const allowed = accountType === "club" ? canBuyClubPlan && databaseClub : databaseProfile;
-  const approved = useCallback((subscriptionId) => {
-    setMessage(`Abo bestätigt. PayPal-ID: ${subscriptionId}. Die Freischaltung erfolgt automatisch.`);
+  const memberApproved = useCallback((subscriptionId) => {
+    setMemberMessage(`Persönliches Abo bestätigt. PayPal-ID: ${subscriptionId}. Die Freischaltung erfolgt automatisch.`);
+  }, []);
+  const clubApproved = useCallback((subscriptionId) => {
+    setClubMessage(`Vereins-Abo bestätigt. PayPal-ID: ${subscriptionId}. Die Freischaltung erfolgt automatisch.`);
   }, []);
 
-  return <div className="rounded-2xl p-4 mb-5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
-    <div className="flex items-center gap-2 mb-1"><Euro size={16} style={{ color: C.red }} /><div className="text-sm font-bold" style={{ color: C.ink }}>Abonnement</div></div>
-    <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Sicher über PayPal bezahlen. Alle Abos verlängern sich automatisch bis zur Kündigung.</div>
-    {canBuyClubPlan && <div className="grid grid-cols-2 gap-2 mb-2">
-      {[['member', 'Nutzerkonto'], ['club', 'Vereinsaccount']].map(([value, label]) => <button key={value} onClick={() => { setAccountType(value); setMessage(""); }} className="py-2 rounded-xl text-xs font-bold" style={{ background: accountType === value ? C.ink : C.paperDim, color: accountType === value ? C.white : C.textDim }}>{label}</button>)}
-    </div>}
-    <div className="grid grid-cols-2 gap-2 mb-3">
-      {[['monthly', 'Monatlich'], ['yearly', 'Jährlich']].map(([value, label]) => <button key={value} onClick={() => { setCycle(value); setMessage(""); }} className="py-2 rounded-xl text-xs font-bold" style={{ background: cycle === value ? "#FCEBEE" : C.paperDim, color: cycle === value ? C.red : C.textDim, border: cycle === value ? `1px solid ${C.red}` : "1px solid transparent" }}>{label}</button>)}
-    </div>
-    <div className="rounded-xl p-3 mb-3" style={{ background: C.paperDim }}>
-      <div className="flex items-end justify-between"><div><div className="text-xl font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{selected.price}</div><div className="text-[10px]" style={{ color: C.textDim }}>{cycle === "yearly" ? "jährlich im Voraus" : "pro Monat"}{selected.equivalent ? ` · ${selected.equivalent}` : ""}</div></div><div className="text-[10px] text-right" style={{ color: C.textDim }}>einmalig<br/><b>{selected.setup} Einrichtung</b></div></div>
-      <div className="text-[10px] mt-2" style={{ color: C.textDim }}>19 % Umsatzsteuer im Preis enthalten. Keine Probezeit.</div>
-    </div>
-    {loading ? <div className="text-xs py-2 text-center" style={{ color: C.textDim }}>PayPal wird geladen …</div> : config && allowed ?
-      <PayPalSubscriptionButton clientId={config.clientId} planId={config.plans[accountType][cycle]} customId={customId} onApproved={approved} onError={setMessage} /> :
-      <div className="text-[11px] rounded-xl px-3 py-2" style={{ background: "#FFF6E4", color: C.textDim }}>{message || "Der Checkout ist nur für ein angemeldetes, dauerhaft gespeichertes Konto verfügbar."}</div>}
-    {message && config && allowed && <div role="status" className="text-[11px] mt-2 rounded-xl px-3 py-2" style={{ background: message.includes("bestätigt") ? "#E7F3EC" : "#FDECEC", color: message.includes("bestätigt") ? C.green : C.red }}>{message}</div>}
-    <div className="text-[9px] mt-3 leading-relaxed" style={{ color: C.textDim }}>Mit dem Abschluss akzeptierst du die <a href="/nutzungsbedingungen" className="underline">Nutzungsbedingungen</a>. Kündigung über PayPal zum Ende des Abrechnungszeitraums.</div>
+  return <div className="mb-5">
+    {config?.clientId && <Script
+      id="paypal-subscriptions-sdk"
+      src={`https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(config.clientId)}&currency=EUR&vault=true&intent=subscription`}
+      strategy="afterInteractive"
+      onLoad={() => setSdkReady(true)}
+      onReady={() => setSdkReady(true)}
+      onError={() => { setMemberMessage("PayPal konnte nicht geladen werden."); setClubMessage("PayPal konnte nicht geladen werden."); }}
+    />}
+    <div className="flex items-center gap-2 mb-1"><Euro size={17} style={{ color: C.red }} /><div className="text-base font-bold" style={{ color: C.ink }}>Abonnementübersicht</div></div>
+    <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Persönliches Nutzerkonto und Vereinsaccount werden getrennt verwaltet. Alle Abos verlängern sich automatisch bis zur Kündigung.</div>
+    <SubscriptionOffer
+      title="Dein Nutzerkonto"
+      description="Dieses Abonnement gehört ausschließlich zu deinem persönlichen App-Konto."
+      accountType="member"
+      cycle={memberCycle}
+      setCycle={setMemberCycle}
+      config={config}
+      sdkReady={sdkReady}
+      customId={user.authProfileId}
+      allowed={databaseProfile}
+      loading={loading}
+      message={memberMessage}
+      setMessage={setMemberMessage}
+      onApproved={memberApproved}
+    />
+    {canBuyClubPlan && <SubscriptionOffer
+      title="Vereinsaccount"
+      description="Dieses Abonnement gilt einmal für den gesamten Verein und wird unabhängig von deinem persönlichen Nutzerkonto verwaltet."
+      badge="Vereins-Admin"
+      accountType="club"
+      cycle={clubCycle}
+      setCycle={setClubCycle}
+      config={config}
+      sdkReady={sdkReady}
+      customId={user.clubId}
+      allowed={databaseClub}
+      loading={loading}
+      message={clubMessage}
+      setMessage={setClubMessage}
+      onApproved={clubApproved}
+    />}
   </div>;
 }
 
