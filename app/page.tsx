@@ -1558,6 +1558,9 @@ function AdminFamilyPanel({ members, setMembers }) {
 /* ------------------------------------------------------------------ */
 function TrainerTeamSettings({ user, members, setMembers }) {
   const [teams, setTeams] = useState([]);
+  const [allClubTeams, setAllClubTeams] = useState([]);
+  const [trainerTeamIds, setTrainerTeamIds] = useState([]);
+  const [savedTrainerTeamIds, setSavedTrainerTeamIds] = useState([]);
   const [selectedTeamId, setSelectedTeamId] = useState("");
   const [players, setPlayers] = useState([]);
   const [captainId, setCaptainId] = useState("");
@@ -1571,18 +1574,43 @@ function TrainerTeamSettings({ user, members, setMembers }) {
     const loadTrainerTeams = async () => {
       setLoading(true); setMessage("");
       if (!databaseMembership) {
-        const names = user.trainerTeams?.length ? user.trainerTeams : [user.team].filter(Boolean);
-        const localTeams = names.map((name) => ({ id: name, name }));
+        const assignedNames = user.trainerTeams?.length ? user.trainerTeams : [user.team].filter(Boolean);
+        const allNames = [...new Set([...TEAMS.filter((name) => name !== "Eltern / Angehörige"), ...members.flatMap((member) => memberPlayerTeams(member))])];
+        const allLocalTeams = allNames.map((name) => ({ id: name, name }));
+        const localTeams = allLocalTeams.filter((team) => assignedNames.includes(team.name));
+        setAllClubTeams(allLocalTeams); setTrainerTeamIds(assignedNames); setSavedTrainerTeamIds(assignedNames);
         setTeams(localTeams); setSelectedTeamId((current) => current || localTeams[0]?.id || ""); setLoading(false); return;
       }
-      const { data, error } = await supabase.from("team_members").select("team_id,teams(id,name)")
-        .eq("membership_id", user.id).eq("function", "trainer");
-      if (error) { setMessage("Die Trainer-Mannschaften konnten nicht geladen werden."); setLoading(false); return; }
+      const [{ data, error }, { data: clubTeams, error: clubTeamsError }] = await Promise.all([
+        supabase.from("team_members").select("team_id,teams(id,name)").eq("membership_id", user.id).eq("function", "trainer"),
+        supabase.from("teams").select("id,name,category").eq("club_id", user.clubId).eq("active", true).order("name"),
+      ]);
+      if (error || clubTeamsError) { setMessage("Die Trainer-Mannschaften konnten nicht geladen werden."); setLoading(false); return; }
       const assigned = (data || []).map((entry) => Array.isArray(entry.teams) ? entry.teams[0] : entry.teams).filter(Boolean);
+      const assignedIds = assigned.map((team) => team.id);
+      setAllClubTeams(clubTeams || []); setTrainerTeamIds(assignedIds); setSavedTrainerTeamIds(assignedIds);
       setTeams(assigned); setSelectedTeamId((current) => current || assigned[0]?.id || ""); setLoading(false);
     };
     loadTrainerTeams();
   }, [user.id]);
+
+  const toggleTrainerTeam = (teamId) => {
+    setMessage("");
+    setTrainerTeamIds((current) => current.includes(teamId) ? current.filter((id) => id !== teamId) : [...current, teamId]);
+  };
+  const saveTrainerTeams = async () => {
+    setSaving(true); setMessage("");
+    if (databaseMembership) {
+      const { error } = await supabase.rpc("set_my_trainer_teams", { target_club: user.clubId, target_team_ids: trainerTeamIds });
+      if (error) { setMessage("Die Trainer-Mannschaften konnten nicht gespeichert werden."); setSaving(false); return; }
+    }
+    const assigned = allClubTeams.filter((team) => trainerTeamIds.includes(team.id));
+    const assignedNames = assigned.map((team) => team.name);
+    setTeams(assigned); setSelectedTeamId((current) => assigned.some((team) => team.id === current) ? current : assigned[0]?.id || "");
+    setSavedTrainerTeamIds(trainerTeamIds);
+    setMembers((items) => items.map((member) => member.id === user.id ? { ...member, trainerTeams: assignedNames, teams: [...new Set([...memberPlayerTeams(member), ...assignedNames, member.managedTeam].filter(Boolean))] } : member));
+    setMessage("Trainer-Mannschaften wurden gespeichert."); setSaving(false);
+  };
 
   useEffect(() => {
     if (!selectedTeamId) { setPlayers([]); setCaptainId(""); setSavedCaptainId(""); return; }
@@ -1631,14 +1659,20 @@ function TrainerTeamSettings({ user, members, setMembers }) {
 
   return <div className="rounded-2xl p-4 mb-5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
     <div className="flex items-center gap-2 mb-1 text-sm font-bold" style={{ color: C.ink }}><Trophy size={15} style={{ color: C.amber }}/> Trainer-Einstellungen</div>
-    <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Wähle eine deiner Mannschaften und bestimme den Kapitän. Pro Mannschaft kann genau ein Kapitän hinterlegt sein.</div>
-    {loading ? <div className="text-xs py-3" style={{ color: C.textDim }}>Mannschaften werden geladen …</div> : teams.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Deinem Trainerprofil ist noch keine Mannschaft zugeordnet.</div> : <>
+    <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Lege zuerst fest, welche Mannschaften du trainierst. Anschließend kannst du für jedes Team einen Spieler als Kapitän zuweisen.</div>
+    {loading ? <div className="text-xs py-3" style={{ color: C.textDim }}>Mannschaften werden geladen …</div> : <>
+      <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>ICH BIN TRAINER/IN VON</div>
+      <div className="space-y-1.5 mb-2">{allClubTeams.map((team) => { const active = trainerTeamIds.includes(team.id); return <button type="button" key={team.id} onClick={() => toggleTrainerTeam(team.id)} className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left" style={{ background: active ? "#E8F1F5" : C.paperDim, border: active ? "1px solid #2D6F8E" : "1px solid transparent" }}><span className="text-xs font-bold" style={{ color: C.ink }}>{team.name}</span><span className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: active ? "#2D6F8E" : C.white, color: C.white }}>{active && <Check size={13}/>}</span></button>; })}</div>
+      <button onClick={saveTrainerTeams} disabled={saving || JSON.stringify([...trainerTeamIds].sort()) === JSON.stringify([...savedTrainerTeamIds].sort())} className="w-full py-2.5 rounded-xl text-xs font-bold mb-4" style={{ background: JSON.stringify([...trainerTeamIds].sort()) !== JSON.stringify([...savedTrainerTeamIds].sort()) ? C.ink : C.paperDim, color: JSON.stringify([...trainerTeamIds].sort()) !== JSON.stringify([...savedTrainerTeamIds].sort()) ? C.white : C.textDim }}>{saving ? "Wird gespeichert …" : "Trainer-Mannschaften speichern"}</button>
+      {teams.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Wähle mindestens eine Trainer-Mannschaft und speichere die Auswahl.</div> : <>
+      <div className="pt-3 mb-3" style={{ borderTop: `1px solid ${C.line}` }}><div className="text-xs font-bold" style={{ color: C.ink }}>Kapitänsrolle zuweisen</div><div className="text-[10px]" style={{ color: C.textDim }}>Die Kapitänsrolle gilt immer für die ausgewählte Mannschaft.</div></div>
       <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>MANNSCHAFT</div>
       <select value={selectedTeamId} onChange={(event) => setSelectedTeamId(event.target.value)} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-3" style={{ background: C.paperDim, color: C.ink }}>{teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select>
       <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>KAPITÄN</div>
       <select value={captainId} onChange={(event) => { setCaptainId(event.target.value); setMessage(""); }} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-3" style={{ background: C.paperDim, color: C.ink }}><option value="">Spieler auswählen …</option>{players.map((player) => <option key={player.id} value={player.id}>{player.name}</option>)}</select>
       {players.length === 0 && <div className="text-[11px] -mt-1 mb-3" style={{ color: C.textDim }}>Für diese Mannschaft sind noch keine aktiven Spieler hinterlegt.</div>}
       <button onClick={saveCaptain} disabled={!captainId || saving || captainId === savedCaptainId} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: captainId && captainId !== savedCaptainId ? C.ink : C.paperDim, color: captainId && captainId !== savedCaptainId ? C.white : C.textDim, opacity: saving ? .6 : 1 }}>{saving ? "Wird gespeichert …" : captainId === savedCaptainId && captainId ? "Kapitän gespeichert" : "Kapitän speichern"}</button>
+      </>}
     </>}
     {message && <div role="status" className="text-[11px] mt-2" style={{ color: message.includes("gespeichert") ? C.green : C.red }}>{message}</div>}
   </div>;
@@ -2034,12 +2068,27 @@ function SubscriptionPanel({ user }) {
   </div>;
 }
 
+function ProfileUnderlay({ title, eyebrow = "Profileinstellungen", onClose, children }) {
+  return <div className="absolute inset-0 z-40 flex flex-col" style={{ background: C.paper }}>
+    <div className="flex items-center gap-3 px-4 py-3 flex-shrink-0" style={{ borderBottom: `1px solid ${C.line}`, background: C.paper }}>
+      <button onClick={onClose} aria-label="Zurück zum Profil" className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: C.white, border: `1px solid ${C.line}` }}><ArrowLeft size={16}/></button>
+      <div><div className="text-[9px] uppercase tracking-widest font-bold" style={{ color: C.red }}>{eyebrow}</div><div className="text-base font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{title}</div></div>
+    </div>
+    <div className="flex-1 overflow-y-auto px-4 pt-4 pb-24">{children}</div>
+  </div>;
+}
+
+function ProfileSettingsCard({ icon: Icon, title, description, onClick, color = C.red }) {
+  return <button onClick={onClick} className="w-full flex items-center gap-3 rounded-2xl px-3.5 py-3 text-left" style={{ background: C.white, border: `1px solid ${C.line}` }}><div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: C.paperDim, color }}><Icon size={18}/></div><div className="flex-1 min-w-0"><div className="text-sm font-bold" style={{ color: C.ink }}>{title}</div><div className="text-[10px] leading-snug" style={{ color: C.textDim }}>{description}</div></div><ChevronRight size={15} style={{ color: C.textDim }}/></button>;
+}
+
 function ProfileView({ user, members, setMembers, sponsorBookings, onSponsorImpression, onSponsorClick, onLogout }) {
   const goal = 1000;
   const eligible = isFormalMember(user) && age(user.birthdate) >= 16;
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [profileUnderlay, setProfileUnderlay] = useState("");
   const deleteAccount = async () => {
     if (!supabase) { setDeleteError("Im Demo-Modus kann kein echtes Konto gelöscht werden."); return; }
     setDeleting(true); setDeleteError("");
@@ -2065,12 +2114,14 @@ function ProfileView({ user, members, setMembers, sponsorBookings, onSponsorImpr
         </div>
       </div>
 
-      <SubscriptionPanel user={user} />
-
-      {user.roles.includes("spieler") && <PlayerTeamSettings user={user} setMembers={setMembers} />}
-      {user.roles.includes("spieler") && <PlayerDataCard user={user} setMembers={setMembers} />}
-      {user.roles.includes("trainer") && <TrainerTeamSettings user={user} members={members} setMembers={setMembers} />}
-      {user.roles.some((role) => ["spieler", "trainer", "teammanager", "kapitaen"].includes(role)) && <TeamPenaltyCatalog user={user} />}
+      <SectionTitle eyebrow="Verwalten" title="Einstellungen" />
+      <div className="space-y-2 mb-6">
+        <ProfileSettingsCard icon={Euro} title="Abonnement" description="Nutzer- und Vereinsabo getrennt verwalten" onClick={() => setProfileUnderlay("subscription")}/>
+        {user.roles.includes("spieler") && <ProfileSettingsCard icon={Star} title="Spielerprofil" description="Mannschaften und Rückennummer verwalten" color={C.green} onClick={() => setProfileUnderlay("player")}/>}
+        {user.roles.includes("trainer") && <ProfileSettingsCard icon={Trophy} title="Trainer & Rollen" description="Trainer-Mannschaften auswählen und Kapitänsrolle zuweisen" color="#2D6F8E" onClick={() => setProfileUnderlay("trainer")}/>}
+        {user.roles.some((role) => ["spieler", "trainer", "teammanager", "kapitaen"].includes(role)) && <ProfileSettingsCard icon={ClipboardList} title="Strafenkatalog" description="Regeln und Kosten der Mannschaften verwalten" onClick={() => setProfileUnderlay("penalties")}/>}
+        <ProfileSettingsCard icon={Users} title="Familie" description="Familienprofile ansehen und Verknüpfungen verwalten" color={C.amber} onClick={() => setProfileUnderlay("family")}/>
+      </div>
 
       <div className="rounded-2xl p-4 mb-5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
         <div className="flex items-center justify-between mb-2">
@@ -2104,13 +2155,6 @@ function ProfileView({ user, members, setMembers, sponsorBookings, onSponsorImpr
         </div>
       )}
       </>}
-
-      <SectionTitle eyebrow="Familie" title="Stammbaum" />
-      <div className="mb-2"><FamilyTree user={user} members={members} /></div>
-      <div className="text-[11px] mb-5" style={{ color: C.textDim, fontFamily: "Inter" }}>
-        {eligible ? "Helferdienst-berechtigt ✓ (16+)" : "Für Heimspiel-Helferdienste noch nicht 16 Jahre alt — beim Sommerfest darfst du trotzdem schon anpacken."}
-      </div>
-      <FamilyLinkManager user={user} members={members} setMembers={setMembers} />
 
       <div className="rounded-2xl p-4 mb-5 flex items-center gap-3" style={{ background: "#FFF6E4", border: `1px solid #F2DDA8` }}>
         <Gift size={22} style={{ color: C.amber, flexShrink: 0 }} />
@@ -2147,6 +2191,12 @@ function ProfileView({ user, members, setMembers, sponsorBookings, onSponsorImpr
       <button onClick={onLogout} className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm" style={{ background: C.paperDim, color: C.red, fontFamily: "Inter", fontWeight: 700 }}>
         <LogOut size={15} /> Abmelden
       </button>
+
+      {profileUnderlay === "subscription" && <ProfileUnderlay title="Abonnement" onClose={() => setProfileUnderlay("")}><SubscriptionPanel user={user}/></ProfileUnderlay>}
+      {profileUnderlay === "player" && <ProfileUnderlay title="Spielerprofil" onClose={() => setProfileUnderlay("")}><PlayerTeamSettings user={user} setMembers={setMembers}/><PlayerDataCard user={user} setMembers={setMembers}/></ProfileUnderlay>}
+      {profileUnderlay === "trainer" && <ProfileUnderlay title="Trainer & Rollen" eyebrow="Mannschaftsverwaltung" onClose={() => setProfileUnderlay("")}><TrainerTeamSettings user={user} members={members} setMembers={setMembers}/></ProfileUnderlay>}
+      {profileUnderlay === "penalties" && <ProfileUnderlay title="Strafenkatalog" eyebrow="Mannschaftsverwaltung" onClose={() => setProfileUnderlay("")}><TeamPenaltyCatalog user={user}/></ProfileUnderlay>}
+      {profileUnderlay === "family" && <ProfileUnderlay title="Familie & Verknüpfungen" onClose={() => setProfileUnderlay("")}><SectionTitle eyebrow="Familie" title="Stammbaum"/><div className="mb-2"><FamilyTree user={user} members={members}/></div><div className="text-[11px] mb-5" style={{ color: C.textDim }}>{eligible ? "Helferdienst-berechtigt ✓ (16+)" : "Für Heimspiel-Helferdienste noch nicht 16 Jahre alt."}</div><FamilyLinkManager user={user} members={members} setMembers={setMembers}/></ProfileUnderlay>}
     </div>
   );
 }
