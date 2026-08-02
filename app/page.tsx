@@ -2765,22 +2765,6 @@ export default function ClubMemberOrganisationApp() {
   }, [feeRecords, members]);
 
   useEffect(() => {
-    if (!supabase || !adminStateLoaded || !selectedClubId || !currentUser || !isAdmin(currentUser)) return;
-    clearTimeout(adminSaveTimer.current);
-    adminSaveTimer.current = setTimeout(async () => {
-      await supabase.rpc("save_club_app_state", {
-        target_club: selectedClubId,
-        new_state: {
-          events, dutyPlan, protocols, remindersSent, welcomeAutomation, billingAutomation,
-          polls, tippResults, maintenanceMode, seasonVotes, sponsorStats,
-          channels: channels.filter((channel) => channel.id !== "news"),
-        },
-      });
-    }, 700);
-    return () => clearTimeout(adminSaveTimer.current);
-  }, [adminStateLoaded, selectedClubId, currentUserId, events, dutyPlan, protocols, remindersSent, welcomeAutomation, billingAutomation, polls, tippResults, maintenanceMode, seasonVotes, sponsorStats, channels]);
-
-  useEffect(() => {
     if (!supabase) return;
     supabase.from("clubs").select("id,name,short_name,city,founded_year,logo_url").order("name").then(({ data }) => {
       if (data?.length) setClubs(data.map((club) => ({
@@ -2797,6 +2781,22 @@ export default function ClubMemberOrganisationApp() {
   const currentUser = members.find((m) => m.id === currentUserId);
   const currentClub = clubs.find((c) => c.id === selectedClubId) || clubs.find((c) => c.id === currentUser?.clubId);
   const clubMembers = members.filter((m) => m.clubId === selectedClubId);
+
+  useEffect(() => {
+    if (!supabase || !adminStateLoaded || !selectedClubId || !currentUser || !isAdmin(currentUser)) return;
+    clearTimeout(adminSaveTimer.current);
+    adminSaveTimer.current = setTimeout(async () => {
+      await supabase.rpc("save_club_app_state", {
+        target_club: selectedClubId,
+        new_state: {
+          events, dutyPlan, protocols, remindersSent, welcomeAutomation, billingAutomation,
+          polls, tippResults, maintenanceMode, seasonVotes, sponsorStats,
+          channels: channels.filter((channel) => channel.id !== "news"),
+        },
+      });
+    }, 700);
+    return () => clearTimeout(adminSaveTimer.current);
+  }, [adminStateLoaded, selectedClubId, currentUserId, events, dutyPlan, protocols, remindersSent, welcomeAutomation, billingAutomation, polls, tippResults, maintenanceMode, seasonVotes, sponsorStats, channels]);
 
   const selectClub = (clubId) => { setSelectedClubId(clubId); setAuthScreen("login"); };
   const createClub = (club) => { setClubs((cs) => [...cs, club]); setSelectedClubId(club.id); setAuthScreen("register"); };
