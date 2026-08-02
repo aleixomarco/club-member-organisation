@@ -30,3 +30,4 @@ in zeitlicher Reihenfolge ebenfalls einmal im SQL Editor ausführen:
 9. `migrations/20260802060000_news_storage_complete.sql`
 10. `migrations/20260802063000_admin_state_complete.sql`
 11. `migrations/20260802064500_trainer_multiple_teams.sql`
+12. `migrations/20260802070000_update_club_subscription_prices.sql`

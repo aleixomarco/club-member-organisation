@@ -1,8 +1,8 @@
--- Vereins-Abonnements: 24,99 EUR monatlich oder 239,88 EUR jährlich.
+-- Vereins-Abonnements: 29,99 EUR monatlich oder 299,88 EUR jährlich.
 
 insert into public.subscription_plans (code, name, interval, price_cents) values
-  ('club_monthly', 'Vereinsaccount – Monatsabo', 'month', 2499),
-  ('club_yearly', 'Vereinsaccount – Jahresabo', 'year', 23988)
+  ('club_monthly', 'Vereinsaccount – Monatsabo', 'month', 2999),
+  ('club_yearly', 'Vereinsaccount – Jahresabo', 'year', 29988)
 on conflict (code) do update set
   name = excluded.name,
   interval = excluded.interval,

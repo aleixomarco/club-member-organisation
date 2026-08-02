@@ -5,6 +5,9 @@ export default function TermsPage() { return <LegalShell title="Nutzungsbedingun
   <h2>Abonnement für Nutzer</h2>
   <p><strong>Monatsabo:</strong> Das Monatsabo kostet 2,99 € pro Monat. Der Betrag wird monatlich abgerechnet und das Abonnement verlängert sich automatisch jeweils um einen weiteren Monat, sofern es nicht rechtzeitig gekündigt wird.</p>
   <p><strong>Jahresabo:</strong> Das Jahresabo entspricht einem Preis von 0,99 € pro Monat. Der Gesamtbetrag von 11,88 € für zwölf Monate wird vollständig im Voraus bezahlt. Das Jahresabo verlängert sich automatisch um weitere zwölf Monate zum dann geltenden Jahrespreis, sofern es nicht rechtzeitig gekündigt wird.</p>
+  <h2>Abonnement für Vereine</h2>
+  <p><strong>Monatsabo:</strong> Der Vereinsaccount kostet 29,99 € pro Monat und verlängert sich automatisch um jeweils einen weiteren Monat, sofern er nicht rechtzeitig gekündigt wird.</p>
+  <p><strong>Jahresabo:</strong> Bei jährlicher Zahlung entspricht der Preis 24,99 € pro Monat. Der Gesamtbetrag von 299,88 € wird für zwölf Monate vollständig im Voraus bezahlt. Das Abonnement verlängert sich automatisch um weitere zwölf Monate zum dann geltenden Jahrespreis, sofern es nicht rechtzeitig gekündigt wird.</p>
   <p>In der iOS-App erfolgt die Abrechnung über Apple, in der Web-App über PayPal.</p>
   <h2>Kündigung</h2><p>Abonnements können über den jeweiligen Zahlungsanbieter verwaltet und zum Ende des laufenden Abrechnungszeitraums gekündigt werden. Gesetzliche Widerrufs- und Erstattungsrechte bleiben unberührt.</p>
   <h2>Verhaltensregeln</h2><p>Rechtswidrige, beleidigende oder fremde Rechte verletzende Inhalte sind untersagt. Vereinsadministratoren dürfen entsprechende Inhalte entfernen und Konten sperren.</p>
