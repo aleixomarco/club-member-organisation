@@ -1,5 +1,6 @@
 "use client";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import Script from "next/script";
 import {
   Home, CalendarDays, Wallet, MessageCircle, User, ChevronRight,
   Check, X, Users, Award, Gift, MapPin, Clock, Send,
@@ -1686,6 +1687,87 @@ function PlayerDataCard({ user, setMembers }) {
   );
 }
 
+function PayPalSubscriptionButton({ clientId, planId, customId, onApproved, onError }) {
+  const container = useRef(null);
+  const [sdkReady, setSdkReady] = useState(() => typeof window !== "undefined" && !!window.paypal);
+
+  useEffect(() => {
+    if (!sdkReady || !window.paypal || !container.current || !planId || !customId) return;
+    container.current.innerHTML = "";
+    const buttons = window.paypal.Buttons({
+      style: { shape: "pill", color: "gold", layout: "vertical", label: "subscribe", height: 40 },
+      createSubscription: (_data, actions) => actions.subscription.create({ plan_id: planId, custom_id: customId }),
+      onApprove: (data) => onApproved(data.subscriptionID),
+      onError: () => onError("PayPal konnte nicht geöffnet werden. Bitte versuche es erneut."),
+      onCancel: () => onError("Der Bezahlvorgang wurde abgebrochen."),
+    });
+    buttons.render(container.current).catch(() => onError("Der PayPal-Button konnte nicht geladen werden."));
+    return () => { if (buttons?.close) buttons.close().catch(() => {}); };
+  }, [sdkReady, planId, customId, onApproved, onError]);
+
+  return <>
+    <Script
+      id="paypal-subscriptions-sdk"
+      src={`https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=EUR&vault=true&intent=subscription`}
+      strategy="afterInteractive"
+      onLoad={() => setSdkReady(true)}
+      onError={() => onError("PayPal konnte nicht geladen werden.")}
+    />
+    <div ref={container} className="min-h-10" />
+  </>;
+}
+
+function SubscriptionPanel({ user }) {
+  const [config, setConfig] = useState(null);
+  const [accountType, setAccountType] = useState("member");
+  const [cycle, setCycle] = useState("monthly");
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(true);
+  const canBuyClubPlan = user.roles.some((role) => ["vereinsadmin", "sysadmin", "vorstand", "geschaeftsfuehrung"].includes(role));
+  const databaseProfile = user.authProfileId && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(user.authProfileId));
+  const databaseClub = /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(user.clubId));
+
+  useEffect(() => {
+    fetch("/api/paypal/config", { cache: "no-store" })
+      .then(async (response) => {
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || "PayPal ist noch nicht konfiguriert.");
+        setConfig(payload);
+      })
+      .catch((error) => setMessage(error.message))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const selected = accountType === "club"
+    ? { monthly: { price: "29,99 €", setup: "5,00 €" }, yearly: { price: "299,88 €", setup: "5,00 €", equivalent: "24,99 € / Monat" } }[cycle]
+    : { monthly: { price: "2,99 €", setup: "1,50 €" }, yearly: { price: "11,88 €", setup: "1,50 €", equivalent: "0,99 € / Monat" } }[cycle];
+  const customId = accountType === "club" ? user.clubId : user.authProfileId;
+  const allowed = accountType === "club" ? canBuyClubPlan && databaseClub : databaseProfile;
+  const approved = useCallback((subscriptionId) => {
+    setMessage(`Abo bestätigt. PayPal-ID: ${subscriptionId}. Die Freischaltung erfolgt automatisch.`);
+  }, []);
+
+  return <div className="rounded-2xl p-4 mb-5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+    <div className="flex items-center gap-2 mb-1"><Euro size={16} style={{ color: C.red }} /><div className="text-sm font-bold" style={{ color: C.ink }}>Abonnement</div></div>
+    <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Sicher über PayPal bezahlen. Alle Abos verlängern sich automatisch bis zur Kündigung.</div>
+    {canBuyClubPlan && <div className="grid grid-cols-2 gap-2 mb-2">
+      {[['member', 'Nutzerkonto'], ['club', 'Vereinsaccount']].map(([value, label]) => <button key={value} onClick={() => { setAccountType(value); setMessage(""); }} className="py-2 rounded-xl text-xs font-bold" style={{ background: accountType === value ? C.ink : C.paperDim, color: accountType === value ? C.white : C.textDim }}>{label}</button>)}
+    </div>}
+    <div className="grid grid-cols-2 gap-2 mb-3">
+      {[['monthly', 'Monatlich'], ['yearly', 'Jährlich']].map(([value, label]) => <button key={value} onClick={() => { setCycle(value); setMessage(""); }} className="py-2 rounded-xl text-xs font-bold" style={{ background: cycle === value ? "#FCEBEE" : C.paperDim, color: cycle === value ? C.red : C.textDim, border: cycle === value ? `1px solid ${C.red}` : "1px solid transparent" }}>{label}</button>)}
+    </div>
+    <div className="rounded-xl p-3 mb-3" style={{ background: C.paperDim }}>
+      <div className="flex items-end justify-between"><div><div className="text-xl font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{selected.price}</div><div className="text-[10px]" style={{ color: C.textDim }}>{cycle === "yearly" ? "jährlich im Voraus" : "pro Monat"}{selected.equivalent ? ` · ${selected.equivalent}` : ""}</div></div><div className="text-[10px] text-right" style={{ color: C.textDim }}>einmalig<br/><b>{selected.setup} Einrichtung</b></div></div>
+      <div className="text-[10px] mt-2" style={{ color: C.textDim }}>19 % Umsatzsteuer im Preis enthalten. Keine Probezeit.</div>
+    </div>
+    {loading ? <div className="text-xs py-2 text-center" style={{ color: C.textDim }}>PayPal wird geladen …</div> : config && allowed ?
+      <PayPalSubscriptionButton clientId={config.clientId} planId={config.plans[accountType][cycle]} customId={customId} onApproved={approved} onError={setMessage} /> :
+      <div className="text-[11px] rounded-xl px-3 py-2" style={{ background: "#FFF6E4", color: C.textDim }}>{message || "Der Checkout ist nur für ein angemeldetes, dauerhaft gespeichertes Konto verfügbar."}</div>}
+    {message && config && allowed && <div role="status" className="text-[11px] mt-2 rounded-xl px-3 py-2" style={{ background: message.includes("bestätigt") ? "#E7F3EC" : "#FDECEC", color: message.includes("bestätigt") ? C.green : C.red }}>{message}</div>}
+    <div className="text-[9px] mt-3 leading-relaxed" style={{ color: C.textDim }}>Mit dem Abschluss akzeptierst du die <a href="/nutzungsbedingungen" className="underline">Nutzungsbedingungen</a>. Kündigung über PayPal zum Ende des Abrechnungszeitraums.</div>
+  </div>;
+}
+
 function ProfileView({ user, members, setMembers, sponsorBookings, onSponsorImpression, onSponsorClick, onLogout }) {
   const goal = 1000;
   const eligible = isFormalMember(user) && age(user.birthdate) >= 16;
@@ -1716,6 +1798,8 @@ function ProfileView({ user, members, setMembers, sponsorBookings, onSponsorImpr
           </div>
         </div>
       </div>
+
+      <SubscriptionPanel user={user} />
 
       {user.roles.includes("spieler") && <PlayerDataCard user={user} setMembers={setMembers} />}
       {user.roles.includes("trainer") && <TrainerTeamSettings user={user} members={members} setMembers={setMembers} />}
