@@ -157,7 +157,7 @@ const INITIAL_MEMBERS = [
   { id: "m6", clubId: DEMO_CLUB_ID, name: "Claudia Berg", email: "geschaeftsfuehrung@cmo.app", password: "demo", team: "Geschäftsstelle", number: null, since: 2020, roles: ["geschaeftsfuehrung", "mitglied"], color: "#3E7CB1", points: 60, tippPoints: 4, badges: [], birthdate: "1980-11-03" },
   { id: "m7", clubId: DEMO_CLUB_ID, name: "Nina Weber", email: "redaktion@cmo.app", password: "demo", team: "Geschäftsstelle", number: null, since: 2022, roles: ["redakteur", "sponsorenmanager", "mitglied"], color: "#B15CC9", points: 40, tippPoints: 0, badges: [], birthdate: "1990-07-08" },
   { id: "m8", clubId: DEMO_CLUB_ID, name: "Daniel Krüger", email: "finanzen@cmo.app", password: "demo", team: "Geschäftsstelle", number: null, since: 2024, roles: ["finanzmanager", "mitglied"], color: "#176B87", points: 20, tippPoints: 0, badges: [], birthdate: "1988-04-19" },
-  { id: "m9", clubId: DEMO_CLUB_ID, name: "Tobias Kern", email: "trainer@cmo.app", password: "demo", team: "Herren 1", teams: ["Herren 1", "U15"], number: null, since: 2021, roles: ["trainer", "mitglied"], color: "#2D6F8E", points: 35, tippPoints: 0, badges: [], birthdate: "1983-02-08" },
+  { id: "m9", clubId: DEMO_CLUB_ID, name: "Tobias Kern", email: "trainer@cmo.app", password: "demo", team: "Herren 1", teams: ["Herren 1", "U15"], trainerTeams: ["Herren 1", "U15"], number: null, since: 2021, roles: ["trainer", "mitglied"], color: "#2D6F8E", points: 35, tippPoints: 0, badges: [], birthdate: "1983-02-08" },
 ];
 
 const INITIAL_FEE_PAID = { m1: false, m2: true, m3: false, v1: true, m4: true, m5: true, m6: true, m7: true, m8: true, m9: true };
@@ -1044,7 +1044,7 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
   const myCarpools = carpools[userId] || {};
   const isAdminUser = isAdmin(currentUser);
   const canCreateSportEvent = isSysAdmin(currentUser) || currentUser.roles.includes("trainer") || currentUser.roles.includes("kapitaen");
-  const allowedEventTeams = isSysAdmin(currentUser) ? filterTeams : currentUser.roles.includes("trainer") ? (currentUser.teams?.length ? currentUser.teams : [currentUser.team]).filter((team) => filterTeams.includes(team)) : [currentUser.team].filter((team) => filterTeams.includes(team));
+  const allowedEventTeams = isSysAdmin(currentUser) ? filterTeams : currentUser.roles.includes("trainer") ? (currentUser.trainerTeams?.length ? currentUser.trainerTeams : [currentUser.team]).filter((team) => filterTeams.includes(team)) : [currentUser.team].filter((team) => filterTeams.includes(team));
   const openCreate = () => {
     setEventDraft((draft) => ({ ...draft, team: allowedEventTeams[0] || "" }));
     setShowCreate(true);
@@ -1087,7 +1087,7 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
       </div>}
       {filtered.map((ev) => (
         (() => {
-          const trainerTeams = currentUser.teams?.length ? currentUser.teams : [currentUser.team];
+          const trainerTeams = currentUser.trainerTeams?.length ? currentUser.trainerTeams : [currentUser.team];
           const canCancelTraining = ev.type === "training" && ((currentUser.roles.includes("trainer") && trainerTeams.includes(ev.team)) || (currentUser.roles.includes("kapitaen") && currentUser.team === ev.team) || (currentUser.roles.includes("teammanager") && currentUser.managedTeam === ev.team));
           return (
         <EventCard key={ev.id} ev={ev}
@@ -1570,7 +1570,7 @@ function TrainerTeamSettings({ user, members, setMembers }) {
     const loadTrainerTeams = async () => {
       setLoading(true); setMessage("");
       if (!databaseMembership) {
-        const names = user.teams?.length ? user.teams : [user.team].filter(Boolean);
+        const names = user.trainerTeams?.length ? user.trainerTeams : [user.team].filter(Boolean);
         const localTeams = names.map((name) => ({ id: name, name }));
         setTeams(localTeams); setSelectedTeamId((current) => current || localTeams[0]?.id || ""); setLoading(false); return;
       }
@@ -2397,6 +2397,17 @@ function RolesPanel({ members, setMembers }) {
     return member;
     }));
   };
+  const toggleTrainerTeam = async (memberId, teamName) => {
+    const member = members.find((item) => item.id === memberId);
+    const currentTeams = member?.trainerTeams || [];
+    const nextTeams = currentTeams.includes(teamName) ? currentTeams.filter((name) => name !== teamName) : [...currentTeams, teamName];
+    if (supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(memberId))) {
+      setMessage("");
+      const { error } = await supabase.rpc("set_trainer_teams", { target_membership: memberId, target_team_names: nextTeams });
+      if (error) { setMessage("Die Trainer-Mannschaften konnten nicht gespeichert werden."); return; }
+    }
+    setMembers((all) => all.map((item) => item.id === memberId ? { ...item, trainerTeams: nextTeams } : item));
+  };
   return (
     <div className="space-y-3">
       <div className="text-xs mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>Tippe eine Rolle an, um sie zu vergeben oder zu entziehen. Vereins-Administrator, Vorstand & Geschäftsführung können nur hier zugewiesen werden.</div>
@@ -2418,6 +2429,7 @@ function RolesPanel({ members, setMembers }) {
               );
             })}
           </div>
+          {m.roles.includes("trainer")&&<div className="mt-2.5 pt-2.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] mb-2 font-bold" style={{color:C.textDim}}>TRAINER FÜR · MEHRERE MANNSCHAFTEN MÖGLICH</div><div className="flex flex-wrap gap-1.5">{YOUTH_CLASSES.map((team)=>{const active=(m.trainerTeams||[]).includes(team.name);return <button type="button" key={team.name} onClick={()=>toggleTrainerTeam(m.id,team.name)} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?ROLE_META.trainer.color:C.paperDim,color:active?C.white:C.textDim}}>{active?"✓ ":""}{team.name}</button>})}</div></div>}
           {m.roles.includes("teammanager")&&<div className="mt-2.5 pt-2.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] mb-1 font-bold" style={{color:C.textDim}}>Betreute Mannschaft · maximal ein Teammanager je Mannschaft</div><select value={m.managedTeam||""} onChange={(e)=>assignManagedTeam(m.id,e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{background:C.paperDim}}><option value="">Mannschaft auswählen …</option>{YOUTH_CLASSES.map((team)=><option key={team.name} value={team.name}>{team.name}</option>)}</select></div>}
         </div>
       ))}
@@ -2854,6 +2866,7 @@ export default function ClubMemberOrganisationApp() {
         id: record.id, authProfileId: record.profile_id, clubId: record.club_id,
         name: record.display_name, email: record.email || "", password: "",
         team: teamNames[0] || "Mitglied", teams: teamNames, number: null,
+        trainerTeams: [...new Set(assignments.filter((entry) => entry.function === "trainer").map((entry) => entry.teams?.name).filter(Boolean))],
         managedTeam: assignments.find((entry) => entry.function === "teammanager")?.teams?.name || null,
         since: record.member_since || new Date().getFullYear(),
         roles: (record.membership_roles || []).map((entry) => entry.role),
