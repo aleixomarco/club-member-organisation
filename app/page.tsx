@@ -1733,12 +1733,13 @@ function ProfileView({ user, members, setMembers, sponsorBookings, onSponsorImpr
         </div>
       </div>
 
+      {(user.roles.includes("spieler") || user.roles.includes("trainer")) && <>
       <SectionTitle eyebrow="Auszeichnungen" title="Deine Badges" />
-      {user.badges.length === 0 ? (
+      {(user.badges || []).length === 0 ? (
         <div className="rounded-2xl p-4 mb-5 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>Noch keine Badges — sag bei Trainings zu, um deine erste Auszeichnung zu sammeln!</div>
       ) : (
         <div className="grid grid-cols-2 gap-3 mb-5">
-          {user.badges.map((bid) => {
+          {(user.badges || []).map((bid) => {
             const b = BADGE_LIBRARY[bid];
             return (
               <div key={bid} className="rounded-2xl p-3" style={{ background: C.white, border: `1px solid ${C.line}` }}>
@@ -1750,6 +1751,7 @@ function ProfileView({ user, members, setMembers, sponsorBookings, onSponsorImpr
           })}
         </div>
       )}
+      </>}
 
       <SectionTitle eyebrow="Familie" title="Stammbaum" />
       <div className="mb-2"><FamilyTree user={user} members={members} /></div>
