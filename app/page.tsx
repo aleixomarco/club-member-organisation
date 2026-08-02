@@ -56,6 +56,14 @@ function initialsOf(name) {
   return name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
 }
 
+function ClubLogo({ club, size = 36, rounded = 10 }) {
+  return <div className="flex items-center justify-center flex-shrink-0 overflow-hidden" style={{ width: size, height: size, borderRadius: rounded, background: C.red }}>
+    {club?.logoUrl
+      ? <img src={club.logoUrl} alt={`Vereinslogo ${club.name}`} className="w-full h-full object-cover" />
+      : <span style={{ color: "#fff", fontFamily: "Oswald", fontWeight: 700, fontSize: Math.max(13, size * .38) }}>{club?.shortName?.[0] || "V"}</span>}
+  </div>;
+}
+
 /* Rollen: jedes Profil kann mehrere Rollen gleichzeitig haben */
 const ROLE_META = {
   vereinsadmin: { label: "Vereins-Administrator", color: "#1F7A5C", admin: true, formalMember: true, selfService: false },
@@ -121,7 +129,7 @@ function age(birthdate) {
 /* Vereine (mandantenfähig)                                            */
 /* ------------------------------------------------------------------ */
 const INITIAL_CLUBS = [
-  { id: DEMO_CLUB_ID, name: "ERG Iserlohn", shortName: "ERGI", city: "Iserlohn", foundedYear: 1965 },
+  { id: DEMO_CLUB_ID, name: "ERG Iserlohn", shortName: "ERGI", city: "Iserlohn", foundedYear: 1965, logoUrl: null },
   { id: "tsv-musterstadt", name: "TSV Musterstadt", shortName: "TSVM", city: "Musterstadt", foundedYear: 1902 },
   { id: "sv-beispiel", name: "SV Beispiel 04", shortName: "SVB", city: "Beispielhausen", foundedYear: 1904 },
 ];
@@ -471,9 +479,7 @@ function AuthShell({ children, footer, club }) {
   return (
     <div className="flex flex-col h-full px-6 pt-8 pb-6 overflow-y-auto" style={{ background: C.paper }}>
       <div className="flex flex-col items-center mb-8">
-        <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-3" style={{ background: C.red }}>
-          <span style={{ color: "#fff", fontFamily: "Oswald", fontWeight: 700, fontSize: 22 }}>{club ? club.shortName[0] : "V"}</span>
-        </div>
+        <div className="mb-3"><ClubLogo club={club} size={56} rounded={16} /></div>
         <div className="text-sm tracking-widest" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>{club ? club.shortName : "VEREINS-APP"}</div>
         <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{club ? `Mitglieder-App · seit ${club.foundedYear}` : "Mitglieder-App für Vereine"}</div>
       </div>
@@ -510,9 +516,7 @@ function ClubSelectScreen({ clubs, onSelect, goNewClub }) {
           <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>Kein Verein gefunden.</div>
         ) : filtered.map((c) => (
           <button key={c.id} onClick={() => onSelect(c.id)} className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.red }}>
-              <span style={{ color: "#fff", fontFamily: "Oswald", fontWeight: 700, fontSize: 14 }}>{c.shortName[0]}</span>
-            </div>
+            <ClubLogo club={c} size={36} rounded={9} />
             <div className="text-left flex-1">
               <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{c.name}</div>
               <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{c.city} · seit {c.foundedYear}</div>
@@ -2272,18 +2276,73 @@ function SystemPanel({ members, channels, setChannels, maintenanceMode, setMaint
 /* ------------------------------------------------------------------ */
 /* Verwaltung (Vorstand / Geschäftsführung / Sys-Admin)                 */
 /* ------------------------------------------------------------------ */
+function ClubLogoPanel({ club, onLogoUpdated }) {
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+
+  const uploadLogo = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setMessage("Bitte JPG, PNG oder WebP auswählen."); return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setMessage("Das Vereinslogo darf höchstens 2 MB groß sein."); return;
+    }
+    setBusy(true); setMessage("");
+    if (!supabase) {
+      const reader = new FileReader();
+      reader.onload = () => { onLogoUpdated(String(reader.result)); setMessage("Vereinslogo gespeichert."); setBusy(false); };
+      reader.onerror = () => { setMessage("Das Bild konnte nicht gelesen werden."); setBusy(false); };
+      reader.readAsDataURL(file);
+      return;
+    }
+    const extension = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+    const folder = String(club.id);
+    const path = `${folder}/logo-${Date.now()}.${extension}`;
+    const { data: existing } = await supabase.storage.from("club-logos").list(folder);
+    const oldPaths = (existing || []).map((item) => `${folder}/${item.name}`);
+    const { error: uploadError } = await supabase.storage.from("club-logos").upload(path, file, { contentType: file.type, upsert: false });
+    if (uploadError) { setMessage("Das Vereinslogo konnte nicht hochgeladen werden."); setBusy(false); return; }
+    const { data: publicFile } = supabase.storage.from("club-logos").getPublicUrl(path);
+    const logoUrl = publicFile.publicUrl;
+    const { error: updateError } = await supabase.from("clubs").update({ logo_url: logoUrl }).eq("id", club.id);
+    if (updateError) {
+      await supabase.storage.from("club-logos").remove([path]);
+      setMessage("Das Vereinsprofil konnte nicht aktualisiert werden."); setBusy(false); return;
+    }
+    if (oldPaths.length) await supabase.storage.from("club-logos").remove(oldPaths);
+    onLogoUpdated(logoUrl); setMessage("Vereinslogo gespeichert."); setBusy(false);
+  };
+
+  return <div className="rounded-2xl p-4" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+    <div className="flex items-center gap-3 mb-3">
+      <ClubLogo club={club} size={58} rounded={15} />
+      <div><div className="text-sm font-bold" style={{ color: C.ink }}>Profilbild des Vereins</div><div className="text-[11px]" style={{ color: C.textDim }}>JPG, PNG oder WebP · maximal 2 MB</div></div>
+    </div>
+    <label className="w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer" style={{ background: C.ink, color: C.white, opacity: busy ? .6 : 1 }}>
+      <ImageIcon size={15} /> {busy ? "Wird gespeichert …" : "Vereinslogo auswählen"}
+      <input type="file" accept="image/jpeg,image/png,image/webp" onChange={uploadLogo} disabled={busy} className="hidden" />
+    </label>
+    {message && <div className="text-[11px] mt-2" role="status" style={{ color: message.includes("gespeichert") ? C.green : C.red }}>{message}</div>}
+  </div>;
+}
+
 function AdminView({
   members, setMembers, feePaid, setFeePaid, dutyPlan, setDutyPlan, seasonVotes, currentUser,
   channels, setChannels, maintenanceMode, setMaintenanceMode, onResetDemo,
   protocols, setProtocols, remindersSent, setRemindersSent,
   welcomeAutomation, setWelcomeAutomation, billingAutomation, setBillingAutomation,
   sponsorBookings, setSponsorBookings, sponsorStats, polls, setPolls, tippResults, onSaveTippResult,
+  currentClub, onClubLogoUpdated,
 }) {
   const sponsorOnly = !isAdmin(currentUser) && canManageSponsors(currentUser);
   const canSeeFees = canManageFees(currentUser);
   const [panel, setPanel] = useState(sponsorOnly ? "sponsoring" : "overview");
   const openCount = members.filter((m) => !feePaid[m.id]).length;
   const panels = sponsorOnly ? [["sponsoring", "Sponsoring"], ["polls", "Umfragen"]] : [["overview", "Übersicht"], ["automation", "Automatisierung"], ["duty", "Helferplanung"], ["protokolle", "Protokolle"], ["polls", "Umfragen"], ["sponsoring", "Sponsoring"], ["season", "Spieler der Saison"], ["roles", "Rollen"]];
+  if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.splice(1, 0, ["clubprofile", "Vereinsprofil"]);
   if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.splice(1, 0, ["results", "Spielergebnisse"]);
   if (isSysAdmin(currentUser)) panels.push(["families", "Familienprofile"], ["system", "System"]);
 
@@ -2306,6 +2365,7 @@ function AdminView({
       </div>
 
       {panel === "overview" && <OverviewPanel members={members} feePaid={feePaid} protocols={protocols} dutyPlan={dutyPlan} seasonVotes={seasonVotes} goPanel={setPanel} showFees={canSeeFees} />}
+      {panel === "clubprofile" && currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role)) && <ClubLogoPanel club={currentClub} onLogoUpdated={onClubLogoUpdated} />}
 
       {panel === "automation" && (
         <AutomationsPanel members={members} feePaid={feePaid} remindersSent={remindersSent} setRemindersSent={setRemindersSent}
@@ -2412,13 +2472,14 @@ export default function ClubMemberOrganisationApp() {
 
   useEffect(() => {
     if (!supabase) return;
-    supabase.from("clubs").select("id,name,short_name,city,founded_year").order("name").then(({ data }) => {
+    supabase.from("clubs").select("id,name,short_name,city,founded_year,logo_url").order("name").then(({ data }) => {
       if (data?.length) setClubs(data.map((club) => ({
         id: club.id,
         name: club.name,
         shortName: club.short_name,
         city: club.city || "—",
         foundedYear: club.founded_year || new Date().getFullYear(),
+        logoUrl: club.logo_url || null,
       })));
     });
   }, []);
@@ -2430,6 +2491,7 @@ export default function ClubMemberOrganisationApp() {
   const selectClub = (clubId) => { setSelectedClubId(clubId); setAuthScreen("login"); };
   const createClub = (club) => { setClubs((cs) => [...cs, club]); setSelectedClubId(club.id); setAuthScreen("register"); };
   const changeClub = () => { setSelectedClubId(null); setAuthScreen("club"); };
+  const updateCurrentClubLogo = (logoUrl) => setClubs((items) => items.map((club) => club.id === currentClub?.id ? { ...club, logoUrl } : club));
 
   const enterApp = (member) => {
     setMembers((current) => [...current.filter((item) => item.id !== member.id), member]);
@@ -2594,9 +2656,7 @@ export default function ClubMemberOrganisationApp() {
                       <ArrowLeft size={15} style={{ color: C.ink }} />
                     </button>
                   ) : (
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: C.red }}>
-                      <span style={{ color: "#fff", fontFamily: "Oswald", fontWeight: 700, fontSize: 14 }}>{currentClub?.shortName?.[0]}</span>
-                    </div>
+                    <ClubLogo club={currentClub} size={32} rounded={8} />
                   )}
                   <div>
                     <div className="text-xs leading-none" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink, letterSpacing: 0.5 }}>{currentClub?.shortName}</div>
@@ -2638,7 +2698,8 @@ export default function ClubMemberOrganisationApp() {
                   protocols={protocols} setProtocols={setProtocols} remindersSent={remindersSent} setRemindersSent={setRemindersSent}
                   welcomeAutomation={welcomeAutomation} setWelcomeAutomation={setWelcomeAutomation} billingAutomation={billingAutomation} setBillingAutomation={setBillingAutomation}
                   sponsorBookings={sponsorBookings} setSponsorBookings={setSponsorBookings} sponsorStats={sponsorStats} polls={polls} setPolls={setPolls}
-                  tippResults={tippResults} onSaveTippResult={saveTippResult} />
+                  tippResults={tippResults} onSaveTippResult={saveTippResult}
+                  currentClub={currentClub} onClubLogoUpdated={updateCurrentClubLogo} />
               )}
               {!subView && tab === "profile" && <ProfileView user={currentUser} members={clubMembers} setMembers={setMembers} sponsorBookings={sponsorBookings} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick} onLogout={logout} />}
             </div>
