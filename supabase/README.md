@@ -20,3 +20,4 @@ Wenn die initiale Migration bereits ausgeführt wurde, danach die neueren Dateie
 in zeitlicher Reihenfolge ebenfalls einmal im SQL Editor ausführen:
 
 1. `migrations/20260802015000_tipp_results.sql`
+2. `migrations/20260802023000_subscriptions.sql`

@@ -1470,6 +1470,19 @@ function PlayerDataCard({ user, setMembers }) {
 function ProfileView({ user, members, setMembers, sponsorBookings, onSponsorImpression, onSponsorClick, onLogout }) {
   const goal = 1000;
   const eligible = isFormalMember(user) && age(user.birthdate) >= 16;
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const deleteAccount = async () => {
+    if (!supabase) { setDeleteError("Im Demo-Modus kann kein echtes Konto gelöscht werden."); return; }
+    setDeleting(true); setDeleteError("");
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) { setDeleteError("Bitte melde dich erneut an."); setDeleting(false); return; }
+    const response = await fetch("/api/account/delete", { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+    if (!response.ok) { setDeleteError("Das Konto konnte nicht vollständig gelöscht werden. Bitte kontaktiere den Support."); setDeleting(false); return; }
+    await onLogout();
+  };
   return (
     <div className="px-4 pt-4 pb-24">
       <SectionTitle title="Profil" />
@@ -1543,6 +1556,19 @@ function ProfileView({ user, members, setMembers, sponsorBookings, onSponsorImpr
       </button>
 
       <SponsorSlot slotKey="profile_bottom" bookings={sponsorBookings} onImpression={onSponsorImpression} onClick={onSponsorClick} />
+
+      <div className="grid grid-cols-3 gap-2 mb-4 text-center">
+        <a href="/datenschutz" className="py-2 rounded-xl text-[10px] font-bold" style={{ background: C.white, border: `1px solid ${C.line}`, color: C.textDim }}>Datenschutz</a>
+        <a href="/impressum" className="py-2 rounded-xl text-[10px] font-bold" style={{ background: C.white, border: `1px solid ${C.line}`, color: C.textDim }}>Impressum</a>
+        <a href="/nutzungsbedingungen" className="py-2 rounded-xl text-[10px] font-bold" style={{ background: C.white, border: `1px solid ${C.line}`, color: C.textDim }}>Bedingungen</a>
+      </div>
+
+      {!deleteConfirm ? <button onClick={() => setDeleteConfirm(true)} className="w-full py-2.5 rounded-2xl text-xs mb-2" style={{ background: C.white, border: "1px solid #F3B9B9", color: C.red, fontWeight: 700 }}>Konto und persönliche Daten löschen</button> :
+        <div className="rounded-2xl p-3 mb-2" style={{ background: "#FDECEC", border: "1px solid #F3B9B9" }}>
+          <div className="text-xs mb-3" style={{ color: C.ink }}>Das Konto, Vereinsprofile und persönliche Inhalte werden dauerhaft gelöscht. Ein aktives PayPal-Abo wird beendet. Dieser Schritt kann nicht rückgängig gemacht werden.</div>
+          {deleteError && <div className="text-xs mb-2" style={{ color: C.red }}>{deleteError}</div>}
+          <div className="flex gap-2"><button disabled={deleting} onClick={deleteAccount} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: C.red, color: C.white }}>{deleting ? "Wird gelöscht …" : "Endgültig löschen"}</button><button onClick={() => { setDeleteConfirm(false); setDeleteError(""); }} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.white, color: C.textDim }}>Abbrechen</button></div>
+        </div>}
 
       <button onClick={onLogout} className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm" style={{ background: C.paperDim, color: C.red, fontFamily: "Inter", fontWeight: 700 }}>
         <LogOut size={15} /> Abmelden
