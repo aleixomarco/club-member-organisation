@@ -33,10 +33,21 @@ export async function POST(request: Request) {
   const profileId = resource.custom_id;
   const planId = resource.plan_id;
   if (subscriptionId && profileId && planId && event.event_type === "BILLING.SUBSCRIPTION.ACTIVATED") {
-    const code = planId === process.env.PAYPAL_YEARLY_PLAN_ID ? "member_yearly" : "member_monthly";
+    const clubPlanCodes: Record<string, string> = {
+      [process.env.PAYPAL_CLUB_MONTHLY_PLAN_ID || "missing-club-monthly"]: "club_monthly",
+      [process.env.PAYPAL_CLUB_YEARLY_PLAN_ID || "missing-club-yearly"]: "club_yearly",
+    };
+    const memberPlanCodes: Record<string, string> = {
+      [process.env.PAYPAL_MONTHLY_PLAN_ID || "missing-member-monthly"]: "member_monthly",
+      [process.env.PAYPAL_YEARLY_PLAN_ID || "missing-member-yearly"]: "member_yearly",
+    };
+    const code = clubPlanCodes[planId] || memberPlanCodes[planId];
+    if (!code) return NextResponse.json({ error: "Unknown PayPal plan" }, { status: 400 });
     const { data: plan } = await admin.from("subscription_plans").select("id").eq("code", code).single();
-    if (plan) await admin.from("user_subscriptions").upsert({
-      profile_id: profileId, plan_id: plan.id, provider: "paypal", provider_subscription_id: subscriptionId,
+    const isClubPlan = code.startsWith("club_");
+    if (plan) await admin.from(isClubPlan ? "club_subscriptions" : "user_subscriptions").upsert({
+      [isClubPlan ? "club_id" : "profile_id"]: profileId,
+      plan_id: plan.id, provider: "paypal", provider_subscription_id: subscriptionId,
       status: "active", current_period_start: resource.start_time || new Date().toISOString(),
     }, { onConflict: "provider,provider_subscription_id" });
   } else if (subscriptionId && statusByEvent[event.event_type]) {
@@ -47,8 +58,10 @@ export async function POST(request: Request) {
     if (event.event_type === "PAYMENT.SALE.COMPLETED") {
       subscriptionUpdate.last_payment_at = new Date().toISOString();
     }
-    await admin.from("user_subscriptions").update(subscriptionUpdate)
-      .eq("provider", "paypal").eq("provider_subscription_id", subscriptionId);
+    await Promise.all(["user_subscriptions", "club_subscriptions"].map((table) =>
+      admin.from(table).update(subscriptionUpdate)
+        .eq("provider", "paypal").eq("provider_subscription_id", subscriptionId)
+    ));
   }
   return NextResponse.json({ received: true });
 }

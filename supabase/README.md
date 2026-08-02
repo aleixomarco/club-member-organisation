@@ -21,3 +21,4 @@ in zeitlicher Reihenfolge ebenfalls einmal im SQL Editor ausführen:
 
 1. `migrations/20260802015000_tipp_results.sql`
 2. `migrations/20260802023000_subscriptions.sql`
+3. `migrations/20260802030000_club_subscriptions.sql`

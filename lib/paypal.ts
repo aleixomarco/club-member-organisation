@@ -16,8 +16,16 @@ export async function paypalAccessToken() {
   return (await response.json()).access_token as string;
 }
 
-export function paypalPlanId(code: "member_monthly" | "member_yearly") {
-  const value = code === "member_monthly" ? process.env.PAYPAL_MONTHLY_PLAN_ID : process.env.PAYPAL_YEARLY_PLAN_ID;
+export type PayPalPlanCode = "member_monthly" | "member_yearly" | "club_monthly" | "club_yearly";
+
+export function paypalPlanId(code: PayPalPlanCode) {
+  const variables: Record<PayPalPlanCode, string | undefined> = {
+    member_monthly: process.env.PAYPAL_MONTHLY_PLAN_ID,
+    member_yearly: process.env.PAYPAL_YEARLY_PLAN_ID,
+    club_monthly: process.env.PAYPAL_CLUB_MONTHLY_PLAN_ID,
+    club_yearly: process.env.PAYPAL_CLUB_YEARLY_PLAN_ID,
+  };
+  const value = variables[code];
   if (!value) throw new Error(`PayPal plan is missing: ${code}`);
   return value;
 }

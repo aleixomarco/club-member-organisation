@@ -8,11 +8,13 @@ export async function GET() {
     return NextResponse.json({
       clientId: process.env.PAYPAL_CLIENT_ID,
       currency: "EUR",
-      plans: { monthly: paypalPlanId("member_monthly"), yearly: paypalPlanId("member_yearly") },
+      plans: {
+        member: { monthly: paypalPlanId("member_monthly"), yearly: paypalPlanId("member_yearly") },
+        club: { monthly: paypalPlanId("club_monthly"), yearly: paypalPlanId("club_yearly") },
+      },
       environment: process.env.PAYPAL_ENVIRONMENT === "live" ? "live" : "sandbox",
     });
   } catch {
     return NextResponse.json({ error: "PayPal ist noch nicht konfiguriert." }, { status: 503 });
   }
 }
-
