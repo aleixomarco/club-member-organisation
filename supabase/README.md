@@ -36,3 +36,4 @@ in zeitlicher Reihenfolge ebenfalls einmal im SQL Editor ausführen:
 15. `migrations/20260802074500_trainer_self_service.sql`
 16. `migrations/20260802080000_team_roster_management.sql`
 17. `migrations/20260802081500_restrict_team_administration.sql`
+18. `migrations/20260802083000_sysadmin_user_management.sql`

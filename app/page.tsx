@@ -2098,6 +2098,87 @@ function ProfileSettingsCard({ icon: Icon, title, description, onClick, color = 
   return <button onClick={onClick} className="w-full flex items-center gap-3 rounded-2xl px-3.5 py-3 text-left" style={{ background: C.white, border: `1px solid ${C.line}` }}><div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: C.paperDim, color }}><Icon size={18}/></div><div className="flex-1 min-w-0"><div className="text-sm font-bold" style={{ color: C.ink }}>{title}</div><div className="text-[10px] leading-snug" style={{ color: C.textDim }}>{description}</div></div><ChevronRight size={15} style={{ color: C.textDim }}/></button>;
 }
 
+function SysAdminUserManager({ members, setMembers }) {
+  const [selectedId, setSelectedId] = useState("");
+  const [section, setSection] = useState("overview");
+  const [form, setForm] = useState({ name: "", email: "", birthdate: "", since: "", status: "active" });
+  const [teams, setTeams] = useState([]);
+  const [playerTeamIds, setPlayerTeamIds] = useState([]);
+  const [savedPlayerTeamIds, setSavedPlayerTeamIds] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  const selected = members.find((member) => member.id === selectedId);
+  const databaseMembership = !!selected && !!supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(selected.id));
+
+  useEffect(() => {
+    if (!selected) return;
+    setForm({ name: selected.name || "", email: selected.email || "", birthdate: selected.birthdate || "", since: String(selected.since || new Date().getFullYear()), status: selected.status || "active" });
+    setSection("overview"); setMessage("");
+  }, [selectedId]);
+
+  useEffect(() => {
+    if (!selected) { setTeams([]); return; }
+    const load = async () => {
+      let available = TEAMS.filter((name) => name !== "Eltern / Angehörige").map((name) => ({ id: name, name }));
+      if (databaseMembership) {
+        const { data, error } = await supabase.from("teams").select("id,name,category").eq("club_id", selected.clubId).eq("active", true).order("name");
+        if (error) { setMessage("Die Mannschaften konnten nicht geladen werden."); return; }
+        available = data || [];
+      }
+      const names = memberPlayerTeams(selected);
+      const ids = available.filter((team) => names.includes(team.name)).map((team) => team.id);
+      setTeams(available); setPlayerTeamIds(ids); setSavedPlayerTeamIds(ids);
+    };
+    load();
+  }, [selectedId, databaseMembership]);
+
+  const saveProfile = async () => {
+    if (!selected || !form.name.trim()) { setMessage("Bitte einen Namen eingeben."); return; }
+    setSaving(true); setMessage("");
+    if (databaseMembership) {
+      const { error } = await supabase.rpc("sysadmin_update_member_profile", {
+        target_membership: selected.id,
+        new_display_name: form.name.trim(),
+        new_contact_email: form.email.trim() || null,
+        new_birthdate: form.birthdate || null,
+        new_member_since: Number(form.since),
+        new_status: form.status,
+      });
+      if (error) { setMessage("Das Vereinsprofil konnte nicht gespeichert werden."); setSaving(false); return; }
+    }
+    setMembers((items) => items.map((member) => member.id === selected.id ? { ...member, name: form.name.trim(), email: form.email.trim(), birthdate: form.birthdate, since: Number(form.since), status: form.status } : member));
+    setMessage("Vereinsprofil gespeichert."); setSaving(false);
+  };
+  const togglePlayerTeam = (teamId) => {
+    setMessage("");
+    setPlayerTeamIds((current) => current.includes(teamId) ? current.filter((id) => id !== teamId) : current.length < 3 ? [...current, teamId] : current);
+  };
+  const savePlayerTeams = async () => {
+    if (!selected) return;
+    setSaving(true); setMessage("");
+    if (databaseMembership) {
+      const { error } = await supabase.rpc("set_managed_player_teams", { target_club: selected.clubId, target_membership: selected.id, target_team_ids: playerTeamIds });
+      if (error) { setMessage("Die Spieler-Mannschaften konnten nicht gespeichert werden."); setSaving(false); return; }
+    }
+    const names = teams.filter((team) => playerTeamIds.includes(team.id)).map((team) => team.name);
+    setMembers((items) => items.map((member) => member.id === selected.id ? { ...member, playerTeams: names, team: names[0] || "Mitglied", teams: [...new Set([...names, ...(member.trainerTeams || []), member.managedTeam].filter(Boolean))] } : member));
+    setSavedPlayerTeamIds(playerTeamIds); setMessage("Spieler-Mannschaften gespeichert."); setSaving(false);
+  };
+
+  return <div>
+    <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Als Sys-Admin kannst du die Vereinseinstellungen aller Nutzer bearbeiten. Login-E-Mail, Passwort und private Zahlungsdaten bleiben geschützt.</div>
+    <select value={selectedId} onChange={(event) => setSelectedId(event.target.value)} className="w-full px-3 py-3 rounded-xl text-xs outline-none mb-4" style={{ background: C.white, border: `1px solid ${C.line}`, color: C.ink }}><option value="">Nutzer auswählen …</option>{members.slice().sort((a, b) => a.name.localeCompare(b.name, "de")).map((member) => <option key={member.id} value={member.id}>{member.name} · {member.roles.map((role) => ROLE_META[role]?.label || role).join(", ")}</option>)}</select>
+    {selected && <><div className="rounded-2xl p-4 mb-4 flex items-center gap-3" style={{ background: C.ink, color: C.white }}><div className="w-11 h-11 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: selected.color }}>{initialsOf(selected.name)}</div><div className="min-w-0"><div className="text-base font-bold truncate" style={{ fontFamily: "Oswald" }}>{selected.name}</div><div className="text-[10px] truncate" style={{ color: "#B7B6BC" }}>{selected.email || "Profil ohne eigene E-Mail"}</div></div></div>
+      <div className="grid grid-cols-2 gap-2 mb-4">{[["overview", "Stammdaten"], ["roles", "Rollen & Trainer"], ["teams", "Spieler-Teams"], ["family", "Familie"]].map(([id, label]) => <button key={id} onClick={() => { setSection(id); setMessage(""); }} className="py-2.5 rounded-xl text-[11px] font-bold" style={{ background: section === id ? C.ink : C.white, color: section === id ? C.white : C.textDim, border: `1px solid ${section === id ? C.ink : C.line}` }}>{label}</button>)}</div>
+      {section === "overview" && <div className="rounded-2xl p-4 space-y-2" style={{ background: C.white, border: `1px solid ${C.line}` }}><div className="text-sm font-bold mb-2" style={{ color: C.ink }}>Vereinsprofil bearbeiten</div><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Anzeigename" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/><input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} placeholder="Kontakt-E-Mail im Verein" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/><div className="grid grid-cols-2 gap-2"><input type="date" value={form.birthdate} onChange={(event) => setForm({ ...form, birthdate: event.target.value })} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/><input type="number" min="1800" max="2200" value={form.since} onChange={(event) => setForm({ ...form, since: event.target.value })} placeholder="Mitglied seit" className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/></div><select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}><option value="active">Aktiv</option><option value="pending">Ausstehend</option><option value="inactive">Inaktiv</option><option value="blocked">Gesperrt</option></select><button onClick={saveProfile} disabled={saving} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: C.red, color: C.white }}>{saving ? "Wird gespeichert …" : "Stammdaten speichern"}</button></div>}
+      {section === "roles" && <RolesPanel members={[selected]} setMembers={setMembers}/>}
+      {section === "teams" && <div className="rounded-2xl p-4" style={{ background: C.white, border: `1px solid ${C.line}` }}>{!selected.roles.includes("spieler") ? <div className="text-xs" style={{ color: C.textDim }}>Vergib zuerst unter „Rollen & Trainer“ die Rolle Spieler/in.</div> : <><div className="flex items-center justify-between mb-2"><div className="text-sm font-bold">Spieler-Mannschaften</div><span className="text-[10px] font-bold" style={{ color: playerTeamIds.length === 3 ? C.red : C.textDim }}>{playerTeamIds.length}/3</span></div><div className="space-y-2 mb-3">{teams.map((team) => { const active = playerTeamIds.includes(team.id); return <button key={team.id} onClick={() => togglePlayerTeam(team.id)} className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left" style={{ background: active ? "#E7F3EC" : C.paperDim, border: active ? `1px solid ${C.green}` : "1px solid transparent" }}><span className="text-xs font-bold">{team.name}</span>{active && <Check size={14} style={{ color: C.green }}/>}</button>; })}</div><button onClick={savePlayerTeams} disabled={saving || JSON.stringify([...playerTeamIds].sort()) === JSON.stringify([...savedPlayerTeamIds].sort())} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white, opacity: JSON.stringify([...playerTeamIds].sort()) === JSON.stringify([...savedPlayerTeamIds].sort()) ? .35 : 1 }}>{saving ? "Wird gespeichert …" : "Mannschaften speichern"}</button></>}</div>}
+      {section === "family" && <><FamilyTree user={selected} members={members}/><div className="mt-3"><FamilyLinkManager user={selected} members={members} setMembers={setMembers} adminMode /></div></>}
+      {message && <div role="status" className="text-[11px] mt-3 rounded-xl px-3 py-2" style={{ background: message.includes("gespeichert") ? "#E7F3EC" : "#FDECEC", color: message.includes("gespeichert") ? C.green : C.red }}>{message}</div>}
+    </>}
+  </div>;
+}
+
 function ProfileView({ user, members, setMembers, sponsorBookings, onSponsorImpression, onSponsorClick, onLogout }) {
   const goal = 1000;
   const eligible = isFormalMember(user) && age(user.birthdate) >= 16;
@@ -2132,11 +2213,13 @@ function ProfileView({ user, members, setMembers, sponsorBookings, onSponsorImpr
 
       <SectionTitle eyebrow="Verwalten" title="Einstellungen" />
       <div className="space-y-2 mb-6">
+        {user.roles.includes("sysadmin") && <ProfileSettingsCard icon={UserPlus} title="Benutzerverwaltung" description="Alle Vereinsnutzer auswählen und deren Einstellungen verwalten" color="#4A4E9E" onClick={() => setProfileUnderlay("users")}/>}
         <ProfileSettingsCard icon={Euro} title="Abonnement" description="Nutzer- und Vereinsabo getrennt verwalten" onClick={() => setProfileUnderlay("subscription")}/>
         {user.roles.includes("spieler") && <ProfileSettingsCard icon={Star} title="Spielerprofil" description="Mannschaften und Rückennummer verwalten" color={C.green} onClick={() => setProfileUnderlay("player")}/>}
         {user.roles.includes("trainer") && <ProfileSettingsCard icon={Trophy} title="Trainer & Rollen" description="Trainer-Mannschaften auswählen und Kapitänsrolle zuweisen" color="#2D6F8E" onClick={() => setProfileUnderlay("trainer")}/>}
         {user.roles.some((role) => ["spieler", "trainer", "teammanager", "kapitaen"].includes(role)) && <ProfileSettingsCard icon={ClipboardList} title="Strafenkatalog" description="Regeln und Kosten der Mannschaften verwalten" onClick={() => setProfileUnderlay("penalties")}/>}
         <ProfileSettingsCard icon={Users} title="Familie" description="Familienprofile ansehen und Verknüpfungen verwalten" color={C.amber} onClick={() => setProfileUnderlay("family")}/>
+        <ProfileSettingsCard icon={ShieldCheck} title="Kontoeinstellungen" description="Sicherheit, Rechtliches und Accountverwaltung" color={C.textDim} onClick={() => setProfileUnderlay("account")}/>
       </div>
 
       <div className="rounded-2xl p-4 mb-5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
@@ -2197,13 +2280,6 @@ function ProfileView({ user, members, setMembers, sponsorBookings, onSponsorImpr
         <a href="/nutzungsbedingungen" className="py-2 rounded-xl text-[10px] font-bold" style={{ background: C.white, border: `1px solid ${C.line}`, color: C.textDim }}>Bedingungen</a>
       </div>
 
-      {!deleteConfirm ? <button onClick={() => setDeleteConfirm(true)} className="w-full py-2.5 rounded-2xl text-xs mb-2" style={{ background: C.white, border: "1px solid #F3B9B9", color: C.red, fontWeight: 700 }}>Konto und persönliche Daten löschen</button> :
-        <div className="rounded-2xl p-3 mb-2" style={{ background: "#FDECEC", border: "1px solid #F3B9B9" }}>
-          <div className="text-xs mb-3" style={{ color: C.ink }}>Das Konto, Vereinsprofile und persönliche Inhalte werden dauerhaft gelöscht. Ein aktives PayPal-Abo wird beendet. Dieser Schritt kann nicht rückgängig gemacht werden.</div>
-          {deleteError && <div className="text-xs mb-2" style={{ color: C.red }}>{deleteError}</div>}
-          <div className="flex gap-2"><button disabled={deleting} onClick={deleteAccount} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: C.red, color: C.white }}>{deleting ? "Wird gelöscht …" : "Endgültig löschen"}</button><button onClick={() => { setDeleteConfirm(false); setDeleteError(""); }} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.white, color: C.textDim }}>Abbrechen</button></div>
-        </div>}
-
       <button onClick={onLogout} className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm" style={{ background: C.paperDim, color: C.red, fontFamily: "Inter", fontWeight: 700 }}>
         <LogOut size={15} /> Abmelden
       </button>
@@ -2213,6 +2289,20 @@ function ProfileView({ user, members, setMembers, sponsorBookings, onSponsorImpr
       {profileUnderlay === "trainer" && <ProfileUnderlay title="Trainer & Rollen" eyebrow="Mannschaftsverwaltung" onClose={() => setProfileUnderlay("")}><TrainerTeamSettings user={user} members={members} setMembers={setMembers}/></ProfileUnderlay>}
       {profileUnderlay === "penalties" && <ProfileUnderlay title="Strafenkatalog" eyebrow="Mannschaftsverwaltung" onClose={() => setProfileUnderlay("")}><TeamPenaltyCatalog user={user}/></ProfileUnderlay>}
       {profileUnderlay === "family" && <ProfileUnderlay title="Familie & Verknüpfungen" onClose={() => setProfileUnderlay("")}><SectionTitle eyebrow="Familie" title="Stammbaum"/><div className="mb-2"><FamilyTree user={user} members={members}/></div><div className="text-[11px] mb-5" style={{ color: C.textDim }}>{eligible ? "Helferdienst-berechtigt ✓ (16+)" : "Für Heimspiel-Helferdienste noch nicht 16 Jahre alt."}</div><FamilyLinkManager user={user} members={members} setMembers={setMembers}/></ProfileUnderlay>}
+      {profileUnderlay === "users" && user.roles.includes("sysadmin") && <ProfileUnderlay title="Benutzerverwaltung" eyebrow="Sys-Administration" onClose={() => setProfileUnderlay("")}><SysAdminUserManager members={members} setMembers={setMembers}/></ProfileUnderlay>}
+      {profileUnderlay === "account" && <ProfileUnderlay title="Kontoeinstellungen" onClose={() => setProfileUnderlay("")}>
+        <div className="rounded-2xl p-4 mb-4" style={{ background: C.white, border: `1px solid ${C.line}` }}><div className="flex items-center gap-2 text-sm font-bold mb-1" style={{ color: C.ink }}><ShieldCheck size={16} style={{ color: C.green }}/> Sicherheit</div><div className="text-[11px]" style={{ color: C.textDim }}>Dein Konto ist über Supabase geschützt. Passwortänderungen und Wiederherstellung erfolgen über deine hinterlegte E-Mail-Adresse.</div></div>
+        <div className="space-y-2 mb-6"><a href="/datenschutz" className="w-full flex items-center justify-between rounded-2xl px-3.5 py-3" style={{ background: C.white, border: `1px solid ${C.line}` }}><span className="text-xs font-bold" style={{ color: C.ink }}>Datenschutz</span><ChevronRight size={14} style={{ color: C.textDim }}/></a><a href="/nutzungsbedingungen" className="w-full flex items-center justify-between rounded-2xl px-3.5 py-3" style={{ background: C.white, border: `1px solid ${C.line}` }}><span className="text-xs font-bold" style={{ color: C.ink }}>Nutzungsbedingungen</span><ChevronRight size={14} style={{ color: C.textDim }}/></a></div>
+        <SectionTitle eyebrow="Weitere Optionen" title="Accountverwaltung"/>
+        <ProfileSettingsCard icon={User} title="Account verwalten" description="Persönliche Kontodaten und weitere Kontoaktionen" color={C.textDim} onClick={() => setProfileUnderlay("account-delete")}/>
+      </ProfileUnderlay>}
+      {profileUnderlay === "account-delete" && <ProfileUnderlay title="Account verwalten" eyebrow="Kontoeinstellungen" onClose={() => { setProfileUnderlay("account"); setDeleteConfirm(false); setDeleteError(""); }}>
+        <div className="rounded-2xl p-4 mb-6" style={{ background: C.white, border: `1px solid ${C.line}` }}><div className="flex items-center gap-2 text-sm font-bold mb-1" style={{ color: C.ink }}><Mail size={15}/> Hinterlegte E-Mail</div><div className="text-xs" style={{ color: C.textDim }}>{user.email}</div></div>
+        <SectionTitle eyebrow="Gefahrenbereich" title="Account-Löschung"/>
+        <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Die Löschfunktion befindet sich bewusst in diesem geschützten Unterbereich. Prüfe vor dem Fortfahren, ob noch ein aktives Abonnement besteht.</div>
+        {!deleteConfirm ? <button onClick={() => setDeleteConfirm(true)} className="w-full py-2.5 rounded-2xl text-xs" style={{ background: C.white, border: "1px solid #F3B9B9", color: C.red, fontWeight: 700 }}>Konto und persönliche Daten löschen</button> :
+          <div className="rounded-2xl p-3" style={{ background: "#FDECEC", border: "1px solid #F3B9B9" }}><div className="flex items-center gap-2 text-xs font-bold mb-2" style={{ color: C.red }}><AlertCircle size={15}/> Endgültige Löschung bestätigen</div><div className="text-xs mb-3" style={{ color: C.ink }}>Das Konto, Vereinsprofile und persönliche Inhalte werden dauerhaft gelöscht. Ein aktives PayPal-Abo wird beendet. Dieser Schritt kann nicht rückgängig gemacht werden.</div>{deleteError && <div className="text-xs mb-2" style={{ color: C.red }}>{deleteError}</div>}<div className="flex gap-2"><button disabled={deleting} onClick={deleteAccount} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: C.red, color: C.white }}>{deleting ? "Wird gelöscht …" : "Endgültig löschen"}</button><button onClick={() => { setDeleteConfirm(false); setDeleteError(""); }} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.white, color: C.textDim }}>Abbrechen</button></div></div>}
+      </ProfileUnderlay>}
     </div>
   );
 }
