@@ -1428,6 +1428,94 @@ function AdminFamilyPanel({ members, setMembers }) {
 /* ------------------------------------------------------------------ */
 /* Profil                                                                */
 /* ------------------------------------------------------------------ */
+function TrainerTeamSettings({ user, members, setMembers }) {
+  const [teams, setTeams] = useState([]);
+  const [selectedTeamId, setSelectedTeamId] = useState("");
+  const [players, setPlayers] = useState([]);
+  const [captainId, setCaptainId] = useState("");
+  const [savedCaptainId, setSavedCaptainId] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  const databaseMembership = !!supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(user.id));
+
+  useEffect(() => {
+    const loadTrainerTeams = async () => {
+      setLoading(true); setMessage("");
+      if (!databaseMembership) {
+        const names = user.teams?.length ? user.teams : [user.team].filter(Boolean);
+        const localTeams = names.map((name) => ({ id: name, name }));
+        setTeams(localTeams); setSelectedTeamId((current) => current || localTeams[0]?.id || ""); setLoading(false); return;
+      }
+      const { data, error } = await supabase.from("team_members").select("team_id,teams(id,name)")
+        .eq("membership_id", user.id).eq("function", "trainer");
+      if (error) { setMessage("Die Trainer-Mannschaften konnten nicht geladen werden."); setLoading(false); return; }
+      const assigned = (data || []).map((entry) => Array.isArray(entry.teams) ? entry.teams[0] : entry.teams).filter(Boolean);
+      setTeams(assigned); setSelectedTeamId((current) => current || assigned[0]?.id || ""); setLoading(false);
+    };
+    loadTrainerTeams();
+  }, [user.id]);
+
+  useEffect(() => {
+    if (!selectedTeamId) { setPlayers([]); setCaptainId(""); setSavedCaptainId(""); return; }
+    const loadRoster = async () => {
+      setMessage("");
+      if (!databaseMembership) {
+        const selectedTeam = teams.find((team) => team.id === selectedTeamId)?.name;
+        const roster = members.filter((member) => member.team === selectedTeam && member.roles.includes("spieler")).map((member) => ({ id: member.id, name: member.name }));
+        const captain = roster.find((player) => members.find((member) => member.id === player.id)?.roles.includes("kapitaen"))?.id || "";
+        setPlayers(roster); setCaptainId(captain); setSavedCaptainId(captain); return;
+      }
+      const { data, error } = await supabase.from("team_members")
+        .select("membership_id,function,club_memberships(id,display_name,status)")
+        .eq("team_id", selectedTeamId).in("function", ["spieler", "kapitaen"]);
+      if (error) { setMessage("Der Mannschaftskader konnte nicht geladen werden."); return; }
+      const playerMap = new Map(); let currentCaptain = "";
+      (data || []).forEach((entry) => {
+        const membership = Array.isArray(entry.club_memberships) ? entry.club_memberships[0] : entry.club_memberships;
+        if (!membership || membership.status !== "active") return;
+        if (entry.function === "spieler") playerMap.set(entry.membership_id, { id: entry.membership_id, name: membership.display_name });
+        if (entry.function === "kapitaen") currentCaptain = entry.membership_id;
+      });
+      const roster = [...playerMap.values()].sort((a, b) => a.name.localeCompare(b.name, "de"));
+      setPlayers(roster); setCaptainId(currentCaptain); setSavedCaptainId(currentCaptain);
+    };
+    loadRoster();
+  }, [selectedTeamId, databaseMembership, teams, members]);
+
+  const saveCaptain = async () => {
+    if (!captainId) { setMessage("Bitte zuerst einen Spieler auswählen."); return; }
+    setSaving(true); setMessage("");
+    if (!databaseMembership) {
+      const selectedTeam = teams.find((team) => team.id === selectedTeamId)?.name;
+      setMembers((items) => items.map((member) => {
+        if (member.team !== selectedTeam) return member;
+        const roles = member.roles.filter((role) => role !== "kapitaen");
+        return { ...member, roles: member.id === captainId ? [...roles, "kapitaen"] : roles };
+      }));
+      setSavedCaptainId(captainId); setMessage("Kapitän wurde für diese Mannschaft gespeichert."); setSaving(false); return;
+    }
+    const { error } = await supabase.rpc("set_team_captain", { target_team: selectedTeamId, target_membership: captainId });
+    if (error) setMessage("Der Kapitän konnte nicht gespeichert werden.");
+    else { setSavedCaptainId(captainId); setMessage("Kapitän wurde für diese Mannschaft gespeichert."); }
+    setSaving(false);
+  };
+
+  return <div className="rounded-2xl p-4 mb-5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+    <div className="flex items-center gap-2 mb-1 text-sm font-bold" style={{ color: C.ink }}><Trophy size={15} style={{ color: C.amber }}/> Trainer-Einstellungen</div>
+    <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Wähle eine deiner Mannschaften und bestimme den Kapitän. Pro Mannschaft kann genau ein Kapitän hinterlegt sein.</div>
+    {loading ? <div className="text-xs py-3" style={{ color: C.textDim }}>Mannschaften werden geladen …</div> : teams.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Deinem Trainerprofil ist noch keine Mannschaft zugeordnet.</div> : <>
+      <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>MANNSCHAFT</div>
+      <select value={selectedTeamId} onChange={(event) => setSelectedTeamId(event.target.value)} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-3" style={{ background: C.paperDim, color: C.ink }}>{teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select>
+      <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>KAPITÄN</div>
+      <select value={captainId} onChange={(event) => { setCaptainId(event.target.value); setMessage(""); }} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-3" style={{ background: C.paperDim, color: C.ink }}><option value="">Spieler auswählen …</option>{players.map((player) => <option key={player.id} value={player.id}>{player.name}</option>)}</select>
+      {players.length === 0 && <div className="text-[11px] -mt-1 mb-3" style={{ color: C.textDim }}>Für diese Mannschaft sind noch keine aktiven Spieler hinterlegt.</div>}
+      <button onClick={saveCaptain} disabled={!captainId || saving || captainId === savedCaptainId} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: captainId && captainId !== savedCaptainId ? C.ink : C.paperDim, color: captainId && captainId !== savedCaptainId ? C.white : C.textDim, opacity: saving ? .6 : 1 }}>{saving ? "Wird gespeichert …" : captainId === savedCaptainId && captainId ? "Kapitän gespeichert" : "Kapitän speichern"}</button>
+    </>}
+    {message && <div role="status" className="text-[11px] mt-2" style={{ color: message.includes("gespeichert") ? C.green : C.red }}>{message}</div>}
+  </div>;
+}
+
 function PlayerDataCard({ user, setMembers }) {
   const [editing, setEditing] = useState(false);
   const [number, setNumber] = useState(user.number ?? "");
@@ -1503,6 +1591,7 @@ function ProfileView({ user, members, setMembers, sponsorBookings, onSponsorImpr
       </div>
 
       {user.roles.includes("spieler") && <PlayerDataCard user={user} setMembers={setMembers} />}
+      {user.roles.includes("trainer") && <TrainerTeamSettings user={user} members={members} setMembers={setMembers} />}
 
       <div className="rounded-2xl p-4 mb-5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
         <div className="flex items-center justify-between mb-2">
