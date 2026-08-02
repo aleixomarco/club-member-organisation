@@ -2640,7 +2640,8 @@ function AdminView({
   const canSeeFees = canManageFees(currentUser);
   const [panel, setPanel] = useState(sponsorOnly ? "sponsoring" : "overview");
   const openCount = members.filter((m) => !feePaid[m.id]).length;
-  const panels = sponsorOnly ? [["sponsoring", "Sponsoring"], ["polls", "Umfragen"]] : [["overview", "Übersicht"], ["automation", "Automatisierung"], ["duty", "Helferplanung"], ["protokolle", "Protokolle"], ["polls", "Umfragen"], ["sponsoring", "Sponsoring"], ["season", "Spieler der Saison"], ["roles", "Rollen"]];
+  const panels = sponsorOnly ? [["sponsoring", "Sponsoring"], ["polls", "Umfragen"]] : [["overview", "Übersicht"], ["automation", "Automatisierung"], ["duty", "Helferplanung"], ["protokolle", "Protokolle"], ["polls", "Umfragen"], ["sponsoring", "Sponsoring"], ["season", "Spieler der Saison"]];
+  if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.push(["roles", "Rollen"]);
   if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.splice(1, 0, ["memberships", "Mitgliedsanträge"]);
   if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.splice(1, 0, ["clubprofile", "Vereinsprofil"]);
   if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.splice(1, 0, ["results", "Spielergebnisse"]);
@@ -2799,20 +2800,20 @@ export default function ClubMemberOrganisationApp() {
   const clubMembers = members.filter((m) => m.clubId === selectedClubId);
 
   useEffect(() => {
-    if (!supabase || !adminStateLoaded || !selectedClubId || !currentUser || !isAdmin(currentUser)) return;
+    if (!supabase || !adminStateLoaded || !selectedClubId || !currentUser || (!isAdmin(currentUser) && !canManageSponsors(currentUser))) return;
     clearTimeout(adminSaveTimer.current);
     adminSaveTimer.current = setTimeout(async () => {
       await supabase.rpc("save_club_app_state", {
         target_club: selectedClubId,
         new_state: {
           events, dutyPlan, protocols, remindersSent, welcomeAutomation, billingAutomation,
-          polls, tippResults, maintenanceMode, seasonVotes, sponsorStats,
+          polls, tippResults, maintenanceMode, seasonVotes, sponsorStats, sponsorBookings,
           channels: channels.filter((channel) => channel.id !== "news"),
         },
       });
     }, 700);
     return () => clearTimeout(adminSaveTimer.current);
-  }, [adminStateLoaded, selectedClubId, currentUserId, events, dutyPlan, protocols, remindersSent, welcomeAutomation, billingAutomation, polls, tippResults, maintenanceMode, seasonVotes, sponsorStats, channels]);
+  }, [adminStateLoaded, selectedClubId, currentUserId, events, dutyPlan, protocols, remindersSent, welcomeAutomation, billingAutomation, polls, tippResults, maintenanceMode, seasonVotes, sponsorStats, sponsorBookings, channels]);
 
   const selectClub = (clubId) => { setSelectedClubId(clubId); setAuthScreen("login"); };
   const createClub = (club) => { setClubs((cs) => [...cs, club]); setSelectedClubId(club.id); setAuthScreen("register"); };
@@ -2851,6 +2852,7 @@ export default function ClubMemberOrganisationApp() {
         id: record.id, authProfileId: record.profile_id, clubId: record.club_id,
         name: record.display_name, email: record.email || "", password: "",
         team: teamNames[0] || "Mitglied", teams: teamNames, number: null,
+        managedTeam: assignments.find((entry) => entry.function === "teammanager")?.teams?.name || null,
         since: record.member_since || new Date().getFullYear(),
         roles: (record.membership_roles || []).map((entry) => entry.role),
         color: [C.red, C.green, "#4A4E9E", "#B17912", "#176B87"][index % 5],
@@ -2915,6 +2917,7 @@ export default function ClubMemberOrganisationApp() {
     if (typeof saved.maintenanceMode === "boolean") setMaintenanceMode(saved.maintenanceMode);
     if (saved.seasonVotes) setSeasonVotes(saved.seasonVotes);
     if (saved.sponsorStats) setSponsorStats(saved.sponsorStats);
+    if (saved.sponsorBookings) setSponsorBookings(saved.sponsorBookings);
     setChannels((current) => {
       const persistedChannels = Array.isArray(saved.channels) ? saved.channels : current.filter((channel) => channel.id !== "news");
       return [...persistedChannels, { ...(current.find((channel) => channel.id === "news") || INITIAL_CHANNELS.find((channel) => channel.id === "news")), messages: loadedNews }];
