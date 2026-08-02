@@ -229,12 +229,13 @@ function getNextMatch() {
 /* Sponsor-Slots: reservierte, buchbare Werbeflächen zwischen den Layout-Bereichen */
 const SPONSOR_SLOT_DEFS = [
   { key: "dashboard_top", label: "Dashboard oben" },
-  { key: "dashboard_bottom", label: "Dashboard unten" },
+  { key: "dashboard_bottom", label: "Dashboard – nach Vereins-News" },
   { key: "events_header", label: "Termine – Kopfbereich" },
   { key: "profile_bottom", label: "Profil unten" },
 ];
 const INITIAL_SPONSOR_BOOKINGS = {
   dashboard_top: { title: "Sparkasse Iserlohn", text: "Gemeinsam für den Sport in unserer Region.", imageUrl: "", landingUrl: "https://www.sparkasse-iserlohn.de" },
+  dashboard_bottom: { title: "Autohaus Meyer", text: "Mobilität für den Verein und die Region.", imageUrl: "", landingUrl: "" },
   events_header: { title: "Stadtwerke Iserlohn", text: "Energie, die unsere Mannschaften bewegt.", imageUrl: "", landingUrl: "https://www.stadtwerke-iserlohn.de" },
 };
 
@@ -901,6 +902,8 @@ function Dashboard({ user, members, feePaid, channels, dutyPlan, seasonVotes, po
         </div>
       </DashboardSection>
 
+      <SponsorSlot slotKey="dashboard_bottom" bookings={sponsorBookings} onImpression={onSponsorImpression} onClick={onSponsorClick} />
+
       <DashboardSection accent={C.amber} background="#FFF7E7">
         <SectionTitle eyebrow="Mitmachen" title="Deine Stimme zählt" />
         <div className="space-y-3">{polls.filter((p)=>p.active).map((poll)=><PollWidget key={poll.id} poll={poll} userId={user.id} setPolls={setPolls}/>)}</div>
@@ -913,9 +916,6 @@ function Dashboard({ user, members, feePaid, channels, dutyPlan, seasonVotes, po
         </div>
       </DashboardSection>
 
-      <div className="mt-5">
-        <SponsorSlot slotKey="dashboard_bottom" bookings={sponsorBookings} onImpression={onSponsorImpression} onClick={onSponsorClick} />
-      </div>
     </div>
   );
 }
