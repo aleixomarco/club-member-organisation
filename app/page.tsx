@@ -1558,9 +1558,6 @@ function AdminFamilyPanel({ members, setMembers }) {
 /* ------------------------------------------------------------------ */
 function TrainerTeamSettings({ user, members, setMembers }) {
   const [teams, setTeams] = useState([]);
-  const [allClubTeams, setAllClubTeams] = useState([]);
-  const [trainerTeamIds, setTrainerTeamIds] = useState([]);
-  const [savedTrainerTeamIds, setSavedTrainerTeamIds] = useState([]);
   const [selectedTeamId, setSelectedTeamId] = useState("");
   const [players, setPlayers] = useState([]);
   const [captainId, setCaptainId] = useState("");
@@ -1578,39 +1575,15 @@ function TrainerTeamSettings({ user, members, setMembers }) {
         const allNames = [...new Set([...TEAMS.filter((name) => name !== "Eltern / Angehörige"), ...members.flatMap((member) => memberPlayerTeams(member))])];
         const allLocalTeams = allNames.map((name) => ({ id: name, name }));
         const localTeams = allLocalTeams.filter((team) => assignedNames.includes(team.name));
-        setAllClubTeams(allLocalTeams); setTrainerTeamIds(assignedNames); setSavedTrainerTeamIds(assignedNames);
         setTeams(localTeams); setSelectedTeamId((current) => current || localTeams[0]?.id || ""); setLoading(false); return;
       }
-      const [{ data, error }, { data: clubTeams, error: clubTeamsError }] = await Promise.all([
-        supabase.from("team_members").select("team_id,teams(id,name)").eq("membership_id", user.id).eq("function", "trainer"),
-        supabase.from("teams").select("id,name,category").eq("club_id", user.clubId).eq("active", true).order("name"),
-      ]);
-      if (error || clubTeamsError) { setMessage("Die Trainer-Mannschaften konnten nicht geladen werden."); setLoading(false); return; }
+      const { data, error } = await supabase.from("team_members").select("team_id,teams(id,name)").eq("membership_id", user.id).eq("function", "trainer");
+      if (error) { setMessage("Die Trainer-Mannschaften konnten nicht geladen werden."); setLoading(false); return; }
       const assigned = (data || []).map((entry) => Array.isArray(entry.teams) ? entry.teams[0] : entry.teams).filter(Boolean);
-      const assignedIds = assigned.map((team) => team.id);
-      setAllClubTeams(clubTeams || []); setTrainerTeamIds(assignedIds); setSavedTrainerTeamIds(assignedIds);
       setTeams(assigned); setSelectedTeamId((current) => current || assigned[0]?.id || ""); setLoading(false);
     };
     loadTrainerTeams();
   }, [user.id]);
-
-  const toggleTrainerTeam = (teamId) => {
-    setMessage("");
-    setTrainerTeamIds((current) => current.includes(teamId) ? current.filter((id) => id !== teamId) : [...current, teamId]);
-  };
-  const saveTrainerTeams = async () => {
-    setSaving(true); setMessage("");
-    if (databaseMembership) {
-      const { error } = await supabase.rpc("set_my_trainer_teams", { target_club: user.clubId, target_team_ids: trainerTeamIds });
-      if (error) { setMessage("Die Trainer-Mannschaften konnten nicht gespeichert werden."); setSaving(false); return; }
-    }
-    const assigned = allClubTeams.filter((team) => trainerTeamIds.includes(team.id));
-    const assignedNames = assigned.map((team) => team.name);
-    setTeams(assigned); setSelectedTeamId((current) => assigned.some((team) => team.id === current) ? current : assigned[0]?.id || "");
-    setSavedTrainerTeamIds(trainerTeamIds);
-    setMembers((items) => items.map((member) => member.id === user.id ? { ...member, trainerTeams: assignedNames, teams: [...new Set([...memberPlayerTeams(member), ...assignedNames, member.managedTeam].filter(Boolean))] } : member));
-    setMessage("Trainer-Mannschaften wurden gespeichert."); setSaving(false);
-  };
 
   useEffect(() => {
     if (!selectedTeamId) { setPlayers([]); setCaptainId(""); setSavedCaptainId(""); return; }
@@ -1659,12 +1632,11 @@ function TrainerTeamSettings({ user, members, setMembers }) {
 
   return <div className="rounded-2xl p-4 mb-5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
     <div className="flex items-center gap-2 mb-1 text-sm font-bold" style={{ color: C.ink }}><Trophy size={15} style={{ color: C.amber }}/> Trainer-Einstellungen</div>
-    <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Lege zuerst fest, welche Mannschaften du trainierst. Anschließend kannst du für jedes Team einen Spieler als Kapitän zuweisen.</div>
+    <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Deine Trainer-Mannschaften werden vom Vereinsadmin oder Sys-Admin zugewiesen. Für diese Teams kannst du anschließend einen Spieler als Kapitän bestimmen.</div>
     {loading ? <div className="text-xs py-3" style={{ color: C.textDim }}>Mannschaften werden geladen …</div> : <>
-      <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>ICH BIN TRAINER/IN VON</div>
-      <div className="space-y-1.5 mb-2">{allClubTeams.map((team) => { const active = trainerTeamIds.includes(team.id); return <button type="button" key={team.id} onClick={() => toggleTrainerTeam(team.id)} className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-left" style={{ background: active ? "#E8F1F5" : C.paperDim, border: active ? "1px solid #2D6F8E" : "1px solid transparent" }}><span className="text-xs font-bold" style={{ color: C.ink }}>{team.name}</span><span className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: active ? "#2D6F8E" : C.white, color: C.white }}>{active && <Check size={13}/>}</span></button>; })}</div>
-      <button onClick={saveTrainerTeams} disabled={saving || JSON.stringify([...trainerTeamIds].sort()) === JSON.stringify([...savedTrainerTeamIds].sort())} className="w-full py-2.5 rounded-xl text-xs font-bold mb-4" style={{ background: JSON.stringify([...trainerTeamIds].sort()) !== JSON.stringify([...savedTrainerTeamIds].sort()) ? C.ink : C.paperDim, color: JSON.stringify([...trainerTeamIds].sort()) !== JSON.stringify([...savedTrainerTeamIds].sort()) ? C.white : C.textDim }}>{saving ? "Wird gespeichert …" : "Trainer-Mannschaften speichern"}</button>
-      {teams.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Wähle mindestens eine Trainer-Mannschaft und speichere die Auswahl.</div> : <>
+      <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>ZUGEWIESENE TRAINER-MANNSCHAFTEN</div>
+      <div className="space-y-1.5 mb-4">{teams.map((team) => <div key={team.id} className="w-full flex items-center justify-between px-3 py-2 rounded-xl" style={{ background: "#E8F1F5", border: "1px solid #2D6F8E" }}><span className="text-xs font-bold" style={{ color: C.ink }}>{team.name}</span><Check size={14} style={{ color: "#2D6F8E" }}/></div>)}</div>
+      {teams.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Dir wurde noch keine Mannschaft als Trainer/in zugewiesen. Bitte wende dich an den Vereinsadmin.</div> : <>
       <div className="pt-3 mb-3" style={{ borderTop: `1px solid ${C.line}` }}><div className="text-xs font-bold" style={{ color: C.ink }}>Kapitänsrolle zuweisen</div><div className="text-[10px]" style={{ color: C.textDim }}>Die Kapitänsrolle gilt immer für die ausgewählte Mannschaft.</div></div>
       <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>MANNSCHAFT</div>
       <select value={selectedTeamId} onChange={(event) => setSelectedTeamId(event.target.value)} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-3" style={{ background: C.paperDim, color: C.ink }}>{teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select>
@@ -1754,6 +1726,11 @@ function TeamsView({ currentUser, members, setMembers, currentClub }) {
   const [teams, setTeams] = useState([]);
   const [selectedTeamId, setSelectedTeamId] = useState("");
   const [selectedPlayerId, setSelectedPlayerId] = useState("");
+  const [showPlayerPicker, setShowPlayerPicker] = useState(false);
+  const [playerTeamIds, setPlayerTeamIds] = useState([]);
+  const [savedPlayerTeamIds, setSavedPlayerTeamIds] = useState([]);
+  const [savingPlayer, setSavingPlayer] = useState(false);
+  const [playerMessage, setPlayerMessage] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState("");
   const [category, setCategory] = useState("");
@@ -1761,7 +1738,8 @@ function TeamsView({ currentUser, members, setMembers, currentClub }) {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const databaseMembership = !!supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(currentUser.id));
-  const canCreate = currentUser.roles.some((role) => ["vereinsadmin", "sysadmin", "trainer"].includes(role));
+  const canCreate = currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role));
+  const canAssignPlayers = currentUser.roles.some((role) => ["vereinsadmin", "sysadmin", "trainer"].includes(role));
 
   const loadTeams = useCallback(async () => {
     setLoading(true); setMessage("");
@@ -1782,6 +1760,45 @@ function TeamsView({ currentUser, members, setMembers, currentClub }) {
   const ownTeams = teams.filter((team) => ownNames.includes(team.name));
   const selectedTeam = teams.find((team) => team.id === selectedTeamId);
   const selectedPlayer = members.find((member) => member.id === selectedPlayerId);
+  const players = members.filter((member) => member.roles.includes("spieler")).sort((a, b) => a.name.localeCompare(b.name, "de"));
+  const openPlayer = (player) => {
+    const assignedNames = memberPlayerTeams(player);
+    const assignedIds = teams.filter((team) => assignedNames.includes(team.name)).map((team) => team.id);
+    setSelectedPlayerId(player.id);
+    setPlayerTeamIds(assignedIds);
+    setSavedPlayerTeamIds(assignedIds);
+    setPlayerMessage("");
+  };
+  const togglePlayerTeam = (teamId) => {
+    setPlayerMessage("");
+    setPlayerTeamIds((current) => {
+      if (current.includes(teamId)) return current.filter((id) => id !== teamId);
+      if (current.length >= 3) { setPlayerMessage("Ein Spieler kann höchstens drei Mannschaften zugeordnet sein."); return current; }
+      return [...current, teamId];
+    });
+  };
+  const savePlayerTeams = async () => {
+    if (!selectedPlayer || !canAssignPlayers) return;
+    setSavingPlayer(true); setPlayerMessage("");
+    if (databaseMembership) {
+      const { error } = await supabase.rpc("set_managed_player_teams", {
+        target_club: currentUser.clubId,
+        target_membership: selectedPlayer.id,
+        target_team_ids: playerTeamIds,
+      });
+      if (error) { setPlayerMessage("Die Mannschaftszuordnung konnte nicht gespeichert werden."); setSavingPlayer(false); return; }
+    }
+    const assignedNames = teams.filter((team) => playerTeamIds.includes(team.id)).map((team) => team.name);
+    setMembers((items) => items.map((member) => member.id === selectedPlayer.id ? {
+      ...member,
+      playerTeams: assignedNames,
+      team: assignedNames[0] || "Mitglied",
+      teams: [...new Set([...assignedNames, ...(member.trainerTeams || []), member.managedTeam].filter(Boolean))],
+    } : member));
+    setSavedPlayerTeamIds(playerTeamIds);
+    setPlayerMessage("Mannschaftszuordnung gespeichert.");
+    setSavingPlayer(false);
+  };
   const createTeam = async (event) => {
     event.preventDefault();
     if (!name.trim()) { setMessage("Bitte einen Mannschaftsnamen eingeben."); return; }
@@ -1794,7 +1811,6 @@ function TeamsView({ currentUser, members, setMembers, currentClub }) {
       await loadTeams();
     } else {
       setTeams((current) => [...current, { id: createdId, name: name.trim(), category: category.trim() || "Mannschaft" }].sort((a, b) => a.name.localeCompare(b.name, "de")));
-      if (currentUser.roles.includes("trainer")) setMembers((items) => items.map((member) => member.id === currentUser.id ? { ...member, trainerTeams: [...new Set([...(member.trainerTeams || []), name.trim()])] } : member));
     }
     setName(""); setCategory(""); setShowCreate(false); setSelectedTeamId(createdId); setMessage("Mannschaft wurde angelegt."); setSaving(false);
   };
@@ -1808,8 +1824,8 @@ function TeamsView({ currentUser, members, setMembers, currentClub }) {
     <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>Alle Mannschaften von {currentClub?.shortName}. Öffne ein Team, um den Spielerkader anzusehen.</div>
     {showCreate && <form onSubmit={createTeam} className="rounded-2xl p-4 mb-5" style={{ background: C.white, border: `1px solid ${C.line}` }}><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Neue Mannschaft anlegen</div><div className="text-[11px] mb-3" style={{ color: C.textDim }}>Danach können Spieler/innen das Team in ihrem Profil auswählen.</div><input value={name} onChange={(event) => setName(event.target.value)} maxLength={80} placeholder="Mannschaftsname, z. B. U17" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}/><input value={category} onChange={(event) => setCategory(event.target.value)} maxLength={80} placeholder="Kategorie, z. B. Jugend oder Herren" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}/><button disabled={saving || !name.trim()} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: name.trim() ? C.red : C.line, color: C.white }}>{saving ? "Wird angelegt …" : "Mannschaft anlegen"}</button></form>}
     {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: message.includes("angelegt") ? "#E7F3EC" : "#FDECEC", color: message.includes("angelegt") ? C.green : C.red }}>{message}</div>}
-    {selectedTeam ? <div><button onClick={() => setSelectedTeamId("")} className="flex items-center gap-1 text-xs font-bold mb-3" style={{ color: C.red }}><ArrowLeft size={14}/> Alle Teams</button><div className="rounded-2xl p-4 mb-4" style={{ background: C.ink, color: C.white }}><div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: "#B7B6BC" }}>{selectedTeam.category || "Mannschaft"}</div><div className="text-xl font-bold" style={{ fontFamily: "Oswald" }}>{selectedTeam.name}</div><div className="text-xs mt-1" style={{ color: "#B7B6BC" }}>{rosterFor(selectedTeam).length} verknüpfte Spieler/innen</div></div><SectionTitle eyebrow="Kader" title="Spieler/innen"/>{rosterFor(selectedTeam).length ? <div className="space-y-2">{rosterFor(selectedTeam).map((player) => <button key={player.id} onClick={() => setSelectedPlayerId(player.id)} className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left" style={{ background: C.white, border: `1px solid ${C.line}` }}><div className="w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: player.color, color: C.white }}>{initialsOf(player.name)}</div><div className="flex-1"><div className="text-xs font-bold" style={{ color: C.ink }}>{player.name}</div><div className="text-[10px]" style={{ color: C.textDim }}>{memberPlayerTeams(player).join(" · ")}</div></div><ChevronRight size={14} style={{ color: C.textDim }}/></button>)}</div> : <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>Dieser Mannschaft sind noch keine Spieler/innen zugeordnet.</div>}</div> : loading ? <div className="text-xs py-4" style={{ color: C.textDim }}>Mannschaften werden geladen …</div> : <><SectionTitle eyebrow="Persönlich" title="Meine Teams"/><div className="space-y-2 mb-6">{ownTeams.length ? ownTeams.map((team) => <TeamCard key={team.id} team={team}/>) : <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>Du bist noch keiner Mannschaft als Spieler/in zugeordnet. Spieler/innen können im Profil bis zu drei Teams auswählen.</div>}</div><SectionTitle eyebrow="Vereinsübersicht" title="Alle Mannschaften"/><div className="space-y-2">{teams.map((team) => <TeamCard key={team.id} team={team}/>)}{teams.length === 0 && <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>Noch keine Mannschaften angelegt.</div>}</div></>}
-    {selectedPlayer && <div className="absolute inset-0 z-50 flex items-end p-3" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setSelectedPlayerId("")}><div role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()} className="w-full rounded-3xl p-5" style={{ background: C.white }}><div className="flex items-start justify-between mb-4"><div className="flex items-center gap-3"><div className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold" style={{ background: selectedPlayer.color, color: C.white }}>{initialsOf(selectedPlayer.name)}</div><div><div className="text-lg font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{selectedPlayer.name}</div><div className="text-xs" style={{ color: C.textDim }}>Spieler/in · dabei seit {selectedPlayer.since}</div></div></div><button onClick={() => setSelectedPlayerId("")} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><X size={15}/></button></div><div className="text-[10px] uppercase tracking-widest font-bold mb-2" style={{ color: C.textDim }}>Mannschaften</div><div className="flex flex-wrap gap-2">{memberPlayerTeams(selectedPlayer).map((team) => <span key={team} className="px-3 py-1.5 rounded-full text-xs font-bold" style={{ background: "#E7F3EC", color: C.green }}>{team}</span>)}</div></div></div>}
+    {selectedTeam ? <div><button onClick={() => { setSelectedTeamId(""); setShowPlayerPicker(false); }} className="flex items-center gap-1 text-xs font-bold mb-3" style={{ color: C.red }}><ArrowLeft size={14}/> Alle Teams</button><div className="rounded-2xl p-4 mb-4" style={{ background: C.ink, color: C.white }}><div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: "#B7B6BC" }}>{selectedTeam.category || "Mannschaft"}</div><div className="text-xl font-bold" style={{ fontFamily: "Oswald" }}>{selectedTeam.name}</div><div className="text-xs mt-1" style={{ color: "#B7B6BC" }}>{rosterFor(selectedTeam).length} verknüpfte Spieler/innen</div></div><SectionTitle eyebrow="Kader" title="Spieler/innen" right={canAssignPlayers ? <button onClick={() => setShowPlayerPicker((value) => !value)} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showPlayerPicker ? "Schließen" : "+ Zuweisen"}</button> : null}/>{showPlayerPicker && <div className="rounded-2xl p-3 mb-4" style={{ background: C.paperDim }}><div className="text-[11px] mb-2" style={{ color: C.textDim }}>Spieler auswählen und anschließend seine Mannschaften festlegen.</div><div className="space-y-1.5 max-h-56 overflow-y-auto">{players.map((player) => <button key={player.id} onClick={() => openPlayer(player)} className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-left" style={{ background: C.white }}><div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold" style={{ background: player.color, color: C.white }}>{initialsOf(player.name)}</div><div className="flex-1"><div className="text-xs font-bold" style={{ color: C.ink }}>{player.name}</div><div className="text-[9px]" style={{ color: C.textDim }}>{memberPlayerTeams(player).join(" · ") || "Noch ohne Mannschaft"}</div></div><ChevronRight size={13} style={{ color: C.textDim }}/></button>)}</div></div>}{rosterFor(selectedTeam).length ? <div className="space-y-2">{rosterFor(selectedTeam).map((player) => <button key={player.id} onClick={() => openPlayer(player)} className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left" style={{ background: C.white, border: `1px solid ${C.line}` }}><div className="w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: player.color, color: C.white }}>{initialsOf(player.name)}</div><div className="flex-1"><div className="text-xs font-bold" style={{ color: C.ink }}>{player.name}</div><div className="text-[10px]" style={{ color: C.textDim }}>{memberPlayerTeams(player).join(" · ")}</div></div><ChevronRight size={14} style={{ color: C.textDim }}/></button>)}</div> : <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>Dieser Mannschaft sind noch keine Spieler/innen zugeordnet.</div>}</div> : loading ? <div className="text-xs py-4" style={{ color: C.textDim }}>Mannschaften werden geladen …</div> : <><SectionTitle eyebrow="Persönlich" title="Meine Teams"/><div className="space-y-2 mb-6">{ownTeams.length ? ownTeams.map((team) => <TeamCard key={team.id} team={team}/>) : <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>Du bist noch keiner Mannschaft als Spieler/in zugeordnet. Spieler/innen können im Profil bis zu drei Teams auswählen.</div>}</div><SectionTitle eyebrow="Vereinsübersicht" title="Alle Mannschaften"/><div className="space-y-2">{teams.map((team) => <TeamCard key={team.id} team={team}/>)}{teams.length === 0 && <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>Noch keine Mannschaften angelegt.</div>}</div></>}
+    {selectedPlayer && <div className="absolute inset-0 z-50 flex items-end p-3" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setSelectedPlayerId("")}><div role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()} className="w-full rounded-3xl p-5 max-h-[82%] overflow-y-auto" style={{ background: C.white }}><div className="flex items-start justify-between mb-4"><div className="flex items-center gap-3"><div className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold" style={{ background: selectedPlayer.color, color: C.white }}>{initialsOf(selectedPlayer.name)}</div><div><div className="text-lg font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{selectedPlayer.name}</div><div className="text-xs" style={{ color: C.textDim }}>Spieler/in · dabei seit {selectedPlayer.since}</div></div></div><button onClick={() => setSelectedPlayerId("")} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><X size={15}/></button></div><div className="flex items-center justify-between mb-2"><div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.textDim }}>Mannschaften</div>{canAssignPlayers && <span className="text-[10px] font-bold" style={{ color: playerTeamIds.length === 3 ? C.red : C.textDim }}>{playerTeamIds.length}/3</span>}</div>{canAssignPlayers ? <div className="space-y-2">{teams.map((team) => { const active = playerTeamIds.includes(team.id); return <button key={team.id} onClick={() => togglePlayerTeam(team.id)} className="w-full flex items-center justify-between rounded-xl px-3 py-2.5 text-left" style={{ background: active ? "#E7F3EC" : C.paperDim, border: active ? `1px solid ${C.green}` : "1px solid transparent" }}><div><div className="text-xs font-bold" style={{ color: C.ink }}>{team.name}</div><div className="text-[9px]" style={{ color: C.textDim }}>{team.category || "Mannschaft"}</div></div><span className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: active ? C.green : C.white, color: C.white }}>{active && <Check size={13}/>}</span></button>; })}<button onClick={savePlayerTeams} disabled={savingPlayer || JSON.stringify([...playerTeamIds].sort()) === JSON.stringify([...savedPlayerTeamIds].sort())} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: JSON.stringify([...playerTeamIds].sort()) !== JSON.stringify([...savedPlayerTeamIds].sort()) ? C.ink : C.paperDim, color: JSON.stringify([...playerTeamIds].sort()) !== JSON.stringify([...savedPlayerTeamIds].sort()) ? C.white : C.textDim, opacity: savingPlayer ? .6 : 1 }}>{savingPlayer ? "Wird gespeichert …" : "Zuordnung speichern"}</button>{playerMessage && <div role="status" className="text-[11px]" style={{ color: playerMessage.includes("gespeichert") ? C.green : C.red }}>{playerMessage}</div>}</div> : <div className="flex flex-wrap gap-2">{memberPlayerTeams(selectedPlayer).length ? memberPlayerTeams(selectedPlayer).map((team) => <span key={team} className="px-3 py-1.5 rounded-full text-xs font-bold" style={{ background: "#E7F3EC", color: C.green }}>{team}</span>) : <span className="text-xs" style={{ color: C.textDim }}>Noch keiner Mannschaft zugeordnet.</span>}</div>}</div></div>}
   </div>;
 }
 
