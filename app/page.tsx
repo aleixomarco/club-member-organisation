@@ -228,8 +228,8 @@ function getNextMatch() {
 
 /* Sponsor-Slots: reservierte, buchbare Werbeflächen zwischen den Layout-Bereichen */
 const SPONSOR_SLOT_DEFS = [
-  { key: "dashboard_top", label: "Dashboard oben" },
-  { key: "dashboard_bottom", label: "Dashboard – nach Vereins-News" },
+  { key: "dashboard_top", label: "Sponsor 1 · Anzeige oben" },
+  { key: "dashboard_bottom", label: "Sponsor 2 · Anzeige nach Vereins-News" },
   { key: "events_header", label: "Termine – Kopfbereich" },
   { key: "profile_bottom", label: "Profil unten" },
 ];
@@ -2071,7 +2071,7 @@ function SponsoringPanel({ bookings, setBookings, stats }) {
   };
   return (
     <div className="space-y-3">
-      <div className="text-xs mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>Erstelle Anzeigen mit Titel, Text, Bild und optionaler Landingpage. Leere Slots bleiben für Mitglieder unsichtbar.</div>
+      <div className="text-xs mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>Sponsor 1 und Sponsor 2 sind zwei unabhängige Anzeigen im gleichen Design. Für beide können Titel, Text, Bild und eine optionale Landingpage separat hinterlegt werden. Leere Anzeigen bleiben für Mitglieder unsichtbar.</div>
       {SPONSOR_SLOT_DEFS.map((slot) => {
         const s = stats[slot.key] || { impressions: 0, clicks: 0 };
         const ctr = s.impressions ? ((s.clicks / s.impressions) * 100).toFixed(1) : "0.0";
