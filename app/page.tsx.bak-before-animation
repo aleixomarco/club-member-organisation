@@ -2400,7 +2400,6 @@ function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, 
       </div>
 
       <SectionTitle eyebrow="Verwalten" title="Einstellungen" />
-      <div key={profileFolder || "root"} className="profileFolderFade">
       {!profileFolder ? (
         <div className="space-y-2 mb-6">
           <ProfileSettingsCard icon={User} title="Persönliche Daten" description="Stammdaten, Kontakte, Familie" color={C.green} onClick={() => setProfileFolder("personal")}/>
@@ -2444,15 +2443,6 @@ function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, 
           </div>
         </div>
       )}
-      </div>
-      <style jsx>{`
-        .profileFolderFade { animation: profileFolderFadeIn 0.28s ease; }
-        @keyframes profileFolderFadeIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
-
       <div className="rounded-2xl p-4 mb-5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2 text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}><Sparkles size={15} style={{ color: C.amber }} /> Vereinspunkte</div>
