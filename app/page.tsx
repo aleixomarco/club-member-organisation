@@ -1644,6 +1644,137 @@ function TrainerTeamSettings({ user, members, setMembers }) {
   </div>;
 }
 
+function TeamPenaltyCatalog({ user }) {
+  const [teams, setTeams] = useState([]);
+  const [selectedTeamId, setSelectedTeamId] = useState("");
+  const [rules, setRules] = useState([]);
+  const [localRules, setLocalRules] = useState([]);
+  const [title, setTitle] = useState("");
+  const [amount, setAmount] = useState("");
+  const [editingId, setEditingId] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  const databaseMembership = !!supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(user.id));
+  const canManageSelectedTeam = !!teams.find((team) => team.id === selectedTeamId)?.canManage;
+
+  useEffect(() => {
+    const loadTeams = async () => {
+      setLoading(true); setMessage("");
+      if (!databaseMembership) {
+        const names = [...new Set([
+          ...(user.trainerTeams || []),
+          user.managedTeam,
+          user.team,
+        ].filter(Boolean))];
+        const localTeams = names.map((name) => ({
+          id: name,
+          name,
+          canManage: (user.roles.includes("trainer") && (user.trainerTeams || [user.team]).includes(name))
+            || (user.roles.includes("teammanager") && user.managedTeam === name)
+            || (user.roles.includes("kapitaen") && user.team === name),
+        }));
+        setTeams(localTeams);
+        setSelectedTeamId((current) => current || localTeams[0]?.id || "");
+        setLoading(false);
+        return;
+      }
+      const { data, error } = await supabase.from("team_members")
+        .select("team_id,function,teams(id,name)")
+        .eq("membership_id", user.id)
+        .in("function", ["spieler", "trainer", "teammanager", "kapitaen"]);
+      if (error) { setMessage("Die Mannschaften konnten nicht geladen werden."); setLoading(false); return; }
+      const byId = new Map();
+      (data || []).forEach((entry) => {
+        const team = Array.isArray(entry.teams) ? entry.teams[0] : entry.teams;
+        if (team) byId.set(team.id, { ...team, canManage: byId.get(team.id)?.canManage || ["trainer", "teammanager", "kapitaen"].includes(entry.function) });
+      });
+      const assigned = [...byId.values()].sort((a, b) => a.name.localeCompare(b.name, "de"));
+      setTeams(assigned);
+      setSelectedTeamId((current) => current || assigned[0]?.id || "");
+      setLoading(false);
+    };
+    loadTeams();
+  }, [user.id, databaseMembership]);
+
+  useEffect(() => {
+    if (!selectedTeamId) { setRules([]); return; }
+    const loadRules = async () => {
+      setMessage("");
+      if (!databaseMembership) {
+        setRules(localRules.filter((rule) => rule.teamId === selectedTeamId));
+        return;
+      }
+      const { data, error } = await supabase.from("team_penalty_rules")
+        .select("id,team_id,title,amount,created_at")
+        .eq("team_id", selectedTeamId)
+        .order("title", { ascending: true });
+      if (error) { setMessage("Der Strafenkatalog konnte nicht geladen werden."); return; }
+      setRules((data || []).map((rule) => ({ ...rule, teamId: rule.team_id, amount: Number(rule.amount) })));
+    };
+    loadRules();
+  }, [selectedTeamId, databaseMembership, localRules]);
+
+  const addRule = async (event) => {
+    event.preventDefault();
+    const normalizedAmount = Number(amount.replace(",", "."));
+    if (!title.trim() || !Number.isFinite(normalizedAmount) || normalizedAmount < 0) {
+      setMessage("Bitte einen Titel und einen gültigen Betrag eingeben."); return;
+    }
+    if (!canManageSelectedTeam) { setMessage("Für diese Mannschaft darfst du den Katalog nur ansehen."); return; }
+    setSaving(true); setMessage("");
+    let created = { id: editingId || `penalty-${Date.now()}`, teamId: selectedTeamId, title: title.trim(), amount: normalizedAmount };
+    if (databaseMembership) {
+      const request = editingId
+        ? supabase.from("team_penalty_rules").update({ title: title.trim(), amount: normalizedAmount, updated_at: new Date().toISOString() }).eq("id", editingId)
+        : supabase.from("team_penalty_rules").insert({ team_id: selectedTeamId, title: title.trim(), amount: normalizedAmount });
+      const { data, error } = await request
+        .select("id,team_id,title,amount,created_at").single();
+      if (error) { setMessage("Die Regel konnte nicht gespeichert werden."); setSaving(false); return; }
+      created = { ...data, teamId: data.team_id, amount: Number(data.amount) };
+    }
+    const replaceOrAdd = (current) => [...current.filter((rule) => rule.id !== created.id), created].sort((a, b) => a.title.localeCompare(b.title, "de"));
+    if (!databaseMembership) setLocalRules(replaceOrAdd);
+    setRules(replaceOrAdd);
+    setTitle(""); setAmount(""); setEditingId(""); setMessage("Regel wurde gespeichert."); setSaving(false);
+  };
+
+  const editRule = (rule) => {
+    setEditingId(rule.id);
+    setTitle(rule.title);
+    setAmount(rule.amount.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+    setMessage("");
+  };
+
+  const removeRule = async (rule) => {
+    if (!window.confirm(`Regel „${rule.title}“ wirklich löschen?`)) return;
+    if (!canManageSelectedTeam) return;
+    setSaving(true); setMessage("");
+    if (databaseMembership) {
+      const { error } = await supabase.from("team_penalty_rules").delete().eq("id", rule.id);
+      if (error) { setMessage("Die Regel konnte nicht gelöscht werden."); setSaving(false); return; }
+    }
+    if (!databaseMembership) setLocalRules((current) => current.filter((item) => item.id !== rule.id));
+    setRules((current) => current.filter((item) => item.id !== rule.id));
+    setMessage("Regel wurde gelöscht."); setSaving(false);
+  };
+
+  return <div className="rounded-2xl p-4 mb-5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+    <div className="flex items-center gap-2 mb-1 text-sm font-bold" style={{ color: C.ink }}><ClipboardList size={16} style={{ color: C.red }}/> Strafenkatalog</div>
+    <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Regeln und Kosten werden für jede Mannschaft getrennt geführt.</div>
+    {loading ? <div className="text-xs py-3" style={{ color: C.textDim }}>Mannschaften werden geladen …</div> : teams.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Deinem Profil ist noch keine Mannschaft zugeordnet.</div> : <>
+      <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>MANNSCHAFT</div>
+      <select value={selectedTeamId} onChange={(event) => { setSelectedTeamId(event.target.value); setMessage(""); }} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-3" style={{ background: C.paperDim, color: C.ink }}>{teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select>
+      <div className="space-y-2 mb-3">
+        {rules.map((rule) => <div key={rule.id} className="flex items-center gap-2 px-3 py-2.5 rounded-xl" style={{ background: C.paperDim }}><div className="flex-1 min-w-0"><div className="text-xs font-bold truncate" style={{ color: C.ink }}>{rule.title}</div></div><div className="text-xs font-bold whitespace-nowrap" style={{ color: C.red, fontFamily: "JetBrains Mono" }}>{rule.amount.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</div>{canManageSelectedTeam && <><button type="button" disabled={saving} onClick={() => editRule(rule)} className="px-2 py-1.5 rounded-lg text-[10px] font-bold" style={{ background: C.white, color: C.ink }}>Ändern</button><button type="button" disabled={saving} onClick={() => removeRule(rule)} aria-label={`${rule.title} löschen`} className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: C.white, color: C.red }}><X size={14}/></button></>}</div>)}
+        {rules.length === 0 && <div className="text-[11px] rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Für diese Mannschaft sind noch keine Regeln hinterlegt.</div>}
+      </div>
+      {canManageSelectedTeam && <form onSubmit={addRule} className="pt-3" style={{ borderTop: `1px solid ${C.line}` }}><div className="flex items-center justify-between mb-2"><div className="text-[10px] font-bold" style={{ color: C.textDim }}>{editingId ? "REGEL BEARBEITEN" : "NEUE REGEL"}</div>{editingId && <button type="button" onClick={() => { setEditingId(""); setTitle(""); setAmount(""); }} className="text-[10px] font-bold" style={{ color: C.red }}>Abbrechen</button>}</div><input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={120} placeholder="Titel, z. B. Zuspätkommen" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim, color: C.ink }}/><div className="flex gap-2"><div className="relative flex-1"><input value={amount} onChange={(event) => setAmount(event.target.value)} inputMode="decimal" placeholder="Kosten" className="w-full px-3 pr-8 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}/><span className="absolute right-3 top-2.5 text-xs" style={{ color: C.textDim }}>€</span></div><button type="submit" disabled={saving || !title.trim() || !amount.trim()} className="px-4 rounded-xl text-xs font-bold" style={{ background: title.trim() && amount.trim() ? C.ink : C.line, color: C.white }}>{saving ? "…" : editingId ? "Speichern" : "Hinzufügen"}</button></div></form>}
+    </>}
+    {message && <div role="status" className="text-[11px] mt-2" style={{ color: message.includes("gespeichert") || message.includes("gelöscht") ? C.green : C.red }}>{message}</div>}
+  </div>;
+}
+
 function PlayerDataCard({ user, setMembers }) {
   const [editing, setEditing] = useState(false);
   const [number, setNumber] = useState(user.number ?? "");
@@ -1803,6 +1934,7 @@ function ProfileView({ user, members, setMembers, sponsorBookings, onSponsorImpr
 
       {user.roles.includes("spieler") && <PlayerDataCard user={user} setMembers={setMembers} />}
       {user.roles.includes("trainer") && <TrainerTeamSettings user={user} members={members} setMembers={setMembers} />}
+      {user.roles.some((role) => ["spieler", "trainer", "teammanager", "kapitaen"].includes(role)) && <TeamPenaltyCatalog user={user} />}
 
       <div className="rounded-2xl p-4 mb-5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
         <div className="flex items-center justify-between mb-2">
