@@ -1110,14 +1110,54 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
 function FeesView({ members, records, setRecords }) {
   const [selectedMemberId, setSelectedMemberId] = useState(null);
   const [form, setForm] = useState({ year: "2026", type: "Mitgliedsbeitrag", amount: "", paid: "offen", invoiceNumber: "", linkedMemberIds: [], manualNames: "", personCount: "1" });
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
   const selectedMember = members.find((member) => member.id === selectedMemberId);
   const memberRecords = records.filter((record) => record.memberId === selectedMemberId);
-  const addRecord = (event) => {
+  const addRecord = async (event) => {
     event.preventDefault();
     if (!selectedMemberId || !form.year || !form.type.trim() || !form.amount.trim()) return;
     const manualNames = form.type === "Familienbeitrag" ? form.manualNames.split(",").map((name) => name.trim()).filter(Boolean) : [];
-    setRecords((all) => [{ id: `fee-${Date.now()}`, memberId: selectedMemberId, year: form.year, type: form.type, amount: form.amount.trim(), paid: form.paid === "bezahlt", invoiceNumber: form.invoiceNumber.trim(), linkedMemberIds: form.type === "Familienbeitrag" ? form.linkedMemberIds : [], manualNames, personCount: form.type === "Familienbeitrag" ? Math.max(1, Number(form.personCount) || 1) : 1 }, ...all]);
+    const databaseMembership = !!supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(selectedMemberId));
+    const amountNumber = Number(form.amount.replace(",", "."));
+    if (!Number.isFinite(amountNumber) || amountNumber < 0) { setMessage("Bitte eine gültige Beitragshöhe eingeben."); return; }
+    setSaving(true); setMessage("");
+    let id = `fee-${Date.now()}`;
+    if (databaseMembership) {
+      const { data, error } = await supabase.rpc("save_fee_record", {
+        target_club: selectedMember.clubId,
+        target_membership: selectedMemberId,
+        fee_year: Number(form.year),
+        fee_kind: form.type,
+        fee_amount: amountNumber,
+        fee_status: form.paid,
+        fee_invoice_number: form.invoiceNumber.trim() || null,
+        fee_person_count: form.type === "Familienbeitrag" ? Math.max(1, Number(form.personCount) || 1) : 1,
+        linked_memberships: form.type === "Familienbeitrag" ? form.linkedMemberIds : [],
+        manual_people: manualNames,
+      });
+      if (error) { setMessage(error.message.includes("invoice") ? "Diese Rechnungsnummer ist bereits vergeben." : "Der Beitrag konnte nicht gespeichert werden."); setSaving(false); return; }
+      id = data;
+    }
+    setRecords((all) => [{ id, memberId: selectedMemberId, year: form.year, type: form.type, amount: amountNumber.toFixed(2).replace(".", ","), paid: form.paid === "bezahlt", invoiceNumber: form.invoiceNumber.trim(), linkedMemberIds: form.type === "Familienbeitrag" ? form.linkedMemberIds : [], manualNames, personCount: form.type === "Familienbeitrag" ? Math.max(1, Number(form.personCount) || 1) : 1 }, ...all]);
     setForm((current) => ({ ...current, amount: "", invoiceNumber: "", linkedMemberIds: [], manualNames: "", personCount: current.type === "Familienbeitrag" ? "2" : "1" }));
+    setSaving(false); setMessage("Beitragsdatensatz wurde gespeichert.");
+  };
+  const togglePaid = async (record) => {
+    const nextPaid = !record.paid;
+    if (supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(record.id))) {
+      const { error } = await supabase.rpc("set_fee_payment_status", { target_fee: record.id, new_status: nextPaid ? "bezahlt" : "offen" });
+      if (error) { setMessage("Der Zahlungsstatus konnte nicht gespeichert werden."); return; }
+    }
+    setRecords((all) => all.map((item) => item.id === record.id ? { ...item, paid: nextPaid } : item));
+  };
+  const deleteRecord = async (record) => {
+    if (!window.confirm(`Beitragsdatensatz ${record.invoiceNumber || record.year} wirklich löschen?`)) return;
+    if (supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(record.id))) {
+      const { error } = await supabase.rpc("delete_fee_record", { target_fee: record.id });
+      if (error) { setMessage("Der Beitragsdatensatz konnte nicht gelöscht werden."); return; }
+    }
+    setRecords((all) => all.filter((item) => item.id !== record.id));
   };
   const toggleFamilyMember = (memberId) => setForm((current) => ({ ...current, linkedMemberIds: current.linkedMemberIds.includes(memberId) ? current.linkedMemberIds.filter((id) => id !== memberId) : [...current.linkedMemberIds, memberId] }));
 
@@ -1169,12 +1209,13 @@ function FeesView({ members, records, setRecords }) {
                 )}
               </div>
             )}
-            <button onClick={() => setRecords((all) => all.map((item) => item.id === record.id ? { ...item, paid: !item.paid } : item))} className="mt-2 px-2.5 py-1 rounded-full text-[11px]" style={{ background: record.paid ? "#E7F3EC" : "#FCEBEE", color: record.paid ? C.green : C.red, fontWeight: 700 }}>{record.paid ? "Bezahlt ✓" : "Noch nicht bezahlt"}</button>
+            <div className="mt-2 flex items-center gap-2"><button onClick={() => togglePaid(record)} className="px-2.5 py-1 rounded-full text-[11px]" style={{ background: record.paid ? "#E7F3EC" : "#FCEBEE", color: record.paid ? C.green : C.red, fontWeight: 700 }}>{record.paid ? "Bezahlt ✓" : "Noch nicht bezahlt"}</button><button onClick={() => deleteRecord(record)} className="px-2.5 py-1 rounded-full text-[11px]" style={{ background:C.paperDim,color:C.textDim,fontWeight:700 }}>Löschen</button></div>
           </div>
         ))}
         {memberRecords.length === 0 && <div className="rounded-2xl p-4 text-xs text-center" style={{ background: C.paperDim, color: C.textDim }}>Noch keine Beitragsdatensätze vorhanden.</div>}
       </div>
       <SectionTitle eyebrow="Neuer Datensatz" title="Beitrag hinterlegen" />
+      {message&&<div className="mb-3 rounded-xl px-3 py-2 text-[11px] font-semibold" style={{background:message.includes("gespeichert")?"#E7F3EC":"#FCEBEE",color:message.includes("gespeichert")?C.green:C.red}}>{message}</div>}
       <form onSubmit={addRecord} className="rounded-2xl p-4 space-y-3" style={{ background: C.white, border: `1px solid ${C.line}` }}>
         <div className="grid grid-cols-2 gap-2">
           <input value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} placeholder="Jahr" inputMode="numeric" className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }} />
@@ -1211,7 +1252,7 @@ function FeesView({ members, records, setRecords }) {
         )}
         <input value={form.invoiceNumber} onChange={(e) => setForm({ ...form, invoiceNumber: e.target.value })} placeholder="Rechnungsnummer (optional)" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }} />
         <select value={form.paid} onChange={(e) => setForm({ ...form, paid: e.target.value })} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}><option value="offen">Noch nicht bezahlt</option><option value="bezahlt">Bezahlt</option></select>
-        <button type="submit" className="w-full py-2.5 rounded-xl text-xs" style={{ background: C.ink, color: C.white, fontWeight: 700 }}>Datensatz anlegen</button>
+        <button disabled={saving} type="submit" className="w-full py-2.5 rounded-xl text-xs" style={{ background: saving ? C.textDim : C.ink, color: C.white, fontWeight: 700 }}>{saving ? "Wird gespeichert …" : "Datensatz anlegen"}</button>
       </form>
     </div>
   );
@@ -2676,6 +2717,13 @@ export default function ClubMemberOrganisationApp() {
   const [polls, setPolls] = useState(INITIAL_POLLS);
 
   useEffect(() => {
+    setFeePaid(Object.fromEntries(members.map((member) => {
+      const entries = feeRecords.filter((record) => record.memberId === member.id);
+      return [member.id, entries.length > 0 && entries.every((record) => record.paid)];
+    })));
+  }, [feeRecords, members]);
+
+  useEffect(() => {
     if (!supabase) return;
     supabase.from("clubs").select("id,name,short_name,city,founded_year,logo_url").order("name").then(({ data }) => {
       if (data?.length) setClubs(data.map((club) => ({
@@ -2740,6 +2788,29 @@ export default function ClubMemberOrganisationApp() {
     const hydratedRoster = hydrateFamilyLinks(roster, familyData || []);
     const member = hydratedRoster.find((item) => item.id === data.id);
     if (!member) return { error: "Das Vereinsprofil konnte nicht geladen werden." };
+    if (canManageFees(member)) {
+      const { data: feesData, error: feesError } = await supabase.from("fee_records")
+        .select("id,membership_id,year,type,amount,payment_status,invoice_number,person_count,fee_people(membership_id,manual_name)")
+        .eq("club_id", clubId).order("year", { ascending: false }).order("created_at", { ascending: false });
+      if (feesError) return { error: "Die Beitragsverwaltung konnte nicht geladen werden." };
+      const loadedFees = (feesData || []).map((record) => ({
+        id: record.id,
+        memberId: record.membership_id,
+        year: String(record.year),
+        type: record.type,
+        amount: Number(record.amount).toFixed(2).replace(".", ","),
+        paid: record.payment_status === "bezahlt",
+        invoiceNumber: record.invoice_number || "",
+        personCount: record.person_count || 1,
+        linkedMemberIds: (record.fee_people || []).map((person) => person.membership_id).filter(Boolean),
+        manualNames: (record.fee_people || []).map((person) => person.manual_name).filter(Boolean),
+      }));
+      setFeeRecords(loadedFees);
+      setFeePaid(Object.fromEntries(hydratedRoster.map((rosterMember) => {
+        const entries = loadedFees.filter((fee) => fee.memberId === rosterMember.id);
+        return [rosterMember.id, entries.length > 0 && entries.every((fee) => fee.paid)];
+      })));
+    }
     enterApp(member, hydratedRoster);
     return { ok: true };
   };
