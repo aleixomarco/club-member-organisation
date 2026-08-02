@@ -7,7 +7,8 @@ import {
   Trophy, Flame, Cake, Megaphone, Euro, CheckCircle2, Circle, Car,
   Sparkles, Image as ImageIcon, ChevronDown, Star, Mail, Lock, LogOut,
   ShieldCheck, ArrowRight, ArrowLeft, AlertCircle, UserPlus, Eye, EyeOff,
-  Target, ClipboardList, Newspaper
+  Target, ClipboardList, Newspaper, Bell, KeyRound, Settings, RefreshCw,
+  Bug, Smartphone, Save, Plus, Building2, ExternalLink
 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
@@ -42,6 +43,13 @@ button:active { transform: scale(0.97); }
 const TEAMS = ["Herren 1", "Herren 2", "Damen 1", "U15", "U11", "Eltern / Angehörige"];
 const DEMO_CLUB_ID = "00000000-0000-4000-8000-000000000001";
 const STATION_CAP = 2;
+const COUNTRY_CODES = "AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS XK YE YT ZA ZM ZW".split(" ");
+const NOTIFICATION_OPTIONS = [
+  ["training_created", "Neues Training"], ["training_cancelled", "Trainingsabsage"],
+  ["game_created", "Neues Spiel"], ["game_changed", "Spieländerung"],
+  ["news", "Vereins-News"], ["chat", "Neue Chatnachrichten"],
+  ["membership", "Mitgliedschaft und Freigaben"], ["payments", "Zahlungen und Beiträge"],
+];
 
 /* ------------------------------------------------------------------ */
 /* Badge library                                                       */
@@ -538,9 +546,9 @@ function ClubSelectScreen({ clubs, onSelect, goNewClub }) {
         ))}
       </div>
 
-      {!isSupabaseConfigured && <button onClick={goNewClub} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm mb-6" style={{ background: C.ink, color: "#fff", fontFamily: "Inter", fontWeight: 700 }}>
+      <button onClick={goNewClub} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm mb-6" style={{ background: C.ink, color: "#fff", fontFamily: "Inter", fontWeight: 700 }}>
         <UserPlus size={15} /> Neuen Verein registrieren
-      </button>}
+      </button>
 
       <div className="mt-auto pt-2 text-center text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>
         Bereits registrierter Verein? Einfach oben auswählen.
@@ -550,19 +558,21 @@ function ClubSelectScreen({ clubs, onSelect, goNewClub }) {
 }
 
 function NewClubScreen({ onCreate, goBack }) {
-  const [form, setForm] = useState({ name: "", shortName: "", city: "" });
+  const [form, setForm] = useState({ name: "", shortName: "", city: "", registerNumber: "", currency: "EUR", referralCode: "", logoDataUrl: "" });
   const [error, setError] = useState("");
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
   const submit = (e) => {
     e.preventDefault();
-    if (!form.name.trim() || !form.shortName.trim()) { setError("Bitte Vereinsname und Kurzname angeben."); return; }
+    if (!form.name.trim() || !form.shortName.trim() || !form.registerNumber.trim()) { setError("Bitte Vereinsname, Kurzname und Vereinsregisternummer angeben."); return; }
     onCreate({
       id: form.name.trim().toLowerCase().replace(/[^a-z0-9äöüß]+/g, "-").replace(/^-+|-+$/g, "") + "-" + Date.now(),
       name: form.name.trim(),
       shortName: form.shortName.trim().toUpperCase(),
       city: form.city.trim() || "—",
       foundedYear: new Date().getFullYear(),
+      registerNumber: form.registerNumber.trim(), currency: form.currency, referralCode: form.referralCode.trim(),
+      logoDataUrl: form.logoDataUrl, pendingRegistration: true,
     });
   };
 
@@ -574,6 +584,10 @@ function NewClubScreen({ onCreate, goBack }) {
         <Field icon={Users} placeholder="Vereinsname, z. B. TuS Beispieldorf" value={form.name} onChange={set("name")} />
         <Field icon={ShieldCheck} placeholder="Kurzname, z. B. TUSB" value={form.shortName} onChange={set("shortName")} maxLength={6} />
         <Field icon={MapPin} placeholder="Stadt" value={form.city} onChange={set("city")} />
+        <Field icon={Building2} placeholder="Vereinsregisternummer" value={form.registerNumber} onChange={set("registerNumber")} />
+        <select value={form.currency} onChange={set("currency")} className="w-full px-3.5 py-3 rounded-xl text-sm mb-3 outline-none" style={{background:C.paperDim,color:C.ink}}><option value="EUR">Euro (€)</option><option value="CHF">Schweizer Franken (CHF)</option><option value="GBP">Britisches Pfund (£)</option><option value="USD">US-Dollar ($)</option><option value="DKK">Dänische Krone</option><option value="NOK">Norwegische Krone</option><option value="SEK">Schwedische Krone</option><option value="PLN">Polnischer Złoty</option><option value="CZK">Tschechische Krone</option></select>
+        <Field icon={Gift} placeholder="Empfehlungscode (optional)" value={form.referralCode} onChange={set("referralCode")} />
+        <label className="w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-xs mb-3 cursor-pointer" style={{background:C.paperDim,color:C.textDim}}><span>{form.logoDataUrl?"Vereinslogo ausgewählt":"Vereinslogo optional auswählen"}</span><ImageIcon size={16}/><input type="file" accept="image/*" className="hidden" onChange={(e)=>{const file=e.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>setForm((old)=>({...old,logoDataUrl:String(reader.result||"")}));reader.readAsDataURL(file);}}/></label>
         {error && <div className="flex items-center gap-1.5 text-xs mb-3" style={{ color: C.red, fontFamily: "Inter" }}><AlertCircle size={13} /> {error}</div>}
         <button type="submit" className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm" style={{ background: C.red, color: "#fff", fontFamily: "Inter", fontWeight: 700 }}>
           Verein anlegen <ArrowRight size={15} />
@@ -1044,23 +1058,29 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
   const userId = currentUser.id;
   const myCarpools = carpools[userId] || {};
   const isAdminUser = isAdmin(currentUser);
-  const canCreateSportEvent = isSysAdmin(currentUser) || currentUser.roles.includes("trainer") || currentUser.roles.includes("kapitaen");
-  const allowedEventTeams = isSysAdmin(currentUser) ? filterTeams : currentUser.roles.includes("trainer") ? (currentUser.trainerTeams?.length ? currentUser.trainerTeams : [currentUser.team]).filter((team) => filterTeams.includes(team)) : [currentUser.team].filter((team) => filterTeams.includes(team));
+  const canCreateSportEvent = isSysAdmin(currentUser) || currentUser.roles.some((role)=>["trainer","kapitaen","teammanager"].includes(role));
+  const allowedEventTeams = isSysAdmin(currentUser) ? filterTeams : currentUser.roles.includes("trainer") ? (currentUser.trainerTeams?.length ? currentUser.trainerTeams : [currentUser.team]).filter((team) => filterTeams.includes(team)) : currentUser.roles.includes("teammanager") ? [currentUser.managedTeam || currentUser.team].filter((team)=>filterTeams.includes(team)) : [currentUser.team].filter((team) => filterTeams.includes(team));
   const openCreate = () => {
     setEventDraft((draft) => ({ ...draft, team: allowedEventTeams[0] || "" }));
     setShowCreate(true);
   };
-  const createSportEvent = (event) => {
+  const createSportEvent = async (event) => {
     event.preventDefault();
     if (!eventDraft.team || !allowedEventTeams.includes(eventDraft.team) || !eventDraft.title.trim() || !eventDraft.date || !eventDraft.location.trim()) return;
-    const created = { id: Date.now(), type: eventDraft.type, team: eventDraft.team, title: eventDraft.title.trim(), date: eventDraft.date, location: eventDraft.location.trim(), desc: eventDraft.desc.trim(), carpool: false, home: true, ...(eventDraft.type === "training" ? { youthClassIds: [TEAM_TO_YOUTHCLASS[eventDraft.team]] } : {}) };
+    let eventId = Date.now();
+    if (supabase && currentUser.authProfileId) {
+      const { data: team } = await supabase.from("teams").select("id").eq("club_id",currentUser.clubId).eq("name",eventDraft.team).maybeSingle();
+      const { data: saved } = await supabase.from("events").insert({club_id:currentUser.clubId,team_id:team?.id||null,type:eventDraft.type,status:"scheduled",title:eventDraft.title.trim(),description:eventDraft.desc.trim()||null,starts_at:new Date(eventDraft.date).toISOString(),location:eventDraft.location.trim(),created_by:currentUser.authProfileId}).select("id").maybeSingle();
+      if (saved?.id) eventId=saved.id;
+    }
+    const created = { id: eventId, type: eventDraft.type, team: eventDraft.team, title: eventDraft.title.trim(), date: eventDraft.date, location: eventDraft.location.trim(), desc: eventDraft.desc.trim(), carpool: false, home: true, ...(eventDraft.type === "training" ? { youthClassIds: [TEAM_TO_YOUTHCLASS[eventDraft.team]] } : {}) };
     setEvents((all) => [...all, created].sort((a, b) => new Date(a.date) - new Date(b.date)));
     setFilter(eventDraft.type);
     setTeamFilter(eventDraft.team);
     setEventDraft({ type: "training", team: allowedEventTeams[0] || "", title: "", date: "", location: "", desc: "" });
     setShowCreate(false);
   };
-  const cancelTraining = (eventId) => setEvents((all) => all.map((item) => item.id === eventId ? { ...item, cancelled: true, cancelledBy: currentUser.id } : item));
+  const cancelTraining = async (eventId) => { if(supabase&&typeof eventId==="string") await supabase.from("events").update({status:"cancelled",cancelled_at:new Date().toISOString(),cancelled_by:currentUser.authProfileId||null}).eq("id",eventId); setEvents((all) => all.map((item) => item.id === eventId ? { ...item, cancelled: true, cancelledBy: currentUser.id } : item)); };
   const saveDefaultTeam = () => {
     try { window.localStorage.setItem(preferenceKey, teamFilter); } catch {}
     setSavedTeam(teamFilter);
@@ -1071,7 +1091,7 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
   return (
     <div className="px-4 pt-4 pb-24">
       <div className="flex items-start justify-between gap-3"><SectionTitle title="Termine" />{canCreateSportEvent&&<button onClick={openCreate} className="px-3 py-1.5 rounded-full text-xs flex-shrink-0" style={{background:C.red,color:C.white,fontWeight:700}}>＋ Eintragen</button>}</div>
-      {showCreate&&<form onSubmit={createSportEvent} className="rounded-2xl p-4 mb-4 space-y-2.5" style={{background:C.white,border:`1px solid ${C.line}`}}><div className="text-sm font-bold">Training oder Spiel eintragen</div><div className="text-[10px]" style={{color:C.textDim}}>{isSysAdmin(currentUser)?"Als Vereins-Sysadmin kannst du jede Mannschaft auswählen.":currentUser.roles.includes("trainer")?"Du kannst nur deine im Profil hinterlegten Mannschaften auswählen.":"Als Kapitän kannst du nur für deine Profilmannschaft eintragen."}</div><div className="grid grid-cols-2 gap-2"><select value={eventDraft.type} onChange={(e)=>setEventDraft({...eventDraft,type:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}><option value="training">Training</option><option value="spiel">Spiel</option></select><select value={eventDraft.team} onChange={(e)=>setEventDraft({...eventDraft,team:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}>{allowedEventTeams.map((team)=><option key={team} value={team}>{team}</option>)}</select></div><input value={eventDraft.title} onChange={(e)=>setEventDraft({...eventDraft,title:e.target.value})} placeholder={eventDraft.type==="training"?"Titel des Trainings":"Titel des Spiels"} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><input type="datetime-local" value={eventDraft.date} onChange={(e)=>setEventDraft({...eventDraft,date:e.target.value})} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><input value={eventDraft.location} onChange={(e)=>setEventDraft({...eventDraft,location:e.target.value})} placeholder="Ort" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><textarea value={eventDraft.desc} onChange={(e)=>setEventDraft({...eventDraft,desc:e.target.value})} placeholder="Beschreibung (optional)" rows={2} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none" style={{background:C.paperDim}}/><div className="flex gap-2"><button type="submit" className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{background:C.ink,color:C.white}}>Speichern</button><button type="button" onClick={()=>setShowCreate(false)} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{background:C.paperDim,color:C.textDim}}>Abbrechen</button></div></form>}
+      {showCreate&&<form onSubmit={createSportEvent} className="rounded-2xl p-4 mb-4 space-y-2.5" style={{background:C.white,border:`1px solid ${C.line}`}}><div className="text-sm font-bold">Training oder Spiel eintragen</div><div className="text-[10px]" style={{color:C.textDim}}>{isSysAdmin(currentUser)?"Als Vereins-Sysadmin kannst du jede Mannschaft auswählen.":currentUser.roles.includes("trainer")?"Du kannst nur deine im Profil hinterlegten Mannschaften auswählen.":"Als Kapitän oder Teammanager kannst du nur für deine hinterlegte Mannschaft eintragen."}</div><div className="grid grid-cols-2 gap-2"><select value={eventDraft.type} onChange={(e)=>setEventDraft({...eventDraft,type:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}><option value="training">Training</option><option value="spiel">Spiel</option></select><select value={eventDraft.team} onChange={(e)=>setEventDraft({...eventDraft,team:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}>{allowedEventTeams.map((team)=><option key={team} value={team}>{team}</option>)}</select></div><input value={eventDraft.title} onChange={(e)=>setEventDraft({...eventDraft,title:e.target.value})} placeholder={eventDraft.type==="training"?"Titel des Trainings":"Titel des Spiels"} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><input type="datetime-local" value={eventDraft.date} onChange={(e)=>setEventDraft({...eventDraft,date:e.target.value})} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><input value={eventDraft.location} onChange={(e)=>setEventDraft({...eventDraft,location:e.target.value})} placeholder="Ort" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><textarea value={eventDraft.desc} onChange={(e)=>setEventDraft({...eventDraft,desc:e.target.value})} placeholder="Beschreibung (optional)" rows={2} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none" style={{background:C.paperDim}}/><div className="flex gap-2"><button type="submit" className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{background:C.ink,color:C.white}}>Speichern</button><button type="button" onClick={()=>setShowCreate(false)} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{background:C.paperDim,color:C.textDim}}>Abbrechen</button></div></form>}
       <SponsorSlot slotKey="events_header" bookings={sponsorBookings} onImpression={onSponsorImpression} onClick={onSponsorClick} />
       <div className="flex gap-2 mb-4 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
         {[["alle", "Alle"], ["training", "Training"], ["spiel", "Spiele"], ["event", "Events"]].map(([k, l]) => (
@@ -2171,11 +2191,12 @@ function SubscriptionPanel({ user }) {
   </div>;
 }
 
-function ProfileUnderlay({ title, eyebrow = "Profileinstellungen", onClose, children }) {
+function ProfileUnderlay({ title, eyebrow = "Profileinstellungen", onClose, onSave, saving = false, saveDisabled = false, children }) {
   return <div className="absolute inset-0 z-40 flex flex-col" style={{ background: C.paper }}>
     <div className="flex items-center gap-3 px-4 py-3 flex-shrink-0" style={{ borderBottom: `1px solid ${C.line}`, background: C.paper }}>
       <button onClick={onClose} aria-label="Zurück zum Profil" className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: C.white, border: `1px solid ${C.line}` }}><ArrowLeft size={16}/></button>
-      <div><div className="text-[9px] uppercase tracking-widest font-bold" style={{ color: C.red }}>{eyebrow}</div><div className="text-base font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{title}</div></div>
+      <div className="flex-1 min-w-0"><div className="text-[9px] uppercase tracking-widest font-bold" style={{ color: C.red }}>{eyebrow}</div><div className="text-base font-bold truncate" style={{ fontFamily: "Oswald", color: C.ink }}>{title}</div></div>
+      {onSave && <button onClick={onSave} disabled={saving || saveDisabled} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold" style={{ background: C.red, color: C.white, opacity: saving || saveDisabled ? .45 : 1 }}><Save size={13}/>{saving ? "Speichert …" : "Speichern"}</button>}
     </div>
     <div className="flex-1 overflow-y-auto px-4 pt-4 pb-24">{children}</div>
   </div>;
@@ -2266,13 +2287,92 @@ function SysAdminUserManager({ members, setMembers }) {
   </div>;
 }
 
-function ProfileView({ user, members, setMembers, sponsorBookings, onSponsorImpression, onSponsorClick, onLogout }) {
+const inputStyle = { background: C.paperDim, color: C.ink };
+function ProfileDataSettings({ user, setMembers, saveRef }) {
+  const splitName = String(user.name || "").trim().split(/\s+/);
+  const [form, setForm] = useState({
+    membershipNumber: user.membershipNumber || "", academicTitle: user.academicTitle || "",
+    firstName: user.firstName || splitName[0] || "", lastName: user.lastName || splitName.slice(1).join(" "),
+    emails: user.contactEmails?.length ? user.contactEmails : [user.email || ""], phones: user.contactPhones?.length ? user.contactPhones : [user.phone || ""],
+    birthdate: user.birthdate || "", gender: user.gender || "keine_angabe", nationality: user.nationality || "",
+    street: user.street || "", postalCode: user.postalCode || "", city: user.city || "", countryCode: user.countryCode || "DE",
+  });
+  const [countryQuery, setCountryQuery] = useState("");
+  const [message, setMessage] = useState("");
+  const countryNames = React.useMemo(() => { const names = new Intl.DisplayNames(["de"], { type: "region" }); return COUNTRY_CODES.map((code) => ({ code, name: names.of(code) || code })).sort((a,b)=>a.name.localeCompare(b.name,"de")); }, []);
+  const matches = countryNames.filter((item) => !countryQuery || item.name.toLowerCase().includes(countryQuery.toLowerCase()) || item.code.toLowerCase().startsWith(countryQuery.toLowerCase())).slice(0, 12);
+  const save = async () => {
+    if (!form.firstName.trim() || !form.lastName.trim()) { setMessage("Bitte Vor- und Nachname ausfüllen."); return; }
+    const payload = { ...form, emails: form.emails.map((v)=>v.trim()).filter(Boolean), phones: form.phones.map((v)=>v.trim()).filter(Boolean) };
+    if (supabase && user.authProfileId) {
+      const { error } = await supabase.rpc("update_own_profile_settings", {
+        target_membership:user.id, new_academic_title:payload.academicTitle||null, new_first_name:payload.firstName,
+        new_last_name:payload.lastName, new_contact_emails:payload.emails, new_contact_phones:payload.phones,
+        new_birthdate:payload.birthdate||null, new_gender:payload.gender, new_nationality:payload.nationality||null,
+        new_street:payload.street||null, new_postal_code:payload.postalCode||null, new_city:payload.city||null,
+        new_country_code:payload.countryCode||null, new_membership_number:payload.membershipNumber||null,
+        new_notification_master:user.notificationMaster ?? true, new_notification_preferences:user.notificationPreferences || Object.fromEntries(NOTIFICATION_OPTIONS.map(([key])=>[key,true])),
+        new_auto_logout_days:user.autoLogoutDays || null, new_calendar_sync_interval:user.calendarSyncInterval || "never",
+      });
+      if (error) { setMessage(error.message.includes("club_memberships_club_id_membership_number_key") ? "Diese Mitgliederausweisnummer wird bereits verwendet." : "Die Daten konnten nicht gespeichert werden."); return; }
+    }
+    const name = `${payload.firstName} ${payload.lastName}`.trim();
+    setMembers((items)=>items.map((item)=>item.id===user.id?{...item,...payload,name,contactEmails:payload.emails,contactPhones:payload.phones}:item));
+    setMessage("Persönliche Daten gespeichert.");
+  };
+  saveRef.current = save;
+  const updateList = (key,index,value) => setForm((old)=>({...old,[key]:old[key].map((v,i)=>i===index?value:v)}));
+  const addList = (key) => setForm((old)=>({...old,[key]:[...old[key],""]}));
+  const section = (title, children) => <div className="rounded-2xl p-4 mb-4 space-y-2" style={{background:C.white,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-2">{title}</div>{children}</div>;
+  return <div>
+    {section("Persönliche Daten", <><input value={form.membershipNumber} onChange={(e)=>setForm({...form,membershipNumber:e.target.value})} placeholder="Mitgliederausweisnummer" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><input value={form.academicTitle} onChange={(e)=>setForm({...form,academicTitle:e.target.value})} placeholder="Akademischer Titel (optional)" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><div className="grid grid-cols-2 gap-2"><input value={form.firstName} onChange={(e)=>setForm({...form,firstName:e.target.value})} placeholder="Vorname" className="px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><input value={form.lastName} onChange={(e)=>setForm({...form,lastName:e.target.value})} placeholder="Nachname" className="px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/></div></>)}
+    {section("Kontaktdaten", <><div className="text-[10px] font-bold" style={{color:C.textDim}}>E-Mail-Adressen</div>{form.emails.map((value,index)=><div key={`e-${index}`} className="flex gap-2"><input type="email" value={value} onChange={(e)=>updateList("emails",index,e.target.value)} placeholder="E-Mail-Adresse" className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/>{index>0&&<button onClick={()=>setForm({...form,emails:form.emails.filter((_,i)=>i!==index)})}><X size={15}/></button>}</div>)}<button onClick={()=>addList("emails")} className="flex items-center gap-1 text-[11px] font-bold" style={{color:C.red}}><Plus size={13}/> Weitere E-Mail</button><div className="text-[10px] font-bold pt-2" style={{color:C.textDim}}>Telefonnummern</div>{form.phones.map((value,index)=><div key={`p-${index}`} className="flex gap-2"><input type="tel" value={value} onChange={(e)=>updateList("phones",index,e.target.value)} placeholder="Telefonnummer" className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/>{index>0&&<button onClick={()=>setForm({...form,phones:form.phones.filter((_,i)=>i!==index)})}><X size={15}/></button>}</div>)}<button onClick={()=>addList("phones")} className="flex items-center gap-1 text-[11px] font-bold" style={{color:C.red}}><Plus size={13}/> Weitere Telefonnummer</button></>)}
+    {section("Weitere Angaben", <><input type="date" value={form.birthdate} onChange={(e)=>setForm({...form,birthdate:e.target.value})} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><select value={form.gender} onChange={(e)=>setForm({...form,gender:e.target.value})} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}><option value="weiblich">Weiblich</option><option value="maennlich">Männlich</option><option value="divers">Divers</option><option value="keine_angabe">Keine Angabe</option></select><input value={form.nationality} onChange={(e)=>setForm({...form,nationality:e.target.value})} placeholder="Nationalität" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/></>)}
+    {section("Adresse", <><input value={form.street} onChange={(e)=>setForm({...form,street:e.target.value})} placeholder="Straße und Hausnummer" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><div className="grid grid-cols-2 gap-2"><input value={form.postalCode} onChange={(e)=>setForm({...form,postalCode:e.target.value})} placeholder="PLZ" className="px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><input value={form.city} onChange={(e)=>setForm({...form,city:e.target.value})} placeholder="Stadt" className="px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/></div><div className="relative"><input value={countryQuery || countryNames.find((c)=>c.code===form.countryCode)?.name || form.countryCode} onChange={(e)=>setCountryQuery(e.target.value)} onFocus={()=>setCountryQuery("")} placeholder="Land suchen …" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/>{countryQuery&&<div className="absolute z-10 left-0 right-0 top-full mt-1 rounded-xl overflow-hidden shadow-xl" style={{background:C.white,border:`1px solid ${C.line}`}}>{matches.map((item)=><button key={item.code} onClick={()=>{setForm({...form,countryCode:item.code});setCountryQuery("");}} className="w-full px-3 py-2 text-left text-xs hover:bg-gray-50">{item.name} <span style={{color:C.textDim}}>({item.code})</span></button>)}</div>}</div></>)}
+    {message&&<div role="status" className="text-[11px] rounded-xl px-3 py-2" style={{background:message.includes("gespeichert")?"#E7F3EC":"#FDECEC",color:message.includes("gespeichert")?C.green:C.red}}>{message}</div>}
+  </div>;
+}
+
+function NotificationSettings({ user, setMembers, saveRef }) {
+  const defaults = Object.fromEntries(NOTIFICATION_OPTIONS.map(([key])=>[key,true]));
+  const [master,setMaster] = useState(user.notificationMaster ?? true);
+  const [prefs,setPrefs] = useState({...defaults,...(user.notificationPreferences||{})});
+  const [message,setMessage]=useState("");
+  const save = async()=>{ if(supabase&&user.authProfileId){const {error}=await supabase.from("profiles").update({notification_master:master,notification_preferences:prefs}).eq("id",user.authProfileId);if(error){setMessage("Benachrichtigungen konnten nicht gespeichert werden.");return;}} setMembers((items)=>items.map((item)=>item.id===user.id?{...item,notificationMaster:master,notificationPreferences:prefs}:item));setMessage("Benachrichtigungen gespeichert.");};
+  saveRef.current=save;
+  return <div><ToggleCard title="Benachrichtigungen auf diesem Gerät" desc="Master-Schalter für alle App-Benachrichtigungen" value={master} onChange={setMaster}/><div className="mt-4 rounded-2xl p-4 space-y-3" style={{background:C.white,border:`1px solid ${C.line}`}}>{NOTIFICATION_OPTIONS.map(([key,label])=><label key={key} className="flex items-center justify-between gap-3"><span className="text-xs font-bold">{label}</span><select disabled={!master} value={prefs[key]?"ja":"nein"} onChange={(e)=>setPrefs({...prefs,[key]:e.target.value==="ja"})} className="px-3 py-2 rounded-xl text-xs" style={{background:C.paperDim,opacity:master?1:.45}}><option value="ja">Ja</option><option value="nein">Nein</option></select></label>)}</div>{message&&<div className="mt-3 text-[11px] rounded-xl px-3 py-2" style={{background:"#E7F3EC",color:C.green}}>{message}</div>}</div>;
+}
+
+function PasswordSettings({ user, onLogout, saveRef }) {
+  const [form,setForm]=useState({old:"",next:"",repeat:"",logoutAll:false}); const [message,setMessage]=useState("");
+  const save=async()=>{if(!supabase){setMessage("Passwortänderung ist nur mit einem echten Konto möglich.");return;}if(form.next.length<8||form.next!==form.repeat){setMessage("Das neue Passwort muss mindestens 8 Zeichen haben und übereinstimmen.");return;}const {error:loginError}=await supabase.auth.signInWithPassword({email:user.email,password:form.old});if(loginError){setMessage("Das bisherige Passwort ist nicht korrekt.");return;}const {error}=await supabase.auth.updateUser({password:form.next});if(error){setMessage("Das Passwort konnte nicht geändert werden.");return;}if(form.logoutAll){await supabase.auth.signOut({scope:"global"});await onLogout();return;}setForm({old:"",next:"",repeat:"",logoutAll:false});setMessage("Passwort erfolgreich geändert.");}; saveRef.current=save;
+  return <div className="rounded-2xl p-4 space-y-3" style={{background:C.white,border:`1px solid ${C.line}`}}><input type="password" value={form.old} onChange={(e)=>setForm({...form,old:e.target.value})} placeholder="Altes Passwort" className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><input type="password" value={form.next} onChange={(e)=>setForm({...form,next:e.target.value})} placeholder="Neues Passwort" className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><input type="password" value={form.repeat} onChange={(e)=>setForm({...form,repeat:e.target.value})} placeholder="Neues Passwort wiederholen" className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><ToggleCard title="Von allen Geräten ausloggen" desc="Nach der Änderung werden alle bestehenden Sitzungen beendet." value={form.logoutAll} onChange={(v)=>setForm((old)=>({...old,logoutAll:typeof v==="function"?v(old.logoutAll):v}))}/>{message&&<div className="text-[11px]" style={{color:message.includes("erfolgreich")?C.green:C.red}}>{message}</div>}</div>;
+}
+
+function SecuritySettings({user,setMembers,saveRef}) { const [days,setDays]=useState(user.autoLogoutDays??"");const [message,setMessage]=useState("");const save=async()=>{const value=days===""?null:Number(days);if(supabase&&user.authProfileId){const {error}=await supabase.from("profiles").update({auto_logout_days:value}).eq("id",user.authProfileId);if(error){setMessage("Einstellung konnte nicht gespeichert werden.");return;}}setMembers((items)=>items.map((item)=>item.id===user.id?{...item,autoLogoutDays:value}:item));localStorage.setItem(`cmo-last-activity-${user.authProfileId||user.id}`,String(Date.now()));setMessage("Sicherheitseinstellung gespeichert.");};saveRef.current=save;return <div className="rounded-2xl p-4" style={{background:C.white,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">Automatischer Logout</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>Nach längerer Inaktivität wird dieses Konto automatisch abgemeldet.</div><select value={days} onChange={(e)=>setDays(e.target.value)} className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}><option value="">Nie</option><option value="30">Nach 30 Tagen</option><option value="60">Nach 60 Tagen</option><option value="90">Nach 90 Tagen</option></select>{message&&<div className="text-[11px] mt-3" style={{color:C.green}}>{message}</div>}</div>; }
+
+function ReferralSettings({user,club}) { const [code,setCode]=useState("");const [used,setUsed]=useState(false);const [loading,setLoading]=useState(false);useEffect(()=>{if(!supabase||!club?.id||!user.authProfileId)return;supabase.from("club_referral_codes").select("code,redeemed_at").eq("club_id",club.id).eq("profile_id",user.authProfileId).maybeSingle().then(({data})=>{setCode(data?.code||"");setUsed(Boolean(data?.redeemed_at));});},[club?.id,user.authProfileId]);const create=async()=>{setLoading(true);const {data,error}=await supabase.rpc("ensure_club_referral_code",{target_club:club.id});if(!error)setCode(data);setLoading(false);};if(used&&!user.roles.includes("sysadmin"))return <div className="rounded-2xl p-4 text-xs" style={{background:C.paperDim,color:C.textDim}}>Dein persönlicher Empfehlungscode wurde bereits einmal verwendet. Die drei kostenlosen Vereinsmonate werden automatisch berücksichtigt.</div>;return <div className="rounded-2xl p-4" style={{background:C.white,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">Vereine werben Vereine</div><div className="text-[11px] mb-4" style={{color:C.textDim}}>Wirbst du einmalig einen neuen Verein, erhält dein aktueller Verein drei kostenlose Monate. Der neue Verein gibt deinen persönlichen Code bei seiner Registrierung ein.</div>{code?<><div className="rounded-xl px-3 py-3 text-center font-bold tracking-wider" style={{background:C.paperDim}}>{code}</div><button onClick={()=>navigator.clipboard?.writeText(code)} className="w-full mt-2 py-2 text-xs font-bold" style={{color:C.red}}>Code kopieren</button></>:<button disabled={loading} onClick={create} className="w-full py-3 rounded-xl text-xs font-bold" style={{background:C.ink,color:C.white}}>{loading?"Wird erstellt …":"Persönlichen Code erstellen"}</button>}</div>; }
+
+function FeedbackSettings() { const apple=process.env.NEXT_PUBLIC_APP_STORE_REVIEW_URL;const google=process.env.NEXT_PUBLIC_PLAY_STORE_REVIEW_URL;return <div><div className="text-[11px] mb-4" style={{color:C.textDim}}>Danke, dass du CMO bewertest. Wähle den Store deines Geräts.</div><div className="space-y-2">{[[apple,"Im Apple App Store bewerten"],[google,"Im Google Play Store bewerten"]].map(([url,label])=><a key={label} href={url||"#"} onClick={(e)=>{if(!url)e.preventDefault();}} target="_blank" rel="noreferrer" className="flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-bold" style={{background:C.white,border:`1px solid ${C.line}`,color:url?C.ink:C.textDim}}>{label}<ExternalLink size={14}/></a>)}</div>{!apple&&!google&&<div className="text-[10px] mt-3" style={{color:C.textDim}}>Die Store-Links werden nach Veröffentlichung der Apps freigeschaltet.</div>}</div>; }
+
+function BugReportSettings({user}) { const [busy,setBusy]=useState(false);const report=async()=>{setBusy(true);let number=`CMO-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`;if(supabase&&user.authProfileId){const {data}=await supabase.rpc("create_support_ticket",{target_club:user.clubId});if(data)number=data;}const subject=encodeURIComponent(`Fehlermeldung - CMO App #${number}`);const body=encodeURIComponent(`Hallo CMO-Team,\n\nfolgender Fehler ist aufgetreten:\n\n\nApp-Ticket: ${number}\nNutzer: ${user.name}\n`);window.location.href=`mailto:info@idbranding.de?subject=${subject}&body=${body}`;setBusy(false);};return <div className="rounded-2xl p-4" style={{background:C.white,border:`1px solid ${C.line}`}}><div className="text-[11px] mb-4" style={{color:C.textDim}}>Wir erzeugen eine eindeutige Bearbeitungsnummer und öffnen anschließend die E-Mail-App deines Geräts.</div><button onClick={report} disabled={busy} className="w-full py-3 rounded-xl text-xs font-bold" style={{background:C.red,color:C.white}}>{busy?"Nummer wird erstellt …":"Fehler per E-Mail melden"}</button></div>; }
+
+function CalendarSyncSettings({user,saveRef}) { const [interval,setInterval]=useState(user.calendarSyncInterval||"never");const [token,setToken]=useState("");const [message,setMessage]=useState("");const sync=async()=>{if(!supabase){setMessage("Kalendersynchronisierung benötigt ein echtes Konto.");return;}const {data,error}=await supabase.rpc("configure_calendar_subscription",{target_club:user.clubId,requested_interval:interval});if(error){setMessage("Kalender konnte nicht verbunden werden.");return;}const row=data?.[0];setToken(row?.token||"");setMessage("Kalenderverbindung aktualisiert.");};saveRef.current=sync;const url=token&&`${window.location.origin}/api/calendar/feed/${token}`;return <div><div className="rounded-2xl p-4" style={{background:C.white,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">Spiel- und Trainingskalender</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>Verbinde alle für dich sichtbaren Spiele und Trainings mit deinem Gerätekalender.</div><select value={interval} onChange={(e)=>setInterval(e.target.value)} className="w-full px-3 py-3 rounded-xl text-xs mb-3" style={inputStyle}><option value="never">Nie automatisch</option><option value="daily">Täglich</option><option value="weekly">Wöchentlich · Sonntagabend</option><option value="monthly">Monatlich</option></select><button onClick={sync} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold" style={{background:C.ink,color:C.white}}><RefreshCw size={14}/> Jetzt synchronisieren</button>{url&&<a href={url.replace(/^https?:/,"webcal:")} className="block w-full text-center mt-2 py-2.5 rounded-xl text-xs font-bold" style={{background:"#E7F3EC",color:C.green}}>Mit Gerätekalender verbinden</a>}</div>{message&&<div className="text-[11px] mt-3" style={{color:message.includes("aktualisiert")?C.green:C.red}}>{message}</div>}</div>; }
+
+function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, onSponsorImpression, onSponsorClick, onLogout }) {
   const goal = 1000;
   const eligible = isFormalMember(user) && age(user.birthdate) >= 16;
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [profileUnderlay, setProfileUnderlay] = useState("");
+  const [referralAlreadyUsed, setReferralAlreadyUsed] = useState(false);
+  const sectionSaveRef = useRef(null);
+  useEffect(() => {
+    if (!supabase || !currentClub?.id || !user.authProfileId) return;
+    supabase.from("club_referral_codes").select("redeemed_at").eq("club_id", currentClub.id).eq("profile_id", user.authProfileId).maybeSingle()
+      .then(({ data }) => setReferralAlreadyUsed(Boolean(data?.redeemed_at)));
+  }, [currentClub?.id, user.authProfileId]);
   const deleteAccount = async () => {
     if (!supabase) { setDeleteError("Im Demo-Modus kann kein echtes Konto gelöscht werden."); return; }
     setDeleting(true); setDeleteError("");
@@ -2302,6 +2402,14 @@ function ProfileView({ user, members, setMembers, sponsorBookings, onSponsorImpr
       <div className="space-y-2 mb-6">
         {user.roles.includes("sysadmin") && <ProfileSettingsCard icon={UserPlus} title="Benutzerverwaltung" description="Alle Vereinsnutzer auswählen und deren Einstellungen verwalten" color="#4A4E9E" onClick={() => setProfileUnderlay("users")}/>}
         <ProfileSettingsCard icon={Euro} title="Meine Abonnements" description="Tarif, Status, Erwerbsdatum und nächste Abrechnung ansehen" onClick={() => setProfileUnderlay("subscription")}/>
+        <ProfileSettingsCard icon={User} title="Persönliche Daten" description="Stammdaten, Kontakte, Adresse und Mitgliederausweis" color={C.green} onClick={() => setProfileUnderlay("personal")}/>
+        <ProfileSettingsCard icon={Bell} title="Benachrichtigungen" description="Festlegen, worüber du informiert werden möchtest" color={C.amber} onClick={() => setProfileUnderlay("notifications")}/>
+        <ProfileSettingsCard icon={KeyRound} title="Passwort ändern" description="Passwort aktualisieren und Geräte abmelden" color="#4A4E9E" onClick={() => setProfileUnderlay("password")}/>
+        <ProfileSettingsCard icon={Settings} title="Sicherheit" description="Automatischen Logout einstellen" color={C.textDim} onClick={() => setProfileUnderlay("security")}/>
+        {(!referralAlreadyUsed || user.roles.includes("sysadmin")) && <ProfileSettingsCard icon={Building2} title="Vereine werben Vereine" description="Einen Verein werben und drei Gratismonate erhalten" color={C.red} onClick={() => setProfileUnderlay("referral")}/>}
+        <ProfileSettingsCard icon={Smartphone} title="Kalender synchronisieren" description="Spiele und Trainings mit dem Gerätekalender verbinden" color="#176B87" onClick={() => setProfileUnderlay("calendar")}/>
+        <ProfileSettingsCard icon={Star} title="App bewerten" description="CMO im App Store oder Google Play bewerten" color={C.amber} onClick={() => setProfileUnderlay("feedback")}/>
+        <ProfileSettingsCard icon={Bug} title="Fehler melden" description="Eindeutiges Ticket erstellen und E-Mail-App öffnen" color={C.red} onClick={() => setProfileUnderlay("bug")}/>
         {user.roles.includes("spieler") && <ProfileSettingsCard icon={Star} title="Spielerprofil" description="Mannschaften und Rückennummer verwalten" color={C.green} onClick={() => setProfileUnderlay("player")}/>}
         {user.roles.includes("trainer") && <ProfileSettingsCard icon={Trophy} title="Trainer & Rollen" description="Trainer-Mannschaften auswählen und Kapitänsrolle zuweisen" color="#2D6F8E" onClick={() => setProfileUnderlay("trainer")}/>}
         {user.roles.some((role) => ["spieler", "trainer", "teammanager", "kapitaen"].includes(role)) && <ProfileSettingsCard icon={ClipboardList} title="Strafenkatalog" description="Regeln und Kosten der Mannschaften verwalten" onClick={() => setProfileUnderlay("penalties")}/>}
@@ -2372,6 +2480,14 @@ function ProfileView({ user, members, setMembers, sponsorBookings, onSponsorImpr
       </button>
 
       {profileUnderlay === "subscription" && <ProfileUnderlay title="Meine Abonnements" onClose={() => setProfileUnderlay("")}><SubscriptionPanel user={user}/></ProfileUnderlay>}
+      {profileUnderlay === "personal" && <ProfileUnderlay title="Persönliche Daten" onClose={() => setProfileUnderlay("")} onSave={()=>sectionSaveRef.current?.()}><ProfileDataSettings user={user} setMembers={setMembers} saveRef={sectionSaveRef}/></ProfileUnderlay>}
+      {profileUnderlay === "notifications" && <ProfileUnderlay title="Benachrichtigungen" onClose={() => setProfileUnderlay("")} onSave={()=>sectionSaveRef.current?.()}><NotificationSettings user={user} setMembers={setMembers} saveRef={sectionSaveRef}/></ProfileUnderlay>}
+      {profileUnderlay === "password" && <ProfileUnderlay title="Passwort ändern" onClose={() => setProfileUnderlay("")} onSave={()=>sectionSaveRef.current?.()}><PasswordSettings user={user} onLogout={onLogout} saveRef={sectionSaveRef}/></ProfileUnderlay>}
+      {profileUnderlay === "security" && <ProfileUnderlay title="Sicherheit" onClose={() => setProfileUnderlay("")} onSave={()=>sectionSaveRef.current?.()}><SecuritySettings user={user} setMembers={setMembers} saveRef={sectionSaveRef}/></ProfileUnderlay>}
+      {profileUnderlay === "referral" && <ProfileUnderlay title="Vereine werben Vereine" onClose={() => setProfileUnderlay("")}><ReferralSettings user={user} club={currentClub}/></ProfileUnderlay>}
+      {profileUnderlay === "calendar" && <ProfileUnderlay title="Kalender synchronisieren" onClose={() => setProfileUnderlay("")} onSave={()=>sectionSaveRef.current?.()}><CalendarSyncSettings user={user} saveRef={sectionSaveRef}/></ProfileUnderlay>}
+      {profileUnderlay === "feedback" && <ProfileUnderlay title="App bewerten" onClose={() => setProfileUnderlay("")}><FeedbackSettings/></ProfileUnderlay>}
+      {profileUnderlay === "bug" && <ProfileUnderlay title="Fehler melden" onClose={() => setProfileUnderlay("")}><BugReportSettings user={user}/></ProfileUnderlay>}
       {profileUnderlay === "player" && <ProfileUnderlay title="Spielerprofil" onClose={() => setProfileUnderlay("")}><PlayerTeamSettings user={user} setMembers={setMembers}/><PlayerDataCard user={user} setMembers={setMembers}/></ProfileUnderlay>}
       {profileUnderlay === "trainer" && <ProfileUnderlay title="Trainer & Rollen" eyebrow="Mannschaftsverwaltung" onClose={() => setProfileUnderlay("")}><TrainerTeamSettings user={user} members={members} setMembers={setMembers}/></ProfileUnderlay>}
       {profileUnderlay === "penalties" && <ProfileUnderlay title="Strafenkatalog" eyebrow="Mannschaftsverwaltung" onClose={() => setProfileUnderlay("")}><TeamPenaltyCatalog user={user}/></ProfileUnderlay>}
@@ -3393,7 +3509,7 @@ export default function ClubMemberOrganisationApp() {
 
   useEffect(() => {
     if (!supabase) return;
-    supabase.from("clubs").select("id,name,short_name,city,founded_year,logo_url").order("name").then(({ data }) => {
+    supabase.from("clubs").select("id,name,short_name,city,founded_year,logo_url,register_number,currency,referral_code,referral_credit_months").order("name").then(({ data }) => {
       if (data?.length) setClubs(data.map((club) => ({
         id: club.id,
         name: club.name,
@@ -3401,6 +3517,7 @@ export default function ClubMemberOrganisationApp() {
         city: club.city || "—",
         foundedYear: club.founded_year || new Date().getFullYear(),
         logoUrl: club.logo_url || null,
+        registerNumber: club.register_number || "", currency: club.currency || "EUR", referralCode: club.referral_code || "", referralCreditMonths: club.referral_credit_months || 0,
       })));
     });
   }, []);
@@ -3441,14 +3558,14 @@ export default function ClubMemberOrganisationApp() {
   const loadSupabaseMembership = async (profileId, clubId) => {
     setAdminStateLoaded(false);
     const { data, error } = await supabase.from("club_memberships")
-      .select("id,club_id,display_name,email,member_since,status,is_managed_profile,membership_roles(role),team_members(function,teams(name)),profiles!club_memberships_profile_id_fkey(birthdate)")
+      .select("id,club_id,display_name,email,member_since,membership_number,status,is_managed_profile,membership_roles(role),team_members(function,teams(name)),profiles!club_memberships_profile_id_fkey(birthdate,academic_title,first_name,last_name,contact_emails,contact_phones,gender,nationality,street,postal_code,city,country_code,notification_master,notification_preferences,auto_logout_days,calendar_sync_interval)")
       .eq("profile_id", profileId).eq("club_id", clubId).maybeSingle();
     if (error) return { error: "Das Vereinsprofil konnte nicht geladen werden." };
     if (!data) return { error: "Für dieses Konto besteht noch keine Mitgliedschaft in diesem Verein.", code: "membership_missing" };
     if (data.status === "pending") return { error: "Deine Registrierung wartet noch auf die Freigabe durch den Vereins-Administrator." };
     if (data.status !== "active") return { error: "Dieses Vereinsprofil ist derzeit nicht aktiv." };
     const { data: rosterData, error: rosterError } = await supabase.from("club_memberships")
-      .select("id,profile_id,club_id,display_name,email,member_since,status,is_managed_profile,membership_roles(role),team_members(function,teams(name)),profiles!club_memberships_profile_id_fkey(birthdate)")
+      .select("id,profile_id,club_id,display_name,email,member_since,membership_number,status,is_managed_profile,membership_roles(role),team_members(function,teams(name)),profiles!club_memberships_profile_id_fkey(birthdate,academic_title,first_name,last_name,contact_emails,contact_phones,gender,nationality,street,postal_code,city,country_code,notification_master,notification_preferences,auto_logout_days,calendar_sync_interval)")
       .eq("club_id", clubId).in("status", ["active", "pending"]);
     if (rosterError) return { error: "Die Mitgliederliste konnte nicht geladen werden." };
     const { data: familyData, error: familyError } = await supabase.from("family_links")
@@ -3469,6 +3586,13 @@ export default function ClubMemberOrganisationApp() {
         roles: (record.membership_roles || []).map((entry) => entry.role),
         color: [C.red, C.green, "#4A4E9E", "#B17912", "#176B87"][index % 5],
         points: 0, tippPoints: 0, badges: [], birthdate: record.profiles?.birthdate || "",
+        membershipNumber: record.membership_number || "", academicTitle: record.profiles?.academic_title || "",
+        firstName: record.profiles?.first_name || "", lastName: record.profiles?.last_name || "",
+        contactEmails: record.profiles?.contact_emails || [], contactPhones: record.profiles?.contact_phones || [],
+        gender: record.profiles?.gender || "keine_angabe", nationality: record.profiles?.nationality || "",
+        street: record.profiles?.street || "", postalCode: record.profiles?.postal_code || "", city: record.profiles?.city || "", countryCode: record.profiles?.country_code || "DE",
+        notificationMaster: record.profiles?.notification_master ?? true, notificationPreferences: record.profiles?.notification_preferences || {},
+        autoLogoutDays: record.profiles?.auto_logout_days || null, calendarSyncInterval: record.profiles?.calendar_sync_interval || "never",
         accountPending: !!record.is_managed_profile || record.status === "pending",
         familyLinks: [], familyId: null, familyRole: null,
       };
@@ -3538,6 +3662,46 @@ export default function ClubMemberOrganisationApp() {
     setAdminStateLoaded(true);
     return { ok: true };
   };
+  useEffect(() => {
+    if (!supabase) return;
+    let cancelled = false;
+    const finishNewClubRegistration = async () => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const account = sessionData.session?.user;
+      const pending = account?.user_metadata?.pending_new_club;
+      if (!account || !pending || cancelled) return;
+      const { data: registration, error } = await supabase.rpc("register_new_club", {
+        club_name: pending.name,
+        club_short_name: pending.short_name,
+        club_city: pending.city || "",
+        club_register_number: pending.register_number,
+        club_currency: pending.currency || "EUR",
+        referral: pending.referral_code || null,
+        member_name: account.user_metadata?.full_name || account.email?.split("@")[0] || "Mitglied",
+        member_birthdate: account.user_metadata?.birthdate || null,
+      });
+      if (error || cancelled) return;
+      const newClubId = registration?.[0]?.club_id;
+      await supabase.auth.updateUser({ data: { ...account.user_metadata, pending_new_club: null } });
+      if (!newClubId || cancelled) return;
+      const { data: createdClub } = await supabase.from("clubs")
+        .select("id,name,short_name,city,founded_year,logo_url,register_number,currency,referral_code,referral_credit_months")
+        .eq("id", newClubId).single();
+      if (createdClub && !cancelled) {
+        setClubs((items) => [...items.filter((item) => item.id !== createdClub.id), {
+          id: createdClub.id, name: createdClub.name, shortName: createdClub.short_name,
+          city: createdClub.city || "—", foundedYear: createdClub.founded_year || new Date().getFullYear(),
+          logoUrl: createdClub.logo_url || null, registerNumber: createdClub.register_number || "",
+          currency: createdClub.currency || "EUR", referralCode: createdClub.referral_code || "",
+          referralCreditMonths: createdClub.referral_credit_months || 0,
+        }]);
+        setSelectedClubId(newClubId);
+        await loadSupabaseMembership(account.id, newClubId);
+      }
+    };
+    finishNewClubRegistration();
+    return () => { cancelled = true; };
+  }, []);
   const login = async (email, password) => {
     const demoMember = members.find((m) => m.email.toLowerCase() === email.toLowerCase() && m.password === password && m.clubId === selectedClubId);
     if (demoMember) {
@@ -3552,6 +3716,25 @@ export default function ClubMemberOrganisationApp() {
     const loaded = await loadSupabaseMembership(data.user.id, selectedClubId);
     if (loaded?.code !== "membership_missing") return loaded;
     const metadata = data.user.user_metadata || {};
+    if (metadata.pending_new_club) {
+      const pending = metadata.pending_new_club;
+      const { data: registration, error: newClubError } = await supabase.rpc("register_new_club", {
+        club_name: pending.name,
+        club_short_name: pending.short_name,
+        club_city: pending.city || "",
+        club_register_number: pending.register_number,
+        club_currency: pending.currency || "EUR",
+        referral: pending.referral_code || null,
+        member_name: metadata.full_name || email.split("@")[0],
+        member_birthdate: metadata.birthdate || null,
+      });
+      if (newClubError) return { error: "Die Vereinsregistrierung konnte nicht fertiggestellt werden." };
+      const newClubId = registration?.[0]?.club_id;
+      await supabase.auth.updateUser({ data: { ...metadata, pending_new_club: null } });
+      if (!newClubId) return { error: "Der neue Verein konnte nicht geladen werden." };
+      setSelectedClubId(newClubId);
+      return loadSupabaseMembership(data.user.id, newClubId);
+    }
     if (metadata.pending_club_id !== selectedClubId) return loaded;
     const { error: registrationError } = await supabase.rpc("register_for_club", {
       target_club: selectedClubId,
@@ -3565,12 +3748,14 @@ export default function ClubMemberOrganisationApp() {
   };
   const register = async (draft, familySetup) => {
     if (supabase) {
+      const pendingClub = currentClub?.pendingRegistration ? currentClub : null;
       const { data, error } = await supabase.auth.signUp({
         email: draft.email,
         password: draft.password,
         options: { data: {
           full_name: draft.name,
-          pending_club_id: draft.clubId,
+          pending_club_id: pendingClub ? null : draft.clubId,
+          pending_new_club: pendingClub ? { name:pendingClub.name, short_name:pendingClub.shortName, city:pendingClub.city, register_number:pendingClub.registerNumber, currency:pendingClub.currency, referral_code:pendingClub.referralCode } : null,
           account_role: familySetup?.accountType || "mitglied",
           birthdate: draft.birthdate || null,
           requested_team: draft.team || null,
@@ -3580,13 +3765,17 @@ export default function ClubMemberOrganisationApp() {
       if (!data.session || !data.user) {
         return { ok: true, message: "Bitte bestätige jetzt die E-Mail. Danach kannst du dich anmelden und die Vereinsregistrierung abschließen." };
       }
-      const { data: registration, error: registrationError } = await supabase.rpc("register_for_club", {
-        target_club: draft.clubId,
-        member_name: draft.name,
-        account_role: familySetup?.accountType || "mitglied",
-        member_birthdate: draft.birthdate || null,
-        member_team: draft.team || null,
-      });
+      let registration; let registrationError;
+      if (pendingClub) {
+        const result = await supabase.rpc("register_new_club", { club_name:pendingClub.name, club_short_name:pendingClub.shortName, club_city:pendingClub.city, club_register_number:pendingClub.registerNumber, club_currency:pendingClub.currency||"EUR", referral:pendingClub.referralCode||null, member_name:draft.name, member_birthdate:draft.birthdate||null });
+        registration=result.data; registrationError=result.error;
+        const newClubId=registration?.[0]?.club_id;
+        if(!registrationError&&newClubId&&pendingClub.logoDataUrl){try{const blob=await (await fetch(pendingClub.logoDataUrl)).blob();const path=`${newClubId}/logo-${Date.now()}.png`;const upload=await supabase.storage.from("club-logos").upload(path,blob,{upsert:true});if(!upload.error){const {data:publicLogo}=supabase.storage.from("club-logos").getPublicUrl(path);await supabase.from("clubs").update({logo_url:publicLogo.publicUrl}).eq("id",newClubId);}}catch{}}
+        if(!registrationError&&newClubId){setSelectedClubId(newClubId);return loadSupabaseMembership(data.user.id,newClubId);}
+      } else {
+        const result = await supabase.rpc("register_for_club", { target_club:draft.clubId, member_name:draft.name, account_role:familySetup?.accountType||"mitglied", member_birthdate:draft.birthdate||null, member_team:draft.team||null });
+        registration=result.data; registrationError=result.error;
+      }
       if (registrationError) return { error: "Das Konto wurde erstellt, aber das Vereinsprofil konnte nicht angelegt werden." };
       if (registration?.[0]?.membership_status === "pending") {
         await supabase.auth.signOut();
@@ -3618,6 +3807,31 @@ export default function ClubMemberOrganisationApp() {
     return { ok: true };
   };
   const logout = async () => { if (supabase) await supabase.auth.signOut(); setCurrentUserId(null); setSelectedClubId(null); setAuthScreen("club"); setTab("home"); setTabHistory([]); setSubView(null); };
+  useEffect(() => {
+    if (!currentUser || !currentUser.autoLogoutDays) return;
+    const timeoutMs = Number(currentUser.autoLogoutDays) * 24 * 60 * 60 * 1000;
+    const storageKey = `cmo-last-activity-${currentUser.authProfileId || currentUser.id}`;
+    if (!localStorage.getItem(storageKey)) localStorage.setItem(storageKey, String(Date.now()));
+    let lastRecorded = 0;
+    const recordActivity = () => {
+      const now = Date.now();
+      if (now - lastRecorded < 60_000) return;
+      lastRecorded = now;
+      localStorage.setItem(storageKey, String(now));
+    };
+    const check = () => {
+      const lastActivity = Number(localStorage.getItem(storageKey) || Date.now());
+      if (Date.now() - lastActivity >= timeoutMs) logout();
+    };
+    const eventsToWatch = ["pointerdown", "keydown", "touchstart", "scroll"];
+    eventsToWatch.forEach((eventName) => window.addEventListener(eventName, recordActivity, { passive: true }));
+    const timer = window.setInterval(check, 60_000);
+    check();
+    return () => {
+      window.clearInterval(timer);
+      eventsToWatch.forEach((eventName) => window.removeEventListener(eventName, recordActivity));
+    };
+  }, [currentUser?.id, currentUser?.autoLogoutDays]);
   const returnToClubOverview = () => { setCurrentUserId(null); setSelectedClubId(null); setAuthScreen("club"); setTab("home"); setTabHistory([]); setSubView(null); setEventFocusRequest(null); };
   const goNews = () => { setChatChannelId("news"); navigateTab("chat"); };
   const goToMyNextMatch = () => { setEventFocusRequest({ team: currentUser?.team || "alle", requestedAt: Date.now() }); navigateTab("events"); };
@@ -3722,7 +3936,7 @@ export default function ClubMemberOrganisationApp() {
                   tippResults={tippResults} onSaveTippResult={saveTippResult}
                   currentClub={currentClub} onClubLogoUpdated={updateCurrentClubLogo} />
               )}
-              {!subView && tab === "profile" && <ProfileView user={currentUser} members={clubMembers} setMembers={setMembers} sponsorBookings={sponsorBookings} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick} onLogout={logout} />}
+              {!subView && tab === "profile" && <ProfileView user={currentUser} members={clubMembers} setMembers={setMembers} currentClub={currentClub} sponsorBookings={sponsorBookings} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick} onLogout={logout} />}
             </div>
 
             {!subView && (
