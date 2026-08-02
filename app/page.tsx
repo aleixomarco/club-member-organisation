@@ -2929,22 +2929,45 @@ export default function ClubMemberOrganisationApp() {
   const loadSupabaseMembership = async (profileId, clubId) => {
     setAdminStateLoaded(false);
     const { data, error } = await supabase.from("club_memberships")
-      .select("id,club_id,display_name,email,member_since,status,is_managed_profile,membership_roles(role),team_members(function,teams(name)),profiles!club_memberships_profile_id_fkey(birthdate)")
+      .select("id,club_id,profile_id,display_name,email,member_since,status,is_managed_profile")
       .eq("profile_id", profileId).eq("club_id", clubId).maybeSingle();
     if (error) return { error: "Das Vereinsprofil konnte nicht geladen werden." };
     if (!data) return { error: "Für dieses Konto besteht noch keine Mitgliedschaft in diesem Verein.", code: "membership_missing" };
     if (data.status === "pending") return { error: "Deine Registrierung wartet noch auf die Freigabe durch den Vereins-Administrator." };
     if (data.status !== "active") return { error: "Dieses Vereinsprofil ist derzeit nicht aktiv." };
     const { data: rosterData, error: rosterError } = await supabase.from("club_memberships")
-      .select("id,profile_id,club_id,display_name,email,member_since,status,is_managed_profile,membership_roles(role),team_members(function,teams(name)),profiles!club_memberships_profile_id_fkey(birthdate)")
+      .select("id,profile_id,club_id,display_name,email,member_since,status,is_managed_profile")
       .eq("club_id", clubId).in("status", ["active", "pending"]);
     if (rosterError) return { error: "Die Mitgliederliste konnte nicht geladen werden." };
+    const membershipIds = (rosterData || []).map((record) => record.id);
+    const profileIds = (rosterData || []).map((record) => record.profile_id).filter(Boolean);
+    const [{ data: roleData, error: roleError }, { data: assignmentData, error: assignmentError }, { data: profileData, error: profileError }] = await Promise.all([
+      membershipIds.length
+        ? supabase.from("membership_roles").select("membership_id,role").in("membership_id", membershipIds)
+        : Promise.resolve({ data: [], error: null }),
+      membershipIds.length
+        ? supabase.from("team_members").select("membership_id,function,teams(name)").in("membership_id", membershipIds)
+        : Promise.resolve({ data: [], error: null }),
+      profileIds.length
+        ? supabase.from("profiles").select("id,birthdate").in("id", profileIds)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+    if (roleError || assignmentError || profileError) return { error: "Die Vereinsdaten konnten nicht vollständig geladen werden." };
+    const rolesByMembership = new Map();
+    (roleData || []).forEach((entry) => {
+      rolesByMembership.set(entry.membership_id, [...(rolesByMembership.get(entry.membership_id) || []), entry.role]);
+    });
+    const assignmentsByMembership = new Map();
+    (assignmentData || []).forEach((entry) => {
+      assignmentsByMembership.set(entry.membership_id, [...(assignmentsByMembership.get(entry.membership_id) || []), entry]);
+    });
+    const birthdateByProfile = new Map((profileData || []).map((profile) => [profile.id, profile.birthdate]));
     const { data: familyData, error: familyError } = await supabase.from("family_links")
       .select("id,first_membership_id,second_membership_id,first_to_second,second_to_first")
       .eq("club_id", clubId);
     if (familyError) return { error: "Die Familienverknüpfungen konnten nicht geladen werden." };
     const roster = (rosterData || []).map((record, index) => {
-      const assignments = record.team_members || [];
+      const assignments = assignmentsByMembership.get(record.id) || [];
       const teamNames = [...new Set(assignments.map((entry) => entry.teams?.name).filter(Boolean))];
       return {
         id: record.id, authProfileId: record.profile_id, clubId: record.club_id,
@@ -2953,9 +2976,9 @@ export default function ClubMemberOrganisationApp() {
         trainerTeams: [...new Set(assignments.filter((entry) => entry.function === "trainer").map((entry) => entry.teams?.name).filter(Boolean))],
         managedTeam: assignments.find((entry) => entry.function === "teammanager")?.teams?.name || null,
         since: record.member_since || new Date().getFullYear(),
-        roles: (record.membership_roles || []).map((entry) => entry.role),
+        roles: rolesByMembership.get(record.id) || [],
         color: [C.red, C.green, "#4A4E9E", "#B17912", "#176B87"][index % 5],
-        points: 0, tippPoints: 0, badges: [], birthdate: record.profiles?.birthdate || "",
+        points: 0, tippPoints: 0, badges: [], birthdate: birthdateByProfile.get(record.profile_id) || "",
         accountPending: !!record.is_managed_profile || record.status === "pending",
         familyLinks: [], familyId: null, familyRole: null,
       };
