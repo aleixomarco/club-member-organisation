@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Home, CalendarDays, Wallet, MessageCircle, User, ChevronRight,
   Check, X, Users, Award, Gift, MapPin, Clock, Send,
@@ -2754,6 +2754,8 @@ export default function ClubMemberOrganisationApp() {
   const [sponsorBookings, setSponsorBookings] = useState(INITIAL_SPONSOR_BOOKINGS);
   const [sponsorStats, setSponsorStats] = useState({});
   const [polls, setPolls] = useState(INITIAL_POLLS);
+  const [adminStateLoaded, setAdminStateLoaded] = useState(false);
+  const adminSaveTimer = useRef(null);
 
   useEffect(() => {
     setFeePaid(Object.fromEntries(members.map((member) => {
@@ -2761,6 +2763,22 @@ export default function ClubMemberOrganisationApp() {
       return [member.id, entries.length > 0 && entries.every((record) => record.paid)];
     })));
   }, [feeRecords, members]);
+
+  useEffect(() => {
+    if (!supabase || !adminStateLoaded || !selectedClubId || !currentUser || !isAdmin(currentUser)) return;
+    clearTimeout(adminSaveTimer.current);
+    adminSaveTimer.current = setTimeout(async () => {
+      await supabase.rpc("save_club_app_state", {
+        target_club: selectedClubId,
+        new_state: {
+          events, dutyPlan, protocols, remindersSent, welcomeAutomation, billingAutomation,
+          polls, tippResults, maintenanceMode, seasonVotes, sponsorStats,
+          channels: channels.filter((channel) => channel.id !== "news"),
+        },
+      });
+    }, 700);
+    return () => clearTimeout(adminSaveTimer.current);
+  }, [adminStateLoaded, selectedClubId, currentUserId, events, dutyPlan, protocols, remindersSent, welcomeAutomation, billingAutomation, polls, tippResults, maintenanceMode, seasonVotes, sponsorStats, channels]);
 
   useEffect(() => {
     if (!supabase) return;
@@ -2794,6 +2812,7 @@ export default function ClubMemberOrganisationApp() {
     setTab("home"); setTabHistory([]); setSubView(null);
   };
   const loadSupabaseMembership = async (profileId, clubId) => {
+    setAdminStateLoaded(false);
     const { data, error } = await supabase.from("club_memberships")
       .select("id,club_id,display_name,email,member_since,status,is_managed_profile,membership_roles(role),team_members(function,teams(name)),profiles!club_memberships_profile_id_fkey(birthdate)")
       .eq("profile_id", profileId).eq("club_id", clubId).maybeSingle();
@@ -2866,8 +2885,26 @@ export default function ClubMemberOrganisationApp() {
         time: new Date(post.created_at).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "2-digit" }),
       };
     }));
-    setChannels((current) => current.map((channel) => channel.id === "news" ? { ...channel, messages: loadedNews } : channel));
+    const { data: savedAppState, error: appStateError } = await supabase.from("club_app_state").select("state").eq("club_id", clubId).maybeSingle();
+    if (appStateError) return { error: "Die Verwaltungsdaten konnten nicht geladen werden." };
+    const saved = savedAppState?.state || {};
+    if (saved.events) setEvents(saved.events);
+    if (saved.dutyPlan) setDutyPlan(saved.dutyPlan);
+    if (saved.protocols) setProtocols(saved.protocols);
+    if (saved.remindersSent) setRemindersSent(saved.remindersSent);
+    if (typeof saved.welcomeAutomation === "boolean") setWelcomeAutomation(saved.welcomeAutomation);
+    if (typeof saved.billingAutomation === "boolean") setBillingAutomation(saved.billingAutomation);
+    if (saved.polls) setPolls(saved.polls);
+    if (saved.tippResults) setTippResults(saved.tippResults);
+    if (typeof saved.maintenanceMode === "boolean") setMaintenanceMode(saved.maintenanceMode);
+    if (saved.seasonVotes) setSeasonVotes(saved.seasonVotes);
+    if (saved.sponsorStats) setSponsorStats(saved.sponsorStats);
+    setChannels((current) => {
+      const persistedChannels = Array.isArray(saved.channels) ? saved.channels : current.filter((channel) => channel.id !== "news");
+      return [...persistedChannels, { ...(current.find((channel) => channel.id === "news") || INITIAL_CHANNELS.find((channel) => channel.id === "news")), messages: loadedNews }];
+    });
     enterApp(member, hydratedRoster);
+    setAdminStateLoaded(true);
     return { ok: true };
   };
   const login = async (email, password) => {
