@@ -86,7 +86,7 @@ const isFormalMember = (m) => !!m && m.roles.some((r) => ROLE_META[r]?.formalMem
 const isSysAdmin = (m) => !!m && m.roles.includes("sysadmin");
 const canWriteNews = (m) => isAdmin(m) || (!!m && m.roles.includes("redakteur"));
 const canManageSponsors = (m) => isAdmin(m) || (!!m && m.roles.includes("sponsorenmanager"));
-function linkFamilyRecords(list, firstId, secondId, firstRelation) {
+function linkFamilyRecords(list, firstId, secondId, firstRelation, linkId = null) {
   const first = list.find((m) => m.id === firstId);
   const second = list.find((m) => m.id === secondId);
   if (!first || !second || first.id === second.id) return list;
@@ -97,10 +97,20 @@ function linkFamilyRecords(list, firstId, secondId, firstRelation) {
     const belongs = m.id === firstId || m.id === secondId || oldFamilyIds.includes(m.familyId);
     if (!belongs) return m;
     const links = [...(m.familyLinks || [])];
-    if (m.id === firstId && !links.some((l) => l.memberId === secondId)) links.push({ memberId: secondId, relation: opposite });
-    if (m.id === secondId && !links.some((l) => l.memberId === firstId)) links.push({ memberId: firstId, relation: firstRelation });
+    if (m.id === firstId && !links.some((l) => l.memberId === secondId)) links.push({ memberId: secondId, relation: opposite, linkId });
+    if (m.id === secondId && !links.some((l) => l.memberId === firstId)) links.push({ memberId: firstId, relation: firstRelation, linkId });
     return { ...m, familyId, familyRole: m.id === firstId ? firstRelation : m.id === secondId ? opposite : m.familyRole, familyLinks: links };
   });
+}
+
+function hydrateFamilyLinks(roster, links) {
+  return (links || []).reduce((current, link) => linkFamilyRecords(
+    current,
+    link.first_membership_id,
+    link.second_membership_id,
+    link.first_to_second,
+    link.id,
+  ), roster);
 }
 function unlinkFamilyRecords(list, firstId, secondId) {
   const first = list.find((member) => member.id === firstId);
@@ -1392,28 +1402,65 @@ function FamilyLinkManager({ user, members, setMembers, adminMode = false }) {
   const [query, setQuery] = useState("");
   const [newName, setNewName] = useState("");
   const [relationMode, setRelationMode] = useState(user.roles.includes("eltern") ? "eltern" : "kind");
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  const databaseMembership = !!supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(user.id));
   const userIsParent = relationMode === "eltern";
   const wantedRole = userIsParent ? "spieler" : "eltern";
-  const familyConnections = user.familyId ? members.filter((member) => member.familyId === user.familyId && member.id !== user.id) : [];
   const linkedIds = (user.familyLinks || []).map((l) => l.memberId);
+  const familyConnections = members.filter((member) => linkedIds.includes(member.id));
   const results = members.filter((m) => m.id !== user.id && !linkedIds.includes(m.id) && !m.accountPending && m.roles.includes(wantedRole) && m.name.toLowerCase().includes(query.toLowerCase())).slice(0, 5);
-  const connect = (targetId) => {
-    setMembers((ms) => linkFamilyRecords(ms, user.id, targetId, userIsParent ? "eltern" : "kind"));
-    setQuery(""); setOpen(false);
+  const connect = async (targetId) => {
+    setSaving(true); setMessage("");
+    let linkId = null;
+    if (databaseMembership) {
+      const { data, error } = await supabase.rpc("create_family_link", {
+        target_club: user.clubId,
+        acting_membership: user.id,
+        related_membership: targetId,
+        acting_relation: userIsParent ? "eltern" : "kind",
+      });
+      if (error) { setMessage("Die Verknüpfung konnte nicht gespeichert werden."); setSaving(false); return; }
+      linkId = data;
+    }
+    setMembers((ms) => linkFamilyRecords(ms, user.id, targetId, userIsParent ? "eltern" : "kind", linkId));
+    setQuery(""); setOpen(false); setSaving(false);
   };
-  const createDependent = () => {
+  const createDependent = async () => {
     if (!newName.trim() || !userIsParent) return;
-    const id = `dependent-${Date.now()}`;
+    setSaving(true); setMessage("");
+    let id = `dependent-${Date.now()}`;
+    let linkId = null;
+    if (databaseMembership) {
+      const { data, error } = await supabase.rpc("create_managed_child", {
+        target_club: user.clubId,
+        parent_membership: user.id,
+        child_name: newName.trim(),
+        child_birthdate: null,
+        child_team: null,
+      });
+      if (error || !data?.membership_id) { setMessage("Das Kinderprofil konnte nicht gespeichert werden."); setSaving(false); return; }
+      id = data.membership_id;
+      linkId = data.family_link_id;
+    }
     const child = { id, clubId: user.clubId, name: newName.trim(), email: "", password: "", team: "U11", number: null, since: new Date().getFullYear(), roles: ["mitglied", "spieler"], color: "#7C6FE0", points: 0, tippPoints: 0, badges: [], birthdate: "", accountPending: true };
-    setMembers((ms) => linkFamilyRecords([...ms, child], user.id, id, "eltern"));
-    setNewName(""); setOpen(false);
+    setMembers((ms) => linkFamilyRecords([...ms, child], user.id, id, "eltern", linkId));
+    setNewName(""); setOpen(false); setSaving(false);
   };
-  const removeConnection = (target) => {
+  const removeConnection = async (target) => {
     if (!window.confirm(`Familienverknüpfung zu ${target.name} wirklich löschen? Die Verbindung wird in beiden Profilen entfernt.`)) return;
+    setSaving(true); setMessage("");
+    const link = (user.familyLinks || []).find((item) => item.memberId === target.id);
+    if (databaseMembership && link?.linkId) {
+      const { error } = await supabase.rpc("delete_family_link", { target_link: link.linkId, acting_membership: user.id });
+      if (error) { setMessage("Die Verknüpfung konnte nicht gelöscht werden."); setSaving(false); return; }
+    }
     setMembers((all) => unlinkFamilyRecords(all, user.id, target.id));
+    setSaving(false);
   };
   return <div className="rounded-2xl p-4 mb-5" style={{background:C.white,border:`1px solid ${C.line}`}}>
-    <div className="flex items-center justify-between"><div><div className="text-sm font-bold" style={{color:C.ink}}>Familienverknüpfung</div><div className="text-[11px]" style={{color:C.textDim}}>{adminMode ? `Sysadmin bearbeitet das Profil von ${user.name}.` : "Du verwaltest dein Familienprofil selbst."} Verknüpfungen gelten automatisch für beide Profile.</div></div><button onClick={()=>setOpen(!open)} className="px-3 py-1.5 rounded-full text-xs font-bold" style={{background:C.paperDim,color:C.ink}}>{open?"Schließen":"＋ Verknüpfen"}</button></div>
+    <div className="flex items-center justify-between"><div><div className="text-sm font-bold" style={{color:C.ink}}>Familienverknüpfung</div><div className="text-[11px]" style={{color:C.textDim}}>{adminMode ? `Sysadmin bearbeitet das Profil von ${user.name}.` : "Du verwaltest dein Familienprofil selbst."} Verknüpfungen gelten automatisch für beide Profile.</div></div><button disabled={saving} onClick={()=>setOpen(!open)} className="px-3 py-1.5 rounded-full text-xs font-bold" style={{background:C.paperDim,color:C.ink}}>{open?"Schließen":"＋ Verknüpfen"}</button></div>
+    {message&&<div className="mt-2 text-[11px] font-semibold" style={{color:C.red}}>{message}</div>}
     {familyConnections.length>0&&<div className="mt-3 pt-3 space-y-1.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] font-bold mb-1" style={{color:C.textDim}}>BESTEHENDE VERKNÜPFUNGEN</div>{familyConnections.map((member)=><div key={member.id} className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{background:C.paperDim}}><div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold" style={{background:member.color,color:C.white}}>{initialsOf(member.name)}</div><div className="flex-1 min-w-0"><div className="text-xs font-bold truncate" style={{color:C.ink}}>{member.name}</div><div className="text-[10px]" style={{color:C.textDim}}>{member.familyRole||"Familie"}</div></div><button onClick={()=>removeConnection(member)} className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold" style={{background:"#FCEBEE",color:C.red}}>Löschen</button></div>)}</div>}
     {open&&<div className="mt-3 pt-3" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[11px] font-bold mb-1">Rolle in der Verknüpfung</div><select value={relationMode} onChange={(e)=>{setRelationMode(e.target.value);setQuery("");}} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim}}><option value="eltern">Elternteil – Spieler oder Kind hinzufügen</option><option value="kind">Spieler/Kind – Elternteil hinzufügen</option></select><input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder={userIsParent?"Vorhandenen Spieler suchen …":"Vorhandenes Elternteil suchen …"} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim}}/>{query&&<div className="space-y-1">{results.map(m=><button key={m.id} onClick={()=>connect(m.id)} className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs" style={{background:C.paperDim,color:C.ink}}><span>{m.name} · {m.team}</span><span style={{color:C.red}}>Verbinden</span></button>)}{results.length===0&&<div className="text-[11px] py-2" style={{color:C.textDim}}>Kein passendes Profil gefunden.</div>}</div>}{userIsParent&&<div className="mt-3 pt-3" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[11px] font-bold mb-2">Kind ohne Account vorläufig anlegen</div><div className="flex gap-2"><input value={newName} onChange={(e)=>setNewName(e.target.value)} placeholder="Vor- und Nachname" className="flex-1 px-3 py-2 rounded-lg text-xs outline-none" style={{background:C.paperDim}}/><button onClick={createDependent} disabled={!newName.trim()} className="px-3 rounded-lg text-xs font-bold" style={{background:newName.trim()?C.red:C.line,color:"#fff"}}>Anlegen</button></div><div className="text-[10px] mt-2" style={{color:C.textDim}}>Das Kind kann sein vorläufiges Profil später beim Erstellen des eigenen Kontos übernehmen.</div></div>}</div>}
   </div>;
@@ -2651,32 +2698,49 @@ export default function ClubMemberOrganisationApp() {
   const changeClub = () => { setSelectedClubId(null); setAuthScreen("club"); };
   const updateCurrentClubLogo = (logoUrl) => setClubs((items) => items.map((club) => club.id === currentClub?.id ? { ...club, logoUrl } : club));
 
-  const enterApp = (member) => {
-    setMembers((current) => [...current.filter((item) => item.id !== member.id), member]);
+  const enterApp = (member, clubRoster = null) => {
+    setMembers((current) => clubRoster
+      ? [...current.filter((item) => item.clubId !== member.clubId), ...clubRoster]
+      : [...current.filter((item) => item.id !== member.id), member]);
     setSelectedClubId(member.clubId);
     setCurrentUserId(member.id);
     setTab("home"); setTabHistory([]); setSubView(null);
   };
   const loadSupabaseMembership = async (profileId, clubId) => {
     const { data, error } = await supabase.from("club_memberships")
-      .select("id,club_id,display_name,email,member_since,status,membership_roles(role),team_members(function,teams(name))")
+      .select("id,club_id,display_name,email,member_since,status,is_managed_profile,membership_roles(role),team_members(function,teams(name)),profiles!club_memberships_profile_id_fkey(birthdate)")
       .eq("profile_id", profileId).eq("club_id", clubId).maybeSingle();
     if (error) return { error: "Das Vereinsprofil konnte nicht geladen werden." };
     if (!data) return { error: "Für dieses Konto besteht noch keine Mitgliedschaft in diesem Verein.", code: "membership_missing" };
     if (data.status === "pending") return { error: "Deine Registrierung wartet noch auf die Freigabe durch den Vereins-Administrator." };
     if (data.status !== "active") return { error: "Dieses Vereinsprofil ist derzeit nicht aktiv." };
-    const roles = (data.membership_roles || []).map((entry) => entry.role);
-    const assignments = data.team_members || [];
-    const teamNames = assignments.map((entry) => entry.teams?.name).filter(Boolean);
-    const primaryTeam = teamNames[0] || "Mitglied";
-    const member = {
-      id: data.id, authProfileId: profileId, clubId: data.club_id,
-      name: data.display_name, email: data.email || "", password: "",
-      team: primaryTeam, teams: teamNames, number: null,
-      since: data.member_since || new Date().getFullYear(), roles,
-      color: C.red, points: 0, tippPoints: 0, badges: [], birthdate: "",
-    };
-    enterApp(member);
+    const { data: rosterData, error: rosterError } = await supabase.from("club_memberships")
+      .select("id,profile_id,club_id,display_name,email,member_since,status,is_managed_profile,membership_roles(role),team_members(function,teams(name)),profiles!club_memberships_profile_id_fkey(birthdate)")
+      .eq("club_id", clubId).in("status", ["active", "pending"]);
+    if (rosterError) return { error: "Die Mitgliederliste konnte nicht geladen werden." };
+    const { data: familyData, error: familyError } = await supabase.from("family_links")
+      .select("id,first_membership_id,second_membership_id,first_to_second,second_to_first")
+      .eq("club_id", clubId);
+    if (familyError) return { error: "Die Familienverknüpfungen konnten nicht geladen werden." };
+    const roster = (rosterData || []).map((record, index) => {
+      const assignments = record.team_members || [];
+      const teamNames = [...new Set(assignments.map((entry) => entry.teams?.name).filter(Boolean))];
+      return {
+        id: record.id, authProfileId: record.profile_id, clubId: record.club_id,
+        name: record.display_name, email: record.email || "", password: "",
+        team: teamNames[0] || "Mitglied", teams: teamNames, number: null,
+        since: record.member_since || new Date().getFullYear(),
+        roles: (record.membership_roles || []).map((entry) => entry.role),
+        color: [C.red, C.green, "#4A4E9E", "#B17912", "#176B87"][index % 5],
+        points: 0, tippPoints: 0, badges: [], birthdate: record.profiles?.birthdate || "",
+        accountPending: !!record.is_managed_profile || record.status === "pending",
+        familyLinks: [], familyId: null, familyRole: null,
+      };
+    });
+    const hydratedRoster = hydrateFamilyLinks(roster, familyData || []);
+    const member = hydratedRoster.find((item) => item.id === data.id);
+    if (!member) return { error: "Das Vereinsprofil konnte nicht geladen werden." };
+    enterApp(member, hydratedRoster);
     return { ok: true };
   };
   const login = async (email, password) => {

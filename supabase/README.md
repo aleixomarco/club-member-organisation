@@ -25,3 +25,4 @@ in zeitlicher Reihenfolge ebenfalls einmal im SQL Editor ausführen:
 4. `migrations/20260802033000_club_logos.sql`
 5. `migrations/20260802040000_membership_approvals.sql`
 6. `migrations/20260802043000_trainer_captains.sql`
+7. `migrations/20260802050000_family_links_complete.sql`
