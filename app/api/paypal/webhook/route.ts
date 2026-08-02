@@ -48,7 +48,10 @@ export async function POST(request: Request) {
     if (plan) await admin.from(isClubPlan ? "club_subscriptions" : "user_subscriptions").upsert({
       [isClubPlan ? "club_id" : "profile_id"]: profileId,
       plan_id: plan.id, provider: "paypal", provider_subscription_id: subscriptionId,
-      status: "active", current_period_start: resource.start_time || new Date().toISOString(),
+      status: "active",
+      current_period_start: resource.start_time || new Date().toISOString(),
+      current_period_end: resource.billing_info?.next_billing_time || null,
+      last_payment_at: resource.billing_info?.last_payment?.time || null,
     }, { onConflict: "provider,provider_subscription_id" });
   } else if (subscriptionId && statusByEvent[event.event_type]) {
     const subscriptionUpdate: Record<string, string | null> = {
@@ -57,6 +60,9 @@ export async function POST(request: Request) {
     };
     if (event.event_type === "PAYMENT.SALE.COMPLETED") {
       subscriptionUpdate.last_payment_at = new Date().toISOString();
+    }
+    if (resource.billing_info?.next_billing_time) {
+      subscriptionUpdate.current_period_end = resource.billing_info.next_billing_time;
     }
     await Promise.all(["user_subscriptions", "club_subscriptions"].map((table) =>
       admin.from(table).update(subscriptionUpdate)

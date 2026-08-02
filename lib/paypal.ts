@@ -61,3 +61,13 @@ export async function cancelPayPalSubscription(subscriptionId: string, reason = 
   });
   if (!response.ok && response.status !== 422) throw new Error("PayPal cancellation failed");
 }
+
+export async function getPayPalSubscription(subscriptionId: string) {
+  const token = await paypalAccessToken();
+  const response = await fetch(`${apiBase}/v1/billing/subscriptions/${encodeURIComponent(subscriptionId)}`, {
+    headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+    cache: "no-store",
+  });
+  if (!response.ok) throw new Error("PayPal subscription could not be loaded");
+  return response.json();
+}

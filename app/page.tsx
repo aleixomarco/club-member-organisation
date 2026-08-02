@@ -2033,15 +2033,76 @@ function PayPalSubscriptionButton({ clientId, planId, customId, onApproved, onEr
   </>;
 }
 
+const SUBSCRIPTION_STATUS = {
+  pending: { label: "Wird bestätigt", color: C.amber, background: "#FFF6E4" },
+  active: { label: "Aktiv", color: C.green, background: "#E7F3EC" },
+  past_due: { label: "Zahlung offen", color: C.red, background: "#FDECEC" },
+  suspended: { label: "Ausgesetzt", color: C.red, background: "#FDECEC" },
+  cancelled: { label: "Gekündigt", color: C.textDim, background: C.paperDim },
+  expired: { label: "Abgelaufen", color: C.textDim, background: C.paperDim },
+  refunded: { label: "Erstattet", color: C.textDim, background: C.paperDim },
+};
+
+function subscriptionDate(value) {
+  if (!value) return "Noch nicht übermittelt";
+  return new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
+}
+
+function SubscriptionRecord({ subscription, accountLabel }) {
+  const plan = Array.isArray(subscription.subscription_plans) ? subscription.subscription_plans[0] : subscription.subscription_plans;
+  const status = SUBSCRIPTION_STATUS[subscription.status] || SUBSCRIPTION_STATUS.pending;
+  const interval = plan?.interval === "year" ? "Jährlich" : "Monatlich";
+  const amount = typeof plan?.price_cents === "number" ? new Intl.NumberFormat("de-DE", { style: "currency", currency: plan.currency || "EUR" }).format(plan.price_cents / 100) : "—";
+  return <div className="rounded-2xl p-3.5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+    <div className="flex items-start justify-between gap-2 mb-3">
+      <div><div className="text-[9px] uppercase tracking-widest font-bold" style={{ color: C.red }}>{accountLabel}</div><div className="text-sm font-bold" style={{ color: C.ink }}>{plan?.name || `${interval}es Abonnement`}</div></div>
+      <span className="text-[9px] font-bold px-2 py-1 rounded-full whitespace-nowrap" style={{ color: status.color, background: status.background }}>{status.label}</span>
+    </div>
+    <div className="grid grid-cols-2 gap-2 mb-3">
+      <div className="rounded-xl p-2.5" style={{ background: C.paperDim }}><div className="text-[9px]" style={{ color: C.textDim }}>Tarif</div><div className="text-xs font-bold" style={{ color: C.ink }}>{interval} · {amount}</div></div>
+      <div className="rounded-xl p-2.5" style={{ background: C.paperDim }}><div className="text-[9px]" style={{ color: C.textDim }}>Zahlungsanbieter</div><div className="text-xs font-bold capitalize" style={{ color: C.ink }}>{subscription.provider}</div></div>
+    </div>
+    <div className="space-y-2 text-[10px]">
+      <div className="flex justify-between gap-3"><span style={{ color: C.textDim }}>Erworben am</span><b className="text-right" style={{ color: C.ink }}>{subscriptionDate(subscription.created_at)}</b></div>
+      <div className="flex justify-between gap-3"><span style={{ color: C.textDim }}>Aktueller Zeitraum seit</span><b className="text-right" style={{ color: C.ink }}>{subscriptionDate(subscription.current_period_start)}</b></div>
+      <div className="flex justify-between gap-3"><span style={{ color: C.textDim }}>{subscription.cancel_at_period_end || subscription.status === "cancelled" ? "Nutzbar bis" : "Nächste Abrechnung"}</span><b className="text-right" style={{ color: C.ink }}>{subscriptionDate(subscription.current_period_end)}</b></div>
+      <div className="flex justify-between gap-3"><span style={{ color: C.textDim }}>Letzte Zahlung</span><b className="text-right" style={{ color: C.ink }}>{subscriptionDate(subscription.last_payment_at)}</b></div>
+      <div className="flex justify-between gap-3"><span style={{ color: C.textDim }}>Abonnement-ID</span><b className="text-right break-all" style={{ color: C.ink, fontFamily: "JetBrains Mono" }}>{subscription.provider_subscription_id}</b></div>
+    </div>
+    {(subscription.cancel_at_period_end || subscription.status === "cancelled") && <div className="mt-3 rounded-xl px-3 py-2 text-[10px]" style={{ background: C.paperDim, color: C.textDim }}>Dieses Abonnement wurde gekündigt und verlängert sich nicht erneut.</div>}
+  </div>;
+}
+
 function SubscriptionPanel({ user }) {
   const [config, setConfig] = useState(null);
   const [accountType, setAccountType] = useState("member");
   const [cycle, setCycle] = useState("monthly");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
+  const [subscriptions, setSubscriptions] = useState({ member: [], club: [] });
+  const [subscriptionsLoading, setSubscriptionsLoading] = useState(true);
   const canBuyClubPlan = user.roles.some((role) => ["vereinsadmin", "sysadmin", "vorstand", "geschaeftsfuehrung"].includes(role));
   const databaseProfile = user.authProfileId && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(user.authProfileId));
   const databaseClub = /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(user.clubId));
+
+  const loadSubscriptions = useCallback(async () => {
+    if (!supabase || !databaseProfile) { setSubscriptionsLoading(false); return; }
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token;
+    if (!token) { setSubscriptionsLoading(false); return; }
+    try {
+      const response = await fetch(`/api/paypal/subscriptions?clubId=${encodeURIComponent(user.clubId || "")}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "Abonnements konnten nicht geladen werden.");
+      setSubscriptions({ member: payload.member || [], club: payload.club || [] });
+    } catch (error) {
+      setMessage(error.message || "Abonnements konnten nicht geladen werden.");
+    } finally {
+      setSubscriptionsLoading(false);
+    }
+  }, [databaseProfile, user.clubId]);
+
+  useEffect(() => { loadSubscriptions(); }, [loadSubscriptions]);
 
   useEffect(() => {
     fetch("/api/paypal/config", { cache: "no-store" })
@@ -2059,11 +2120,36 @@ function SubscriptionPanel({ user }) {
     : { monthly: { price: "2,99 €", setup: "1,50 €" }, yearly: { price: "11,88 €", setup: "1,50 €", equivalent: "0,99 € / Monat" } }[cycle];
   const customId = accountType === "club" ? user.clubId : user.authProfileId;
   const allowed = accountType === "club" ? canBuyClubPlan && databaseClub : databaseProfile;
-  const approved = useCallback((subscriptionId) => {
-    setMessage(`Abo bestätigt. PayPal-ID: ${subscriptionId}. Die Freischaltung erfolgt automatisch.`);
-  }, []);
+  const approved = useCallback(async (subscriptionId) => {
+    setMessage("Das Abonnement wird gespeichert …");
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("Bitte melde dich erneut an.");
+      const response = await fetch("/api/paypal/subscriptions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ subscriptionId, accountType, clubId: user.clubId }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "Das Abonnement konnte noch nicht gespeichert werden.");
+      await loadSubscriptions();
+      setMessage("Abonnement gespeichert und automatisch freigeschaltet.");
+    } catch (error) {
+      setMessage(error.message || "Die PayPal-Bestätigung wird noch verarbeitet. Bitte aktualisiere die Ansicht gleich erneut.");
+    }
+  }, [accountType, loadSubscriptions, user.clubId]);
 
-  return <div className="rounded-2xl p-4 mb-5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+  return <div>
+    <SectionTitle eyebrow="Verträge" title="Meine Abonnements" />
+    {subscriptionsLoading ? <div className="rounded-2xl p-4 mb-5 text-xs text-center" style={{ background: C.white, border: `1px solid ${C.line}`, color: C.textDim }}>Abonnements werden geladen …</div> :
+      subscriptions.member.length + subscriptions.club.length > 0 ? <div className="space-y-3 mb-6">
+        {subscriptions.member.map((subscription) => <SubscriptionRecord key={`member-${subscription.id}`} subscription={subscription} accountLabel="Persönliches Nutzerkonto" />)}
+        {subscriptions.club.map((subscription) => <SubscriptionRecord key={`club-${subscription.id}`} subscription={subscription} accountLabel="Vereinsaccount" />)}
+      </div> : <div className="rounded-2xl p-4 mb-6" style={{ background: C.paperDim }}><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Noch kein gespeichertes Abonnement</div><div className="text-[11px]" style={{ color: C.textDim }}>Nach einem erfolgreichen Abschluss erscheinen hier Tarif, Status, Erwerbsdatum und die nächste Abrechnung.</div></div>}
+
+    <SectionTitle eyebrow="Tarif wählen" title="Abonnement abschließen" />
+    <div className="rounded-2xl p-4 mb-5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
     <div className="flex items-center gap-2 mb-1"><Euro size={16} style={{ color: C.red }} /><div className="text-sm font-bold" style={{ color: C.ink }}>Abonnement</div></div>
     <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Sicher über PayPal bezahlen. Alle Abos verlängern sich automatisch bis zur Kündigung.</div>
     {canBuyClubPlan && <div className="grid grid-cols-2 gap-2 mb-2">
@@ -2079,8 +2165,9 @@ function SubscriptionPanel({ user }) {
     {loading ? <div className="text-xs py-2 text-center" style={{ color: C.textDim }}>PayPal wird geladen …</div> : config && allowed ?
       <PayPalSubscriptionButton clientId={config.clientId} planId={config.plans[accountType][cycle]} customId={customId} onApproved={approved} onError={setMessage} /> :
       <div className="text-[11px] rounded-xl px-3 py-2" style={{ background: "#FFF6E4", color: C.textDim }}>{message || "Der Checkout ist nur für ein angemeldetes, dauerhaft gespeichertes Konto verfügbar."}</div>}
-    {message && config && allowed && <div role="status" className="text-[11px] mt-2 rounded-xl px-3 py-2" style={{ background: message.includes("bestätigt") ? "#E7F3EC" : "#FDECEC", color: message.includes("bestätigt") ? C.green : C.red }}>{message}</div>}
+    {message && config && allowed && <div role="status" className="text-[11px] mt-2 rounded-xl px-3 py-2" style={{ background: message.includes("gespeichert") ? "#E7F3EC" : message.includes("wird") ? "#FFF6E4" : "#FDECEC", color: message.includes("gespeichert") ? C.green : message.includes("wird") ? C.textDim : C.red }}>{message}</div>}
     <div className="text-[9px] mt-3 leading-relaxed" style={{ color: C.textDim }}>Mit dem Abschluss akzeptierst du die <a href="/nutzungsbedingungen" className="underline">Nutzungsbedingungen</a>. Kündigung über PayPal zum Ende des Abrechnungszeitraums.</div>
+    </div>
   </div>;
 }
 
@@ -2214,7 +2301,7 @@ function ProfileView({ user, members, setMembers, sponsorBookings, onSponsorImpr
       <SectionTitle eyebrow="Verwalten" title="Einstellungen" />
       <div className="space-y-2 mb-6">
         {user.roles.includes("sysadmin") && <ProfileSettingsCard icon={UserPlus} title="Benutzerverwaltung" description="Alle Vereinsnutzer auswählen und deren Einstellungen verwalten" color="#4A4E9E" onClick={() => setProfileUnderlay("users")}/>}
-        <ProfileSettingsCard icon={Euro} title="Abonnement" description="Nutzer- und Vereinsabo getrennt verwalten" onClick={() => setProfileUnderlay("subscription")}/>
+        <ProfileSettingsCard icon={Euro} title="Meine Abonnements" description="Tarif, Status, Erwerbsdatum und nächste Abrechnung ansehen" onClick={() => setProfileUnderlay("subscription")}/>
         {user.roles.includes("spieler") && <ProfileSettingsCard icon={Star} title="Spielerprofil" description="Mannschaften und Rückennummer verwalten" color={C.green} onClick={() => setProfileUnderlay("player")}/>}
         {user.roles.includes("trainer") && <ProfileSettingsCard icon={Trophy} title="Trainer & Rollen" description="Trainer-Mannschaften auswählen und Kapitänsrolle zuweisen" color="#2D6F8E" onClick={() => setProfileUnderlay("trainer")}/>}
         {user.roles.some((role) => ["spieler", "trainer", "teammanager", "kapitaen"].includes(role)) && <ProfileSettingsCard icon={ClipboardList} title="Strafenkatalog" description="Regeln und Kosten der Mannschaften verwalten" onClick={() => setProfileUnderlay("penalties")}/>}
@@ -2284,7 +2371,7 @@ function ProfileView({ user, members, setMembers, sponsorBookings, onSponsorImpr
         <LogOut size={15} /> Abmelden
       </button>
 
-      {profileUnderlay === "subscription" && <ProfileUnderlay title="Abonnement" onClose={() => setProfileUnderlay("")}><SubscriptionPanel user={user}/></ProfileUnderlay>}
+      {profileUnderlay === "subscription" && <ProfileUnderlay title="Meine Abonnements" onClose={() => setProfileUnderlay("")}><SubscriptionPanel user={user}/></ProfileUnderlay>}
       {profileUnderlay === "player" && <ProfileUnderlay title="Spielerprofil" onClose={() => setProfileUnderlay("")}><PlayerTeamSettings user={user} setMembers={setMembers}/><PlayerDataCard user={user} setMembers={setMembers}/></ProfileUnderlay>}
       {profileUnderlay === "trainer" && <ProfileUnderlay title="Trainer & Rollen" eyebrow="Mannschaftsverwaltung" onClose={() => setProfileUnderlay("")}><TrainerTeamSettings user={user} members={members} setMembers={setMembers}/></ProfileUnderlay>}
       {profileUnderlay === "penalties" && <ProfileUnderlay title="Strafenkatalog" eyebrow="Mannschaftsverwaltung" onClose={() => setProfileUnderlay("")}><TeamPenaltyCatalog user={user}/></ProfileUnderlay>}
