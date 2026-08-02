@@ -31,3 +31,9 @@ in zeitlicher Reihenfolge ebenfalls einmal im SQL Editor ausführen:
 10. `migrations/20260802063000_admin_state_complete.sql`
 11. `migrations/20260802064500_trainer_multiple_teams.sql`
 12. `migrations/20260802070000_update_club_subscription_prices.sql`
+13. `migrations/20260802071500_team_penalty_catalog.sql`
+14. `migrations/20260802073000_team_directory.sql`
+15. `migrations/20260802074500_trainer_self_service.sql`
+16. `migrations/20260802080000_team_roster_management.sql`
+17. `migrations/20260802081500_restrict_team_administration.sql`
+18. `migrations/20260802083000_sysadmin_user_management.sql`

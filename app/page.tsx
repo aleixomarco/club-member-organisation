@@ -1571,12 +1571,13 @@ function TrainerTeamSettings({ user, members, setMembers }) {
     const loadTrainerTeams = async () => {
       setLoading(true); setMessage("");
       if (!databaseMembership) {
-        const names = user.trainerTeams?.length ? user.trainerTeams : [user.team].filter(Boolean);
-        const localTeams = names.map((name) => ({ id: name, name }));
+        const assignedNames = user.trainerTeams?.length ? user.trainerTeams : [user.team].filter(Boolean);
+        const allNames = [...new Set([...TEAMS.filter((name) => name !== "Eltern / Angehörige"), ...members.flatMap((member) => memberPlayerTeams(member))])];
+        const allLocalTeams = allNames.map((name) => ({ id: name, name }));
+        const localTeams = allLocalTeams.filter((team) => assignedNames.includes(team.name));
         setTeams(localTeams); setSelectedTeamId((current) => current || localTeams[0]?.id || ""); setLoading(false); return;
       }
-      const { data, error } = await supabase.from("team_members").select("team_id,teams(id,name)")
-        .eq("membership_id", user.id).eq("function", "trainer");
+      const { data, error } = await supabase.from("team_members").select("team_id,teams(id,name)").eq("membership_id", user.id).eq("function", "trainer");
       if (error) { setMessage("Die Trainer-Mannschaften konnten nicht geladen werden."); setLoading(false); return; }
       const assigned = (data || []).map((entry) => Array.isArray(entry.teams) ? entry.teams[0] : entry.teams).filter(Boolean);
       setTeams(assigned); setSelectedTeamId((current) => current || assigned[0]?.id || ""); setLoading(false);
@@ -1631,16 +1632,331 @@ function TrainerTeamSettings({ user, members, setMembers }) {
 
   return <div className="rounded-2xl p-4 mb-5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
     <div className="flex items-center gap-2 mb-1 text-sm font-bold" style={{ color: C.ink }}><Trophy size={15} style={{ color: C.amber }}/> Trainer-Einstellungen</div>
-    <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Wähle eine deiner Mannschaften und bestimme den Kapitän. Pro Mannschaft kann genau ein Kapitän hinterlegt sein.</div>
-    {loading ? <div className="text-xs py-3" style={{ color: C.textDim }}>Mannschaften werden geladen …</div> : teams.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Deinem Trainerprofil ist noch keine Mannschaft zugeordnet.</div> : <>
+    <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Deine Trainer-Mannschaften werden vom Vereinsadmin oder Sys-Admin zugewiesen. Für diese Teams kannst du anschließend einen Spieler als Kapitän bestimmen.</div>
+    {loading ? <div className="text-xs py-3" style={{ color: C.textDim }}>Mannschaften werden geladen …</div> : <>
+      <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>ZUGEWIESENE TRAINER-MANNSCHAFTEN</div>
+      <div className="space-y-1.5 mb-4">{teams.map((team) => <div key={team.id} className="w-full flex items-center justify-between px-3 py-2 rounded-xl" style={{ background: "#E8F1F5", border: "1px solid #2D6F8E" }}><span className="text-xs font-bold" style={{ color: C.ink }}>{team.name}</span><Check size={14} style={{ color: "#2D6F8E" }}/></div>)}</div>
+      {teams.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Dir wurde noch keine Mannschaft als Trainer/in zugewiesen. Bitte wende dich an den Vereinsadmin.</div> : <>
+      <div className="pt-3 mb-3" style={{ borderTop: `1px solid ${C.line}` }}><div className="text-xs font-bold" style={{ color: C.ink }}>Kapitänsrolle zuweisen</div><div className="text-[10px]" style={{ color: C.textDim }}>Die Kapitänsrolle gilt immer für die ausgewählte Mannschaft.</div></div>
       <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>MANNSCHAFT</div>
       <select value={selectedTeamId} onChange={(event) => setSelectedTeamId(event.target.value)} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-3" style={{ background: C.paperDim, color: C.ink }}>{teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select>
       <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>KAPITÄN</div>
       <select value={captainId} onChange={(event) => { setCaptainId(event.target.value); setMessage(""); }} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-3" style={{ background: C.paperDim, color: C.ink }}><option value="">Spieler auswählen …</option>{players.map((player) => <option key={player.id} value={player.id}>{player.name}</option>)}</select>
       {players.length === 0 && <div className="text-[11px] -mt-1 mb-3" style={{ color: C.textDim }}>Für diese Mannschaft sind noch keine aktiven Spieler hinterlegt.</div>}
       <button onClick={saveCaptain} disabled={!captainId || saving || captainId === savedCaptainId} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: captainId && captainId !== savedCaptainId ? C.ink : C.paperDim, color: captainId && captainId !== savedCaptainId ? C.white : C.textDim, opacity: saving ? .6 : 1 }}>{saving ? "Wird gespeichert …" : captainId === savedCaptainId && captainId ? "Kapitän gespeichert" : "Kapitän speichern"}</button>
+      </>}
     </>}
     {message && <div role="status" className="text-[11px] mt-2" style={{ color: message.includes("gespeichert") ? C.green : C.red }}>{message}</div>}
+  </div>;
+}
+
+const memberPlayerTeams = (member) => {
+  if (member.playerTeams?.length) return member.playerTeams;
+  if (!member.roles?.includes("spieler")) return [];
+  if (member.teams?.length) return member.teams;
+  return member.team && member.team !== "Mitglied" ? [member.team] : [];
+};
+
+function PlayerTeamSettings({ user, setMembers }) {
+  const [teams, setTeams] = useState([]);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [savedIds, setSavedIds] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  const databaseMembership = !!supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(user.id));
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true); setMessage("");
+      if (!databaseMembership) {
+        const names = [...new Set([...TEAMS.filter((name) => name !== "Eltern / Angehörige"), ...memberPlayerTeams(user)])];
+        const localTeams = names.map((name) => ({ id: name, name }));
+        const selected = memberPlayerTeams(user).slice(0, 3);
+        setTeams(localTeams); setSelectedIds(selected); setSavedIds(selected); setLoading(false); return;
+      }
+      const [{ data: teamData, error: teamError }, { data: assignmentData, error: assignmentError }] = await Promise.all([
+        supabase.from("teams").select("id,name,category").eq("club_id", user.clubId).eq("active", true).order("name"),
+        supabase.from("team_members").select("team_id").eq("membership_id", user.id).eq("function", "spieler"),
+      ]);
+      if (teamError || assignmentError) { setMessage("Die Mannschaftsauswahl konnte nicht geladen werden."); setLoading(false); return; }
+      const selected = (assignmentData || []).map((entry) => entry.team_id).slice(0, 3);
+      setTeams(teamData || []); setSelectedIds(selected); setSavedIds(selected); setLoading(false);
+    };
+    load();
+  }, [user.id, user.clubId, databaseMembership]);
+
+  const toggle = (teamId) => {
+    setMessage("");
+    setSelectedIds((current) => {
+      if (current.includes(teamId)) return current.filter((id) => id !== teamId);
+      if (current.length >= 3) { setMessage("Du kannst maximal drei Mannschaften auswählen."); return current; }
+      return [...current, teamId];
+    });
+  };
+  const save = async () => {
+    setSaving(true); setMessage("");
+    if (databaseMembership) {
+      const { error } = await supabase.rpc("set_my_player_teams", { target_club: user.clubId, target_team_ids: selectedIds });
+      if (error) { setMessage("Die Mannschaften konnten nicht gespeichert werden."); setSaving(false); return; }
+    }
+    const selectedNames = teams.filter((team) => selectedIds.includes(team.id)).map((team) => team.name);
+    setMembers((items) => items.map((member) => member.id === user.id ? {
+      ...member,
+      playerTeams: selectedNames,
+      team: selectedNames[0] || "Mitglied",
+      teams: [...new Set([...selectedNames, ...(member.trainerTeams || []), member.managedTeam].filter(Boolean))],
+    } : member));
+    setSavedIds(selectedIds); setMessage("Deine Mannschaften wurden gespeichert."); setSaving(false);
+  };
+  const changed = JSON.stringify([...selectedIds].sort()) !== JSON.stringify([...savedIds].sort());
+  return <div className="rounded-2xl p-4 mb-5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+    <div className="flex items-center justify-between mb-1"><div className="flex items-center gap-2 text-sm font-bold" style={{ color: C.ink }}><Users size={15} style={{ color: C.green }}/> Meine Mannschaften</div><span className="text-[10px] font-bold" style={{ color: selectedIds.length === 3 ? C.red : C.textDim }}>{selectedIds.length}/3</span></div>
+    <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Wähle bis zu drei Mannschaften aus, für die du als Spieler/in aktiv bist.</div>
+    {loading ? <div className="text-xs py-3" style={{ color: C.textDim }}>Mannschaften werden geladen …</div> : teams.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Der Verein hat noch keine Mannschaft angelegt.</div> : <div className="space-y-2 mb-3">{teams.map((team) => {
+      const active = selectedIds.includes(team.id);
+      return <button type="button" key={team.id} onClick={() => toggle(team.id)} className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left" style={{ background: active ? "#E7F3EC" : C.paperDim, border: active ? `1px solid ${C.green}` : "1px solid transparent" }}><div><div className="text-xs font-bold" style={{ color: C.ink }}>{team.name}</div>{team.category && <div className="text-[10px]" style={{ color: C.textDim }}>{team.category}</div>}</div><span className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: active ? C.green : C.white, color: C.white }}>{active && <Check size={13}/>}</span></button>;
+    })}</div>}
+    {!loading && teams.length > 0 && <button onClick={save} disabled={!changed || saving} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: changed ? C.ink : C.paperDim, color: changed ? C.white : C.textDim, opacity: saving ? .6 : 1 }}>{saving ? "Wird gespeichert …" : changed ? "Mannschaften speichern" : "Auswahl gespeichert"}</button>}
+    {message && <div role="status" className="text-[11px] mt-2" style={{ color: message.includes("gespeichert") ? C.green : C.red }}>{message}</div>}
+  </div>;
+}
+
+function TeamsView({ currentUser, members, setMembers, currentClub }) {
+  const [teams, setTeams] = useState([]);
+  const [selectedTeamId, setSelectedTeamId] = useState("");
+  const [selectedPlayerId, setSelectedPlayerId] = useState("");
+  const [showPlayerPicker, setShowPlayerPicker] = useState(false);
+  const [playerTeamIds, setPlayerTeamIds] = useState([]);
+  const [savedPlayerTeamIds, setSavedPlayerTeamIds] = useState([]);
+  const [savingPlayer, setSavingPlayer] = useState(false);
+  const [playerMessage, setPlayerMessage] = useState("");
+  const [showCreate, setShowCreate] = useState(false);
+  const [name, setName] = useState("");
+  const [category, setCategory] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  const databaseMembership = !!supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(currentUser.id));
+  const canCreate = currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role));
+  const canAssignPlayers = currentUser.roles.some((role) => ["vereinsadmin", "sysadmin", "trainer"].includes(role));
+
+  const loadTeams = useCallback(async () => {
+    setLoading(true); setMessage("");
+    if (!databaseMembership) {
+      const names = [...new Set([...TEAMS.filter((team) => team !== "Eltern / Angehörige"), ...members.flatMap((member) => memberPlayerTeams(member))])];
+      setTeams((current) => names.map((teamName) => current.find((team) => team.name === teamName) || { id: teamName, name: teamName, category: "Mannschaft" }));
+      setLoading(false); return;
+    }
+    const { data, error } = await supabase.from("teams").select("id,name,category,active").eq("club_id", currentUser.clubId).eq("active", true).order("name");
+    if (error) setMessage("Die Mannschaften konnten nicht geladen werden.");
+    else setTeams(data || []);
+    setLoading(false);
+  }, [databaseMembership, currentUser.clubId, members]);
+  useEffect(() => { loadTeams(); }, [loadTeams]);
+
+  const rosterFor = (team) => members.filter((member) => member.roles.includes("spieler") && memberPlayerTeams(member).includes(team.name)).sort((a, b) => a.name.localeCompare(b.name, "de"));
+  const ownNames = memberPlayerTeams(currentUser);
+  const ownTeams = teams.filter((team) => ownNames.includes(team.name));
+  const selectedTeam = teams.find((team) => team.id === selectedTeamId);
+  const selectedPlayer = members.find((member) => member.id === selectedPlayerId);
+  const players = members.filter((member) => member.roles.includes("spieler")).sort((a, b) => a.name.localeCompare(b.name, "de"));
+  const openPlayer = (player) => {
+    const assignedNames = memberPlayerTeams(player);
+    const assignedIds = teams.filter((team) => assignedNames.includes(team.name)).map((team) => team.id);
+    setSelectedPlayerId(player.id);
+    setPlayerTeamIds(assignedIds);
+    setSavedPlayerTeamIds(assignedIds);
+    setPlayerMessage("");
+  };
+  const togglePlayerTeam = (teamId) => {
+    setPlayerMessage("");
+    setPlayerTeamIds((current) => {
+      if (current.includes(teamId)) return current.filter((id) => id !== teamId);
+      if (current.length >= 3) { setPlayerMessage("Ein Spieler kann höchstens drei Mannschaften zugeordnet sein."); return current; }
+      return [...current, teamId];
+    });
+  };
+  const savePlayerTeams = async () => {
+    if (!selectedPlayer || !canAssignPlayers) return;
+    setSavingPlayer(true); setPlayerMessage("");
+    if (databaseMembership) {
+      const { error } = await supabase.rpc("set_managed_player_teams", {
+        target_club: currentUser.clubId,
+        target_membership: selectedPlayer.id,
+        target_team_ids: playerTeamIds,
+      });
+      if (error) { setPlayerMessage("Die Mannschaftszuordnung konnte nicht gespeichert werden."); setSavingPlayer(false); return; }
+    }
+    const assignedNames = teams.filter((team) => playerTeamIds.includes(team.id)).map((team) => team.name);
+    setMembers((items) => items.map((member) => member.id === selectedPlayer.id ? {
+      ...member,
+      playerTeams: assignedNames,
+      team: assignedNames[0] || "Mitglied",
+      teams: [...new Set([...assignedNames, ...(member.trainerTeams || []), member.managedTeam].filter(Boolean))],
+    } : member));
+    setSavedPlayerTeamIds(playerTeamIds);
+    setPlayerMessage("Mannschaftszuordnung gespeichert.");
+    setSavingPlayer(false);
+  };
+  const createTeam = async (event) => {
+    event.preventDefault();
+    if (!name.trim()) { setMessage("Bitte einen Mannschaftsnamen eingeben."); return; }
+    setSaving(true); setMessage("");
+    let createdId = `team-${Date.now()}`;
+    if (databaseMembership) {
+      const { data, error } = await supabase.rpc("create_club_team", { target_club: currentUser.clubId, team_name: name.trim(), team_category: category.trim() || null });
+      if (error) { setMessage(error.message?.includes("already exists") ? "Diese Mannschaft ist bereits vorhanden." : "Die Mannschaft konnte nicht angelegt werden."); setSaving(false); return; }
+      createdId = data;
+      await loadTeams();
+    } else {
+      setTeams((current) => [...current, { id: createdId, name: name.trim(), category: category.trim() || "Mannschaft" }].sort((a, b) => a.name.localeCompare(b.name, "de")));
+    }
+    setName(""); setCategory(""); setShowCreate(false); setSelectedTeamId(createdId); setMessage("Mannschaft wurde angelegt."); setSaving(false);
+  };
+  const TeamCard = ({ team }) => {
+    const roster = rosterFor(team); const own = ownNames.includes(team.name);
+    return <button onClick={() => setSelectedTeamId(team.id)} className="w-full flex items-center gap-3 rounded-2xl px-3.5 py-3 text-left" style={{ background: C.white, border: own ? `1px solid ${C.green}` : `1px solid ${C.line}` }}><div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: own ? "#E7F3EC" : C.paperDim, color: own ? C.green : C.red }}><Users size={18}/></div><div className="flex-1 min-w-0"><div className="text-sm font-bold truncate" style={{ color: C.ink }}>{team.name}</div><div className="text-[11px]" style={{ color: C.textDim }}>{team.category || "Mannschaft"} · {roster.length} Spieler{roster.length === 1 ? "" : "/innen"}</div></div>{own && <span className="text-[9px] font-bold px-2 py-1 rounded-full" style={{ background: "#E7F3EC", color: C.green }}>MEIN TEAM</span>}<ChevronRight size={15} style={{ color: C.textDim }}/></button>;
+  };
+
+  return <div className="px-4 pt-4 pb-24">
+    <SectionTitle eyebrow="Verein" title="Teams" right={canCreate ? <button onClick={() => setShowCreate((value) => !value)} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showCreate ? "Schließen" : "+ Team"}</button> : null}/>
+    <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>Alle Mannschaften von {currentClub?.shortName}. Öffne ein Team, um den Spielerkader anzusehen.</div>
+    {showCreate && <form onSubmit={createTeam} className="rounded-2xl p-4 mb-5" style={{ background: C.white, border: `1px solid ${C.line}` }}><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Neue Mannschaft anlegen</div><div className="text-[11px] mb-3" style={{ color: C.textDim }}>Danach können Spieler/innen das Team in ihrem Profil auswählen.</div><input value={name} onChange={(event) => setName(event.target.value)} maxLength={80} placeholder="Mannschaftsname, z. B. U17" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}/><input value={category} onChange={(event) => setCategory(event.target.value)} maxLength={80} placeholder="Kategorie, z. B. Jugend oder Herren" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}/><button disabled={saving || !name.trim()} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: name.trim() ? C.red : C.line, color: C.white }}>{saving ? "Wird angelegt …" : "Mannschaft anlegen"}</button></form>}
+    {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: message.includes("angelegt") ? "#E7F3EC" : "#FDECEC", color: message.includes("angelegt") ? C.green : C.red }}>{message}</div>}
+    {selectedTeam ? <div><button onClick={() => { setSelectedTeamId(""); setShowPlayerPicker(false); }} className="flex items-center gap-1 text-xs font-bold mb-3" style={{ color: C.red }}><ArrowLeft size={14}/> Alle Teams</button><div className="rounded-2xl p-4 mb-4" style={{ background: C.ink, color: C.white }}><div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: "#B7B6BC" }}>{selectedTeam.category || "Mannschaft"}</div><div className="text-xl font-bold" style={{ fontFamily: "Oswald" }}>{selectedTeam.name}</div><div className="text-xs mt-1" style={{ color: "#B7B6BC" }}>{rosterFor(selectedTeam).length} verknüpfte Spieler/innen</div></div><SectionTitle eyebrow="Kader" title="Spieler/innen" right={canAssignPlayers ? <button onClick={() => setShowPlayerPicker((value) => !value)} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showPlayerPicker ? "Schließen" : "+ Zuweisen"}</button> : null}/>{showPlayerPicker && <div className="rounded-2xl p-3 mb-4" style={{ background: C.paperDim }}><div className="text-[11px] mb-2" style={{ color: C.textDim }}>Spieler auswählen und anschließend seine Mannschaften festlegen.</div><div className="space-y-1.5 max-h-56 overflow-y-auto">{players.map((player) => <button key={player.id} onClick={() => openPlayer(player)} className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-left" style={{ background: C.white }}><div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold" style={{ background: player.color, color: C.white }}>{initialsOf(player.name)}</div><div className="flex-1"><div className="text-xs font-bold" style={{ color: C.ink }}>{player.name}</div><div className="text-[9px]" style={{ color: C.textDim }}>{memberPlayerTeams(player).join(" · ") || "Noch ohne Mannschaft"}</div></div><ChevronRight size={13} style={{ color: C.textDim }}/></button>)}</div></div>}{rosterFor(selectedTeam).length ? <div className="space-y-2">{rosterFor(selectedTeam).map((player) => <button key={player.id} onClick={() => openPlayer(player)} className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left" style={{ background: C.white, border: `1px solid ${C.line}` }}><div className="w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: player.color, color: C.white }}>{initialsOf(player.name)}</div><div className="flex-1"><div className="text-xs font-bold" style={{ color: C.ink }}>{player.name}</div><div className="text-[10px]" style={{ color: C.textDim }}>{memberPlayerTeams(player).join(" · ")}</div></div><ChevronRight size={14} style={{ color: C.textDim }}/></button>)}</div> : <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>Dieser Mannschaft sind noch keine Spieler/innen zugeordnet.</div>}</div> : loading ? <div className="text-xs py-4" style={{ color: C.textDim }}>Mannschaften werden geladen …</div> : <><SectionTitle eyebrow="Persönlich" title="Meine Teams"/><div className="space-y-2 mb-6">{ownTeams.length ? ownTeams.map((team) => <TeamCard key={team.id} team={team}/>) : <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>Du bist noch keiner Mannschaft als Spieler/in zugeordnet. Spieler/innen können im Profil bis zu drei Teams auswählen.</div>}</div><SectionTitle eyebrow="Vereinsübersicht" title="Alle Mannschaften"/><div className="space-y-2">{teams.map((team) => <TeamCard key={team.id} team={team}/>)}{teams.length === 0 && <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>Noch keine Mannschaften angelegt.</div>}</div></>}
+    {selectedPlayer && <div className="absolute inset-0 z-50 flex items-end p-3" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setSelectedPlayerId("")}><div role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()} className="w-full rounded-3xl p-5 max-h-[82%] overflow-y-auto" style={{ background: C.white }}><div className="flex items-start justify-between mb-4"><div className="flex items-center gap-3"><div className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold" style={{ background: selectedPlayer.color, color: C.white }}>{initialsOf(selectedPlayer.name)}</div><div><div className="text-lg font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{selectedPlayer.name}</div><div className="text-xs" style={{ color: C.textDim }}>Spieler/in · dabei seit {selectedPlayer.since}</div></div></div><button onClick={() => setSelectedPlayerId("")} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><X size={15}/></button></div><div className="flex items-center justify-between mb-2"><div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.textDim }}>Mannschaften</div>{canAssignPlayers && <span className="text-[10px] font-bold" style={{ color: playerTeamIds.length === 3 ? C.red : C.textDim }}>{playerTeamIds.length}/3</span>}</div>{canAssignPlayers ? <div className="space-y-2">{teams.map((team) => { const active = playerTeamIds.includes(team.id); return <button key={team.id} onClick={() => togglePlayerTeam(team.id)} className="w-full flex items-center justify-between rounded-xl px-3 py-2.5 text-left" style={{ background: active ? "#E7F3EC" : C.paperDim, border: active ? `1px solid ${C.green}` : "1px solid transparent" }}><div><div className="text-xs font-bold" style={{ color: C.ink }}>{team.name}</div><div className="text-[9px]" style={{ color: C.textDim }}>{team.category || "Mannschaft"}</div></div><span className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: active ? C.green : C.white, color: C.white }}>{active && <Check size={13}/>}</span></button>; })}<button onClick={savePlayerTeams} disabled={savingPlayer || JSON.stringify([...playerTeamIds].sort()) === JSON.stringify([...savedPlayerTeamIds].sort())} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: JSON.stringify([...playerTeamIds].sort()) !== JSON.stringify([...savedPlayerTeamIds].sort()) ? C.ink : C.paperDim, color: JSON.stringify([...playerTeamIds].sort()) !== JSON.stringify([...savedPlayerTeamIds].sort()) ? C.white : C.textDim, opacity: savingPlayer ? .6 : 1 }}>{savingPlayer ? "Wird gespeichert …" : "Zuordnung speichern"}</button>{playerMessage && <div role="status" className="text-[11px]" style={{ color: playerMessage.includes("gespeichert") ? C.green : C.red }}>{playerMessage}</div>}</div> : <div className="flex flex-wrap gap-2">{memberPlayerTeams(selectedPlayer).length ? memberPlayerTeams(selectedPlayer).map((team) => <span key={team} className="px-3 py-1.5 rounded-full text-xs font-bold" style={{ background: "#E7F3EC", color: C.green }}>{team}</span>) : <span className="text-xs" style={{ color: C.textDim }}>Noch keiner Mannschaft zugeordnet.</span>}</div>}</div></div>}
+  </div>;
+}
+
+function TeamPenaltyCatalog({ user }) {
+  const [teams, setTeams] = useState([]);
+  const [selectedTeamId, setSelectedTeamId] = useState("");
+  const [rules, setRules] = useState([]);
+  const [localRules, setLocalRules] = useState([]);
+  const [title, setTitle] = useState("");
+  const [amount, setAmount] = useState("");
+  const [editingId, setEditingId] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  const databaseMembership = !!supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(user.id));
+  const canManageSelectedTeam = !!teams.find((team) => team.id === selectedTeamId)?.canManage;
+
+  useEffect(() => {
+    const loadTeams = async () => {
+      setLoading(true); setMessage("");
+      if (!databaseMembership) {
+        const names = [...new Set([
+          ...(user.trainerTeams || []),
+          user.managedTeam,
+          user.team,
+        ].filter(Boolean))];
+        const localTeams = names.map((name) => ({
+          id: name,
+          name,
+          canManage: (user.roles.includes("trainer") && (user.trainerTeams || [user.team]).includes(name))
+            || (user.roles.includes("teammanager") && user.managedTeam === name)
+            || (user.roles.includes("kapitaen") && user.team === name),
+        }));
+        setTeams(localTeams);
+        setSelectedTeamId((current) => current || localTeams[0]?.id || "");
+        setLoading(false);
+        return;
+      }
+      const { data, error } = await supabase.from("team_members")
+        .select("team_id,function,teams(id,name)")
+        .eq("membership_id", user.id)
+        .in("function", ["spieler", "trainer", "teammanager", "kapitaen"]);
+      if (error) { setMessage("Die Mannschaften konnten nicht geladen werden."); setLoading(false); return; }
+      const byId = new Map();
+      (data || []).forEach((entry) => {
+        const team = Array.isArray(entry.teams) ? entry.teams[0] : entry.teams;
+        if (team) byId.set(team.id, { ...team, canManage: byId.get(team.id)?.canManage || ["trainer", "teammanager", "kapitaen"].includes(entry.function) });
+      });
+      const assigned = [...byId.values()].sort((a, b) => a.name.localeCompare(b.name, "de"));
+      setTeams(assigned);
+      setSelectedTeamId((current) => current || assigned[0]?.id || "");
+      setLoading(false);
+    };
+    loadTeams();
+  }, [user.id, databaseMembership]);
+
+  useEffect(() => {
+    if (!selectedTeamId) { setRules([]); return; }
+    const loadRules = async () => {
+      setMessage("");
+      if (!databaseMembership) {
+        setRules(localRules.filter((rule) => rule.teamId === selectedTeamId));
+        return;
+      }
+      const { data, error } = await supabase.from("team_penalty_rules")
+        .select("id,team_id,title,amount,created_at")
+        .eq("team_id", selectedTeamId)
+        .order("title", { ascending: true });
+      if (error) { setMessage("Der Strafenkatalog konnte nicht geladen werden."); return; }
+      setRules((data || []).map((rule) => ({ ...rule, teamId: rule.team_id, amount: Number(rule.amount) })));
+    };
+    loadRules();
+  }, [selectedTeamId, databaseMembership, localRules]);
+
+  const addRule = async (event) => {
+    event.preventDefault();
+    const normalizedAmount = Number(amount.replace(",", "."));
+    if (!title.trim() || !Number.isFinite(normalizedAmount) || normalizedAmount < 0) {
+      setMessage("Bitte einen Titel und einen gültigen Betrag eingeben."); return;
+    }
+    if (!canManageSelectedTeam) { setMessage("Für diese Mannschaft darfst du den Katalog nur ansehen."); return; }
+    setSaving(true); setMessage("");
+    let created = { id: editingId || `penalty-${Date.now()}`, teamId: selectedTeamId, title: title.trim(), amount: normalizedAmount };
+    if (databaseMembership) {
+      const request = editingId
+        ? supabase.from("team_penalty_rules").update({ title: title.trim(), amount: normalizedAmount, updated_at: new Date().toISOString() }).eq("id", editingId)
+        : supabase.from("team_penalty_rules").insert({ team_id: selectedTeamId, title: title.trim(), amount: normalizedAmount });
+      const { data, error } = await request
+        .select("id,team_id,title,amount,created_at").single();
+      if (error) { setMessage("Die Regel konnte nicht gespeichert werden."); setSaving(false); return; }
+      created = { ...data, teamId: data.team_id, amount: Number(data.amount) };
+    }
+    const replaceOrAdd = (current) => [...current.filter((rule) => rule.id !== created.id), created].sort((a, b) => a.title.localeCompare(b.title, "de"));
+    if (!databaseMembership) setLocalRules(replaceOrAdd);
+    setRules(replaceOrAdd);
+    setTitle(""); setAmount(""); setEditingId(""); setMessage("Regel wurde gespeichert."); setSaving(false);
+  };
+
+  const editRule = (rule) => {
+    setEditingId(rule.id);
+    setTitle(rule.title);
+    setAmount(rule.amount.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+    setMessage("");
+  };
+
+  const removeRule = async (rule) => {
+    if (!window.confirm(`Regel „${rule.title}“ wirklich löschen?`)) return;
+    if (!canManageSelectedTeam) return;
+    setSaving(true); setMessage("");
+    if (databaseMembership) {
+      const { error } = await supabase.from("team_penalty_rules").delete().eq("id", rule.id);
+      if (error) { setMessage("Die Regel konnte nicht gelöscht werden."); setSaving(false); return; }
+    }
+    if (!databaseMembership) setLocalRules((current) => current.filter((item) => item.id !== rule.id));
+    setRules((current) => current.filter((item) => item.id !== rule.id));
+    setMessage("Regel wurde gelöscht."); setSaving(false);
+  };
+
+  return <div className="rounded-2xl p-4 mb-5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+    <div className="flex items-center gap-2 mb-1 text-sm font-bold" style={{ color: C.ink }}><ClipboardList size={16} style={{ color: C.red }}/> Strafenkatalog</div>
+    <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Regeln und Kosten werden für jede Mannschaft getrennt geführt.</div>
+    {loading ? <div className="text-xs py-3" style={{ color: C.textDim }}>Mannschaften werden geladen …</div> : teams.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Deinem Profil ist noch keine Mannschaft zugeordnet.</div> : <>
+      <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>MANNSCHAFT</div>
+      <select value={selectedTeamId} onChange={(event) => { setSelectedTeamId(event.target.value); setMessage(""); }} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-3" style={{ background: C.paperDim, color: C.ink }}>{teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select>
+      <div className="space-y-2 mb-3">
+        {rules.map((rule) => <div key={rule.id} className="flex items-center gap-2 px-3 py-2.5 rounded-xl" style={{ background: C.paperDim }}><div className="flex-1 min-w-0"><div className="text-xs font-bold truncate" style={{ color: C.ink }}>{rule.title}</div></div><div className="text-xs font-bold whitespace-nowrap" style={{ color: C.red, fontFamily: "JetBrains Mono" }}>{rule.amount.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</div>{canManageSelectedTeam && <><button type="button" disabled={saving} onClick={() => editRule(rule)} className="px-2 py-1.5 rounded-lg text-[10px] font-bold" style={{ background: C.white, color: C.ink }}>Ändern</button><button type="button" disabled={saving} onClick={() => removeRule(rule)} aria-label={`${rule.title} löschen`} className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: C.white, color: C.red }}><X size={14}/></button></>}</div>)}
+        {rules.length === 0 && <div className="text-[11px] rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Für diese Mannschaft sind noch keine Regeln hinterlegt.</div>}
+      </div>
+      {canManageSelectedTeam && <form onSubmit={addRule} className="pt-3" style={{ borderTop: `1px solid ${C.line}` }}><div className="flex items-center justify-between mb-2"><div className="text-[10px] font-bold" style={{ color: C.textDim }}>{editingId ? "REGEL BEARBEITEN" : "NEUE REGEL"}</div>{editingId && <button type="button" onClick={() => { setEditingId(""); setTitle(""); setAmount(""); }} className="text-[10px] font-bold" style={{ color: C.red }}>Abbrechen</button>}</div><input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={120} placeholder="Titel, z. B. Zuspätkommen" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim, color: C.ink }}/><div className="flex gap-2"><div className="relative flex-1"><input value={amount} onChange={(event) => setAmount(event.target.value)} inputMode="decimal" placeholder="Kosten" className="w-full px-3 pr-8 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}/><span className="absolute right-3 top-2.5 text-xs" style={{ color: C.textDim }}>€</span></div><button type="submit" disabled={saving || !title.trim() || !amount.trim()} className="px-4 rounded-xl text-xs font-bold" style={{ background: title.trim() && amount.trim() ? C.ink : C.line, color: C.white }}>{saving ? "…" : editingId ? "Speichern" : "Hinzufügen"}</button></div></form>}
+    </>}
+    {message && <div role="status" className="text-[11px] mt-2" style={{ color: message.includes("gespeichert") || message.includes("gelöscht") ? C.green : C.red }}>{message}</div>}
   </div>;
 }
 
@@ -1687,8 +2003,9 @@ function PlayerDataCard({ user, setMembers }) {
   );
 }
 
-function PayPalSubscriptionButton({ sdkReady, planId, customId, onApproved, onError }) {
+function PayPalSubscriptionButton({ clientId, planId, customId, onApproved, onError }) {
   const container = useRef(null);
+  const [sdkReady, setSdkReady] = useState(() => typeof window !== "undefined" && !!window.paypal);
 
   useEffect(() => {
     if (!sdkReady || !window.paypal || !container.current || !planId || !customId) return;
@@ -1704,58 +2021,88 @@ function PayPalSubscriptionButton({ sdkReady, planId, customId, onApproved, onEr
     return () => { if (buttons?.close) buttons.close().catch(() => {}); };
   }, [sdkReady, planId, customId, onApproved, onError]);
 
-  return <div ref={container} className="min-h-10" />;
+  return <>
+    <Script
+      id="paypal-subscriptions-sdk"
+      src={`https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=EUR&vault=true&intent=subscription`}
+      strategy="afterInteractive"
+      onLoad={() => setSdkReady(true)}
+      onError={() => onError("PayPal konnte nicht geladen werden.")}
+    />
+    <div ref={container} className="min-h-10" />
+  </>;
 }
 
-const SUBSCRIPTION_PRICES = {
-  member: {
-    monthly: { price: "2,99 €", setup: "1,50 €" },
-    yearly: { price: "11,88 €", setup: "1,50 €", equivalent: "0,99 € / Monat" },
-  },
-  club: {
-    monthly: { price: "29,99 €", setup: "5,00 €" },
-    yearly: { price: "299,88 €", setup: "5,00 €", equivalent: "24,99 € / Monat" },
-  },
+const SUBSCRIPTION_STATUS = {
+  pending: { label: "Wird bestätigt", color: C.amber, background: "#FFF6E4" },
+  active: { label: "Aktiv", color: C.green, background: "#E7F3EC" },
+  past_due: { label: "Zahlung offen", color: C.red, background: "#FDECEC" },
+  suspended: { label: "Ausgesetzt", color: C.red, background: "#FDECEC" },
+  cancelled: { label: "Gekündigt", color: C.textDim, background: C.paperDim },
+  expired: { label: "Abgelaufen", color: C.textDim, background: C.paperDim },
+  refunded: { label: "Erstattet", color: C.textDim, background: C.paperDim },
 };
 
-function SubscriptionOffer({ title, description, badge, accountType, cycle, setCycle, config, sdkReady, customId, allowed, loading, message, setMessage, onApproved }) {
-  const selected = SUBSCRIPTION_PRICES[accountType][cycle];
+function subscriptionDate(value) {
+  if (!value) return "Noch nicht übermittelt";
+  return new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
+}
 
-  return <div className="rounded-2xl p-4 mb-4" style={{ background: C.white, border: `1px solid ${accountType === "club" ? "#A8D5C2" : C.line}` }}>
-    <div className="flex items-start justify-between gap-3 mb-1">
-      <div className="flex items-center gap-2">
-        {accountType === "club" ? <ShieldCheck size={17} style={{ color: C.green }} /> : <User size={17} style={{ color: C.red }} />}
-        <div className="text-sm font-bold" style={{ color: C.ink }}>{title}</div>
-      </div>
-      {badge && <span className="rounded-full px-2 py-1 text-[9px] font-bold whitespace-nowrap" style={{ background: "#E7F3EC", color: C.green }}>{badge}</span>}
+function SubscriptionRecord({ subscription, accountLabel }) {
+  const plan = Array.isArray(subscription.subscription_plans) ? subscription.subscription_plans[0] : subscription.subscription_plans;
+  const status = SUBSCRIPTION_STATUS[subscription.status] || SUBSCRIPTION_STATUS.pending;
+  const interval = plan?.interval === "year" ? "Jährlich" : "Monatlich";
+  const amount = typeof plan?.price_cents === "number" ? new Intl.NumberFormat("de-DE", { style: "currency", currency: plan.currency || "EUR" }).format(plan.price_cents / 100) : "—";
+  return <div className="rounded-2xl p-3.5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+    <div className="flex items-start justify-between gap-2 mb-3">
+      <div><div className="text-[9px] uppercase tracking-widest font-bold" style={{ color: C.red }}>{accountLabel}</div><div className="text-sm font-bold" style={{ color: C.ink }}>{plan?.name || `${interval}es Abonnement`}</div></div>
+      <span className="text-[9px] font-bold px-2 py-1 rounded-full whitespace-nowrap" style={{ color: status.color, background: status.background }}>{status.label}</span>
     </div>
-    <div className="text-[11px] mb-3 leading-relaxed" style={{ color: C.textDim }}>{description}</div>
     <div className="grid grid-cols-2 gap-2 mb-3">
-      {[["monthly", "Monatlich"], ["yearly", "Jährlich"]].map(([value, label]) => <button key={value} onClick={() => { setCycle(value); setMessage(""); }} className="py-2 rounded-xl text-xs font-bold" style={{ background: cycle === value ? "#FCEBEE" : C.paperDim, color: cycle === value ? C.red : C.textDim, border: cycle === value ? `1px solid ${C.red}` : "1px solid transparent" }}>{label}</button>)}
+      <div className="rounded-xl p-2.5" style={{ background: C.paperDim }}><div className="text-[9px]" style={{ color: C.textDim }}>Tarif</div><div className="text-xs font-bold" style={{ color: C.ink }}>{interval} · {amount}</div></div>
+      <div className="rounded-xl p-2.5" style={{ background: C.paperDim }}><div className="text-[9px]" style={{ color: C.textDim }}>Zahlungsanbieter</div><div className="text-xs font-bold capitalize" style={{ color: C.ink }}>{subscription.provider}</div></div>
     </div>
-    <div className="rounded-xl p-3 mb-3" style={{ background: C.paperDim }}>
-      <div className="flex items-end justify-between gap-3"><div><div className="text-xl font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{selected.price}</div><div className="text-[10px]" style={{ color: C.textDim }}>{cycle === "yearly" ? "jährlich im Voraus" : "pro Monat"}{selected.equivalent ? ` · ${selected.equivalent}` : ""}</div></div><div className="text-[10px] text-right" style={{ color: C.textDim }}>einmalig<br/><b>{selected.setup} Einrichtung</b></div></div>
-      <div className="text-[10px] mt-2" style={{ color: C.textDim }}>19 % Umsatzsteuer im Preis enthalten. Keine Probezeit.</div>
+    <div className="space-y-2 text-[10px]">
+      <div className="flex justify-between gap-3"><span style={{ color: C.textDim }}>Erworben am</span><b className="text-right" style={{ color: C.ink }}>{subscriptionDate(subscription.created_at)}</b></div>
+      <div className="flex justify-between gap-3"><span style={{ color: C.textDim }}>Aktueller Zeitraum seit</span><b className="text-right" style={{ color: C.ink }}>{subscriptionDate(subscription.current_period_start)}</b></div>
+      <div className="flex justify-between gap-3"><span style={{ color: C.textDim }}>{subscription.cancel_at_period_end || subscription.status === "cancelled" ? "Nutzbar bis" : "Nächste Abrechnung"}</span><b className="text-right" style={{ color: C.ink }}>{subscriptionDate(subscription.current_period_end)}</b></div>
+      <div className="flex justify-between gap-3"><span style={{ color: C.textDim }}>Letzte Zahlung</span><b className="text-right" style={{ color: C.ink }}>{subscriptionDate(subscription.last_payment_at)}</b></div>
+      <div className="flex justify-between gap-3"><span style={{ color: C.textDim }}>Abonnement-ID</span><b className="text-right break-all" style={{ color: C.ink, fontFamily: "JetBrains Mono" }}>{subscription.provider_subscription_id}</b></div>
     </div>
-    {loading ? <div className="text-xs py-2 text-center" style={{ color: C.textDim }}>PayPal wird geladen …</div> : config && allowed ?
-      <PayPalSubscriptionButton sdkReady={sdkReady} planId={config.plans[accountType][cycle]} customId={customId} onApproved={onApproved} onError={setMessage} /> :
-      <div className="text-[11px] rounded-xl px-3 py-2" style={{ background: "#FFF6E4", color: C.textDim }}>{message || "Der Checkout ist nur für ein angemeldetes, dauerhaft gespeichertes Konto verfügbar."}</div>}
-    {message && config && allowed && <div role="status" className="text-[11px] mt-2 rounded-xl px-3 py-2" style={{ background: message.includes("bestätigt") ? "#E7F3EC" : "#FDECEC", color: message.includes("bestätigt") ? C.green : C.red }}>{message}</div>}
-    <div className="text-[9px] mt-3 leading-relaxed" style={{ color: C.textDim }}>Mit dem Abschluss akzeptierst du die <a href="/nutzungsbedingungen" className="underline">Nutzungsbedingungen</a>. Kündigung über PayPal zum Ende des Abrechnungszeitraums.</div>
+    {(subscription.cancel_at_period_end || subscription.status === "cancelled") && <div className="mt-3 rounded-xl px-3 py-2 text-[10px]" style={{ background: C.paperDim, color: C.textDim }}>Dieses Abonnement wurde gekündigt und verlängert sich nicht erneut.</div>}
   </div>;
 }
 
 function SubscriptionPanel({ user }) {
   const [config, setConfig] = useState(null);
-  const [memberCycle, setMemberCycle] = useState("monthly");
-  const [clubCycle, setClubCycle] = useState("monthly");
-  const [memberMessage, setMemberMessage] = useState("");
-  const [clubMessage, setClubMessage] = useState("");
+  const [accountType, setAccountType] = useState("member");
+  const [cycle, setCycle] = useState("monthly");
+  const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
-  const [sdkReady, setSdkReady] = useState(() => typeof window !== "undefined" && !!window.paypal);
-  const canBuyClubPlan = user.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role));
+  const [subscriptions, setSubscriptions] = useState({ member: [], club: [] });
+  const [subscriptionsLoading, setSubscriptionsLoading] = useState(true);
+  const canBuyClubPlan = user.roles.some((role) => ["vereinsadmin", "sysadmin", "vorstand", "geschaeftsfuehrung"].includes(role));
   const databaseProfile = user.authProfileId && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(user.authProfileId));
   const databaseClub = /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(user.clubId));
+
+  const loadSubscriptions = useCallback(async () => {
+    if (!supabase || !databaseProfile) { setSubscriptionsLoading(false); return; }
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token;
+    if (!token) { setSubscriptionsLoading(false); return; }
+    try {
+      const response = await fetch(`/api/paypal/subscriptions?clubId=${encodeURIComponent(user.clubId || "")}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "Abonnements konnten nicht geladen werden.");
+      setSubscriptions({ member: payload.member || [], club: payload.club || [] });
+    } catch (error) {
+      setMessage(error.message || "Abonnements konnten nicht geladen werden.");
+    } finally {
+      setSubscriptionsLoading(false);
+    }
+  }, [databaseProfile, user.clubId]);
+
+  useEffect(() => { loadSubscriptions(); }, [loadSubscriptions]);
 
   useEffect(() => {
     fetch("/api/paypal/config", { cache: "no-store" })
@@ -1764,59 +2111,158 @@ function SubscriptionPanel({ user }) {
         if (!response.ok) throw new Error(payload.error || "PayPal ist noch nicht konfiguriert.");
         setConfig(payload);
       })
-      .catch((error) => { setMemberMessage(error.message); setClubMessage(error.message); })
+      .catch((error) => setMessage(error.message))
       .finally(() => setLoading(false));
   }, []);
 
-  const memberApproved = useCallback((subscriptionId) => {
-    setMemberMessage(`Persönliches Abo bestätigt. PayPal-ID: ${subscriptionId}. Die Freischaltung erfolgt automatisch.`);
-  }, []);
-  const clubApproved = useCallback((subscriptionId) => {
-    setClubMessage(`Vereins-Abo bestätigt. PayPal-ID: ${subscriptionId}. Die Freischaltung erfolgt automatisch.`);
-  }, []);
+  const selected = accountType === "club"
+    ? { monthly: { price: "29,99 €", setup: "5,00 €" }, yearly: { price: "299,88 €", setup: "5,00 €", equivalent: "24,99 € / Monat" } }[cycle]
+    : { monthly: { price: "2,99 €", setup: "1,50 €" }, yearly: { price: "11,88 €", setup: "1,50 €", equivalent: "0,99 € / Monat" } }[cycle];
+  const customId = accountType === "club" ? user.clubId : user.authProfileId;
+  const allowed = accountType === "club" ? canBuyClubPlan && databaseClub : databaseProfile;
+  const approved = useCallback(async (subscriptionId) => {
+    setMessage("Das Abonnement wird gespeichert …");
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("Bitte melde dich erneut an.");
+      const response = await fetch("/api/paypal/subscriptions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ subscriptionId, accountType, clubId: user.clubId }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "Das Abonnement konnte noch nicht gespeichert werden.");
+      await loadSubscriptions();
+      setMessage("Abonnement gespeichert und automatisch freigeschaltet.");
+    } catch (error) {
+      setMessage(error.message || "Die PayPal-Bestätigung wird noch verarbeitet. Bitte aktualisiere die Ansicht gleich erneut.");
+    }
+  }, [accountType, loadSubscriptions, user.clubId]);
 
-  return <div className="mb-5">
-    {config?.clientId && <Script
-      id="paypal-subscriptions-sdk"
-      src={`https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(config.clientId)}&currency=EUR&vault=true&intent=subscription`}
-      strategy="afterInteractive"
-      onLoad={() => setSdkReady(true)}
-      onReady={() => setSdkReady(true)}
-      onError={() => { setMemberMessage("PayPal konnte nicht geladen werden."); setClubMessage("PayPal konnte nicht geladen werden."); }}
-    />}
-    <div className="flex items-center gap-2 mb-1"><Euro size={17} style={{ color: C.red }} /><div className="text-base font-bold" style={{ color: C.ink }}>Abonnementübersicht</div></div>
-    <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Persönliches Nutzerkonto und Vereinsaccount werden getrennt verwaltet. Alle Abos verlängern sich automatisch bis zur Kündigung.</div>
-    <SubscriptionOffer
-      title="Dein Nutzerkonto"
-      description="Dieses Abonnement gehört ausschließlich zu deinem persönlichen App-Konto."
-      accountType="member"
-      cycle={memberCycle}
-      setCycle={setMemberCycle}
-      config={config}
-      sdkReady={sdkReady}
-      customId={user.authProfileId}
-      allowed={databaseProfile}
-      loading={loading}
-      message={memberMessage}
-      setMessage={setMemberMessage}
-      onApproved={memberApproved}
-    />
-    {canBuyClubPlan && <SubscriptionOffer
-      title="Vereinsaccount"
-      description="Dieses Abonnement gilt einmal für den gesamten Verein und wird unabhängig von deinem persönlichen Nutzerkonto verwaltet."
-      badge="Vereins-Admin"
-      accountType="club"
-      cycle={clubCycle}
-      setCycle={setClubCycle}
-      config={config}
-      sdkReady={sdkReady}
-      customId={user.clubId}
-      allowed={databaseClub}
-      loading={loading}
-      message={clubMessage}
-      setMessage={setClubMessage}
-      onApproved={clubApproved}
-    />}
+  return <div>
+    <SectionTitle eyebrow="Verträge" title="Meine Abonnements" />
+    {subscriptionsLoading ? <div className="rounded-2xl p-4 mb-5 text-xs text-center" style={{ background: C.white, border: `1px solid ${C.line}`, color: C.textDim }}>Abonnements werden geladen …</div> :
+      subscriptions.member.length + subscriptions.club.length > 0 ? <div className="space-y-3 mb-6">
+        {subscriptions.member.map((subscription) => <SubscriptionRecord key={`member-${subscription.id}`} subscription={subscription} accountLabel="Persönliches Nutzerkonto" />)}
+        {subscriptions.club.map((subscription) => <SubscriptionRecord key={`club-${subscription.id}`} subscription={subscription} accountLabel="Vereinsaccount" />)}
+      </div> : <div className="rounded-2xl p-4 mb-6" style={{ background: C.paperDim }}><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Noch kein gespeichertes Abonnement</div><div className="text-[11px]" style={{ color: C.textDim }}>Nach einem erfolgreichen Abschluss erscheinen hier Tarif, Status, Erwerbsdatum und die nächste Abrechnung.</div></div>}
+
+    <SectionTitle eyebrow="Tarif wählen" title="Abonnement abschließen" />
+    <div className="rounded-2xl p-4 mb-5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+    <div className="flex items-center gap-2 mb-1"><Euro size={16} style={{ color: C.red }} /><div className="text-sm font-bold" style={{ color: C.ink }}>Abonnement</div></div>
+    <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Sicher über PayPal bezahlen. Alle Abos verlängern sich automatisch bis zur Kündigung.</div>
+    {canBuyClubPlan && <div className="grid grid-cols-2 gap-2 mb-2">
+      {[['member', 'Nutzerkonto'], ['club', 'Vereinsaccount']].map(([value, label]) => <button key={value} onClick={() => { setAccountType(value); setMessage(""); }} className="py-2 rounded-xl text-xs font-bold" style={{ background: accountType === value ? C.ink : C.paperDim, color: accountType === value ? C.white : C.textDim }}>{label}</button>)}
+    </div>}
+    <div className="grid grid-cols-2 gap-2 mb-3">
+      {[['monthly', 'Monatlich'], ['yearly', 'Jährlich']].map(([value, label]) => <button key={value} onClick={() => { setCycle(value); setMessage(""); }} className="py-2 rounded-xl text-xs font-bold" style={{ background: cycle === value ? "#FCEBEE" : C.paperDim, color: cycle === value ? C.red : C.textDim, border: cycle === value ? `1px solid ${C.red}` : "1px solid transparent" }}>{label}</button>)}
+    </div>
+    <div className="rounded-xl p-3 mb-3" style={{ background: C.paperDim }}>
+      <div className="flex items-end justify-between"><div><div className="text-xl font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{selected.price}</div><div className="text-[10px]" style={{ color: C.textDim }}>{cycle === "yearly" ? "jährlich im Voraus" : "pro Monat"}{selected.equivalent ? ` · ${selected.equivalent}` : ""}</div></div><div className="text-[10px] text-right" style={{ color: C.textDim }}>einmalig<br/><b>{selected.setup} Einrichtung</b></div></div>
+      <div className="text-[10px] mt-2" style={{ color: C.textDim }}>19 % Umsatzsteuer im Preis enthalten. Keine Probezeit.</div>
+    </div>
+    {loading ? <div className="text-xs py-2 text-center" style={{ color: C.textDim }}>PayPal wird geladen …</div> : config && allowed ?
+      <PayPalSubscriptionButton clientId={config.clientId} planId={config.plans[accountType][cycle]} customId={customId} onApproved={approved} onError={setMessage} /> :
+      <div className="text-[11px] rounded-xl px-3 py-2" style={{ background: "#FFF6E4", color: C.textDim }}>{message || "Der Checkout ist nur für ein angemeldetes, dauerhaft gespeichertes Konto verfügbar."}</div>}
+    {message && config && allowed && <div role="status" className="text-[11px] mt-2 rounded-xl px-3 py-2" style={{ background: message.includes("gespeichert") ? "#E7F3EC" : message.includes("wird") ? "#FFF6E4" : "#FDECEC", color: message.includes("gespeichert") ? C.green : message.includes("wird") ? C.textDim : C.red }}>{message}</div>}
+    <div className="text-[9px] mt-3 leading-relaxed" style={{ color: C.textDim }}>Mit dem Abschluss akzeptierst du die <a href="/nutzungsbedingungen" className="underline">Nutzungsbedingungen</a>. Kündigung über PayPal zum Ende des Abrechnungszeitraums.</div>
+    </div>
+  </div>;
+}
+
+function ProfileUnderlay({ title, eyebrow = "Profileinstellungen", onClose, children }) {
+  return <div className="absolute inset-0 z-40 flex flex-col" style={{ background: C.paper }}>
+    <div className="flex items-center gap-3 px-4 py-3 flex-shrink-0" style={{ borderBottom: `1px solid ${C.line}`, background: C.paper }}>
+      <button onClick={onClose} aria-label="Zurück zum Profil" className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: C.white, border: `1px solid ${C.line}` }}><ArrowLeft size={16}/></button>
+      <div><div className="text-[9px] uppercase tracking-widest font-bold" style={{ color: C.red }}>{eyebrow}</div><div className="text-base font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{title}</div></div>
+    </div>
+    <div className="flex-1 overflow-y-auto px-4 pt-4 pb-24">{children}</div>
+  </div>;
+}
+
+function ProfileSettingsCard({ icon: Icon, title, description, onClick, color = C.red }) {
+  return <button onClick={onClick} className="w-full flex items-center gap-3 rounded-2xl px-3.5 py-3 text-left" style={{ background: C.white, border: `1px solid ${C.line}` }}><div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: C.paperDim, color }}><Icon size={18}/></div><div className="flex-1 min-w-0"><div className="text-sm font-bold" style={{ color: C.ink }}>{title}</div><div className="text-[10px] leading-snug" style={{ color: C.textDim }}>{description}</div></div><ChevronRight size={15} style={{ color: C.textDim }}/></button>;
+}
+
+function SysAdminUserManager({ members, setMembers }) {
+  const [selectedId, setSelectedId] = useState("");
+  const [section, setSection] = useState("overview");
+  const [form, setForm] = useState({ name: "", email: "", birthdate: "", since: "", status: "active" });
+  const [teams, setTeams] = useState([]);
+  const [playerTeamIds, setPlayerTeamIds] = useState([]);
+  const [savedPlayerTeamIds, setSavedPlayerTeamIds] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  const selected = members.find((member) => member.id === selectedId);
+  const databaseMembership = !!selected && !!supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(selected.id));
+
+  useEffect(() => {
+    if (!selected) return;
+    setForm({ name: selected.name || "", email: selected.email || "", birthdate: selected.birthdate || "", since: String(selected.since || new Date().getFullYear()), status: selected.status || "active" });
+    setSection("overview"); setMessage("");
+  }, [selectedId]);
+
+  useEffect(() => {
+    if (!selected) { setTeams([]); return; }
+    const load = async () => {
+      let available = TEAMS.filter((name) => name !== "Eltern / Angehörige").map((name) => ({ id: name, name }));
+      if (databaseMembership) {
+        const { data, error } = await supabase.from("teams").select("id,name,category").eq("club_id", selected.clubId).eq("active", true).order("name");
+        if (error) { setMessage("Die Mannschaften konnten nicht geladen werden."); return; }
+        available = data || [];
+      }
+      const names = memberPlayerTeams(selected);
+      const ids = available.filter((team) => names.includes(team.name)).map((team) => team.id);
+      setTeams(available); setPlayerTeamIds(ids); setSavedPlayerTeamIds(ids);
+    };
+    load();
+  }, [selectedId, databaseMembership]);
+
+  const saveProfile = async () => {
+    if (!selected || !form.name.trim()) { setMessage("Bitte einen Namen eingeben."); return; }
+    setSaving(true); setMessage("");
+    if (databaseMembership) {
+      const { error } = await supabase.rpc("sysadmin_update_member_profile", {
+        target_membership: selected.id,
+        new_display_name: form.name.trim(),
+        new_contact_email: form.email.trim() || null,
+        new_birthdate: form.birthdate || null,
+        new_member_since: Number(form.since),
+        new_status: form.status,
+      });
+      if (error) { setMessage("Das Vereinsprofil konnte nicht gespeichert werden."); setSaving(false); return; }
+    }
+    setMembers((items) => items.map((member) => member.id === selected.id ? { ...member, name: form.name.trim(), email: form.email.trim(), birthdate: form.birthdate, since: Number(form.since), status: form.status } : member));
+    setMessage("Vereinsprofil gespeichert."); setSaving(false);
+  };
+  const togglePlayerTeam = (teamId) => {
+    setMessage("");
+    setPlayerTeamIds((current) => current.includes(teamId) ? current.filter((id) => id !== teamId) : current.length < 3 ? [...current, teamId] : current);
+  };
+  const savePlayerTeams = async () => {
+    if (!selected) return;
+    setSaving(true); setMessage("");
+    if (databaseMembership) {
+      const { error } = await supabase.rpc("set_managed_player_teams", { target_club: selected.clubId, target_membership: selected.id, target_team_ids: playerTeamIds });
+      if (error) { setMessage("Die Spieler-Mannschaften konnten nicht gespeichert werden."); setSaving(false); return; }
+    }
+    const names = teams.filter((team) => playerTeamIds.includes(team.id)).map((team) => team.name);
+    setMembers((items) => items.map((member) => member.id === selected.id ? { ...member, playerTeams: names, team: names[0] || "Mitglied", teams: [...new Set([...names, ...(member.trainerTeams || []), member.managedTeam].filter(Boolean))] } : member));
+    setSavedPlayerTeamIds(playerTeamIds); setMessage("Spieler-Mannschaften gespeichert."); setSaving(false);
+  };
+
+  return <div>
+    <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Als Sys-Admin kannst du die Vereinseinstellungen aller Nutzer bearbeiten. Login-E-Mail, Passwort und private Zahlungsdaten bleiben geschützt.</div>
+    <select value={selectedId} onChange={(event) => setSelectedId(event.target.value)} className="w-full px-3 py-3 rounded-xl text-xs outline-none mb-4" style={{ background: C.white, border: `1px solid ${C.line}`, color: C.ink }}><option value="">Nutzer auswählen …</option>{members.slice().sort((a, b) => a.name.localeCompare(b.name, "de")).map((member) => <option key={member.id} value={member.id}>{member.name} · {member.roles.map((role) => ROLE_META[role]?.label || role).join(", ")}</option>)}</select>
+    {selected && <><div className="rounded-2xl p-4 mb-4 flex items-center gap-3" style={{ background: C.ink, color: C.white }}><div className="w-11 h-11 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: selected.color }}>{initialsOf(selected.name)}</div><div className="min-w-0"><div className="text-base font-bold truncate" style={{ fontFamily: "Oswald" }}>{selected.name}</div><div className="text-[10px] truncate" style={{ color: "#B7B6BC" }}>{selected.email || "Profil ohne eigene E-Mail"}</div></div></div>
+      <div className="grid grid-cols-2 gap-2 mb-4">{[["overview", "Stammdaten"], ["roles", "Rollen & Trainer"], ["teams", "Spieler-Teams"], ["family", "Familie"]].map(([id, label]) => <button key={id} onClick={() => { setSection(id); setMessage(""); }} className="py-2.5 rounded-xl text-[11px] font-bold" style={{ background: section === id ? C.ink : C.white, color: section === id ? C.white : C.textDim, border: `1px solid ${section === id ? C.ink : C.line}` }}>{label}</button>)}</div>
+      {section === "overview" && <div className="rounded-2xl p-4 space-y-2" style={{ background: C.white, border: `1px solid ${C.line}` }}><div className="text-sm font-bold mb-2" style={{ color: C.ink }}>Vereinsprofil bearbeiten</div><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Anzeigename" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/><input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} placeholder="Kontakt-E-Mail im Verein" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/><div className="grid grid-cols-2 gap-2"><input type="date" value={form.birthdate} onChange={(event) => setForm({ ...form, birthdate: event.target.value })} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/><input type="number" min="1800" max="2200" value={form.since} onChange={(event) => setForm({ ...form, since: event.target.value })} placeholder="Mitglied seit" className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/></div><select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}><option value="active">Aktiv</option><option value="pending">Ausstehend</option><option value="inactive">Inaktiv</option><option value="blocked">Gesperrt</option></select><button onClick={saveProfile} disabled={saving} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: C.red, color: C.white }}>{saving ? "Wird gespeichert …" : "Stammdaten speichern"}</button></div>}
+      {section === "roles" && <RolesPanel members={[selected]} setMembers={setMembers}/>}
+      {section === "teams" && <div className="rounded-2xl p-4" style={{ background: C.white, border: `1px solid ${C.line}` }}>{!selected.roles.includes("spieler") ? <div className="text-xs" style={{ color: C.textDim }}>Vergib zuerst unter „Rollen & Trainer“ die Rolle Spieler/in.</div> : <><div className="flex items-center justify-between mb-2"><div className="text-sm font-bold">Spieler-Mannschaften</div><span className="text-[10px] font-bold" style={{ color: playerTeamIds.length === 3 ? C.red : C.textDim }}>{playerTeamIds.length}/3</span></div><div className="space-y-2 mb-3">{teams.map((team) => { const active = playerTeamIds.includes(team.id); return <button key={team.id} onClick={() => togglePlayerTeam(team.id)} className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left" style={{ background: active ? "#E7F3EC" : C.paperDim, border: active ? `1px solid ${C.green}` : "1px solid transparent" }}><span className="text-xs font-bold">{team.name}</span>{active && <Check size={14} style={{ color: C.green }}/>}</button>; })}</div><button onClick={savePlayerTeams} disabled={saving || JSON.stringify([...playerTeamIds].sort()) === JSON.stringify([...savedPlayerTeamIds].sort())} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white, opacity: JSON.stringify([...playerTeamIds].sort()) === JSON.stringify([...savedPlayerTeamIds].sort()) ? .35 : 1 }}>{saving ? "Wird gespeichert …" : "Mannschaften speichern"}</button></>}</div>}
+      {section === "family" && <><FamilyTree user={selected} members={members}/><div className="mt-3"><FamilyLinkManager user={selected} members={members} setMembers={setMembers} adminMode /></div></>}
+      {message && <div role="status" className="text-[11px] mt-3 rounded-xl px-3 py-2" style={{ background: message.includes("gespeichert") ? "#E7F3EC" : "#FDECEC", color: message.includes("gespeichert") ? C.green : C.red }}>{message}</div>}
+    </>}
   </div>;
 }
 
@@ -1826,6 +2272,7 @@ function ProfileView({ user, members, setMembers, sponsorBookings, onSponsorImpr
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [profileUnderlay, setProfileUnderlay] = useState("");
   const deleteAccount = async () => {
     if (!supabase) { setDeleteError("Im Demo-Modus kann kein echtes Konto gelöscht werden."); return; }
     setDeleting(true); setDeleteError("");
@@ -1851,10 +2298,16 @@ function ProfileView({ user, members, setMembers, sponsorBookings, onSponsorImpr
         </div>
       </div>
 
-      <SubscriptionPanel user={user} />
-
-      {user.roles.includes("spieler") && <PlayerDataCard user={user} setMembers={setMembers} />}
-      {user.roles.includes("trainer") && <TrainerTeamSettings user={user} members={members} setMembers={setMembers} />}
+      <SectionTitle eyebrow="Verwalten" title="Einstellungen" />
+      <div className="space-y-2 mb-6">
+        {user.roles.includes("sysadmin") && <ProfileSettingsCard icon={UserPlus} title="Benutzerverwaltung" description="Alle Vereinsnutzer auswählen und deren Einstellungen verwalten" color="#4A4E9E" onClick={() => setProfileUnderlay("users")}/>}
+        <ProfileSettingsCard icon={Euro} title="Meine Abonnements" description="Tarif, Status, Erwerbsdatum und nächste Abrechnung ansehen" onClick={() => setProfileUnderlay("subscription")}/>
+        {user.roles.includes("spieler") && <ProfileSettingsCard icon={Star} title="Spielerprofil" description="Mannschaften und Rückennummer verwalten" color={C.green} onClick={() => setProfileUnderlay("player")}/>}
+        {user.roles.includes("trainer") && <ProfileSettingsCard icon={Trophy} title="Trainer & Rollen" description="Trainer-Mannschaften auswählen und Kapitänsrolle zuweisen" color="#2D6F8E" onClick={() => setProfileUnderlay("trainer")}/>}
+        {user.roles.some((role) => ["spieler", "trainer", "teammanager", "kapitaen"].includes(role)) && <ProfileSettingsCard icon={ClipboardList} title="Strafenkatalog" description="Regeln und Kosten der Mannschaften verwalten" onClick={() => setProfileUnderlay("penalties")}/>}
+        <ProfileSettingsCard icon={Users} title="Familie" description="Familienprofile ansehen und Verknüpfungen verwalten" color={C.amber} onClick={() => setProfileUnderlay("family")}/>
+        <ProfileSettingsCard icon={ShieldCheck} title="Kontoeinstellungen" description="Sicherheit, Rechtliches und Accountverwaltung" color={C.textDim} onClick={() => setProfileUnderlay("account")}/>
+      </div>
 
       <div className="rounded-2xl p-4 mb-5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
         <div className="flex items-center justify-between mb-2">
@@ -1889,13 +2342,6 @@ function ProfileView({ user, members, setMembers, sponsorBookings, onSponsorImpr
       )}
       </>}
 
-      <SectionTitle eyebrow="Familie" title="Stammbaum" />
-      <div className="mb-2"><FamilyTree user={user} members={members} /></div>
-      <div className="text-[11px] mb-5" style={{ color: C.textDim, fontFamily: "Inter" }}>
-        {eligible ? "Helferdienst-berechtigt ✓ (16+)" : "Für Heimspiel-Helferdienste noch nicht 16 Jahre alt — beim Sommerfest darfst du trotzdem schon anpacken."}
-      </div>
-      <FamilyLinkManager user={user} members={members} setMembers={setMembers} />
-
       <div className="rounded-2xl p-4 mb-5 flex items-center gap-3" style={{ background: "#FFF6E4", border: `1px solid #F2DDA8` }}>
         <Gift size={22} style={{ color: C.amber, flexShrink: 0 }} />
         <div>
@@ -1921,16 +2367,29 @@ function ProfileView({ user, members, setMembers, sponsorBookings, onSponsorImpr
         <a href="/nutzungsbedingungen" className="py-2 rounded-xl text-[10px] font-bold" style={{ background: C.white, border: `1px solid ${C.line}`, color: C.textDim }}>Bedingungen</a>
       </div>
 
-      {!deleteConfirm ? <button onClick={() => setDeleteConfirm(true)} className="w-full py-2.5 rounded-2xl text-xs mb-2" style={{ background: C.white, border: "1px solid #F3B9B9", color: C.red, fontWeight: 700 }}>Konto und persönliche Daten löschen</button> :
-        <div className="rounded-2xl p-3 mb-2" style={{ background: "#FDECEC", border: "1px solid #F3B9B9" }}>
-          <div className="text-xs mb-3" style={{ color: C.ink }}>Das Konto, Vereinsprofile und persönliche Inhalte werden dauerhaft gelöscht. Ein aktives PayPal-Abo wird beendet. Dieser Schritt kann nicht rückgängig gemacht werden.</div>
-          {deleteError && <div className="text-xs mb-2" style={{ color: C.red }}>{deleteError}</div>}
-          <div className="flex gap-2"><button disabled={deleting} onClick={deleteAccount} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: C.red, color: C.white }}>{deleting ? "Wird gelöscht …" : "Endgültig löschen"}</button><button onClick={() => { setDeleteConfirm(false); setDeleteError(""); }} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.white, color: C.textDim }}>Abbrechen</button></div>
-        </div>}
-
       <button onClick={onLogout} className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm" style={{ background: C.paperDim, color: C.red, fontFamily: "Inter", fontWeight: 700 }}>
         <LogOut size={15} /> Abmelden
       </button>
+
+      {profileUnderlay === "subscription" && <ProfileUnderlay title="Meine Abonnements" onClose={() => setProfileUnderlay("")}><SubscriptionPanel user={user}/></ProfileUnderlay>}
+      {profileUnderlay === "player" && <ProfileUnderlay title="Spielerprofil" onClose={() => setProfileUnderlay("")}><PlayerTeamSettings user={user} setMembers={setMembers}/><PlayerDataCard user={user} setMembers={setMembers}/></ProfileUnderlay>}
+      {profileUnderlay === "trainer" && <ProfileUnderlay title="Trainer & Rollen" eyebrow="Mannschaftsverwaltung" onClose={() => setProfileUnderlay("")}><TrainerTeamSettings user={user} members={members} setMembers={setMembers}/></ProfileUnderlay>}
+      {profileUnderlay === "penalties" && <ProfileUnderlay title="Strafenkatalog" eyebrow="Mannschaftsverwaltung" onClose={() => setProfileUnderlay("")}><TeamPenaltyCatalog user={user}/></ProfileUnderlay>}
+      {profileUnderlay === "family" && <ProfileUnderlay title="Familie & Verknüpfungen" onClose={() => setProfileUnderlay("")}><SectionTitle eyebrow="Familie" title="Stammbaum"/><div className="mb-2"><FamilyTree user={user} members={members}/></div><div className="text-[11px] mb-5" style={{ color: C.textDim }}>{eligible ? "Helferdienst-berechtigt ✓ (16+)" : "Für Heimspiel-Helferdienste noch nicht 16 Jahre alt."}</div><FamilyLinkManager user={user} members={members} setMembers={setMembers}/></ProfileUnderlay>}
+      {profileUnderlay === "users" && user.roles.includes("sysadmin") && <ProfileUnderlay title="Benutzerverwaltung" eyebrow="Sys-Administration" onClose={() => setProfileUnderlay("")}><SysAdminUserManager members={members} setMembers={setMembers}/></ProfileUnderlay>}
+      {profileUnderlay === "account" && <ProfileUnderlay title="Kontoeinstellungen" onClose={() => setProfileUnderlay("")}>
+        <div className="rounded-2xl p-4 mb-4" style={{ background: C.white, border: `1px solid ${C.line}` }}><div className="flex items-center gap-2 text-sm font-bold mb-1" style={{ color: C.ink }}><ShieldCheck size={16} style={{ color: C.green }}/> Sicherheit</div><div className="text-[11px]" style={{ color: C.textDim }}>Dein Konto ist über Supabase geschützt. Passwortänderungen und Wiederherstellung erfolgen über deine hinterlegte E-Mail-Adresse.</div></div>
+        <div className="space-y-2 mb-6"><a href="/datenschutz" className="w-full flex items-center justify-between rounded-2xl px-3.5 py-3" style={{ background: C.white, border: `1px solid ${C.line}` }}><span className="text-xs font-bold" style={{ color: C.ink }}>Datenschutz</span><ChevronRight size={14} style={{ color: C.textDim }}/></a><a href="/nutzungsbedingungen" className="w-full flex items-center justify-between rounded-2xl px-3.5 py-3" style={{ background: C.white, border: `1px solid ${C.line}` }}><span className="text-xs font-bold" style={{ color: C.ink }}>Nutzungsbedingungen</span><ChevronRight size={14} style={{ color: C.textDim }}/></a></div>
+        <SectionTitle eyebrow="Weitere Optionen" title="Accountverwaltung"/>
+        <ProfileSettingsCard icon={User} title="Account verwalten" description="Persönliche Kontodaten und weitere Kontoaktionen" color={C.textDim} onClick={() => setProfileUnderlay("account-delete")}/>
+      </ProfileUnderlay>}
+      {profileUnderlay === "account-delete" && <ProfileUnderlay title="Account verwalten" eyebrow="Kontoeinstellungen" onClose={() => { setProfileUnderlay("account"); setDeleteConfirm(false); setDeleteError(""); }}>
+        <div className="rounded-2xl p-4 mb-6" style={{ background: C.white, border: `1px solid ${C.line}` }}><div className="flex items-center gap-2 text-sm font-bold mb-1" style={{ color: C.ink }}><Mail size={15}/> Hinterlegte E-Mail</div><div className="text-xs" style={{ color: C.textDim }}>{user.email}</div></div>
+        <SectionTitle eyebrow="Gefahrenbereich" title="Account-Löschung"/>
+        <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Die Löschfunktion befindet sich bewusst in diesem geschützten Unterbereich. Prüfe vor dem Fortfahren, ob noch ein aktives Abonnement besteht.</div>
+        {!deleteConfirm ? <button onClick={() => setDeleteConfirm(true)} className="w-full py-2.5 rounded-2xl text-xs" style={{ background: C.white, border: "1px solid #F3B9B9", color: C.red, fontWeight: 700 }}>Konto und persönliche Daten löschen</button> :
+          <div className="rounded-2xl p-3" style={{ background: "#FDECEC", border: "1px solid #F3B9B9" }}><div className="flex items-center gap-2 text-xs font-bold mb-2" style={{ color: C.red }}><AlertCircle size={15}/> Endgültige Löschung bestätigen</div><div className="text-xs mb-3" style={{ color: C.ink }}>Das Konto, Vereinsprofile und persönliche Inhalte werden dauerhaft gelöscht. Ein aktives PayPal-Abo wird beendet. Dieser Schritt kann nicht rückgängig gemacht werden.</div>{deleteError && <div className="text-xs mb-2" style={{ color: C.red }}>{deleteError}</div>}<div className="flex gap-2"><button disabled={deleting} onClick={deleteAccount} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: C.red, color: C.white }}>{deleting ? "Wird gelöscht …" : "Endgültig löschen"}</button><button onClick={() => { setDeleteConfirm(false); setDeleteError(""); }} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.white, color: C.textDim }}>Abbrechen</button></div></div>}
+      </ProfileUnderlay>}
     </div>
   );
 }
@@ -2869,6 +3328,7 @@ function baseTabs(isAdminUser, canEditNews, canEditSponsors, canManageFees) {
   const tabs = [
     { id: "home", label: "Home", icon: Home },
     { id: "events", label: "Termine", icon: CalendarDays },
+    { id: "teams", label: "Teams", icon: Users },
     { id: "chat", label: "Chat", icon: MessageCircle },
     { id: "profile", label: "Profil", icon: User },
   ];
@@ -2981,56 +3441,34 @@ export default function ClubMemberOrganisationApp() {
   const loadSupabaseMembership = async (profileId, clubId) => {
     setAdminStateLoaded(false);
     const { data, error } = await supabase.from("club_memberships")
-      .select("id,club_id,profile_id,display_name,email,member_since,status,is_managed_profile")
+      .select("id,club_id,display_name,email,member_since,status,is_managed_profile,membership_roles(role),team_members(function,teams(name)),profiles!club_memberships_profile_id_fkey(birthdate)")
       .eq("profile_id", profileId).eq("club_id", clubId).maybeSingle();
     if (error) return { error: "Das Vereinsprofil konnte nicht geladen werden." };
     if (!data) return { error: "Für dieses Konto besteht noch keine Mitgliedschaft in diesem Verein.", code: "membership_missing" };
     if (data.status === "pending") return { error: "Deine Registrierung wartet noch auf die Freigabe durch den Vereins-Administrator." };
     if (data.status !== "active") return { error: "Dieses Vereinsprofil ist derzeit nicht aktiv." };
     const { data: rosterData, error: rosterError } = await supabase.from("club_memberships")
-      .select("id,profile_id,club_id,display_name,email,member_since,status,is_managed_profile")
+      .select("id,profile_id,club_id,display_name,email,member_since,status,is_managed_profile,membership_roles(role),team_members(function,teams(name)),profiles!club_memberships_profile_id_fkey(birthdate)")
       .eq("club_id", clubId).in("status", ["active", "pending"]);
     if (rosterError) return { error: "Die Mitgliederliste konnte nicht geladen werden." };
-    const membershipIds = (rosterData || []).map((record) => record.id);
-    const profileIds = (rosterData || []).map((record) => record.profile_id).filter(Boolean);
-    const [{ data: roleData, error: roleError }, { data: assignmentData, error: assignmentError }, { data: profileData, error: profileError }] = await Promise.all([
-      membershipIds.length
-        ? supabase.from("membership_roles").select("membership_id,role").in("membership_id", membershipIds)
-        : Promise.resolve({ data: [], error: null }),
-      membershipIds.length
-        ? supabase.from("team_members").select("membership_id,function,teams(name)").in("membership_id", membershipIds)
-        : Promise.resolve({ data: [], error: null }),
-      profileIds.length
-        ? supabase.from("profiles").select("id,birthdate").in("id", profileIds)
-        : Promise.resolve({ data: [], error: null }),
-    ]);
-    if (roleError || assignmentError || profileError) return { error: "Die Vereinsdaten konnten nicht vollständig geladen werden." };
-    const rolesByMembership = new Map();
-    (roleData || []).forEach((entry) => {
-      rolesByMembership.set(entry.membership_id, [...(rolesByMembership.get(entry.membership_id) || []), entry.role]);
-    });
-    const assignmentsByMembership = new Map();
-    (assignmentData || []).forEach((entry) => {
-      assignmentsByMembership.set(entry.membership_id, [...(assignmentsByMembership.get(entry.membership_id) || []), entry]);
-    });
-    const birthdateByProfile = new Map((profileData || []).map((profile) => [profile.id, profile.birthdate]));
     const { data: familyData, error: familyError } = await supabase.from("family_links")
       .select("id,first_membership_id,second_membership_id,first_to_second,second_to_first")
       .eq("club_id", clubId);
     if (familyError) return { error: "Die Familienverknüpfungen konnten nicht geladen werden." };
     const roster = (rosterData || []).map((record, index) => {
-      const assignments = assignmentsByMembership.get(record.id) || [];
+      const assignments = record.team_members || [];
       const teamNames = [...new Set(assignments.map((entry) => entry.teams?.name).filter(Boolean))];
+      const playerTeamNames = [...new Set(assignments.filter((entry) => entry.function === "spieler").map((entry) => entry.teams?.name).filter(Boolean))];
       return {
         id: record.id, authProfileId: record.profile_id, clubId: record.club_id,
         name: record.display_name, email: record.email || "", password: "",
-        team: teamNames[0] || "Mitglied", teams: teamNames, number: null,
+        team: playerTeamNames[0] || teamNames[0] || "Mitglied", teams: teamNames, playerTeams: playerTeamNames, number: null,
         trainerTeams: [...new Set(assignments.filter((entry) => entry.function === "trainer").map((entry) => entry.teams?.name).filter(Boolean))],
         managedTeam: assignments.find((entry) => entry.function === "teammanager")?.teams?.name || null,
         since: record.member_since || new Date().getFullYear(),
-        roles: rolesByMembership.get(record.id) || [],
+        roles: (record.membership_roles || []).map((entry) => entry.role),
         color: [C.red, C.green, "#4A4E9E", "#B17912", "#176B87"][index % 5],
-        points: 0, tippPoints: 0, badges: [], birthdate: birthdateByProfile.get(record.profile_id) || "",
+        points: 0, tippPoints: 0, badges: [], birthdate: record.profiles?.birthdate || "",
         accountPending: !!record.is_managed_profile || record.status === "pending",
         familyLinks: [], familyId: null, familyRole: null,
       };
@@ -3271,6 +3709,7 @@ export default function ClubMemberOrganisationApp() {
                   sponsorBookings={sponsorBookings} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick}
                   focusRequest={eventFocusRequest} onFocusApplied={()=>setEventFocusRequest(null)} />
               )}
+              {!subView && tab === "teams" && <TeamsView currentUser={currentUser} members={clubMembers} setMembers={setMembers} currentClub={currentClub} />}
               {!subView && tab === "fees" && currentUserCanManageFees && <FeesView members={clubMembers} records={feeRecords} setRecords={setFeeRecords} />}
               {!subView && tab === "chat" && <ChatView user={currentUser} channels={channels} setChannels={setChannels} activeId={chatChannelId} setActiveId={setChatChannelId} />}
               {!subView && tab === "redaktion" && currentUserCanEditNews && <RedaktionView user={currentUser} channels={channels} setChannels={setChannels} />}
