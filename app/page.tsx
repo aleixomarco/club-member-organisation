@@ -1330,27 +1330,65 @@ function RedaktionView({ user, channels, setChannels }) {
   const [title, setTitle] = useState("");
   const [text, setText] = useState("");
   const [imageUrl, setImageUrl] = useState("");
+  const [imageFile, setImageFile] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
   const news = channels.find((c) => c.id === "news");
   const items = (news?.messages || []).map((m, idx) => ({ ...m, idx })).reverse();
 
-  const deleteNews = (idx) => {
-    setChannels((cs) => cs.map((c) => (c.id === "news" ? { ...c, messages: c.messages.filter((_, i) => i !== idx) } : c)));
+  const deleteNews = async (item) => {
+    if (!window.confirm(`News „${item.title || "Vereins-News"}“ wirklich löschen?`)) return;
+    setMessage("");
+    if (supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(item.id))) {
+      const { data: imagePath, error } = await supabase.rpc("delete_news_post", { target_post: item.id });
+      if (error) { setMessage("Die News konnte nicht gelöscht werden."); return; }
+      if (imagePath) await supabase.storage.from("news-images").remove([imagePath]);
+    }
+    setChannels((cs) => cs.map((c) => (c.id === "news" ? { ...c, messages: c.messages.filter((m, i) => item.id ? m.id !== item.id : i !== item.idx) } : c)));
   };
 
   const onFile = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 5 * 1024 * 1024) {
+      setMessage("Bitte JPG, PNG oder WebP mit maximal 5 MB auswählen."); return;
+    }
+    setImageFile(file); setMessage("");
     const reader = new FileReader();
     reader.onload = () => setImageUrl(reader.result);
     reader.readAsDataURL(file);
   };
 
-  const publish = () => {
+  const publish = async () => {
     if (!title.trim() || !text.trim()) return;
+    setSaving(true); setMessage("");
+    let id = `news-${Date.now()}`;
+    let finalImageUrl = imageUrl || undefined;
+    let imagePath = null;
+    const databaseMembership = !!supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(user.id));
+    if (databaseMembership) {
+      if (imageFile) {
+        const extension = imageFile.type === "image/png" ? "png" : imageFile.type === "image/webp" ? "webp" : "jpg";
+        imagePath = `${user.clubId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
+        const { error: uploadError } = await supabase.storage.from("news-images").upload(imagePath, imageFile, { contentType: imageFile.type, upsert: false });
+        if (uploadError) { setMessage("Das News-Bild konnte nicht hochgeladen werden."); setSaving(false); return; }
+        const { data: signedImage, error: signedError } = await supabase.storage.from("news-images").createSignedUrl(imagePath, 604800);
+        if (signedError) { await supabase.storage.from("news-images").remove([imagePath]); setMessage("Das News-Bild konnte nicht vorbereitet werden."); setSaving(false); return; }
+        finalImageUrl = signedImage.signedUrl;
+      }
+      const { data, error } = await supabase.rpc("create_news_post", {
+        target_club: user.clubId,
+        post_title: title.trim(),
+        post_body: text.trim(),
+        post_image_path: imagePath,
+      });
+      if (error) { if (imagePath) await supabase.storage.from("news-images").remove([imagePath]); setMessage("Die News konnte nicht gespeichert werden."); setSaving(false); return; }
+      id = data;
+    }
     setChannels((cs) => cs.map((c) => (c.id === "news"
-      ? { ...c, messages: [...c.messages, { who: user.name, init: initialsOf(user.name), color: user.color, title: title.trim(), text: text.trim(), imageUrl: imageUrl || undefined, time: "jetzt" }].slice(-10) }
+      ? { ...c, messages: [...c.messages, { id, who: user.name, init: initialsOf(user.name), color: user.color, title: title.trim(), text: text.trim(), imageUrl: finalImageUrl, imagePath, time: "jetzt" }].slice(-100) }
       : c)));
-    setTitle(""); setText(""); setImageUrl(""); setShowForm(false);
+    setTitle(""); setText(""); setImageUrl(""); setImageFile(null); setShowForm(false); setSaving(false);
   };
 
   return (
@@ -1367,27 +1405,28 @@ function RedaktionView({ user, channels, setChannels }) {
             className="w-full px-3 py-2.5 rounded-lg text-sm outline-none resize-none" style={{ background: C.paperDim, fontFamily: "Inter", color: C.ink }} />
           <label className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs cursor-pointer" style={{ background: C.paperDim, fontFamily: "Inter", color: C.textDim }}>
             <ImageIcon size={14} /> {imageUrl ? "Bild ändern" : "Bild auswählen (optional)"}
-            <input type="file" accept="image/*" onChange={onFile} className="hidden" />
+            <input type="file" accept="image/jpeg,image/png,image/webp" onChange={onFile} className="hidden" />
           </label>
           {imageUrl && <img src={imageUrl} alt="" className="w-full rounded-lg" style={{ maxHeight: 160, objectFit: "cover" }} />}
           <div className="flex gap-2">
-            <button onClick={publish} disabled={!title.trim() || !text.trim()} className="flex-1 py-2.5 rounded-lg text-xs" style={{ background: C.red, color: "#fff", fontFamily: "Inter", fontWeight: 700, opacity: (!title.trim() || !text.trim()) ? 0.5 : 1 }}>Veröffentlichen</button>
-            <button onClick={() => { setShowForm(false); setTitle(""); setText(""); setImageUrl(""); }} className="px-4 py-2.5 rounded-lg text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter", fontWeight: 700 }}>Abbrechen</button>
+            <button onClick={publish} disabled={saving || !title.trim() || !text.trim()} className="flex-1 py-2.5 rounded-lg text-xs" style={{ background: C.red, color: "#fff", fontFamily: "Inter", fontWeight: 700, opacity: (saving || !title.trim() || !text.trim()) ? 0.5 : 1 }}>{saving ? "Wird gespeichert …" : "Veröffentlichen"}</button>
+            <button disabled={saving} onClick={() => { setShowForm(false); setTitle(""); setText(""); setImageUrl(""); setImageFile(null); setMessage(""); }} className="px-4 py-2.5 rounded-lg text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter", fontWeight: 700 }}>Abbrechen</button>
           </div>
         </div>
       )}
+      {message&&<div className="mb-3 rounded-xl px-3 py-2 text-[11px] font-semibold" style={{background:"#FCEBEE",color:C.red}}>{message}</div>}
 
       <SectionTitle eyebrow="Veröffentlicht" title="Alle News" />
       <div className="space-y-2">
         {items.length === 0 ? (
           <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>Noch keine News veröffentlicht.</div>
         ) : items.map((m) => (
-          <div key={m.idx} className="rounded-2xl overflow-hidden" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+          <div key={m.id || m.idx} className="rounded-2xl overflow-hidden" style={{ background: C.white, border: `1px solid ${C.line}` }}>
             {m.imageUrl && <img src={m.imageUrl} alt="" className="w-full block" style={{ maxHeight: 160, objectFit: "cover" }} />}
             <div className="p-3">
               <div className="flex items-center justify-between mb-1">
                 <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{m.who} · {m.time}</div>
-                <button onClick={() => deleteNews(m.idx)} className="text-[11px] px-2 py-1 rounded-full" style={{ background: "#FDECEC", color: C.red, fontFamily: "Inter", fontWeight: 700 }}>Löschen</button>
+                <button onClick={() => deleteNews(m)} className="text-[11px] px-2 py-1 rounded-full" style={{ background: "#FDECEC", color: C.red, fontFamily: "Inter", fontWeight: 700 }}>Löschen</button>
               </div>
               {m.title ? <div className="text-sm mb-0.5" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>{m.title}</div> : null}
               <div className="text-xs" style={{ fontFamily: "Inter", color: C.textDim }}>{m.text}</div>
@@ -2811,6 +2850,23 @@ export default function ClubMemberOrganisationApp() {
         return [rosterMember.id, entries.length > 0 && entries.every((fee) => fee.paid)];
       })));
     }
+    const { data: newsData, error: newsError } = await supabase.from("news_posts")
+      .select("id,title,body,image_path,author_name,created_at")
+      .eq("club_id", clubId).order("created_at", { ascending: true }).limit(100);
+    if (newsError) return { error: "Die Vereins-News konnten nicht geladen werden." };
+    const loadedNews = await Promise.all((newsData || []).map(async (post) => {
+      let signedUrl;
+      if (post.image_path) {
+        const { data: signedImage } = await supabase.storage.from("news-images").createSignedUrl(post.image_path, 604800);
+        signedUrl = signedImage?.signedUrl;
+      }
+      return {
+        id: post.id, who: post.author_name || "Verein", init: initialsOf(post.author_name || "Verein"), color: C.ink,
+        title: post.title, text: post.body, imageUrl: signedUrl, imagePath: post.image_path,
+        time: new Date(post.created_at).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "2-digit" }),
+      };
+    }));
+    setChannels((current) => current.map((channel) => channel.id === "news" ? { ...channel, messages: loadedNews } : channel));
     enterApp(member, hydratedRoster);
     return { ok: true };
   };

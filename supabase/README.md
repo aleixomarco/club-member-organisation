@@ -27,3 +27,4 @@ in zeitlicher Reihenfolge ebenfalls einmal im SQL Editor ausführen:
 6. `migrations/20260802043000_trainer_captains.sql`
 7. `migrations/20260802050000_family_links_complete.sql`
 8. `migrations/20260802053000_fee_management_complete.sql`
+9. `migrations/20260802060000_news_storage_complete.sql`
