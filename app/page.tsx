@@ -2366,23 +2366,39 @@ function MatchResultsPanel({ results, onSave }) {
 /* Rollenverwaltung                                                     */
 /* ------------------------------------------------------------------ */
 function RolesPanel({ members, setMembers }) {
-  const toggleRole = (memberId, role) => {
+  const [message, setMessage] = useState("");
+  const toggleRole = async (memberId, role) => {
     if (ROLE_META[role]?.alwaysOn) return; // "Mitglied" ist Basisrolle für alle
+    const member = members.find((item) => item.id === memberId);
+    const has = member?.roles.includes(role);
+    if (supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(memberId))) {
+      setMessage("");
+      const { error } = await supabase.rpc("set_membership_role", { target_membership: memberId, target_role: role, role_enabled: !has });
+      if (error) { setMessage("Die Rollenänderung konnte nicht gespeichert werden."); return; }
+    }
     setMembers((ms) => ms.map((m) => {
       if (m.id !== memberId) return m;
-      const has = m.roles.includes(role);
-      if (has && m.roles.length === 1) return m; // mindestens eine Rolle behalten
-      return { ...m, roles: has ? m.roles.filter((r) => r !== role) : [...m.roles, role], ...(role === "teammanager" && has ? { managedTeam: null } : {}) };
+      const currentlyHas = m.roles.includes(role);
+      if (currentlyHas && m.roles.length === 1) return m; // mindestens eine Rolle behalten
+      return { ...m, roles: currentlyHas ? m.roles.filter((r) => r !== role) : [...m.roles, role], ...(role === "teammanager" && currentlyHas ? { managedTeam: null } : {}) };
     }));
   };
-  const assignManagedTeam = (memberId, team) => setMembers((all) => all.map((member) => {
+  const assignManagedTeam = async (memberId, team) => {
+    if (supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(memberId))) {
+      setMessage("");
+      const { error } = await supabase.rpc("set_teammanager_team", { target_membership: memberId, target_team_name: team || null });
+      if (error) { setMessage("Die Mannschaft des Teammanagers konnte nicht gespeichert werden."); return; }
+    }
+    setMembers((all) => all.map((member) => {
     if (member.id === memberId) return { ...member, managedTeam: team };
     if (team && member.managedTeam === team && member.roles.includes("teammanager")) return { ...member, managedTeam: null, roles: member.roles.filter((role) => role !== "teammanager") };
     return member;
-  }));
+    }));
+  };
   return (
     <div className="space-y-3">
       <div className="text-xs mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>Tippe eine Rolle an, um sie zu vergeben oder zu entziehen. Vereins-Administrator, Vorstand & Geschäftsführung können nur hier zugewiesen werden.</div>
+      {message&&<div className="rounded-xl px-3 py-2 text-[11px] font-semibold" style={{background:"#FCEBEE",color:C.red}}>{message}</div>}
       {members.map((m) => (
         <div key={m.id} className="rounded-2xl p-3" style={{ background: C.white, border: `1px solid ${C.line}` }}>
           <div className="flex items-center gap-2 mb-2.5">
