@@ -2329,6 +2329,73 @@ function ClubLogoPanel({ club, onLogoUpdated }) {
   </div>;
 }
 
+function MembershipApprovalsPanel({ club, members, setMembers }) {
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [workingId, setWorkingId] = useState(null);
+  const [message, setMessage] = useState("");
+
+  const loadRequests = async () => {
+    setLoading(true); setMessage("");
+    if (!supabase) {
+      setRequests(members.filter((member) => member.accountPending).map((member) => ({
+        id: member.id, display_name: member.name, email: member.email, requested_team: member.team,
+        created_at: new Date().toISOString(), membership_roles: member.roles.map((role) => ({ role })),
+      })));
+      setLoading(false); return;
+    }
+    const { data, error } = await supabase.from("club_memberships")
+      .select("id,display_name,email,member_since,requested_team,created_at,membership_roles(role)")
+      .eq("club_id", club.id).eq("status", "pending").order("created_at", { ascending: true });
+    if (error) setMessage("Die offenen Mitgliedsanträge konnten nicht geladen werden.");
+    setRequests(data || []); setLoading(false);
+  };
+
+  useEffect(() => { loadRequests(); }, [club?.id]);
+
+  const decide = async (request, nextStatus) => {
+    setWorkingId(request.id); setMessage("");
+    if (!supabase) {
+      setMembers((items) => items.map((member) => member.id === request.id ? { ...member, accountPending: nextStatus !== "active", accountRejected: nextStatus === "blocked" } : member));
+      setRequests((items) => items.filter((item) => item.id !== request.id));
+      setMessage(nextStatus === "active" ? "Mitgliedschaft wurde freigegeben." : "Mitgliedschaft wurde abgelehnt.");
+      setWorkingId(null); return;
+    }
+    const { error: statusError } = await supabase.from("club_memberships").update({ status: nextStatus }).eq("id", request.id).eq("club_id", club.id);
+    if (statusError) { setMessage("Die Entscheidung konnte nicht gespeichert werden."); setWorkingId(null); return; }
+
+    const requestedRoles = (request.membership_roles || []).map((entry) => entry.role);
+    if (nextStatus === "active" && requestedRoles.includes("spieler") && request.requested_team) {
+      const { data: team } = await supabase.from("teams").select("id").eq("club_id", club.id).eq("name", request.requested_team).maybeSingle();
+      if (team) await supabase.from("team_members").upsert({ team_id: team.id, membership_id: request.id, function: "spieler" }, { onConflict: "team_id,membership_id,function" });
+    }
+    setRequests((items) => items.filter((item) => item.id !== request.id));
+    setMessage(nextStatus === "active" ? "Mitgliedschaft wurde freigegeben." : "Mitgliedschaft wurde abgelehnt.");
+    setWorkingId(null);
+  };
+
+  return <div>
+    <div className="rounded-2xl p-4 mb-4" style={{ background: "#EEF5F8", border: "1px solid #CEE2EA" }}>
+      <div className="flex items-center justify-between gap-3">
+        <div><div className="text-sm font-bold" style={{ color: C.ink }}>Offene Mitgliedsanträge</div><div className="text-[11px] mt-1" style={{ color: C.textDim }}>Nach der Freigabe kann sich das Mitglied sofort anmelden.</div></div>
+        <span className="min-w-8 h-8 px-2 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: C.white, color: C.red }}>{requests.length}</span>
+      </div>
+    </div>
+    {message && <div role="status" className="text-xs rounded-xl px-3 py-2.5 mb-3" style={{ background: message.includes("wurde") ? "#E7F3EC" : "#FDECEC", color: message.includes("wurde") ? C.green : C.red }}>{message}</div>}
+    {loading ? <div className="text-xs py-5 text-center" style={{ color: C.textDim }}>Mitgliedsanträge werden geladen …</div> : requests.length === 0 ?
+      <div className="rounded-2xl p-5 text-center" style={{ background: C.white, border: `1px solid ${C.line}` }}><CheckCircle2 size={24} className="mx-auto mb-2" style={{ color: C.green }}/><div className="text-sm font-bold">Keine offenen Anträge</div><div className="text-[11px] mt-1" style={{ color: C.textDim }}>Neue Registrierungen erscheinen automatisch hier.</div></div> :
+      <div className="space-y-3">{requests.map((request) => {
+        const roles = (request.membership_roles || []).map((entry) => ROLE_META[entry.role]?.label || entry.role);
+        return <div key={request.id} className="rounded-2xl p-4" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+          <div className="flex items-start gap-3 mb-3"><div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: C.red, color: C.white }}>{initialsOf(request.display_name)}</div><div className="min-w-0"><div className="text-sm font-bold truncate" style={{ color: C.ink }}>{request.display_name}</div><div className="text-[11px] truncate" style={{ color: C.textDim }}>{request.email || "Keine E-Mail hinterlegt"}</div></div></div>
+          <div className="grid grid-cols-2 gap-2 mb-3"><div className="rounded-xl px-3 py-2" style={{ background: C.paperDim }}><div className="text-[9px] uppercase tracking-wider" style={{ color: C.textDim }}>Registrierung</div><div className="text-xs font-bold mt-0.5">{roles.filter((role) => role !== "Mitglied").join(", ") || "Mitglied"}</div></div><div className="rounded-xl px-3 py-2" style={{ background: C.paperDim }}><div className="text-[9px] uppercase tracking-wider" style={{ color: C.textDim }}>Mannschaft</div><div className="text-xs font-bold mt-0.5">{request.requested_team || "Noch offen"}</div></div></div>
+          <div className="flex gap-2"><button disabled={workingId === request.id} onClick={() => decide(request, "active")} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.green, color: C.white, opacity: workingId === request.id ? .6 : 1 }}>Freigeben</button><button disabled={workingId === request.id} onClick={() => decide(request, "blocked")} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: "#FCEBEE", color: C.red, opacity: workingId === request.id ? .6 : 1 }}>Ablehnen</button></div>
+        </div>;
+      })}</div>}
+    <button onClick={loadRequests} disabled={loading} className="w-full mt-3 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.textDim }}>Liste aktualisieren</button>
+  </div>;
+}
+
 function AdminView({
   members, setMembers, feePaid, setFeePaid, dutyPlan, setDutyPlan, seasonVotes, currentUser,
   channels, setChannels, maintenanceMode, setMaintenanceMode, onResetDemo,
@@ -2342,6 +2409,7 @@ function AdminView({
   const [panel, setPanel] = useState(sponsorOnly ? "sponsoring" : "overview");
   const openCount = members.filter((m) => !feePaid[m.id]).length;
   const panels = sponsorOnly ? [["sponsoring", "Sponsoring"], ["polls", "Umfragen"]] : [["overview", "Übersicht"], ["automation", "Automatisierung"], ["duty", "Helferplanung"], ["protokolle", "Protokolle"], ["polls", "Umfragen"], ["sponsoring", "Sponsoring"], ["season", "Spieler der Saison"], ["roles", "Rollen"]];
+  if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.splice(1, 0, ["memberships", "Mitgliedsanträge"]);
   if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.splice(1, 0, ["clubprofile", "Vereinsprofil"]);
   if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.splice(1, 0, ["results", "Spielergebnisse"]);
   if (isSysAdmin(currentUser)) panels.push(["families", "Familienprofile"], ["system", "System"]);
@@ -2365,6 +2433,7 @@ function AdminView({
       </div>
 
       {panel === "overview" && <OverviewPanel members={members} feePaid={feePaid} protocols={protocols} dutyPlan={dutyPlan} seasonVotes={seasonVotes} goPanel={setPanel} showFees={canSeeFees} />}
+      {panel === "memberships" && currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role)) && <MembershipApprovalsPanel club={currentClub} members={members} setMembers={setMembers} />}
       {panel === "clubprofile" && currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role)) && <ClubLogoPanel club={currentClub} onLogoUpdated={onClubLogoUpdated} />}
 
       {panel === "automation" && (
@@ -2541,6 +2610,7 @@ export default function ClubMemberOrganisationApp() {
       member_name: metadata.full_name || email.split("@")[0],
       account_role: metadata.account_role || "mitglied",
       member_birthdate: metadata.birthdate || null,
+      member_team: metadata.requested_team || null,
     });
     if (registrationError) return { error: "Das Vereinsprofil konnte nicht fertiggestellt werden." };
     return loadSupabaseMembership(data.user.id, selectedClubId);
@@ -2555,6 +2625,7 @@ export default function ClubMemberOrganisationApp() {
           pending_club_id: draft.clubId,
           account_role: familySetup?.accountType || "mitglied",
           birthdate: draft.birthdate || null,
+          requested_team: draft.team || null,
         } },
       });
       if (error) return { error: error.message === "User already registered" ? "Für diese E-Mail existiert bereits ein Konto." : error.message };
@@ -2566,6 +2637,7 @@ export default function ClubMemberOrganisationApp() {
         member_name: draft.name,
         account_role: familySetup?.accountType || "mitglied",
         member_birthdate: draft.birthdate || null,
+        member_team: draft.team || null,
       });
       if (registrationError) return { error: "Das Konto wurde erstellt, aber das Vereinsprofil konnte nicht angelegt werden." };
       if (registration?.[0]?.membership_status === "pending") {
