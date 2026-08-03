@@ -3873,11 +3873,6 @@ export default function ClubMemberOrganisationApp() {
     return () => { cancelled = true; };
   }, []);
   const login = async (email, password) => {
-    const demoMember = members.find((m) => m.email.toLowerCase() === email.toLowerCase() && m.password === password && m.clubId === selectedClubId);
-    if (demoMember) {
-      enterApp(demoMember);
-      return { ok: true };
-    }
     if (!supabase) {
       return { error: "E-Mail oder Passwort ist falsch." };
     }
