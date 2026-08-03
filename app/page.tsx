@@ -1059,7 +1059,27 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
   const myCarpools = carpools[userId] || {};
   const isAdminUser = isAdmin(currentUser);
   const canCreateSportEvent = isSysAdmin(currentUser) || currentUser.roles.some((role)=>["trainer","kapitaen","teammanager"].includes(role));
-  const allowedEventTeams = isSysAdmin(currentUser) ? filterTeams : currentUser.roles.includes("trainer") ? (currentUser.trainerTeams?.length ? currentUser.trainerTeams : [currentUser.team]).filter((team) => filterTeams.includes(team)) : currentUser.roles.includes("teammanager") ? [currentUser.managedTeam || currentUser.team].filter((team)=>filterTeams.includes(team)) : [currentUser.team].filter((team) => filterTeams.includes(team));
+  const [manageableTeams, setManageableTeams] = useState(null);
+  useEffect(() => {
+    if (!(supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(currentUser.id)))) { setManageableTeams(null); return; }
+    const loadManageableTeams = async () => {
+      const { data } = await supabase.from("team_members")
+        .select("function,teams(name)")
+        .eq("membership_id", currentUser.id)
+        .in("function", ["trainer", "kapitaen", "teammanager"]);
+      const names = [...new Set((data || []).map((entry) => {
+        const t = Array.isArray(entry.teams) ? entry.teams[0] : entry.teams;
+        return t?.name;
+      }).filter(Boolean))];
+      setManageableTeams(names);
+    };
+    loadManageableTeams();
+  }, [currentUser.id]);
+  const allowedEventTeams = isSysAdmin(currentUser)
+    ? filterTeams
+    : manageableTeams !== null
+      ? manageableTeams.filter((team) => filterTeams.includes(team))
+      : currentUser.roles.includes("trainer") ? (currentUser.trainerTeams?.length ? currentUser.trainerTeams : [currentUser.team]).filter((team) => filterTeams.includes(team)) : currentUser.roles.includes("teammanager") ? [currentUser.managedTeam || currentUser.team].filter((team)=>filterTeams.includes(team)) : [currentUser.team].filter((team) => filterTeams.includes(team));
   const openCreate = () => {
     setEventDraft((draft) => ({ ...draft, team: allowedEventTeams[0] || "" }));
     setShowCreate(true);
