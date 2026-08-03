@@ -157,16 +157,16 @@ const INITIAL_CLUBS = [
 /* Mock accounts                                                       */
 /* ------------------------------------------------------------------ */
 const INITIAL_MEMBERS = [
-  { id: "m1", clubId: DEMO_CLUB_ID, name: "Marco Schulte", email: "marco@cmo.app", password: "demo", team: "Herren 1", number: 14, since: 2019, roles: ["sysadmin", "vorstand", "spieler", "mitglied"], color: C.red, points: 740, tippPoints: 14, badges: ["streak", "loyalty", "fairplay", "referrer"], birthdate: "1994-05-12" },
-  { id: "m2", clubId: DEMO_CLUB_ID, name: "Jasmin Reiter", email: "jasmin@cmo.app", password: "demo", team: "Damen 1", number: 7, since: 2021, roles: ["kapitaen", "spieler", "mitglied"], color: C.amber, points: 410, tippPoints: 9, badges: ["loyalty"], birthdate: "1998-03-02" },
-  { id: "m3", clubId: DEMO_CLUB_ID, name: "Sabine Thomas", email: "sabine@cmo.app", password: "demo", team: "Eltern / Angehörige", managedTeam: "U11", number: null, since: 2023, roles: ["eltern", "teammanager", "mitglied"], color: C.green, points: 120, tippPoints: 5, badges: [], birthdate: "1985-09-14", familyId: "fam-thomas", familyRole: "eltern" },
-  { id: "v1", clubId: DEMO_CLUB_ID, name: "Peter Vogt", email: "vorstand@cmo.app", password: "demo", team: "Vorstand", number: null, since: 2015, roles: ["vorstand", "mitglied"], color: C.ink, points: 60, tippPoints: 2, badges: ["loyalty"], birthdate: "1975-01-20" },
-  { id: "m4", clubId: DEMO_CLUB_ID, name: "Mia Thomas", email: "mia@cmo.app", password: "demo", team: "U11", number: 5, since: 2024, roles: ["spieler", "mitglied"], color: "#7C6FE0", points: 30, tippPoints: 0, badges: [], birthdate: "2015-06-01", familyId: "fam-thomas", familyRole: "kind" },
-  { id: "m5", clubId: DEMO_CLUB_ID, name: "Helga Thomas", email: "helga@cmo.app", password: "demo", team: "Eltern / Angehörige", number: null, since: 2023, roles: ["mitglied"], color: "#B98B3E", points: 20, tippPoints: 0, badges: [], birthdate: "1952-02-11", familyId: "fam-thomas", familyRole: "grosseltern" },
-  { id: "m6", clubId: DEMO_CLUB_ID, name: "Claudia Berg", email: "geschaeftsfuehrung@cmo.app", password: "demo", team: "Geschäftsstelle", number: null, since: 2020, roles: ["geschaeftsfuehrung", "mitglied"], color: "#3E7CB1", points: 60, tippPoints: 4, badges: [], birthdate: "1980-11-03" },
-  { id: "m7", clubId: DEMO_CLUB_ID, name: "Nina Weber", email: "redaktion@cmo.app", password: "demo", team: "Geschäftsstelle", number: null, since: 2022, roles: ["redakteur", "sponsorenmanager", "mitglied"], color: "#B15CC9", points: 40, tippPoints: 0, badges: [], birthdate: "1990-07-08" },
-  { id: "m8", clubId: DEMO_CLUB_ID, name: "Daniel Krüger", email: "finanzen@cmo.app", password: "demo", team: "Geschäftsstelle", number: null, since: 2024, roles: ["finanzmanager", "mitglied"], color: "#176B87", points: 20, tippPoints: 0, badges: [], birthdate: "1988-04-19" },
-  { id: "m9", clubId: DEMO_CLUB_ID, name: "Tobias Kern", email: "trainer@cmo.app", password: "demo", team: "Herren 1", teams: ["Herren 1", "U15"], trainerTeams: ["Herren 1", "U15"], number: null, since: 2021, roles: ["trainer", "mitglied"], color: "#2D6F8E", points: 35, tippPoints: 0, badges: [], birthdate: "1983-02-08" },
+  { id: "m1", clubId: DEMO_CLUB_ID, name: "Marco Aleixo", email: "marco@cmo.app", password: "demo", team: "Herren 1", number: 14, since: 2019, roles: ["sysadmin", "vorstand", "spieler", "mitglied"], color: C.red, points: 740, tippPoints: 14, badges: ["streak", "loyalty", "fairplay", "referrer"], birthdate: "1994-05-12" },
+  { id: "m2", clubId: DEMO_CLUB_ID, name: "Marco Aleixo", email: "jasmin@cmo.app", password: "demo", team: "Damen 1", number: 7, since: 2021, roles: ["kapitaen", "spieler", "mitglied"], color: C.amber, points: 410, tippPoints: 9, badges: ["loyalty"], birthdate: "1998-03-02" },
+  { id: "m3", clubId: DEMO_CLUB_ID, name: "Sergio Pereira", email: "sabine@cmo.app", password: "demo", team: "Eltern / Angehörige", managedTeam: "U11", number: null, since: 2023, roles: ["eltern", "teammanager", "mitglied"], color: C.green, points: 120, tippPoints: 5, badges: [], birthdate: "1985-09-14", familyId: "fam-thomas", familyRole: "eltern" },
+  { id: "v1", clubId: DEMO_CLUB_ID, name: "Dirk Iwanowski", email: "vorstand@cmo.app", password: "demo", team: "Vorstand", number: null, since: 2015, roles: ["vorstand", "mitglied"], color: C.ink, points: 60, tippPoints: 2, badges: ["loyalty"], birthdate: "1975-01-20" },
+  { id: "m4", clubId: DEMO_CLUB_ID, name: "Rodrigo Neves", email: "mia@cmo.app", password: "demo", team: "U11", number: 5, since: 2024, roles: ["spieler", "mitglied"], color: "#7C6FE0", points: 30, tippPoints: 0, badges: [], birthdate: "2015-06-01", familyId: "fam-thomas", familyRole: "kind" },
+  { id: "m5", clubId: DEMO_CLUB_ID, name: "Maria Aleixo", email: "helga@cmo.app", password: "demo", team: "Eltern / Angehörige", number: null, since: 2023, roles: ["mitglied"], color: "#B98B3E", points: 20, tippPoints: 0, badges: [], birthdate: "1952-02-11", familyId: "fam-thomas", familyRole: "grosseltern" },
+  { id: "m6", clubId: DEMO_CLUB_ID, name: "Simone Iwanowski", email: "geschaeftsfuehrung@cmo.app", password: "demo", team: "Geschäftsstelle", number: null, since: 2020, roles: ["geschaeftsfuehrung", "mitglied"], color: "#3E7CB1", points: 60, tippPoints: 4, badges: [], birthdate: "1980-11-03" },
+  { id: "m7", clubId: DEMO_CLUB_ID, name: "Guido Rath", email: "redaktion@cmo.app", password: "demo", team: "Geschäftsstelle", number: null, since: 2022, roles: ["redakteur", "sponsorenmanager", "mitglied"], color: "#B15CC9", points: 40, tippPoints: 0, badges: [], birthdate: "1990-07-08" },
+  { id: "m8", clubId: DEMO_CLUB_ID, name: "Simone Iwanowski", email: "finanzen@cmo.app", password: "demo", team: "Geschäftsstelle", number: null, since: 2024, roles: ["finanzmanager", "mitglied"], color: "#176B87", points: 20, tippPoints: 0, badges: [], birthdate: "1988-04-19" },
+  { id: "m9", clubId: DEMO_CLUB_ID, name: "Jose Aleixo", email: "trainer@cmo.app", password: "demo", team: "Herren 1", teams: ["Herren 1", "U15"], trainerTeams: ["Herren 1", "U15"], number: null, since: 2021, roles: ["trainer", "mitglied"], color: "#2D6F8E", points: 35, tippPoints: 0, badges: [], birthdate: "1983-02-08" },
 ];
 
 const INITIAL_FEE_PAID = { m1: false, m2: true, m3: false, v1: true, m4: true, m5: true, m6: true, m7: true, m8: true, m9: true };
@@ -291,8 +291,8 @@ const FEE_HISTORY = [
 /* ------------------------------------------------------------------ */
 const SEASON_VOTE_DEADLINE = "2026-08-31T23:59:59";
 const CANDIDATES = [
-  { id: "c1", name: "Marco Schulte", team: "Herren 1", number: 14 },
-  { id: "c2", name: "Jasmin Reiter", team: "Damen 1", number: 7 },
+  { id: "c1", name: "Marco Aleixo", team: "Herren 1", number: 14 },
+  { id: "c2", name: "Marco Aleixo", team: "Damen 1", number: 7 },
   { id: "c3", name: "Luca Fischer", team: "Herren 1", number: 9 },
   { id: "c4", name: "Nina König", team: "Damen 1", number: 11 },
   { id: "c5", name: "Elias Brandt", team: "Herren 1", number: 3 },
