@@ -2338,6 +2338,32 @@ function ProfileSettingsCard({ icon: Icon, title, description, onClick, color = 
   return <button onClick={onClick} className="w-full flex items-center gap-3 rounded-2xl px-3.5 py-3 text-left" style={{ background: C.white, border: `1px solid ${C.line}` }}><div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: C.paperDim, color }}><Icon size={18}/></div><div className="flex-1 min-w-0"><div className="text-sm font-bold" style={{ color: C.ink }}>{title}</div><div className="text-[10px] leading-snug" style={{ color: C.textDim }}>{description}</div></div><ChevronRight size={15} style={{ color: C.textDim }}/></button>;
 }
 
+function BoardMemberOverview({ members }) {
+  const [search, setSearch] = useState("");
+  const filtered = members
+    .filter((m) => m.name.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => a.name.localeCompare(b.name, "de"));
+  return <div>
+    <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Nur-Lese-Ansicht aller Vereinsmitglieder. Änderungen sind hier nicht möglich.</div>
+    <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Mitglied suchen …" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-3" style={{ background: C.paperDim, color: C.ink }}/>
+    <div className="space-y-2">
+      {filtered.map((m) => <div key={m.id} className="rounded-2xl p-3" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+        <div className="flex items-center gap-3 mb-1.5">
+          <div className="w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0" style={{ background: m.color, color: C.white }}>{initialsOf(m.name)}</div>
+          <div className="flex-1 min-w-0">
+            <div className="text-xs font-bold truncate" style={{ color: C.ink }}>{m.name}</div>
+            <div className="text-[10px] truncate" style={{ color: C.textDim }}>{m.email || "—"}</div>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {m.roles.map((r) => <Pill key={r} bg={ROLE_META[r]?.color || C.textDim}>{ROLE_META[r]?.label || r}</Pill>)}
+        </div>
+        {memberPlayerTeams(m).length > 0 && <div className="text-[10px] mt-1.5" style={{ color: C.textDim }}>{memberPlayerTeams(m).join(" · ")}</div>}
+      </div>)}
+      {filtered.length === 0 && <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Keine Mitglieder gefunden.</div>}
+    </div>
+  </div>;
+}
 function SysAdminUserManager({ members, setMembers }) {
   const [selectedId, setSelectedId] = useState("");
   const [section, setSection] = useState("overview");
@@ -2560,6 +2586,7 @@ function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, 
       {profileFolder === "club" && <ProfileUnderlay title="Verein & Mitgliedschaft" eyebrow="Einstellungen" onClose={() => setProfileFolder("")}>
         <div className="space-y-2">
           {user.roles.includes("sysadmin") && <ProfileSettingsCard icon={UserPlus} title="Benutzerverwaltung" description="Alle Vereinsnutzer auswählen und deren Einstellungen verwalten" color="#4A4E9E" onClick={() => setProfileUnderlay("users")}/>}
+          {user.roles.includes("vorstand") && <ProfileSettingsCard icon={Eye} title="Mitgliederübersicht" description="Alle Vereinsmitglieder ansehen (nur lesen)" color={C.textDim} onClick={() => setProfileUnderlay("board-overview")}/>}
           {user.roles.includes("spieler") && <ProfileSettingsCard icon={Star} title="Spielerprofil" description="Mannschaften und Rückennummer verwalten" color={C.green} onClick={() => setProfileUnderlay("player")}/>}
           {user.roles.includes("trainer") && <ProfileSettingsCard icon={Trophy} title="Trainer & Rollen" description="Trainer-Mannschaften auswählen und Kapitänsrolle zuweisen" color="#2D6F8E" onClick={() => setProfileUnderlay("trainer")}/>}
           {user.roles.some((role) => ["spieler", "trainer", "teammanager", "kapitaen"].includes(role)) && <ProfileSettingsCard icon={ClipboardList} title="Strafenkatalog" description="Regeln und Kosten der Mannschaften verwalten" onClick={() => setProfileUnderlay("penalties")}/>}
@@ -2663,6 +2690,7 @@ function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, 
       {profileUnderlay === "penalties" && <ProfileUnderlay title="Strafenkatalog" eyebrow="Mannschaftsverwaltung" onClose={() => setProfileUnderlay("")}><TeamPenaltyCatalog user={user}/></ProfileUnderlay>}
       {profileUnderlay === "family" && <ProfileUnderlay title="Familie & Verknüpfungen" onClose={() => setProfileUnderlay("")}><SectionTitle eyebrow="Familie" title="Stammbaum"/><div className="mb-2"><FamilyTree user={user} members={members}/></div><div className="text-[11px] mb-5" style={{ color: C.textDim }}>{eligible ? "Helferdienst-berechtigt ✓ (16+)" : "Für Heimspiel-Helferdienste noch nicht 16 Jahre alt."}</div><FamilyLinkManager user={user} members={members} setMembers={setMembers}/></ProfileUnderlay>}
       {profileUnderlay === "users" && user.roles.includes("sysadmin") && <ProfileUnderlay title="Benutzerverwaltung" eyebrow="Sys-Administration" onClose={() => setProfileUnderlay("")}><SysAdminUserManager members={members} setMembers={setMembers}/></ProfileUnderlay>}
+      {profileUnderlay === "board-overview" && user.roles.includes("vorstand") && <ProfileUnderlay title="Mitgliederübersicht" eyebrow="Vorstand" onClose={() => setProfileUnderlay("")}><BoardMemberOverview members={members}/></ProfileUnderlay>}
       {profileUnderlay === "account" && <ProfileUnderlay title="Kontoeinstellungen" onClose={() => setProfileUnderlay("")}>
         <div className="rounded-2xl p-4 mb-4" style={{ background: C.white, border: `1px solid ${C.line}` }}><div className="flex items-center gap-2 text-sm font-bold mb-1" style={{ color: C.ink }}><ShieldCheck size={16} style={{ color: C.green }}/> Sicherheit</div><div className="text-[11px]" style={{ color: C.textDim }}>Dein Konto ist über Supabase geschützt. Passwortänderungen und Wiederherstellung erfolgen über deine hinterlegte E-Mail-Adresse.</div></div>
         <div className="space-y-2 mb-6"><a href="/datenschutz" className="w-full flex items-center justify-between rounded-2xl px-3.5 py-3" style={{ background: C.white, border: `1px solid ${C.line}` }}><span className="text-xs font-bold" style={{ color: C.ink }}>Datenschutz</span><ChevronRight size={14} style={{ color: C.textDim }}/></a><a href="/nutzungsbedingungen" className="w-full flex items-center justify-between rounded-2xl px-3.5 py-3" style={{ background: C.white, border: `1px solid ${C.line}` }}><span className="text-xs font-bold" style={{ color: C.ink }}>Nutzungsbedingungen</span><ChevronRight size={14} style={{ color: C.textDim }}/></a></div>
