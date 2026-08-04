@@ -2466,6 +2466,56 @@ function BoardMemberOverview({ members }) {
     </div>
   </div>;
 }
+function JoinRequestsManager({ currentUser }) {
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
+  const [roleChoice, setRoleChoice] = useState({});
+  const [busyId, setBusyId] = useState("");
+  const ROLE_OPTIONS = ["mitglied", "spieler", "eltern", "trainer", "teammanager"];
+  const loadRequests = async () => {
+    setLoading(true); setMessage("");
+    if (!supabase) { setLoading(false); return; }
+    const { data, error } = await supabase.from("club_memberships")
+      .select("id,display_name,email,requested_role,member_since,created_at")
+      .eq("club_id", currentUser.clubId)
+      .eq("status", "pending")
+      .order("created_at", { ascending: true });
+    if (error) { setMessage("Anfragen konnten nicht geladen werden."); setLoading(false); return; }
+    setRequests(data || []);
+    setLoading(false);
+  };
+  useEffect(() => { loadRequests(); }, [currentUser.clubId]);
+  const respond = async (request, approve) => {
+    setBusyId(request.id); setMessage("");
+    const { error } = await supabase.rpc("respond_to_join_request", {
+      target_membership: request.id,
+      approve,
+      granted_role: approve ? (roleChoice[request.id] || request.requested_role || "mitglied") : null,
+    });
+    if (error) { setMessage("Aktion konnte nicht ausgefuehrt werden."); setBusyId(""); return; }
+    setRequests((current) => current.filter((r) => r.id !== request.id));
+    setMessage(approve ? "Anfrage angenommen." : "Anfrage abgelehnt.");
+    setBusyId("");
+  };
+  return <div>
+    <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Neue Mitglieder, die deinem Verein beitreten moechten. Beim Annehmen legst du die finale Rolle fest.</div>
+    {loading ? <div className="text-xs py-3" style={{ color: C.textDim }}>Wird geladen …</div> : requests.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Aktuell keine offenen Beitrittsanfragen.</div> : <div className="space-y-2">
+      {requests.map((r) => <div key={r.id} className="rounded-2xl p-3" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+        <div className="text-xs font-bold mb-0.5" style={{ color: C.ink }}>{r.display_name}</div>
+        <div className="text-[10px] mb-2" style={{ color: C.textDim }}>{r.email} · angefragte Rolle: {ROLE_META[r.requested_role]?.label || r.requested_role || "Mitglied"}</div>
+        <select value={roleChoice[r.id] || r.requested_role || "mitglied"} onChange={(e) => setRoleChoice({ ...roleChoice, [r.id]: e.target.value })} className="w-full px-3 py-2 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim, color: C.ink }}>
+          {ROLE_OPTIONS.map((role) => <option key={role} value={role}>{ROLE_META[role]?.label || role}</option>)}
+        </select>
+        <div className="flex gap-2">
+          <button disabled={busyId === r.id} onClick={() => respond(r, false)} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.red }}>Ablehnen</button>
+          <button disabled={busyId === r.id} onClick={() => respond(r, true)} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>Annehmen</button>
+        </div>
+      </div>)}
+    </div>}
+    {message && <div role="status" className="text-[11px] mt-3" style={{ color: message.includes("angenommen") ? C.green : C.red }}>{message}</div>}
+  </div>;
+}
 function SysAdminUserManager({ members, setMembers }) {
   const [selectedId, setSelectedId] = useState("");
   const [section, setSection] = useState("overview");
@@ -2689,6 +2739,7 @@ function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, 
         <div className="space-y-2">
           {user.roles.includes("sysadmin") && <ProfileSettingsCard icon={UserPlus} title="Benutzerverwaltung" description="Alle Vereinsnutzer auswählen und deren Einstellungen verwalten" color="#4A4E9E" onClick={() => setProfileUnderlay("users")}/>}
           {user.roles.includes("vorstand") && <ProfileSettingsCard icon={Eye} title="Mitgliederübersicht" description="Alle Vereinsmitglieder ansehen (nur lesen)" color={C.textDim} onClick={() => setProfileUnderlay("board-overview")}/>}
+          {user.roles.some((role) => ["sysadmin","vereinsadmin","vorstand"].includes(role)) && <ProfileSettingsCard icon={UserPlus} title="Beitrittsanfragen" description="Neue Mitglieder annehmen oder ablehnen" color={C.green} onClick={() => setProfileUnderlay("join-requests")}/>}
           {user.roles.includes("spieler") && <ProfileSettingsCard icon={Star} title="Spielerprofil" description="Mannschaften und Rückennummer verwalten" color={C.green} onClick={() => setProfileUnderlay("player")}/>}
           {user.roles.includes("trainer") && <ProfileSettingsCard icon={Trophy} title="Trainer & Rollen" description="Trainer-Mannschaften auswählen und Kapitänsrolle zuweisen" color="#2D6F8E" onClick={() => setProfileUnderlay("trainer")}/>}
           {user.roles.some((role) => ["spieler", "trainer", "teammanager", "kapitaen"].includes(role)) && <ProfileSettingsCard icon={ClipboardList} title="Strafenkatalog" description="Regeln und Kosten der Mannschaften verwalten" onClick={() => setProfileUnderlay("penalties")}/>}
@@ -2793,6 +2844,7 @@ function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, 
       {profileUnderlay === "family" && <ProfileUnderlay title="Familie & Verknüpfungen" onClose={() => setProfileUnderlay("")}><SectionTitle eyebrow="Familie" title="Stammbaum"/><div className="mb-2"><FamilyTree user={user} members={members}/></div><div className="text-[11px] mb-5" style={{ color: C.textDim }}>{eligible ? "Helferdienst-berechtigt ✓ (16+)" : "Für Heimspiel-Helferdienste noch nicht 16 Jahre alt."}</div><FamilyLinkManager user={user} members={members} setMembers={setMembers}/></ProfileUnderlay>}
       {profileUnderlay === "users" && user.roles.includes("sysadmin") && <ProfileUnderlay title="Benutzerverwaltung" eyebrow="Sys-Administration" onClose={() => setProfileUnderlay("")}><SysAdminUserManager members={members} setMembers={setMembers}/></ProfileUnderlay>}
       {profileUnderlay === "board-overview" && user.roles.includes("vorstand") && <ProfileUnderlay title="Mitgliederübersicht" eyebrow="Vorstand" onClose={() => setProfileUnderlay("")}><BoardMemberOverview members={members}/></ProfileUnderlay>}
+      {profileUnderlay === "join-requests" && user.roles.some((role) => ["sysadmin","vereinsadmin","vorstand"].includes(role)) && <ProfileUnderlay title="Beitrittsanfragen" eyebrow="Verwalten" onClose={() => setProfileUnderlay("")}><JoinRequestsManager currentUser={user}/></ProfileUnderlay>}
       {profileUnderlay === "account" && <ProfileUnderlay title="Kontoeinstellungen" onClose={() => setProfileUnderlay("")}>
         <div className="rounded-2xl p-4 mb-4" style={{ background: C.white, border: `1px solid ${C.line}` }}><div className="flex items-center gap-2 text-sm font-bold mb-1" style={{ color: C.ink }}><ShieldCheck size={16} style={{ color: C.green }}/> Sicherheit</div><div className="text-[11px]" style={{ color: C.textDim }}>Dein Konto ist über Supabase geschützt. Passwortänderungen und Wiederherstellung erfolgen über deine hinterlegte E-Mail-Adresse.</div></div>
         <div className="space-y-2 mb-6"><a href="/datenschutz" className="w-full flex items-center justify-between rounded-2xl px-3.5 py-3" style={{ background: C.white, border: `1px solid ${C.line}` }}><span className="text-xs font-bold" style={{ color: C.ink }}>Datenschutz</span><ChevronRight size={14} style={{ color: C.textDim }}/></a><a href="/nutzungsbedingungen" className="w-full flex items-center justify-between rounded-2xl px-3.5 py-3" style={{ background: C.white, border: `1px solid ${C.line}` }}><span className="text-xs font-bold" style={{ color: C.ink }}>Nutzungsbedingungen</span><ChevronRight size={14} style={{ color: C.textDim }}/></a></div>
