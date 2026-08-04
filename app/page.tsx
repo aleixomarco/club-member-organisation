@@ -1020,7 +1020,7 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
         <div className="px-4 pb-4">
           {ev.cancelled&&<div className="rounded-xl p-3 mb-3 text-xs font-bold" style={{background:"#FCEBEE",color:C.red,border:"1px solid #F3B9B9"}}>Dieses Training wurde für {ev.team} abgesagt.</div>}
           <p className="text-sm mb-3" style={{ color: C.textDim, fontFamily: "Inter" }}>{ev.desc}</p>
-          {canCancelTraining&&!ev.cancelled&&<button onClick={()=>onCancelTraining(ev.id)} className="w-full py-2.5 rounded-xl text-xs font-bold mb-3" style={{background:"#FCEBEE",color:C.red,border:"1px solid #F3B9B9"}}>Training für {ev.team} absagen</button>}{canCancelTraining&&<button onClick={()=>onDeleteTraining(ev.id, ev.team)} className="w-full py-2.5 rounded-xl text-xs font-bold mb-3" style={{background:C.paperDim,color:C.red}}>Training endgueltig loeschen</button>}
+          {canCancelTraining&&!ev.cancelled&&<button onClick={()=>onCancelTraining(ev.id)} className="w-full py-2.5 rounded-xl text-xs font-bold mb-3" style={{background:"#FCEBEE",color:C.red,border:"1px solid #F3B9B9"}}>Training für {ev.team} absagen</button>}{canCancelTraining&&<button onClick={()=>onDeleteTraining(ev.id, ev.team, ev.seriesId)} className="w-full py-2.5 rounded-xl text-xs font-bold mb-3" style={{background:C.paperDim,color:C.red}}>Training endgueltig loeschen</button>}
 
           {ev.carpool && (
             <button onClick={() => onCarpool(ev.id)} className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs mb-1"
@@ -1146,13 +1146,29 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
     setShowCreate(false);
   };
   const cancelTraining = async (eventId) => { if(supabase&&typeof eventId==="string") await supabase.from("events").update({status:"cancelled",cancelled_at:new Date().toISOString(),cancelled_by:currentUser.authProfileId||null}).eq("id",eventId); setEvents((all) => all.map((item) => item.id === eventId ? { ...item, cancelled: true, cancelledBy: currentUser.id } : item)); };
-  const deleteTraining = async (eventId, teamName) => {
-    if (!window.confirm("Training fuer " + teamName + " wirklich endgueltig loeschen?")) return;
-    if (supabase && typeof eventId === "string") {
-      const { error } = await supabase.from("events").delete().eq("id", eventId);
-      if (error) return;
+  const [deleteRequest, setDeleteRequest] = useState(null);
+  const deleteTraining = (eventId, teamName, seriesId) => {
+    setDeleteRequest({ id: eventId, team: teamName, seriesId: seriesId || null });
+  };
+  const performSingleDelete = async () => {
+    if (!deleteRequest) return;
+    const id = deleteRequest.id;
+    if (supabase && typeof id === "string") {
+      const { error } = await supabase.from("events").delete().eq("id", id);
+      if (error) { setDeleteRequest(null); return; }
     }
-    setEvents((all) => all.filter((item) => item.id !== eventId));
+    setEvents((all) => all.filter((item) => item.id !== id));
+    setDeleteRequest(null);
+  };
+  const performSeriesDelete = async () => {
+    if (!deleteRequest || !deleteRequest.seriesId) return;
+    const seriesId = deleteRequest.seriesId;
+    if (supabase) {
+      const { error } = await supabase.rpc("delete_event_series", { target_series: seriesId });
+      if (error) { setDeleteRequest(null); return; }
+    }
+    setEvents((all) => all.filter((item) => item.seriesId !== seriesId));
+    setDeleteRequest(null);
   };
   const saveDefaultTeam = () => {
     try { window.localStorage.setItem(preferenceKey, teamFilter); } catch {}
@@ -1194,6 +1210,7 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
         })()
       ))}
       {filtered.length===0&&<div className="rounded-2xl p-6 text-center text-xs" style={{background:C.paperDim,color:C.textDim}}>Für diese Mannschaft sind aktuell keine {filter === "training" ? "Trainingstermine" : "Spiele"} hinterlegt.</div>}
+      {deleteRequest && <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setDeleteRequest(null)}><div role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()} className="w-full max-w-sm rounded-2xl p-5" style={{ background: C.white }}>{deleteRequest.seriesId ? <><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Wiederkehrendes Training</div><div className="text-xs mb-4" style={{ color: C.textDim }}>Sollen alle geplanten Sessions dieser Serie geloescht werden, oder nur diese eine?</div><button onClick={performSeriesDelete} className="w-full py-2.5 rounded-xl text-xs font-bold mb-2" style={{ background: C.red, color: C.white }}>Alle Sessions</button><button onClick={performSingleDelete} className="w-full py-2.5 rounded-xl text-xs font-bold mb-2" style={{ background: C.paperDim, color: C.ink }}>Nur eine Session</button><button onClick={() => setDeleteRequest(null)} className="w-full py-2 text-xs font-bold" style={{ color: C.textDim }}>Abbrechen</button></> : <><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Wollen Sie die Trainingseinheit wirklich loeschen?</div><div className="flex gap-2 mt-4"><button onClick={() => setDeleteRequest(null)} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>Nein</button><button onClick={performSingleDelete} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.red, color: C.white }}>Ja</button></div></>}</div></div>}
     </div>
   );
 }
@@ -3806,6 +3823,36 @@ export default function ClubMemberOrganisationApp() {
   }, []);
 
   const currentUser = members.find((m) => m.id === currentUserId);
+  useEffect(() => {
+    const isRealAccount = !!supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(currentUser?.id || ""));
+    if (!isRealAccount || !currentUser?.clubId) return;
+    const loadEvents = async () => {
+      const { data, error } = await supabase.from("events")
+        .select("id,type,status,title,description,starts_at,location,home_away,series_id,teams(name)")
+        .eq("club_id", currentUser.clubId)
+        .order("starts_at", { ascending: true });
+      if (error || !data) return;
+      const mapped = data.map((row) => {
+        const teamName = Array.isArray(row.teams) ? row.teams[0]?.name : row.teams?.name;
+        return {
+          id: row.id,
+          type: row.type,
+          team: teamName || undefined,
+          title: row.title,
+          date: row.starts_at,
+          location: row.location || "",
+          desc: row.description || "",
+          carpool: false,
+          home: row.home_away === "heim" ? true : row.home_away === "auswaerts" ? false : undefined,
+          cancelled: row.status === "cancelled",
+          seriesId: row.series_id || null,
+          ...(row.type === "training" && teamName ? { youthClassIds: [TEAM_TO_YOUTHCLASS[teamName]] } : {}),
+        };
+      });
+      setEvents(mapped);
+    };
+    loadEvents();
+  }, [currentUser?.id, currentUser?.clubId]);
   const currentClub = clubs.find((c) => c.id === selectedClubId) || clubs.find((c) => c.id === currentUser?.clubId);
   const clubMembers = members.filter((m) => m.clubId === selectedClubId);
 
