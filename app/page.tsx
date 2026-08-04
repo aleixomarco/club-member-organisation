@@ -1020,7 +1020,7 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
         <div className="px-4 pb-4">
           {ev.cancelled&&<div className="rounded-xl p-3 mb-3 text-xs font-bold" style={{background:"#FCEBEE",color:C.red,border:"1px solid #F3B9B9"}}>Dieses Training wurde für {ev.team} abgesagt.</div>}
           <p className="text-sm mb-3" style={{ color: C.textDim, fontFamily: "Inter" }}>{ev.desc}</p>
-          {canCancelTraining&&!ev.cancelled&&<button onClick={()=>onCancelTraining(ev.id)} className="w-full py-2.5 rounded-xl text-xs font-bold mb-3" style={{background:"#FCEBEE",color:C.red,border:"1px solid #F3B9B9"}}>Training für {ev.team} absagen</button>}
+          {canCancelTraining&&!ev.cancelled&&<button onClick={()=>onCancelTraining(ev.id)} className="w-full py-2.5 rounded-xl text-xs font-bold mb-3" style={{background:"#FCEBEE",color:C.red,border:"1px solid #F3B9B9"}}>Training für {ev.team} absagen</button>}{canCancelTraining&&<button onClick={()=>onDeleteTraining(ev.id, ev.team)} className="w-full py-2.5 rounded-xl text-xs font-bold mb-3" style={{background:C.paperDim,color:C.red}}>Training endgueltig loeschen</button>}
 
           {ev.carpool && (
             <button onClick={() => onCarpool(ev.id)} className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs mb-1"
@@ -1146,6 +1146,14 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
     setShowCreate(false);
   };
   const cancelTraining = async (eventId) => { if(supabase&&typeof eventId==="string") await supabase.from("events").update({status:"cancelled",cancelled_at:new Date().toISOString(),cancelled_by:currentUser.authProfileId||null}).eq("id",eventId); setEvents((all) => all.map((item) => item.id === eventId ? { ...item, cancelled: true, cancelledBy: currentUser.id } : item)); };
+  const deleteTraining = async (eventId, teamName) => {
+    if (!window.confirm("Training fuer " + teamName + " wirklich endgueltig loeschen?")) return;
+    if (supabase && typeof eventId === "string") {
+      const { error } = await supabase.from("events").delete().eq("id", eventId);
+      if (error) return;
+    }
+    setEvents((all) => all.filter((item) => item.id !== eventId));
+  };
   const saveDefaultTeam = () => {
     try { window.localStorage.setItem(preferenceKey, teamFilter); } catch {}
     setSavedTeam(teamFilter);
