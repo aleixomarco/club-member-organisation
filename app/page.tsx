@@ -1020,7 +1020,7 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
         <div className="px-4 pb-4">
           {ev.cancelled&&<div className="rounded-xl p-3 mb-3 text-xs font-bold" style={{background:"#FCEBEE",color:C.red,border:"1px solid #F3B9B9"}}>Dieses Training wurde für {ev.team} abgesagt.</div>}
           <p className="text-sm mb-3" style={{ color: C.textDim, fontFamily: "Inter" }}>{ev.desc}</p>
-          {canCancelTraining&&!ev.cancelled&&<button onClick={()=>onCancelTraining(ev.id)} className="w-full py-2.5 rounded-xl text-xs font-bold mb-3" style={{background:"#FCEBEE",color:C.red,border:"1px solid #F3B9B9"}}>Training für {ev.team} absagen</button>}{canCancelTraining&&<button onClick={()=>onDeleteTraining(ev.id, ev.team, ev.seriesId)} className="w-full py-2.5 rounded-xl text-xs font-bold mb-3" style={{background:C.paperDim,color:C.red}}>Training endgueltig loeschen</button>}
+          {canCancelTraining&&!ev.cancelled&&<button onClick={()=>onCancelTraining(ev.id)} className="w-full py-2.5 rounded-xl text-xs font-bold mb-3" style={{background:"#FCEBEE",color:C.red,border:"1px solid #F3B9B9"}}>Training für {ev.team} absagen</button>}{canCancelTraining&&<button onClick={()=>onDeleteTraining(ev.id, ev.team, ev.seriesId)} className="w-full py-2.5 rounded-xl text-xs font-bold mb-3" style={{background:C.paperDim,color:C.red}}>Training endgültig löschen</button>}
 
           {ev.carpool && (
             <button onClick={() => onCarpool(ev.id)} className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs mb-1"
@@ -1210,7 +1210,7 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
         })()
       ))}
       {filtered.length===0&&<div className="rounded-2xl p-6 text-center text-xs" style={{background:C.paperDim,color:C.textDim}}>Für diese Mannschaft sind aktuell keine {filter === "training" ? "Trainingstermine" : "Spiele"} hinterlegt.</div>}
-      {deleteRequest && <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setDeleteRequest(null)}><div role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()} className="w-full max-w-sm rounded-2xl p-5" style={{ background: C.white }}>{deleteRequest.seriesId ? <><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Wiederkehrendes Training</div><div className="text-xs mb-4" style={{ color: C.textDim }}>Sollen alle geplanten Sessions dieser Serie geloescht werden, oder nur diese eine?</div><button onClick={performSeriesDelete} className="w-full py-2.5 rounded-xl text-xs font-bold mb-2" style={{ background: C.red, color: C.white }}>Alle Sessions</button><button onClick={performSingleDelete} className="w-full py-2.5 rounded-xl text-xs font-bold mb-2" style={{ background: C.paperDim, color: C.ink }}>Nur eine Session</button><button onClick={() => setDeleteRequest(null)} className="w-full py-2 text-xs font-bold" style={{ color: C.textDim }}>Abbrechen</button></> : <><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Wollen Sie die Trainingseinheit wirklich loeschen?</div><div className="flex gap-2 mt-4"><button onClick={() => setDeleteRequest(null)} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>Nein</button><button onClick={performSingleDelete} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.red, color: C.white }}>Ja</button></div></>}</div></div>}
+      {deleteRequest && <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setDeleteRequest(null)}><div role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()} className="w-full max-w-sm rounded-2xl p-5" style={{ background: C.white }}>{deleteRequest.seriesId ? <><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Wiederkehrendes Training</div><div className="text-xs mb-4" style={{ color: C.textDim }}>Sollen alle geplanten Sessions dieser Serie gelöscht werden, oder nur diese eine?</div><button onClick={performSeriesDelete} className="w-full py-2.5 rounded-xl text-xs font-bold mb-2" style={{ background: C.red, color: C.white }}>Alle Sessions</button><button onClick={performSingleDelete} className="w-full py-2.5 rounded-xl text-xs font-bold mb-2" style={{ background: C.paperDim, color: C.ink }}>Nur eine Session</button><button onClick={() => setDeleteRequest(null)} className="w-full py-2 text-xs font-bold" style={{ color: C.textDim }}>Abbrechen</button></> : <><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Wollen Sie die Trainingseinheit wirklich löschen?</div><div className="flex gap-2 mt-4"><button onClick={() => setDeleteRequest(null)} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>Nein</button><button onClick={performSingleDelete} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.red, color: C.white }}>Ja</button></div></>}</div></div>}
     </div>
   );
 }
@@ -2523,13 +2523,13 @@ function JoinRequestsManager({ currentUser }) {
       approve,
       granted_role: approve ? (roleChoice[request.id] || request.requested_role || "mitglied") : null,
     });
-    if (error) { setMessage("Aktion konnte nicht ausgefuehrt werden."); setBusyId(""); return; }
+    if (error) { setMessage("Aktion konnte nicht ausgeführt werden."); setBusyId(""); return; }
     setRequests((current) => current.filter((r) => r.id !== request.id));
     setMessage(approve ? "Anfrage angenommen." : "Anfrage abgelehnt.");
     setBusyId("");
   };
   return <div>
-    <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Neue Mitglieder, die deinem Verein beitreten moechten. Beim Annehmen legst du die finale Rolle fest.</div>
+    <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Neue Mitglieder, die deinem Verein beitreten möchten. Beim Annehmen legst du die finale Rolle fest.</div>
     {loading ? <div className="text-xs py-3" style={{ color: C.textDim }}>Wird geladen …</div> : requests.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Aktuell keine offenen Beitrittsanfragen.</div> : <div className="space-y-2">
       {requests.map((r) => <div key={r.id} className="rounded-2xl p-3" style={{ background: C.white, border: `1px solid ${C.line}` }}>
         <div className="text-xs font-bold mb-0.5" style={{ color: C.ink }}>{r.display_name}</div>
