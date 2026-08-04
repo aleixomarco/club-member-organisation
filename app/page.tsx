@@ -2440,14 +2440,44 @@ function ProfileSettingsCard({ icon: Icon, title, description, onClick, color = 
   return <button onClick={onClick} className="w-full flex items-center gap-3 rounded-2xl px-3.5 py-3 text-left" style={{ background: C.white, border: `1px solid ${C.line}` }}><div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: C.paperDim, color }}><Icon size={18}/></div><div className="flex-1 min-w-0"><div className="text-sm font-bold" style={{ color: C.ink }}>{title}</div><div className="text-[10px] leading-snug" style={{ color: C.textDim }}>{description}</div></div><ChevronRight size={15} style={{ color: C.textDim }}/></button>;
 }
 
-function BoardMemberOverview({ members }) {
+function BoardMemberOverview({ members, currentUser }) {
   const [search, setSearch] = useState("");
-  const filtered = members
+  const [liveMembers, setLiveMembers] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true); setMessage("");
+      if (!supabase || !currentUser?.clubId) { setLiveMembers(null); setLoading(false); return; }
+      const { data, error } = await supabase.from("club_memberships")
+        .select("id,display_name,email,member_since,status,membership_roles(role),team_members(function,teams(name))")
+        .eq("club_id", currentUser.clubId).eq("status", "active");
+      if (error) { setMessage("Die Mitgliederliste konnte nicht geladen werden."); setLoading(false); return; }
+      const roster = (data || []).map((record, index) => {
+        const assignments = record.team_members || [];
+        const teamNames = [...new Set(assignments.map((entry) => entry.teams?.name).filter(Boolean))];
+        const playerTeamNames = [...new Set(assignments.filter((entry) => entry.function === "spieler").map((entry) => entry.teams?.name).filter(Boolean))];
+        return {
+          id: record.id, name: record.display_name, email: record.email || "",
+          team: playerTeamNames[0] || teamNames[0] || "Mitglied", teams: teamNames, playerTeams: playerTeamNames,
+          roles: (record.membership_roles || []).map((entry) => entry.role),
+          color: [C.red, C.green, "#4A4E9E", "#B17912", "#176B87"][index % 5],
+        };
+      });
+      setLiveMembers(roster);
+      setLoading(false);
+    };
+    load();
+  }, [currentUser?.clubId]);
+  const source = liveMembers || members;
+  const filtered = source
     .filter((m) => m.name.toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => a.name.localeCompare(b.name, "de"));
   return <div>
     <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Nur-Lese-Ansicht aller Vereinsmitglieder. Änderungen sind hier nicht möglich.</div>
     <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Mitglied suchen …" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-3" style={{ background: C.paperDim, color: C.ink }}/>
+    {loading && !liveMembers && supabase && <div className="text-xs py-3" style={{ color: C.textDim }}>Wird geladen …</div>}
+    {message && <div className="text-[11px] mb-2" style={{ color: C.red }}>{message}</div>}
     <div className="space-y-2">
       {filtered.map((m) => <div key={m.id} className="rounded-2xl p-3" style={{ background: C.white, border: `1px solid ${C.line}` }}>
         <div className="flex items-center gap-3 mb-1.5">
@@ -2843,7 +2873,7 @@ function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, 
       {profileUnderlay === "penalties" && <ProfileUnderlay title="Strafenkatalog" eyebrow="Mannschaftsverwaltung" onClose={() => setProfileUnderlay("")}><TeamPenaltyCatalog user={user}/></ProfileUnderlay>}
       {profileUnderlay === "family" && <ProfileUnderlay title="Familie & Verknüpfungen" onClose={() => setProfileUnderlay("")}><SectionTitle eyebrow="Familie" title="Stammbaum"/><div className="mb-2"><FamilyTree user={user} members={members}/></div><div className="text-[11px] mb-5" style={{ color: C.textDim }}>{eligible ? "Helferdienst-berechtigt ✓ (16+)" : "Für Heimspiel-Helferdienste noch nicht 16 Jahre alt."}</div><FamilyLinkManager user={user} members={members} setMembers={setMembers}/></ProfileUnderlay>}
       {profileUnderlay === "users" && user.roles.includes("sysadmin") && <ProfileUnderlay title="Benutzerverwaltung" eyebrow="Sys-Administration" onClose={() => setProfileUnderlay("")}><SysAdminUserManager members={members} setMembers={setMembers}/></ProfileUnderlay>}
-      {profileUnderlay === "board-overview" && user.roles.includes("vorstand") && <ProfileUnderlay title="Mitgliederübersicht" eyebrow="Vorstand" onClose={() => setProfileUnderlay("")}><BoardMemberOverview members={members}/></ProfileUnderlay>}
+      {profileUnderlay === "board-overview" && user.roles.includes("vorstand") && <ProfileUnderlay title="Mitgliederübersicht" eyebrow="Vorstand" onClose={() => setProfileUnderlay("")}><BoardMemberOverview members={members} currentUser={user}/></ProfileUnderlay>}
       {profileUnderlay === "join-requests" && user.roles.some((role) => ["sysadmin","vereinsadmin","vorstand"].includes(role)) && <ProfileUnderlay title="Beitrittsanfragen" eyebrow="Verwalten" onClose={() => setProfileUnderlay("")}><JoinRequestsManager currentUser={user}/></ProfileUnderlay>}
       {profileUnderlay === "account" && <ProfileUnderlay title="Kontoeinstellungen" onClose={() => setProfileUnderlay("")}>
         <div className="rounded-2xl p-4 mb-4" style={{ background: C.white, border: `1px solid ${C.line}` }}><div className="flex items-center gap-2 text-sm font-bold mb-1" style={{ color: C.ink }}><ShieldCheck size={16} style={{ color: C.green }}/> Sicherheit</div><div className="text-[11px]" style={{ color: C.textDim }}>Dein Konto ist über Supabase geschützt. Passwortänderungen und Wiederherstellung erfolgen über deine hinterlegte E-Mail-Adresse.</div></div>
