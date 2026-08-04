@@ -990,7 +990,7 @@ function HelperSlots({ ev, members, currentUser, dutyPlan, setDutyPlan, eligible
 /* ------------------------------------------------------------------ */
 /* Events                                                               */
 /* ------------------------------------------------------------------ */
-function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser, dutyPlan, setDutyPlan, canCancelTraining, onCancelTraining, onDeleteTraining }) {
+function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser, dutyPlan, setDutyPlan, canCancelTraining, onCancelTraining }) {
   const [open, setOpen] = useState(false);
   const meta = typeMeta[ev.type];
 
@@ -1180,7 +1180,7 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
           carpoolOn={!!myCarpools[ev.id]} onCarpool={handleCarpool}
           currentUser={currentUser} members={members} isAdminUser={isAdminUser}
           dutyPlan={dutyPlan} setDutyPlan={setDutyPlan}
-          canCancelTraining={canCancelTraining} onCancelTraining={cancelTraining} onDeleteTraining={deleteTraining}
+          canCancelTraining={canCancelTraining} onCancelTraining={cancelTraining}
         />
           );
         })()
