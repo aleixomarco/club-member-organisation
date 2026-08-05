@@ -870,7 +870,7 @@ function NextTrainingCard({ user }) {
     </div>
   );
 }
-function Dashboard({ user, members, feePaid, channels, dutyPlan, seasonVotes, polls, setPolls, sponsorBookings, onSponsorImpression, onSponsorClick, goEvents, goSeason, goTipp, goDuty, goNews, goTasks }) {
+function Dashboard({ user, members, feePaid, channels, dutyPlan, seasonVotes, polls, setPolls, sponsorBookings, onSponsorImpression, onSponsorClick, goEvents, goSeason, goTipp, goDuty, goNews, goTasks, goVehicles }) {
   const nextEvent = EVENTS.filter((e) => e.type === "spiel" && e.team === user.team && new Date(e.date) > new Date()).sort((a,b)=>new Date(a.date)-new Date(b.date))[0] || getNextMatch();
   const newsMsgs = (channels.find((c) => c.id === "news")?.messages || []).slice(-2).reverse();
 
@@ -932,6 +932,7 @@ function Dashboard({ user, members, feePaid, channels, dutyPlan, seasonVotes, po
           <FeatureRow icon={Target} title="Tippspiel" subtitle={tippSubtitle} onClick={goTipp} accent={C.red} />
           <FeatureRow icon={ClipboardList} title="Helferplanung" subtitle={dutySubtitle} onClick={goDuty} accent={C.green} />
           <FeatureRow icon={ClipboardList} title="Aufgaben" subtitle="Für den Verein mithelfen" onClick={goTasks} accent={C.red} />
+          <FeatureRow icon={Car} title="Vereinsfahrzeuge" subtitle="Kalender & Buchung" onClick={goVehicles} accent={C.amber} />
         </div>
       </DashboardSection>
 
@@ -2572,6 +2573,222 @@ function TasksView({ currentUser, members }) {
           );
         })}
       </>}
+    </div>
+  );
+}
+
+function VehiclesView({ currentUser }) {
+  const databaseMembership = !!supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(currentUser.id));
+  const canManageFleet = currentUser.roles.some((r) => ["vorstand", "vereinsadmin", "geschaeftsfuehrung"].includes(r));
+  const canBook = currentUser.roles.some((r) => ["trainer", "teammanager", "kapitaen", "finanzmanager", "geschaeftsfuehrung"].includes(r));
+  const [vehicles, setVehicles] = useState([]);
+  const [teams, setTeams] = useState([]);
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
+  const [monthDate, setMonthDate] = useState(() => { const d = new Date(); d.setDate(1); d.setHours(0,0,0,0); return d; });
+  const [showAddVehicle, setShowAddVehicle] = useState(false);
+  const [newVehicle, setNewVehicle] = useState({ label: "", plate: "", seats: "" });
+  const [savingVehicle, setSavingVehicle] = useState(false);
+  const [selectedVehicle, setSelectedVehicle] = useState(null);
+  const [bookingForm, setBookingForm] = useState({ startDate: "", startHour: "8", endDate: "", endHour: "18", teamId: "", isPrivate: false, privateLabel: "" });
+  const [savingBooking, setSavingBooking] = useState(false);
+  const HOURS = Array.from({ length: 24 }, (_, i) => i);
+  const loadVehicles = useCallback(async () => {
+    if (!databaseMembership) { setVehicles([]); return; }
+    const { data, error } = await supabase.from("club_vehicles").select("id,label,license_plate,seats").eq("club_id", currentUser.clubId).order("label");
+    if (error) { setMessage("Die Fahrzeuge konnten nicht geladen werden."); return; }
+    setVehicles(data || []);
+  }, [databaseMembership, currentUser.clubId]);
+  const loadTeams = useCallback(async () => {
+    if (!databaseMembership) { setTeams([]); return; }
+    const { data } = await supabase.from("teams").select("id,name").eq("club_id", currentUser.clubId).eq("active", true).order("name");
+    setTeams(data || []);
+  }, [databaseMembership, currentUser.clubId]);
+  const loadBookings = useCallback(async () => {
+    if (!databaseMembership) { setBookings([]); setLoading(false); return; }
+    setLoading(true);
+    const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+    const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 1);
+    const { data, error } = await supabase.from("vehicle_bookings")
+      .select("id,vehicle_id,membership_id,team_id,private_label,starts_at,ends_at,club_vehicles(label),teams(name),club_memberships(display_name)")
+      .eq("club_id", currentUser.clubId)
+      .lt("starts_at", monthEnd.toISOString())
+      .gt("ends_at", monthStart.toISOString())
+      .order("starts_at");
+    if (error) { setMessage("Die Buchungen konnten nicht geladen werden."); setLoading(false); return; }
+    setBookings((data || []).map((row) => {
+      const vehicle = Array.isArray(row.club_vehicles) ? row.club_vehicles[0] : row.club_vehicles;
+      const team = Array.isArray(row.teams) ? row.teams[0] : row.teams;
+      const member = Array.isArray(row.club_memberships) ? row.club_memberships[0] : row.club_memberships;
+      return { id: row.id, vehicleId: row.vehicle_id, membershipId: row.membership_id, vehicleLabel: vehicle?.label || "—", label: team?.name || row.private_label || "Privat", bookedBy: member?.display_name || "—", startsAt: new Date(row.starts_at), endsAt: new Date(row.ends_at) };
+    }));
+    setLoading(false);
+  }, [databaseMembership, currentUser.clubId, monthDate]);
+  useEffect(() => { loadVehicles(); loadTeams(); }, [loadVehicles, loadTeams]);
+  useEffect(() => { loadBookings(); }, [loadBookings]);
+  const addVehicle = async () => {
+    if (!newVehicle.label.trim() || !newVehicle.plate.trim() || !Number(newVehicle.seats)) { setMessage("Bitte alle Felder ausfüllen."); return; }
+    setSavingVehicle(true); setMessage("");
+    const { error } = await supabase.from("club_vehicles").insert({ club_id: currentUser.clubId, label: newVehicle.label.trim(), license_plate: newVehicle.plate.trim(), seats: Number(newVehicle.seats), created_by: currentUser.id });
+    if (error) { setMessage("Fahrzeug konnte nicht angelegt werden."); setSavingVehicle(false); return; }
+    setNewVehicle({ label: "", plate: "", seats: "" }); setShowAddVehicle(false); setSavingVehicle(false);
+    await loadVehicles();
+  };
+  const removeVehicle = async (vehicle) => {
+    if (!window.confirm(`Fahrzeug „${vehicle.label}“ wirklich löschen? Bestehende Buchungen werden ebenfalls entfernt.`)) return;
+    const { error } = await supabase.from("club_vehicles").delete().eq("id", vehicle.id);
+    if (error) { setMessage("Konnte nicht gelöscht werden."); return; }
+    await loadVehicles(); await loadBookings();
+  };
+  const openBooking = (vehicle) => {
+    setSelectedVehicle(vehicle);
+    const today = new Date().toISOString().slice(0, 10);
+    setBookingForm({ startDate: today, startHour: "8", endDate: today, endHour: "18", teamId: "", isPrivate: false, privateLabel: "" });
+    setMessage("");
+  };
+  const submitBooking = async () => {
+    if (!bookingForm.startDate || !bookingForm.endDate) { setMessage("Bitte Start- und Enddatum angeben."); return; }
+    if (!bookingForm.isPrivate && !bookingForm.teamId) { setMessage("Bitte eine Mannschaft auswählen oder auf „Privat“ umschalten."); return; }
+    if (bookingForm.isPrivate && !bookingForm.privateLabel.trim()) { setMessage("Bitte einen Namen für die private Buchung angeben."); return; }
+    const startsAt = `${bookingForm.startDate}T${String(bookingForm.startHour).padStart(2, "0")}:00:00`;
+    const endsAt = `${bookingForm.endDate}T${String(bookingForm.endHour).padStart(2, "0")}:00:00`;
+    if (new Date(endsAt) <= new Date(startsAt)) { setMessage("Das Ende muss nach dem Start liegen."); return; }
+    setSavingBooking(true); setMessage("");
+    const { error } = await supabase.from("vehicle_bookings").insert({
+      vehicle_id: selectedVehicle.id, club_id: currentUser.clubId, membership_id: currentUser.id,
+      team_id: bookingForm.isPrivate ? null : bookingForm.teamId,
+      private_label: bookingForm.isPrivate ? bookingForm.privateLabel.trim() : null,
+      starts_at: startsAt, ends_at: endsAt,
+    });
+    if (error) {
+      setMessage(error.message?.includes("exclude") || error.code === "23P01" ? "Das Fahrzeug ist in diesem Zeitraum bereits gebucht." : "Buchung konnte nicht angelegt werden.");
+      setSavingBooking(false); return;
+    }
+    setSelectedVehicle(null); setSavingBooking(false);
+    await loadBookings();
+  };
+  const cancelBooking = async (booking) => {
+    if (!window.confirm("Buchung wirklich stornieren?")) return;
+    const { error } = await supabase.from("vehicle_bookings").delete().eq("id", booking.id);
+    if (error) { setMessage("Konnte nicht storniert werden."); return; }
+    await loadBookings();
+  };
+  const monthLabel = monthDate.toLocaleDateString("de-DE", { month: "long", year: "numeric" });
+  const startOfMonth = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+  const daysInMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate();
+  const startWeekday = (startOfMonth.getDay() + 6) % 7;
+  const totalCells = Math.ceil((startWeekday + daysInMonth) / 7) * 7;
+  const cells = Array.from({ length: totalCells }, (_, i) => {
+    const dayNum = i - startWeekday + 1;
+    if (dayNum < 1 || dayNum > daysInMonth) return null;
+    return new Date(monthDate.getFullYear(), monthDate.getMonth(), dayNum);
+  });
+  const bookingsForDay = (day) => {
+    if (!day) return [];
+    const dayStart = new Date(day.getFullYear(), day.getMonth(), day.getDate());
+    const dayEnd = new Date(dayStart.getTime() + 86400000);
+    return bookings.filter((b) => b.startsAt < dayEnd && b.endsAt > dayStart);
+  };
+  const canCancel = (booking) => booking.membershipId === currentUser.id || canManageFleet;
+  if (!databaseMembership) return <div className="px-4 pt-4 pb-24"><div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Fahrzeugbuchungen sind nur mit einem echten Vereinskonto verfügbar.</div></div>;
+  return (
+    <div className="px-4 pt-4 pb-24">
+      <SectionTitle eyebrow="Verein" title="Vereinsfahrzeuge" right={canManageFleet ? <button onClick={() => setShowAddVehicle((v) => !v)} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showAddVehicle ? "Schließen" : "+ Fahrzeug"}</button> : null}/>
+      <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>Alle Vereinsfahrzeuge und ihre Buchungen. Buchen können Trainer, Teammanager, Kapitäne, Finanzmanager und Geschäftsführung.</div>
+      {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: "#FDECEC", color: C.red }}>{message}</div>}
+      {showAddVehicle && (
+        <div className="rounded-2xl p-4 mb-4" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+          <div className="text-sm font-bold mb-2">Neues Fahrzeug</div>
+          <input value={newVehicle.label} onChange={(e) => setNewVehicle({ ...newVehicle, label: e.target.value })} placeholder="Bezeichnung, z. B. Vereinsbus" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}/>
+          <input value={newVehicle.plate} onChange={(e) => setNewVehicle({ ...newVehicle, plate: e.target.value })} placeholder="Kennzeichen" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}/>
+          <input value={newVehicle.seats} onChange={(e) => setNewVehicle({ ...newVehicle, seats: e.target.value })} inputMode="numeric" placeholder="Anzahl Plätze" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}/>
+          <button onClick={addVehicle} disabled={savingVehicle} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{savingVehicle ? "…" : "Anlegen"}</button>
+        </div>
+      )}
+      <div className="space-y-2 mb-5">
+        {vehicles.map((v) => (
+          <div key={v.id} className="flex items-center gap-3 rounded-2xl px-3.5 py-3" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: C.paperDim, color: C.red }}><Car size={18}/></div>
+            <button onClick={() => canBook && openBooking(v)} disabled={!canBook} className="flex-1 text-left">
+              <div className="text-sm font-bold" style={{ color: C.ink }}>{v.label}</div>
+              <div className="text-[11px]" style={{ color: C.textDim }}>{v.license_plate} · {v.seats} Plätze</div>
+            </button>
+            {canBook && <ChevronRight size={15} style={{ color: C.textDim }}/>}
+            {canManageFleet && <button onClick={() => removeVehicle(v)} aria-label={`${v.label} löschen`} className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.paperDim, color: C.red }}><X size={14}/></button>}
+          </div>
+        ))}
+        {vehicles.length === 0 && !loading && <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Noch keine Fahrzeuge hinterlegt.</div>}
+      </div>
+      <div className="flex items-center justify-between mb-3">
+        <button onClick={() => setMonthDate((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1))} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><ArrowLeft size={14}/></button>
+        <div className="text-sm font-bold" style={{ color: C.ink, textTransform: "capitalize" }}>{monthLabel}</div>
+        <button onClick={() => setMonthDate((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1))} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><ArrowLeft size={14} style={{ transform: "rotate(180deg)" }}/></button>
+      </div>
+      {loading ? <div className="text-xs py-4 text-center" style={{ color: C.textDim }}>Kalender wird geladen …</div> : (
+        <div className="rounded-2xl p-2 mb-4" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+          <div className="grid grid-cols-7 gap-1 mb-1">
+            {["Mo","Di","Mi","Do","Fr","Sa","So"].map((d) => <div key={d} className="text-center text-[9px] font-bold py-1" style={{ color: C.textDim }}>{d}</div>)}
+          </div>
+          <div className="grid grid-cols-7 gap-1">
+            {cells.map((day, i) => {
+              const dayBookings = bookingsForDay(day);
+              return (
+                <div key={i} className="rounded-lg p-1 min-h-[54px]" style={{ background: day ? C.paperDim : "transparent" }}>
+                  {day && <div className="text-[9px] font-bold mb-0.5" style={{ color: C.textDim }}>{day.getDate()}</div>}
+                  {dayBookings.slice(0, 2).map((b) => (
+                    <div key={b.id} className="text-[8px] px-1 py-0.5 rounded mb-0.5 truncate" style={{ background: "#FDECEC", color: C.red }} title={`${b.vehicleLabel} · ${b.label} · ${b.bookedBy}`}>{b.vehicleLabel}: {b.label}</div>
+                  ))}
+                  {dayBookings.length > 2 && <div className="text-[8px]" style={{ color: C.textDim }}>+{dayBookings.length - 2} mehr</div>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      <SectionTitle eyebrow="Übersicht" title="Buchungen diesen Monat"/>
+      <div className="space-y-2">
+        {bookings.map((b) => (
+          <div key={b.id} className="flex items-center gap-3 rounded-xl px-3 py-2.5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-bold truncate" style={{ color: C.ink }}>{b.vehicleLabel} · {b.label}</div>
+              <div className="text-[10px] truncate" style={{ color: C.textDim }}>{b.bookedBy} · {b.startsAt.toLocaleDateString("de-DE")} {String(b.startsAt.getHours()).padStart(2,"0")}:00 – {b.endsAt.toLocaleDateString("de-DE")} {String(b.endsAt.getHours()).padStart(2,"0")}:00</div>
+            </div>
+            {canCancel(b) && <button onClick={() => cancelBooking(b)} aria-label="Buchung stornieren" className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.paperDim, color: C.red }}><X size={14}/></button>}
+          </div>
+        ))}
+        {bookings.length === 0 && !loading && <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Keine Buchungen in diesem Monat.</div>}
+      </div>
+      {selectedVehicle && (
+        <div className="fixed inset-0 z-50 flex items-end p-3" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setSelectedVehicle(null)}>
+          <div role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} className="w-full rounded-3xl p-5 max-h-[85%] overflow-y-auto" style={{ background: C.white }}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-lg font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{selectedVehicle.label} buchen</div>
+              <button onClick={() => setSelectedVehicle(null)} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><X size={15}/></button>
+            </div>
+            <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>VON</div>
+            <div className="flex gap-2 mb-3">
+              <input type="date" value={bookingForm.startDate} onChange={(e) => setBookingForm({ ...bookingForm, startDate: e.target.value })} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/>
+              <select value={bookingForm.startHour} onChange={(e) => setBookingForm({ ...bookingForm, startHour: e.target.value })} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}>{HOURS.map((h) => <option key={h} value={h}>{String(h).padStart(2,"0")}:00</option>)}</select>
+            </div>
+            <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>BIS</div>
+            <div className="flex gap-2 mb-3">
+              <input type="date" value={bookingForm.endDate} onChange={(e) => setBookingForm({ ...bookingForm, endDate: e.target.value })} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/>
+              <select value={bookingForm.endHour} onChange={(e) => setBookingForm({ ...bookingForm, endHour: e.target.value })} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}>{HOURS.map((h) => <option key={h} value={h}>{String(h).padStart(2,"0")}:00</option>)}</select>
+            </div>
+            <label className="flex items-center gap-2 mb-3"><input type="checkbox" checked={bookingForm.isPrivate} onChange={(e) => setBookingForm({ ...bookingForm, isPrivate: e.target.checked })}/><span className="text-xs font-bold" style={{ color: C.ink }}>Private Buchung (keine Mannschaft)</span></label>
+            {bookingForm.isPrivate ? (
+              <input value={bookingForm.privateLabel} onChange={(e) => setBookingForm({ ...bookingForm, privateLabel: e.target.value })} placeholder="Name / Zweck" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-3" style={{ background: C.paperDim }}/>
+            ) : (
+              <select value={bookingForm.teamId} onChange={(e) => setBookingForm({ ...bookingForm, teamId: e.target.value })} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-3" style={{ background: C.paperDim }}>
+                <option value="">Mannschaft wählen …</option>
+                {teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
+            )}
+            <button onClick={submitBooking} disabled={savingBooking} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{savingBooking ? "Wird gebucht …" : "Fahrzeug buchen"}</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -4815,11 +5032,12 @@ export default function ClubMemberOrganisationApp() {
               {subView === "tipp" && <TippView members={clubMembers} currentUser={currentUser} tippPredictions={tippPredictions} setTippPredictions={setTippPredictions} tippResults={tippResults} />}
               {subView === "duty" && <DutyView members={clubMembers} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} />}
               {subView === "tasks" && <TasksView currentUser={currentUser} members={clubMembers} />}
+              {subView === "vehicles" && <VehiclesView currentUser={currentUser} />}
 
               {!subView && tab === "home" && (
                 <Dashboard user={currentUser} members={clubMembers} feePaid={!!feePaid[currentUser.id]} channels={channels} dutyPlan={dutyPlan} seasonVotes={seasonVotes} polls={polls} setPolls={setPolls}
                   sponsorBookings={sponsorBookings} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick}
-                  goEvents={goToMyNextMatch} goSeason={() => setSubView("season")} goTipp={() => setSubView("tipp")} goDuty={() => setSubView("duty")} goTasks={() => setSubView("tasks")} goNews={goNews} />
+                  goEvents={goToMyNextMatch} goSeason={() => setSubView("season")} goTipp={() => setSubView("tipp")} goDuty={() => setSubView("duty")} goTasks={() => setSubView("tasks")} goVehicles={() => setSubView("vehicles")} goNews={goNews} />
               )}
               {!subView && tab === "events" && (
                 <EventsView currentUser={currentUser} members={clubMembers} events={events} setEvents={setEvents} carpools={carpools} setCarpools={setCarpools}
