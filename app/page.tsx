@@ -1498,7 +1498,7 @@ function FeesView({ members, records, setRecords }) {
 /* ------------------------------------------------------------------ */
 /* Chat                                                                  */
 /* ------------------------------------------------------------------ */
-function ChatView({ user, channels, setChannels, activeId, setActiveId }) {
+function ChatView({ user, channels, setChannels, activeId, setActiveId, members }) {
   const [text, setText] = useState("");
   const visibleChannels = channels.filter((c) => isAdmin(user) || ((!c.team || c.team === user.team) && (!c.visibleRoles || c.visibleRoles.some((r) => user.roles.includes(r)))));
   const active = visibleChannels.find((c) => c.id === activeId) || visibleChannels[0];
@@ -1509,6 +1509,15 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId }) {
     setChannels((cs) => cs.map((c) => c.id === active.id
       ? { ...c, messages: [...c.messages, { who: user.name, init: initialsOf(user.name), color: user.color, text, time: "jetzt", me: true }].slice(active.id === "news" ? -10 : -200) }
       : c));
+    if (supabase && Array.isArray(members)) {
+      const recipients = members
+        .filter((m) => m.id !== user.id && (isAdmin(m) || ((!active.team || active.team === m.team) && (!active.visibleRoles || active.visibleRoles.some((r) => m.roles.includes(r))))))
+        .map((m) => m.id)
+        .filter((id) => /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(id)));
+      if (recipients.length > 0) {
+        supabase.rpc("notify_many", { target_memberships: recipients, p_notif_type: "chat", p_title: `Neue Nachricht · ${active.name || "Chat"}`, p_body: `${user.name}: ${text.trim()}` });
+      }
+    }
     setText("");
   };
 
@@ -3631,7 +3640,7 @@ function ProtocolCard({ protocol, members, onToggleTask }) {
     </div>
   );
 }
-function ProtokollePanel({ members, protocols, setProtocols }) {
+function ProtokollePanel({ members, protocols, setProtocols, clubId }) {
   const [title, setTitle] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [attendees, setAttendees] = useState([]);
@@ -3662,6 +3671,7 @@ function ProtokollePanel({ members, protocols, setProtocols }) {
       { id: "p" + Date.now(), title: title.trim(), date, attendees, rawText, tasks: draftTasks.filter((t) => t.text.trim()) },
       ...ps,
     ]);
+    if (supabase && clubId) supabase.rpc("notify_club", { target_club: clubId, p_notif_type: "protocols", p_title: "Neues Vorstandsprotokoll", p_body: title.trim() });
     setTitle(""); setAttendees([]); setRawText(""); setDraftTasks([]);
   };
 
@@ -3875,13 +3885,14 @@ function SponsoringPanel({ bookings, setBookings, stats }) {
   );
 }
 
-function PollManagerPanel({ polls, setPolls }) {
+function PollManagerPanel({ polls, setPolls, clubId }) {
   const [title, setTitle] = useState("");
   const [options, setOptions] = useState(["", ""]);
   const create = () => {
     const clean = options.map((o)=>o.trim()).filter(Boolean);
     if (!title.trim() || clean.length < 2) return;
     setPolls((ps)=>[{ id:`poll-${Date.now()}`, title:title.trim(), active:true, options:clean.map((label)=>({label,votes:0})), voterIds:[] },...ps]);
+    if (supabase && clubId) supabase.rpc("notify_club", { target_club: clubId, p_notif_type: "polls", p_title: "Neue Umfrage", p_body: title.trim() });
     setTitle(""); setOptions(["",""]);
   };
   return <div className="space-y-4"><div className="rounded-2xl p-4" style={{background:C.white,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">Neue Mitmach-Umfrage</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>Mindestens zwei Antwortmöglichkeiten eintragen.</div><input value={title} onChange={(e)=>setTitle(e.target.value)} placeholder="Frage oder Titel" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim}}/>{options.map((o,i)=><input key={i} value={o} onChange={(e)=>setOptions((all)=>all.map((x,idx)=>idx===i?e.target.value:x))} placeholder={`Antwort ${i+1}`} className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2" style={{background:C.paperDim}}/>)}<div className="flex gap-2"><button onClick={()=>setOptions((o)=>[...o,""])} className="px-3 py-2 rounded-lg text-xs font-bold" style={{background:C.paperDim,color:C.ink}}>＋ Antwort</button><button onClick={create} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{background:C.red,color:C.white}}>Veröffentlichen</button></div></div><div className="space-y-2">{polls.map((poll)=><div key={poll.id} className="rounded-xl p-3 flex items-center gap-3" style={{background:C.white,border:`1px solid ${C.line}`}}><div className="flex-1"><div className="text-xs font-bold">{poll.title}</div><div className="text-[10px] mt-1" style={{color:C.textDim}}>{poll.options.length} Antworten · {poll.options.reduce((n,o)=>n+o.votes,0)} Stimmen</div></div><button onClick={()=>setPolls((ps)=>ps.map((p)=>p.id===poll.id?{...p,active:!p.active}:p))} className="px-2.5 py-1.5 rounded-full text-[10px] font-bold" style={{background:poll.active?"#E7F3EC":C.paperDim,color:poll.active?C.green:C.textDim}}>{poll.active?"Aktiv":"Inaktiv"}</button></div>)}</div></div>;
@@ -4260,9 +4271,9 @@ function AdminView({
       )}
 
       {panel === "duty" && <AdminDutyPanel members={members} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} />}
-      {panel === "protokolle" && <ProtokollePanel members={members} protocols={protocols} setProtocols={setProtocols} />}
+      {panel === "protokolle" && <ProtokollePanel members={members} protocols={protocols} setProtocols={setProtocols} clubId={currentUser.clubId} />}
       {panel === "sponsoring" && <SponsoringPanel bookings={sponsorBookings} setBookings={setSponsorBookings} stats={sponsorStats} />}
-      {panel === "polls" && <PollManagerPanel polls={polls} setPolls={setPolls} />}
+      {panel === "polls" && <PollManagerPanel polls={polls} setPolls={setPolls} clubId={currentUser.clubId} />}
       {panel === "roles" && <RolesPanel members={members} setMembers={setMembers} />}
       {panel === "results" && currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role)) && <MatchResultsPanel results={tippResults} onSave={onSaveTippResult} />}
       {panel === "families" && isSysAdmin(currentUser) && <AdminFamilyPanel members={members} setMembers={setMembers} />}
@@ -4739,6 +4750,7 @@ export default function ClubMemberOrganisationApp() {
       })));
       return nextResults;
     });
+    if (supabase && currentUser?.clubId) supabase.rpc("notify_club", { target_club: currentUser.clubId, p_notif_type: "tipp", p_title: "Tippspiel-Ergebnis eingetragen", p_body: "Ein Spielergebnis wurde eingetragen. Schau nach, wie viele Punkte du gemacht hast!" });
   };
 
   const currentUserIsAdmin = isAdmin(currentUser);
@@ -4814,7 +4826,7 @@ export default function ClubMemberOrganisationApp() {
               )}
               {!subView && tab === "teams" && <TeamsView currentUser={currentUser} members={clubMembers} setMembers={setMembers} currentClub={currentClub} />}
               {!subView && tab === "fees" && currentUserCanManageFees && <FeesView members={clubMembers} records={feeRecords} setRecords={setFeeRecords} />}
-              {!subView && tab === "chat" && <ChatView user={currentUser} channels={channels} setChannels={setChannels} activeId={chatChannelId} setActiveId={setChatChannelId} />}
+              {!subView && tab === "chat" && <ChatView user={currentUser} channels={channels} setChannels={setChannels} activeId={chatChannelId} setActiveId={setChatChannelId} members={clubMembers} />}
               {!subView && tab === "redaktion" && currentUserCanEditNews && <RedaktionView user={currentUser} channels={channels} setChannels={setChannels} />}
               {!subView && tab === "admin" && (currentUserIsAdmin || currentUserCanEditSponsors) && (
                 <AdminView members={clubMembers} setMembers={setMembers} feePaid={feePaid} setFeePaid={setFeePaid} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} seasonVotes={seasonVotes}
