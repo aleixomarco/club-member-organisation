@@ -1847,13 +1847,14 @@ function TeamsView({ currentUser, members, setMembers, currentClub }) {
     if (!databaseMembership || !selectedPlayerId || !selectedTeamId) { setPlayerPenalties([]); return; }
     const loadPlayerPenalties = async () => {
       const { data } = await supabase.from("team_penalty_assignments")
-        .select("id,assigned_at,team_penalty_rules(title,amount)")
+        .select("id,assigned_at,paid_at,team_penalty_rules(title,amount)")
         .eq("team_id", selectedTeamId)
         .eq("membership_id", selectedPlayerId)
+        .is("archived_season", null)
         .order("assigned_at", { ascending: false });
       setPlayerPenalties((data || []).map((entry) => {
         const rule = Array.isArray(entry.team_penalty_rules) ? entry.team_penalty_rules[0] : entry.team_penalty_rules;
-        return { id: entry.id, title: rule?.title || "—", amount: Number(rule?.amount || 0), assignedAt: entry.assigned_at };
+        return { id: entry.id, title: rule?.title || "—", amount: Number(rule?.amount || 0), assignedAt: entry.assigned_at, paidAt: entry.paid_at };
       }));
     };
     loadPlayerPenalties();
@@ -1873,6 +1874,16 @@ function TeamsView({ currentUser, members, setMembers, currentClub }) {
     if (error) { setPenaltyMessage("Konnte nicht entfernt werden."); return; }
     setPlayerPenalties((current) => current.filter((item) => item.id !== penalty.id));
     setPenaltyMessage("Strafe wurde entfernt.");
+  };
+  const togglePlayerPenaltyPaid = async (penalty) => {
+    setPenaltyMessage("");
+    const nextPaid = !penalty.paidAt;
+    if (databaseMembership) {
+      const { error } = await supabase.rpc("mark_penalty_paid", { target_assignment: penalty.id, mark_paid: nextPaid });
+      if (error) { setPenaltyMessage("Bezahlt-Status konnte nicht geändert werden."); return; }
+    }
+    setPlayerPenalties((current) => current.map((item) => item.id === penalty.id ? { ...item, paidAt: nextPaid ? new Date().toISOString() : null } : item));
+    setPenaltyMessage(nextPaid ? "Strafe als bezahlt markiert." : "Strafe als offen markiert.");
   };
 
   const loadTeams = useCallback(async () => {
@@ -1961,7 +1972,7 @@ function TeamsView({ currentUser, members, setMembers, currentClub }) {
     {showCreate && <form onSubmit={createTeam} className="rounded-2xl p-4 mb-5" style={{ background: C.white, border: `1px solid ${C.line}` }}><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Neue Mannschaft anlegen</div><div className="text-[11px] mb-3" style={{ color: C.textDim }}>Danach können Spieler/innen das Team in ihrem Profil auswählen.</div><input value={name} onChange={(event) => setName(event.target.value)} maxLength={80} placeholder="Mannschaftsname, z. B. U17" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}/><input value={category} onChange={(event) => setCategory(event.target.value)} maxLength={80} placeholder="Kategorie, z. B. Jugend oder Herren" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}/><button type="button" onClick={() => setIsAdultTeam((v) => !v)} className="w-full flex items-center justify-between rounded-xl px-3 py-2.5 mb-2" style={{ background: isAdultTeam ? "#FDECEC" : C.paperDim, border: isAdultTeam ? `1px solid ${C.red}` : "1px solid transparent" }}><div className="text-left"><div className="text-xs font-bold" style={{ color: C.ink }}>Erwachsenenmannschaft?</div><div className="text-[10px]" style={{ color: C.textDim }}>Nur dann gibt es Strafenkatalog & Zuweisungen für dieses Team.</div></div><span className="w-10 h-6 rounded-full flex items-center px-0.5" style={{ background: isAdultTeam ? C.red : C.line, justifyContent: isAdultTeam ? "flex-end" : "flex-start" }}><span className="w-5 h-5 rounded-full" style={{ background: C.white }}/></span></button><button disabled={saving || !name.trim()} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: name.trim() ? C.red : C.line, color: C.white }}>{saving ? "Wird angelegt …" : "Mannschaft anlegen"}</button></form>}
     {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: message.includes("angelegt") ? "#E7F3EC" : "#FDECEC", color: message.includes("angelegt") ? C.green : C.red }}>{message}</div>}
     {selectedTeam ? <div><button onClick={() => { setSelectedTeamId(""); setShowPlayerPicker(false); }} className="flex items-center gap-1 text-xs font-bold mb-3" style={{ color: C.red }}><ArrowLeft size={14}/> Alle Teams</button><div className="rounded-2xl p-4 mb-4" style={{ background: C.ink, color: C.white }}><div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: "#B7B6BC" }}>{selectedTeam.category || "Mannschaft"}</div><div className="text-xl font-bold" style={{ fontFamily: "Oswald" }}>{selectedTeam.name}</div><div className="text-xs mt-1" style={{ color: "#B7B6BC" }}>{rosterFor(selectedTeam).length} verknüpfte Spieler/innen</div></div><SectionTitle eyebrow="Kader" title="Spieler/innen" right={canAssignPlayers ? <button onClick={() => setShowPlayerPicker((value) => !value)} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showPlayerPicker ? "Schließen" : "+ Zuweisen"}</button> : null}/>{showPlayerPicker && <div className="rounded-2xl p-3 mb-4" style={{ background: C.paperDim }}><div className="text-[11px] mb-2" style={{ color: C.textDim }}>Spieler auswählen und anschließend seine Mannschaften festlegen.</div><div className="space-y-1.5 max-h-56 overflow-y-auto">{players.map((player) => <button key={player.id} onClick={() => openPlayer(player)} className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-left" style={{ background: C.white }}><div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold" style={{ background: player.color, color: C.white }}>{initialsOf(player.name)}</div><div className="flex-1"><div className="text-xs font-bold" style={{ color: C.ink }}>{player.name}</div><div className="text-[9px]" style={{ color: C.textDim }}>{memberPlayerTeams(player).join(" · ") || "Noch ohne Mannschaft"}</div></div><ChevronRight size={13} style={{ color: C.textDim }}/></button>)}</div></div>}{rosterFor(selectedTeam).length ? <div className="space-y-2">{rosterFor(selectedTeam).map((player) => <button key={player.id} onClick={() => openPlayer(player)} className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left" style={{ background: C.white, border: `1px solid ${C.line}` }}><div className="w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: player.color, color: C.white }}>{initialsOf(player.name)}</div><div className="flex-1"><div className="text-xs font-bold" style={{ color: C.ink }}>{player.name}</div><div className="text-[10px]" style={{ color: C.textDim }}>{memberPlayerTeams(player).join(" · ")}</div></div><ChevronRight size={14} style={{ color: C.textDim }}/></button>)}</div> : <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>Dieser Mannschaft sind noch keine Spieler/innen zugeordnet.</div>}</div> : loading ? <div className="text-xs py-4" style={{ color: C.textDim }}>Mannschaften werden geladen …</div> : <><SectionTitle eyebrow="Persönlich" title="Meine Teams"/><div className="space-y-2 mb-6">{ownTeams.length ? ownTeams.map((team) => <TeamCard key={team.id} team={team}/>) : <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>Du bist noch keiner Mannschaft als Spieler/in zugeordnet. Spieler/innen können im Profil bis zu drei Teams auswählen.</div>}</div><SectionTitle eyebrow="Vereinsübersicht" title="Alle Mannschaften"/><div className="space-y-2">{teams.map((team) => <TeamCard key={team.id} team={team}/>)}{teams.length === 0 && <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>Noch keine Mannschaften angelegt.</div>}</div></>}
-    {selectedPlayer && <div className="absolute inset-0 z-50 flex items-end p-3" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setSelectedPlayerId("")}><div role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()} className="w-full rounded-3xl p-5 max-h-[82%] overflow-y-auto" style={{ background: C.white }}><div className="flex items-start justify-between mb-4"><div className="flex items-center gap-3"><div className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold" style={{ background: selectedPlayer.color, color: C.white }}>{initialsOf(selectedPlayer.name)}</div><div><div className="text-lg font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{selectedPlayer.name}</div><div className="text-xs" style={{ color: C.textDim }}>Spieler/in · dabei seit {selectedPlayer.since}</div></div></div><button onClick={() => setSelectedPlayerId("")} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><X size={15}/></button></div><div className="flex items-center justify-between mb-2"><div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.textDim }}>Mannschaften</div>{canAssignPlayers && <span className="text-[10px] font-bold" style={{ color: playerTeamIds.length === 3 ? C.red : C.textDim }}>{playerTeamIds.length}/3</span>}{canAssignPlayers && <button type="button" onClick={() => setTeamsOpen((v) => !v)} className="p-1"><ChevronRight size={14} style={{ color: C.textDim, transform: teamsOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .15s" }}/></button>}</div>{canAssignPlayers ? (teamsOpen && <div className="space-y-2">{teams.map((team) => { const active = playerTeamIds.includes(team.id); return <button key={team.id} onClick={() => togglePlayerTeam(team.id)} className="w-full flex items-center justify-between rounded-xl px-3 py-2.5 text-left" style={{ background: active ? "#E7F3EC" : C.paperDim, border: active ? `1px solid ${C.green}` : "1px solid transparent" }}><div><div className="text-xs font-bold" style={{ color: C.ink }}>{team.name}</div><div className="text-[9px]" style={{ color: C.textDim }}>{team.category || "Mannschaft"}</div></div><span className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: active ? C.green : C.white, color: C.white }}>{active && <Check size={13}/>}</span></button>; })}<button onClick={savePlayerTeams} disabled={savingPlayer || JSON.stringify([...playerTeamIds].sort()) === JSON.stringify([...savedPlayerTeamIds].sort())} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: JSON.stringify([...playerTeamIds].sort()) !== JSON.stringify([...savedPlayerTeamIds].sort()) ? C.ink : C.paperDim, color: JSON.stringify([...playerTeamIds].sort()) !== JSON.stringify([...savedPlayerTeamIds].sort()) ? C.white : C.textDim, opacity: savingPlayer ? .6 : 1 }}>{savingPlayer ? "Wird gespeichert …" : "Zuordnung speichern"}</button>{playerMessage && <div role="status" className="text-[11px]" style={{ color: playerMessage.includes("gespeichert") ? C.green : C.red }}>{playerMessage}</div>}</div>) : <div className="flex flex-wrap gap-2">{memberPlayerTeams(selectedPlayer).length ? memberPlayerTeams(selectedPlayer).map((team) => <span key={team} className="px-3 py-1.5 rounded-full text-xs font-bold" style={{ background: "#E7F3EC", color: C.green }}>{team}</span>) : <span className="text-xs" style={{ color: C.textDim }}>Noch keiner Mannschaft zugeordnet.</span>}</div>}{canManagePenalties && (<div className="mt-4 pt-4" style={{ borderTop: `1px solid ${C.line}` }}><button type="button" onClick={() => setPenaltyOpen((v) => !v)} className="w-full flex items-center justify-between mb-2"><div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.textDim }}>Strafenverwaltung</div><ChevronRight size={14} style={{ color: C.textDim, transform: penaltyOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .15s" }}/></button>{penaltyOpen && (<><div className="flex gap-2 mb-3"><select value={assignRuleId} onChange={(e) => setAssignRuleId(e.target.value)} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}><option value="">Strafe wählen …</option>{penaltyRules.map((r) => <option key={r.id} value={r.id}>{r.title} ({r.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €)</option>)}</select><button onClick={assignPenaltyToPlayer} disabled={assigningPenalty || !assignRuleId} className="px-4 rounded-xl text-xs font-bold" style={{ background: assignRuleId ? C.ink : C.line, color: C.white }}>{assigningPenalty ? "…" : "Zuweisen"}</button></div>{penaltyMessage && <div role="status" className="text-[11px] mb-2" style={{ color: penaltyMessage.includes("zugewiesen") ? C.green : C.red }}>{penaltyMessage}</div>}<div className="text-[10px] uppercase tracking-widest font-bold mb-1.5" style={{ color: C.textDim }}>Bisherige Strafen</div><div className="space-y-1.5">{playerPenalties.map((p) => <div key={p.id} className="flex items-center justify-between px-3 py-2 rounded-xl" style={{ background: C.paperDim }}><span className="text-xs font-bold" style={{ color: C.ink }}>{p.title}</span><span className="text-xs font-bold" style={{ color: C.red, fontFamily: "JetBrains Mono" }}>{p.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span><button type="button" onClick={() => removePlayerPenalty(p)} aria-label="Strafe entfernen" className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.white, color: C.red }}><X size={12}/></button></div>)}{playerPenalties.length === 0 && <div className="text-[11px]" style={{ color: C.textDim }}>Noch keine Strafen vergeben.</div>}</div></>)}</div>)}</div></div>}
+    {selectedPlayer && <div className="absolute inset-0 z-50 flex items-end p-3" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setSelectedPlayerId("")}><div role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()} className="w-full rounded-3xl p-5 max-h-[82%] overflow-y-auto" style={{ background: C.white }}><div className="flex items-start justify-between mb-4"><div className="flex items-center gap-3"><div className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold" style={{ background: selectedPlayer.color, color: C.white }}>{initialsOf(selectedPlayer.name)}</div><div><div className="text-lg font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{selectedPlayer.name}</div><div className="text-xs" style={{ color: C.textDim }}>Spieler/in · dabei seit {selectedPlayer.since}</div></div></div><button onClick={() => setSelectedPlayerId("")} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><X size={15}/></button></div><div className="flex items-center justify-between mb-2"><div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.textDim }}>Mannschaften</div>{canAssignPlayers && <span className="text-[10px] font-bold" style={{ color: playerTeamIds.length === 3 ? C.red : C.textDim }}>{playerTeamIds.length}/3</span>}{canAssignPlayers && <button type="button" onClick={() => setTeamsOpen((v) => !v)} className="p-1"><ChevronRight size={14} style={{ color: C.textDim, transform: teamsOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .15s" }}/></button>}</div>{canAssignPlayers ? (teamsOpen && <div className="space-y-2">{teams.map((team) => { const active = playerTeamIds.includes(team.id); return <button key={team.id} onClick={() => togglePlayerTeam(team.id)} className="w-full flex items-center justify-between rounded-xl px-3 py-2.5 text-left" style={{ background: active ? "#E7F3EC" : C.paperDim, border: active ? `1px solid ${C.green}` : "1px solid transparent" }}><div><div className="text-xs font-bold" style={{ color: C.ink }}>{team.name}</div><div className="text-[9px]" style={{ color: C.textDim }}>{team.category || "Mannschaft"}</div></div><span className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: active ? C.green : C.white, color: C.white }}>{active && <Check size={13}/>}</span></button>; })}<button onClick={savePlayerTeams} disabled={savingPlayer || JSON.stringify([...playerTeamIds].sort()) === JSON.stringify([...savedPlayerTeamIds].sort())} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: JSON.stringify([...playerTeamIds].sort()) !== JSON.stringify([...savedPlayerTeamIds].sort()) ? C.ink : C.paperDim, color: JSON.stringify([...playerTeamIds].sort()) !== JSON.stringify([...savedPlayerTeamIds].sort()) ? C.white : C.textDim, opacity: savingPlayer ? .6 : 1 }}>{savingPlayer ? "Wird gespeichert …" : "Zuordnung speichern"}</button>{playerMessage && <div role="status" className="text-[11px]" style={{ color: playerMessage.includes("gespeichert") ? C.green : C.red }}>{playerMessage}</div>}</div>) : <div className="flex flex-wrap gap-2">{memberPlayerTeams(selectedPlayer).length ? memberPlayerTeams(selectedPlayer).map((team) => <span key={team} className="px-3 py-1.5 rounded-full text-xs font-bold" style={{ background: "#E7F3EC", color: C.green }}>{team}</span>) : <span className="text-xs" style={{ color: C.textDim }}>Noch keiner Mannschaft zugeordnet.</span>}</div>}{canManagePenalties && (<div className="mt-4 pt-4" style={{ borderTop: `1px solid ${C.line}` }}><button type="button" onClick={() => setPenaltyOpen((v) => !v)} className="w-full flex items-center justify-between mb-2"><div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.textDim }}>Strafenverwaltung</div><ChevronRight size={14} style={{ color: C.textDim, transform: penaltyOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .15s" }}/></button>{penaltyOpen && (<><div className="flex gap-2 mb-3"><select value={assignRuleId} onChange={(e) => setAssignRuleId(e.target.value)} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}><option value="">Strafe wählen …</option>{penaltyRules.map((r) => <option key={r.id} value={r.id}>{r.title} ({r.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €)</option>)}</select><button onClick={assignPenaltyToPlayer} disabled={assigningPenalty || !assignRuleId} className="px-4 rounded-xl text-xs font-bold" style={{ background: assignRuleId ? C.ink : C.line, color: C.white }}>{assigningPenalty ? "…" : "Zuweisen"}</button></div>{penaltyMessage && <div role="status" className="text-[11px] mb-2" style={{ color: penaltyMessage.includes("zugewiesen") ? C.green : C.red }}>{penaltyMessage}</div>}<div className="text-[10px] uppercase tracking-widest font-bold mb-1.5" style={{ color: C.textDim }}>Bisherige Strafen</div><div className="space-y-1.5">{playerPenalties.map((p) => <div key={p.id} className="flex items-center justify-between px-3 py-2 rounded-xl" style={{ background: C.paperDim }}><span className="text-xs font-bold" style={{ color: C.ink }}>{p.title}</span><span className="text-xs font-bold" style={{ color: C.red, fontFamily: "JetBrains Mono" }}>{p.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span><button type="button" onClick={() => togglePlayerPenaltyPaid(p)} className="px-2 py-1 rounded-lg text-[9px] font-bold flex-shrink-0" style={{ background: p.paidAt ? "#E7F3EC" : C.white, color: p.paidAt ? C.green : C.textDim }}>{p.paidAt ? "Bezahlt" : "Offen"}</button><button type="button" onClick={() => removePlayerPenalty(p)} aria-label="Strafe entfernen" className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.white, color: C.red }}><X size={12}/></button></div>)}{playerPenalties.length === 0 && <div className="text-[11px]" style={{ color: C.textDim }}>Noch keine Strafen vergeben.</div>}</div></>)}</div>)}</div></div>}
   </div>;
 }
 
@@ -1983,8 +1994,14 @@ function TeamPenaltyCatalog({ user }) {
   const [assignRuleId, setAssignRuleId] = useState("");
   const [assigning, setAssigning] = useState(false);
   const [filterRuleId, setFilterRuleId] = useState("");
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyAssignments, setHistoryAssignments] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [seasonLabel, setSeasonLabel] = useState("");
+  const [resettingSeason, setResettingSeason] = useState(false);
   const databaseMembership = !!supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(user.id));
   const canManageSelectedTeam = !!teams.find((team) => team.id === selectedTeamId)?.canManage;
+  const canManageSeasons = databaseMembership && user.roles.some((role) => ["vorstand", "finanzmanager", "sysadmin", "vereinsadmin"].includes(role));
   useEffect(() => {
     const loadTeams = async () => {
       setLoading(true); setMessage("");
@@ -2064,18 +2081,39 @@ function TeamPenaltyCatalog({ user }) {
     }
     const loadAssignments = async () => {
       const { data, error } = await supabase.from("team_penalty_assignments")
-        .select("id,assigned_at,rule_id,membership_id,team_penalty_rules(title,amount),club_memberships(display_name)")
+        .select("id,assigned_at,paid_at,rule_id,membership_id,team_penalty_rules(title,amount),club_memberships(display_name)")
         .eq("team_id", selectedTeamId)
+        .is("archived_season", null)
         .order("assigned_at", { ascending: false });
       if (error) { setMessage("Die vergebenen Strafen konnten nicht geladen werden."); return; }
       setAssignments((data || []).map((entry) => {
         const rule = Array.isArray(entry.team_penalty_rules) ? entry.team_penalty_rules[0] : entry.team_penalty_rules;
         const membership = Array.isArray(entry.club_memberships) ? entry.club_memberships[0] : entry.club_memberships;
-        return { id: entry.id, teamId: selectedTeamId, ruleId: entry.rule_id, ruleTitle: rule?.title || "—", amount: Number(rule?.amount || 0), membershipId: entry.membership_id, playerName: membership?.display_name || "—", assignedAt: entry.assigned_at };
+        return { id: entry.id, teamId: selectedTeamId, ruleId: entry.rule_id, ruleTitle: rule?.title || "—", amount: Number(rule?.amount || 0), membershipId: entry.membership_id, playerName: membership?.display_name || "—", assignedAt: entry.assigned_at, paidAt: entry.paid_at };
       }));
     };
     loadAssignments();
   }, [selectedTeamId, databaseMembership, localAssignments]);
+  useEffect(() => {
+    if (!showHistory || !selectedTeamId || !databaseMembership) { setHistoryAssignments([]); return; }
+    const loadHistory = async () => {
+      setHistoryLoading(true);
+      const { data, error } = await supabase.from("team_penalty_assignments")
+        .select("id,assigned_at,paid_at,archived_season,rule_id,membership_id,team_penalty_rules(title,amount),club_memberships(display_name)")
+        .eq("team_id", selectedTeamId)
+        .not("archived_season", "is", null)
+        .order("archived_season", { ascending: false })
+        .order("assigned_at", { ascending: false });
+      if (error) { setMessage("Die Saison-Historie konnte nicht geladen werden."); setHistoryLoading(false); return; }
+      setHistoryAssignments((data || []).map((entry) => {
+        const rule = Array.isArray(entry.team_penalty_rules) ? entry.team_penalty_rules[0] : entry.team_penalty_rules;
+        const membership = Array.isArray(entry.club_memberships) ? entry.club_memberships[0] : entry.club_memberships;
+        return { id: entry.id, season: entry.archived_season, ruleTitle: rule?.title || "—", amount: Number(rule?.amount || 0), playerName: membership?.display_name || "—", assignedAt: entry.assigned_at, paidAt: entry.paid_at };
+      }));
+      setHistoryLoading(false);
+    };
+    loadHistory();
+  }, [showHistory, selectedTeamId, databaseMembership]);
   const addRule = async (event) => {
     event.preventDefault();
     const normalizedAmount = Number(amount.replace(",", "."));
@@ -2129,17 +2167,18 @@ function TeamPenaltyCatalog({ user }) {
       setLocalAssignments((current) => [...current]);
     } else {
       const player = teamPlayers.find((p) => p.id === assignPlayerId);
-      setLocalAssignments((current) => [...current, { id: `assign-${Date.now()}`, teamId: selectedTeamId, ruleId: assignRuleId, ruleTitle: rule?.title || "—", amount: rule?.amount || 0, membershipId: assignPlayerId, playerName: player?.name || assignPlayerId, assignedAt: new Date().toISOString() }]);
+      setLocalAssignments((current) => [...current, { id: `assign-${Date.now()}`, teamId: selectedTeamId, ruleId: assignRuleId, ruleTitle: rule?.title || "—", amount: rule?.amount || 0, membershipId: assignPlayerId, playerName: player?.name || assignPlayerId, assignedAt: new Date().toISOString(), paidAt: null }]);
     }
     if (databaseMembership) {
       const { data } = await supabase.from("team_penalty_assignments")
-        .select("id,assigned_at,rule_id,membership_id,team_penalty_rules(title,amount),club_memberships(display_name)")
+        .select("id,assigned_at,paid_at,rule_id,membership_id,team_penalty_rules(title,amount),club_memberships(display_name)")
         .eq("team_id", selectedTeamId)
+        .is("archived_season", null)
         .order("assigned_at", { ascending: false });
       setAssignments((data || []).map((entry) => {
         const r = Array.isArray(entry.team_penalty_rules) ? entry.team_penalty_rules[0] : entry.team_penalty_rules;
         const membership = Array.isArray(entry.club_memberships) ? entry.club_memberships[0] : entry.club_memberships;
-        return { id: entry.id, teamId: selectedTeamId, ruleId: entry.rule_id, ruleTitle: r?.title || "—", amount: Number(r?.amount || 0), membershipId: entry.membership_id, playerName: membership?.display_name || "—", assignedAt: entry.assigned_at };
+        return { id: entry.id, teamId: selectedTeamId, ruleId: entry.rule_id, ruleTitle: r?.title || "—", amount: Number(r?.amount || 0), membershipId: entry.membership_id, playerName: membership?.display_name || "—", assignedAt: entry.assigned_at, paidAt: entry.paid_at };
       }));
     }
     setAssignPlayerId(""); setAssignRuleId(""); setMessage("Strafe wurde zugewiesen."); setAssigning(false);
@@ -2154,14 +2193,38 @@ function TeamPenaltyCatalog({ user }) {
     }
     setAssignments((current) => current.filter((item) => item.id !== assignment.id));
   };
+  const toggleAssignmentPaid = async (assignment) => {
+    setMessage("");
+    const nextPaid = !assignment.paidAt;
+    if (databaseMembership) {
+      const { error } = await supabase.rpc("mark_penalty_paid", { target_assignment: assignment.id, mark_paid: nextPaid });
+      if (error) { setMessage("Bezahlt-Status konnte nicht geändert werden."); return; }
+    } else {
+      setLocalAssignments((current) => current.map((item) => item.id === assignment.id ? { ...item, paidAt: nextPaid ? new Date().toISOString() : null } : item));
+    }
+    setAssignments((current) => current.map((item) => item.id === assignment.id ? { ...item, paidAt: nextPaid ? new Date().toISOString() : null } : item));
+    setMessage(nextPaid ? "Strafe als bezahlt markiert." : "Strafe als offen markiert.");
+  };
+  const runSeasonReset = async () => {
+    if (!seasonLabel.trim()) { setMessage("Bitte eine Saisonbezeichnung eingeben, z. B. 2025/26."); return; }
+    if (!window.confirm(`Alle bezahlten Strafen des Vereins werden unter „${seasonLabel.trim()}“ archiviert und aus der aktiven Ansicht entfernt. Fortfahren?`)) return;
+    setResettingSeason(true); setMessage("");
+    const { data, error } = await supabase.rpc("run_season_reset", { target_club: user.clubId, season_label: seasonLabel.trim() });
+    if (error) { setMessage("Der Saison-Reset konnte nicht durchgeführt werden."); setResettingSeason(false); return; }
+    setAssignments((current) => current.filter((item) => !item.paidAt));
+    setSeasonLabel("");
+    setMessage(`Saison-Reset abgeschlossen. ${data ?? 0} bezahlte Strafe(n) archiviert.`);
+    setResettingSeason(false);
+  };
   const filteredAssignments = filterRuleId ? assignments.filter((a) => a.ruleId === filterRuleId) : assignments;
   const totalsByPlayer = filteredAssignments.reduce((acc, a) => { acc[a.playerName] = (acc[a.playerName] || 0) + a.amount; return acc; }, {});
+  const historyBySeasons = historyAssignments.reduce((acc, a) => { (acc[a.season] = acc[a.season] || []).push(a); return acc; }, {});
   return <div className="rounded-2xl p-4 mb-5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
     <div className="flex items-center gap-2 mb-1 text-sm font-bold" style={{ color: C.ink }}><ClipboardList size={16} style={{ color: C.red }}/> Strafenkatalog</div>
     <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Regeln und Kosten werden für jede Mannschaft getrennt geführt.</div>
     {loading ? <div className="text-xs py-3" style={{ color: C.textDim }}>Mannschaften werden geladen …</div> : teams.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Der Strafenkatalog ist nur für Erwachsenenmannschaften verfügbar. Dir ist aktuell keine Erwachsenenmannschaft als Spieler/in, Kapitän/in, Trainer/in oder Teammanager/in zugeordnet.</div> : <>
       <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>MANNSCHAFT</div>
-      <select value={selectedTeamId} onChange={(event) => { setSelectedTeamId(event.target.value); setMessage(""); }} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-3" style={{ background: C.paperDim, color: C.ink }}>{teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select>
+      <select value={selectedTeamId} onChange={(event) => { setSelectedTeamId(event.target.value); setMessage(""); setShowHistory(false); }} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-3" style={{ background: C.paperDim, color: C.ink }}>{teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select>
       <div className="space-y-2 mb-3">
         {rules.map((rule) => <div key={rule.id} className="flex items-center gap-2 px-3 py-2.5 rounded-xl" style={{ background: C.paperDim }}><div className="flex-1 min-w-0"><div className="text-xs font-bold truncate" style={{ color: C.ink }}>{rule.title}</div></div><div className="text-xs font-bold whitespace-nowrap" style={{ color: C.red, fontFamily: "JetBrains Mono" }}>{rule.amount.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</div>{canManageSelectedTeam && <><button type="button" disabled={saving} onClick={() => editRule(rule)} className="px-2 py-1.5 rounded-lg text-[10px] font-bold" style={{ background: C.white, color: C.ink }}>Ändern</button><button type="button" disabled={saving} onClick={() => removeRule(rule)} aria-label={`${rule.title} löschen`} className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: C.white, color: C.red }}><X size={14}/></button></>}</div>)}
         {rules.length === 0 && <div className="text-[11px] rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Für diese Mannschaft sind noch keine Regeln hinterlegt.</div>}
@@ -2195,7 +2258,7 @@ function TeamPenaltyCatalog({ user }) {
               ))}
             </div>
           )}
-          <div className="space-y-2">
+          <div className="space-y-2 mb-4">
             {filteredAssignments.map((a) => (
               <div key={a.id} className="flex items-center gap-2 px-3 py-2.5 rounded-xl" style={{ background: C.paperDim }}>
                 <div className="flex-1 min-w-0">
@@ -2203,15 +2266,39 @@ function TeamPenaltyCatalog({ user }) {
                   <div className="text-[10px] truncate" style={{ color: C.textDim }}>{a.ruleTitle} · {new Date(a.assignedAt).toLocaleDateString("de-DE")}</div>
                 </div>
                 <div className="text-xs font-bold whitespace-nowrap" style={{ color: C.red, fontFamily: "JetBrains Mono" }}>{a.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</div>
-                <button type="button" onClick={() => removeAssignment(a)} aria-label={`Strafe bei ${a.playerName} entfernen`} className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: C.white, color: C.red }}><X size={14}/></button>
+                <button type="button" onClick={() => toggleAssignmentPaid(a)} className="px-2 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: a.paidAt ? "#E7F3EC" : C.white, color: a.paidAt ? C.green : C.textDim }}>{a.paidAt ? "Bezahlt" : "Offen"}</button>
+                <button type="button" onClick={() => removeAssignment(a)} aria-label={`Strafe bei ${a.playerName} entfernen`} className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.white, color: C.red }}><X size={14}/></button>
               </div>
             ))}
             {filteredAssignments.length === 0 && <div className="text-[11px] rounded-xl p-3" style={{ background: C.white, color: C.textDim }}>Noch keine Strafen vergeben.</div>}
           </div>
+          {databaseMembership && <button type="button" onClick={() => setShowHistory((v) => !v)} className="text-[11px] font-bold mb-2" style={{ color: C.ink }}>{showHistory ? "Historie ausblenden" : "Saison-Historie anzeigen"}</button>}
+          {showHistory && (
+            <div className="rounded-xl p-3 mb-2" style={{ background: C.paperDim }}>
+              {historyLoading ? <div className="text-[11px]" style={{ color: C.textDim }}>Historie wird geladen …</div> : Object.keys(historyBySeasons).length === 0 ? <div className="text-[11px]" style={{ color: C.textDim }}>Für diese Mannschaft liegt noch keine abgeschlossene Saison vor.</div> : Object.entries(historyBySeasons).map(([season, items]) => (
+                <div key={season} className="mb-3 last:mb-0">
+                  <div className="text-[10px] font-bold mb-1.5" style={{ color: C.ink }}>Saison {season} · {items.reduce((sum, i) => sum + i.amount, 0).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</div>
+                  <div className="space-y-1">
+                    {items.map((i) => <div key={i.id} className="flex items-center justify-between text-[11px] px-2 py-1.5 rounded-lg" style={{ background: C.white }}><span style={{ color: C.ink }}>{i.playerName} · {i.ruleTitle}</span><span className="font-bold" style={{ color: C.red, fontFamily: "JetBrains Mono" }}>{i.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></div>)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      {canManageSeasons && (
+        <div className="pt-4 mt-4" style={{ borderTop: `1px solid ${C.line}` }}>
+          <div className="text-[10px] font-bold mb-2" style={{ color: C.textDim }}>SAISON ABSCHLIESSEN (VEREINSWEIT)</div>
+          <div className="text-[11px] mb-2" style={{ color: C.textDim }}>Archiviert alle bereits als bezahlt markierten Strafen des gesamten Vereins unter der angegebenen Saisonbezeichnung. Offene Strafen bleiben aktiv.</div>
+          <div className="flex gap-2">
+            <input value={seasonLabel} onChange={(e) => setSeasonLabel(e.target.value)} placeholder="z. B. 2025/26" className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}/>
+            <button type="button" onClick={runSeasonReset} disabled={resettingSeason || !seasonLabel.trim()} className="px-4 rounded-xl text-xs font-bold" style={{ background: seasonLabel.trim() ? C.red : C.line, color: C.white }}>{resettingSeason ? "…" : "Abschließen"}</button>
+          </div>
         </div>
       )}
     </>}
-    {message && <div role="status" className="text-[11px] mt-2" style={{ color: message.includes("gespeichert") || message.includes("gelöscht") || message.includes("zugewiesen") ? C.green : C.red }}>{message}</div>}
+    {message && <div role="status" className="text-[11px] mt-2" style={{ color: message.includes("gespeichert") || message.includes("gelöscht") || message.includes("zugewiesen") || message.includes("markiert") || message.includes("abgeschlossen") ? C.green : C.red }}>{message}</div>}
   </div>;
 }
 function PlayerDataCard({ user, setMembers }) {
