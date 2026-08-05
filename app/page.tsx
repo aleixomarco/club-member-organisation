@@ -11,7 +11,7 @@ import {
   Bug, Smartphone, Save, Plus, Building2, ExternalLink
 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
-import { enablePushNotifications } from "@/lib/firebase-push";
+import { enablePushNotifications, listenForForegroundMessages } from "@/lib/firebase-push";
 
 /* ------------------------------------------------------------------ */
 /* Tokens                                                              */
@@ -4376,6 +4376,10 @@ export default function ClubMemberOrganisationApp() {
   }, []);
 
   const currentUser = members.find((m) => m.id === currentUserId);
+  useEffect(() => {
+    if (!currentUser) return;
+    listenForForegroundMessages();
+  }, [currentUser?.id]);
   useEffect(() => {
     const isRealAccount = !!supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(currentUser?.id || ""));
     if (!isRealAccount || !currentUser?.clubId) return;

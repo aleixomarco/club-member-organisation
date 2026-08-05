@@ -47,3 +47,21 @@ export async function enablePushNotifications(membershipId: string): Promise<Ena
     return { error: "setup_failed" };
   }
 }
+
+export function listenForForegroundMessages() {
+  if (typeof window === "undefined") return;
+  isSupported().then((supported) => {
+    if (!supported) return;
+    const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+    const messaging = getMessaging(app);
+    import("firebase/messaging").then(({ onMessage }) => {
+      onMessage(messaging, (payload) => {
+        const title = payload.notification?.title || "CMO";
+        const body = payload.notification?.body || "";
+        if (Notification.permission === "granted") {
+          new Notification(title, { body });
+        }
+      });
+    });
+  });
+}
