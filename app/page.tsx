@@ -11,7 +11,7 @@ import {
   Bug, Smartphone, Save, Plus, Building2, ExternalLink
 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
-import { enablePushNotifications, listenForForegroundMessages } from "@/lib/firebase-push";
+import { enablePushNotifications, disablePushNotifications, listenForForegroundMessages } from "@/lib/firebase-push";
 
 /* ------------------------------------------------------------------ */
 /* Tokens                                                              */
@@ -3149,9 +3149,15 @@ function NotificationSettings({ user, setMembers, saveRef }) {
     }
     setPushStatus("active"); setMessage("Push-Benachrichtigungen sind jetzt aktiv.");
   };
+  const deactivatePush = async () => {
+    setPushStatus("working");
+    const result = await disablePushNotifications(user.id);
+    if (result.error) { setPushStatus("active"); setMessage("Push konnte nicht deaktiviert werden."); return; }
+    setPushStatus("idle"); setMessage("Push-Benachrichtigungen wurden deaktiviert.");
+  };
   const save = async()=>{ if(supabase&&user.authProfileId){const {error}=await supabase.from("profiles").update({notification_master:master,notification_preferences:prefs}).eq("id",user.authProfileId);if(error){setMessage("Benachrichtigungen konnten nicht gespeichert werden.");return;}} setMembers((items)=>items.map((item)=>item.id===user.id?{...item,notificationMaster:master,notificationPreferences:prefs}:item));setMessage("Benachrichtigungen gespeichert.");};
   saveRef.current=save;
-  return <div>{databaseMembership && <div className="rounded-2xl p-4 mb-4" style={{background:C.white,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1" style={{color:C.ink}}>Push-Benachrichtigungen auf diesem Gerät</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>Aktiviere Push, um Benachrichtigungen auch außerhalb der App zu erhalten. Auf dem iPhone funktioniert das nur, wenn die App über "Zum Home-Bildschirm hinzufügen" installiert wurde.</div><button onClick={activatePush} disabled={pushStatus==="working"||pushStatus==="active"} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{background:pushStatus==="active"?"#E7F3EC":C.ink,color:pushStatus==="active"?C.green:C.white}}>{pushStatus==="working"?"Wird aktiviert …":pushStatus==="active"?"Push ist aktiv ✓":"Push aktivieren"}</button></div>}<ToggleCard title="Benachrichtigungen auf diesem Gerät" desc="Master-Schalter für alle App-Benachrichtigungen" value={master} onChange={setMaster}/><div className="mt-4 rounded-2xl p-4space-y-3" style={{background:C.white,border:`1px solid ${C.line}`}}>{NOTIFICATION_OPTIONS.map(([key,label])=><label key={key} className="flex items-center justify-between gap-3"><span className="text-xsfont-bold">{label}</span><select disabled={!master} value={prefs[key]?"ja":"nein"} onChange={(e)=>setPrefs({...prefs,[key]:e.target.value==="ja"})} className="px-3 py-2 rounded-xl text-xs" style={{background:C.paperDim,opacity:master?1:.45}}><option value="ja">Ja</option><option value="nein">Nein</option></select></label>)}</div>{message&&<div className="mt-3 text-[11px] rounded-xl px-3 py-2" style={{background:"#E7F3EC",color:C.green}}>{message}</div>}</div>;
+  return <div>{databaseMembership && <div className="rounded-2xl p-4 mb-4" style={{background:C.white,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1" style={{color:C.ink}}>Push-Benachrichtigungen auf diesem Gerät</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>Aktiviere Push, um Benachrichtigungen auch außerhalb der App zu erhalten. Auf dem iPhone funktioniert das nur, wenn die App über "Zum Home-Bildschirm hinzufügen" installiert wurde.</div><button onClick={pushStatus==="active"?deactivatePush:activatePush} disabled={pushStatus==="working"} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{background:pushStatus==="active"?"#FDECEC":C.ink,color:pushStatus==="active"?C.red:C.white}}>{pushStatus==="working"?"Wird bearbeitet …":pushStatus==="active"?"Push deaktivieren":"Push aktivieren"}</button></div>}<ToggleCard title="Benachrichtigungen auf diesem Gerät" desc="Master-Schalter für alle App-Benachrichtigungen" value={master} onChange={setMaster}/><div className="mt-4 rounded-2xl p-4space-y-3" style={{background:C.white,border:`1px solid ${C.line}`}}>{NOTIFICATION_OPTIONS.map(([key,label])=><label key={key} className="flex items-center justify-between gap-3"><span className="text-xsfont-bold">{label}</span><select disabled={!master} value={prefs[key]?"ja":"nein"} onChange={(e)=>setPrefs({...prefs,[key]:e.target.value==="ja"})} className="px-3 py-2 rounded-xl text-xs" style={{background:C.paperDim,opacity:master?1:.45}}><option value="ja">Ja</option><option value="nein">Nein</option></select></label>)}</div>{message&&<div className="mt-3 text-[11px] rounded-xl px-3 py-2" style={{background:"#E7F3EC",color:C.green}}>{message}</div>}</div>;
 }
 
 function PasswordSettings({ user, onLogout, saveRef }) {

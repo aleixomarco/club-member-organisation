@@ -1,0 +1,12 @@
+{
+  "name": "Club Member Organisation",
+  "short_name": "CMO",
+  "description": "Mitglieder, Teams, Events und Vereinsverwaltung an einem Ort.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#141B26",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

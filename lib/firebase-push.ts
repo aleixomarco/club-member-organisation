@@ -65,3 +65,25 @@ export function listenForForegroundMessages() {
     });
   });
 }
+
+export async function disablePushNotifications(membershipId: string): Promise<{ success?: boolean; error?: string }> {
+  if (typeof window === "undefined") return { error: "not_browser" };
+  try {
+    const supported = await isSupported().catch(() => false);
+    if (!supported) return { error: "unsupported" };
+    const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+    const messaging = getMessaging(app);
+    const registration = await navigator.serviceWorker.getRegistration("/firebase-messaging-sw.js");
+    const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: registration || undefined }).catch(() => null);
+    const { deleteToken } = await import("firebase/messaging");
+    await deleteToken(messaging).catch(() => {});
+    if (token) {
+      await supabase.from("push_subscriptions").delete().eq("membership_id", membershipId).eq("fcm_token", token);
+    } else {
+      await supabase.from("push_subscriptions").delete().eq("membership_id", membershipId);
+    }
+    return { success: true };
+  } catch (err) {
+    return { error: "failed" };
+  }
+}
