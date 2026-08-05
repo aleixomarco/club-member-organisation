@@ -864,7 +864,7 @@ function NextTrainingCard({ user }) {
     </div>
   );
 }
-function Dashboard({ user, members, feePaid, channels, dutyPlan, seasonVotes, polls, setPolls, sponsorBookings, onSponsorImpression, onSponsorClick, goEvents, goSeason, goTipp, goDuty, goNews }) {
+function Dashboard({ user, members, feePaid, channels, dutyPlan, seasonVotes, polls, setPolls, sponsorBookings, onSponsorImpression, onSponsorClick, goEvents, goSeason, goTipp, goDuty, goNews, goTasks }) {
   const nextEvent = EVENTS.filter((e) => e.type === "spiel" && e.team === user.team && new Date(e.date) > new Date()).sort((a,b)=>new Date(a.date)-new Date(b.date))[0] || getNextMatch();
   const newsMsgs = (channels.find((c) => c.id === "news")?.messages || []).slice(-2).reverse();
 
@@ -874,6 +874,18 @@ function Dashboard({ user, members, feePaid, channels, dutyPlan, seasonVotes, po
   const leaderboard = [...members].sort((a, b) => b.tippPoints - a.tippPoints);
   const myRank = leaderboard.findIndex((m) => m.id === user.id) + 1;
   const tippSubtitle = `Platz ${myRank} von ${leaderboard.length} · Gewinn: CMO-Artikel`;
+  const [taskReminder, setTaskReminder] = useState(false);
+  useEffect(() => {
+    const databaseMembership = !!supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(user.id));
+    if (!databaseMembership || !user.clubId) return;
+    const checkReminder = async () => {
+      const { data: ratio } = await supabase.rpc("get_task_signup_ratio", { target_club: user.clubId });
+      if ((ratio || 0) < 0.7) return;
+      const { data: mine } = await supabase.from("club_task_signups").select("id").eq("membership_id", user.id).limit(1);
+      if (!mine || mine.length === 0) setTaskReminder(true);
+    };
+    checkReminder();
+  }, [user.id, user.clubId]);
 
   let dutySubtitle = isFormalMember(user) ? "Theke, Grill, Kuchenbuffet …" : "Nur für Vereinsmitglieder";
   if (isFormalMember(user)) {
@@ -894,6 +906,12 @@ function Dashboard({ user, members, feePaid, channels, dutyPlan, seasonVotes, po
       <Scoreboard nextEvent={nextEvent} goTo={goEvents} />
       <NextTrainingCard user={user} />
 
+      {taskReminder && (
+        <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 mb-5" style={{ background: "#EEF5F8", border: `1px solid #CEE2EA` }}>
+          <ClipboardList size={16} style={{ color: "#2D6F8E" }} />
+          <div className="text-sm flex-1" style={{ fontFamily: "Inter", color: C.ink }}>Schon <b>70%</b> haben sich für Aufgaben eingetragen. Hilf mit! <button onClick={goTasks} className="underline font-bold">Jetzt eintragen</button></div>
+        </div>
+      )}
       {BIRTHDAYS_TODAY.length > 0 && (
         <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 mb-5" style={{ background: "#FFF6E4", border: `1px solid #F2DDA8` }}>
           <Cake size={16} style={{ color: C.amber }} />
@@ -907,6 +925,7 @@ function Dashboard({ user, members, feePaid, channels, dutyPlan, seasonVotes, po
           <FeatureRow icon={Trophy} title="Spieler der Saison" subtitle={seasonSubtitle} onClick={goSeason} accent={C.amber} />
           <FeatureRow icon={Target} title="Tippspiel" subtitle={tippSubtitle} onClick={goTipp} accent={C.red} />
           <FeatureRow icon={ClipboardList} title="Helferplanung" subtitle={dutySubtitle} onClick={goDuty} accent={C.green} />
+          <FeatureRow icon={ClipboardList} title="Aufgaben" subtitle="Für den Verein mithelfen" onClick={goTasks} accent={C.red} />
         </div>
       </DashboardSection>
 
@@ -990,11 +1009,111 @@ function HelperSlots({ ev, members, currentUser, dutyPlan, setDutyPlan, eligible
 /* ------------------------------------------------------------------ */
 /* Events                                                               */
 /* ------------------------------------------------------------------ */
+function CarpoolSection({ ev, currentUser }) {
+  const [carpools, setCarpools] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showCreate, setShowCreate] = useState(false);
+  const [seats, setSeats] = useState("");
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  const load = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await supabase.from("carpools")
+      .select("id,seats_available,note,driver_membership_id,club_memberships(display_name),carpool_passengers(membership_id,club_memberships(display_name))")
+      .eq("event_id", ev.id)
+      .order("created_at", { ascending: true });
+    if (error) { setLoading(false); return; }
+    setCarpools((data || []).map((row) => {
+      const driver = Array.isArray(row.club_memberships) ? row.club_memberships[0] : row.club_memberships;
+      const passengers = (row.carpool_passengers || []).map((p) => {
+        const m = Array.isArray(p.club_memberships) ? p.club_memberships[0] : p.club_memberships;
+        return { membershipId: p.membership_id, name: m?.display_name || "—" };
+      });
+      return { id: row.id, seats: row.seats_available, note: row.note, driverId: row.driver_membership_id, driverName: driver?.display_name || "—", passengers };
+    }));
+    setLoading(false);
+  }, [ev.id]);
+  useEffect(() => { load(); }, [load]);
+  const createCarpool = async () => {
+    const seatCount = Number(seats);
+    if (!Number.isFinite(seatCount) || seatCount < 1) { setMessage("Bitte eine gültige Anzahl freier Plätze angeben."); return; }
+    setSaving(true); setMessage("");
+    const { error } = await supabase.from("carpools").insert({ event_id: ev.id, driver_membership_id: currentUser.id, seats_available: seatCount, note: note.trim() || null });
+    if (error) { setMessage("Fahrgemeinschaft konnte nicht angelegt werden."); setSaving(false); return; }
+    setSeats(""); setNote(""); setShowCreate(false); setSaving(false);
+    await load();
+  };
+  const join = async (carpoolId) => {
+    setMessage("");
+    const { error } = await supabase.from("carpool_passengers").insert({ carpool_id: carpoolId, membership_id: currentUser.id });
+    if (error) { setMessage("Eintragen nicht möglich (evtl. schon voll)."); return; }
+    await load();
+  };
+  const leave = async (carpoolId) => {
+    setMessage("");
+    const { error } = await supabase.from("carpool_passengers").delete().eq("carpool_id", carpoolId).eq("membership_id", currentUser.id);
+    if (error) { setMessage("Konnte nicht entfernt werden."); return; }
+    await load();
+  };
+  const removeCarpool = async (carpoolId) => {
+    if (!window.confirm("Fahrgemeinschaft wirklich entfernen?")) return;
+    setMessage("");
+    const { error } = await supabase.from("carpools").delete().eq("id", carpoolId);
+    if (error) { setMessage("Konnte nicht entfernt werden."); return; }
+    await load();
+  };
+  return (
+    <div className="mt-2 mb-1">
+      <div className="text-xs font-semibold mb-2 flex items-center gap-1.5" style={{ fontFamily: "Inter", color: C.ink }}><Car size={14}/> Fahrgemeinschaft</div>
+      {loading ? <div className="text-[11px]" style={{ color: C.textDim }}>Wird geladen …</div> : <>
+        <div className="space-y-1.5 mb-2">
+          {carpools.map((c) => {
+            const isDriver = c.driverId === currentUser.id;
+            const isPassenger = c.passengers.some((p) => p.membershipId === currentUser.id);
+            const free = c.seats - c.passengers.length;
+            return (
+              <div key={c.id} className="rounded-xl px-3 py-2" style={{ background: C.paperDim }}>
+                <div className="flex items-center justify-between mb-1">
+                  <div className="text-xs font-bold" style={{ color: C.ink }}>{c.driverName} fährt{isDriver ? " (du)" : ""}</div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: free > 0 ? "#E7F3EC" : "#FDECEC", color: free > 0 ? C.green : C.red }}>{free > 0 ? `${free} frei` : "voll"}</span>
+                </div>
+                {c.note && <div className="text-[10px] mb-1" style={{ color: C.textDim }}>{c.note}</div>}
+                {c.passengers.length > 0 && <div className="text-[10px] mb-1.5" style={{ color: C.textDim }}>Mitfahrer: {c.passengers.map((p) => p.name).join(", ")}</div>}
+                <div className="flex gap-2">
+                  {!isDriver && !isPassenger && free > 0 && <button onClick={() => join(c.id)} className="flex-1 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: C.ink, color: C.white }}>Mitfahren</button>}
+                  {!isDriver && isPassenger && <button onClick={() => leave(c.id)} className="flex-1 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: C.white, color: C.red }}>Austragen</button>}
+                  {isDriver && <button onClick={() => removeCarpool(c.id)} className="flex-1 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: C.white, color: C.red }}>Fahrgemeinschaft löschen</button>}
+                </div>
+              </div>
+            );
+          })}
+          {carpools.length === 0 && <div className="text-[11px] rounded-xl p-2.5" style={{ background: C.paperDim, color: C.textDim }}>Noch keine Fahrgemeinschaft für diesen Termin.</div>}
+        </div>
+        {!showCreate ? (
+          <button onClick={() => setShowCreate(true)} className="w-full py-2 rounded-lg text-xs font-bold" style={{ background: C.ink, color: C.white }}>Platz anbieten</button>
+        ) : (
+          <div className="rounded-xl p-2.5" style={{ background: C.paperDim }}>
+            <input value={seats} onChange={(e) => setSeats(e.target.value)} inputMode="numeric" placeholder="Freie Plätze, z. B. 3" className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-1.5" style={{ background: C.white, color: C.ink }}/>
+            <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Notiz (optional), z. B. Abfahrtsort" className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-1.5" style={{ background: C.white, color: C.ink }}/>
+            <div className="flex gap-2">
+              <button onClick={createCarpool} disabled={saving || !seats.trim()} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: seats.trim() ? C.ink : C.line, color: C.white }}>{saving ? "…" : "Anbieten"}</button>
+              <button onClick={() => { setShowCreate(false); setSeats(""); setNote(""); }} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.white, color: C.textDim }}>Abbrechen</button>
+            </div>
+          </div>
+        )}
+      </>}
+      {message && <div className="text-[11px] mt-1.5" style={{ color: C.red }}>{message}</div>}
+    </div>
+  );
+}
+
 function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser, dutyPlan, setDutyPlan, canCancelTraining, onCancelTraining, onDeleteTraining }) {
   const [open, setOpen] = useState(false);
   const meta = typeMeta[ev.type];
 
   const helperEligible = ev.helperSlots ? (isFormalMember(currentUser) && (ev.type !== "spiel" || age(currentUser.birthdate) >= 16)) : false;
+  const eventIsReal = !!supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(ev.id));
 
   return (
     <div className="rounded-2xl mb-3 overflow-hidden" style={{ background: C.white, border: `1px solid ${C.line}` }}>
@@ -1022,12 +1141,13 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
           <p className="text-sm mb-3" style={{ color: C.textDim, fontFamily: "Inter" }}>{ev.desc}</p>
           {canCancelTraining&&!ev.cancelled&&<button onClick={()=>onCancelTraining(ev.id)} className="w-full py-2.5 rounded-xl text-xs font-bold mb-3" style={{background:"#FCEBEE",color:C.red,border:"1px solid #F3B9B9"}}>Training für {ev.team} absagen</button>}{canCancelTraining&&<button onClick={()=>onDeleteTraining(ev.id, ev.team, ev.seriesId)} className="w-full py-2.5 rounded-xl text-xs font-bold mb-3" style={{background:C.paperDim,color:C.red}}>Training endgültig löschen</button>}
 
-          {ev.carpool && (
+          {ev.home !== true && (
+            eventIsReal ? <CarpoolSection ev={ev} currentUser={currentUser} /> : ev.carpool && (
             <button onClick={() => onCarpool(ev.id)} className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs mb-1"
               style={{ fontFamily: "Inter", fontWeight: 700, background: carpoolOn ? "#E7F3EC" : C.ink, color: carpoolOn ? C.green : C.white, border: carpoolOn ? `1px solid ${C.green}` : "none" }}>
               <Car size={14} /> {carpoolOn ? "Du bietest einen Platz an ✓" : "Fahrgemeinschaft: Platz anbieten"}
             </button>
-          )}
+          ))}
 
           {ev.helperSlots && (
             <div className="mt-3">
@@ -2301,6 +2421,146 @@ function TeamPenaltyCatalog({ user }) {
     {message && <div role="status" className="text-[11px] mt-2" style={{ color: message.includes("gespeichert") || message.includes("gelöscht") || message.includes("zugewiesen") || message.includes("markiert") || message.includes("abgeschlossen") ? C.green : C.red }}>{message}</div>}
   </div>;
 }
+function TasksView({ currentUser, members }) {
+  const databaseMembership = !!supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(currentUser.id));
+  const [clubTasks, setClubTasks] = useState([]);
+  const [teamTasks, setTeamTasks] = useState([]);
+  const [myTeams, setMyTeams] = useState([]);
+  const [manageableTeamIds, setManageableTeamIds] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
+  const [showCreateClub, setShowCreateClub] = useState(false);
+  const [showCreateTeamId, setShowCreateTeamId] = useState("");
+  const [form, setForm] = useState({ title: "", description: "", dueDate: "", slots: "1" });
+  const canCreateClubTask = currentUser.roles.some((r) => !["spieler", "mitglied"].includes(r));
+  const loadAll = useCallback(async () => {
+    if (!databaseMembership) { setLoading(false); return; }
+    setLoading(true); setMessage("");
+    const { data: teamRows } = await supabase.from("team_members")
+      .select("team_id,function,teams(id,name)")
+      .eq("membership_id", currentUser.id);
+    const teamMap = new Map();
+    const manageIds = [];
+    (teamRows || []).forEach((row) => {
+      const team = Array.isArray(row.teams) ? row.teams[0] : row.teams;
+      if (!team) return;
+      teamMap.set(team.id, team.name);
+      if (["trainer", "kapitaen", "teammanager"].includes(row.function)) manageIds.push(team.id);
+    });
+    setMyTeams([...teamMap.entries()].map(([id, name]) => ({ id, name })));
+    setManageableTeamIds([...new Set(manageIds)]);
+    const { data: tasksData, error } = await supabase.from("club_tasks")
+      .select("id,team_id,title,description,due_date,slots_needed,created_by,teams(name),club_task_signups(membership_id,club_memberships(display_name))")
+      .eq("club_id", currentUser.clubId)
+      .order("created_at", { ascending: false });
+    if (error) { setMessage("Die Aufgaben konnten nicht geladen werden."); setLoading(false); return; }
+    const mapped = (tasksData || []).map((row) => {
+      const team = Array.isArray(row.teams) ? row.teams[0] : row.teams;
+      const signups = (row.club_task_signups || []).map((s) => {
+        const m = Array.isArray(s.club_memberships) ? s.club_memberships[0] : s.club_memberships;
+        return { membershipId: s.membership_id, name: m?.display_name || "—" };
+      });
+      return { id: row.id, teamId: row.team_id, teamName: team?.name, title: row.title, description: row.description, dueDate: row.due_date, slots: row.slots_needed, createdBy: row.created_by, signups };
+    });
+    setClubTasks(mapped.filter((t) => !t.teamId));
+    setTeamTasks(mapped.filter((t) => t.teamId));
+    setLoading(false);
+  }, [databaseMembership, currentUser.id, currentUser.clubId]);
+  useEffect(() => { loadAll(); }, [loadAll]);
+  const resetForm = () => setForm({ title: "", description: "", dueDate: "", slots: "1" });
+  const createTask = async (teamId) => {
+    if (!form.title.trim()) { setMessage("Bitte einen Titel eingeben."); return; }
+    const slotsNeeded = Math.max(1, Number(form.slots) || 1);
+    const { error } = await supabase.from("club_tasks").insert({
+      club_id: currentUser.clubId, team_id: teamId || null, title: form.title.trim(),
+      description: form.description.trim() || null, due_date: form.dueDate || null,
+      slots_needed: slotsNeeded, created_by: currentUser.id,
+    });
+    if (error) { setMessage("Aufgabe konnte nicht angelegt werden."); return; }
+    resetForm(); setShowCreateClub(false); setShowCreateTeamId(""); setMessage("Aufgabe wurde angelegt.");
+    await loadAll();
+  };
+  const signUp = async (taskId) => {
+    setMessage("");
+    const { error } = await supabase.from("club_task_signups").insert({ task_id: taskId, membership_id: currentUser.id });
+    if (error) { setMessage("Eintragen nicht möglich."); return; }
+    await loadAll();
+    supabase.rpc("check_task_reminder_threshold", { target_club: currentUser.clubId });
+  };
+  const withdraw = async (taskId) => {
+    setMessage("");
+    const { error } = await supabase.from("club_task_signups").delete().eq("task_id", taskId).eq("membership_id", currentUser.id);
+    if (error) { setMessage("Konnte nicht entfernt werden."); return; }
+    await loadAll();
+  };
+  const removeTask = async (task) => {
+    if (!window.confirm(`Aufgabe „${task.title}“ wirklich löschen?`)) return;
+    const { error } = await supabase.from("club_tasks").delete().eq("id", task.id);
+    if (error) { setMessage("Konnte nicht gelöscht werden."); return; }
+    await loadAll();
+  };
+  const TaskCard = ({ task, canManage }) => {
+    const taken = task.signups.length;
+    const free = task.slots - taken;
+    const isSignedUp = task.signups.some((s) => s.membershipId === currentUser.id);
+    const isCreator = task.createdBy === currentUser.id;
+    return (
+      <div className="rounded-2xl p-3.5 mb-2" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+        <div className="flex items-start justify-between gap-2 mb-1">
+          <div className="text-sm font-bold" style={{ color: C.ink }}>{task.title}</div>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={{ background: free > 0 ? "#E7F3EC" : "#FDECEC", color: free > 0 ? C.green : C.red }}>{free > 0 ? `${free}/${task.slots} frei` : "voll"}</span>
+        </div>
+        {task.description && <div className="text-xs mb-1.5" style={{ color: C.textDim }}>{task.description}</div>}
+        <div className="text-[10px] mb-2" style={{ color: C.textDim }}>{task.teamName ? `${task.teamName} · ` : "Verein · "}{task.dueDate ? `Fällig bis ${new Date(task.dueDate).toLocaleDateString("de-DE")}` : "Kein Fälligkeitsdatum"}</div>
+        {taken > 0 && <div className="text-[10px] mb-2" style={{ color: C.textDim }}>Eingetragen: {task.signups.map((s) => s.name).join(", ")}</div>}
+        <div className="flex gap-2">
+          {!isSignedUp && free > 0 && <button onClick={() => signUp(task.id)} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: C.ink, color: C.white }}>Eintragen</button>}
+          {isSignedUp && <button onClick={() => withdraw(task.id)} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: C.paperDim, color: C.red }}>Austragen</button>}
+          {(isCreator || canManage) && <button onClick={() => removeTask(task)} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.paperDim, color: C.red }}>Löschen</button>}
+        </div>
+      </div>
+    );
+  };
+  const CreateForm = ({ onSubmit, onCancel }) => (
+    <div className="rounded-2xl p-3.5 mb-3" style={{ background: C.paperDim }}>
+      <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} maxLength={120} placeholder="Titel, z. B. Kuchen backen" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.white, color: C.ink }}/>
+      <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} maxLength={300} placeholder="Beschreibung (optional)" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.white, color: C.ink }}/>
+      <div className="flex gap-2 mb-2">
+        <input type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.white, color: C.ink }}/>
+        <input type="number" min="1" value={form.slots} onChange={(e) => setForm({ ...form, slots: e.target.value })} placeholder="Personen" className="w-24 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.white, color: C.ink }}/>
+      </div>
+      <div className="flex gap-2">
+        <button onClick={onSubmit} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>Anlegen</button>
+        <button onClick={onCancel} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.white, color: C.textDim }}>Abbrechen</button>
+      </div>
+    </div>
+  );
+  if (!databaseMembership) return <div className="px-4 pt-4 pb-24"><div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Aufgaben sind nur mit einem echten Vereinskonto verfügbar.</div></div>;
+  return (
+    <div className="px-4 pt-4 pb-24">
+      <SectionTitle eyebrow="Verein" title="Aufgaben" right={canCreateClubTask ? <button onClick={() => setShowCreateClub((v) => !v)} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showCreateClub ? "Schließen" : "+ Aufgabe"}</button> : null}/>
+      <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>Vereins- und Mannschaftsaufgaben, für die sich Mitglieder freiwillig eintragen können.</div>
+      {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: message.includes("angelegt") ? "#E7F3EC" : "#FDECEC", color: message.includes("angelegt") ? C.green : C.red }}>{message}</div>}
+      {loading ? <div className="text-xs py-4" style={{ color: C.textDim }}>Aufgaben werden geladen …</div> : <>
+        <SectionTitle eyebrow="Vereinsweit" title="Vereinsaufgaben"/>
+        {showCreateClub && <CreateForm onSubmit={() => createTask(null)} onCancel={() => { setShowCreateClub(false); resetForm(); }}/>}
+        {clubTasks.length === 0 ? <div className="text-xs rounded-xl p-3 mb-5" style={{ background: C.paperDim, color: C.textDim }}>Aktuell keine offenen Vereinsaufgaben.</div> : <div className="mb-5">{clubTasks.map((t) => <TaskCard key={t.id} task={t} canManage={canCreateClubTask}/>)}</div>}
+        {myTeams.map((team) => {
+          const tasks = teamTasks.filter((t) => t.teamId === team.id);
+          const canManage = manageableTeamIds.includes(team.id);
+          return (
+            <div key={team.id} className="mb-5">
+              <SectionTitle eyebrow="Mannschaft" title={`Aufgaben · ${team.name}`} right={canManage ? <button onClick={() => setShowCreateTeamId((v) => v === team.id ? "" : team.id)} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showCreateTeamId === team.id ? "Schließen" : "+ Aufgabe"}</button> : null}/>
+              {showCreateTeamId === team.id && <CreateForm onSubmit={() => createTask(team.id)} onCancel={() => { setShowCreateTeamId(""); resetForm(); }}/>}
+              {tasks.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Aktuell keine Aufgaben für {team.name}.</div> : tasks.map((t) => <TaskCard key={t.id} task={t} canManage={canManage}/>)}
+            </div>
+          );
+        })}
+      </>}
+    </div>
+  );
+}
+
 function PlayerDataCard({ user, setMembers }) {
   const [editing, setEditing] = useState(false);
   const [number, setNumber] = useState(user.number ?? "");
@@ -4405,11 +4665,12 @@ export default function ClubMemberOrganisationApp() {
               {subView === "season" && <SeasonVoteView currentUser={currentUser} seasonVotes={seasonVotes} setSeasonVotes={setSeasonVotes} />}
               {subView === "tipp" && <TippView members={clubMembers} currentUser={currentUser} tippPredictions={tippPredictions} setTippPredictions={setTippPredictions} tippResults={tippResults} />}
               {subView === "duty" && <DutyView members={clubMembers} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} />}
+              {subView === "tasks" && <TasksView currentUser={currentUser} members={clubMembers} />}
 
               {!subView && tab === "home" && (
                 <Dashboard user={currentUser} members={clubMembers} feePaid={!!feePaid[currentUser.id]} channels={channels} dutyPlan={dutyPlan} seasonVotes={seasonVotes} polls={polls} setPolls={setPolls}
                   sponsorBookings={sponsorBookings} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick}
-                  goEvents={goToMyNextMatch} goSeason={() => setSubView("season")} goTipp={() => setSubView("tipp")} goDuty={() => setSubView("duty")} goNews={goNews} />
+                  goEvents={goToMyNextMatch} goSeason={() => setSubView("season")} goTipp={() => setSubView("tipp")} goDuty={() => setSubView("duty")} goTasks={() => setSubView("tasks")} goNews={goNews} />
               )}
               {!subView && tab === "events" && (
                 <EventsView currentUser={currentUser} members={clubMembers} events={events} setEvents={setEvents} carpools={carpools} setCarpools={setCarpools}
