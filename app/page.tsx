@@ -2792,6 +2792,7 @@ function BoardMemberOverview({ members, currentUser }) {
   const [liveMembers, setLiveMembers] = useState(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [selectedMember, setSelectedMember] = useState(null);
   useEffect(() => {
     const load = async () => {
       setLoading(true); setMessage("");
@@ -2826,13 +2827,14 @@ function BoardMemberOverview({ members, currentUser }) {
     {loading && !liveMembers && supabase && <div className="text-xs py-3" style={{ color: C.textDim }}>Wird geladen …</div>}
     {message && <div className="text-[11px] mb-2" style={{ color: C.red }}>{message}</div>}
     <div className="space-y-2">
-      {filtered.map((m) => <div key={m.id} className="rounded-2xl p-3" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+      {filtered.map((m) => <div key={m.id} onClick={() => setSelectedMember(m)} role="button" tabIndex={0} className="rounded-2xl p-3 cursor-pointer" style={{ background: C.white, border: `1px solid ${C.line}` }}>
         <div className="flex items-center gap-3 mb-1.5">
           <div className="w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0" style={{ background: m.color, color: C.white }}>{initialsOf(m.name)}</div>
           <div className="flex-1 min-w-0">
             <div className="text-xs font-bold truncate" style={{ color: C.ink }}>{m.name}</div>
             <div className="text-[10px] truncate" style={{ color: C.textDim }}>{m.email || "—"}</div>
           </div>
+          <ChevronRight size={14} style={{ color: C.textDim }}/>
         </div>
         <div className="flex flex-wrap gap-1">
           {m.roles.map((r) => <Pill key={r} bg={ROLE_META[r]?.color || C.textDim}>{ROLE_META[r]?.label || r}</Pill>)}
@@ -2841,8 +2843,113 @@ function BoardMemberOverview({ members, currentUser }) {
       </div>)}
       {filtered.length === 0 && <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Keine Mitglieder gefunden.</div>}
     </div>
+    {selectedMember && <MemberDetailPanel member={selectedMember} onClose={() => setSelectedMember(null)} />}
   </div>;
 }
+function MemberDetailPanel({ member, onClose }) {
+  const [loading, setLoading] = useState(true);
+  const [penalties, setPenalties] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [carpoolsAsDriver, setCarpoolsAsDriver] = useState([]);
+  const [carpoolsAsPassenger, setCarpoolsAsPassenger] = useState([]);
+  const [message, setMessage] = useState("");
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true); setMessage("");
+      if (!supabase) { setLoading(false); return; }
+      const [penaltyRes, taskRes, driverRes, passengerRes] = await Promise.all([
+        supabase.from("team_penalty_assignments")
+          .select("id,assigned_at,paid_at,archived_season,team_penalty_rules(title,amount),teams(name)")
+          .eq("membership_id", member.id).order("assigned_at", { ascending: false }),
+        supabase.from("club_task_signups")
+          .select("signed_up_at,club_tasks(title,due_date,teams(name))")
+          .eq("membership_id", member.id).order("signed_up_at", { ascending: false }),
+        supabase.from("carpools")
+          .select("id,seats_available,note,events(title,starts_at)")
+          .eq("driver_membership_id", member.id).order("created_at", { ascending: false }),
+        supabase.from("carpool_passengers")
+          .select("joined_at,carpools(events(title,starts_at))")
+          .eq("membership_id", member.id).order("joined_at", { ascending: false }),
+      ]);
+      if (penaltyRes.error || taskRes.error || driverRes.error || passengerRes.error) {
+        setMessage("Einige Daten konnten nicht geladen werden.");
+      }
+      setPenalties((penaltyRes.data || []).map((row) => {
+        const rule = Array.isArray(row.team_penalty_rules) ? row.team_penalty_rules[0] : row.team_penalty_rules;
+        const team = Array.isArray(row.teams) ? row.teams[0] : row.teams;
+        return { id: row.id, title: rule?.title || "—", amount: Number(rule?.amount || 0), teamName: team?.name, paidAt: row.paid_at, season: row.archived_season, assignedAt: row.assigned_at };
+      }));
+      setTasks((taskRes.data || []).map((row, i) => {
+        const task = Array.isArray(row.club_tasks) ? row.club_tasks[0] : row.club_tasks;
+        const team = task && (Array.isArray(task.teams) ? task.teams[0] : task.teams);
+        return { id: i, title: task?.title || "—", dueDate: task?.due_date, teamName: team?.name, signedUpAt: row.signed_up_at };
+      }));
+      setCarpoolsAsDriver((driverRes.data || []).map((row) => {
+        const event = Array.isArray(row.events) ? row.events[0] : row.events;
+        return { id: row.id, seats: row.seats_available, note: row.note, eventTitle: event?.title, eventDate: event?.starts_at };
+      }));
+      setCarpoolsAsPassenger((passengerRes.data || []).map((row, i) => {
+        const carpool = Array.isArray(row.carpools) ? row.carpools[0] : row.carpools;
+        const event = carpool && (Array.isArray(carpool.events) ? carpool.events[0] : carpool.events);
+        return { id: i, eventTitle: event?.title, eventDate: event?.starts_at, joinedAt: row.joined_at };
+      }));
+      setLoading(false);
+    };
+    load();
+  }, [member.id]);
+  const openPenalties = penalties.filter((p) => !p.season);
+  const paidPenalties = openPenalties.filter((p) => p.paidAt);
+  const unpaidPenalties = openPenalties.filter((p) => !p.paidAt);
+  const historyPenalties = penalties.filter((p) => p.season);
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end p-3" style={{ background: "rgba(20,21,26,.72)" }} onClick={onClose}>
+      <div role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} className="w-full rounded-3xl p-5 max-h-[85%] overflow-y-auto" style={{ background: C.white }}>
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold" style={{ background: member.color, color: C.white }}>{initialsOf(member.name)}</div>
+            <div>
+              <div className="text-lg font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{member.name}</div>
+              <div className="text-xs" style={{ color: C.textDim }}>{member.email || "—"}</div>
+            </div>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><X size={15}/></button>
+        </div>
+        {message && <div className="text-[11px] mb-3" style={{ color: C.red }}>{message}</div>}
+        {loading ? <div className="text-xs py-4" style={{ color: C.textDim }}>Wird geladen …</div> : <>
+          <div className="text-[10px] uppercase tracking-widest font-bold mb-2" style={{ color: C.textDim }}>Strafen</div>
+          {unpaidPenalties.length === 0 && paidPenalties.length === 0 ? <div className="text-[11px] rounded-xl p-3 mb-4" style={{ background: C.paperDim, color: C.textDim }}>Keine aktiven Strafen.</div> : (
+            <div className="space-y-1.5 mb-4">
+              {unpaidPenalties.map((p) => <div key={p.id} className="flex items-center justify-between px-3 py-2 rounded-xl" style={{ background: C.paperDim }}><span className="text-xs" style={{ color: C.ink }}>{p.title}{p.teamName ? ` · ${p.teamName}` : ""}</span><span className="text-xs font-bold" style={{ color: C.red, fontFamily: "JetBrains Mono" }}>{p.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} € · offen</span></div>)}
+              {paidPenalties.map((p) => <div key={p.id} className="flex items-center justify-between px-3 py-2 rounded-xl" style={{ background: C.paperDim }}><span className="text-xs" style={{ color: C.ink }}>{p.title}{p.teamName ? ` · ${p.teamName}` : ""}</span><span className="text-xs font-bold" style={{ color: C.green, fontFamily: "JetBrains Mono" }}>{p.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} € · bezahlt</span></div>)}
+            </div>
+          )}
+          {historyPenalties.length > 0 && (
+            <div className="mb-4">
+              <div className="text-[10px] uppercase tracking-widest font-bold mb-1.5" style={{ color: C.textDim }}>Strafen-Historie</div>
+              <div className="space-y-1">
+                {historyPenalties.map((p) => <div key={p.id} className="flex items-center justify-between px-3 py-1.5 rounded-lg text-[11px]" style={{ background: C.paperDim }}><span style={{ color: C.textDim }}>{p.title} · Saison {p.season}</span><span style={{ color: C.textDim, fontFamily: "JetBrains Mono" }}>{p.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></div>)}
+              </div>
+            </div>
+          )}
+          <div className="text-[10px] uppercase tracking-widest font-bold mb-2" style={{ color: C.textDim }}>Aufgaben</div>
+          {tasks.length === 0 ? <div className="text-[11px] rounded-xl p-3 mb-4" style={{ background: C.paperDim, color: C.textDim }}>Für keine Aufgabe eingetragen.</div> : (
+            <div className="space-y-1.5 mb-4">
+              {tasks.map((t) => <div key={t.id} className="px-3 py-2 rounded-xl" style={{ background: C.paperDim }}><div className="text-xs font-bold" style={{ color: C.ink }}>{t.title}</div><div className="text-[10px]" style={{ color: C.textDim }}>{t.teamName ? `${t.teamName} · ` : "Verein · "}{t.dueDate ? `Fällig bis ${new Date(t.dueDate).toLocaleDateString("de-DE")}` : "Kein Fälligkeitsdatum"}</div></div>)}
+            </div>
+          )}
+          <div className="text-[10px] uppercase tracking-widest font-bold mb-2" style={{ color: C.textDim }}>Fahrgemeinschaften</div>
+          {carpoolsAsDriver.length === 0 && carpoolsAsPassenger.length === 0 ? <div className="text-[11px] rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Keine Fahrgemeinschaften.</div> : (
+            <div className="space-y-1.5">
+              {carpoolsAsDriver.map((c) => <div key={`d-${c.id}`} className="px-3 py-2 rounded-xl" style={{ background: C.paperDim }}><div className="text-xs font-bold" style={{ color: C.ink }}>Fährt: {c.eventTitle || "—"}</div><div className="text-[10px]" style={{ color: C.textDim }}>{c.eventDate ? new Date(c.eventDate).toLocaleDateString("de-DE") : ""} · {c.seats} Plätze{c.note ? ` · ${c.note}` : ""}</div></div>)}
+              {carpoolsAsPassenger.map((c) => <div key={`p-${c.id}`} className="px-3 py-2 rounded-xl" style={{ background: C.paperDim }}><div className="text-xs font-bold" style={{ color: C.ink }}>Mitfahrer: {c.eventTitle || "—"}</div><div className="text-[10px]" style={{ color: C.textDim }}>{c.eventDate ? new Date(c.eventDate).toLocaleDateString("de-DE") : ""}</div></div>)}
+            </div>
+          )}
+        </>}
+      </div>
+    </div>
+  );
+}
+
 function JoinRequestsManager({ currentUser }) {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
