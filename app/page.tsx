@@ -2520,6 +2520,22 @@ function TeamPenaltyCatalog({ user }) {
     {message && <div role="status" className="text-[11px] mt-2" style={{ color: message.includes("gespeichert") || message.includes("gelöscht") || message.includes("zugewiesen") || message.includes("markiert") || message.includes("abgeschlossen") ? C.green : C.red }}>{message}</div>}
   </div>;
 }
+function TaskCreateForm({ form, setForm, onSubmit, onCancel }) {
+  return (
+    <div className="rounded-2xl p-3.5 mb-3" style={{ background: C.paperDim }}>
+      <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} maxLength={120} placeholder="Titel, z. B. Kuchen backen" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.white, color: C.ink }}/>
+      <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} maxLength={300} placeholder="Beschreibung (optional)" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.white, color: C.ink }}/>
+      <div className="flex gap-2 mb-2">
+        <input type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.white, color: C.ink }}/>
+        <input type="number" min="1" value={form.slots} onChange={(e) => setForm({ ...form, slots: e.target.value })} placeholder="Personen" className="w-24 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.white, color: C.ink }}/>
+      </div>
+      <div className="flex gap-2">
+        <button onClick={onSubmit} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>Anlegen</button>
+        <button onClick={onCancel} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.white, color: C.textDim }}>Abbrechen</button>
+      </div>
+    </div>
+  );
+}
 function TasksView({ currentUser, members }) {
   const databaseMembership = !!supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(currentUser.id));
   const [clubTasks, setClubTasks] = useState([]);
@@ -2620,20 +2636,6 @@ function TasksView({ currentUser, members }) {
       </div>
     );
   };
-  const CreateForm = ({ onSubmit, onCancel }) => (
-    <div className="rounded-2xl p-3.5 mb-3" style={{ background: C.paperDim }}>
-      <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} maxLength={120} placeholder="Titel, z. B. Kuchen backen" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.white, color: C.ink }}/>
-      <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} maxLength={300} placeholder="Beschreibung (optional)" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.white, color: C.ink }}/>
-      <div className="flex gap-2 mb-2">
-        <input type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.white, color: C.ink }}/>
-        <input type="number" min="1" value={form.slots} onChange={(e) => setForm({ ...form, slots: e.target.value })} placeholder="Personen" className="w-24 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.white, color: C.ink }}/>
-      </div>
-      <div className="flex gap-2">
-        <button onClick={onSubmit} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>Anlegen</button>
-        <button onClick={onCancel} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.white, color: C.textDim }}>Abbrechen</button>
-      </div>
-    </div>
-  );
   if (!databaseMembership) return <div className="px-4 pt-4 pb-24"><div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Aufgaben sind nur mit einem echten Vereinskonto verfügbar.</div></div>;
   return (
     <div className="px-4 pt-4 pb-24">
@@ -2642,7 +2644,7 @@ function TasksView({ currentUser, members }) {
       {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: message.includes("angelegt") ? "#E7F3EC" : "#FDECEC", color: message.includes("angelegt") ? C.green : C.red }}>{message}</div>}
       {loading ? <div className="text-xs py-4" style={{ color: C.textDim }}>Aufgaben werden geladen …</div> : <>
         <SectionTitle eyebrow="Vereinsweit" title="Vereinsaufgaben"/>
-        {showCreateClub && <CreateForm onSubmit={() => createTask(null)} onCancel={() => { setShowCreateClub(false); resetForm(); }}/>}
+        {showCreateClub && <TaskCreateForm form={form} setForm={setForm} onSubmit={() => createTask(null)} onCancel={() => { setShowCreateClub(false); resetForm(); }}/>}
         {clubTasks.length === 0 ? <div className="text-xs rounded-xl p-3 mb-5" style={{ background: C.paperDim, color: C.textDim }}>Aktuell keine offenen Vereinsaufgaben.</div> : <div className="mb-5">{clubTasks.map((t) => <TaskCard key={t.id} task={t} canManage={canCreateClubTask}/>)}</div>}
         {myTeams.map((team) => {
           const tasks = teamTasks.filter((t) => t.teamId === team.id);
@@ -2650,7 +2652,7 @@ function TasksView({ currentUser, members }) {
           return (
             <div key={team.id} className="mb-5">
               <SectionTitle eyebrow="Mannschaft" title={`Aufgaben · ${team.name}`} right={canManage ? <button onClick={() => setShowCreateTeamId((v) => v === team.id ? "" : team.id)} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showCreateTeamId === team.id ? "Schließen" : "+ Aufgabe"}</button> : null}/>
-              {showCreateTeamId === team.id && <CreateForm onSubmit={() => createTask(team.id)} onCancel={() => { setShowCreateTeamId(""); resetForm(); }}/>}
+              {showCreateTeamId === team.id && <TaskCreateForm form={form} setForm={setForm} onSubmit={() => createTask(team.id)} onCancel={() => { setShowCreateTeamId(""); resetForm(); }}/>}
               {tasks.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Aktuell keine Aufgaben für {team.name}.</div> : tasks.map((t) => <TaskCard key={t.id} task={t} canManage={canManage}/>)}
             </div>
           );
