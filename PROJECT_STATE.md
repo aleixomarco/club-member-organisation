@@ -407,9 +407,36 @@ Zwei der drei `register_new_club`-Aufrufstellen (Login-schließt-Registrierung-a
 - **Nicht testbar ohne echte `.env.local`-Zugangsdaten:** der komplette DB-gestützte Teil (echte Registrierung, Feature-Onboarding-Assistent, Funktionen-Reiter, Gating der Kacheln) — gleiche strukturelle Einschränkung wie bei allen anderen DB-Features dieser Session.
 
 ### Nächste Schritte
-1. **SQL oben einspielen** (zwei Schritte: erst `create type`, dann den Rest).
-2. Im Vercel-Preview mit allen 5 Sportarten je einen Testverein registrieren, Onboarding-Assistent durchklicken, Funktionen-Reiter prüfen, Toggle aus- und wieder einschalten und beobachten, dass die jeweilige Kachel/der Reiter verschwindet bzw. wiederkommt.
+1. ~~SQL oben einspielen~~ — **erledigt, bestätigt erfolgreich (2026-08-06).** Zusätzlich einen überflüssigen alten `register_new_club`-Overload aufgeräumt (siehe unten).
+2. Im Vercel-Preview mit allen 5 Sportarten je einen Testverein registrieren, Onboarding-Assistent durchklicken, Funktionen-Reiter prüfen (jetzt auch erreichbar über Profil → „Vereinseinstellungen", nicht nur über die Verwaltung), Toggle aus- und wieder einschalten und beobachten, dass die jeweilige Kachel/der Reiter verschwindet bzw. wiederkommt.
 3. Falls gewünscht: echte Platzbuchung für Tennis (und analog Bahnen/Matten) als eigenes, neues Feature nachziehen — bewusst nicht in dieser Session gebaut (siehe Scope-Entscheidung oben).
+
+### Erweiterung (2026-08-06, Nachmittag): Vereinseinstellungen im Profil + zwei neue Toggles
+Auf Wunsch bekommen Vorstand/GF/Vereinsadmin/Sysadmin (`isAdmin(user)`) jetzt auch im Profil-Tab einen eigenen, klar abgegrenzten Bereich „Verein verwalten / Vereinseinstellungen" (vorher gab es dort einen Anzeige-Bug: derselbe „Verwalten / Einstellungen"-Titel wurde zweimal hintereinander gerendert — behoben, indem daraus zwei inhaltlich unterschiedliche Abschnitte wurden: der neue admin-only Block oben, der bisherige „Einstellungen"-Block für alle Mitglieder unverändert darunter). Der neue Block öffnet dieselbe `ClubFeatureSettingsPanel`-Komponente, die auch im Verwaltungs-Reiter „Funktionen" läuft — keine Duplizierung.
+
+`CLUB_FEATURES` um zwei weitere Toggles erweitert: `tippspiel` (Tippspiel) und `season_award` (Spieler der Saison) — beide gaten jetzt die jeweilige Dashboard-Kachel und die `subView`-Route, exakt wie zuvor bei `vehicle_booking`/`duty_roster`. Da `ClubFeatureOnboarding` und `ClubFeatureSettingsPanel` generisch über `CLUB_FEATURES` iterieren, mussten diese beiden Komponenten nicht angepasst werden — neue Toggles erscheinen automatisch im Ja/Nein-Assistenten und im Funktionen-Reiter.
+
+### ⚠️ Wichtiger Fund: drei RPC-Aufrufe im Code riefen Funktionen auf, die in der DB nie existiert haben
+Beim Untersuchen einer vom Nutzer gemeldeten Fehlermeldung („Die Rollenänderung konnte nicht gespeichert werden.") in der Rollenverwaltung (`RolesPanel`, auch eingebettet in `SysAdminUserManager` → „Rollen & Trainer") wurde `set_membership_role` als Ursache gefunden — die Funktion existiert nicht in der Datenbank und hat wahrscheinlich nie existiert. Daraufhin wurden **alle** im Frontend aufgerufenen RPC-Namen (32 eindeutige) systematisch gegen die Live-Datenbank abgeglichen (`pg_proc`-Abfrage). Ergebnis: drei fehlten komplett.
+
+| Betroffene Funktion (Frontend) | Wofür | Auswirkung vor dem Fix |
+|---|---|---|
+| `set_membership_role` | Rolle einem Mitglied zuweisen/entziehen (Verwaltung → Rollen) | Rollenänderungen ließen sich nie speichern |
+| `set_teammanager_team` | Teammanager einer Mannschaft zuordnen | Zuordnung ließ sich nie speichern (Fehlermeldung erschien nicht immer, da der ursprüngliche Code den Fehler zwar prüfte, aber der lokale UI-State trotzdem optimistisch weiterlief) |
+| `save_club_app_state` | Automatisches Zwischenspeichern des Verwaltungs-Zustands (Protokolle, Automatisierungen, Wartungsmodus, Saison-Abstimmungen, Sponsor-Buchungen/-Statistiken, Kanäle, Umfragen, Tippspiel-Ergebnisse) — 700ms-debounced bei jeder Änderung | **Lief komplett unsichtbar ins Leere** — der Fehler wurde im Code nicht einmal abgefragt (`await supabase.rpc(...)` ohne `{ error }`-Auswertung). Alles, was Vorstand/GF/Vereinsadmin/Sponsorenmanager in der Verwaltung je eingestellt haben (außer echten Terminen, Beiträgen etc., die eigene Tabellen haben), wurde **nie in der Datenbank gespeichert** — nur im Browser-Zustand der jeweiligen Sitzung. |
+
+**Wichtig zur Einordnung:** Das ist kein Fehler aus dieser Session — alle drei Aufrufe stammen aus bereits bestehendem Code, der offenbar nie gegen eine echte Datenbank getestet wurde (oder die Funktionen wurden bei einer früheren Migration versehentlich nicht mit übernommen).
+
+**Behoben — ohne neue SQL nötig:** Für alle drei existiert bereits eine passende RLS-Policy, die direkte Tabellen-Schreibzugriffe für die berechtigten Rollen erlaubt (`membership_roles`, `team_members`, `club_app_state` — alle mit Policy „... manage ..." für vorstand/vereinsadmin/sysadmin bzw. zusätzlich geschaeftsfuehrung/sponsorenmanager bei `club_app_state`). Das Frontend wurde daher direkt auf Tabellen-Schreibzugriffe umgestellt statt die fehlenden RPCs neu anzulegen:
+- `set_membership_role` → direktes `insert`/`delete` auf `membership_roles` (Primary Key `(membership_id, role)`, exakt treffsicher)
+- `set_teammanager_team` → löst den Mannschaftsnamen zu `teams.id` auf, verdrängt ggf. den bisherigen Teammanager dieser Mannschaft korrekt (`team_members` UND `membership_roles` bereinigt, nicht nur lokal im UI wie vorher), setzt dann die neue Zuordnung
+- `save_club_app_state` → direktes `upsert` auf `club_app_state` (Primary Key `club_id`)
+
+**Nebenfund, unkritisch:** `update_own_profile_settings` hat ebenfalls zwei Overloads (alte 17-Parameter-Version ohne `new_show_birthday`, neue 18-Parameter-Version) — genau wie zuvor bei `register_new_club`. Der Aufruf im Frontend nutzt immer die neue Version, die alte ist nur totes Gewicht. Kein Handlungsbedarf, aber bei Bedarf mit demselben `drop function if exists(...)`-Muster wie beim `register_new_club`-Aufräumschritt zu bereinigen.
+
+### Verifikation
+- `npm run build` — erfolgreich nach jeder Änderung
+- Alle drei Fixes sind reine Frontend-Änderungen (kein SQL-Schritt nötig) — aber wie bei allen DB-gestützten Features dieser Session: **kein echter authentifizierter Test möglich** ohne `.env.local`. Vor dem Mergen nach `main` unbedingt live testen: Rolle zuweisen/entziehen, Teammanager zuordnen (inkl. Verdrängung eines bestehenden), und in der Verwaltung irgendeine Einstellung ändern (z. B. Wartungsmodus) und nach Reload prüfen, ob sie erhalten bleibt.
 
 ---
 

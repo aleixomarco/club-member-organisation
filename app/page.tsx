@@ -85,6 +85,12 @@ const CLUB_FEATURES = [
   { key: "vehicle_booking", label: (sport) => sportConfig(sport).vehicleTabLabel,
     question: (sport) => `Hat euer Verein ein Fahrzeug (${sportConfig(sport).vehicleTabLabel}), das über die App gebucht werden soll?`,
     settingsDesc: () => "Kalender & Buchung für Vereinsfahrzeuge." },
+  { key: "tippspiel", label: () => "Tippspiel",
+    question: () => "Soll es ein Tippspiel geben, bei dem Mitglieder Spielergebnisse vorhersagen und Punkte sammeln?",
+    settingsDesc: () => "Mitglieder können Ergebnisse tippen und Punkte sammeln." },
+  { key: "season_award", label: () => "Spieler der Saison",
+    question: () => "Soll es eine Abstimmung „Spieler der Saison“ geben?",
+    settingsDesc: () => "Mitglieder stimmen über den Spieler der Saison ab." },
 ];
 const DEFAULT_CLUB_FEATURES = Object.fromEntries(CLUB_FEATURES.map((f) => [f.key, true]));
 const STATION_CAP = 2;
@@ -1002,8 +1008,8 @@ function Dashboard({ user, members, feePaid, channels, dutyPlan, seasonVotes, po
       <DashboardSection accent={C.red} background="#FBEDEF">
         <SectionTitle eyebrow="Mitmachen" title="Aktionen & Abstimmungen" />
         <div>
-          <FeatureRow icon={Trophy} title="Spieler der Saison" subtitle={seasonSubtitle} onClick={goSeason} accent={C.amber} />
-          <FeatureRow icon={Target} title="Tippspiel" subtitle={tippSubtitle} onClick={goTipp} accent={C.red} />
+          {featureEnabled("season_award") && <FeatureRow icon={Trophy} title="Spieler der Saison" subtitle={seasonSubtitle} onClick={goSeason} accent={C.amber} />}
+          {featureEnabled("tippspiel") && <FeatureRow icon={Target} title="Tippspiel" subtitle={tippSubtitle} onClick={goTipp} accent={C.red} />}
           <FeatureRow icon={ClipboardList} title="Helferplanung" subtitle={dutySubtitle} onClick={goDuty} accent={C.green} />
           <FeatureRow icon={ClipboardList} title="Aufgaben" subtitle="Für den Verein mithelfen" onClick={goTasks} accent={C.red} />
           {featureEnabled("vehicle_booking") && <FeatureRow icon={Car} title={sportConfig(sport).vehicleTabLabel} subtitle="Kalender & Buchung" onClick={goVehicles} accent={C.amber} />}
@@ -3772,7 +3778,7 @@ function BugReportSettings({user}) { const [busy,setBusy]=useState(false);const 
 
 function CalendarSyncSettings({user,saveRef}) { const [interval,setInterval]=useState(user.calendarSyncInterval||"never");const [token,setToken]=useState("");const [message,setMessage]=useState("");const sync=async()=>{if(!supabase){setMessage("Kalendersynchronisierung benötigt ein echtes Konto.");return;}const {data,error}=await supabase.rpc("configure_calendar_subscription",{target_club:user.clubId,requested_interval:interval});if(error){setMessage("Kalender konnte nicht verbunden werden.");return;}const row=data?.[0];setToken(row?.token||"");setMessage("Kalenderverbindung aktualisiert.");};saveRef.current=sync;const url=token&&`${window.location.origin}/api/calendar/feed/${token}`;return <div><div className="rounded-2xl p-4" style={{background:C.white,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">Spiel- und Trainingskalender</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>Verbinde alle für dich sichtbaren Spiele und Trainings mit deinem Gerätekalender.</div><select value={interval} onChange={(e)=>setInterval(e.target.value)} className="w-full px-3 py-3 rounded-xl text-xs mb-3" style={inputStyle}><option value="never">Nie automatisch</option><option value="daily">Täglich</option><option value="weekly">Wöchentlich · Sonntagabend</option><option value="monthly">Monatlich</option></select><button onClick={sync} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold" style={{background:C.ink,color:C.white}}><RefreshCw size={14}/> Jetzt synchronisieren</button>{url&&<a href={url.replace(/^https?:/,"webcal:")} className="block w-full text-center mt-2 py-2.5 rounded-xl text-xs font-bold" style={{background:"#E7F3EC",color:C.green}}>Mit Gerätekalender verbinden</a>}</div>{message&&<div className="text-[11px] mt-3" style={{color:message.includes("aktualisiert")?C.green:C.red}}>{message}</div>}</div>; }
 
-function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, onSponsorImpression, onSponsorClick, onLogout }) {
+function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, onSponsorImpression, onSponsorClick, onLogout, clubFeatures, onClubFeaturesChanged }) {
   const goal = 1000;
   const eligible = isFormalMember(user) && age(user.birthdate) >= 16;
   const [deleteConfirm, setDeleteConfirm] = useState(false);
@@ -3812,7 +3818,15 @@ function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, 
         </div>
       </div>
 
-      <SectionTitle eyebrow="Verwalten" title="Einstellungen" />
+      {isAdmin(user) && (
+        <>
+          <SectionTitle eyebrow="Verein verwalten" title="Vereinseinstellungen" />
+          <div className="space-y-2 mb-6">
+            <ProfileSettingsCard icon={Settings} title="Vereinseinstellungen" description="Funktionen wie Fahrzeugbuchung, Tippspiel & Spieler der Saison ein- oder ausblenden" color={C.red} onClick={() => setProfileFolder("clubsettings")}/>
+          </div>
+        </>
+      )}
+
       <SectionTitle eyebrow="Verwalten" title="Einstellungen" />
       <div className="space-y-2 mb-6">
         <ProfileSettingsCard icon={User} title="Persönliche Daten" description="Stammdaten, Kontakte, Familie" color={C.green} onClick={() => setProfileFolder("personal")}/>
@@ -3822,6 +3836,10 @@ function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, 
         <ProfileSettingsCard icon={Euro} title="Abo & Empfehlungen" description="Abonnement und Vereine werben Vereine" color={C.red} onClick={() => setProfileFolder("billing")}/>
         <ProfileSettingsCard icon={Star} title="Support & Feedback" description="Bewertung abgeben, Fehler melden" color={C.textDim} onClick={() => setProfileFolder("support")}/>
       </div>
+
+      {profileFolder === "clubsettings" && isAdmin(user) && <ProfileUnderlay title="Vereinseinstellungen" eyebrow="Verein verwalten" onClose={() => setProfileFolder("")}>
+        <ClubFeatureSettingsPanel currentClub={currentClub} clubFeatures={clubFeatures} onFeaturesChanged={onClubFeaturesChanged} />
+      </ProfileUnderlay>}
 
       {profileFolder === "personal" && <ProfileUnderlay title="Persönliche Daten" eyebrow="Einstellungen" onClose={() => setProfileFolder("")}>
         <div className="space-y-2">
@@ -4540,29 +4558,50 @@ function RolesPanel({ members, setMembers }) {
   const toggleRole = async (memberId, role) => {
     if (ROLE_META[role]?.alwaysOn) return; // "Mitglied" ist Basisrolle für alle
     const member = members.find((item) => item.id === memberId);
-    const has = member?.roles.includes(role);
+    if (!member) return;
+    const has = member.roles.includes(role);
+    if (has && member.roles.length === 1) return; // mindestens eine Rolle behalten
     if (supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(memberId))) {
       setMessage("");
-      const { error } = await supabase.rpc("set_membership_role", { target_membership: memberId, target_role: role, role_enabled: !has });
+      const { error } = has
+        ? await supabase.from("membership_roles").delete().eq("membership_id", memberId).eq("role", role)
+        : await supabase.from("membership_roles").insert({ membership_id: memberId, role, granted_by: (await supabase.auth.getUser()).data.user?.id || null });
       if (error) { setMessage("Die Rollenänderung konnte nicht gespeichert werden."); return; }
     }
     setMembers((ms) => ms.map((m) => {
       if (m.id !== memberId) return m;
-      const currentlyHas = m.roles.includes(role);
-      if (currentlyHas && m.roles.length === 1) return m; // mindestens eine Rolle behalten
-      return { ...m, roles: currentlyHas ? m.roles.filter((r) => r !== role) : [...m.roles, role], ...(role === "teammanager" && currentlyHas ? { managedTeam: null } : {}) };
+      return { ...m, roles: has ? m.roles.filter((r) => r !== role) : [...m.roles, role], ...(role === "teammanager" && has ? { managedTeam: null } : {}) };
     }));
   };
   const assignManagedTeam = async (memberId, team) => {
+    const member = members.find((item) => item.id === memberId);
+    if (!member) return;
+    let displacedMemberId = null;
     if (supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(memberId))) {
       setMessage("");
-      const { error } = await supabase.rpc("set_teammanager_team", { target_membership: memberId, target_team_name: team || null });
-      if (error) { setMessage("Die Mannschaft des Teammanagers konnte nicht gespeichert werden."); return; }
+      let teamId = null;
+      if (team) {
+        const { data: teamRow, error: teamError } = await supabase.from("teams").select("id").eq("club_id", member.clubId).eq("name", team).maybeSingle();
+        if (teamError || !teamRow) { setMessage("Die Mannschaft des Teammanagers konnte nicht gespeichert werden."); return; }
+        teamId = teamRow.id;
+        const { data: existingManager } = await supabase.from("team_members").select("membership_id").eq("team_id", teamId).eq("function", "teammanager").neq("membership_id", memberId).maybeSingle();
+        displacedMemberId = existingManager?.membership_id || null;
+      }
+      const { error: clearError } = await supabase.from("team_members").delete().eq("membership_id", memberId).eq("function", "teammanager");
+      if (clearError) { setMessage("Die Mannschaft des Teammanagers konnte nicht gespeichert werden."); return; }
+      if (displacedMemberId) {
+        await supabase.from("team_members").delete().eq("membership_id", displacedMemberId).eq("function", "teammanager");
+        await supabase.from("membership_roles").delete().eq("membership_id", displacedMemberId).eq("role", "teammanager");
+      }
+      if (teamId) {
+        const { error: insertError } = await supabase.from("team_members").insert({ team_id: teamId, membership_id: memberId, function: "teammanager" });
+        if (insertError) { setMessage("Die Mannschaft des Teammanagers konnte nicht gespeichert werden."); return; }
+      }
     }
-    setMembers((all) => all.map((member) => {
-    if (member.id === memberId) return { ...member, managedTeam: team };
-    if (team && member.managedTeam === team && member.roles.includes("teammanager")) return { ...member, managedTeam: null, roles: member.roles.filter((role) => role !== "teammanager") };
-    return member;
+    setMembers((all) => all.map((m) => {
+      if (m.id === memberId) return { ...m, managedTeam: team };
+      if (displacedMemberId && m.id === displacedMemberId) return { ...m, managedTeam: null, roles: m.roles.filter((role) => role !== "teammanager") };
+      return m;
     }));
   };
   const toggleTrainerTeam = async (memberId, teamName) => {
@@ -5117,13 +5156,15 @@ export default function ClubMemberOrganisationApp() {
     if (!supabase || !adminStateLoaded || !selectedClubId || !currentUser || (!isAdmin(currentUser) && !canManageSponsors(currentUser))) return;
     clearTimeout(adminSaveTimer.current);
     adminSaveTimer.current = setTimeout(async () => {
-      await supabase.rpc("save_club_app_state", {
-        target_club: selectedClubId,
-        new_state: {
+      const { data: authData } = await supabase.auth.getUser();
+      await supabase.from("club_app_state").upsert({
+        club_id: selectedClubId,
+        state: {
           events, dutyPlan, protocols, remindersSent, welcomeAutomation, billingAutomation,
           polls, tippResults, maintenanceMode, seasonVotes, sponsorStats, sponsorBookings,
           channels: channels.filter((channel) => channel.id !== "news"),
         },
+        updated_by: authData?.user?.id || null,
       });
     }, 700);
     return () => clearTimeout(adminSaveTimer.current);
@@ -5520,8 +5561,8 @@ export default function ClubMemberOrganisationApp() {
             )}
 
             <div key={`${tab}-${subView || ""}`} className="tabFade flex-1 overflow-y-auto" style={{ background: C.paper }}>
-              {subView === "season" && <SeasonVoteView currentUser={currentUser} seasonVotes={seasonVotes} setSeasonVotes={setSeasonVotes} />}
-              {subView === "tipp" && <TippView members={clubMembers} currentUser={currentUser} tippPredictions={tippPredictions} setTippPredictions={setTippPredictions} tippResults={tippResults} />}
+              {subView === "season" && featureEnabled("season_award") && <SeasonVoteView currentUser={currentUser} seasonVotes={seasonVotes} setSeasonVotes={setSeasonVotes} />}
+              {subView === "tipp" && featureEnabled("tippspiel") && <TippView members={clubMembers} currentUser={currentUser} tippPredictions={tippPredictions} setTippPredictions={setTippPredictions} tippResults={tippResults} />}
               {subView === "duty" && <DutyView members={clubMembers} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} />}
               {subView === "tasks" && <TasksView currentUser={currentUser} members={clubMembers} />}
               {subView === "vehicles" && featureEnabled("vehicle_booking") && <VehiclesView currentUser={currentUser} currentClub={currentClub} />}
@@ -5552,7 +5593,7 @@ export default function ClubMemberOrganisationApp() {
                   tippResults={tippResults} onSaveTippResult={saveTippResult}
                   currentClub={currentClub} onClubLogoUpdated={updateCurrentClubLogo} clubFeatures={clubFeatures} onClubFeaturesChanged={loadClubFeatures} />
               )}
-              {!subView && tab === "profile" && <ProfileView user={currentUser} members={clubMembers} setMembers={setMembers} currentClub={currentClub} sponsorBookings={sponsorBookings} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick} onLogout={logout} />}
+              {!subView && tab === "profile" && <ProfileView user={currentUser} members={clubMembers} setMembers={setMembers} currentClub={currentClub} sponsorBookings={sponsorBookings} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick} onLogout={logout} clubFeatures={clubFeatures} onClubFeaturesChanged={loadClubFeatures} />}
             </div>
 
             {!subView && (
