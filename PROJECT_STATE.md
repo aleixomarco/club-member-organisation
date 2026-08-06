@@ -3,11 +3,11 @@
 _Letzte Aktualisierung: 2026-08-06 (Vormittag) — via Claude Code, direkt im Terminal_
 
 ## Build-Status
-**Buildfähig.** `npm run build` läuft fehlerfrei durch (zuletzt verifiziert 2026-08-06, nach Ergänzung des Self-Claim-Buttons). Der Helferdienst-Patch war zwischenzeitlich (Vormittag) in einem kaputten Zwischenstand mit fehlenden Komponentendefinitionen — das ist behoben, siehe Abschnitt "HELFERDIENST" unten.
+**Buildfähig, alle offenen SQL-Migrationen eingespielt.** `npm run build` läuft fehlerfrei durch (zuletzt verifiziert 2026-08-06). Sowohl `claim_duty_task` (Helferdienst-Self-Claim) als auch die drei Vereinsfahrzeuge-Statements (Rollen-Erweiterung, UPDATE-Policy, Telefon-RPC) wurden erfolgreich im Supabase SQL-Editor ausgeführt und sind live.
 
-**⚠️ Eine SQL-Migration steht noch aus, bevor "Ich übernehme das" live funktioniert:** Die Frontend-Seite des Self-Claim-Buttons ist fertig, aber die dafür nötige RPC `claim_duty_task` existiert noch nicht in der DB — das Anlegen von Datenbankfunktionen wurde von Claude Code automatisch geblockt (Sicherheitsklassifikator für schreibende/sicherheitsrelevante DB-Änderungen), genau wie es dieses Projekt ohnehin immer handhabt ("SQL-Migrationen werden manuell im Supabase SQL-Editor eingespielt"). Das exakte SQL steht unten im Helferdienst-Abschnitt — bitte im Supabase SQL-Editor (Projekt kymokcqebfruhlvcyqnw) einspielen, dann funktioniert der Button. Bis dahin würde ein Klick auf "Ich übernehme das" einen Fehler werfen.
-
-**Noch offen, bevor gepusht wird:** `app/page.tsx` hat unpushte Änderungen (Helferdienst-Komponenten + AdminView-Fix), plus drei ungetrackte Patch-Skripte (`patch-duty-1.mjs`, `patch-duty-1b.mjs`, `patch-home-away.mjs`). Noch nicht committet/gepusht — bewusst, um erst hier den aktuellen Stand zu dokumentieren. Committen/Pushen erfolgt erst nach expliziter Freigabe.
+**Zuletzt ergänzt (2026-08-06, Nachmittag):**
+- Speicher-Bestätigung bei „Persönliche Daten" (und „Benachrichtigungen") erscheint jetzt oben direkt unter dem Bildschirmtitel statt unten nach dem Scrollen — betraf `ProfileDataSettings` und `NotificationSettings`, beides lange Formulare unter `ProfileUnderlay`. Die drei kurzen Formulare (Passwort, Sicherheit, Kalender-Sync) waren davon nicht betroffen, da dort ohnehin nichts zum Scrollen da ist.
+- In der Fahrzeug-Buchungsdetailansicht gibt es neben jeder Telefonnummer jetzt einen Kopieren-Button (kurzes ✓-Feedback beim Klick).
 
 ## Kontext
 - **Repo**: aleixomarco/club-member-organisation
@@ -138,12 +138,12 @@ Bewusst ausgelassen (bräuchten Strukturumbau): Helferdienst-Erinnerung (Daten n
 - **Telefonnummer-Pflicht zum Buchen (neu, 2026-08-06):** Neue Buchung nur möglich, wenn `currentUser.contactPhones` mindestens eine Nummer enthält (Klick zeigt sonst einen Hinweis statt des Formulars). Gilt nur fürs Neu-Anlegen, nicht fürs Bearbeiten (ein Vorstand ohne eigene Telefonnummer soll fremde Buchungen trotzdem bearbeiten dürfen).
 - **Buchungsdetails per Klick (neu, 2026-08-06):** Klick auf eine Buchung in der Monatsliste öffnet eine Detailansicht mit Fahrzeug, Zeitraum, Mannschaft/Zweck, Name des Buchenden und dessen Telefonnummer(n) als `tel:`-Links zum direkten Anrufen. Sichtbar für alle aktiven Vereinsmitglieder (nicht nur Fuhrpark-Verwalter), da der Zweck ist, bei Rückfragen anrufen zu können.
 
-### ⚠️ Noch einzuspielen: Rollen-Erweiterung + UPDATE-Policy + Telefonnummer-RPC (SQL-Editor, Projekt kymokcqebfruhlvcyqnw)
+### ✅ Eingespielt: Rollen-Erweiterung + UPDATE-Policy + Telefonnummer-RPC (2026-08-06, bestätigt erfolgreich)
 Anlass Teil 1: wer ein Fahrzeug neu anlegen kann (Vorstand/Vereinsadmin/GF), sollte es auch buchen und bestehende Buchungen bearbeiten können — bisher konnten Vorstand/Vereinsadmin zwar Fahrzeuge anlegen, aber nicht buchen (nur GF war in beiden Rollengruppen), und eine UPDATE-Policy für Buchungen fehlte komplett (nur `insert`/`delete` waren erlaubt, kein "Bearbeiten" für irgendjemanden).
 
-Anlass Teil 2 (Telefonnummer): `profiles` hat RLS `id = auth.uid()` — ein Mitglied kann grundsätzlich NUR sein eigenes Profil lesen, auch nicht über einen Join von `vehicle_bookings` aus. Damit die Kontakt-Funktion ("Buchung anklicken → Person anrufen") trotzdem funktioniert, ohne die `profiles`-Tabelle allgemein zu öffnen, gibt es eine eng zugeschnittene SECURITY DEFINER-RPC, die ausschließlich die Telefonnummer(n) des Buchenden einer konkreten `vehicle_bookings`-Zeile herausgibt, und auch nur an aktive Mitglieder desselben Vereins.
+Anlass Teil 2 (Telefonnummer): `profiles` hat RLS `id = auth.uid()` — ein Mitglied kann grundsätzlich NUR sein eigenes Profil lesen, auch nicht über einen Join von `vehicle_bookings` aus. Damit die Kontakt-Funktion ("Buchung anklicken → Person anrufen, Nummer kopieren") trotzdem funktioniert, ohne die `profiles`-Tabelle allgemein zu öffnen, gibt es eine eng zugeschnittene SECURITY DEFINER-RPC, die ausschließlich die Telefonnummer(n) des Buchenden einer konkreten `vehicle_bookings`-Zeile herausgibt, und auch nur an aktive Mitglieder desselben Vereins.
 
-Das Frontend ruft `update` auf `vehicle_bookings` und `rpc("get_booking_contact_phone", ...)` bereits auf; ohne diese Migration schlagen beide mit einem RLS-Fehler bzw. `null` fehl. Automatisches Einspielen wurde vom Sicherheits-Klassifikator geblockt (wie bei `claim_duty_task` zuvor) — bitte manuell einspielen:
+Nachfolgend zur Referenz, falls die Funktionen mal neu aufgesetzt werden müssen:
 
 ```sql
 create or replace function public.can_book_vehicles(target_club uuid)
@@ -193,10 +193,6 @@ $$;
 grant execute on function public.get_booking_contact_phone(uuid) to authenticated;
 ```
 
-Bis das eingespielt ist: "Fahrzeug buchen" funktioniert für Vorstand/Vereinsadmin noch nicht, "Bearbeiten" funktioniert für niemanden, und die Telefonnummer in der Buchungsdetailansicht bleibt leer ("Keine Telefonnummer hinterlegt." wird fälschlich angezeigt, auch wenn eine hinterlegt ist). Anlegen/Löschen von Fahrzeugen und Stornieren von Buchungen sind davon nicht betroffen.
-
-Bis das eingespielt ist: "Fahrzeug buchen" funktioniert für Vorstand/Vereinsadmin noch nicht (RLS blockt den `insert`), und "Bearbeiten" funktioniert für niemanden (keine UPDATE-Policy vorhanden). Anlegen/Löschen von Fahrzeugen und Stornieren von Buchungen sind davon nicht betroffen.
-
 ---
 
 ## HELFERDIENST — Backend fertig (bereits vor dieser Session live), Frontend jetzt fertig
@@ -212,8 +208,8 @@ Rolle `organisator` (+ vorstand/vereinsadmin) legt wiederverwendbare "Sätze" (V
 - Cron: `duty-task-due-reminders` (`0 7 * * *` → `run_duty_task_due_reminders()`), `duty-gap-check` (`0 9 * * *` → `run_duty_gap_check()`) — beide aktiv in `cron.job`, verifiziert.
 - **RLS-Verhalten:** INSERT/UPDATE/DELETE auf `duty_tasks` erfordern grundsätzlich `can_manage_duty_task(event_id)` — d.h. nur Organisatoren/Vorstand/Vereinsadmin oder der Trainer/Kapitän/Teammanager des jeweiligen Teams können Stationen zuweisen, Fristen setzen, löschen oder als erledigt markieren. Für die Selbst-Eintragung durch normale Mitglieder ("Ich übernehme das") gibt es bewusst eine schmale, zusätzliche RPC `claim_duty_task` (SECURITY DEFINER, s. u.) statt einer generellen RLS-Lockerung — sie lässt ausschließlich das (Zurück-)Setzen der eigenen Zuweisung auf eine bislang unzugewiesene bzw. selbst gehaltene Station zu, alle anderen Felder bleiben geschützt.
 
-### ⚠️ Noch einzuspielen: RPC `claim_duty_task` (SQL-Editor, Projekt kymokcqebfruhlvcyqnw)
-Das Frontend ruft `supabase.rpc("claim_duty_task", { target_task })` bereits auf; die Funktion existiert aber noch nicht in der DB. Claude Code hat das automatisierte Einspielen bewusst nicht versucht (vom Sicherheits-Klassifikator geblockt, wie bei allen schreibenden/sicherheitsrelevanten DB-Änderungen) — bitte manuell einspielen:
+### ✅ Eingespielt: RPC `claim_duty_task` (2026-08-06, bestätigt erfolgreich)
+Nachfolgend zur Referenz, falls die Funktion mal neu aufgesetzt werden muss:
 
 ```sql
 create or replace function public.claim_duty_task(target_task uuid)
@@ -252,7 +248,6 @@ $$;
 grant execute on function public.claim_duty_task(uuid) to authenticated;
 ```
 
-Bis das eingespielt ist, wirft ein Klick auf "Ich übernehme das" einen Fehler ("Aktion nicht möglich.") — der Rest des Features (Sätze, Vorlage anwenden, Zuweisen durch Verwalter, Fristen, Löschen) funktioniert unabhängig davon bereits.
 
 ### Frontend — vollständig, inkl. Self-Claim (app/page.tsx)
 - `eventDraft.isHome`, Heimspiel-Checkbox, `home_away` wird korrekt gespeichert (Bug-Fix von vorher)
