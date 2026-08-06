@@ -1011,7 +1011,7 @@ function Dashboard({ user, members, feePaid, channels, dutyPlan, seasonVotes, po
         <div>
           {featureEnabled("season_award") && <FeatureRow icon={Trophy} title="Spieler der Saison" subtitle={seasonSubtitle} onClick={goSeason} accent={C.amber} />}
           {featureEnabled("tippspiel") && <FeatureRow icon={Target} title="Tippspiel" subtitle={tippSubtitle} onClick={goTipp} accent={C.red} />}
-          <FeatureRow icon={ClipboardList} title="Helferplanung" subtitle={dutySubtitle} onClick={goDuty} accent={C.green} />
+          {featureEnabled("duty_roster") && <FeatureRow icon={ClipboardList} title="Helferplanung" subtitle={dutySubtitle} onClick={goDuty} accent={C.green} />}
           <FeatureRow icon={ClipboardList} title="Aufgaben" subtitle="Für den Verein mithelfen" onClick={goTasks} accent={C.red} />
           {featureEnabled("vehicle_booking") && <FeatureRow icon={Car} title={sportConfig(sport).vehicleTabLabel} subtitle="Kalender & Buchung" onClick={goVehicles} accent={C.amber} />}
         </div>
@@ -1237,7 +1237,7 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
             </button>
           ))}
 
-          {ev.helperSlots && (
+          {ev.helperSlots && featureEnabled("duty_roster") && (
             <div className="mt-3">
               <div className="text-xs font-semibold mb-2" style={{ fontFamily: "Inter", color: C.ink }}>Helfer:innen gesucht</div>
               <HelperSlots ev={ev} members={members} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} eligible={helperEligible} />
@@ -4991,7 +4991,7 @@ function AdminView({
   ];
   const [panel, setPanel] = useState(restrictedOnly ? restrictedPanels[0][0] : "overview");
   const openCount = members.filter((m) => !feePaid[m.id]).length;
-  const panels = restrictedOnly ? restrictedPanels : [["overview", "Übersicht"], ["automation", "Automatisierung"], ["duty", "Helferplanung"], ...(dutyFeatureOn ? [["duty-templates", `${dutyCfg.dutyTabLabel}-Sätze`]] : []), ["protokolle", "Protokolle"], ["polls", "Umfragen"], ["sponsoring", "Sponsoring"], ["season", "Spieler der Saison"]];
+  const panels = restrictedOnly ? restrictedPanels : [["overview", "Übersicht"], ["automation", "Automatisierung"], ...(dutyFeatureOn ? [["duty", "Helferplanung"], ["duty-templates", `${dutyCfg.dutyTabLabel}-Sätze`]] : []), ["protokolle", "Protokolle"], ["polls", "Umfragen"], ["sponsoring", "Sponsoring"], ["season", "Spieler der Saison"]];
   if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.push(["roles", "Rollen"]);
   if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.splice(1, 0, ["memberships", "Mitgliedsanträge"]);
   if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.splice(1, 0, ["clubprofile", "Vereinsprofil"]);
@@ -5027,7 +5027,7 @@ function AdminView({
           billingAutomation={billingAutomation} setBillingAutomation={setBillingAutomation} />
       )}
 
-      {panel === "duty" && <AdminDutyPanel members={members} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} />}
+      {panel === "duty" && dutyFeatureOn && <AdminDutyPanel members={members} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} />}
       {panel === "duty-templates" && <DutyTemplatesPanel currentUser={currentUser} sport={currentClub?.sport} />}
       {panel === "functions" && canManageClubFeatures && <ClubFeatureSettingsPanel currentClub={currentClub} clubFeatures={clubFeatures} onFeaturesChanged={onClubFeaturesChanged} />}
       {panel === "protokolle" && <ProtokollePanel members={members} protocols={protocols} setProtocols={setProtocols} clubId={currentUser.clubId} />}
@@ -5611,7 +5611,7 @@ export default function ClubMemberOrganisationApp() {
             <div key={`${tab}-${subView || ""}`} className="tabFade flex-1 overflow-y-auto" style={{ background: C.paper }}>
               {subView === "season" && featureEnabled("season_award") && <SeasonVoteView currentUser={currentUser} seasonVotes={seasonVotes} setSeasonVotes={setSeasonVotes} />}
               {subView === "tipp" && featureEnabled("tippspiel") && <TippView members={clubMembers} currentUser={currentUser} tippPredictions={tippPredictions} setTippPredictions={setTippPredictions} tippResults={tippResults} />}
-              {subView === "duty" && <DutyView members={clubMembers} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} />}
+              {subView === "duty" && featureEnabled("duty_roster") && <DutyView members={clubMembers} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} />}
               {subView === "tasks" && <TasksView currentUser={currentUser} members={clubMembers} />}
               {subView === "vehicles" && featureEnabled("vehicle_booking") && <VehiclesView currentUser={currentUser} currentClub={currentClub} />}
 
