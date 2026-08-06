@@ -94,6 +94,7 @@ const ROLE_META = {
   spieler: { label: "Spieler/in", color: C.green, admin: false, formalMember: true, selfService: true },
   eltern: { label: "Eltern", color: C.amber, admin: false, formalMember: true, selfService: true },
   mitglied: { label: "Mitglied", color: "#8B8A85", admin: false, formalMember: true, selfService: true, alwaysOn: true },
+  organisator: { label: "Organisator/in", color: "#9A6B3F", admin: false, formalMember: true, selfService: false },
 };
 const isAdmin = (m) => !!m && m.roles.some((r) => ROLE_META[r]?.admin);
 const canManageFees = (m) => !!m && m.roles.some((r) => ["geschaeftsfuehrung", "finanzmanager"].includes(r));
@@ -101,6 +102,7 @@ const isFormalMember = (m) => !!m && m.roles.some((r) => ROLE_META[r]?.formalMem
 const isSysAdmin = (m) => !!m && m.roles.includes("sysadmin");
 const canWriteNews = (m) => isAdmin(m) || (!!m && m.roles.includes("redakteur"));
 const canManageSponsors = (m) => isAdmin(m) || (!!m && m.roles.includes("sponsorenmanager"));
+const canManageDuty = (m) => isAdmin(m) || (!!m && m.roles.includes("organisator"));
 function linkFamilyRecords(list, firstId, secondId, firstRelation, linkId = null) {
   const first = list.find((m) => m.id === firstId);
   const second = list.find((m) => m.id === secondId);
@@ -1162,6 +1164,7 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
               <HelperSlots ev={ev} members={members} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} eligible={helperEligible} />
             </div>
           )}
+          {eventIsReal && ev.type === "spiel" && ev.home === true && <DutyTasksSection ev={ev} currentUser={currentUser} />}
         </div>
       )}
     </div>
@@ -1220,7 +1223,7 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
     setEventDraft((draft) => ({ ...draft, team: allowedEventTeams[0] || "" }));
     setShowCreate(true);
   };
-  const resetEventDraft = () => setEventDraft({ type: "training", team: allowedEventTeams[0] || "", title: "", date: "", location: "", desc: "", recurring: false, weekdays: [], startTime: "18:00", endTime: "19:30", rangeStart: "", rangeEnd: "" });
+  const resetEventDraft = () => setEventDraft({ type: "training", team: allowedEventTeams[0] || "", title: "", date: "", location: "", desc: "", recurring: false, weekdays: [], startTime: "18:00", endTime: "19:30", rangeStart: "", rangeEnd: "", isHome: true });
   const createSportEvent = async (event) => {
     event.preventDefault();
     if (!eventDraft.team || !allowedEventTeams.includes(eventDraft.team) || !eventDraft.title.trim() || !eventDraft.location.trim()) return;
@@ -1262,10 +1265,10 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
     let eventId = Date.now();
     if (supabase && currentUser.authProfileId) {
       const { data: team } = await supabase.from("teams").select("id").eq("club_id",currentUser.clubId).eq("name",eventDraft.team).maybeSingle();
-      const { data: saved } = await supabase.from("events").insert({club_id:currentUser.clubId,team_id:team?.id||null,type:eventDraft.type,status:"scheduled",title:eventDraft.title.trim(),description:eventDraft.desc.trim()||null,starts_at:new Date(eventDraft.date).toISOString(),location:eventDraft.location.trim(),created_by:currentUser.authProfileId}).select("id").maybeSingle();
+      const { data: saved } = await supabase.from("events").insert({club_id:currentUser.clubId,team_id:team?.id||null,type:eventDraft.type,status:"scheduled",title:eventDraft.title.trim(),description:eventDraft.desc.trim()||null,starts_at:new Date(eventDraft.date).toISOString(),location:eventDraft.location.trim(),created_by:currentUser.authProfileId,home_away:eventDraft.type==="spiel"?(eventDraft.isHome?"heim":"auswaerts"):null}).select("id").maybeSingle();
       if (saved?.id) eventId=saved.id;
     }
-    const created = { id: eventId, type: eventDraft.type, team: eventDraft.team, title: eventDraft.title.trim(), date: eventDraft.date, location: eventDraft.location.trim(), desc: eventDraft.desc.trim(), carpool: false, home: true, ...(eventDraft.type === "training" ? { youthClassIds: [TEAM_TO_YOUTHCLASS[eventDraft.team]] } : {}) };
+    const created = { id: eventId, type: eventDraft.type, team: eventDraft.team, title: eventDraft.title.trim(), date: eventDraft.date, location: eventDraft.location.trim(), desc: eventDraft.desc.trim(), carpool: false, home: eventDraft.type === "spiel" ? eventDraft.isHome : true, ...(eventDraft.type === "training" ? { youthClassIds: [TEAM_TO_YOUTHCLASS[eventDraft.team]] } : {}) };
     setEvents((all) => [...all, created].sort((a, b) => new Date(a.date) - new Date(b.date)));
     setFilter(eventDraft.type);
     setTeamFilter(eventDraft.team);
@@ -1307,7 +1310,7 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
   return (
     <div className="px-4 pt-4 pb-24">
       <div className="flex items-start justify-between gap-3"><SectionTitle title="Termine" />{canCreateSportEvent&&<button onClick={openCreate} className="px-3 py-1.5 rounded-full text-xs flex-shrink-0" style={{background:C.red,color:C.white,fontWeight:700}}>＋ Eintragen</button>}</div>
-      {showCreate&&<form onSubmit={createSportEvent} className="rounded-2xl p-4 mb-4 space-y-2.5" style={{background:C.white,border:`1px solid ${C.line}`}}><div className="text-sm font-bold">Training oder Spiel eintragen</div><div className="text-[10px]" style={{color:C.textDim}}>{isSysAdmin(currentUser)?"Als Vereins-Sysadmin kannst du jede Mannschaft auswählen.":currentUser.roles.includes("trainer")?"Du kannst nur deine im Profil hinterlegten Mannschaften auswählen.":"Als Kapitän oder Teammanager kannst du nur für deine hinterlegte Mannschaft eintragen."}</div><div className="text-[10px] font-bold" style={{color:C.red}}>* Pflichtfeld</div><div className="grid grid-cols-2 gap-2"><select value={eventDraft.type} onChange={(e)=>setEventDraft({...eventDraft,type:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}><option value="training">Training</option><option value="spiel">Spiel</option></select><select value={eventDraft.team} onChange={(e)=>setEventDraft({...eventDraft,team:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}>{allowedEventTeams.map((team)=><option key={team} value={team}>{team}</option>)}</select></div><input value={eventDraft.title} onChange={(e)=>setEventDraft({...eventDraft,title:e.target.value})} placeholder={eventDraft.type==="training"?"Titel des Trainings *":"Titel des Spiels *"} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/>{eventDraft.type === "training" && <label className="flex items-center gap-2 px-0.5"><input type="checkbox" checked={eventDraft.recurring} onChange={(e)=>setEventDraft({...eventDraft,recurring:e.target.checked})}/><span className="text-xs font-bold" style={{color:C.ink}}>Wiederholend</span></label>}{!eventDraft.recurring ? <input type="datetime-local" value={eventDraft.date} onChange={(e)=>setEventDraft({...eventDraft,date:e.target.value})} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/> : <div className="space-y-2"><div className="flex gap-1.5 flex-wrap">{[["1","Mo"],["2","Di"],["3","Mi"],["4","Do"],["5","Fr"],["6","Sa"],["7","So"]].map(([num,label])=>{const n=Number(num);const active=eventDraft.weekdays.includes(n);return <button type="button" key={num} onClick={()=>setEventDraft({...eventDraft,weekdays:active?eventDraft.weekdays.filter((w)=>w!==n):[...eventDraft.weekdays,n]})} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?C.red:C.paperDim,color:active?C.white:C.textDim}}>{label}</button>;})}</div><div className="grid grid-cols-2 gap-2"><input type="time" value={eventDraft.startTime} onChange={(e)=>setEventDraft({...eventDraft,startTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><input type="time" value={eventDraft.endTime} onChange={(e)=>setEventDraft({...eventDraft,endTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></div><div className="grid grid-cols-2 gap-2"><input type="date" value={eventDraft.rangeStart} onChange={(e)=>setEventDraft({...eventDraft,rangeStart:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><input type="date" value={eventDraft.rangeEnd} onChange={(e)=>setEventDraft({...eventDraft,rangeEnd:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></div></div>}<input value={eventDraft.location} onChange={(e)=>setEventDraft({...eventDraft,location:e.target.value})} placeholder="Ort *" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><textarea value={eventDraft.desc} onChange={(e)=>setEventDraft({...eventDraft,desc:e.target.value})} placeholder="Beschreibung (optional)" rows={2} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none" style={{background:C.paperDim}}/><div className="flex gap-2"><button type="submit" className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{background:C.ink,color:C.white}}>Speichern</button><button type="button" onClick={()=>setShowCreate(false)} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{background:C.paperDim,color:C.textDim}}>Abbrechen</button></div></form>}
+      {showCreate&&<form onSubmit={createSportEvent} className="rounded-2xl p-4 mb-4 space-y-2.5" style={{background:C.white,border:`1px solid ${C.line}`}}><div className="text-sm font-bold">Training oder Spiel eintragen</div><div className="text-[10px]" style={{color:C.textDim}}>{isSysAdmin(currentUser)?"Als Vereins-Sysadmin kannst du jede Mannschaft auswählen.":currentUser.roles.includes("trainer")?"Du kannst nur deine im Profil hinterlegten Mannschaften auswählen.":"Als Kapitän oder Teammanager kannst du nur für deine hinterlegte Mannschaft eintragen."}</div><div className="text-[10px] font-bold" style={{color:C.red}}>* Pflichtfeld</div><div className="grid grid-cols-2 gap-2"><select value={eventDraft.type} onChange={(e)=>setEventDraft({...eventDraft,type:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}><option value="training">Training</option><option value="spiel">Spiel</option></select><select value={eventDraft.team} onChange={(e)=>setEventDraft({...eventDraft,team:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}>{allowedEventTeams.map((team)=><option key={team} value={team}>{team}</option>)}</select></div><input value={eventDraft.title} onChange={(e)=>setEventDraft({...eventDraft,title:e.target.value})} placeholder={eventDraft.type==="training"?"Titel des Trainings *":"Titel des Spiels *"} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/>{eventDraft.type === "spiel" && <label className="flex items-center gap-2 px-0.5"><input type="checkbox" checked={eventDraft.isHome} onChange={(e)=>setEventDraft({...eventDraft,isHome:e.target.checked})}/><span className="text-xs font-bold" style={{color:C.ink}}>Heimspiel</span></label>}{eventDraft.type === "training" && <label className="flex items-center gap-2 px-0.5"><input type="checkbox" checked={eventDraft.recurring} onChange={(e)=>setEventDraft({...eventDraft,recurring:e.target.checked})}/><span className="text-xs font-bold" style={{color:C.ink}}>Wiederholend</span></label>}{!eventDraft.recurring ? <input type="datetime-local" value={eventDraft.date} onChange={(e)=>setEventDraft({...eventDraft,date:e.target.value})} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/> : <div className="space-y-2"><div className="flex gap-1.5 flex-wrap">{[["1","Mo"],["2","Di"],["3","Mi"],["4","Do"],["5","Fr"],["6","Sa"],["7","So"]].map(([num,label])=>{const n=Number(num);const active=eventDraft.weekdays.includes(n);return <button type="button" key={num} onClick={()=>setEventDraft({...eventDraft,weekdays:active?eventDraft.weekdays.filter((w)=>w!==n):[...eventDraft.weekdays,n]})} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?C.red:C.paperDim,color:active?C.white:C.textDim}}>{label}</button>;})}</div><div className="grid grid-cols-2 gap-2"><input type="time" value={eventDraft.startTime} onChange={(e)=>setEventDraft({...eventDraft,startTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><input type="time" value={eventDraft.endTime} onChange={(e)=>setEventDraft({...eventDraft,endTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></div><div className="grid grid-cols-2 gap-2"><input type="date" value={eventDraft.rangeStart} onChange={(e)=>setEventDraft({...eventDraft,rangeStart:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><input type="date" value={eventDraft.rangeEnd} onChange={(e)=>setEventDraft({...eventDraft,rangeEnd:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></div></div>}<input value={eventDraft.location} onChange={(e)=>setEventDraft({...eventDraft,location:e.target.value})} placeholder="Ort *" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><textarea value={eventDraft.desc} onChange={(e)=>setEventDraft({...eventDraft,desc:e.target.value})} placeholder="Beschreibung (optional)" rows={2} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none" style={{background:C.paperDim}}/><div className="flex gap-2"><button type="submit" className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{background:C.ink,color:C.white}}>Speichern</button><button type="button" onClick={()=>setShowCreate(false)} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{background:C.paperDim,color:C.textDim}}>Abbrechen</button></div></form>}
       <SponsorSlot slotKey="events_header" bookings={sponsorBookings} onImpression={onSponsorImpression} onClick={onSponsorClick} />
       <div className="flex gap-2 mb-4 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
         {[["alle", "Alle"], ["training", "Training"], ["spiel", "Spiele"], ["event", "Events"]].map(([k, l]) => (
@@ -2789,6 +2792,220 @@ function VehiclesView({ currentUser }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function DutyTasksSection({ ev, currentUser }) {
+  const [tasks, setTasks] = useState([]);
+  const [templates, setTemplates] = useState([]);
+  const [duMembers, setDutyMembers] = useState([]);
+  const [canManage, setCanManage] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [selectedTemplate, setSelectedTemplate] = useState("");
+  const [applying, setApplying] = useState(false);
+  const [message, setMessage] = useState("");
+
+  const loadTasks = useCallback(async () => {
+    const { data, error } = await supabase.from("duty_tasks")
+      .select("id,title,due_date,done,assignee_membership_id,club_memberships(display_name)")
+      .eq("event_id", ev.id)
+      .order("created_at", { ascending: true });
+    if (!error) {
+      setTasks((data || []).map((row) => {
+        const assignee = Array.isArray(row.club_memberships) ? row.club_memberships[0] : row.club_memberships;
+        return { id: row.id, title: row.title, dueDate: row.due_date, done: row.done, assigneeId: row.assignee_membership_id, assigneeName: assignee?.display_name || null };
+      }));
+    }
+    setLoading(false);
+  }, [ev.id]);
+
+  useEffect(() => {
+    let active = true;
+    supabase.rpc("can_manage_duty_task", { target_event: ev.id }).then(({ data }) => { if (active) setCanManage(!!data); });
+    loadTasks();
+    return () => { active = false; };
+  }, [ev.id, loadTasks]);
+
+  useEffect(() => {
+    if (!canManage) return;
+    (async () => {
+      const [{ data: templateRows }, { data: memberRows }] = await Promise.all([
+        supabase.from("duty_task_templates").select("id,name").eq("club_id", currentUser.clubId).order("name"),
+        supabase.from("club_memberships").select("id,display_name").eq("club_id", currentUser.clubId).eq("status", "active").order("display_name"),
+      ]);
+      setTemplates(templateRows || []);
+      setDutyMembers(memberRows || []);
+    })();
+  }, [canManage, currentUser.clubId]);
+
+  const applyTemplate = async () => {
+    if (!selectedTemplate) return;
+    setApplying(true); setMessage("");
+    const { error } = await supabase.rpc("apply_duty_template", { target_event: ev.id, target_template: selectedTemplate });
+    setApplying(false);
+    if (error) { setMessage("Vorlage konnte nicht angewendet werden."); return; }
+    setSelectedTemplate("");
+    setMessage("Vorlage wurde angewendet.");
+    await loadTasks();
+  };
+  const assignTask = async (taskId, membershipId) => { const { error } = await supabase.from("duty_tasks").update({ assignee_membership_id: membershipId || null }).eq("id", taskId); if (!error) await loadTasks(); };
+  const setDueDate = async (taskId, date) => { const { error } = await supabase.from("duty_tasks").update({ due_date: date || null }).eq("id", taskId); if (!error) await loadTasks(); };
+  const toggleDone = async (task) => { const { error } = await supabase.from("duty_tasks").update({ done: !task.done }).eq("id", task.id); if (!error) await loadTasks(); };
+  const deleteTask = async (taskId) => { if (!window.confirm("Diese Helferdienst-Station wirklich löschen?")) return; const { error } = await supabase.from("duty_tasks").delete().eq("id", taskId); if (!error) await loadTasks(); };
+  const claimTask = async (taskId) => {
+    setMessage("");
+    const { error } = await supabase.rpc("claim_duty_task", { target_task: taskId });
+    if (error) { setMessage("Aktion nicht möglich."); return; }
+    await loadTasks();
+  };
+
+  if (!supabase) return null;
+  if (loading) return <div className="mt-3 text-xs" style={{ color: C.textDim }}>Helferdienst wird geladen …</div>;
+
+  return (
+    <div className="mt-3">
+      <div className="text-xs font-semibold mb-2" style={{ fontFamily: "Inter", color: C.ink }}>Helferdienst</div>
+      {canManage && templates.length > 0 && (
+        <div className="flex gap-2 mb-2.5">
+          <select value={selectedTemplate} onChange={(e) => setSelectedTemplate(e.target.value)} className="flex-1 px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}>
+            <option value="">Satz vorladen …</option>
+            {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+          </select>
+          <button onClick={applyTemplate} disabled={!selectedTemplate || applying} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: selectedTemplate ? C.ink : C.line, color: C.white }}>{applying ? "…" : "Anwenden"}</button>
+        </div>
+      )}
+      {tasks.length === 0 ? (
+        <div className="text-[11px] rounded-xl p-2.5" style={{ background: C.paperDim, color: C.textDim }}>Noch keine Helferdienst-Stationen für diesen Termin.</div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {tasks.map((task) => (
+            <div key={task.id} className="rounded-xl p-2.5" style={{ background: C.paperDim }}>
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <div className="text-xs font-bold flex items-center gap-1.5" style={{ color: C.ink }}>
+                  {task.done ? <CheckCircle2 size={13} style={{ color: C.green }} /> : <Circle size={13} style={{ color: C.textDim }} />}
+                  {task.title}
+                </div>
+                {canManage && <button onClick={() => deleteTask(task.id)} className="text-[10px] font-bold" style={{ color: C.red }}>Löschen</button>}
+              </div>
+              <div className="text-[10px] mb-1.5" style={{ color: C.textDim }}>
+                {task.assigneeName ? `Zugewiesen: ${task.assigneeName}` : "Noch niemandem zugewiesen"}
+                {task.dueDate ? ` · Frist ${new Date(task.dueDate).toLocaleDateString("de-DE")}` : ""}
+              </div>
+              {canManage && (
+                <div className="flex gap-1.5">
+                  <select value={task.assigneeId || ""} onChange={(e) => assignTask(task.id, e.target.value)} className="flex-1 px-2 py-1.5 rounded-lg text-[11px] outline-none" style={{ background: C.white, color: C.ink }}>
+                    <option value="">Nicht zugewiesen</option>
+                    {duMembers.map((m) => <option key={m.id} value={m.id}>{m.display_name}</option>)}
+                  </select>
+                  <input type="date" value={task.dueDate || ""} onChange={(e) => setDueDate(task.id, e.target.value)} className="px-2 py-1.5 rounded-lg text-[11px] outline-none" style={{ background: C.white, color: C.ink }}/>
+                  <button onClick={() => toggleDone(task)} className="px-2 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: task.done ? "#E7F3EC" : C.white, color: task.done ? C.green : C.textDim }}>{task.done ? "Erledigt" : "Erledigt?"}</button>
+                </div>
+              )}
+              {!canManage && !task.assigneeId && <button onClick={() => claimTask(task.id)} className="w-full py-1.5 rounded-lg text-[11px] font-bold" style={{ background: C.ink, color: C.white }}>Ich übernehme das</button>}
+              {!canManage && task.assigneeId === currentUser.id && <button onClick={() => claimTask(task.id)} className="w-full py-1.5 rounded-lg text-[11px] font-bold" style={{ background: C.white, color: C.red }}>Zurückziehen</button>}
+            </div>
+          ))}
+        </div>
+      )}
+      {message && <div className="text-[11px] mt-1.5" style={{ color: message.includes("wurde") ? C.green : C.red }}>{message}</div>}
+    </div>
+  );
+}
+
+function DutyTemplatesPanel({ currentUser }) {
+  const [templates, setTemplates] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [newName, setNewName] = useState("");
+  const [newItemTitles, setNewItemTitles] = useState({});
+  const [expandedId, setExpandedId] = useState(null);
+  const [message, setMessage] = useState("");
+  const [messageOk, setMessageOk] = useState(false);
+
+  const loadTemplates = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await supabase.from("duty_task_templates")
+      .select("id,name,duty_task_template_items(id,title,sort_order)")
+      .eq("club_id", currentUser.clubId)
+      .order("name");
+    if (error) { setMessage("Sätze konnten nicht geladen werden."); setMessageOk(false); setLoading(false); return; }
+    setTemplates((data || []).map((row) => ({
+      id: row.id, name: row.name,
+      items: (row.duty_task_template_items || []).slice().sort((a, b) => a.sort_order - b.sort_order),
+    })));
+    setLoading(false);
+  }, [currentUser.clubId]);
+  useEffect(() => { loadTemplates(); }, [loadTemplates]);
+
+  const createTemplate = async () => {
+    if (!newName.trim()) return;
+    const { error } = await supabase.from("duty_task_templates").insert({ club_id: currentUser.clubId, name: newName.trim(), created_by: currentUser.id });
+    if (error) { setMessage("Satz konnte nicht angelegt werden."); setMessageOk(false); return; }
+    setNewName(""); setMessage("Satz wurde angelegt."); setMessageOk(true); await loadTemplates();
+  };
+  const deleteTemplate = async (id) => {
+    if (!window.confirm("Diesen Satz inklusive aller Stationen wirklich löschen?")) return;
+    const { error } = await supabase.from("duty_task_templates").delete().eq("id", id);
+    if (error) { setMessage("Satz konnte nicht gelöscht werden."); setMessageOk(false); return; }
+    await loadTemplates();
+  };
+  const addItem = async (templateId) => {
+    const title = (newItemTitles[templateId] || "").trim();
+    if (!title) return;
+    const template = templates.find((t) => t.id === templateId);
+    const nextOrder = template?.items.length || 0;
+    const { error } = await supabase.from("duty_task_template_items").insert({ template_id: templateId, title, sort_order: nextOrder });
+    if (error) { setMessage("Station konnte nicht hinzugefügt werden."); setMessageOk(false); return; }
+    setNewItemTitles((all) => ({ ...all, [templateId]: "" }));
+    await loadTemplates();
+  };
+  const removeItem = async (itemId) => { const { error } = await supabase.from("duty_task_template_items").delete().eq("id", itemId); if (!error) await loadTemplates(); };
+
+  if (!supabase) return <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Helferdienst-Sätze sind nur mit einem echten Vereinskonto verfügbar.</div>;
+  if (loading) return <div className="text-xs py-4" style={{ color: C.textDim }}>Helferdienst-Sätze werden geladen …</div>;
+
+  return (
+    <div>
+      <SectionTitle eyebrow="Helferdienst" title="Sätze & Stationen" />
+      <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>Wiederverwendbare Vorlagen mit Stationen, die beim Anlegen eines Heimspiels vorgeladen werden können.</div>
+      {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: messageOk ? "#E7F3EC" : "#FDECEC", color: messageOk ? C.green : C.red }}>{message}</div>}
+      <div className="rounded-2xl p-3.5 mb-4" style={{ background: C.paperDim }}>
+        <div className="flex gap-2">
+          <input value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={80} placeholder="Name, z. B. Standard Heimspieltag" className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.white, color: C.ink }}/>
+          <button onClick={createTemplate} disabled={!newName.trim()} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: newName.trim() ? C.ink : C.line, color: C.white }}>Anlegen</button>
+        </div>
+      </div>
+      {templates.length === 0 ? (
+        <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Noch keine Helferdienst-Sätze angelegt.</div>
+      ) : templates.map((t) => {
+        const open = expandedId === t.id;
+        return (
+          <div key={t.id} className="rounded-2xl mb-2.5 overflow-hidden" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+            <button className="w-full text-left p-3.5 flex items-center justify-between" onClick={() => setExpandedId(open ? null : t.id)}>
+              <div>
+                <div className="text-sm font-bold" style={{ color: C.ink }}>{t.name}</div>
+                <div className="text-[10px]" style={{ color: C.textDim }}>{t.items.length} Station{t.items.length === 1 ? "" : "en"}</div>
+              </div>
+              <ChevronDown size={16} style={{ color: C.textDim, transform: open ? "rotate(180deg)" : "none", transition: "transform .2s" }} />
+            </button>
+            {open && (
+              <div className="px-3.5 pb-3.5">
+                {t.items.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 mb-1.5" style={{ background: C.paperDim }}>
+                    <span className="text-xs" style={{ color: C.ink }}>{item.title}</span>
+                    <button onClick={() => removeItem(item.id)} className="text-[10px] font-bold" style={{ color: C.red }}>Entfernen</button>
+                  </div>
+                ))}
+                <div className="flex gap-2 mt-2">
+                  <input value={newItemTitles[t.id] || ""} onChange={(e) => setNewItemTitles((all) => ({ ...all, [t.id]: e.target.value }))} maxLength={60} placeholder="Station, z. B. Theke" className="flex-1 px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}/>
+                  <button onClick={() => addItem(t.id)} disabled={!(newItemTitles[t.id] || "").trim()} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: (newItemTitles[t.id] || "").trim() ? C.ink : C.line, color: C.white }}>+ Station</button>
+                </div>
+                <button onClick={() => deleteTemplate(t.id)} className="w-full mt-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.paperDim, color: C.red }}>Satz löschen</button>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -4450,11 +4667,19 @@ function AdminView({
   sponsorBookings, setSponsorBookings, sponsorStats, polls, setPolls, tippResults, onSaveTippResult,
   currentClub, onClubLogoUpdated,
 }) {
-  const sponsorOnly = !isAdmin(currentUser) && canManageSponsors(currentUser);
+  const canSponsor = canManageSponsors(currentUser);
+  const canDutyTemplates = !isAdmin(currentUser) && currentUser.roles.includes("organisator");
+  const sponsorOnly = !isAdmin(currentUser) && canSponsor && !canDutyTemplates;
+  const restrictedOnly = !isAdmin(currentUser) && (canSponsor || canDutyTemplates);
   const canSeeFees = canManageFees(currentUser);
-  const [panel, setPanel] = useState(sponsorOnly ? "sponsoring" : "overview");
+  const restrictedPanels = [
+    ...(canSponsor ? [["sponsoring", "Sponsoring"]] : []),
+    ...(canDutyTemplates ? [["duty-templates", "Helferdienst-Sätze"]] : []),
+    ["polls", "Umfragen"],
+  ];
+  const [panel, setPanel] = useState(restrictedOnly ? restrictedPanels[0][0] : "overview");
   const openCount = members.filter((m) => !feePaid[m.id]).length;
-  const panels = sponsorOnly ? [["sponsoring", "Sponsoring"], ["polls", "Umfragen"]] : [["overview", "Übersicht"], ["automation", "Automatisierung"], ["duty", "Helferplanung"], ["protokolle", "Protokolle"], ["polls", "Umfragen"], ["sponsoring", "Sponsoring"], ["season", "Spieler der Saison"]];
+  const panels = restrictedOnly ? restrictedPanels : [["overview", "Übersicht"], ["automation", "Automatisierung"], ["duty", "Helferplanung"], ["duty-templates", "Helferdienst-Sätze"], ["protokolle", "Protokolle"], ["polls", "Umfragen"], ["sponsoring", "Sponsoring"], ["season", "Spieler der Saison"]];
   if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.push(["roles", "Rollen"]);
   if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.splice(1, 0, ["memberships", "Mitgliedsanträge"]);
   if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.splice(1, 0, ["clubprofile", "Vereinsprofil"]);
@@ -4463,8 +4688,8 @@ function AdminView({
 
   return (
     <div className="px-4 pt-4 pb-24">
-      <SectionTitle title={sponsorOnly ? "Sponsorenmanager" : "Verwaltung"} eyebrow={sponsorOnly ? "Anzeigen & Kampagnen" : "Vorstand"} />
-      {!sponsorOnly && <div className="rounded-2xl p-4 mb-5 flex items-center gap-3" style={{ background: C.ink }}>
+      <SectionTitle title={restrictedOnly ? (sponsorOnly ? "Sponsorenmanager" : "Helferdienst-Organisator") : "Verwaltung"} eyebrow={restrictedOnly ? (sponsorOnly ? "Anzeigen & Kampagnen" : "Sätze & Stationen") : "Vorstand"} />
+      {!restrictedOnly && <div className="rounded-2xl p-4 mb-5 flex items-center gap-3" style={{ background: C.ink }}>
         <ShieldCheck size={22} style={{ color: C.amber }} />
         <div>
           <div className="text-white text-sm" style={{ fontFamily: "Inter", fontWeight: 700 }}>{members.length} Mitglieder</div>
@@ -4490,6 +4715,7 @@ function AdminView({
       )}
 
       {panel === "duty" && <AdminDutyPanel members={members} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} />}
+      {panel === "duty-templates" && <DutyTemplatesPanel currentUser={currentUser} />}
       {panel === "protokolle" && <ProtokollePanel members={members} protocols={protocols} setProtocols={setProtocols} clubId={currentUser.clubId} />}
       {panel === "sponsoring" && <SponsoringPanel bookings={sponsorBookings} setBookings={setSponsorBookings} stats={sponsorStats} />}
       {panel === "polls" && <PollManagerPanel polls={polls} setPolls={setPolls} clubId={currentUser.clubId} />}
@@ -4529,7 +4755,7 @@ function AdminView({
 /* ------------------------------------------------------------------ */
 /* App shell                                                            */
 /* ------------------------------------------------------------------ */
-function baseTabs(isAdminUser, canEditNews, canEditSponsors, canManageFees) {
+function baseTabs(isAdminUser, canEditNews, canEditSponsors, canManageFees, canManageDutyUser) {
   const tabs = [
     { id: "home", label: "Home", icon: Home },
     { id: "events", label: "Termine", icon: CalendarDays },
@@ -4539,7 +4765,7 @@ function baseTabs(isAdminUser, canEditNews, canEditSponsors, canManageFees) {
   ];
   if (canManageFees) tabs.splice(tabs.findIndex((tab) => tab.id === "chat"), 0, { id: "fees", label: "Beiträge", icon: Wallet });
   if (canEditNews) tabs.splice(tabs.findIndex((tab) => tab.id === "chat"), 0, { id: "redaktion", label: "Redaktion", icon: Newspaper });
-  if (isAdminUser || canEditSponsors) tabs.splice(tabs.findIndex((tab) => tab.id === "profile"), 0, { id: "admin", label: canEditSponsors && !isAdminUser ? "Sponsoren" : "Verwaltung", icon: ShieldCheck });
+  if (isAdminUser || canEditSponsors || canManageDutyUser) tabs.splice(tabs.findIndex((tab) => tab.id === "profile"), 0, { id: "admin", label: canEditSponsors && !isAdminUser ? "Sponsoren" : "Verwaltung", icon: ShieldCheck });
   return tabs;
 }
 const SUBVIEW_TITLES = { season: "Spieler der Saison", tipp: "Tippspiel", duty: "Helferplanung" };
@@ -4976,8 +5202,9 @@ export default function ClubMemberOrganisationApp() {
   const currentUserIsAdmin = isAdmin(currentUser);
   const currentUserCanEditNews = canWriteNews(currentUser);
   const currentUserCanEditSponsors = canManageSponsors(currentUser);
+  const currentUserCanManageDuty = canManageDuty(currentUser);
   const currentUserCanManageFees = canManageFees(currentUser);
-  const TABS = baseTabs(currentUserIsAdmin, currentUserCanEditNews, currentUserCanEditSponsors, currentUserCanManageFees);
+  const TABS = baseTabs(currentUserIsAdmin, currentUserCanEditNews, currentUserCanEditSponsors, currentUserCanManageFees, currentUserCanManageDuty);
 
   return (
     <div className="erg-app w-full min-h-screen flex items-center justify-center p-4" style={{ background: "#DEDAD0", fontFamily: "Inter" }}>
