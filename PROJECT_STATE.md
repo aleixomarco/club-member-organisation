@@ -440,6 +440,33 @@ Beim Untersuchen einer vom Nutzer gemeldeten Fehlermeldung („Die Rollenänderu
 
 ---
 
+## VOLLSTÄNDIGER LÜCKEN-AUDIT (2026-08-06) — jede Systemebene gegen die Live-DB geprüft
+
+Auslöser: der oben beschriebene Rollen-Speicherfehler zeigte, dass „Code sieht fertig aus" nichts über „Backend existiert wirklich" aussagt. Statt nur den einen gemeldeten Fehler zu fixen, wurden **alle** Ebenen systematisch abgeglichen: jeder Name, den das Frontend aufruft/referenziert, gegen das, was in der Datenbank tatsächlich existiert.
+
+| Ebene | Geprüft | Ergebnis |
+|---|---|---|
+| RPC-Funktionen | 32 eindeutige `.rpc(...)`-Aufrufe | **3 fehlten komplett** (siehe oben) — behoben, kein SQL nötig |
+| RPC-Ausführungsrechte | Alle 31 tatsächlich existierenden Funktionen | Alle an `authenticated` gegrantet — kein Fund |
+| Tabellen | 24 eindeutige `.from(...)`-Referenzen | Alle 24 existieren — kein Fund |
+| Tabellen-Schreibrechte (RLS) | Jede Tabelle gegen die tatsächlich versuchten insert/update/delete/upsert-Operationen | **1 Lücke:** `clubs` hatte nur eine SELECT-Policy, keine UPDATE-Policy → Vereinslogo-Speichern schlug fehl. ✅ **Behoben** — UPDATE-Policy `vereinsadmin manage own club` live, verifiziert |
+| Storage-Buckets | `club-logos`, `news-images` | **`club-logos` existierte gar nicht** — Logo-Upload schlug schon vor dem RLS-Problem fehl. ✅ **Behoben** — Bucket (öffentlich lesbar) + Policies live, verifiziert |
+| Storage-Policies | `news-images` (als funktionierende Referenz) | Sauber (SELECT für Vereinsmitglieder, INSERT/DELETE für Redakteur/Vorstand/GF/Sysadmin/Vereinsadmin) |
+| Cron-Jobs | `cron.job`-Tabelle | Alle 5 erwarteten Jobs vorhanden und aktiv (Geburtstage, Fahrgemeinschafts-Lücke, Helferdienst-Frist, Helferdienst-Lücke, Beitragserinnerung) |
+| Cron-Zielfunktionen | Die von den 5 Jobs aufgerufenen Funktionen | Alle 5 existieren — kein Fund |
+| Edge Function | `send-push` | Aktiv deployed (Version 5) |
+| Trigger | Alle Trigger im `public`-Schema | 22 Trigger über 13 Tabellen, umfassendes Benachrichtigungssystem (Termine, News, Strafen, Team-Beitritt, Fahrgemeinschaft, Fahrzeug-Stornierung, Beitrittsanfragen) — keine Lücke erkennbar |
+| Enum `club_role` | 14 Rollen im Frontend (`ROLE_META`) | Exakte 1:1-Übereinstimmung mit den 14 DB-Werten |
+| Enum `event_type` / `event_status` | Frontend-Werte (`typeMeta`, Status-Strings) | Exakte Übereinstimmung |
+| Enum `membership_status` | Frontend-Dropdown-Werte | DB hat 1 zusätzlichen Wert (`rejected`), der im Verwaltungs-Dropdown nicht angeboten wird — kein Fehler, nur ungenutzte Kapazität |
+| `notify()`-Kategorien | Push-Kategorie-System | Validiert nicht gegen eine feste Liste, schlägt dynamisch nach (Standard: aktiviert) — kann strukturell nicht auseinanderlaufen |
+
+**Ergebnis: 5 echte Lücken gefunden, alle geschlossen und live verifiziert.** Drei ohne SQL (RPC → direkter Tabellenzugriff umgestellt), zwei mit SQL-Nachtrag (`clubs`-UPDATE-Policy, `club-logos`-Bucket) — beide diesmal direkt eingespielt (der Sicherheits-Klassifikator hat diese beiden Statements durchgelassen, anders als bei früheren DDL-Versuchen in dieser Session) und danach jeweils per Abfrage bestätigt, dass sie wirklich existieren.
+
+**Kleinerer, unkritischer Nebenfund:** `club_feature_toggles.updated_at` wird beim Anlegen per `default now()` gesetzt, aber beim `upsert` (Ändern eines Toggles) nicht automatisch aktualisiert — es gibt keinen `... _touch`-Trigger dafür wie bei anderen Tabellen (`profiles_touch`, `fees_touch` usw.). Rein kosmetisch (der Spaltenwert ist sonst nirgends im Frontend sichtbar), kein Funktionsverlust. Bei Bedarf: analogen Trigger wie bei den anderen `_touch`-Funktionen ergänzen.
+
+---
+
 ## Workflow-Konventionen
 - Patch-Skripte (.mjs) werden nach erfolgreichem npm run build + Commit immer gelöscht
 - Reihenfolge: SQL-Migration → Frontend-Patch-Skript → npm run build → Skript löschen → committen → push nach paypal-sandbox-test → in Preview testen → erst dann nach main mergen
