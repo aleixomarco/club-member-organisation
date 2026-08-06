@@ -50,10 +50,10 @@ mitglied, spieler, eltern, trainer, kapitaen, teammanager, redakteur, sponsorenm
 7. Push-Benachrichtigungen — komplett fertig (siehe eigener Abschnitt unten)
 8. Neue Entität: Vereinsfahrzeuge — fertig (siehe eigener Abschnitt unten)
 9. Helferdienst-Erinnerung — **Frontend fertig, Feature bereit zum Testen** (siehe eigener Abschnitt unten)
+10. Sicherheitshinweis neues Gerät — **fertig, live verifiziert** (siehe eigener Abschnitt unten)
+11. Einzelgerät-Login-Sperre — **bestätigt: nicht gebaut**, nur Konzept (siehe eigener Abschnitt unten)
 
 Aufräumarbeiten: .gitignore für supabase/.temp/ erledigt. "Untitled query"-Tabs im Supabase-Dashboard sind rein kosmetisch, nicht angegangen (nicht nötig).
-
-**Hinweis zu Punkten 10/11 (Sicherheitshinweis neues Gerät, Einzelgerät-Login-Sperre):** In dieser Session nicht angefasst und nicht verifiziert. Es existiert bereits eine Tabelle `known_devices` in der DB, aber der Umsetzungsstand wurde hier nicht geprüft — bei Bedarf separat nachschauen (`git log`, DB-Trigger auf `auth.sessions` prüfen), bevor darauf aufgebaut wird.
 
 ---
 
@@ -264,9 +264,34 @@ grant execute on function public.claim_duty_task(uuid) to authenticated;
 - DB-Schema/RLS/Funktionssignaturen wurden direkt gegen die verlinkte Live-Datenbank per `echo "<sql>" | npx supabase db query --linked` abgefragt (funktioniert ohne Docker, im Gegensatz zu `supabase db dump`) — kein Rätselraten anhand alter Chat-Notizen nötig. Schreibender Zugriff (DDL) über denselben Weg wurde vom Sicherheits-Klassifikator blockiert (siehe oben) — das ist beabsichtigtes Verhalten, keine Fehlfunktion.
 
 ### Nächste Schritte
-1. **SQL oben im Supabase SQL-Editor einspielen** (`claim_duty_task`) — ohne das wirft der Self-Claim-Button einen Fehler.
-2. Mit echten `.env.local`-Werten (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`) lokal oder im Vercel-Preview testen: als Organisator/Vorstand einen Satz mit Stationen anlegen, als Trainer/Vorstand ein Heimspiel anlegen, Satz vorladen, Station zuweisen + Frist setzen, als Mitglied eine freie Station übernehmen/zurückziehen, als Frist erledigt markieren.
-3. Patch-Skripte `patch-duty-1.mjs`, `patch-duty-1b.mjs`, `patch-home-away.mjs` nach erfolgreichem Test + Commit löschen (Workflow-Konvention).
+1. Im Vercel-Preview für `paypal-sandbox-test` testen: als Organisator/Vorstand einen Satz mit Stationen anlegen, als Trainer/Vorstand ein Heimspiel anlegen, Satz vorladen, Station zuweisen + Frist setzen, als Mitglied eine freie Station übernehmen/zurückziehen, als Frist erledigt markieren.
+2. Nach erfolgreichem Test: nach `main` mergen.
+
+---
+
+## SICHERHEITSHINWEIS NEUES GERÄT — fertig, live verifiziert (2026-08-06)
+
+Live gegen die Datenbank geprüft (nicht nur aus alten Chat-Notizen übernommen):
+
+- Trigger `on_new_session_check_device` (AFTER INSERT auf `auth.sessions`) → Funktion `notify_new_device()`
+- Geräte-Fingerabdruck: `md5(user_agent || '|' || ip)`
+- Tabelle `known_devices(profile_id, device_hash, user_agent, first_seen_at, last_seen_at)`, Primary Key `(profile_id, device_hash)` — passt exakt zum `on conflict` im Trigger, kein Fehlerrisiko beim Upsert
+- Bei neuem Gerät: `notify(member.id, 'security', 'Neues Gerät angemeldet', ...)` für **alle aktiven Mitgliedschaften** des Profils (ein Profil kann in mehreren Vereinen Mitglied sein) — Kategorie `security`, in `NOTIFICATION_OPTIONS` im Frontend bereits vorhanden und togglebar
+
+Kein Code-/DB-Handlungsbedarf, funktioniert wie ursprünglich konzipiert.
+
+---
+
+## EINZELGERÄT-LOGIN-SPERRE — bestätigt: nicht gebaut, nur Konzept
+
+Live gegen die Datenbank geprüft: keine Funktionen, Tabellen oder Trigger mit Bezug zu Session-Sperren, Geräte-Bestätigung oder Fremd-Logout gefunden. Der Stand entspricht exakt der ursprünglichen Einschätzung — bewusst vertagt, weil ein Fehler darin ALLE Nutzer aussperren könnte.
+
+**Konzept (falls später umgesetzt):**
+- Login auf einem zweiten Gerät wird standardmäßig blockiert ("Dein Account ist noch mit einem anderen Gerät verbunden.")
+- Notfall-Button "Trotzdem hier anmelden" → E-Mail-Bestätigung → altes Gerät wird automatisch abgemeldet
+- Braucht: eigenen E-Mail-Versand (aktuell nur Supabases Standard-Mailer mit niedrigem Rate-Limit), Session-Check bei praktisch jeder App-Aktion (nicht nur beim Login), gründliches Testen mit zwei echten Geräten parallel
+
+**Empfehlung:** als eigene, fokussierte Session angehen, nicht nebenbei — höheres Blast-Radius-Risiko als alle anderen Punkte in diesem Dokument, da es den Login-Mechanismus selbst verändert statt nur neue, isolierte Funktionen hinzuzufügen.
 
 ---
 
