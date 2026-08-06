@@ -833,8 +833,16 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
 /* Dashboard                                                            */
 /* ------------------------------------------------------------------ */
 function Scoreboard({ nextEvent, goTo }) {
-  const { d, h, m } = useCountdown(nextEvent.date);
+  const { d, h, m } = useCountdown(nextEvent ? nextEvent.date : "2099-01-01T00:00:00");
   const digit = (n) => String(n).padStart(2, "0");
+  if (!nextEvent) {
+    return (
+      <div className="rounded-2xl p-4 mb-5 flex items-center gap-2" style={{ background: C.paperDim }}>
+        <CalendarDays size={16} style={{ color: C.textDim }} />
+        <span className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>Keine Termine zur Zeit geplant</span>
+      </div>
+    );
+  }
   return (
     <div className="rounded-2xl p-4 mb-5 relative overflow-hidden cursor-pointer" style={{ background: `linear-gradient(160deg, ${C.ink} 0%, ${C.asphalt} 100%)` }} onClick={goTo}>
       <div className="absolute inset-0 opacity-[0.06] pointer-events-none" style={{ backgroundImage: `repeating-linear-gradient(115deg, ${C.white} 0px, ${C.white} 2px, transparent 2px, transparent 26px)` }} />
@@ -891,7 +899,15 @@ function NextTrainingCard({ user }) {
   const isPlayer = user.roles.includes("spieler");
   const info = isPlayer ? getNextTraining(user) : null;
   const { d, h, m } = useCountdown(info ? info.event.date : "2099-01-01T00:00:00");
-  if (!isPlayer || !info) return null;
+  if (!isPlayer) return null;
+  if (!info) {
+    return (
+      <div className="rounded-2xl p-4 mb-5 flex items-center gap-2" style={{ background: C.paperDim }}>
+        <CalendarDays size={16} style={{ color: C.textDim }} />
+        <span className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>Keine Termine zur Zeit geplant</span>
+      </div>
+    );
+  }
   const digit = (n) => String(n).padStart(2, "0");
   return (
     <div className="rounded-2xl p-4 mb-5" style={{ background: `linear-gradient(160deg, ${C.green}, #237A44)` }}>
@@ -957,8 +973,13 @@ function Dashboard({ user, members, feePaid, channels, dutyPlan, seasonVotes, po
 
   return (
     <div className="px-4 pt-4 pb-24">
-      <div className="mb-1" style={{ fontFamily: "Inter", color: C.textDim, fontSize: 13 }}>Willkommen zurück,</div>
-      <div className="mb-4" style={{ fontFamily: "Oswald", fontWeight: 700, fontSize: 24, color: C.ink }}>{user.name.split(" ")[0]} 👋</div>
+      <div className="flex items-start justify-between mb-4">
+        <div>
+          <div className="mb-1" style={{ fontFamily: "Inter", color: C.textDim, fontSize: 13 }}>Willkommen zurück,</div>
+          <div style={{ fontFamily: "Oswald", fontWeight: 700, fontSize: 24, color: C.ink }}>{user.name.split(" ")[0]} 👋</div>
+        </div>
+        <ClubLogo club={currentClub} size={44} rounded={12} />
+      </div>
 
       <SponsorSlot slotKey="dashboard_top" bookings={sponsorBookings} onImpression={onSponsorImpression} onClick={onSponsorClick} />
 
