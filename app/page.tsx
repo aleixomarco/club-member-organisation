@@ -43,6 +43,50 @@ button:active { transform: scale(0.97); }
 
 const TEAMS = ["Herren 1", "Herren 2", "Damen 1", "U15", "U11", "Eltern / Angehörige"];
 const DEMO_CLUB_ID = "00000000-0000-4000-8000-000000000001";
+
+/* Sportartspezifisches Wording: dieselben zwei Bausteine (Helferdienst, Vereinsfahrzeuge) wie bei
+   Rollhockey, nur pro Sportart anders benannt und mit passenden Stationen-Vorschlägen. */
+const SPORT_CONFIG = {
+  rollhockey: {
+    label: "Rollhockey", homeEventLabel: "Heimspiel",
+    dutyTabLabel: "Helferdienst", dutyStationExamples: "z. B. Theke, Kasse, Grill, Zeitnahme",
+    vehicleTabLabel: "Vereinsfahrzeuge", vehicleIntro: "Alle Vereinsfahrzeuge und ihre Buchungen für Auswärtsfahrten.",
+  },
+  fussball: {
+    label: "Fußball", homeEventLabel: "Heimspiel",
+    dutyTabLabel: "Kioskdienst", dutyStationExamples: "z. B. Kiosk, Kasse, Grill, Ordnungsdienst, Parkplatzeinweisung",
+    vehicleTabLabel: "Mannschaftsbus", vehicleIntro: "Der Mannschaftsbus und seine Buchungen für Auswärtsspiele.",
+  },
+  tennis: {
+    label: "Tennis", homeEventLabel: "Heim-Medenspiel",
+    dutyTabLabel: "Vereinsheimdienst", dutyStationExamples: "z. B. Kuchenbuffet, Getränke, Platzherrichtung, Aufbau",
+    vehicleTabLabel: "Vereinsbus", vehicleIntro: "Der Vereinsbus und seine Buchungen für Auswärts-Medenspiele.",
+  },
+  schwimmen: {
+    label: "Schwimmen", homeEventLabel: "Heimwettkampf",
+    dutyTabLabel: "Wettkampfhelfer", dutyStationExamples: "z. B. Zeitnahme, Kampfrichter, Startblock-Aufsicht, Kiosk",
+    vehicleTabLabel: "Vereinsbus", vehicleIntro: "Der Vereinsbus und seine Buchungen für Auswärtswettkämpfe.",
+  },
+  ringen: {
+    label: "Ringen", homeEventLabel: "Heimkampf",
+    dutyTabLabel: "Kampfrichter & Helfer", dutyStationExamples: "z. B. Kampftisch, Zeitnahme, Verpflegung, Auf-/Abbau der Matten",
+    vehicleTabLabel: "Vereinsbus", vehicleIntro: "Der Vereinsbus und seine Buchungen für Auswärtskämpfe.",
+  },
+};
+const SPORTS = Object.keys(SPORT_CONFIG);
+const sportConfig = (sport) => SPORT_CONFIG[sport] || SPORT_CONFIG.rollhockey;
+
+/* Club-Feature-Toggles: nach der Vereinsregistrierung per Ja/Nein abgefragt, später im
+   Vereinsadmin-Reiter "Funktionen" änderbar. Default (kein Eintrag in club_feature_toggles) = an. */
+const CLUB_FEATURES = [
+  { key: "duty_roster", label: (sport) => sportConfig(sport).dutyTabLabel,
+    question: (sport) => `Möchtet ihr „${sportConfig(sport).dutyTabLabel}" nutzen, um Helfer:innen für ${sportConfig(sport).homeEventLabel}e einzuteilen (${sportConfig(sport).dutyStationExamples})?`,
+    settingsDesc: (sport) => `Helferdienst-Sätze anlegen und Stationen für ${sportConfig(sport).homeEventLabel}e zuweisen.` },
+  { key: "vehicle_booking", label: (sport) => sportConfig(sport).vehicleTabLabel,
+    question: (sport) => `Hat euer Verein ein Fahrzeug (${sportConfig(sport).vehicleTabLabel}), das über die App gebucht werden soll?`,
+    settingsDesc: () => "Kalender & Buchung für Vereinsfahrzeuge." },
+];
+const DEFAULT_CLUB_FEATURES = Object.fromEntries(CLUB_FEATURES.map((f) => [f.key, true]));
 const STATION_CAP = 2;
 const COUNTRY_CODES = "AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS XK YE YT ZA ZM ZW".split(" ");
 const NOTIFICATION_OPTIONS = [
@@ -575,7 +619,7 @@ function ClubSelectScreen({ clubs, onSelect, goNewClub }) {
 }
 
 function NewClubScreen({ onCreate, goBack }) {
-  const [form, setForm] = useState({ name: "", shortName: "", city: "", registerNumber: "", currency: "EUR", referralCode: "", logoDataUrl: "" });
+  const [form, setForm] = useState({ name: "", shortName: "", city: "", registerNumber: "", currency: "EUR", referralCode: "", logoDataUrl: "", sport: "rollhockey" });
   const [error, setError] = useState("");
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
@@ -589,7 +633,7 @@ function NewClubScreen({ onCreate, goBack }) {
       city: form.city.trim() || "—",
       foundedYear: new Date().getFullYear(),
       registerNumber: form.registerNumber.trim(), currency: form.currency, referralCode: form.referralCode.trim(),
-      logoDataUrl: form.logoDataUrl, pendingRegistration: true,
+      logoDataUrl: form.logoDataUrl, pendingRegistration: true, sport: form.sport,
     });
   };
 
@@ -600,6 +644,12 @@ function NewClubScreen({ onCreate, goBack }) {
       <form onSubmit={submit}>
         <Field icon={Users} placeholder="Vereinsname, z. B. TuS Beispieldorf" value={form.name} onChange={set("name")} />
         <Field icon={ShieldCheck} placeholder="Kurzname, z. B. TUSB" value={form.shortName} onChange={set("shortName")} maxLength={6} />
+        <div className="mb-3">
+          <div className="text-[10px] font-bold mb-1.5 px-0.5" style={{ color: C.textDim }}>SPORTART</div>
+          <select value={form.sport} onChange={set("sport")} className="w-full px-3.5 py-3 rounded-xl text-sm outline-none" style={{ background: C.paperDim, color: C.ink }}>
+            {SPORTS.map((s) => <option key={s} value={s}>{sportConfig(s).label}</option>)}
+          </select>
+        </div>
         <Field icon={MapPin} placeholder="Stadt" value={form.city} onChange={set("city")} />
         <Field icon={Building2} placeholder="Vereinsregisternummer" value={form.registerNumber} onChange={set("registerNumber")} />
         <select value={form.currency} onChange={set("currency")} className="w-full px-3.5 py-3 rounded-xl text-sm mb-3 outline-none" style={{background:C.paperDim,color:C.ink}}><option value="EUR">Euro (€)</option><option value="CHF">Schweizer Franken (CHF)</option><option value="GBP">Britisches Pfund (£)</option><option value="USD">US-Dollar ($)</option><option value="DKK">Dänische Krone</option><option value="NOK">Norwegische Krone</option><option value="SEK">Schwedische Krone</option><option value="PLN">Polnischer Złoty</option><option value="CZK">Tschechische Krone</option></select>
@@ -872,7 +922,8 @@ function NextTrainingCard({ user }) {
     </div>
   );
 }
-function Dashboard({ user, members, feePaid, channels, dutyPlan, seasonVotes, polls, setPolls, sponsorBookings, onSponsorImpression, onSponsorClick, goEvents, goSeason, goTipp, goDuty, goNews, goTasks, goVehicles }) {
+function Dashboard({ user, members, feePaid, channels, dutyPlan, seasonVotes, polls, setPolls, sponsorBookings, onSponsorImpression, onSponsorClick, goEvents, goSeason, goTipp, goDuty, goNews, goTasks, goVehicles, currentClub, featureEnabled }) {
+  const sport = currentClub?.sport || "rollhockey";
   const nextEvent = EVENTS.filter((e) => e.type === "spiel" && e.team === user.team && new Date(e.date) > new Date()).sort((a,b)=>new Date(a.date)-new Date(b.date))[0] || getNextMatch();
   const newsMsgs = (channels.find((c) => c.id === "news")?.messages || []).slice(-2).reverse();
 
@@ -934,7 +985,7 @@ function Dashboard({ user, members, feePaid, channels, dutyPlan, seasonVotes, po
           <FeatureRow icon={Target} title="Tippspiel" subtitle={tippSubtitle} onClick={goTipp} accent={C.red} />
           <FeatureRow icon={ClipboardList} title="Helferplanung" subtitle={dutySubtitle} onClick={goDuty} accent={C.green} />
           <FeatureRow icon={ClipboardList} title="Aufgaben" subtitle="Für den Verein mithelfen" onClick={goTasks} accent={C.red} />
-          <FeatureRow icon={Car} title="Vereinsfahrzeuge" subtitle="Kalender & Buchung" onClick={goVehicles} accent={C.amber} />
+          {featureEnabled("vehicle_booking") && <FeatureRow icon={Car} title={sportConfig(sport).vehicleTabLabel} subtitle="Kalender & Buchung" onClick={goVehicles} accent={C.amber} />}
         </div>
       </DashboardSection>
 
@@ -1117,7 +1168,7 @@ function CarpoolSection({ ev, currentUser }) {
   );
 }
 
-function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser, dutyPlan, setDutyPlan, canCancelTraining, onCancelTraining, onDeleteTraining }) {
+function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser, dutyPlan, setDutyPlan, canCancelTraining, onCancelTraining, onDeleteTraining, currentClub, featureEnabled }) {
   const [open, setOpen] = useState(false);
   const meta = typeMeta[ev.type];
 
@@ -1164,13 +1215,13 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
               <HelperSlots ev={ev} members={members} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} eligible={helperEligible} />
             </div>
           )}
-          {eventIsReal && ev.type === "spiel" && ev.home === true && <DutyTasksSection ev={ev} currentUser={currentUser} />}
+          {eventIsReal && ev.type === "spiel" && ev.home === true && featureEnabled("duty_roster") && <DutyTasksSection ev={ev} currentUser={currentUser} sport={currentClub?.sport} />}
         </div>
       )}
     </div>
   );
 }
-function EventsView({ currentUser, members, events, setEvents, carpools, setCarpools, dutyPlan, setDutyPlan, sponsorBookings, onSponsorImpression, onSponsorClick, focusRequest, onFocusApplied }) {
+function EventsView({ currentUser, members, events, setEvents, carpools, setCarpools, dutyPlan, setDutyPlan, sponsorBookings, onSponsorImpression, onSponsorClick, focusRequest, onFocusApplied, currentClub, featureEnabled }) {
   const [filter, setFilter] = useState("alle");
   const [showCreate, setShowCreate] = useState(false);
   const [eventDraft, setEventDraft] = useState({ type: "training", team: "", title: "", date: "", location: "", desc: "", recurring: false, weekdays: [], startTime: "18:00", endTime: "19:30", rangeStart: "", rangeEnd: "" });
@@ -1333,6 +1384,7 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
         <EventCard key={ev.id} ev={ev}
           carpoolOn={!!myCarpools[ev.id]} onCarpool={handleCarpool}
           currentUser={currentUser} members={members} isAdminUser={isAdminUser}
+          currentClub={currentClub} featureEnabled={featureEnabled}
           dutyPlan={dutyPlan} setDutyPlan={setDutyPlan}
           canCancelTraining={canCancelTraining} onCancelTraining={cancelTraining} onDeleteTraining={deleteTraining}
         />
@@ -2580,7 +2632,8 @@ function TasksView({ currentUser, members }) {
   );
 }
 
-function VehiclesView({ currentUser }) {
+function VehiclesView({ currentUser, currentClub }) {
+  const cfg = sportConfig(currentClub?.sport);
   const databaseMembership = !!supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(currentUser.id));
   const canManageFleet = currentUser.roles.some((r) => ["vorstand", "vereinsadmin", "geschaeftsfuehrung"].includes(r));
   const canBook = canManageFleet || currentUser.roles.some((r) => ["trainer", "teammanager", "kapitaen", "finanzmanager"].includes(r));
@@ -2733,8 +2786,8 @@ function VehiclesView({ currentUser }) {
   if (!databaseMembership) return <div className="px-4 pt-4 pb-24"><div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Fahrzeugbuchungen sind nur mit einem echten Vereinskonto verfügbar.</div></div>;
   return (
     <div className="px-4 pt-4 pb-24">
-      <SectionTitle eyebrow="Verein" title="Vereinsfahrzeuge" right={canManageFleet ? <button onClick={() => setShowAddVehicle((v) => !v)} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showAddVehicle ? "Schließen" : "+ Fahrzeug"}</button> : null}/>
-      <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>Alle Vereinsfahrzeuge und ihre Buchungen. Buchen können Vorstand, Vereinsadmin, Trainer, Teammanager, Kapitäne, Finanzmanager und Geschäftsführung.</div>
+      <SectionTitle eyebrow="Verein" title={cfg.vehicleTabLabel} right={canManageFleet ? <button onClick={() => setShowAddVehicle((v) => !v)} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showAddVehicle ? "Schließen" : "+ Fahrzeug"}</button> : null}/>
+      <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>{cfg.vehicleIntro} Buchen können Vorstand, Vereinsadmin, Trainer, Teammanager, Kapitäne, Finanzmanager und Geschäftsführung.</div>
       {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: "#FDECEC", color: C.red }}>{message}</div>}
       {showAddVehicle && (
         <div className="rounded-2xl p-4 mb-4" style={{ background: C.white, border: `1px solid ${C.line}` }}>
@@ -2871,7 +2924,8 @@ function VehiclesView({ currentUser }) {
   );
 }
 
-function DutyTasksSection({ ev, currentUser }) {
+function DutyTasksSection({ ev, currentUser, sport }) {
+  const cfg = sportConfig(sport);
   const [tasks, setTasks] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [duMembers, setDutyMembers] = useState([]);
@@ -2927,7 +2981,7 @@ function DutyTasksSection({ ev, currentUser }) {
   const assignTask = async (taskId, membershipId) => { const { error } = await supabase.from("duty_tasks").update({ assignee_membership_id: membershipId || null }).eq("id", taskId); if (!error) await loadTasks(); };
   const setDueDate = async (taskId, date) => { const { error } = await supabase.from("duty_tasks").update({ due_date: date || null }).eq("id", taskId); if (!error) await loadTasks(); };
   const toggleDone = async (task) => { const { error } = await supabase.from("duty_tasks").update({ done: !task.done }).eq("id", task.id); if (!error) await loadTasks(); };
-  const deleteTask = async (taskId) => { if (!window.confirm("Diese Helferdienst-Station wirklich löschen?")) return; const { error } = await supabase.from("duty_tasks").delete().eq("id", taskId); if (!error) await loadTasks(); };
+  const deleteTask = async (taskId) => { if (!window.confirm("Diese Station wirklich löschen?")) return; const { error } = await supabase.from("duty_tasks").delete().eq("id", taskId); if (!error) await loadTasks(); };
   const claimTask = async (taskId) => {
     setMessage("");
     const { error } = await supabase.rpc("claim_duty_task", { target_task: taskId });
@@ -2936,11 +2990,11 @@ function DutyTasksSection({ ev, currentUser }) {
   };
 
   if (!supabase) return null;
-  if (loading) return <div className="mt-3 text-xs" style={{ color: C.textDim }}>Helferdienst wird geladen …</div>;
+  if (loading) return <div className="mt-3 text-xs" style={{ color: C.textDim }}>{cfg.dutyTabLabel} wird geladen …</div>;
 
   return (
     <div className="mt-3">
-      <div className="text-xs font-semibold mb-2" style={{ fontFamily: "Inter", color: C.ink }}>Helferdienst</div>
+      <div className="text-xs font-semibold mb-2" style={{ fontFamily: "Inter", color: C.ink }}>{cfg.dutyTabLabel}</div>
       {canManage && templates.length > 0 && (
         <div className="flex gap-2 mb-2.5">
           <select value={selectedTemplate} onChange={(e) => setSelectedTemplate(e.target.value)} className="flex-1 px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}>
@@ -2951,7 +3005,7 @@ function DutyTasksSection({ ev, currentUser }) {
         </div>
       )}
       {tasks.length === 0 ? (
-        <div className="text-[11px] rounded-xl p-2.5" style={{ background: C.paperDim, color: C.textDim }}>Noch keine Helferdienst-Stationen für diesen Termin.</div>
+        <div className="text-[11px] rounded-xl p-2.5" style={{ background: C.paperDim, color: C.textDim }}>Noch keine Stationen für diesen {cfg.homeEventLabel} eingetragen.</div>
       ) : (
         <div className="flex flex-col gap-2">
           {tasks.map((task) => (
@@ -2988,7 +3042,8 @@ function DutyTasksSection({ ev, currentUser }) {
   );
 }
 
-function DutyTemplatesPanel({ currentUser }) {
+function DutyTemplatesPanel({ currentUser, sport }) {
+  const cfg = sportConfig(sport);
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newName, setNewName] = useState("");
@@ -3036,22 +3091,22 @@ function DutyTemplatesPanel({ currentUser }) {
   };
   const removeItem = async (itemId) => { const { error } = await supabase.from("duty_task_template_items").delete().eq("id", itemId); if (!error) await loadTemplates(); };
 
-  if (!supabase) return <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Helferdienst-Sätze sind nur mit einem echten Vereinskonto verfügbar.</div>;
-  if (loading) return <div className="text-xs py-4" style={{ color: C.textDim }}>Helferdienst-Sätze werden geladen …</div>;
+  if (!supabase) return <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{cfg.dutyTabLabel}-Sätze sind nur mit einem echten Vereinskonto verfügbar.</div>;
+  if (loading) return <div className="text-xs py-4" style={{ color: C.textDim }}>{cfg.dutyTabLabel}-Sätze werden geladen …</div>;
 
   return (
     <div>
-      <SectionTitle eyebrow="Helferdienst" title="Sätze & Stationen" />
-      <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>Wiederverwendbare Vorlagen mit Stationen, die beim Anlegen eines Heimspiels vorgeladen werden können.</div>
+      <SectionTitle eyebrow={cfg.dutyTabLabel} title="Sätze & Stationen" />
+      <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>Wiederverwendbare Vorlagen mit Stationen, die beim Anlegen eines {cfg.homeEventLabel}s vorgeladen werden können.</div>
       {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: messageOk ? "#E7F3EC" : "#FDECEC", color: messageOk ? C.green : C.red }}>{message}</div>}
       <div className="rounded-2xl p-3.5 mb-4" style={{ background: C.paperDim }}>
         <div className="flex gap-2">
-          <input value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={80} placeholder="Name, z. B. Standard Heimspieltag" className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.white, color: C.ink }}/>
+          <input value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={80} placeholder={`Name, z. B. Standard ${cfg.homeEventLabel}tag`} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.white, color: C.ink }}/>
           <button onClick={createTemplate} disabled={!newName.trim()} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: newName.trim() ? C.ink : C.line, color: C.white }}>Anlegen</button>
         </div>
       </div>
       {templates.length === 0 ? (
-        <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Noch keine Helferdienst-Sätze angelegt.</div>
+        <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Noch keine Sätze angelegt.</div>
       ) : templates.map((t) => {
         const open = expandedId === t.id;
         return (
@@ -3072,7 +3127,7 @@ function DutyTemplatesPanel({ currentUser }) {
                   </div>
                 ))}
                 <div className="flex gap-2 mt-2">
-                  <input value={newItemTitles[t.id] || ""} onChange={(e) => setNewItemTitles((all) => ({ ...all, [t.id]: e.target.value }))} maxLength={60} placeholder="Station, z. B. Theke" className="flex-1 px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}/>
+                  <input value={newItemTitles[t.id] || ""} onChange={(e) => setNewItemTitles((all) => ({ ...all, [t.id]: e.target.value }))} maxLength={60} placeholder={`Station, ${cfg.dutyStationExamples}`} className="flex-1 px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}/>
                   <button onClick={() => addItem(t.id)} disabled={!(newItemTitles[t.id] || "").trim()} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: (newItemTitles[t.id] || "").trim() ? C.ink : C.line, color: C.white }}>+ Station</button>
                 </div>
                 <button onClick={() => deleteTemplate(t.id)} className="w-full mt-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.paperDim, color: C.red }}>Satz löschen</button>
@@ -4734,36 +4789,111 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
   </div>;
 }
 
+function ClubFeatureOnboarding({ club, onDone }) {
+  const [step, setStep] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const sport = club?.sport || "rollhockey";
+  const cfg = sportConfig(sport);
+  const feature = CLUB_FEATURES[step];
+  const answersRef = useRef({});
+  const finish = async (finalAnswers) => {
+    setSaving(true);
+    if (supabase && club?.id) {
+      await supabase.from("club_feature_toggles").upsert(
+        CLUB_FEATURES.map((f) => ({ club_id: club.id, feature_key: f.key, enabled: finalAnswers[f.key] !== false }))
+      );
+    }
+    setSaving(false);
+    onDone();
+  };
+  const answer = (value) => {
+    answersRef.current = { ...answersRef.current, [feature.key]: value };
+    if (step + 1 < CLUB_FEATURES.length) { setStep(step + 1); return; }
+    finish(answersRef.current);
+  };
+  return (
+    <div className="flex flex-col h-full items-center justify-center p-5" style={{ background: C.paper }}>
+      <div className="w-full max-w-sm">
+        <div className="text-[10px] uppercase tracking-widest font-bold mb-1" style={{ color: C.red, fontFamily: "Inter" }}>Verein einrichten · {cfg.label}</div>
+        <div className="text-xl mb-1" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>Welche Funktionen braucht ihr?</div>
+        <div className="text-xs mb-6" style={{ color: C.textDim, fontFamily: "Inter" }}>Frage {step + 1} von {CLUB_FEATURES.length} — lässt sich jederzeit in den Vereinseinstellungen unter „Funktionen" ändern.</div>
+        <div className="rounded-2xl p-5 mb-5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+          <div className="text-sm font-bold mb-2" style={{ color: C.ink, fontFamily: "Inter" }}>{feature.label(sport)}</div>
+          <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{feature.question(sport)}</div>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={() => answer(false)} disabled={saving} className="flex-1 py-3 rounded-xl text-sm font-bold" style={{ background: C.paperDim, color: C.textDim, opacity: saving ? .6 : 1 }}>Nein</button>
+          <button onClick={() => answer(true)} disabled={saving} className="flex-1 py-3 rounded-xl text-sm font-bold" style={{ background: C.ink, color: C.white, opacity: saving ? .6 : 1 }}>{saving ? "…" : "Ja"}</button>
+        </div>
+        <div className="flex gap-1.5 justify-center mt-5">
+          {CLUB_FEATURES.map((f, i) => <span key={f.key} className="h-1.5 rounded-full" style={{ width: i === step ? 20 : 8, background: i <= step ? C.red : C.line, transition: "width .2s" }}/>)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ClubFeatureSettingsPanel({ currentClub, clubFeatures, onFeaturesChanged }) {
+  const sport = currentClub?.sport || "rollhockey";
+  const [saving, setSaving] = useState("");
+  const [message, setMessage] = useState("");
+  const toggle = async (key, value) => {
+    if (!supabase || !currentClub?.id) return;
+    setSaving(key); setMessage("");
+    const { error } = await supabase.from("club_feature_toggles").upsert({ club_id: currentClub.id, feature_key: key, enabled: value });
+    setSaving("");
+    if (error) { setMessage("Konnte nicht gespeichert werden."); return; }
+    onFeaturesChanged();
+  };
+  return (
+    <div>
+      <SectionTitle eyebrow={sportConfig(sport).label} title="Funktionen" />
+      <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>Welche Vereinsfunktionen aktiv sind. Deaktivierte Funktionen werden für alle Mitglieder ausgeblendet.</div>
+      {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: "#FDECEC", color: C.red }}>{message}</div>}
+      <div className="space-y-3">
+        {CLUB_FEATURES.map((f) => {
+          const on = clubFeatures[f.key] !== false;
+          return <ToggleCard key={f.key} title={f.label(sport)} desc={f.settingsDesc(sport)} value={on} onChange={(updater) => saving !== f.key && toggle(f.key, updater(on))} />;
+        })}
+      </div>
+    </div>
+  );
+}
+
 function AdminView({
   members, setMembers, feePaid, setFeePaid, dutyPlan, setDutyPlan, seasonVotes, currentUser,
   channels, setChannels, maintenanceMode, setMaintenanceMode, onResetDemo,
   protocols, setProtocols, remindersSent, setRemindersSent,
   welcomeAutomation, setWelcomeAutomation, billingAutomation, setBillingAutomation,
   sponsorBookings, setSponsorBookings, sponsorStats, polls, setPolls, tippResults, onSaveTippResult,
-  currentClub, onClubLogoUpdated,
+  currentClub, onClubLogoUpdated, clubFeatures, onClubFeaturesChanged,
 }) {
+  const canManageClubFeatures = currentUser.roles.some((role) => ["vereinsadmin", "vorstand", "sysadmin"].includes(role));
+  const dutyFeatureOn = clubFeatures?.duty_roster !== false;
+  const dutyCfg = sportConfig(currentClub?.sport);
   const canSponsor = canManageSponsors(currentUser);
-  const canDutyTemplates = !isAdmin(currentUser) && currentUser.roles.includes("organisator");
+  const canDutyTemplates = dutyFeatureOn && !isAdmin(currentUser) && currentUser.roles.includes("organisator");
   const sponsorOnly = !isAdmin(currentUser) && canSponsor && !canDutyTemplates;
   const restrictedOnly = !isAdmin(currentUser) && (canSponsor || canDutyTemplates);
   const canSeeFees = canManageFees(currentUser);
   const restrictedPanels = [
     ...(canSponsor ? [["sponsoring", "Sponsoring"]] : []),
-    ...(canDutyTemplates ? [["duty-templates", "Helferdienst-Sätze"]] : []),
+    ...(canDutyTemplates ? [["duty-templates", `${dutyCfg.dutyTabLabel}-Sätze`]] : []),
     ["polls", "Umfragen"],
   ];
   const [panel, setPanel] = useState(restrictedOnly ? restrictedPanels[0][0] : "overview");
   const openCount = members.filter((m) => !feePaid[m.id]).length;
-  const panels = restrictedOnly ? restrictedPanels : [["overview", "Übersicht"], ["automation", "Automatisierung"], ["duty", "Helferplanung"], ["duty-templates", "Helferdienst-Sätze"], ["protokolle", "Protokolle"], ["polls", "Umfragen"], ["sponsoring", "Sponsoring"], ["season", "Spieler der Saison"]];
+  const panels = restrictedOnly ? restrictedPanels : [["overview", "Übersicht"], ["automation", "Automatisierung"], ["duty", "Helferplanung"], ...(dutyFeatureOn ? [["duty-templates", `${dutyCfg.dutyTabLabel}-Sätze`]] : []), ["protokolle", "Protokolle"], ["polls", "Umfragen"], ["sponsoring", "Sponsoring"], ["season", "Spieler der Saison"]];
   if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.push(["roles", "Rollen"]);
   if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.splice(1, 0, ["memberships", "Mitgliedsanträge"]);
   if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.splice(1, 0, ["clubprofile", "Vereinsprofil"]);
+  if (canManageClubFeatures) panels.splice(1, 0, ["functions", "Funktionen"]);
   if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.splice(1, 0, ["results", "Spielergebnisse"]);
   if (isSysAdmin(currentUser)) panels.push(["families", "Familienprofile"], ["system", "System"]);
 
   return (
     <div className="px-4 pt-4 pb-24">
-      <SectionTitle title={restrictedOnly ? (sponsorOnly ? "Sponsorenmanager" : "Helferdienst-Organisator") : "Verwaltung"} eyebrow={restrictedOnly ? (sponsorOnly ? "Anzeigen & Kampagnen" : "Sätze & Stationen") : "Vorstand"} />
+      <SectionTitle title={restrictedOnly ? (sponsorOnly ? "Sponsorenmanager" : `${dutyCfg.dutyTabLabel}-Organisator`) : "Verwaltung"} eyebrow={restrictedOnly ? (sponsorOnly ? "Anzeigen & Kampagnen" : "Sätze & Stationen") : "Vorstand"} />
       {!restrictedOnly && <div className="rounded-2xl p-4 mb-5 flex items-center gap-3" style={{ background: C.ink }}>
         <ShieldCheck size={22} style={{ color: C.amber }} />
         <div>
@@ -4790,7 +4920,8 @@ function AdminView({
       )}
 
       {panel === "duty" && <AdminDutyPanel members={members} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} />}
-      {panel === "duty-templates" && <DutyTemplatesPanel currentUser={currentUser} />}
+      {panel === "duty-templates" && <DutyTemplatesPanel currentUser={currentUser} sport={currentClub?.sport} />}
+      {panel === "functions" && canManageClubFeatures && <ClubFeatureSettingsPanel currentClub={currentClub} clubFeatures={clubFeatures} onFeaturesChanged={onClubFeaturesChanged} />}
       {panel === "protokolle" && <ProtokollePanel members={members} protocols={protocols} setProtocols={setProtocols} clubId={currentUser.clubId} />}
       {panel === "sponsoring" && <SponsoringPanel bookings={sponsorBookings} setBookings={setSponsorBookings} stats={sponsorStats} />}
       {panel === "polls" && <PollManagerPanel polls={polls} setPolls={setPolls} clubId={currentUser.clubId} />}
@@ -4848,6 +4979,8 @@ const SUBVIEW_TITLES = { season: "Spieler der Saison", tipp: "Tippspiel", duty: 
 export default function ClubMemberOrganisationApp() {
   const [clubs, setClubs] = useState(INITIAL_CLUBS);
   const [selectedClubId, setSelectedClubId] = useState(null);
+  const [clubFeatures, setClubFeatures] = useState(DEFAULT_CLUB_FEATURES);
+  const [featureOnboardingClubId, setFeatureOnboardingClubId] = useState(null);
   const [members, setMembers] = useState(INITIAL_MEMBERS);
   const [currentUserId, setCurrentUserId] = useState(null);
   const [authScreen, setAuthScreen] = useState("club"); // club | newclub | login | register
@@ -4899,7 +5032,7 @@ export default function ClubMemberOrganisationApp() {
 
   useEffect(() => {
     if (!supabase) return;
-    supabase.from("clubs").select("id,name,short_name,city,founded_year,logo_url,register_number,currency,referral_code,referral_credit_months").order("name").then(({ data }) => {
+    supabase.from("clubs").select("id,name,short_name,city,founded_year,logo_url,register_number,currency,referral_code,referral_credit_months,sport").order("name").then(({ data }) => {
       if (data?.length) setClubs(data.map((club) => ({
         id: club.id,
         name: club.name,
@@ -4908,6 +5041,7 @@ export default function ClubMemberOrganisationApp() {
         foundedYear: club.founded_year || new Date().getFullYear(),
         logoUrl: club.logo_url || null,
         registerNumber: club.register_number || "", currency: club.currency || "EUR", referralCode: club.referral_code || "", referralCreditMonths: club.referral_credit_months || 0,
+        sport: club.sport || "rollhockey",
       })));
     });
   }, []);
@@ -4949,6 +5083,14 @@ export default function ClubMemberOrganisationApp() {
   }, [currentUser?.id, currentUser?.clubId]);
   const currentClub = clubs.find((c) => c.id === selectedClubId) || clubs.find((c) => c.id === currentUser?.clubId);
   const clubMembers = members.filter((m) => m.clubId === selectedClubId);
+  const featureEnabled = (key) => clubFeatures[key] !== false;
+
+  const loadClubFeatures = useCallback(async () => {
+    if (!supabase || !currentClub?.id) { setClubFeatures(DEFAULT_CLUB_FEATURES); return; }
+    const { data } = await supabase.from("club_feature_toggles").select("feature_key,enabled").eq("club_id", currentClub.id);
+    setClubFeatures({ ...DEFAULT_CLUB_FEATURES, ...Object.fromEntries((data || []).map((row) => [row.feature_key, row.enabled])) });
+  }, [currentClub?.id]);
+  useEffect(() => { loadClubFeatures(); }, [loadClubFeatures]);
 
   useEffect(() => {
     if (!supabase || !adminStateLoaded || !selectedClubId || !currentUser || (!isAdmin(currentUser) && !canManageSponsors(currentUser))) return;
@@ -5104,13 +5246,14 @@ export default function ClubMemberOrganisationApp() {
         referral: pending.referral_code || null,
         member_name: account.user_metadata?.full_name || account.email?.split("@")[0] || "Mitglied",
         member_birthdate: account.user_metadata?.birthdate || null,
+        club_sport: pending.sport || "rollhockey",
       });
       if (error || cancelled) return;
       const newClubId = registration?.[0]?.club_id;
       await supabase.auth.updateUser({ data: { ...account.user_metadata, pending_new_club: null } });
       if (!newClubId || cancelled) return;
       const { data: createdClub } = await supabase.from("clubs")
-        .select("id,name,short_name,city,founded_year,logo_url,register_number,currency,referral_code,referral_credit_months")
+        .select("id,name,short_name,city,founded_year,logo_url,register_number,currency,referral_code,referral_credit_months,sport")
         .eq("id", newClubId).single();
       if (createdClub && !cancelled) {
         setClubs((items) => [...items.filter((item) => item.id !== createdClub.id), {
@@ -5118,9 +5261,10 @@ export default function ClubMemberOrganisationApp() {
           city: createdClub.city || "—", foundedYear: createdClub.founded_year || new Date().getFullYear(),
           logoUrl: createdClub.logo_url || null, registerNumber: createdClub.register_number || "",
           currency: createdClub.currency || "EUR", referralCode: createdClub.referral_code || "",
-          referralCreditMonths: createdClub.referral_credit_months || 0,
+          referralCreditMonths: createdClub.referral_credit_months || 0, sport: createdClub.sport || "rollhockey",
         }]);
         setSelectedClubId(newClubId);
+        setFeatureOnboardingClubId(newClubId);
         await loadSupabaseMembership(account.id, newClubId);
       }
     };
@@ -5147,12 +5291,26 @@ export default function ClubMemberOrganisationApp() {
         referral: pending.referral_code || null,
         member_name: metadata.full_name || email.split("@")[0],
         member_birthdate: metadata.birthdate || null,
+        club_sport: pending.sport || "rollhockey",
       });
       if (newClubError) return { error: "Die Vereinsregistrierung konnte nicht fertiggestellt werden." };
       const newClubId = registration?.[0]?.club_id;
       await supabase.auth.updateUser({ data: { ...metadata, pending_new_club: null } });
       if (!newClubId) return { error: "Der neue Verein konnte nicht geladen werden." };
+      const { data: createdClub } = await supabase.from("clubs")
+        .select("id,name,short_name,city,founded_year,logo_url,register_number,currency,referral_code,referral_credit_months,sport")
+        .eq("id", newClubId).single();
+      if (createdClub) {
+        setClubs((items) => [...items.filter((item) => item.id !== createdClub.id), {
+          id: createdClub.id, name: createdClub.name, shortName: createdClub.short_name,
+          city: createdClub.city || "—", foundedYear: createdClub.founded_year || new Date().getFullYear(),
+          logoUrl: createdClub.logo_url || null, registerNumber: createdClub.register_number || "",
+          currency: createdClub.currency || "EUR", referralCode: createdClub.referral_code || "",
+          referralCreditMonths: createdClub.referral_credit_months || 0, sport: createdClub.sport || "rollhockey",
+        }]);
+      }
       setSelectedClubId(newClubId);
+      setFeatureOnboardingClubId(newClubId);
       return loadSupabaseMembership(data.user.id, newClubId);
     }
     if (metadata.pending_club_id !== selectedClubId) return loaded;
@@ -5175,7 +5333,7 @@ export default function ClubMemberOrganisationApp() {
         options: { data: {
           full_name: draft.name,
           pending_club_id: pendingClub ? null : draft.clubId,
-          pending_new_club: pendingClub ? { name:pendingClub.name, short_name:pendingClub.shortName, city:pendingClub.city, register_number:pendingClub.registerNumber, currency:pendingClub.currency, referral_code:pendingClub.referralCode } : null,
+          pending_new_club: pendingClub ? { name:pendingClub.name, short_name:pendingClub.shortName, city:pendingClub.city, register_number:pendingClub.registerNumber, currency:pendingClub.currency, referral_code:pendingClub.referralCode, sport:pendingClub.sport } : null,
           account_role: familySetup?.accountType || "mitglied",
           birthdate: draft.birthdate || null,
           requested_team: draft.team || null,
@@ -5187,11 +5345,20 @@ export default function ClubMemberOrganisationApp() {
       }
       let registration; let registrationError;
       if (pendingClub) {
-        const result = await supabase.rpc("register_new_club", { club_name:pendingClub.name, club_short_name:pendingClub.shortName, club_city:pendingClub.city, club_register_number:pendingClub.registerNumber, club_currency:pendingClub.currency||"EUR", referral:pendingClub.referralCode||null, member_name:draft.name, member_birthdate:draft.birthdate||null });
+        const result = await supabase.rpc("register_new_club", { club_name:pendingClub.name, club_short_name:pendingClub.shortName, club_city:pendingClub.city, club_register_number:pendingClub.registerNumber, club_currency:pendingClub.currency||"EUR", referral:pendingClub.referralCode||null, member_name:draft.name, member_birthdate:draft.birthdate||null, club_sport:pendingClub.sport||"rollhockey" });
         registration=result.data; registrationError=result.error;
         const newClubId=registration?.[0]?.club_id;
         if(!registrationError&&newClubId&&pendingClub.logoDataUrl){try{const blob=await (await fetch(pendingClub.logoDataUrl)).blob();const path=`${newClubId}/logo-${Date.now()}.png`;const upload=await supabase.storage.from("club-logos").upload(path,blob,{upsert:true});if(!upload.error){const {data:publicLogo}=supabase.storage.from("club-logos").getPublicUrl(path);await supabase.from("clubs").update({logo_url:publicLogo.publicUrl}).eq("id",newClubId);}}catch{}}
-        if(!registrationError&&newClubId){setSelectedClubId(newClubId);return loadSupabaseMembership(data.user.id,newClubId);}
+        if(!registrationError&&newClubId){
+          setClubs((items)=>[...items.filter((item)=>item.id!==newClubId), {
+            id:newClubId, name:pendingClub.name, shortName:pendingClub.shortName,
+            city:pendingClub.city||"—", foundedYear:new Date().getFullYear(),
+            logoUrl:pendingClub.logoDataUrl||null, registerNumber:pendingClub.registerNumber||"",
+            currency:pendingClub.currency||"EUR", referralCode:pendingClub.referralCode||"", referralCreditMonths:0,
+            sport:pendingClub.sport||"rollhockey",
+          }]);
+          setSelectedClubId(newClubId);setFeatureOnboardingClubId(newClubId);return loadSupabaseMembership(data.user.id,newClubId);
+        }
       } else {
         const result = await supabase.rpc("register_for_club", { target_club:draft.clubId, member_name:draft.name, account_role:familySetup?.accountType||"mitglied", member_birthdate:draft.birthdate||null, member_team:draft.team||null });
         registration=result.data; registrationError=result.error;
@@ -5295,6 +5462,8 @@ export default function ClubMemberOrganisationApp() {
           ) : (
             <RegisterScreen onRegister={register} members={clubMembers} club={currentClub} goLogin={() => setAuthScreen("login")} />
           )
+        ) : featureOnboardingClubId && featureOnboardingClubId === currentUser.clubId ? (
+          <ClubFeatureOnboarding club={currentClub} onDone={() => { setFeatureOnboardingClubId(null); loadClubFeatures(); }} />
         ) : (
           <>
             {subView ? (
@@ -5334,18 +5503,20 @@ export default function ClubMemberOrganisationApp() {
               {subView === "tipp" && <TippView members={clubMembers} currentUser={currentUser} tippPredictions={tippPredictions} setTippPredictions={setTippPredictions} tippResults={tippResults} />}
               {subView === "duty" && <DutyView members={clubMembers} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} />}
               {subView === "tasks" && <TasksView currentUser={currentUser} members={clubMembers} />}
-              {subView === "vehicles" && <VehiclesView currentUser={currentUser} />}
+              {subView === "vehicles" && featureEnabled("vehicle_booking") && <VehiclesView currentUser={currentUser} currentClub={currentClub} />}
 
               {!subView && tab === "home" && (
                 <Dashboard user={currentUser} members={clubMembers} feePaid={!!feePaid[currentUser.id]} channels={channels} dutyPlan={dutyPlan} seasonVotes={seasonVotes} polls={polls} setPolls={setPolls}
                   sponsorBookings={sponsorBookings} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick}
-                  goEvents={goToMyNextMatch} goSeason={() => setSubView("season")} goTipp={() => setSubView("tipp")} goDuty={() => setSubView("duty")} goTasks={() => setSubView("tasks")} goVehicles={() => setSubView("vehicles")} goNews={goNews} />
+                  goEvents={goToMyNextMatch} goSeason={() => setSubView("season")} goTipp={() => setSubView("tipp")} goDuty={() => setSubView("duty")} goTasks={() => setSubView("tasks")} goVehicles={() => setSubView("vehicles")} goNews={goNews}
+                  currentClub={currentClub} featureEnabled={featureEnabled} />
               )}
               {!subView && tab === "events" && (
                 <EventsView currentUser={currentUser} members={clubMembers} events={events} setEvents={setEvents} carpools={carpools} setCarpools={setCarpools}
                   dutyPlan={dutyPlan} setDutyPlan={setDutyPlan}
                   sponsorBookings={sponsorBookings} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick}
-                  focusRequest={eventFocusRequest} onFocusApplied={()=>setEventFocusRequest(null)} />
+                  focusRequest={eventFocusRequest} onFocusApplied={()=>setEventFocusRequest(null)}
+                  currentClub={currentClub} featureEnabled={featureEnabled} />
               )}
               {!subView && tab === "teams" && <TeamsView currentUser={currentUser} members={clubMembers} setMembers={setMembers} currentClub={currentClub} />}
               {!subView && tab === "fees" && currentUserCanManageFees && <FeesView members={clubMembers} records={feeRecords} setRecords={setFeeRecords} />}
@@ -5358,7 +5529,7 @@ export default function ClubMemberOrganisationApp() {
                   welcomeAutomation={welcomeAutomation} setWelcomeAutomation={setWelcomeAutomation} billingAutomation={billingAutomation} setBillingAutomation={setBillingAutomation}
                   sponsorBookings={sponsorBookings} setSponsorBookings={setSponsorBookings} sponsorStats={sponsorStats} polls={polls} setPolls={setPolls}
                   tippResults={tippResults} onSaveTippResult={saveTippResult}
-                  currentClub={currentClub} onClubLogoUpdated={updateCurrentClubLogo} />
+                  currentClub={currentClub} onClubLogoUpdated={updateCurrentClubLogo} clubFeatures={clubFeatures} onClubFeaturesChanged={loadClubFeatures} />
               )}
               {!subView && tab === "profile" && <ProfileView user={currentUser} members={clubMembers} setMembers={setMembers} currentClub={currentClub} sponsorBookings={sponsorBookings} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick} onLogout={logout} />}
             </div>

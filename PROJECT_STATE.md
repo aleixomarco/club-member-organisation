@@ -52,6 +52,7 @@ mitglied, spieler, eltern, trainer, kapitaen, teammanager, redakteur, sponsorenm
 9. Helferdienst-Erinnerung — **Frontend fertig, Feature bereit zum Testen** (siehe eigener Abschnitt unten)
 10. Sicherheitshinweis neues Gerät — **fertig, live verifiziert** (siehe eigener Abschnitt unten)
 11. Einzelgerät-Login-Sperre — **bestätigt: nicht gebaut**, nur Konzept (siehe eigener Abschnitt unten)
+12. Sportartspezifische Vereinsfeatures (Ringen, Schwimmen, Fußball, Tennis) — **Frontend fertig, eine SQL-Migration steht aus** (siehe eigener Abschnitt unten)
 
 Aufräumarbeiten: .gitignore für supabase/.temp/ erledigt. "Untitled query"-Tabs im Supabase-Dashboard sind rein kosmetisch, nicht angegangen (nicht nötig).
 
@@ -292,6 +293,123 @@ Live gegen die Datenbank geprüft: keine Funktionen, Tabellen oder Trigger mit B
 - Braucht: eigenen E-Mail-Versand (aktuell nur Supabases Standard-Mailer mit niedrigem Rate-Limit), Session-Check bei praktisch jeder App-Aktion (nicht nur beim Login), gründliches Testen mit zwei echten Geräten parallel
 
 **Empfehlung:** als eigene, fokussierte Session angehen, nicht nebenbei — höheres Blast-Radius-Risiko als alle anderen Punkte in diesem Dokument, da es den Login-Mechanismus selbst verändert statt nur neue, isolierte Funktionen hinzuzufügen.
+
+---
+
+## SPORTARTSPEZIFISCHE VEREINSFEATURES — Frontend fertig, eine SQL-Migration steht aus (2026-08-06)
+
+### Konzept
+Bei der Vereinsregistrierung wird jetzt eine Sportart gewählt (Rollhockey, Fußball, Tennis, Schwimmen, Ringen). Die App hatte bisher genau zwei wiederverwendbare Vereinsfunktions-Bausteine, beide ursprünglich Rollhockey-benannt: den Helferdienst (Stationen für Heimspiele) und die Vereinsfahrzeuge (Kalenderbuchung). Beide werden jetzt sportartspezifisch umbenannt und sind pro Verein einzeln an-/abschaltbar:
+
+| Sportart | Helferdienst heißt … | Stationen-Beispiele | Vereinsfahrzeuge heißt … |
+|---|---|---|---|
+| Rollhockey | Helferdienst | Theke, Kasse, Grill, Zeitnahme | Vereinsfahrzeuge |
+| Fußball | Kioskdienst | Kiosk, Kasse, Grill, Ordnungsdienst, Parkplatzeinweisung | Mannschaftsbus |
+| Tennis | Vereinsheimdienst | Kuchenbuffet, Getränke, Platzherrichtung, Aufbau | Vereinsbus |
+| Schwimmen | Wettkampfhelfer | Zeitnahme, Kampfrichter, Startblock-Aufsicht, Kiosk | Vereinsbus |
+| Ringen | Kampfrichter & Helfer | Kampftisch, Zeitnahme, Verpflegung, Auf-/Abbau der Matten | Vereinsbus |
+
+Auch der Begriff "Heimspiel" wird sportgerecht ersetzt (Tennis: Heim-Medenspiel, Schwimmen: Heimwettkampf, Ringen: Heimkampf), z. B. in den Platzhaltertexten beim Anlegen eines Helferdienst-Satzes.
+
+**Bewusste Scope-Entscheidung — was NICHT gebaut wurde:** Eine dritte, genuin neue Ressourcenart (Tennis-Platzbuchung, Schwimmbahnen-Buchung, Matten-Belegung für Ringen) wäre inhaltlich naheliegend, hätte aber jeweils ein komplett neues DB-Schema gebraucht (eigene Tabelle, eigene RLS, eigene UI — analog zum bisherigen `club_vehicles`/`vehicle_bookings`-Aufwand, nur 3× wiederholt). Das in einer einzigen, nicht live testbaren Session zu bauen wäre unverantwortlich gewesen. Stattdessen: dieselben zwei bewährten Rollhockey-Bausteine sportspezifisch umbenannt — genau wie in der Aufgabenstellung "wie bei Rollhockey, nur sportspezifisch" beschrieben. Eine echte Platzbuchung für Tennis ist ein sinnvoller, klar abgegrenzter Folgeauftrag.
+
+### Feature-Toggle-System (neu, generisch)
+- Tabelle `club_feature_toggles(club_id, feature_key, enabled, updated_at)`, Primary Key `(club_id, feature_key)`. Fehlt ein Eintrag → Feature gilt als **an** (sicherer Default, siehe unten).
+- Zwei Feature-Keys: `duty_roster` (Helferdienst/Kioskdienst/…) und `vehicle_booking` (Vereinsfahrzeuge/Mannschaftsbus/…).
+- `can_manage_club_settings(target_club)` — vereinsadmin/vorstand/sysadmin.
+- **Nach der Vereinsregistrierung:** neue Komponente `ClubFeatureOnboarding` — Ganzbildschirm-Assistent, fragt beide Features nacheinander per Ja/Nein ab (sportspezifischer Fragetext, z. B. bei Rollhockey: „Hat euer Verein ein Fahrzeug (Vereinsfahrzeuge), das über die App gebucht werden soll?"), schreibt danach beide Zeilen in `club_feature_toggles`. Erscheint nur direkt nach einer NEUEN Vereinsregistrierung (lokaler State `featureOnboardingClubId`, nicht aus der DB abgeleitet) — bestehende Vereine werden dadurch nicht rückwirkend zu einem Assistenten gezwungen.
+- **Danach jederzeit änderbar:** neuer Reiter „Funktionen" in der Vereinsverwaltung (nur vereinsadmin/vorstand/sysadmin), Komponente `ClubFeatureSettingsPanel`, nutzt die bestehende `ToggleCard`-Komponente.
+- **Gating:** `featureEnabled(key)` (App-Ebene) steuert: Dashboard-Kachel "Vereinsfahrzeuge"/Äquivalent nur bei `vehicle_booking`, `subView==="vehicles"`-Route defensiv mitgegatet, `DutyTasksSection` in `EventCard` nur bei `duty_roster`, der Verwaltungs-Reiter "…-Sätze" nur bei `duty_roster`. Beispiel aus der Aufgabenstellung (Rollhockey ohne KFZ) funktioniert also direkt: Toggle aus → Kachel verschwindet, Buchen ist nicht mehr erreichbar.
+- **Bekannte Einschränkung:** Wird der Onboarding-Assistent abgebrochen (Tab geschlossen, bevor beide Fragen beantwortet sind), bleiben beide Features einfach auf dem sicheren Standard "an" — er erscheint beim nächsten Login NICHT automatisch erneut (kein DB-Flag dafür, bewusst einfach gehalten). Der Vereinsadmin kann es jederzeit über den neuen "Funktionen"-Reiter nachholen.
+
+### ⚠️ Noch einzuspielen (SQL-Editor, Projekt kymokcqebfruhlvcyqnw)
+**Wichtig:** Der erste Block (`create type`) MUSS als eigener, isolierter Schritt VOR dem Rest laufen (sonst Postgres-Fehler "unsafe use of new value", siehe Workflow-Konvention unten).
+
+```sql
+create type public.club_sport as enum ('rollhockey', 'fussball', 'tennis', 'schwimmen', 'ringen');
+```
+
+Danach den Rest (neue Spalte, neue Tabelle, RLS, aktualisierte `register_new_club`-Funktion mit zusätzlichem `club_sport`-Parameter):
+
+```sql
+alter table public.clubs add column if not exists sport public.club_sport not null default 'rollhockey';
+
+create table if not exists public.club_feature_toggles (
+  club_id uuid not null references public.clubs(id) on delete cascade,
+  feature_key text not null,
+  enabled boolean not null default true,
+  updated_at timestamptz not null default now(),
+  primary key (club_id, feature_key)
+);
+alter table public.club_feature_toggles enable row level security;
+
+create or replace function public.can_manage_club_settings(target_club uuid)
+returns boolean language sql stable security definer set search_path = 'public'
+as $$
+  select exists (
+    select 1 from public.membership_roles r
+    join public.club_memberships m on m.id = r.membership_id
+    where m.club_id = target_club and m.profile_id = auth.uid() and m.status = 'active'
+      and r.role in ('vereinsadmin', 'vorstand', 'sysadmin')
+  );
+$$;
+
+create policy "club members read feature toggles" on public.club_feature_toggles
+  for select using (
+    exists (select 1 from public.club_memberships m where m.club_id = club_feature_toggles.club_id and m.profile_id = auth.uid() and m.status = 'active')
+  );
+
+create policy "admins manage feature toggles" on public.club_feature_toggles
+  for all using (public.can_manage_club_settings(club_id)) with check (public.can_manage_club_settings(club_id));
+
+create or replace function public.register_new_club(club_name text, club_short_name text, club_city text, club_register_number text, club_currency text DEFAULT 'EUR'::text, referral text DEFAULT NULL::text, member_name text DEFAULT ''::text, member_birthdate date DEFAULT NULL::date, club_sport text DEFAULT 'rollhockey'::text)
+ RETURNS TABLE(club_id uuid, membership_id uuid)
+ LANGUAGE plpgsql SECURITY DEFINER SET search_path TO ''
+AS $function$
+declare new_club uuid; new_membership uuid; referrer uuid; referrer_profile uuid; referral_code_id uuid;
+begin
+  if auth.uid() is null then raise exception 'Authentication required'; end if;
+  if nullif(trim(club_name),'') is null or nullif(trim(club_short_name),'') is null or nullif(trim(club_register_number),'') is null then
+    raise exception 'Required club data missing';
+  end if;
+  if upper(club_currency) not in ('EUR','USD','GBP','CHF','DKK','NOK','SEK','PLN','CZK') then raise exception 'Unsupported currency'; end if;
+  if referral is not null and nullif(trim(referral),'') is not null then
+    select id,club_id,profile_id into referral_code_id,referrer,referrer_profile
+    from public.club_referral_codes where upper(code)=upper(trim(referral)) and redeemed_at is null;
+    if referral_code_id is null then raise exception 'Invalid or already used referral code'; end if;
+  end if;
+  insert into public.clubs(slug,name,short_name,city,founded_year,register_number,currency,sport)
+  values(lower(regexp_replace(trim(club_name),'[^a-zA-Z0-9]+','-','g'))||'-'||substr(replace(gen_random_uuid()::text,'-',''),1,6),trim(club_name),upper(trim(club_short_name)),nullif(trim(club_city),''),extract(year from now())::int,trim(club_register_number),upper(club_currency),coalesce(club_sport,'rollhockey')::public.club_sport) returning id into new_club;
+  update public.profiles set full_name=trim(member_name),birthdate=member_birthdate where id=auth.uid();
+  insert into public.club_memberships(club_id,profile_id,display_name,email,member_since,status,created_by)
+  select new_club,auth.uid(),trim(member_name),email,extract(year from now())::int,'active',auth.uid() from auth.users where id=auth.uid() returning id into new_membership;
+  insert into public.membership_roles(membership_id,role,granted_by) values
+    (new_membership,'mitglied',auth.uid()),(new_membership,'vereinsadmin',auth.uid()),(new_membership,'sysadmin',auth.uid());
+  if referrer is not null then
+    insert into public.club_referrals(referrer_club_id,referred_club_id,referred_by_profile_id,code,status,redeemed_at)
+    values(referrer,new_club,referrer_profile,trim(referral),'redeemed',now());
+    update public.club_referral_codes set used_by_club_id=new_club,redeemed_at=now() where id=referral_code_id;
+    update public.clubs set referral_credit_months=referral_credit_months+3 where id=referrer;
+  end if;
+  return query select new_club,new_membership;
+end;
+$function$;
+```
+
+Bis das eingespielt ist: der Sportart-Dropdown bei der Vereinsregistrierung ist zwar sichtbar, aber `register_new_club` kennt den neuen `club_sport`-Parameter noch nicht (Supabase ignoriert unbekannte RPC-Parameter nicht automatisch — der Aufruf würde fehlschlagen) und weder `clubs.sport` noch `club_feature_toggles` existieren. **Vor dem Testen unbedingt einspielen.**
+
+### Frontend — Bugfix beim Selbst-Review
+Zwei der drei `register_new_club`-Aufrufstellen (Login-schließt-Registrierung-ab-Pfad, Sofort-Registrierung-Pfad) haben den `clubs`-State nie mit dem echten, neu angelegten Vereinsdatensatz aktualisiert — `currentClub` wäre nach der Registrierung `undefined` gewesen (falscher Vereinsname im Header, und der neue Feature-Onboarding-Assistent hätte mangels `club.id` beim Speichern der Antworten gar nichts geschrieben). Beim Selbst-Review gefunden und in beiden Pfaden behoben (dritter, häufigster Pfad — automatischer Effekt nach E-Mail-Bestätigung — hatte das schon immer korrekt gemacht).
+
+### Verifikation in dieser Session
+- `npm run build` — erfolgreich nach jeder Änderungsrunde
+- Registrierungsformular im Browser-Preview durchgetestet (JS-gesteuert, siehe frühere Abschnitte zur Browser-Tool-Einschränkung): Sportart-Dropdown zeigt alle 5 Sportarten korrekt, Formular lässt sich mit „Tennis" ausfüllen und absenden, führt fehlerfrei zur Kontoerstellung, keine Konsolenfehler
+- **Nicht testbar ohne echte `.env.local`-Zugangsdaten:** der komplette DB-gestützte Teil (echte Registrierung, Feature-Onboarding-Assistent, Funktionen-Reiter, Gating der Kacheln) — gleiche strukturelle Einschränkung wie bei allen anderen DB-Features dieser Session.
+
+### Nächste Schritte
+1. **SQL oben einspielen** (zwei Schritte: erst `create type`, dann den Rest).
+2. Im Vercel-Preview mit allen 5 Sportarten je einen Testverein registrieren, Onboarding-Assistent durchklicken, Funktionen-Reiter prüfen, Toggle aus- und wieder einschalten und beobachten, dass die jeweilige Kachel/der Reiter verschwindet bzw. wiederkommt.
+3. Falls gewünscht: echte Platzbuchung für Tennis (und analog Bahnen/Matten) als eigenes, neues Feature nachziehen — bewusst nicht in dieser Session gebaut (siehe Scope-Entscheidung oben).
 
 ---
 
