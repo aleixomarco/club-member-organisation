@@ -72,6 +72,41 @@ const SPORT_CONFIG = {
     dutyTabLabel: "Kampfrichter & Helfer", dutyStationExamples: "z. B. Kampftisch, Zeitnahme, Verpflegung, Auf-/Abbau der Matten",
     vehicleTabLabel: "Vereinsbus", vehicleIntro: "Der Vereinsbus und seine Buchungen für Auswärtskämpfe.",
   },
+  handball: {
+    label: "Handball", homeEventLabel: "Heimspiel",
+    dutyTabLabel: "Kioskdienst", dutyStationExamples: "z. B. Kiosk, Kasse, Wurftisch/Zeitnahme, Ordnungsdienst",
+    vehicleTabLabel: "Mannschaftsbus", vehicleIntro: "Der Mannschaftsbus und seine Buchungen für Auswärtsspiele.",
+  },
+  volleyball: {
+    label: "Volleyball", homeEventLabel: "Heimspiel",
+    dutyTabLabel: "Hallendienst", dutyStationExamples: "z. B. Netz-/Feldaufbau, Anschreiber, Kasse, Kuchenbuffet",
+    vehicleTabLabel: "Vereinsbus", vehicleIntro: "Der Vereinsbus und seine Buchungen für Auswärtsspiele.",
+  },
+  basketball: {
+    label: "Basketball", homeEventLabel: "Heimspiel",
+    dutyTabLabel: "Kampfgerichtsdienst", dutyStationExamples: "z. B. Kampfgericht/Anschreiber, Kiosk, Kasse, Ordnungsdienst",
+    vehicleTabLabel: "Mannschaftsbus", vehicleIntro: "Der Mannschaftsbus und seine Buchungen für Auswärtsspiele.",
+  },
+  tischtennis: {
+    label: "Tischtennis", homeEventLabel: "Heim-Punktspiel",
+    dutyTabLabel: "Vereinsheimdienst", dutyStationExamples: "z. B. Kuchenbuffet, Getränke, Tischaufbau, Zählertisch",
+    vehicleTabLabel: "Vereinsbus", vehicleIntro: "Der Vereinsbus und seine Buchungen für Auswärts-Punktspiele.",
+  },
+  badminton: {
+    label: "Badminton", homeEventLabel: "Heim-Punktspiel",
+    dutyTabLabel: "Vereinsheimdienst", dutyStationExamples: "z. B. Kuchenbuffet, Getränke, Feldaufbau, Zählertisch",
+    vehicleTabLabel: "Vereinsbus", vehicleIntro: "Der Vereinsbus und seine Buchungen für Auswärts-Punktspiele.",
+  },
+  leichtathletik: {
+    label: "Leichtathletik", homeEventLabel: "Heimwettkampf",
+    dutyTabLabel: "Kampfrichter & Helfer", dutyStationExamples: "z. B. Zeitnahme, Kampfrichter, Startnummernausgabe, Kiosk",
+    vehicleTabLabel: "Vereinsbus", vehicleIntro: "Der Vereinsbus und seine Buchungen für Auswärtswettkämpfe.",
+  },
+  judo_karate: {
+    label: "Judo/Karate", homeEventLabel: "Heimkampf",
+    dutyTabLabel: "Kampfrichter & Helfer", dutyStationExamples: "z. B. Kampftisch, Zeitnahme, Verpflegung, Matten-Auf-/Abbau",
+    vehicleTabLabel: "Vereinsbus", vehicleIntro: "Der Vereinsbus und seine Buchungen für Auswärtskämpfe und -turniere.",
+  },
 };
 const SPORTS = Object.keys(SPORT_CONFIG);
 const sportConfig = (sport) => SPORT_CONFIG[sport] || SPORT_CONFIG.rollhockey;
