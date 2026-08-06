@@ -146,6 +146,7 @@ const ROLE_META = {
   mitglied: { label: "Mitglied", color: "#8B8A85", admin: false, formalMember: true, selfService: true, alwaysOn: true },
   organisator: { label: "Organisator/in", color: "#9A6B3F", admin: false, formalMember: true, selfService: false },
 };
+const ROLE_OVERVIEW_KEYS = ["vereinsadmin", "vorstand", "geschaeftsfuehrung", "finanzmanager", "organisator", "trainer", "teammanager", "kapitaen", "spieler", "eltern"];
 const isAdmin = (m) => !!m && m.roles.some((r) => ROLE_META[r]?.admin);
 const canManageFees = (m) => !!m && m.roles.some((r) => ["geschaeftsfuehrung", "finanzmanager"].includes(r));
 const isFormalMember = (m) => !!m && m.roles.some((r) => ROLE_META[r]?.formalMember);
@@ -3838,6 +3839,7 @@ function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, 
       </div>
 
       {profileFolder === "clubsettings" && isAdmin(user) && <ProfileUnderlay title="Vereinseinstellungen" eyebrow="Verein verwalten" onClose={() => setProfileFolder("")}>
+        <ClubRoleOverviewPanel members={members} />
         <ClubFeatureSettingsPanel currentClub={currentClub} clubFeatures={clubFeatures} onFeaturesChanged={onClubFeaturesChanged} />
       </ProfileUnderlay>}
 
@@ -4889,6 +4891,52 @@ function ClubFeatureOnboarding({ club, onDone }) {
           {CLUB_FEATURES.map((f, i) => <span key={f.key} className="h-1.5 rounded-full" style={{ width: i === step ? 20 : 8, background: i <= step ? C.red : C.line, transition: "width .2s" }}/>)}
         </div>
       </div>
+    </div>
+  );
+}
+
+function ClubRoleOverviewPanel({ members }) {
+  const [expandedRole, setExpandedRole] = useState(null);
+  const [selectedMember, setSelectedMember] = useState(null);
+  return (
+    <div className="mb-6">
+      <SectionTitle eyebrow="Überblick" title="Rollen im Verein" />
+      <div className="text-xs mb-3 -mt-2" style={{ color: C.textDim }}>Nur-Lese-Übersicht, wer welche Rolle in diesem Verein hat. Auf ein Mitglied tippen öffnet das Profil.</div>
+      <div className="space-y-2">
+        {ROLE_OVERVIEW_KEYS.map((roleKey) => {
+          const holders = members.filter((m) => m.roles.includes(roleKey)).sort((a, b) => a.name.localeCompare(b.name, "de"));
+          const open = expandedRole === roleKey;
+          return (
+            <div key={roleKey} className="rounded-2xl overflow-hidden" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+              <button className="w-full text-left px-3.5 py-3 flex items-center justify-between" onClick={() => setExpandedRole(open ? null : roleKey)}>
+                <div className="flex items-center gap-2">
+                  <Pill bg={ROLE_META[roleKey]?.color}>{ROLE_META[roleKey]?.label}</Pill>
+                  <span className="text-[11px] font-bold" style={{ color: C.textDim }}>{holders.length}</span>
+                </div>
+                <ChevronDown size={15} style={{ color: C.textDim, transform: open ? "rotate(180deg)" : "none", transition: "transform .2s" }} />
+              </button>
+              {open && (
+                <div className="px-3.5 pb-3.5">
+                  {holders.length === 0 ? (
+                    <div className="text-[11px]" style={{ color: C.textDim }}>Niemand hat aktuell diese Rolle.</div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {holders.map((m) => (
+                        <button key={m.id} onClick={() => setSelectedMember(m)} className="w-full flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-left" style={{ background: C.paperDim }}>
+                          <div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0" style={{ background: m.color, color: C.white }}>{initialsOf(m.name)}</div>
+                          <span className="text-xs font-bold flex-1 truncate" style={{ color: C.ink }}>{m.name}</span>
+                          <ChevronRight size={13} style={{ color: C.textDim }} />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {selectedMember && <MemberDetailPanel member={selectedMember} onClose={() => setSelectedMember(null)} />}
     </div>
   );
 }
