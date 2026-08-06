@@ -8,7 +8,7 @@ import {
   Sparkles, Image as ImageIcon, ChevronDown, Star, Mail, Lock, LogOut,
   ShieldCheck, ArrowRight, ArrowLeft, AlertCircle, UserPlus, Eye, EyeOff,
   Target, ClipboardList, Newspaper, Bell, KeyRound, Settings, RefreshCw,
-  Bug, Smartphone, Save, Plus, Building2, ExternalLink
+  Bug, Smartphone, Save, Plus, Building2, ExternalLink, Phone
 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { enablePushNotifications, disablePushNotifications, listenForForegroundMessages } from "@/lib/firebase-push";
@@ -2583,7 +2583,8 @@ function TasksView({ currentUser, members }) {
 function VehiclesView({ currentUser }) {
   const databaseMembership = !!supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(currentUser.id));
   const canManageFleet = currentUser.roles.some((r) => ["vorstand", "vereinsadmin", "geschaeftsfuehrung"].includes(r));
-  const canBook = currentUser.roles.some((r) => ["trainer", "teammanager", "kapitaen", "finanzmanager", "geschaeftsfuehrung"].includes(r));
+  const canBook = canManageFleet || currentUser.roles.some((r) => ["trainer", "teammanager", "kapitaen", "finanzmanager"].includes(r));
+  const hasPhone = (currentUser.contactPhones || []).some((p) => p && p.trim());
   const [vehicles, setVehicles] = useState([]);
   const [teams, setTeams] = useState([]);
   const [bookings, setBookings] = useState([]);
@@ -2594,8 +2595,12 @@ function VehiclesView({ currentUser }) {
   const [newVehicle, setNewVehicle] = useState({ label: "", plate: "", seats: "" });
   const [savingVehicle, setSavingVehicle] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState(null);
+  const [editingBookingId, setEditingBookingId] = useState(null);
   const [bookingForm, setBookingForm] = useState({ startDate: "", startHour: "8", endDate: "", endHour: "18", teamId: "", isPrivate: false, privateLabel: "" });
   const [savingBooking, setSavingBooking] = useState(false);
+  const [viewingBooking, setViewingBooking] = useState(null);
+  const [viewingPhones, setViewingPhones] = useState(null);
+  const [loadingPhones, setLoadingPhones] = useState(false);
   const HOURS = Array.from({ length: 24 }, (_, i) => i);
   const loadVehicles = useCallback(async () => {
     if (!databaseMembership) { setVehicles([]); return; }
@@ -2624,7 +2629,7 @@ function VehiclesView({ currentUser }) {
       const vehicle = Array.isArray(row.club_vehicles) ? row.club_vehicles[0] : row.club_vehicles;
       const team = Array.isArray(row.teams) ? row.teams[0] : row.teams;
       const member = Array.isArray(row.club_memberships) ? row.club_memberships[0] : row.club_memberships;
-      return { id: row.id, vehicleId: row.vehicle_id, membershipId: row.membership_id, vehicleLabel: vehicle?.label || "—", label: team?.name || row.private_label || "Privat", bookedBy: member?.display_name || "—", startsAt: new Date(row.starts_at), endsAt: new Date(row.ends_at) };
+      return { id: row.id, vehicleId: row.vehicle_id, membershipId: row.membership_id, teamId: row.team_id, privateLabel: row.private_label, vehicleLabel: vehicle?.label || "—", label: team?.name || row.private_label || "Privat", bookedBy: member?.display_name || "—", startsAt: new Date(row.starts_at), endsAt: new Date(row.ends_at) };
     }));
     setLoading(false);
   }, [databaseMembership, currentUser.clubId, monthDate]);
@@ -2646,11 +2651,33 @@ function VehiclesView({ currentUser }) {
   };
   const openBooking = (vehicle) => {
     setSelectedVehicle(vehicle);
+    setEditingBookingId(null);
     const today = new Date().toISOString().slice(0, 10);
     setBookingForm({ startDate: today, startHour: "8", endDate: today, endHour: "18", teamId: "", isPrivate: false, privateLabel: "" });
     setMessage("");
   };
+  const openEditBooking = (booking) => {
+    const vehicle = vehicles.find((v) => v.id === booking.vehicleId);
+    if (!vehicle) return;
+    setSelectedVehicle(vehicle);
+    setEditingBookingId(booking.id);
+    setBookingForm({
+      startDate: booking.startsAt.toISOString().slice(0, 10), startHour: String(booking.startsAt.getHours()),
+      endDate: booking.endsAt.toISOString().slice(0, 10), endHour: String(booking.endsAt.getHours()),
+      teamId: booking.teamId || "", isPrivate: !booking.teamId, privateLabel: booking.privateLabel || "",
+    });
+    setMessage("");
+  };
+  const openBookingDetail = async (booking) => {
+    setViewingBooking(booking);
+    setViewingPhones(null);
+    setLoadingPhones(true);
+    const { data } = await supabase.rpc("get_booking_contact_phone", { target_booking: booking.id });
+    setViewingPhones(data || []);
+    setLoadingPhones(false);
+  };
   const submitBooking = async () => {
+    if (!editingBookingId && !hasPhone) { setMessage("Bitte hinterlege zuerst eine Telefonnummer in deinem Profil (Profil → Kontaktdaten), um ein Fahrzeug zu buchen."); return; }
     if (!bookingForm.startDate || !bookingForm.endDate) { setMessage("Bitte Start- und Enddatum angeben."); return; }
     if (!bookingForm.isPrivate && !bookingForm.teamId) { setMessage("Bitte eine Mannschaft auswählen oder auf „Privat“ umschalten."); return; }
     if (bookingForm.isPrivate && !bookingForm.privateLabel.trim()) { setMessage("Bitte einen Namen für die private Buchung angeben."); return; }
@@ -2658,17 +2685,20 @@ function VehiclesView({ currentUser }) {
     const endsAt = `${bookingForm.endDate}T${String(bookingForm.endHour).padStart(2, "0")}:00:00`;
     if (new Date(endsAt) <= new Date(startsAt)) { setMessage("Das Ende muss nach dem Start liegen."); return; }
     setSavingBooking(true); setMessage("");
-    const { error } = await supabase.from("vehicle_bookings").insert({
-      vehicle_id: selectedVehicle.id, club_id: currentUser.clubId, membership_id: currentUser.id,
+    const payload = {
+      vehicle_id: selectedVehicle.id,
       team_id: bookingForm.isPrivate ? null : bookingForm.teamId,
       private_label: bookingForm.isPrivate ? bookingForm.privateLabel.trim() : null,
       starts_at: startsAt, ends_at: endsAt,
-    });
+    };
+    const { error } = editingBookingId
+      ? await supabase.from("vehicle_bookings").update(payload).eq("id", editingBookingId)
+      : await supabase.from("vehicle_bookings").insert({ ...payload, club_id: currentUser.clubId, membership_id: currentUser.id });
     if (error) {
-      setMessage(error.message?.includes("exclude") || error.code === "23P01" ? "Das Fahrzeug ist in diesem Zeitraum bereits gebucht." : "Buchung konnte nicht angelegt werden.");
+      setMessage(error.message?.includes("exclude") || error.code === "23P01" ? "Das Fahrzeug ist in diesem Zeitraum bereits gebucht." : editingBookingId ? "Buchung konnte nicht geändert werden." : "Buchung konnte nicht angelegt werden.");
       setSavingBooking(false); return;
     }
-    setSelectedVehicle(null); setSavingBooking(false);
+    setSelectedVehicle(null); setEditingBookingId(null); setSavingBooking(false);
     await loadBookings();
   };
   const cancelBooking = async (booking) => {
@@ -2698,7 +2728,7 @@ function VehiclesView({ currentUser }) {
   return (
     <div className="px-4 pt-4 pb-24">
       <SectionTitle eyebrow="Verein" title="Vereinsfahrzeuge" right={canManageFleet ? <button onClick={() => setShowAddVehicle((v) => !v)} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showAddVehicle ? "Schließen" : "+ Fahrzeug"}</button> : null}/>
-      <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>Alle Vereinsfahrzeuge und ihre Buchungen. Buchen können Trainer, Teammanager, Kapitäne, Finanzmanager und Geschäftsführung.</div>
+      <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>Alle Vereinsfahrzeuge und ihre Buchungen. Buchen können Vorstand, Vereinsadmin, Trainer, Teammanager, Kapitäne, Finanzmanager und Geschäftsführung.</div>
       {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: "#FDECEC", color: C.red }}>{message}</div>}
       {showAddVehicle && (
         <div className="rounded-2xl p-4 mb-4" style={{ background: C.white, border: `1px solid ${C.line}` }}>
@@ -2713,7 +2743,7 @@ function VehiclesView({ currentUser }) {
         {vehicles.map((v) => (
           <div key={v.id} className="flex items-center gap-3 rounded-2xl px-3.5 py-3" style={{ background: C.white, border: `1px solid ${C.line}` }}>
             <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: C.paperDim, color: C.red }}><Car size={18}/></div>
-            <button onClick={() => canBook && openBooking(v)} disabled={!canBook} className="flex-1 text-left">
+            <button onClick={() => { if (!canBook) return; if (!hasPhone) { setMessage("Bitte hinterlege zuerst eine Telefonnummer in deinem Profil (Profil → Kontaktdaten), um ein Fahrzeug zu buchen."); return; } openBooking(v); }} disabled={!canBook} className="flex-1 text-left">
               <div className="text-sm font-bold" style={{ color: C.ink }}>{v.label}</div>
               <div className="text-[11px]" style={{ color: C.textDim }}>{v.license_plate} · {v.seats} Plätze</div>
             </button>
@@ -2753,21 +2783,26 @@ function VehiclesView({ currentUser }) {
       <div className="space-y-2">
         {bookings.map((b) => (
           <div key={b.id} className="flex items-center gap-3 rounded-xl px-3 py-2.5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
-            <div className="flex-1 min-w-0">
+            <button onClick={() => openBookingDetail(b)} className="flex-1 min-w-0 text-left">
               <div className="text-xs font-bold truncate" style={{ color: C.ink }}>{b.vehicleLabel} · {b.label}</div>
               <div className="text-[10px] truncate" style={{ color: C.textDim }}>{b.bookedBy} · {b.startsAt.toLocaleDateString("de-DE")} {String(b.startsAt.getHours()).padStart(2,"0")}:00 – {b.endsAt.toLocaleDateString("de-DE")} {String(b.endsAt.getHours()).padStart(2,"0")}:00</div>
-            </div>
-            {canCancel(b) && <button onClick={() => cancelBooking(b)} aria-label="Buchung stornieren" className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.paperDim, color: C.red }}><X size={14}/></button>}
+            </button>
+            {canCancel(b) && (
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                <button onClick={() => openEditBooking(b)} className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold" style={{ background: C.paperDim, color: C.textDim }}>Bearbeiten</button>
+                <button onClick={() => cancelBooking(b)} aria-label="Buchung stornieren" className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: C.paperDim, color: C.red }}><X size={14}/></button>
+              </div>
+            )}
           </div>
         ))}
         {bookings.length === 0 && !loading && <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Keine Buchungen in diesem Monat.</div>}
       </div>
       {selectedVehicle && (
-        <div className="fixed inset-0 z-50 flex items-end p-3" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setSelectedVehicle(null)}>
+        <div className="fixed inset-0 z-50 flex items-end p-3" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => { setSelectedVehicle(null); setEditingBookingId(null); }}>
           <div role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} className="w-full rounded-3xl p-5 max-h-[85%] overflow-y-auto" style={{ background: C.white }}>
             <div className="flex items-center justify-between mb-4">
-              <div className="text-lg font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{selectedVehicle.label} buchen</div>
-              <button onClick={() => setSelectedVehicle(null)} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><X size={15}/></button>
+              <div className="text-lg font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{selectedVehicle.label} {editingBookingId ? "bearbeiten" : "buchen"}</div>
+              <button onClick={() => { setSelectedVehicle(null); setEditingBookingId(null); }} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><X size={15}/></button>
             </div>
             <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>VON</div>
             <div className="flex gap-2 mb-3">
@@ -2788,7 +2823,36 @@ function VehiclesView({ currentUser }) {
                 {teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
             )}
-            <button onClick={submitBooking} disabled={savingBooking} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{savingBooking ? "Wird gebucht …" : "Fahrzeug buchen"}</button>
+            <button onClick={submitBooking} disabled={savingBooking} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{savingBooking ? (editingBookingId ? "Wird gespeichert …" : "Wird gebucht …") : (editingBookingId ? "Änderungen speichern" : "Fahrzeug buchen")}</button>
+          </div>
+        </div>
+      )}
+      {viewingBooking && (
+        <div className="fixed inset-0 z-50 flex items-end p-3" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setViewingBooking(null)}>
+          <div role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} className="w-full rounded-3xl p-5 max-h-[85%] overflow-y-auto" style={{ background: C.white }}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-lg font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{viewingBooking.vehicleLabel}</div>
+              <button onClick={() => setViewingBooking(null)} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><X size={15}/></button>
+            </div>
+            <div className="text-xs font-bold mb-1" style={{ color: C.ink }}>{viewingBooking.label}</div>
+            <div className="text-[11px] mb-4" style={{ color: C.textDim }}>{viewingBooking.startsAt.toLocaleDateString("de-DE")} {String(viewingBooking.startsAt.getHours()).padStart(2,"0")}:00 – {viewingBooking.endsAt.toLocaleDateString("de-DE")} {String(viewingBooking.endsAt.getHours()).padStart(2,"0")}:00</div>
+            <div className="rounded-2xl p-3.5" style={{ background: C.paperDim }}>
+              <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>GEBUCHT VON</div>
+              <div className="text-sm font-bold mb-2.5" style={{ color: C.ink }}>{viewingBooking.bookedBy}</div>
+              {loadingPhones ? (
+                <div className="text-xs" style={{ color: C.textDim }}>Telefonnummer wird geladen …</div>
+              ) : viewingPhones && viewingPhones.filter(Boolean).length > 0 ? (
+                <div className="flex flex-col gap-1.5">
+                  {viewingPhones.filter(Boolean).map((phone, i) => (
+                    <a key={i} href={`tel:${phone.replace(/\s+/g, "")}`} className="flex items-center gap-2 text-sm font-bold" style={{ color: C.red }}>
+                      <Phone size={14}/> {phone}
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-xs" style={{ color: C.textDim }}>Keine Telefonnummer hinterlegt.</div>
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -126,14 +126,76 @@ Bewusst ausgelassen (bräuchten Strukturumbau): Helferdienst-Erinnerung (Daten n
 
 ### DB-Schema
 - club_vehicles (label, license_plate, seats)
-- vehicle_bookings (vehicle_id, team_id ODER private_label, membership_id, starts_at, ends_at) — Exclude-Constraint (btree_gist) verhindert überlappende Buchungen pro Fahrzeug auf DB-Ebene (nicht nur UI-Check). Check-Constraint erzwingt volle Stunden.
-- Helper-Funktionen can_manage_fleet() (vorstand/vereinsadmin/geschaeftsfuehrung) und can_book_vehicles() (trainer/teammanager/kapitaen/finanzmanager/geschaeftsfuehrung)
+- vehicle_bookings (vehicle_id, team_id ODER private_label, membership_id, starts_at, ends_at) — Exclude-Constraint (btree_gist) verhindert überlappende Buchungen pro Fahrzeug auf DB-Ebene (nicht nur UI-Check, gilt auch beim Bearbeiten einer Buchung). Check-Constraint erzwingt volle Stunden.
+- Helper-Funktionen can_manage_fleet() (vorstand/vereinsadmin/geschaeftsfuehrung) und can_book_vehicles() (**seit 2026-08-06 auch vorstand/vereinsadmin**, davor nur trainer/teammanager/kapitaen/finanzmanager/geschaeftsfuehrung — s. u.)
 
 ### Frontend
 - VehiclesView-Komponente, erreichbar über neue Dashboard-Kachel "Vereinsfahrzeuge"
 - Echtes Kalenderraster (Monatsansicht, Mo-So-Spalten), Fahrzeugliste, Buchungsformular (Datum+volle-Stunde von/bis, Mannschaft oder "Privat" mit Namen)
 - Stornieren: eigene Buchung immer, fremde nur Vorstand/Vereinsadmin/GF
+- **Bearbeiten (neu, 2026-08-06):** dieselbe Berechtigung wie Stornieren (eigene Buchung immer, fremde nur Vorstand/Vereinsadmin/GF) — Button "Bearbeiten" öffnet das Buchungsformular vorausgefüllt, Speichern macht ein `update` statt `insert`
 - Bei Fremd-Stornierung: Push-Benachrichtigung an ursprünglichen Buchenden
+- **Telefonnummer-Pflicht zum Buchen (neu, 2026-08-06):** Neue Buchung nur möglich, wenn `currentUser.contactPhones` mindestens eine Nummer enthält (Klick zeigt sonst einen Hinweis statt des Formulars). Gilt nur fürs Neu-Anlegen, nicht fürs Bearbeiten (ein Vorstand ohne eigene Telefonnummer soll fremde Buchungen trotzdem bearbeiten dürfen).
+- **Buchungsdetails per Klick (neu, 2026-08-06):** Klick auf eine Buchung in der Monatsliste öffnet eine Detailansicht mit Fahrzeug, Zeitraum, Mannschaft/Zweck, Name des Buchenden und dessen Telefonnummer(n) als `tel:`-Links zum direkten Anrufen. Sichtbar für alle aktiven Vereinsmitglieder (nicht nur Fuhrpark-Verwalter), da der Zweck ist, bei Rückfragen anrufen zu können.
+
+### ⚠️ Noch einzuspielen: Rollen-Erweiterung + UPDATE-Policy + Telefonnummer-RPC (SQL-Editor, Projekt kymokcqebfruhlvcyqnw)
+Anlass Teil 1: wer ein Fahrzeug neu anlegen kann (Vorstand/Vereinsadmin/GF), sollte es auch buchen und bestehende Buchungen bearbeiten können — bisher konnten Vorstand/Vereinsadmin zwar Fahrzeuge anlegen, aber nicht buchen (nur GF war in beiden Rollengruppen), und eine UPDATE-Policy für Buchungen fehlte komplett (nur `insert`/`delete` waren erlaubt, kein "Bearbeiten" für irgendjemanden).
+
+Anlass Teil 2 (Telefonnummer): `profiles` hat RLS `id = auth.uid()` — ein Mitglied kann grundsätzlich NUR sein eigenes Profil lesen, auch nicht über einen Join von `vehicle_bookings` aus. Damit die Kontakt-Funktion ("Buchung anklicken → Person anrufen") trotzdem funktioniert, ohne die `profiles`-Tabelle allgemein zu öffnen, gibt es eine eng zugeschnittene SECURITY DEFINER-RPC, die ausschließlich die Telefonnummer(n) des Buchenden einer konkreten `vehicle_bookings`-Zeile herausgibt, und auch nur an aktive Mitglieder desselben Vereins.
+
+Das Frontend ruft `update` auf `vehicle_bookings` und `rpc("get_booking_contact_phone", ...)` bereits auf; ohne diese Migration schlagen beide mit einem RLS-Fehler bzw. `null` fehl. Automatisches Einspielen wurde vom Sicherheits-Klassifikator geblockt (wie bei `claim_duty_task` zuvor) — bitte manuell einspielen:
+
+```sql
+create or replace function public.can_book_vehicles(target_club uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = 'public'
+as $$
+  select exists (
+    select 1 from public.membership_roles r
+    join public.club_memberships m on m.id = r.membership_id
+    where m.club_id = target_club and m.profile_id = auth.uid() and m.status = 'active'
+      and r.role in ('vorstand', 'vereinsadmin', 'geschaeftsfuehrung', 'trainer', 'teammanager', 'kapitaen', 'finanzmanager')
+  );
+$$;
+
+create policy "owner or fleet admin updates booking" on public.vehicle_bookings
+  for update
+  using (
+    membership_id in (select id from public.club_memberships where profile_id = auth.uid())
+    or public.can_manage_fleet(club_id)
+  )
+  with check (
+    membership_id in (select id from public.club_memberships where profile_id = auth.uid())
+    or public.can_manage_fleet(club_id)
+  );
+
+create or replace function public.get_booking_contact_phone(target_booking uuid)
+returns text[]
+language sql
+stable
+security definer
+set search_path = 'public'
+as $$
+  select p.contact_phones
+  from public.vehicle_bookings vb
+  join public.club_memberships m on m.id = vb.membership_id
+  join public.profiles p on p.id = m.profile_id
+  where vb.id = target_booking
+    and exists (
+      select 1 from public.club_memberships viewer
+      where viewer.club_id = vb.club_id and viewer.profile_id = auth.uid() and viewer.status = 'active'
+    );
+$$;
+
+grant execute on function public.get_booking_contact_phone(uuid) to authenticated;
+```
+
+Bis das eingespielt ist: "Fahrzeug buchen" funktioniert für Vorstand/Vereinsadmin noch nicht, "Bearbeiten" funktioniert für niemanden, und die Telefonnummer in der Buchungsdetailansicht bleibt leer ("Keine Telefonnummer hinterlegt." wird fälschlich angezeigt, auch wenn eine hinterlegt ist). Anlegen/Löschen von Fahrzeugen und Stornieren von Buchungen sind davon nicht betroffen.
+
+Bis das eingespielt ist: "Fahrzeug buchen" funktioniert für Vorstand/Vereinsadmin noch nicht (RLS blockt den `insert`), und "Bearbeiten" funktioniert für niemanden (keine UPDATE-Policy vorhanden). Anlegen/Löschen von Fahrzeugen und Stornieren von Buchungen sind davon nicht betroffen.
 
 ---
 
