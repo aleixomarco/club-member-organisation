@@ -6,7 +6,7 @@ export function LegalShell({ title, children }: { title: string; children: React
     <h1 style={{ fontSize: 36, margin: "28px 0 22px" }}>{title}</h1>
     {children}
     <nav style={{ display: "flex", flexWrap: "wrap", gap: 16, marginTop: 42, paddingTop: 22, borderTop: "1px solid #ddd" }}>
-      <Link href="/datenschutz">Datenschutz</Link><Link href="/impressum">Impressum</Link><Link href="/nutzungsbedingungen">Nutzungsbedingungen</Link>
+      <Link href="/datenschutz">Datenschutz</Link><Link href="/impressum">Impressum</Link><Link href="/nutzungsbedingungen">Nutzungsbedingungen</Link><Link href="/konto-loeschen">Konto löschen</Link>
     </nav>
   </main>;
 }
@@ -16,4 +16,8 @@ export const legal = {
   legalForm: process.env.NEXT_PUBLIC_LEGAL_FORM || "[Rechtsform in Vercel eintragen]",
   address: process.env.NEXT_PUBLIC_LEGAL_ADDRESS || "[Anschrift in Vercel eintragen]",
   email: process.env.NEXT_PUBLIC_LEGAL_EMAIL || "[Kontakt-E-Mail in Vercel eintragen]",
+  representative: process.env.NEXT_PUBLIC_LEGAL_REPRESENTATIVE || "[Vertretungsberechtigte Person in Vercel eintragen]",
+  phone: process.env.NEXT_PUBLIC_LEGAL_PHONE || "",
+  register: process.env.NEXT_PUBLIC_LEGAL_REGISTER || "",
+  vatId: process.env.NEXT_PUBLIC_LEGAL_VAT_ID || "",
 };

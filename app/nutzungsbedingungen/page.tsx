@@ -1,14 +1,42 @@
 import { LegalShell, legal } from "../legal-shell";
 export const metadata = { title: "Nutzungsbedingungen | Club Member Organisation" };
 export default function TermsPage() { return <LegalShell title="Nutzungsbedingungen">
-  <p>Diese Bedingungen gelten für die Nutzung der Club Member Organisation durch registrierte Vereinsmitglieder. Vertragspartner ist {legal.name}.</p>
+  <p>Diese Bedingungen gelten für die Nutzung der Club Member Organisation durch registrierte Vereinsmitglieder. Vertragspartner ist {legal.name}, vertreten durch {legal.representative}.</p>
+
   <h2>Abonnement für Nutzer</h2>
-  <p><strong>Monatsabo:</strong> Das Monatsabo kostet 2,99 € pro Monat zuzüglich einer einmaligen Einrichtungsgebühr von 1,50 €. Der Betrag wird monatlich abgerechnet und das Abonnement verlängert sich automatisch jeweils um einen weiteren Monat, sofern es nicht rechtzeitig gekündigt wird.</p>
-  <p><strong>Jahresabo:</strong> Das Jahresabo entspricht einem Preis von 0,99 € pro Monat. Der Gesamtbetrag von 11,88 € für zwölf Monate sowie eine einmalige Einrichtungsgebühr von 1,50 € werden vollständig im Voraus bezahlt. Das Jahresabo verlängert sich automatisch um weitere zwölf Monate zum dann geltenden Jahrespreis, sofern es nicht rechtzeitig gekündigt wird.</p>
+  <p><strong>Monatsabo:</strong> 2,99 € pro Monat inkl. gesetzlicher Umsatzsteuer, zuzüglich einer einmaligen Einrichtungsgebühr von 1,50 €. Monatliche Abrechnung, automatische Verlängerung um jeweils einen weiteren Monat, sofern nicht rechtzeitig gekündigt.</p>
+  <p><strong>Jahresabo:</strong> 0,99 € pro Monat inkl. gesetzlicher Umsatzsteuer, macht 11,88 € für zwölf Monate, zuzüglich einmaliger Einrichtungsgebühr von 1,50 €, vollständig im Voraus fällig. Automatische Verlängerung um weitere zwölf Monate zum dann geltenden Jahrespreis, sofern nicht rechtzeitig gekündigt.</p>
+
   <h2>Abonnement für Vereine</h2>
-  <p><strong>Monatsabo:</strong> Der Vereinsaccount kostet 29,99 € pro Monat zuzüglich einer einmaligen Einrichtungsgebühr von 5,00 € und verlängert sich automatisch um jeweils einen weiteren Monat, sofern er nicht rechtzeitig gekündigt wird.</p>
-  <p><strong>Jahresabo:</strong> Bei jährlicher Zahlung entspricht der Preis 24,99 € pro Monat. Der Gesamtbetrag von 299,88 € sowie eine einmalige Einrichtungsgebühr von 5,00 € werden vollständig im Voraus bezahlt. Das Abonnement verlängert sich automatisch um weitere zwölf Monate zum dann geltenden Jahrespreis, sofern es nicht rechtzeitig gekündigt wird.</p>
-  <p>In der iOS-App erfolgt die Abrechnung über Apple, in der Web-App über PayPal.</p>
-  <h2>Kündigung</h2><p>Abonnements können über den jeweiligen Zahlungsanbieter verwaltet und zum Ende des laufenden Abrechnungszeitraums gekündigt werden. Gesetzliche Widerrufs- und Erstattungsrechte bleiben unberührt.</p>
-  <h2>Verhaltensregeln</h2><p>Rechtswidrige, beleidigende oder fremde Rechte verletzende Inhalte sind untersagt. Vereinsadministratoren dürfen entsprechende Inhalte entfernen und Konten sperren.</p>
+  <p><strong>Monatsabo:</strong> 29,99 € pro Monat inkl. gesetzlicher Umsatzsteuer, zuzüglich einmaliger Einrichtungsgebühr von 5,00 €. Automatische Verlängerung um jeweils einen weiteren Monat, sofern nicht rechtzeitig gekündigt.</p>
+  <p><strong>Jahresabo:</strong> 24,99 € pro Monat inkl. gesetzlicher Umsatzsteuer, macht 299,88 € für zwölf Monate, zuzüglich einmaliger Einrichtungsgebühr von 5,00 €, vollständig im Voraus fällig. Automatische Verlängerung um weitere zwölf Monate zum dann geltenden Jahrespreis, sofern nicht rechtzeitig gekündigt.</p>
+  <p>In der iOS-App erfolgt die Abrechnung über Apples In-App-Kauf-System und dessen eigene Nutzungs- und Zahlungsbedingungen, in der Web-App über PayPal.</p>
+
+  <h2>Kündigung</h2>
+  <p>Web-Abonnements über PayPal kannst du jederzeit direkt im Profil unter „Abonnements" mit dem Button „Abonnement kündigen" beenden; das Abonnement bleibt bis zum Ende des bereits bezahlten Zeitraums nutzbar und verlängert sich danach nicht mehr. iOS-Abonnements verwaltest und kündigst du in den Einstellungen deines Apple-Kontos. Das gesetzliche Widerrufsrecht nach den folgenden Bestimmungen bleibt hiervon unberührt.</p>
+
+  <h2>Widerrufsbelehrung</h2>
+  <p><strong>Widerrufsrecht:</strong> Du hast das Recht, binnen vierzehn Tagen ohne Angabe von Gründen diesen Vertrag zu widerrufen. Die Widerrufsfrist beträgt vierzehn Tage ab dem Tag des Vertragsschlusses.</p>
+  <p>Um dein Widerrufsrecht auszuüben, musst du uns ({legal.name}, {legal.address}, E-Mail: {legal.email}{legal.phone ? `, Telefon: ${legal.phone}` : ""}) mittels einer eindeutigen Erklärung (z. B. per E-Mail oder Brief) über deinen Entschluss, diesen Vertrag zu widerrufen, informieren. Du kannst dafür das Muster-Widerrufsformular am Ende dieses Abschnitts verwenden, das jedoch nicht vorgeschrieben ist. Zur Wahrung der Widerrufsfrist reicht es aus, dass du die Mitteilung über die Ausübung des Widerrufsrechts vor Ablauf der Widerrufsfrist absendest.</p>
+  <p><strong>Folgen des Widerrufs:</strong> Wenn du diesen Vertrag widerrufst, erstatten wir dir alle Zahlungen, die wir von dir erhalten haben, unverzüglich und spätestens binnen vierzehn Tagen ab dem Tag, an dem die Mitteilung über deinen Widerruf bei uns eingegangen ist. Für diese Rückzahlung verwenden wir dasselbe Zahlungsmittel, das du bei der ursprünglichen Zahlung eingesetzt hast, soweit nicht ausdrücklich etwas anderes vereinbart wurde.</p>
+  <p>Hast du verlangt, dass die Nutzung der App bereits während der Widerrufsfrist beginnen soll, so hast du uns einen angemessenen Betrag zu zahlen, der dem Anteil der bis zum Zeitpunkt deines Widerrufs bereits erbrachten Leistung im Vergleich zum Gesamtumfang der im Vertrag vorgesehenen Leistung entspricht. Mit dem Abschluss des Abonnements über PayPal bzw. Apple erklärst du dich ausdrücklich damit einverstanden, dass wir mit der Ausführung des Vertrags vor Ablauf der Widerrufsfrist beginnen; dein Widerrufsrecht bleibt hiervon unberührt, erlischt jedoch, sobald wir den Vertrag mit deiner ausdrücklichen Zustimmung vollständig erfüllt haben.</p>
+  <p><strong>Muster-Widerrufsformular</strong> (wenn du den Vertrag widerrufen willst, fülle bitte dieses Formular aus und sende es an die oben genannte Kontaktadresse):</p>
+  <p>An {legal.name}, {legal.address}, {legal.email}:<br/>
+  Hiermit widerrufe ich den von mir abgeschlossenen Vertrag über die Erbringung der folgenden Dienstleistung (Abonnement der Club Member Organisation).<br/>
+  Bestellt am: _____________<br/>
+  Name des Verbrauchers: _____________<br/>
+  Anschrift des Verbrauchers: _____________<br/>
+  Datum: _____________</p>
+
+  <h2>Preise</h2>
+  <p>Alle genannten Preise verstehen sich in Euro inklusive der gesetzlichen Umsatzsteuer.</p>
+
+  <h2>Verhaltensregeln</h2>
+  <p>Rechtswidrige, beleidigende oder fremde Rechte verletzende Inhalte sind untersagt. Nutzer:innen können unangemessene Inhalte oder Verhalten über die Funktion „Fehler melden" im Profil an uns melden. Vereinsadministratoren dürfen entsprechende Inhalte entfernen und Konten sperren.</p>
+
+  <h2>Haftung</h2>
+  <p>Wir haften unbeschränkt für Vorsatz und grobe Fahrlässigkeit sowie nach den Vorschriften des Produkthaftungsgesetzes. Für leichte Fahrlässigkeit haften wir nur bei Verletzung einer wesentlichen Vertragspflicht (Kardinalpflicht), begrenzt auf den vertragstypisch vorhersehbaren Schaden.</p>
+
+  <h2>Schlussbestimmungen</h2>
+  <p>Es gilt deutsches Recht unter Ausschluss des UN-Kaufrechts. Zwingende verbraucherschützende Bestimmungen deines gewöhnlichen Aufenthaltsstaats bleiben unberührt. Sollte eine Bestimmung dieser Nutzungsbedingungen unwirksam sein, bleibt die Wirksamkeit der übrigen Bestimmungen unberührt.</p>
 </LegalShell>; }

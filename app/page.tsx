@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { enablePushNotifications, disablePushNotifications, listenForForegroundMessages } from "@/lib/firebase-push";
+import { legal } from "./legal-shell";
 
 /* ------------------------------------------------------------------ */
 /* Tokens                                                              */
@@ -775,6 +776,7 @@ const SELF_SERVICE_ROLES = Object.keys(ROLE_META).filter((r) => ROLE_META[r].sel
 
 function RegisterScreen({ onRegister, members, club, goLogin }) {
   const [form, setForm] = useState({ name: "", email: "", team: TEAMS[0], birthdate: "", password: "", password2: "", accountType: "mitglied", relativeId: "", childName: "", childBirthdate: "", childTeam: "U11" });
+  const [legalAccepted, setLegalAccepted] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
@@ -790,6 +792,7 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
     if (!form.name.trim() || !form.email.trim() || !form.password || !form.birthdate) { setError("Bitte fülle alle Pflichtfelder aus."); return; }
     if (form.password !== form.password2) { setError("Die Passwörter stimmen nicht überein."); return; }
     if (members.some((m) => m.email.toLowerCase() === form.email.trim().toLowerCase())) { setError("Für diese E-Mail existiert bei diesem Verein bereits ein Konto."); return; }
+    if (!legalAccepted) { setError("Bitte akzeptiere die Nutzungsbedingungen und die Datenschutzerklärung."); return; }
     setError("");
     const typeRoles = form.accountType === "spieler" ? ["mitglied", "spieler"] : form.accountType === "eltern" ? ["mitglied", "eltern"] : ["mitglied"];
     setBusy(true);
@@ -860,10 +863,12 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
         <Field icon={Lock} type="password" placeholder="Passwort" value={form.password} onChange={set("password")} />
         <Field icon={Lock} type="password" placeholder="Passwort bestätigen" value={form.password2} onChange={set("password2")} />
 
+        <label className="flex items-start gap-2 mb-3"><input type="checkbox" checked={legalAccepted} onChange={(e) => setLegalAccepted(e.target.checked)} className="mt-0.5"/><span className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>Ich akzeptiere die <a href="/nutzungsbedingungen" target="_blank" rel="noreferrer" style={{ color: C.red, fontWeight: 700 }}>Nutzungsbedingungen</a> und die <a href="/datenschutz" target="_blank" rel="noreferrer" style={{ color: C.red, fontWeight: 700 }}>Datenschutzerklärung</a>.</span></label>
+
         {error && <div className="flex items-center gap-1.5 text-xs mb-3" style={{ color: C.red, fontFamily: "Inter" }}><AlertCircle size={13} /> {error}</div>}
         {notice && <div className="flex items-center gap-1.5 text-xs mb-3" style={{ color: C.green, fontFamily: "Inter" }}><CheckCircle2 size={13} /> {notice}</div>}
 
-        <button type="submit" disabled={busy} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm" style={{ background: C.red, color: "#fff", fontFamily: "Inter", fontWeight: 700, opacity: busy ? 0.65 : 1 }}>
+        <button type="submit" disabled={busy || !legalAccepted} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm" style={{ background: C.red, color: "#fff", fontFamily: "Inter", fontWeight: 700, opacity: (busy || !legalAccepted) ? 0.65 : 1 }}>
           <UserPlus size={15} /> {busy ? "Konto wird erstellt …" : "Konto erstellen"}
         </button>
       </form>
@@ -1670,7 +1675,10 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
                     {m.text}
                   </div>
                 </div>
-                <div className="text-[10px] mt-0.5" style={{ color: C.textDim, fontFamily: "Inter" }}>{m.time}</div>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <div className="text-[10px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{m.time}</div>
+                  {!mine && <a href={`mailto:${legal.email}?subject=${encodeURIComponent("Nachricht melden - " + (active.name || "Chat"))}&body=${encodeURIComponent(`Ich möchte folgende Nachricht melden:\n\nVerfasser: ${m.who}\nInhalt: ${m.text || ""}\n\nGrund:\n`)}`} className="text-[10px]" style={{ color: C.textDim, fontFamily: "Inter", textDecoration: "underline" }}>Melden</a>}
+                </div>
               </div>
             </div>
           );
@@ -3435,6 +3443,7 @@ function SubscriptionPanel({ user }) {
   const [subscriptions, setSubscriptions] = useState({ member: [], club: [] });
   const [subscriptionsLoading, setSubscriptionsLoading] = useState(true);
   const [cancellingId, setCancellingId] = useState(null);
+  const [withdrawalConsent, setWithdrawalConsent] = useState(false);
   const canBuyClubPlan = user.roles.some((role) => ["vereinsadmin", "sysadmin", "vorstand", "geschaeftsfuehrung"].includes(role));
   const databaseProfile = user.authProfileId && isDbId(user.authProfileId);
   const databaseClub = isDbId(user.clubId);
@@ -3530,17 +3539,21 @@ function SubscriptionPanel({ user }) {
     <div className="flex items-center gap-2 mb-1"><Euro size={16} style={{ color: C.red }} /><div className="text-sm font-bold" style={{ color: C.ink }}>Abonnement</div></div>
     <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Sicher über PayPal bezahlen. Alle Abos verlängern sich automatisch bis zur Kündigung.</div>
     {canBuyClubPlan && <div className="grid grid-cols-2 gap-2 mb-2">
-      {[['member', 'Nutzerkonto'], ['club', 'Vereinsaccount']].map(([value, label]) => <button key={value} onClick={() => { setAccountType(value); setMessage(""); }} className="py-2 rounded-xl text-xs font-bold" style={{ background: accountType === value ? C.ink : C.paperDim, color: accountType === value ? C.white : C.textDim }}>{label}</button>)}
+      {[['member', 'Nutzerkonto'], ['club', 'Vereinsaccount']].map(([value, label]) => <button key={value} onClick={() => { setAccountType(value); setMessage(""); setWithdrawalConsent(false); }} className="py-2 rounded-xl text-xs font-bold" style={{ background: accountType === value ? C.ink : C.paperDim, color: accountType === value ? C.white : C.textDim }}>{label}</button>)}
     </div>}
     <div className="grid grid-cols-2 gap-2 mb-3">
-      {[['monthly', 'Monatlich'], ['yearly', 'Jährlich']].map(([value, label]) => <button key={value} onClick={() => { setCycle(value); setMessage(""); }} className="py-2 rounded-xl text-xs font-bold" style={{ background: cycle === value ? "#FCEBEE" : C.paperDim, color: cycle === value ? C.red : C.textDim, border: cycle === value ? `1px solid ${C.red}` : "1px solid transparent" }}>{label}</button>)}
+      {[['monthly', 'Monatlich'], ['yearly', 'Jährlich']].map(([value, label]) => <button key={value} onClick={() => { setCycle(value); setMessage(""); setWithdrawalConsent(false); }} className="py-2 rounded-xl text-xs font-bold" style={{ background: cycle === value ? "#FCEBEE" : C.paperDim, color: cycle === value ? C.red : C.textDim, border: cycle === value ? `1px solid ${C.red}` : "1px solid transparent" }}>{label}</button>)}
     </div>
     <div className="rounded-xl p-3 mb-3" style={{ background: C.paperDim }}>
       <div className="flex items-end justify-between"><div><div className="text-xl font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{selected.price}</div><div className="text-[10px]" style={{ color: C.textDim }}>{cycle === "yearly" ? "jährlich im Voraus" : "pro Monat"}{selected.equivalent ? ` · ${selected.equivalent}` : ""}</div></div><div className="text-[10px] text-right" style={{ color: C.textDim }}>einmalig<br/><b>{selected.setup} Einrichtung</b></div></div>
       <div className="text-[10px] mt-2" style={{ color: C.textDim }}>19 % Umsatzsteuer im Preis enthalten. Keine Probezeit.</div>
     </div>
-    {loading ? <div className="text-xs py-2 text-center" style={{ color: C.textDim }}>PayPal wird geladen …</div> : config && allowed ?
-      <PayPalSubscriptionButton clientId={config.clientId} planId={config.plans[accountType][cycle]} customId={customId} onApproved={approved} onError={setMessage} /> :
+    {loading ? <div className="text-xs py-2 text-center" style={{ color: C.textDim }}>PayPal wird geladen …</div> : config && allowed ? <>
+      <label className="flex items-start gap-2 mb-3 px-0.5"><input type="checkbox" checked={withdrawalConsent} onChange={(e) => setWithdrawalConsent(e.target.checked)} className="mt-0.5"/><span className="text-[10px]" style={{ color: C.textDim }}>Ich akzeptiere die <a href="/nutzungsbedingungen" target="_blank" rel="noreferrer" style={{ color: C.red }}>Nutzungsbedingungen</a> und die darin enthaltene Widerrufsbelehrung. Ich stimme ausdrücklich zu, dass die Nutzung sofort beginnt, und weiß, dass mein Widerrufsrecht erlischt, sobald der Vertrag vollständig erfüllt ist.</span></label>
+      {withdrawalConsent
+        ? <PayPalSubscriptionButton clientId={config.clientId} planId={config.plans[accountType][cycle]} customId={customId} onApproved={approved} onError={setMessage} />
+        : <div className="text-[11px] rounded-xl px-3 py-2 text-center" style={{ background: C.paperDim, color: C.textDim }}>Bitte zuerst zustimmen, um fortzufahren.</div>}
+    </> :
       <div className="text-[11px] rounded-xl px-3 py-2" style={{ background: "#FFF6E4", color: C.textDim }}>{message || "Der Checkout ist nur für ein angemeldetes, dauerhaft gespeichertes Konto verfügbar."}</div>}
     {message && <div role="status" className="text-[11px] mt-2 rounded-xl px-3 py-2" style={{ background: (message.includes("gespeichert")||message.includes("gekündigt")) ? "#E7F3EC" : message.includes("wird") ? "#FFF6E4" : "#FDECEC", color: (message.includes("gespeichert")||message.includes("gekündigt")) ? C.green : message.includes("wird") ? C.textDim : C.red }}>{message}</div>}
     <div className="text-[9px] mt-3 leading-relaxed" style={{ color: C.textDim }}>Mit dem Abschluss akzeptierst du die <a href="/nutzungsbedingungen" className="underline">Nutzungsbedingungen</a>. Kündigung über PayPal zum Ende des Abrechnungszeitraums.</div>
