@@ -1,6 +1,65 @@
 # CMO App — Projektstatus
 
-_Letzte Aktualisierung: 2026-08-06 (Vormittag) — via Claude Code, direkt im Terminal_
+_Letzte Aktualisierung: 2026-08-07 — via Claude Code, direkt im Terminal_
+
+## RECHTS- & STORE-COMPLIANCE-AUDIT (2026-08-07)
+
+Anlass: Vorbereitung auf App-Store-/Play-Store-Einreichung. Vollständige Durchsicht
+von Impressum, Datenschutzerklärung, Nutzungsbedingungen gegen bekannte gesetzliche
+Pflichtangaben-Listen (§5 DDG, Art. 13/14 DSGVO, §312k BGB, Art. 246a EGBGB,
+Preisangabenverordnung) sowie gegen Apple-/Google-Store-Richtlinien.
+
+**Behoben (Commit `fbbb84d`, live im Code, build-geprüft):**
+- Impressum: vertretungsberechtigte Person, Registereintrag/USt-ID-Felder,
+  EU-OS-Streitschlichtungslink, VSBG-Hinweis (fehlten komplett — klassischer
+  Abmahnungsgrund).
+- Datenschutz: Rechtsgrundlage je Zweck, Firebase Cloud Messaging als bislang
+  nicht genannter Auftragsverarbeiter, Drittlandtransfer-Hinweis, Cookie-/
+  TTDSG-Hinweis, Abschnitt zu Minderjährigen/verwalteten Kinderprofilen
+  (Art. 8 DSGVO), Aufsichtsbehörden-Beschwerderecht, differenzierte
+  Speicherdauer inkl. Aufbewahrungspflicht für Zahlungsdaten (§147 AO,
+  §257 HGB — stand im Widerspruch zur alten "wird bei Kontolöschung
+  gelöscht"-Formulierung).
+- Nutzungsbedingungen: vollständige Widerrufsbelehrung mit
+  Muster-Widerrufsformular (vorher nur ein vager Verweis ohne echte
+  Belehrung).
+- Neue Seite `/konto-loeschen`: öffentlich ohne Login erreichbar
+  (Google-Play-Pflicht seit 2023 für Apps mit Kontofunktion).
+- Einwilligungs-Checkboxen bei Registrierung (AGB/Datenschutz) und vor
+  PayPal-Checkout (§356 Abs. 4 BGB — ausdrückliche Zustimmung zum
+  sofortigen Vertragsbeginn, sonst erlischt das Widerrufsrecht nicht).
+- Vertragslaufzeit/Kündigungshinweis jetzt in unmittelbarer Nähe des
+  Preises im Checkout selbst (Blickfangwerbung, Art. 246a EGBGB), nicht nur
+  in der separaten AGB-Seite.
+- Chat: "Melden"-Link pro Nachricht (Apple Guideline 1.2, UGC-Meldeweg).
+  Redaktion/News brauchte das nicht — dort können nur Admins/Redakteure
+  posten, kein offenes UGC.
+- Ausfüllhilfe für Apple "App Privacy" / Google "Data Safety" als
+  eigenständiges Dokument erstellt (Artifact, nicht im Repo) — exakte
+  Werte pro Datenkategorie, abgeleitet aus der tatsächlichen
+  Datenverarbeitung im Code.
+
+**Geprüft und als nicht einschlägig eingestuft (mit Begründung):**
+- §18 Abs. 2 MStV (redaktionelle Verantwortlichkeit) für die News-Funktion:
+  nicht einschlägig, da News nur eingeloggten Vereinsmitgliedern zugänglich
+  sind, nicht "an die Allgemeinheit gerichtet".
+- JMStV-Jugendschutzbeauftragter (§7 JMStV): nicht einschlägig aus
+  demselben Grund — geschlossene, mitgliederbasierte Plattform ohne
+  öffentliche Reichweite, kein Angebot "für die Allgemeinheit".
+- Preisangabenverordnung: bereits vorher korrekt umgesetzt — "19 %
+  Umsatzsteuer im Preis enthalten" stand schon in der Checkout-UI.
+
+**Kann nicht durch Code-Arbeit in diesem Repo abgeschlossen werden:**
+- Anwaltliche Prüfung der Texte vor Store-Einreichung — Pflicht, keine
+  Formalie, insbesondere wegen echter Zahlungsabwicklung und
+  Jugendmannschaften.
+- Native App (iOS/Android) existiert nicht in diesem Repository —
+  Apple-In-App-Kauf-Integration fürs iOS-Abo (Nutzungsbedingungen kündigen
+  sie an, Code dafür ist nicht vorhanden), Info.plist-Berechtigungstexte,
+  tatsächliches Ausfüllen der App-Privacy-/Data-Safety-Formulare in App
+  Store Connect/Play Console.
+- Barrierefreiheits-Audit (BFSG, Pflicht seit 28.06.2025 für
+  Verbraucher-Digitaldienste) — braucht echtes Screenreader-/WCAG-Testing.
 
 ## Build-Status
 **Buildfähig, alle offenen SQL-Migrationen eingespielt.** `npm run build` läuft fehlerfrei durch (zuletzt verifiziert 2026-08-06). Sowohl `claim_duty_task` (Helferdienst-Self-Claim) als auch die drei Vereinsfahrzeuge-Statements (Rollen-Erweiterung, UPDATE-Policy, Telefon-RPC) wurden erfolgreich im Supabase SQL-Editor ausgeführt und sind live.
