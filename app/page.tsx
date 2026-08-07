@@ -182,6 +182,7 @@ const ROLE_META = {
   organisator: { label: "Organisator/in", color: "#9A6B3F", admin: false, formalMember: true, selfService: false },
 };
 const ROLE_OVERVIEW_KEYS = ["vereinsadmin", "vorstand", "geschaeftsfuehrung", "finanzmanager", "organisator", "trainer", "teammanager", "kapitaen", "spieler", "eltern"];
+const isDbId = (id) => /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(id));
 const isAdmin = (m) => !!m && m.roles.some((r) => ROLE_META[r]?.admin);
 const canManageFees = (m) => !!m && m.roles.some((r) => ["geschaeftsfuehrung", "finanzmanager"].includes(r));
 const isFormalMember = (m) => !!m && m.roles.some((r) => ROLE_META[r]?.formalMember);
@@ -993,7 +994,7 @@ function Dashboard({ user, members, feePaid, channels, dutyPlan, seasonVotes, po
   const tippSubtitle = `Platz ${myRank} von ${leaderboard.length} · Gewinn: CMO-Artikel`;
   const [taskReminder, setTaskReminder] = useState(false);
   useEffect(() => {
-    const databaseMembership = !!supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(user.id));
+    const databaseMembership = !!supabase && isDbId(user.id);
     if (!databaseMembership || !user.clubId) return;
     const checkReminder = async () => {
       const { data: ratio } = await supabase.rpc("get_task_signup_ratio", { target_club: user.clubId });
@@ -1236,7 +1237,7 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
   const meta = typeMeta[ev.type];
 
   const helperEligible = ev.helperSlots ? (isFormalMember(currentUser) && (ev.type !== "spiel" || age(currentUser.birthdate) >= 16)) : false;
-  const eventIsReal = !!supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(ev.id));
+  const eventIsReal = !!supabase && isDbId(ev.id);
 
   return (
     <div className="rounded-2xl mb-3 overflow-hidden" style={{ background: C.white, border: `1px solid ${C.line}` }}>
@@ -1315,7 +1316,7 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
   const canCreateClubEvent = isAdminUser;
   const [manageableTeams, setManageableTeams] = useState(null);
   useEffect(() => {
-    if (!(supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(currentUser.id)))) { setManageableTeams(null); return; }
+    if (!(supabase && isDbId(currentUser.id))) { setManageableTeams(null); return; }
     const loadManageableTeams = async () => {
       const { data } = await supabase.from("team_members")
         .select("function,teams(name)")
@@ -1477,7 +1478,7 @@ function FeesView({ members, records, setRecords }) {
     event.preventDefault();
     if (!selectedMemberId || !form.year || !form.type.trim() || !form.amount.trim()) return;
     const manualNames = form.type === "Familienbeitrag" ? form.manualNames.split(",").map((name) => name.trim()).filter(Boolean) : [];
-    const databaseMembership = !!supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(selectedMemberId));
+    const databaseMembership = !!supabase && isDbId(selectedMemberId);
     const amountNumber = Number(form.amount.replace(",", "."));
     if (!Number.isFinite(amountNumber) || amountNumber < 0) { setMessage("Bitte eine gültige Beitragshöhe eingeben."); return; }
     setSaving(true); setMessage("");
@@ -1504,7 +1505,7 @@ function FeesView({ members, records, setRecords }) {
   };
   const togglePaid = async (record) => {
     const nextPaid = !record.paid;
-    if (supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(record.id))) {
+    if (supabase && isDbId(record.id)) {
       const { error } = await supabase.rpc("set_fee_payment_status", { target_fee: record.id, new_status: nextPaid ? "bezahlt" : "offen" });
       if (error) { setMessage("Der Zahlungsstatus konnte nicht gespeichert werden."); return; }
     }
@@ -1512,7 +1513,7 @@ function FeesView({ members, records, setRecords }) {
   };
   const deleteRecord = async (record) => {
     if (!window.confirm(`Beitragsdatensatz ${record.invoiceNumber || record.year} wirklich löschen?`)) return;
-    if (supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(record.id))) {
+    if (supabase && isDbId(record.id)) {
       const { error } = await supabase.rpc("delete_fee_record", { target_fee: record.id });
       if (error) { setMessage("Der Beitragsdatensatz konnte nicht gelöscht werden."); return; }
     }
@@ -1635,7 +1636,7 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
       const recipients = members
         .filter((m) => m.id !== user.id && (isAdmin(m) || ((!active.team || active.team === m.team) && (!active.visibleRoles || active.visibleRoles.some((r) => m.roles.includes(r))))))
         .map((m) => m.id)
-        .filter((id) => /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(id)));
+        .filter((id) => isDbId(id));
       if (recipients.length > 0) {
         supabase.rpc("notify_many", { target_memberships: recipients, p_notif_type: "chat", p_title: `Neue Nachricht · ${active.name || "Chat"}`, p_body: `${user.name}: ${text.trim()}` });
       }
@@ -1722,7 +1723,7 @@ function RedaktionView({ user, channels, setChannels }) {
   const deleteNews = async (item) => {
     if (!window.confirm(`News „${item.title || "Vereins-News"}“ wirklich löschen?`)) return;
     setMessage("");
-    if (supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(item.id))) {
+    if (supabase && isDbId(item.id)) {
       const { data: imagePath, error } = await supabase.rpc("delete_news_post", { target_post: item.id });
       if (error) { setMessage("Die News konnte nicht gelöscht werden."); return; }
       if (imagePath) await supabase.storage.from("news-images").remove([imagePath]);
@@ -1748,7 +1749,7 @@ function RedaktionView({ user, channels, setChannels }) {
     let id = editingPost?.id || `news-${Date.now()}`;
     let finalImageUrl = imageUrl || undefined;
     let imagePath = null;
-    const databaseMembership = !!supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(user.id));
+    const databaseMembership = !!supabase && isDbId(user.id);
     if (databaseMembership) {
       if (imageFile) {
         const extension = imageFile.type === "image/png" ? "png" : imageFile.type === "image/webp" ? "webp" : "jpg";
@@ -1759,7 +1760,7 @@ function RedaktionView({ user, channels, setChannels }) {
         if (signedError) { await supabase.storage.from("news-images").remove([imagePath]); setMessage("Das News-Bild konnte nicht vorbereitet werden."); setSaving(false); return; }
         finalImageUrl = signedImage.signedUrl;
       }
-      if (editingPost && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(editingPost.id))) {
+      if (editingPost && isDbId(editingPost.id)) {
         const { data: replacedImagePath, error } = await supabase.rpc("update_news_post", {
           target_post: editingPost.id,
           new_title: title.trim(),
@@ -1890,7 +1891,7 @@ function FamilyLinkManager({ user, members, setMembers, adminMode = false }) {
   const [relationMode, setRelationMode] = useState(user.roles.includes("eltern") ? "eltern" : "kind");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
-  const databaseMembership = !!supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(user.id));
+  const databaseMembership = !!supabase && isDbId(user.id);
   const userIsParent = relationMode === "eltern";
   const wantedRole = userIsParent ? "spieler" : "eltern";
   const linkedIds = (user.familyLinks || []).map((l) => l.memberId);
@@ -1970,7 +1971,7 @@ function TrainerTeamSettings({ user, members, setMembers }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
-  const databaseMembership = !!supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(user.id));
+  const databaseMembership = !!supabase && isDbId(user.id);
 
   useEffect(() => {
     const loadTrainerTeams = async () => {
@@ -2067,7 +2068,7 @@ function PlayerTeamSettings({ user, setMembers }) {
   const [myTeamIds, setMyTeamIds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
-  const databaseMembership = !!supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(user.id));
+  const databaseMembership = !!supabase && isDbId(user.id);
   useEffect(() => {
     const load = async () => {
       setLoading(true); setMessage("");
@@ -2117,7 +2118,7 @@ function TeamsView({ currentUser, members, setMembers, currentClub }) {
   const [editCategory, setEditCategory] = useState("");
   const [savingTeamEdit, setSavingTeamEdit] = useState(false);
   const [archivingTeam, setArchivingTeam] = useState(false);
-  const databaseMembership = !!supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(currentUser.id));
+  const databaseMembership = !!supabase && isDbId(currentUser.id);
   const canCreate = currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role));
   const canAssignPlayers = currentUser.roles.some((role) => ["vereinsadmin", "sysadmin", "trainer", "teammanager"].includes(role));
   const [canManagePenalties, setCanManagePenalties] = useState(false);
@@ -2325,7 +2326,7 @@ function TeamPenaltyCatalog({ user }) {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [seasonLabel, setSeasonLabel] = useState("");
   const [resettingSeason, setResettingSeason] = useState(false);
-  const databaseMembership = !!supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(user.id));
+  const databaseMembership = !!supabase && isDbId(user.id);
   const canManageSelectedTeam = !!teams.find((team) => team.id === selectedTeamId)?.canManage;
   const canManageSeasons = databaseMembership && user.roles.some((role) => ["vorstand", "finanzmanager", "sysadmin", "vereinsadmin"].includes(role));
   useEffect(() => {
@@ -2644,7 +2645,7 @@ function TaskCreateForm({ form, setForm, onSubmit, onCancel, editing = false }) 
   );
 }
 function TasksView({ currentUser, members }) {
-  const databaseMembership = !!supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(currentUser.id));
+  const databaseMembership = !!supabase && isDbId(currentUser.id);
   const [clubTasks, setClubTasks] = useState([]);
   const [teamTasks, setTeamTasks] = useState([]);
   const [myTeams, setMyTeams] = useState([]);
@@ -2790,7 +2791,7 @@ function TasksView({ currentUser, members }) {
 
 function VehiclesView({ currentUser, currentClub }) {
   const cfg = sportConfig(currentClub?.sport);
-  const databaseMembership = !!supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(currentUser.id));
+  const databaseMembership = !!supabase && isDbId(currentUser.id);
   const canManageFleet = currentUser.roles.some((r) => ["vorstand", "vereinsadmin", "geschaeftsfuehrung"].includes(r));
   const canBook = canManageFleet || currentUser.roles.some((r) => ["trainer", "teammanager", "kapitaen", "finanzmanager"].includes(r));
   const hasPhone = (currentUser.contactPhones || []).some((p) => p && p.trim());
@@ -3435,8 +3436,8 @@ function SubscriptionPanel({ user }) {
   const [subscriptionsLoading, setSubscriptionsLoading] = useState(true);
   const [cancellingId, setCancellingId] = useState(null);
   const canBuyClubPlan = user.roles.some((role) => ["vereinsadmin", "sysadmin", "vorstand", "geschaeftsfuehrung"].includes(role));
-  const databaseProfile = user.authProfileId && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(user.authProfileId));
-  const databaseClub = /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(user.clubId));
+  const databaseProfile = user.authProfileId && isDbId(user.authProfileId);
+  const databaseClub = isDbId(user.clubId);
 
   const loadSubscriptions = useCallback(async () => {
     if (!supabase || !databaseProfile) { setSubscriptionsLoading(false); return; }
@@ -3785,7 +3786,7 @@ function SysAdminUserManager({ members, setMembers }) {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const selected = members.find((member) => member.id === selectedId);
-  const databaseMembership = !!selected && !!supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(selected.id));
+  const databaseMembership = !!selected && !!supabase && isDbId(selected.id);
 
   useEffect(() => {
     if (!selected) return;
@@ -3910,7 +3911,7 @@ function NotificationSettings({ user, setMembers, saveRef }) {
   const [prefs,setPrefs] = useState({...defaults,...(user.notificationPreferences||{})});
   const [message,setMessage]=useState("");
   const [pushStatus,setPushStatus]=useState("idle");
-  const databaseMembership = !!supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(user.id));
+  const databaseMembership = !!supabase && isDbId(user.id);
   const activatePush = async () => {
     setPushStatus("working");
     const result = await enablePushNotifications(user.id);
@@ -4731,7 +4732,7 @@ function RolesPanel({ members, setMembers }) {
     if (!member) return;
     const has = member.roles.includes(role);
     if (has && member.roles.length === 1) return; // mindestens eine Rolle behalten
-    if (supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(memberId))) {
+    if (supabase && isDbId(memberId)) {
       setMessage("");
       const { error } = has
         ? await supabase.from("membership_roles").delete().eq("membership_id", memberId).eq("role", role)
@@ -4747,7 +4748,7 @@ function RolesPanel({ members, setMembers }) {
     const member = members.find((item) => item.id === memberId);
     if (!member) return;
     let displacedMemberId = null;
-    if (supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(memberId))) {
+    if (supabase && isDbId(memberId)) {
       setMessage("");
       let teamId = null;
       if (team) {
@@ -4778,7 +4779,7 @@ function RolesPanel({ members, setMembers }) {
     const member = members.find((item) => item.id === memberId);
     const currentTeams = member?.trainerTeams || [];
     const nextTeams = currentTeams.includes(teamName) ? currentTeams.filter((name) => name !== teamName) : [...currentTeams, teamName];
-    if (supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(memberId))) {
+    if (supabase && isDbId(memberId)) {
       setMessage("");
       const { error } = await supabase.rpc("set_trainer_teams", { target_membership: memberId, target_team_names: nextTeams });
       if (error) { setMessage("Die Trainer-Mannschaften konnten nicht gespeichert werden."); return; }
@@ -5374,7 +5375,7 @@ export default function ClubMemberOrganisationApp() {
     listenForForegroundMessages();
   }, [currentUser?.id]);
   useEffect(() => {
-    const isRealAccount = !!supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(currentUser?.id || ""));
+    const isRealAccount = !!supabase && isDbId(currentUser?.id || "");
     if (!isRealAccount || !currentUser?.clubId) return;
     const loadEvents = async () => {
       const { data, error } = await supabase.from("events")
