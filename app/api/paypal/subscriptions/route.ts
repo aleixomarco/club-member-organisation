@@ -32,10 +32,19 @@ const selection = `
   subscription_plans ( code, name, interval, price_cents, currency )
 `;
 
+function safeGetSupabaseAdmin() {
+  try {
+    return { admin: getSupabaseAdmin() };
+  } catch {
+    return { error: NextResponse.json({ error: "Server configuration error" }, { status: 500 }) };
+  }
+}
+
 export async function GET(request: Request) {
   const user = await authenticatedUser(request);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const admin = getSupabaseAdmin();
+  const { admin, error: adminError } = safeGetSupabaseAdmin();
+  if (adminError) return adminError;
   const clubId = new URL(request.url).searchParams.get("clubId");
 
   const { data: member, error: memberError } = await admin.from("user_subscriptions")
@@ -60,7 +69,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid subscription" }, { status: 400 });
   }
 
-  const admin = getSupabaseAdmin();
+  const { admin, error: adminError } = safeGetSupabaseAdmin();
+  if (adminError) return adminError;
   if (accountType === "club" && (!clubId || !await canManageClub(admin, user.id, clubId))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -109,7 +119,8 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "Invalid subscription" }, { status: 400 });
   }
 
-  const admin = getSupabaseAdmin();
+  const { admin, error: adminError } = safeGetSupabaseAdmin();
+  if (adminError) return adminError;
   const table = accountType === "club" ? "club_subscriptions" : "user_subscriptions";
   const ownerColumn = accountType === "club" ? "club_id" : "profile_id";
   const ownerId = accountType === "club" ? clubId : user.id;

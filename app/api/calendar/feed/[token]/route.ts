@@ -12,7 +12,12 @@ function icsDate(value: string) {
 
 export async function GET(_request: Request, context: { params: Promise<{ token: string }> }) {
   const { token } = await context.params;
-  const admin = getSupabaseAdmin();
+  let admin: ReturnType<typeof getSupabaseAdmin>;
+  try {
+    admin = getSupabaseAdmin();
+  } catch {
+    return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
+  }
   const { data: subscription } = await admin.from("calendar_subscriptions").select("profile_id,club_id,enabled,sync_interval").eq("token", token).maybeSingle();
   if (!subscription?.enabled) return NextResponse.json({ error: "Kalenderverbindung nicht gefunden" }, { status: 404 });
   const { data: membership } = await admin.from("club_memberships").select("id").eq("profile_id", subscription.profile_id).eq("club_id", subscription.club_id).eq("status", "active").maybeSingle();

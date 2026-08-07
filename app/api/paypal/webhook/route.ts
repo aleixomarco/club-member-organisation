@@ -21,7 +21,12 @@ export async function POST(request: Request) {
   const verified = await verifyPayPalWebhook(request.headers, event).catch(() => false);
   if (!verified) return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
 
-  const admin = getSupabaseAdmin();
+  let admin: ReturnType<typeof getSupabaseAdmin>;
+  try {
+    admin = getSupabaseAdmin();
+  } catch {
+    return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
+  }
   const resource = event.resource || {};
   // Payment events carry the subscription as billing_agreement_id; resource.id is the sale id.
   const subscriptionId = resource.billing_agreement_id || resource.id;

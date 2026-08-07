@@ -14,7 +14,12 @@ export async function DELETE(request: Request) {
   const { data: { user }, error } = await authClient.auth.getUser(token);
   if (error || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const admin = getSupabaseAdmin();
+  let admin: ReturnType<typeof getSupabaseAdmin>;
+  try {
+    admin = getSupabaseAdmin();
+  } catch {
+    return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
+  }
   const { data: subscriptions } = await admin.from("user_subscriptions")
     .select("provider,provider_subscription_id,status").eq("profile_id", user.id).in("status", ["active", "past_due", "suspended"]);
   for (const subscription of subscriptions || []) {
