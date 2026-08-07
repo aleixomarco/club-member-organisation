@@ -20,6 +20,30 @@ export async function DELETE(request: Request) {
   for (const subscription of subscriptions || []) {
     if (subscription.provider === "paypal") await cancelPayPalSubscription(subscription.provider_subscription_id);
   }
+
+  // Vereinsverantwortliche informieren, bevor das Konto gelöscht wird. Best effort:
+  // ein Fehler hier darf die eigentliche Löschung nicht verhindern.
+  try {
+    const { data: memberships } = await admin.from("club_memberships")
+      .select("id,club_id,display_name,status").eq("profile_id", user.id);
+    for (const membership of memberships || []) {
+      if (membership.status !== "active") continue;
+      const { data: clubMembers } = await admin.from("club_memberships")
+        .select("id,membership_roles(role)").eq("club_id", membership.club_id).eq("status", "active");
+      const recipients = (clubMembers || [])
+        .filter((m) => m.id !== membership.id && (m.membership_roles || []).some((r: { role: string }) => ["vereinsadmin", "sysadmin", "vorstand", "geschaeftsfuehrung"].includes(r.role)))
+        .map((m) => m.id);
+      if (recipients.length) {
+        await admin.rpc("notify_many", {
+          target_memberships: recipients, p_notif_type: "membership",
+          p_title: "Konto gelöscht", p_body: `${membership.display_name} hat das eigene Konto dauerhaft gelöscht.`,
+        });
+      }
+    }
+  } catch {
+    // Benachrichtigung ist nicht kritisch für die Löschung selbst.
+  }
+
   const { error: deletionError } = await admin.auth.admin.deleteUser(user.id);
   if (deletionError) return NextResponse.json({ error: "Deletion failed" }, { status: 500 });
   return NextResponse.json({ deleted: true });

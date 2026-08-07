@@ -184,6 +184,17 @@ const ROLE_META = {
 };
 const ROLE_OVERVIEW_KEYS = ["vereinsadmin", "vorstand", "geschaeftsfuehrung", "finanzmanager", "organisator", "trainer", "teammanager", "kapitaen", "spieler", "eltern"];
 const isDbId = (id) => /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(id));
+const CLUB_ADMIN_ROLES = ["vereinsadmin", "sysadmin", "vorstand", "geschaeftsfuehrung"];
+const notifyClubAdmins = async (clubId, notifType, title, body, excludeMembershipId) => {
+  if (!supabase || !isDbId(clubId)) return;
+  const { data } = await supabase.from("club_memberships")
+    .select("id,membership_roles(role)")
+    .eq("club_id", clubId).eq("status", "active");
+  const recipients = (data || [])
+    .filter((m) => m.id !== excludeMembershipId && (m.membership_roles || []).some((r) => CLUB_ADMIN_ROLES.includes(r.role)))
+    .map((m) => m.id);
+  if (recipients.length) await supabase.rpc("notify_many", { target_memberships: recipients, p_notif_type: notifType, p_title: title, p_body: body });
+};
 const isAdmin = (m) => !!m && m.roles.some((r) => ROLE_META[r]?.admin);
 const canManageFees = (m) => !!m && m.roles.some((r) => ["geschaeftsfuehrung", "finanzmanager"].includes(r));
 const isFormalMember = (m) => !!m && m.roles.some((r) => ROLE_META[r]?.formalMember);
@@ -2932,6 +2943,9 @@ function VehiclesView({ currentUser, currentClub }) {
       setMessage(error.message?.includes("exclude") || error.code === "23P01" ? "Das Fahrzeug ist in diesem Zeitraum bereits gebucht." : editingBookingId ? "Buchung konnte nicht geändert werden." : "Buchung konnte nicht angelegt werden.");
       setSavingBooking(false); return;
     }
+    if (!editingBookingId) {
+      notifyClubAdmins(currentUser.clubId, "vehicle", "Neue Fahrzeugbuchung", `${currentUser.name} hat ${selectedVehicle.label} gebucht (${bookingForm.startDate} – ${bookingForm.endDate}).`, currentUser.id);
+    }
     setSelectedVehicle(null); setEditingBookingId(null); setSavingBooking(false);
     await loadBookings();
   };
@@ -3444,6 +3458,7 @@ function SubscriptionPanel({ user }) {
   const [subscriptionsLoading, setSubscriptionsLoading] = useState(true);
   const [cancellingId, setCancellingId] = useState(null);
   const [withdrawalConsent, setWithdrawalConsent] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(false);
   const canBuyClubPlan = user.roles.some((role) => ["vereinsadmin", "sysadmin", "vorstand", "geschaeftsfuehrung"].includes(role));
   const databaseProfile = user.authProfileId && isDbId(user.authProfileId);
   const databaseClub = isDbId(user.clubId);
@@ -3498,6 +3513,7 @@ function SubscriptionPanel({ user }) {
       if (!response.ok) throw new Error(payload.error || "Das Abonnement konnte noch nicht gespeichert werden.");
       await loadSubscriptions();
       setMessage("Abonnement gespeichert und automatisch freigeschaltet.");
+      setShowWelcome(true);
     } catch (error) {
       setMessage(error.message || "Die PayPal-Bestätigung wird noch verarbeitet. Bitte aktualisiere die Ansicht gleich erneut.");
     }
@@ -3559,6 +3575,16 @@ function SubscriptionPanel({ user }) {
     {message && <div role="status" className="text-[11px] mt-2 rounded-xl px-3 py-2" style={{ background: (message.includes("gespeichert")||message.includes("gekündigt")) ? "#E7F3EC" : message.includes("wird") ? "#FFF6E4" : "#FDECEC", color: (message.includes("gespeichert")||message.includes("gekündigt")) ? C.green : message.includes("wird") ? C.textDim : C.red }}>{message}</div>}
     <div className="text-[9px] mt-3 leading-relaxed" style={{ color: C.textDim }}>Mit dem Abschluss akzeptierst du die <a href="/nutzungsbedingungen" className="underline">Nutzungsbedingungen</a>. Kündigung über PayPal zum Ende des Abrechnungszeitraums.</div>
     </div>
+    {showWelcome && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-5" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setShowWelcome(false)}>
+        <div role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} className="w-full max-w-sm rounded-3xl p-6 text-center" style={{ background: C.white }}>
+          <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: "#E7F3EC" }}><CheckCircle2 size={28} style={{ color: C.green }} /></div>
+          <div className="text-lg font-bold mb-2" style={{ fontFamily: "Oswald", color: C.ink }}>Willkommen an Bord!</div>
+          <div className="text-sm mb-5" style={{ color: C.textDim }}>Dein Abonnement ist aktiv. Alle Funktionen sind ab sofort freigeschaltet — viel Spaß mit der App.</div>
+          <button onClick={() => setShowWelcome(false)} className="w-full py-3 rounded-xl text-sm font-bold" style={{ background: C.ink, color: C.white }}>Los geht's</button>
+        </div>
+      </div>
+    )}
   </div>;
 }
 
@@ -4997,6 +5023,9 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
     setMembers((items) => items.map((item) => item.id === member.id ? { ...item, status: nextStatus, accountPending: false } : item));
     setMessage(nextStatus === "inactive" ? "Mitgliedschaft wurde beendet." : "Mitgliedschaft wurde reaktiviert.");
     setWorkingId(null);
+    if (nextStatus === "inactive") {
+      notifyClubAdmins(club.id, "membership", "Mitgliedschaft beendet", `${member.display_name} ist nicht mehr aktives Mitglied.`, member.id);
+    }
   };
 
   const loadRequests = async () => {
