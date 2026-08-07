@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
-import { getPayPalSubscription, paypalPlanId, type PayPalPlanCode } from "@/lib/paypal";
+import { getPayPalSubscription, paypalPlanId, cancelPayPalSubscription, type PayPalPlanCode } from "@/lib/paypal";
 
 export const dynamic = "force-dynamic";
 
@@ -99,4 +99,45 @@ export async function POST(request: Request) {
   const { error } = await admin.from(table).upsert(record, { onConflict: "provider,provider_subscription_id" });
   if (error) return NextResponse.json({ error: "Subscription could not be saved" }, { status: 500 });
   return NextResponse.json({ saved: true });
+}
+
+export async function DELETE(request: Request) {
+  const user = await authenticatedUser(request);
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { subscriptionId, accountType, clubId } = await request.json();
+  if (!subscriptionId || !["member", "club"].includes(accountType)) {
+    return NextResponse.json({ error: "Invalid subscription" }, { status: 400 });
+  }
+
+  const admin = getSupabaseAdmin();
+  const table = accountType === "club" ? "club_subscriptions" : "user_subscriptions";
+  const ownerColumn = accountType === "club" ? "club_id" : "profile_id";
+  const ownerId = accountType === "club" ? clubId : user.id;
+  if (accountType === "club" && (!clubId || !await canManageClub(admin, user.id, clubId))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const { data: existing } = await admin.from(table)
+    .select("id,provider,provider_subscription_id,status")
+    .eq("provider_subscription_id", subscriptionId).eq(ownerColumn, ownerId).maybeSingle();
+  if (!existing) return NextResponse.json({ error: "Subscription not found" }, { status: 404 });
+  if (["cancelled", "expired", "refunded"].includes(existing.status)) {
+    return NextResponse.json({ error: "Subscription is already inactive" }, { status: 409 });
+  }
+
+  if (existing.provider === "paypal") {
+    try {
+      await cancelPayPalSubscription(existing.provider_subscription_id, "Cancelled by user in app");
+    } catch {
+      return NextResponse.json({ error: "PayPal cancellation failed" }, { status: 502 });
+    }
+  }
+
+  const { error } = await admin.from(table).update({
+    status: "cancelled",
+    cancel_at_period_end: true,
+    cancelled_at: new Date().toISOString(),
+  }).eq("id", existing.id);
+  if (error) return NextResponse.json({ error: "Subscription could not be updated" }, { status: 500 });
+  return NextResponse.json({ cancelled: true });
 }

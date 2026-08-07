@@ -1260,9 +1260,9 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
       </button>
       {open && (
         <div className="px-4 pb-4">
-          {ev.cancelled&&<div className="rounded-xl p-3 mb-3 text-xs font-bold" style={{background:"#FCEBEE",color:C.red,border:"1px solid #F3B9B9"}}>Dieses Training wurde für {ev.team} abgesagt.</div>}
+          {ev.cancelled&&<div className="rounded-xl p-3 mb-3 text-xs font-bold" style={{background:"#FCEBEE",color:C.red,border:"1px solid #F3B9B9"}}>Dieses {meta.label} wurde{ev.team?` für ${ev.team}`:""} abgesagt.</div>}
           <p className="text-sm mb-3" style={{ color: C.textDim, fontFamily: "Inter" }}>{ev.desc}</p>
-          {canCancelTraining&&!ev.cancelled&&<button onClick={()=>onCancelTraining(ev.id)} className="w-full py-2.5 rounded-xl text-xs font-bold mb-3" style={{background:"#FCEBEE",color:C.red,border:"1px solid #F3B9B9"}}>Training für {ev.team} absagen</button>}{canCancelTraining&&<button onClick={()=>onDeleteTraining(ev.id, ev.team, ev.seriesId)} className="w-full py-2.5 rounded-xl text-xs font-bold mb-3" style={{background:C.paperDim,color:C.red}}>Training endgültig löschen</button>}
+          {canCancelTraining&&!ev.cancelled&&<button onClick={()=>onCancelTraining(ev.id)} className="w-full py-2.5 rounded-xl text-xs font-bold mb-3" style={{background:"#FCEBEE",color:C.red,border:"1px solid #F3B9B9"}}>{meta.label}{ev.team?` für ${ev.team}`:""} absagen</button>}{canCancelTraining&&<button onClick={()=>onDeleteTraining(ev.id, ev.team, ev.seriesId)} className="w-full py-2.5 rounded-xl text-xs font-bold mb-3" style={{background:C.paperDim,color:C.red}}>{meta.label} endgültig löschen</button>}
 
           {ev.home !== true && (
             eventIsReal ? <CarpoolSection ev={ev} currentUser={currentUser} /> : ev.carpool && (
@@ -1312,6 +1312,7 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
   const myCarpools = carpools[userId] || {};
   const isAdminUser = isAdmin(currentUser);
   const canCreateSportEvent = isSysAdmin(currentUser) || currentUser.roles.some((role)=>["trainer","kapitaen","teammanager"].includes(role));
+  const canCreateClubEvent = isAdminUser;
   const [manageableTeams, setManageableTeams] = useState(null);
   useEffect(() => {
     if (!(supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(currentUser.id)))) { setManageableTeams(null); return; }
@@ -1334,13 +1335,15 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
       ? manageableTeams.filter((team) => filterTeams.includes(team))
       : currentUser.roles.includes("trainer") ? (currentUser.trainerTeams?.length ? currentUser.trainerTeams : [currentUser.team]).filter((team) => filterTeams.includes(team)) : currentUser.roles.includes("teammanager") ? [currentUser.managedTeam || currentUser.team].filter((team)=>filterTeams.includes(team)) : [currentUser.team].filter((team) => filterTeams.includes(team));
   const openCreate = () => {
-    setEventDraft((draft) => ({ ...draft, team: allowedEventTeams[0] || "" }));
+    setEventDraft((draft) => ({ ...draft, type: canCreateSportEvent ? draft.type : "event", team: canCreateSportEvent ? (allowedEventTeams[0] || "") : "" }));
     setShowCreate(true);
   };
   const resetEventDraft = () => setEventDraft({ type: "training", team: allowedEventTeams[0] || "", title: "", date: "", location: "", desc: "", recurring: false, weekdays: [], startTime: "18:00", endTime: "19:30", rangeStart: "", rangeEnd: "", isHome: true });
   const createSportEvent = async (event) => {
     event.preventDefault();
-    if (!eventDraft.team || !allowedEventTeams.includes(eventDraft.team) || !eventDraft.title.trim() || !eventDraft.location.trim()) return;
+    const isClubEvent = eventDraft.type === "event";
+    if (!isClubEvent && (!eventDraft.team || !allowedEventTeams.includes(eventDraft.team))) return;
+    if (!eventDraft.title.trim() || !eventDraft.location.trim()) return;
     if (eventDraft.recurring) {
       if (!eventDraft.weekdays.length || !eventDraft.startTime || !eventDraft.endTime || !eventDraft.rangeStart || !eventDraft.rangeEnd) return;
       if (!supabase || !currentUser.authProfileId) return;
@@ -1378,7 +1381,7 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
     if (!eventDraft.date) return;
     let eventId = Date.now();
     if (supabase && currentUser.authProfileId) {
-      const { data: team } = await supabase.from("teams").select("id").eq("club_id",currentUser.clubId).eq("name",eventDraft.team).maybeSingle();
+      const { data: team } = eventDraft.team ? await supabase.from("teams").select("id").eq("club_id",currentUser.clubId).eq("name",eventDraft.team).maybeSingle() : { data: null };
       const { data: saved } = await supabase.from("events").insert({club_id:currentUser.clubId,team_id:team?.id||null,type:eventDraft.type,status:"scheduled",title:eventDraft.title.trim(),description:eventDraft.desc.trim()||null,starts_at:new Date(eventDraft.date).toISOString(),location:eventDraft.location.trim(),created_by:currentUser.authProfileId,home_away:eventDraft.type==="spiel"?(eventDraft.isHome?"heim":"auswaerts"):null}).select("id").maybeSingle();
       if (saved?.id) eventId=saved.id;
     }
@@ -1423,8 +1426,8 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
 
   return (
     <div className="px-4 pt-4 pb-24">
-      <div className="flex items-start justify-between gap-3"><SectionTitle title="Termine" />{canCreateSportEvent&&<button onClick={openCreate} className="px-3 py-1.5 rounded-full text-xs flex-shrink-0" style={{background:C.red,color:C.white,fontWeight:700}}>＋ Eintragen</button>}</div>
-      {showCreate&&<form onSubmit={createSportEvent} className="rounded-2xl p-4 mb-4 space-y-2.5" style={{background:C.white,border:`1px solid ${C.line}`}}><div className="text-sm font-bold">Training oder Spiel eintragen</div><div className="text-[10px]" style={{color:C.textDim}}>{isSysAdmin(currentUser)?"Als Vereins-Sysadmin kannst du jede Mannschaft auswählen.":currentUser.roles.includes("trainer")?"Du kannst nur deine im Profil hinterlegten Mannschaften auswählen.":"Als Kapitän oder Teammanager kannst du nur für deine hinterlegte Mannschaft eintragen."}</div><div className="text-[10px] font-bold" style={{color:C.red}}>* Pflichtfeld</div><div className="grid grid-cols-2 gap-2"><select value={eventDraft.type} onChange={(e)=>setEventDraft({...eventDraft,type:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}><option value="training">Training</option><option value="spiel">Spiel</option></select><select value={eventDraft.team} onChange={(e)=>setEventDraft({...eventDraft,team:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}>{allowedEventTeams.map((team)=><option key={team} value={team}>{team}</option>)}</select></div><input value={eventDraft.title} onChange={(e)=>setEventDraft({...eventDraft,title:e.target.value})} placeholder={eventDraft.type==="training"?"Titel des Trainings *":"Titel des Spiels *"} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/>{eventDraft.type === "spiel" && <label className="flex items-center gap-2 px-0.5"><input type="checkbox" checked={eventDraft.isHome} onChange={(e)=>setEventDraft({...eventDraft,isHome:e.target.checked})}/><span className="text-xs font-bold" style={{color:C.ink}}>Heimspiel</span></label>}{eventDraft.type === "training" && <label className="flex items-center gap-2 px-0.5"><input type="checkbox" checked={eventDraft.recurring} onChange={(e)=>setEventDraft({...eventDraft,recurring:e.target.checked})}/><span className="text-xs font-bold" style={{color:C.ink}}>Wiederholend</span></label>}{!eventDraft.recurring ? <input type="datetime-local" value={eventDraft.date} onChange={(e)=>setEventDraft({...eventDraft,date:e.target.value})} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/> : <div className="space-y-2"><div className="flex gap-1.5 flex-wrap">{[["1","Mo"],["2","Di"],["3","Mi"],["4","Do"],["5","Fr"],["6","Sa"],["7","So"]].map(([num,label])=>{const n=Number(num);const active=eventDraft.weekdays.includes(n);return <button type="button" key={num} onClick={()=>setEventDraft({...eventDraft,weekdays:active?eventDraft.weekdays.filter((w)=>w!==n):[...eventDraft.weekdays,n]})} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?C.red:C.paperDim,color:active?C.white:C.textDim}}>{label}</button>;})}</div><div className="grid grid-cols-2 gap-2"><input type="time" value={eventDraft.startTime} onChange={(e)=>setEventDraft({...eventDraft,startTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><input type="time" value={eventDraft.endTime} onChange={(e)=>setEventDraft({...eventDraft,endTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></div><div className="grid grid-cols-2 gap-2"><input type="date" value={eventDraft.rangeStart} onChange={(e)=>setEventDraft({...eventDraft,rangeStart:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><input type="date" value={eventDraft.rangeEnd} onChange={(e)=>setEventDraft({...eventDraft,rangeEnd:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></div></div>}<input value={eventDraft.location} onChange={(e)=>setEventDraft({...eventDraft,location:e.target.value})} placeholder="Ort *" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><textarea value={eventDraft.desc} onChange={(e)=>setEventDraft({...eventDraft,desc:e.target.value})} placeholder="Beschreibung (optional)" rows={2} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none" style={{background:C.paperDim}}/><div className="flex gap-2"><button type="submit" className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{background:C.ink,color:C.white}}>Speichern</button><button type="button" onClick={()=>setShowCreate(false)} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{background:C.paperDim,color:C.textDim}}>Abbrechen</button></div></form>}
+      <div className="flex items-start justify-between gap-3"><SectionTitle title="Termine" />{(canCreateSportEvent||canCreateClubEvent)&&<button onClick={openCreate} className="px-3 py-1.5 rounded-full text-xs flex-shrink-0" style={{background:C.red,color:C.white,fontWeight:700}}>＋ Eintragen</button>}</div>
+      {showCreate&&<form onSubmit={createSportEvent} className="rounded-2xl p-4 mb-4 space-y-2.5" style={{background:C.white,border:`1px solid ${C.line}`}}><div className="text-sm font-bold">Termin eintragen</div><div className="text-[10px]" style={{color:C.textDim}}>{eventDraft.type==="event"?"Vereins-Events sind für alle Mitglieder sichtbar, unabhängig von Mannschaft.":isSysAdmin(currentUser)?"Als Vereins-Sysadmin kannst du jede Mannschaft auswählen.":currentUser.roles.includes("trainer")?"Du kannst nur deine im Profil hinterlegten Mannschaften auswählen.":"Als Kapitän oder Teammanager kannst du nur für deine hinterlegte Mannschaft eintragen."}</div><div className="text-[10px] font-bold" style={{color:C.red}}>* Pflichtfeld</div><div className="grid grid-cols-2 gap-2"><select value={eventDraft.type} onChange={(e)=>setEventDraft({...eventDraft,type:e.target.value,team:e.target.value==="event"?"":eventDraft.team})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}>{canCreateSportEvent&&<option value="training">Training</option>}{canCreateSportEvent&&<option value="spiel">Spiel</option>}{canCreateClubEvent&&<option value="event">Vereins-Event</option>}</select>{eventDraft.type!=="event"&&<select value={eventDraft.team} onChange={(e)=>setEventDraft({...eventDraft,team:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}>{allowedEventTeams.map((team)=><option key={team} value={team}>{team}</option>)}</select>}</div><input value={eventDraft.title} onChange={(e)=>setEventDraft({...eventDraft,title:e.target.value})} placeholder={eventDraft.type==="training"?"Titel des Trainings *":eventDraft.type==="event"?"Titel des Events *":"Titel des Spiels *"} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/>{eventDraft.type === "spiel" && <label className="flex items-center gap-2 px-0.5"><input type="checkbox" checked={eventDraft.isHome} onChange={(e)=>setEventDraft({...eventDraft,isHome:e.target.checked})}/><span className="text-xs font-bold" style={{color:C.ink}}>Heimspiel</span></label>}{eventDraft.type === "training" && <label className="flex items-center gap-2 px-0.5"><input type="checkbox" checked={eventDraft.recurring} onChange={(e)=>setEventDraft({...eventDraft,recurring:e.target.checked})}/><span className="text-xs font-bold" style={{color:C.ink}}>Wiederholend</span></label>}{!eventDraft.recurring ? <input type="datetime-local" value={eventDraft.date} onChange={(e)=>setEventDraft({...eventDraft,date:e.target.value})} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/> : <div className="space-y-2"><div className="flex gap-1.5 flex-wrap">{[["1","Mo"],["2","Di"],["3","Mi"],["4","Do"],["5","Fr"],["6","Sa"],["7","So"]].map(([num,label])=>{const n=Number(num);const active=eventDraft.weekdays.includes(n);return <button type="button" key={num} onClick={()=>setEventDraft({...eventDraft,weekdays:active?eventDraft.weekdays.filter((w)=>w!==n):[...eventDraft.weekdays,n]})} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?C.red:C.paperDim,color:active?C.white:C.textDim}}>{label}</button>;})}</div><div className="grid grid-cols-2 gap-2"><input type="time" value={eventDraft.startTime} onChange={(e)=>setEventDraft({...eventDraft,startTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><input type="time" value={eventDraft.endTime} onChange={(e)=>setEventDraft({...eventDraft,endTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></div><div className="grid grid-cols-2 gap-2"><input type="date" value={eventDraft.rangeStart} onChange={(e)=>setEventDraft({...eventDraft,rangeStart:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><input type="date" value={eventDraft.rangeEnd} onChange={(e)=>setEventDraft({...eventDraft,rangeEnd:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></div></div>}<input value={eventDraft.location} onChange={(e)=>setEventDraft({...eventDraft,location:e.target.value})} placeholder="Ort *" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><textarea value={eventDraft.desc} onChange={(e)=>setEventDraft({...eventDraft,desc:e.target.value})} placeholder="Beschreibung (optional)" rows={2} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none" style={{background:C.paperDim}}/><div className="flex gap-2"><button type="submit" className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{background:C.ink,color:C.white}}>Speichern</button><button type="button" onClick={()=>setShowCreate(false)} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{background:C.paperDim,color:C.textDim}}>Abbrechen</button></div></form>}
       <SponsorSlot slotKey="events_header" bookings={sponsorBookings} onImpression={onSponsorImpression} onClick={onSponsorClick} />
       <div className="flex gap-2 mb-4 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
         {[["alle", "Alle"], ["training", "Training"], ["spiel", "Spiele"], ["event", "Events"]].map(([k, l]) => (
@@ -1442,7 +1445,7 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
       {filtered.map((ev) => (
         (() => {
           const trainerTeams = currentUser.trainerTeams?.length ? currentUser.trainerTeams : [currentUser.team];
-          const canCancelTraining = ev.type === "training" && ((currentUser.roles.includes("trainer") && trainerTeams.includes(ev.team)) || (currentUser.roles.includes("kapitaen") && currentUser.team === ev.team) || (currentUser.roles.includes("teammanager") && currentUser.managedTeam === ev.team));
+          const canCancelTraining = ev.type === "event" ? isAdminUser : (ev.type === "training" || ev.type === "spiel") && (isSysAdmin(currentUser) || (currentUser.roles.includes("trainer") && trainerTeams.includes(ev.team)) || (currentUser.roles.includes("kapitaen") && currentUser.team === ev.team) || (currentUser.roles.includes("teammanager") && currentUser.managedTeam === ev.team));
           return (
         <EventCard key={ev.id} ev={ev}
           carpoolOn={!!myCarpools[ev.id]} onCarpool={handleCarpool}
@@ -1698,8 +1701,23 @@ function RedaktionView({ user, channels, setChannels }) {
   const [imageFile, setImageFile] = useState(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [editingPost, setEditingPost] = useState(null);
   const news = channels.find((c) => c.id === "news");
   const items = (news?.messages || []).map((m, idx) => ({ ...m, idx })).reverse();
+
+  const openEdit = (item) => {
+    setEditingPost(item);
+    setTitle(item.title || "");
+    setText(item.text || "");
+    setImageUrl(item.imageUrl || "");
+    setImageFile(null);
+    setMessage("");
+    setShowForm(true);
+  };
+  const cancelForm = () => {
+    setShowForm(false); setEditingPost(null);
+    setTitle(""); setText(""); setImageUrl(""); setImageFile(null); setMessage("");
+  };
 
   const deleteNews = async (item) => {
     if (!window.confirm(`News „${item.title || "Vereins-News"}“ wirklich löschen?`)) return;
@@ -1727,7 +1745,7 @@ function RedaktionView({ user, channels, setChannels }) {
   const publish = async () => {
     if (!title.trim() || !text.trim()) return;
     setSaving(true); setMessage("");
-    let id = `news-${Date.now()}`;
+    let id = editingPost?.id || `news-${Date.now()}`;
     let finalImageUrl = imageUrl || undefined;
     let imagePath = null;
     const databaseMembership = !!supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(user.id));
@@ -1741,14 +1759,33 @@ function RedaktionView({ user, channels, setChannels }) {
         if (signedError) { await supabase.storage.from("news-images").remove([imagePath]); setMessage("Das News-Bild konnte nicht vorbereitet werden."); setSaving(false); return; }
         finalImageUrl = signedImage.signedUrl;
       }
-      const { data, error } = await supabase.rpc("create_news_post", {
-        target_club: user.clubId,
-        post_title: title.trim(),
-        post_body: text.trim(),
-        post_image_path: imagePath,
-      });
-      if (error) { if (imagePath) await supabase.storage.from("news-images").remove([imagePath]); setMessage("Die News konnte nicht gespeichert werden."); setSaving(false); return; }
-      id = data;
+      if (editingPost && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(editingPost.id))) {
+        const { data: replacedImagePath, error } = await supabase.rpc("update_news_post", {
+          target_post: editingPost.id,
+          new_title: title.trim(),
+          new_body: text.trim(),
+          new_image_path: imagePath,
+        });
+        if (error) { if (imagePath) await supabase.storage.from("news-images").remove([imagePath]); setMessage("Die News konnte nicht geändert werden."); setSaving(false); return; }
+        if (replacedImagePath) await supabase.storage.from("news-images").remove([replacedImagePath]);
+        if (!imageFile) finalImageUrl = editingPost.imageUrl;
+      } else {
+        const { data, error } = await supabase.rpc("create_news_post", {
+          target_club: user.clubId,
+          post_title: title.trim(),
+          post_body: text.trim(),
+          post_image_path: imagePath,
+        });
+        if (error) { if (imagePath) await supabase.storage.from("news-images").remove([imagePath]); setMessage("Die News konnte nicht gespeichert werden."); setSaving(false); return; }
+        id = data;
+      }
+    }
+    if (editingPost) {
+      setChannels((cs) => cs.map((c) => (c.id === "news"
+        ? { ...c, messages: c.messages.map((m) => m.id === editingPost.id ? { ...m, title: title.trim(), text: text.trim(), imageUrl: finalImageUrl, imagePath: imagePath || m.imagePath } : m) }
+        : c)));
+      cancelForm(); setSaving(false);
+      return;
     }
     setChannels((cs) => cs.map((c) => (c.id === "news"
       ? { ...c, messages: [...c.messages, { id, who: user.name, init: initialsOf(user.name), color: user.color, title: title.trim(), text: text.trim(), imageUrl: finalImageUrl, imagePath, time: "jetzt" }].slice(-100) }
@@ -1764,6 +1801,7 @@ function RedaktionView({ user, channels, setChannels }) {
 
       {showForm && (
         <div className="rounded-2xl p-3 mb-5 space-y-2.5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+          <div className="text-xs font-bold" style={{ fontFamily: "Inter", color: C.ink }}>{editingPost ? "News bearbeiten" : "Neue News"}</div>
           <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Titel"
             className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={{ background: C.paperDim, fontFamily: "Inter", color: C.ink }} />
           <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder="Text der News…" rows={4}
@@ -1774,8 +1812,8 @@ function RedaktionView({ user, channels, setChannels }) {
           </label>
           {imageUrl && <img src={imageUrl} alt="" className="w-full rounded-lg" style={{ maxHeight: 160, objectFit: "cover" }} />}
           <div className="flex gap-2">
-            <button onClick={publish} disabled={saving || !title.trim() || !text.trim()} className="flex-1 py-2.5 rounded-lg text-xs" style={{ background: C.red, color: "#fff", fontFamily: "Inter", fontWeight: 700, opacity: (saving || !title.trim() || !text.trim()) ? 0.5 : 1 }}>{saving ? "Wird gespeichert …" : "Veröffentlichen"}</button>
-            <button disabled={saving} onClick={() => { setShowForm(false); setTitle(""); setText(""); setImageUrl(""); setImageFile(null); setMessage(""); }} className="px-4 py-2.5 rounded-lg text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter", fontWeight: 700 }}>Abbrechen</button>
+            <button onClick={publish} disabled={saving || !title.trim() || !text.trim()} className="flex-1 py-2.5 rounded-lg text-xs" style={{ background: C.red, color: "#fff", fontFamily: "Inter", fontWeight: 700, opacity: (saving || !title.trim() || !text.trim()) ? 0.5 : 1 }}>{saving ? "Wird gespeichert …" : editingPost ? "Änderungen speichern" : "Veröffentlichen"}</button>
+            <button disabled={saving} onClick={cancelForm} className="px-4 py-2.5 rounded-lg text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter", fontWeight: 700 }}>Abbrechen</button>
           </div>
         </div>
       )}
@@ -1791,7 +1829,10 @@ function RedaktionView({ user, channels, setChannels }) {
             <div className="p-3">
               <div className="flex items-center justify-between mb-1">
                 <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{m.who} · {m.time}</div>
-                <button onClick={() => deleteNews(m)} className="text-[11px] px-2 py-1 rounded-full" style={{ background: "#FDECEC", color: C.red, fontFamily: "Inter", fontWeight: 700 }}>Löschen</button>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <button onClick={() => openEdit(m)} className="text-[11px] px-2 py-1 rounded-full" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter", fontWeight: 700 }}>Bearbeiten</button>
+                  <button onClick={() => deleteNews(m)} className="text-[11px] px-2 py-1 rounded-full" style={{ background: "#FDECEC", color: C.red, fontFamily: "Inter", fontWeight: 700 }}>Löschen</button>
+                </div>
               </div>
               {m.title ? <div className="text-sm mb-0.5" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>{m.title}</div> : null}
               <div className="text-xs" style={{ fontFamily: "Inter", color: C.textDim }}>{m.text}</div>
@@ -2071,6 +2112,11 @@ function TeamsView({ currentUser, members, setMembers, currentClub }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [editingTeam, setEditingTeam] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editCategory, setEditCategory] = useState("");
+  const [savingTeamEdit, setSavingTeamEdit] = useState(false);
+  const [archivingTeam, setArchivingTeam] = useState(false);
   const databaseMembership = !!supabase && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(currentUser.id));
   const canCreate = currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role));
   const canAssignPlayers = currentUser.roles.some((role) => ["vereinsadmin", "sysadmin", "trainer", "teammanager"].includes(role));
@@ -2215,6 +2261,32 @@ function TeamsView({ currentUser, members, setMembers, currentClub }) {
     }
     setName(""); setCategory(""); setIsAdultTeam(false); setShowCreate(false); setSelectedTeamId(createdId); setMessage("Mannschaft wurde angelegt."); setSaving(false);
   };
+  const openEditTeam = (team) => {
+    setEditName(team.name); setEditCategory(team.category || ""); setEditingTeam(true); setMessage("");
+  };
+  const saveTeamEdit = async () => {
+    if (!selectedTeam || !editName.trim()) { setMessage("Bitte einen Mannschaftsnamen eingeben."); return; }
+    setSavingTeamEdit(true); setMessage("");
+    if (databaseMembership) {
+      const { error } = await supabase.rpc("update_club_team", { target_club: currentUser.clubId, target_team: selectedTeam.id, new_name: editName.trim(), new_category: editCategory.trim() || null });
+      if (error) { setMessage(error.message?.includes("already exists") ? "Diese Mannschaft ist bereits vorhanden." : "Die Mannschaft konnte nicht geändert werden."); setSavingTeamEdit(false); return; }
+      await loadTeams();
+    } else {
+      setTeams((current) => current.map((team) => team.id === selectedTeam.id ? { ...team, name: editName.trim(), category: editCategory.trim() || "Mannschaft" } : team));
+    }
+    setEditingTeam(false); setMessage("Mannschaft wurde geändert."); setSavingTeamEdit(false);
+  };
+  const archiveTeam = async () => {
+    if (!selectedTeam) return;
+    if (!window.confirm(`Mannschaft „${selectedTeam.name}“ wirklich archivieren? Sie verschwindet aus allen Auswahllisten, die Historie (Termine, Aufgaben, Strafen) bleibt erhalten.`)) return;
+    setArchivingTeam(true); setMessage("");
+    if (databaseMembership) {
+      const { error } = await supabase.rpc("archive_club_team", { target_club: currentUser.clubId, target_team: selectedTeam.id });
+      if (error) { setMessage("Die Mannschaft konnte nicht archiviert werden."); setArchivingTeam(false); return; }
+    }
+    setTeams((current) => current.filter((team) => team.id !== selectedTeam.id));
+    setSelectedTeamId(""); setEditingTeam(false); setMessage("Mannschaft wurde archiviert."); setArchivingTeam(false);
+  };
   const TeamCard = ({ team }) => {
     const roster = rosterFor(team); const own = ownNames.includes(team.name);
     return <button onClick={() => setSelectedTeamId(team.id)} className="w-full flex items-center gap-3 rounded-2xl px-3.5 py-3 text-left" style={{ background: C.white, border: own ? `1px solid ${C.green}` : `1px solid ${C.line}` }}><div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: own ? "#E7F3EC" : C.paperDim, color: own ? C.green : C.red }}><Users size={18}/></div><div className="flex-1 min-w-0"><div className="text-sm font-bold truncate" style={{ color: C.ink }}>{team.name}</div><div className="text-[11px]" style={{ color: C.textDim }}>{team.category || "Mannschaft"} · {roster.length} Athlet{roster.length === 1 ? "" : "/innen"}</div></div>{own && <span className="text-[9px] font-bold px-2 py-1 rounded-full" style={{ background: "#E7F3EC", color: C.green }}>MEIN TEAM</span>}<ChevronRight size={15} style={{ color: C.textDim }}/></button>;
@@ -2224,8 +2296,8 @@ function TeamsView({ currentUser, members, setMembers, currentClub }) {
     <SectionTitle eyebrow="Verein" title="Teams" right={canCreate ? <button onClick={() => setShowCreate((value) => !value)} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showCreate ? "Schließen" : "+ Team"}</button> : null}/>
     <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>Alle Mannschaften von {currentClub?.shortName}. Öffne ein Team, um den Athletenkader anzusehen.</div>
     {showCreate && <form onSubmit={createTeam} className="rounded-2xl p-4 mb-5" style={{ background: C.white, border: `1px solid ${C.line}` }}><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Neue Mannschaft anlegen</div><div className="text-[11px] mb-3" style={{ color: C.textDim }}>Danach können Athlet/innen das Team in ihrem Profil auswählen.</div><input value={name} onChange={(event) => setName(event.target.value)} maxLength={80} placeholder="Mannschaftsname, z. B. U17" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}/><input value={category} onChange={(event) => setCategory(event.target.value)} maxLength={80} placeholder="Kategorie, z. B. Jugend oder Herren" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}/><button type="button" onClick={() => setIsAdultTeam((v) => !v)} className="w-full flex items-center justify-between rounded-xl px-3 py-2.5 mb-2" style={{ background: isAdultTeam ? "#FDECEC" : C.paperDim, border: isAdultTeam ? `1px solid ${C.red}` : "1px solid transparent" }}><div className="text-left"><div className="text-xs font-bold" style={{ color: C.ink }}>Erwachsenenmannschaft?</div><div className="text-[10px]" style={{ color: C.textDim }}>Nur dann gibt es Strafenkatalog & Zuweisungen für dieses Team.</div></div><span className="w-10 h-6 rounded-full flex items-center px-0.5" style={{ background: isAdultTeam ? C.red : C.line, justifyContent: isAdultTeam ? "flex-end" : "flex-start" }}><span className="w-5 h-5 rounded-full" style={{ background: C.white }}/></span></button><button disabled={saving || !name.trim()} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: name.trim() ? C.red : C.line, color: C.white }}>{saving ? "Wird angelegt …" : "Mannschaft anlegen"}</button></form>}
-    {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: message.includes("angelegt") ? "#E7F3EC" : "#FDECEC", color: message.includes("angelegt") ? C.green : C.red }}>{message}</div>}
-    {selectedTeam ? <div><button onClick={() => { setSelectedTeamId(""); setShowPlayerPicker(false); }} className="flex items-center gap-1 text-xs font-bold mb-3" style={{ color: C.red }}><ArrowLeft size={14}/> Alle Teams</button><div className="rounded-2xl p-4 mb-4" style={{ background: C.ink, color: C.white }}><div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: "#B7B6BC" }}>{selectedTeam.category || "Mannschaft"}</div><div className="text-xl font-bold" style={{ fontFamily: "Oswald" }}>{selectedTeam.name}</div><div className="text-xs mt-1" style={{ color: "#B7B6BC" }}>{rosterFor(selectedTeam).length} verknüpfte Athlet/innen</div></div><SectionTitle eyebrow="Kader" title="Athlet/innen" right={canAssignPlayers ? <button onClick={() => setShowPlayerPicker((value) => !value)} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showPlayerPicker ? "Schließen" : "+ Zuweisen"}</button> : null}/>{showPlayerPicker && <div className="rounded-2xl p-3 mb-4" style={{ background: C.paperDim }}><div className="text-[11px] mb-2" style={{ color: C.textDim }}>Athlet/in auswählen und anschließend seine Mannschaften festlegen.</div><div className="space-y-1.5 max-h-56 overflow-y-auto">{players.map((player) => <button key={player.id} onClick={() => openPlayer(player)} className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-left" style={{ background: C.white }}><div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold" style={{ background: player.color, color: C.white }}>{initialsOf(player.name)}</div><div className="flex-1"><div className="text-xs font-bold" style={{ color: C.ink }}>{player.name}</div><div className="text-[9px]" style={{ color: C.textDim }}>{memberPlayerTeams(player).join(" · ") || "Noch ohne Mannschaft"}</div></div><ChevronRight size={13} style={{ color: C.textDim }}/></button>)}</div></div>}{rosterFor(selectedTeam).length ? <div className="space-y-2">{rosterFor(selectedTeam).map((player) => <button key={player.id} onClick={() => openPlayer(player)} className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left" style={{ background: C.white, border: `1px solid ${C.line}` }}><div className="w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: player.color, color: C.white }}>{initialsOf(player.name)}</div><div className="flex-1"><div className="text-xs font-bold" style={{ color: C.ink }}>{player.name}</div><div className="text-[10px]" style={{ color: C.textDim }}>{memberPlayerTeams(player).join(" · ")}</div></div><ChevronRight size={14} style={{ color: C.textDim }}/></button>)}</div> : <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>Dieser Mannschaft sind noch keine Athlet/innen zugeordnet.</div>}</div> : loading ? <div className="text-xs py-4" style={{ color: C.textDim }}>Mannschaften werden geladen …</div> : <><SectionTitle eyebrow="Persönlich" title="Meine Teams"/><div className="space-y-2 mb-6">{ownTeams.length ? ownTeams.map((team) => <TeamCard key={team.id} team={team}/>) : <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>Du bist noch keiner Mannschaft als Athlet/in zugeordnet. Athlet/innen können im Profil bis zu drei Teams auswählen.</div>}</div><SectionTitle eyebrow="Vereinsübersicht" title="Alle Mannschaften"/><div className="space-y-2">{teams.map((team) => <TeamCard key={team.id} team={team}/>)}{teams.length === 0 && <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>Noch keine Mannschaften angelegt.</div>}</div></>}
+    {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: (message.includes("angelegt")||message.includes("geändert")||message.includes("archiviert")) ? "#E7F3EC" : "#FDECEC", color: (message.includes("angelegt")||message.includes("geändert")||message.includes("archiviert")) ? C.green : C.red }}>{message}</div>}
+    {selectedTeam ? <div><button onClick={() => { setSelectedTeamId(""); setShowPlayerPicker(false); setEditingTeam(false); }} className="flex items-center gap-1 text-xs font-bold mb-3" style={{ color: C.red }}><ArrowLeft size={14}/> Alle Teams</button><div className="rounded-2xl p-4 mb-4" style={{ background: C.ink, color: C.white }}><div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: "#B7B6BC" }}>{selectedTeam.category || "Mannschaft"}</div><div className="text-xl font-bold" style={{ fontFamily: "Oswald" }}>{selectedTeam.name}</div><div className="text-xs mt-1" style={{ color: "#B7B6BC" }}>{rosterFor(selectedTeam).length} verknüpfte Athlet/innen</div></div>{canCreate && !editingTeam && <div className="flex gap-2 mb-4"><button onClick={() => openEditTeam(selectedTeam)} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>Bearbeiten</button><button onClick={archiveTeam} disabled={archivingTeam} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: "#FDECEC", color: C.red }}>{archivingTeam ? "…" : "Archivieren"}</button></div>}{canCreate && editingTeam && <div className="rounded-2xl p-3.5 mb-4" style={{ background: C.paperDim }}><input value={editName} onChange={(e) => setEditName(e.target.value)} maxLength={80} placeholder="Mannschaftsname" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.white }}/><input value={editCategory} onChange={(e) => setEditCategory(e.target.value)} maxLength={80} placeholder="Kategorie" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.white }}/><div className="flex gap-2"><button onClick={saveTeamEdit} disabled={savingTeamEdit} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{savingTeamEdit ? "…" : "Speichern"}</button><button onClick={() => setEditingTeam(false)} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.white, color: C.textDim }}>Abbrechen</button></div></div>}<SectionTitle eyebrow="Kader" title="Athlet/innen" right={canAssignPlayers ? <button onClick={() => setShowPlayerPicker((value) => !value)} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showPlayerPicker ? "Schließen" : "+ Zuweisen"}</button> : null}/>{showPlayerPicker && <div className="rounded-2xl p-3 mb-4" style={{ background: C.paperDim }}><div className="text-[11px] mb-2" style={{ color: C.textDim }}>Athlet/in auswählen und anschließend seine Mannschaften festlegen.</div><div className="space-y-1.5 max-h-56 overflow-y-auto">{players.map((player) => <button key={player.id} onClick={() => openPlayer(player)} className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-left" style={{ background: C.white }}><div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold" style={{ background: player.color, color: C.white }}>{initialsOf(player.name)}</div><div className="flex-1"><div className="text-xs font-bold" style={{ color: C.ink }}>{player.name}</div><div className="text-[9px]" style={{ color: C.textDim }}>{memberPlayerTeams(player).join(" · ") || "Noch ohne Mannschaft"}</div></div><ChevronRight size={13} style={{ color: C.textDim }}/></button>)}</div></div>}{rosterFor(selectedTeam).length ? <div className="space-y-2">{rosterFor(selectedTeam).map((player) => <button key={player.id} onClick={() => openPlayer(player)} className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left" style={{ background: C.white, border: `1px solid ${C.line}` }}><div className="w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: player.color, color: C.white }}>{initialsOf(player.name)}</div><div className="flex-1"><div className="text-xs font-bold" style={{ color: C.ink }}>{player.name}</div><div className="text-[10px]" style={{ color: C.textDim }}>{memberPlayerTeams(player).join(" · ")}</div></div><ChevronRight size={14} style={{ color: C.textDim }}/></button>)}</div> : <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>Dieser Mannschaft sind noch keine Athlet/innen zugeordnet.</div>}</div> : loading ? <div className="text-xs py-4" style={{ color: C.textDim }}>Mannschaften werden geladen …</div> : <><SectionTitle eyebrow="Persönlich" title="Meine Teams"/><div className="space-y-2 mb-6">{ownTeams.length ? ownTeams.map((team) => <TeamCard key={team.id} team={team}/>) : <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>Du bist noch keiner Mannschaft als Athlet/in zugeordnet. Athlet/innen können im Profil bis zu drei Teams auswählen.</div>}</div><SectionTitle eyebrow="Vereinsübersicht" title="Alle Mannschaften"/><div className="space-y-2">{teams.map((team) => <TeamCard key={team.id} team={team}/>)}{teams.length === 0 && <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>Noch keine Mannschaften angelegt.</div>}</div></>}
     {selectedPlayer && <div className="absolute inset-0 z-50 flex items-end p-3" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setSelectedPlayerId("")}><div role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()} className="w-full rounded-3xl p-5 max-h-[82%] overflow-y-auto" style={{ background: C.white }}><div className="flex items-start justify-between mb-4"><div className="flex items-center gap-3"><div className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold" style={{ background: selectedPlayer.color, color: C.white }}>{initialsOf(selectedPlayer.name)}</div><div><div className="text-lg font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{selectedPlayer.name}</div><div className="text-xs" style={{ color: C.textDim }}>Athlet/in · dabei seit {selectedPlayer.since}</div></div></div><button onClick={() => setSelectedPlayerId("")} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><X size={15}/></button></div><div className="flex items-center justify-between mb-2"><div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.textDim }}>Mannschaften</div>{canAssignPlayers && <span className="text-[10px] font-bold" style={{ color: playerTeamIds.length === 3 ? C.red : C.textDim }}>{playerTeamIds.length}/3</span>}{canAssignPlayers && <button type="button" onClick={() => setTeamsOpen((v) => !v)} className="p-1"><ChevronRight size={14} style={{ color: C.textDim, transform: teamsOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .15s" }}/></button>}</div>{canAssignPlayers ? (teamsOpen && <div className="space-y-2">{teams.map((team) => { const active = playerTeamIds.includes(team.id); return <button key={team.id} onClick={() => togglePlayerTeam(team.id)} className="w-full flex items-center justify-between rounded-xl px-3 py-2.5 text-left" style={{ background: active ? "#E7F3EC" : C.paperDim, border: active ? `1px solid ${C.green}` : "1px solid transparent" }}><div><div className="text-xs font-bold" style={{ color: C.ink }}>{team.name}</div><div className="text-[9px]" style={{ color: C.textDim }}>{team.category || "Mannschaft"}</div></div><span className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: active ? C.green : C.white, color: C.white }}>{active && <Check size={13}/>}</span></button>; })}<button onClick={savePlayerTeams} disabled={savingPlayer || JSON.stringify([...playerTeamIds].sort()) === JSON.stringify([...savedPlayerTeamIds].sort())} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: JSON.stringify([...playerTeamIds].sort()) !== JSON.stringify([...savedPlayerTeamIds].sort()) ? C.ink : C.paperDim, color: JSON.stringify([...playerTeamIds].sort()) !== JSON.stringify([...savedPlayerTeamIds].sort()) ? C.white : C.textDim, opacity: savingPlayer ? .6 : 1 }}>{savingPlayer ? "Wird gespeichert …" : "Zuordnung speichern"}</button>{playerMessage && <div role="status" className="text-[11px]" style={{ color: playerMessage.includes("gespeichert") ? C.green : C.red }}>{playerMessage}</div>}</div>) : <div className="flex flex-wrap gap-2">{memberPlayerTeams(selectedPlayer).length ? memberPlayerTeams(selectedPlayer).map((team) => <span key={team} className="px-3 py-1.5 rounded-full text-xs font-bold" style={{ background: "#E7F3EC", color: C.green }}>{team}</span>) : <span className="text-xs" style={{ color: C.textDim }}>Noch keiner Mannschaft zugeordnet.</span>}</div>}{canManagePenalties && (<div className="mt-4 pt-4" style={{ borderTop: `1px solid ${C.line}` }}><button type="button" onClick={() => setPenaltyOpen((v) => !v)} className="w-full flex items-center justify-between mb-2"><div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.textDim }}>Strafenverwaltung</div><ChevronRight size={14} style={{ color: C.textDim, transform: penaltyOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .15s" }}/></button>{penaltyOpen && (<><div className="flex gap-2 mb-3"><select value={assignRuleId} onChange={(e) => setAssignRuleId(e.target.value)} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}><option value="">Strafe wählen …</option>{penaltyRules.map((r) => <option key={r.id} value={r.id}>{r.title} ({r.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €)</option>)}</select><button onClick={assignPenaltyToPlayer} disabled={assigningPenalty || !assignRuleId} className="px-4 rounded-xl text-xs font-bold" style={{ background: assignRuleId ? C.ink : C.line, color: C.white }}>{assigningPenalty ? "…" : "Zuweisen"}</button></div>{penaltyMessage && <div role="status" className="text-[11px] mb-2" style={{ color: penaltyMessage.includes("zugewiesen") ? C.green : C.red }}>{penaltyMessage}</div>}<div className="text-[10px] uppercase tracking-widest font-bold mb-1.5" style={{ color: C.textDim }}>Bisherige Strafen</div><div className="space-y-1.5">{playerPenalties.map((p) => <div key={p.id} className="flex items-center justify-between px-3 py-2 rounded-xl" style={{ background: C.paperDim }}><span className="text-xs font-bold" style={{ color: C.ink }}>{p.title}</span><span className="text-xs font-bold" style={{ color: C.red, fontFamily: "JetBrains Mono" }}>{p.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span><button type="button" onClick={() => togglePlayerPenaltyPaid(p)} className="px-2 py-1 rounded-lg text-[9px] font-bold flex-shrink-0" style={{ background: p.paidAt ? "#E7F3EC" : C.white, color: p.paidAt ? C.green : C.textDim }}>{p.paidAt ? "Bezahlt" : "Offen"}</button><button type="button" onClick={() => removePlayerPenalty(p)} aria-label="Strafe entfernen" className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.white, color: C.red }}><X size={12}/></button></div>)}{playerPenalties.length === 0 && <div className="text-[11px]" style={{ color: C.textDim }}>Noch keine Strafen vergeben.</div>}</div></>)}</div>)}</div></div>}
   </div>;
 }
@@ -2555,7 +2627,7 @@ function TeamPenaltyCatalog({ user }) {
     {message && <div role="status" className="text-[11px] mt-2" style={{ color: message.includes("gespeichert") || message.includes("gelöscht") || message.includes("zugewiesen") || message.includes("markiert") || message.includes("abgeschlossen") ? C.green : C.red }}>{message}</div>}
   </div>;
 }
-function TaskCreateForm({ form, setForm, onSubmit, onCancel }) {
+function TaskCreateForm({ form, setForm, onSubmit, onCancel, editing = false }) {
   return (
     <div className="rounded-2xl p-3.5 mb-3" style={{ background: C.paperDim }}>
       <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} maxLength={120} placeholder="Titel, z. B. Kuchen backen" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.white, color: C.ink }}/>
@@ -2565,7 +2637,7 @@ function TaskCreateForm({ form, setForm, onSubmit, onCancel }) {
         <input type="number" min="1" value={form.slots} onChange={(e) => setForm({ ...form, slots: e.target.value })} placeholder="Personen" className="w-24 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.white, color: C.ink }}/>
       </div>
       <div className="flex gap-2">
-        <button onClick={onSubmit} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>Anlegen</button>
+        <button onClick={onSubmit} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{editing ? "Änderungen speichern" : "Anlegen"}</button>
         <button onClick={onCancel} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.white, color: C.textDim }}>Abbrechen</button>
       </div>
     </div>
@@ -2581,6 +2653,7 @@ function TasksView({ currentUser, members }) {
   const [message, setMessage] = useState("");
   const [showCreateClub, setShowCreateClub] = useState(false);
   const [showCreateTeamId, setShowCreateTeamId] = useState("");
+  const [editingTaskId, setEditingTaskId] = useState(null);
   const [form, setForm] = useState({ title: "", description: "", dueDate: "", slots: "1" });
   const canCreateClubTask = currentUser.roles.some((r) => !["spieler", "mitglied"].includes(r));
   const loadAll = useCallback(async () => {
@@ -2621,6 +2694,16 @@ function TasksView({ currentUser, members }) {
   const createTask = async (teamId) => {
     if (!form.title.trim()) { setMessage("Bitte einen Titel eingeben."); return; }
     const slotsNeeded = Math.max(1, Number(form.slots) || 1);
+    if (editingTaskId) {
+      const { error } = await supabase.from("club_tasks").update({
+        title: form.title.trim(), description: form.description.trim() || null,
+        due_date: form.dueDate || null, slots_needed: slotsNeeded,
+      }).eq("id", editingTaskId);
+      if (error) { setMessage("Aufgabe konnte nicht geändert werden."); return; }
+      resetForm(); setEditingTaskId(null); setShowCreateClub(false); setShowCreateTeamId(""); setMessage("Aufgabe wurde geändert.");
+      await loadAll();
+      return;
+    }
     const { error } = await supabase.from("club_tasks").insert({
       club_id: currentUser.clubId, team_id: teamId || null, title: form.title.trim(),
       description: form.description.trim() || null, due_date: form.dueDate || null,
@@ -2629,6 +2712,13 @@ function TasksView({ currentUser, members }) {
     if (error) { setMessage("Aufgabe konnte nicht angelegt werden."); return; }
     resetForm(); setShowCreateClub(false); setShowCreateTeamId(""); setMessage("Aufgabe wurde angelegt.");
     await loadAll();
+  };
+  const openEditTask = (task) => {
+    setForm({ title: task.title, description: task.description || "", dueDate: task.dueDate || "", slots: String(task.slots) });
+    setEditingTaskId(task.id);
+    setMessage("");
+    if (task.teamId) { setShowCreateTeamId(task.teamId); setShowCreateClub(false); }
+    else { setShowCreateClub(true); setShowCreateTeamId(""); }
   };
   const signUp = async (taskId) => {
     setMessage("");
@@ -2649,7 +2739,7 @@ function TasksView({ currentUser, members }) {
     if (error) { setMessage("Konnte nicht gelöscht werden."); return; }
     await loadAll();
   };
-  const TaskCard = ({ task, canManage }) => {
+  const TaskCard = ({ task, canManage, onEdit }) => {
     const taken = task.signups.length;
     const free = task.slots - taken;
     const isSignedUp = task.signups.some((s) => s.membershipId === currentUser.id);
@@ -2666,6 +2756,7 @@ function TasksView({ currentUser, members }) {
         <div className="flex gap-2">
           {!isSignedUp && free > 0 && <button onClick={() => signUp(task.id)} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: C.ink, color: C.white }}>Eintragen</button>}
           {isSignedUp && <button onClick={() => withdraw(task.id)} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: C.paperDim, color: C.red }}>Austragen</button>}
+          {(isCreator || canManage) && <button onClick={() => onEdit(task)} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.paperDim, color: C.textDim }}>Bearbeiten</button>}
           {(isCreator || canManage) && <button onClick={() => removeTask(task)} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.paperDim, color: C.red }}>Löschen</button>}
         </div>
       </div>
@@ -2674,21 +2765,21 @@ function TasksView({ currentUser, members }) {
   if (!databaseMembership) return <div className="px-4 pt-4 pb-24"><div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Aufgaben sind nur mit einem echten Vereinskonto verfügbar.</div></div>;
   return (
     <div className="px-4 pt-4 pb-24">
-      <SectionTitle eyebrow="Verein" title="Aufgaben" right={canCreateClubTask ? <button onClick={() => setShowCreateClub((v) => !v)} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showCreateClub ? "Schließen" : "+ Aufgabe"}</button> : null}/>
+      <SectionTitle eyebrow="Verein" title="Aufgaben" right={canCreateClubTask ? <button onClick={() => { if (showCreateClub) { setEditingTaskId(null); resetForm(); } setShowCreateClub((v) => !v); }} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showCreateClub ? "Schließen" : "+ Aufgabe"}</button> : null}/>
       <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>Vereins- und Mannschaftsaufgaben, für die sich Mitglieder freiwillig eintragen können.</div>
-      {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: message.includes("angelegt") ? "#E7F3EC" : "#FDECEC", color: message.includes("angelegt") ? C.green : C.red }}>{message}</div>}
+      {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: (message.includes("angelegt")||message.includes("geändert")) ? "#E7F3EC" : "#FDECEC", color: (message.includes("angelegt")||message.includes("geändert")) ? C.green : C.red }}>{message}</div>}
       {loading ? <div className="text-xs py-4" style={{ color: C.textDim }}>Aufgaben werden geladen …</div> : <>
         <SectionTitle eyebrow="Vereinsweit" title="Vereinsaufgaben"/>
-        {showCreateClub && <TaskCreateForm form={form} setForm={setForm} onSubmit={() => createTask(null)} onCancel={() => { setShowCreateClub(false); resetForm(); }}/>}
-        {clubTasks.length === 0 ? <div className="text-xs rounded-xl p-3 mb-5" style={{ background: C.paperDim, color: C.textDim }}>Aktuell keine offenen Vereinsaufgaben.</div> : <div className="mb-5">{clubTasks.map((t) => <TaskCard key={t.id} task={t} canManage={canCreateClubTask}/>)}</div>}
+        {showCreateClub && <TaskCreateForm form={form} setForm={setForm} editing={!!editingTaskId} onSubmit={() => createTask(null)} onCancel={() => { setShowCreateClub(false); resetForm(); setEditingTaskId(null); }}/>}
+        {clubTasks.length === 0 ? <div className="text-xs rounded-xl p-3 mb-5" style={{ background: C.paperDim, color: C.textDim }}>Aktuell keine offenen Vereinsaufgaben.</div> : <div className="mb-5">{clubTasks.map((t) => <TaskCard key={t.id} task={t} canManage={canCreateClubTask} onEdit={openEditTask}/>)}</div>}
         {myTeams.map((team) => {
           const tasks = teamTasks.filter((t) => t.teamId === team.id);
           const canManage = manageableTeamIds.includes(team.id);
           return (
             <div key={team.id} className="mb-5">
-              <SectionTitle eyebrow="Mannschaft" title={`Aufgaben · ${team.name}`} right={canManage ? <button onClick={() => setShowCreateTeamId((v) => v === team.id ? "" : team.id)} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showCreateTeamId === team.id ? "Schließen" : "+ Aufgabe"}</button> : null}/>
-              {showCreateTeamId === team.id && <TaskCreateForm form={form} setForm={setForm} onSubmit={() => createTask(team.id)} onCancel={() => { setShowCreateTeamId(""); resetForm(); }}/>}
-              {tasks.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Aktuell keine Aufgaben für {team.name}.</div> : tasks.map((t) => <TaskCard key={t.id} task={t} canManage={canManage}/>)}
+              <SectionTitle eyebrow="Mannschaft" title={`Aufgaben · ${team.name}`} right={canManage ? <button onClick={() => { if (showCreateTeamId === team.id) { setEditingTaskId(null); resetForm(); } setShowCreateTeamId((v) => v === team.id ? "" : team.id); }} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showCreateTeamId === team.id ? "Schließen" : "+ Aufgabe"}</button> : null}/>
+              {showCreateTeamId === team.id && <TaskCreateForm form={form} setForm={setForm} editing={!!editingTaskId} onSubmit={() => createTask(team.id)} onCancel={() => { setShowCreateTeamId(""); resetForm(); setEditingTaskId(null); }}/>}
+              {tasks.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Aktuell keine Aufgaben für {team.name}.</div> : tasks.map((t) => <TaskCard key={t.id} task={t} canManage={canManage} onEdit={openEditTask}/>)}
             </div>
           );
         })}
@@ -2712,6 +2803,7 @@ function VehiclesView({ currentUser, currentClub }) {
   const [showAddVehicle, setShowAddVehicle] = useState(false);
   const [newVehicle, setNewVehicle] = useState({ label: "", plate: "", seats: "" });
   const [savingVehicle, setSavingVehicle] = useState(false);
+  const [editingVehicleId, setEditingVehicleId] = useState(null);
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [editingBookingId, setEditingBookingId] = useState(null);
   const [bookingForm, setBookingForm] = useState({ startDate: "", startHour: "8", endDate: "", endHour: "18", teamId: "", isPrivate: false, privateLabel: "" });
@@ -2757,10 +2849,19 @@ function VehiclesView({ currentUser, currentClub }) {
   const addVehicle = async () => {
     if (!newVehicle.label.trim() || !newVehicle.plate.trim() || !Number(newVehicle.seats)) { setMessage("Bitte alle Felder ausfüllen."); return; }
     setSavingVehicle(true); setMessage("");
-    const { error } = await supabase.from("club_vehicles").insert({ club_id: currentUser.clubId, label: newVehicle.label.trim(), license_plate: newVehicle.plate.trim(), seats: Number(newVehicle.seats), created_by: currentUser.id });
-    if (error) { setMessage("Fahrzeug konnte nicht angelegt werden."); setSavingVehicle(false); return; }
-    setNewVehicle({ label: "", plate: "", seats: "" }); setShowAddVehicle(false); setSavingVehicle(false);
+    const payload = { label: newVehicle.label.trim(), license_plate: newVehicle.plate.trim(), seats: Number(newVehicle.seats) };
+    const { error } = editingVehicleId
+      ? await supabase.from("club_vehicles").update(payload).eq("id", editingVehicleId)
+      : await supabase.from("club_vehicles").insert({ ...payload, club_id: currentUser.clubId, created_by: currentUser.id });
+    if (error) { setMessage(editingVehicleId ? "Fahrzeug konnte nicht geändert werden." : "Fahrzeug konnte nicht angelegt werden."); setSavingVehicle(false); return; }
+    setNewVehicle({ label: "", plate: "", seats: "" }); setEditingVehicleId(null); setShowAddVehicle(false); setSavingVehicle(false);
     await loadVehicles();
+  };
+  const openEditVehicle = (vehicle) => {
+    setNewVehicle({ label: vehicle.label, plate: vehicle.license_plate, seats: String(vehicle.seats) });
+    setEditingVehicleId(vehicle.id);
+    setShowAddVehicle(true);
+    setMessage("");
   };
   const removeVehicle = async (vehicle) => {
     if (!window.confirm(`Fahrzeug „${vehicle.label}“ wirklich löschen? Bestehende Buchungen werden ebenfalls entfernt.`)) return;
@@ -2851,16 +2952,19 @@ function VehiclesView({ currentUser, currentClub }) {
   if (!databaseMembership) return <div className="px-4 pt-4 pb-24"><div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Fahrzeugbuchungen sind nur mit einem echten Vereinskonto verfügbar.</div></div>;
   return (
     <div className="px-4 pt-4 pb-24">
-      <SectionTitle eyebrow="Verein" title={cfg.vehicleTabLabel} right={canManageFleet ? <button onClick={() => setShowAddVehicle((v) => !v)} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showAddVehicle ? "Schließen" : "+ Fahrzeug"}</button> : null}/>
+      <SectionTitle eyebrow="Verein" title={cfg.vehicleTabLabel} right={canManageFleet ? <button onClick={() => { if (showAddVehicle) { setEditingVehicleId(null); setNewVehicle({ label: "", plate: "", seats: "" }); } setShowAddVehicle((v) => !v); }} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showAddVehicle ? "Schließen" : "+ Fahrzeug"}</button> : null}/>
       <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>{cfg.vehicleIntro} Buchen können Vorstand, Vereinsadmin, Trainer, Teammanager, Kapitäne, Finanzmanager und Geschäftsführung.</div>
       {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: "#FDECEC", color: C.red }}>{message}</div>}
       {showAddVehicle && (
         <div className="rounded-2xl p-4 mb-4" style={{ background: C.white, border: `1px solid ${C.line}` }}>
-          <div className="text-sm font-bold mb-2">Neues Fahrzeug</div>
+          <div className="text-sm font-bold mb-2">{editingVehicleId ? "Fahrzeug bearbeiten" : "Neues Fahrzeug"}</div>
           <input value={newVehicle.label} onChange={(e) => setNewVehicle({ ...newVehicle, label: e.target.value })} placeholder="Bezeichnung, z. B. Vereinsbus" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}/>
           <input value={newVehicle.plate} onChange={(e) => setNewVehicle({ ...newVehicle, plate: e.target.value })} placeholder="Kennzeichen" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}/>
           <input value={newVehicle.seats} onChange={(e) => setNewVehicle({ ...newVehicle, seats: e.target.value })} inputMode="numeric" placeholder="Anzahl Plätze" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}/>
-          <button onClick={addVehicle} disabled={savingVehicle} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{savingVehicle ? "…" : "Anlegen"}</button>
+          <div className="flex gap-2">
+            <button onClick={addVehicle} disabled={savingVehicle} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{savingVehicle ? "…" : editingVehicleId ? "Änderungen speichern" : "Anlegen"}</button>
+            {editingVehicleId && <button onClick={() => { setEditingVehicleId(null); setNewVehicle({ label: "", plate: "", seats: "" }); setShowAddVehicle(false); }} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.textDim }}>Abbrechen</button>}
+          </div>
         </div>
       )}
       <div className="space-y-2 mb-5">
@@ -2872,6 +2976,7 @@ function VehiclesView({ currentUser, currentClub }) {
               <div className="text-[11px]" style={{ color: C.textDim }}>{v.license_plate} · {v.seats} Plätze</div>
             </button>
             {canBook && <ChevronRight size={15} style={{ color: C.textDim }}/>}
+            {canManageFleet && <button onClick={() => openEditVehicle(v)} aria-label={`${v.label} bearbeiten`} className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: C.paperDim, color: C.textDim }}>Bearbeiten</button>}
             {canManageFleet && <button onClick={() => removeVehicle(v)} aria-label={`${v.label} löschen`} className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.paperDim, color: C.red }}><X size={14}/></button>}
           </div>
         ))}
@@ -3293,9 +3398,10 @@ function subscriptionDate(value) {
   return new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
 }
 
-function SubscriptionRecord({ subscription, accountLabel }) {
+function SubscriptionRecord({ subscription, accountLabel, onCancel, cancelling }) {
   const plan = Array.isArray(subscription.subscription_plans) ? subscription.subscription_plans[0] : subscription.subscription_plans;
   const status = SUBSCRIPTION_STATUS[subscription.status] || SUBSCRIPTION_STATUS.pending;
+  const canCancel = !!onCancel && !subscription.cancel_at_period_end && !["cancelled", "expired", "refunded"].includes(subscription.status);
   const interval = plan?.interval === "year" ? "Jährlich" : "Monatlich";
   const amount = typeof plan?.price_cents === "number" ? new Intl.NumberFormat("de-DE", { style: "currency", currency: plan.currency || "EUR" }).format(plan.price_cents / 100) : "—";
   return <div className="rounded-2xl p-3.5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
@@ -3315,6 +3421,7 @@ function SubscriptionRecord({ subscription, accountLabel }) {
       <div className="flex justify-between gap-3"><span style={{ color: C.textDim }}>Abonnement-ID</span><b className="text-right break-all" style={{ color: C.ink, fontFamily: "JetBrains Mono" }}>{subscription.provider_subscription_id}</b></div>
     </div>
     {(subscription.cancel_at_period_end || subscription.status === "cancelled") && <div className="mt-3 rounded-xl px-3 py-2 text-[10px]" style={{ background: C.paperDim, color: C.textDim }}>Dieses Abonnement wurde gekündigt und verlängert sich nicht erneut.</div>}
+    {canCancel && <button onClick={onCancel} disabled={cancelling} className="w-full mt-3 py-2 rounded-lg text-xs font-bold" style={{ background: "#FDECEC", color: C.red, opacity: cancelling ? .6 : 1 }}>{cancelling ? "Wird gekündigt …" : "Abonnement kündigen"}</button>}
   </div>;
 }
 
@@ -3326,6 +3433,7 @@ function SubscriptionPanel({ user }) {
   const [loading, setLoading] = useState(true);
   const [subscriptions, setSubscriptions] = useState({ member: [], club: [] });
   const [subscriptionsLoading, setSubscriptionsLoading] = useState(true);
+  const [cancellingId, setCancellingId] = useState(null);
   const canBuyClubPlan = user.roles.some((role) => ["vereinsadmin", "sysadmin", "vorstand", "geschaeftsfuehrung"].includes(role));
   const databaseProfile = user.authProfileId && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(user.authProfileId));
   const databaseClub = /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(user.clubId));
@@ -3385,12 +3493,35 @@ function SubscriptionPanel({ user }) {
     }
   }, [accountType, loadSubscriptions, user.clubId]);
 
+  const cancelSubscription = async (subscription, cancelAccountType) => {
+    if (!window.confirm("Abonnement wirklich kündigen? Es bleibt bis zum Ende des bezahlten Zeitraums nutzbar und verlängert sich danach nicht mehr.")) return;
+    setCancellingId(subscription.id); setMessage("");
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("Bitte melde dich erneut an.");
+      const response = await fetch("/api/paypal/subscriptions", {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ subscriptionId: subscription.provider_subscription_id, accountType: cancelAccountType, clubId: user.clubId }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "Das Abonnement konnte nicht gekündigt werden.");
+      await loadSubscriptions();
+      setMessage("Abonnement wurde gekündigt.");
+    } catch (error) {
+      setMessage(error.message || "Das Abonnement konnte nicht gekündigt werden.");
+    } finally {
+      setCancellingId(null);
+    }
+  };
+
   return <div>
     <SectionTitle eyebrow="Verträge" title="Meine Abonnements" />
     {subscriptionsLoading ? <div className="rounded-2xl p-4 mb-5 text-xs text-center" style={{ background: C.white, border: `1px solid ${C.line}`, color: C.textDim }}>Abonnements werden geladen …</div> :
       subscriptions.member.length + subscriptions.club.length > 0 ? <div className="space-y-3 mb-6">
-        {subscriptions.member.map((subscription) => <SubscriptionRecord key={`member-${subscription.id}`} subscription={subscription} accountLabel="Persönliches Nutzerkonto" />)}
-        {subscriptions.club.map((subscription) => <SubscriptionRecord key={`club-${subscription.id}`} subscription={subscription} accountLabel="Vereinsaccount" />)}
+        {subscriptions.member.map((subscription) => <SubscriptionRecord key={`member-${subscription.id}`} subscription={subscription} accountLabel="Persönliches Nutzerkonto" onCancel={() => cancelSubscription(subscription, "member")} cancelling={cancellingId === subscription.id} />)}
+        {subscriptions.club.map((subscription) => <SubscriptionRecord key={`club-${subscription.id}`} subscription={subscription} accountLabel="Vereinsaccount" onCancel={canBuyClubPlan ? () => cancelSubscription(subscription, "club") : null} cancelling={cancellingId === subscription.id} />)}
       </div> : <div className="rounded-2xl p-4 mb-6" style={{ background: C.paperDim }}><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Noch kein gespeichertes Abonnement</div><div className="text-[11px]" style={{ color: C.textDim }}>Nach einem erfolgreichen Abschluss erscheinen hier Tarif, Status, Erwerbsdatum und die nächste Abrechnung.</div></div>}
 
     <SectionTitle eyebrow="Tarif wählen" title="Abonnement abschließen" />
@@ -3410,7 +3541,7 @@ function SubscriptionPanel({ user }) {
     {loading ? <div className="text-xs py-2 text-center" style={{ color: C.textDim }}>PayPal wird geladen …</div> : config && allowed ?
       <PayPalSubscriptionButton clientId={config.clientId} planId={config.plans[accountType][cycle]} customId={customId} onApproved={approved} onError={setMessage} /> :
       <div className="text-[11px] rounded-xl px-3 py-2" style={{ background: "#FFF6E4", color: C.textDim }}>{message || "Der Checkout ist nur für ein angemeldetes, dauerhaft gespeichertes Konto verfügbar."}</div>}
-    {message && config && allowed && <div role="status" className="text-[11px] mt-2 rounded-xl px-3 py-2" style={{ background: message.includes("gespeichert") ? "#E7F3EC" : message.includes("wird") ? "#FFF6E4" : "#FDECEC", color: message.includes("gespeichert") ? C.green : message.includes("wird") ? C.textDim : C.red }}>{message}</div>}
+    {message && <div role="status" className="text-[11px] mt-2 rounded-xl px-3 py-2" style={{ background: (message.includes("gespeichert")||message.includes("gekündigt")) ? "#E7F3EC" : message.includes("wird") ? "#FFF6E4" : "#FDECEC", color: (message.includes("gespeichert")||message.includes("gekündigt")) ? C.green : message.includes("wird") ? C.textDim : C.red }}>{message}</div>}
     <div className="text-[9px] mt-3 leading-relaxed" style={{ color: C.textDim }}>Mit dem Abschluss akzeptierst du die <a href="/nutzungsbedingungen" className="underline">Nutzungsbedingungen</a>. Kündigung über PayPal zum Ende des Abrechnungszeitraums.</div>
     </div>
   </div>;
@@ -4826,6 +4957,32 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
   const [loading, setLoading] = useState(true);
   const [workingId, setWorkingId] = useState(null);
   const [message, setMessage] = useState("");
+  const [activeMembers, setActiveMembers] = useState([]);
+  const [loadingActive, setLoadingActive] = useState(true);
+  const [showActive, setShowActive] = useState(false);
+
+  const loadActiveMembers = async () => {
+    setLoadingActive(true);
+    if (!supabase) { setActiveMembers([]); setLoadingActive(false); return; }
+    const { data, error } = await supabase.from("club_memberships")
+      .select("id,display_name,email,status")
+      .eq("club_id", club.id).in("status", ["active", "inactive", "blocked"]).order("display_name");
+    if (!error) setActiveMembers(data || []);
+    setLoadingActive(false);
+  };
+  useEffect(() => { loadActiveMembers(); }, [club?.id]);
+
+  const toggleMemberActive = async (member) => {
+    const nextStatus = member.status === "active" ? "inactive" : "active";
+    if (nextStatus === "inactive" && !window.confirm(`Mitgliedschaft von ${member.display_name} wirklich beenden? Das Mitglied kann sich danach nicht mehr anmelden, bleibt aber in der Historie erhalten.`)) return;
+    setWorkingId(member.id); setMessage("");
+    const { error } = await supabase.from("club_memberships").update({ status: nextStatus }).eq("id", member.id).eq("club_id", club.id);
+    if (error) { setMessage("Der Status konnte nicht geändert werden."); setWorkingId(null); return; }
+    setActiveMembers((items) => items.map((item) => item.id === member.id ? { ...item, status: nextStatus } : item));
+    setMembers((items) => items.map((item) => item.id === member.id ? { ...item, status: nextStatus, accountPending: false } : item));
+    setMessage(nextStatus === "inactive" ? "Mitgliedschaft wurde beendet." : "Mitgliedschaft wurde reaktiviert.");
+    setWorkingId(null);
+  };
 
   const loadRequests = async () => {
     setLoading(true); setMessage("");
@@ -4885,6 +5042,26 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
         </div>;
       })}</div>}
     <button onClick={loadRequests} disabled={loading} className="w-full mt-3 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.textDim }}>Liste aktualisieren</button>
+
+    <button onClick={() => setShowActive((v) => !v)} className="w-full flex items-center justify-between mt-6 mb-3">
+      <div className="text-sm font-bold" style={{ color: C.ink }}>Mitgliedschaften verwalten</div>
+      <ChevronRight size={15} style={{ color: C.textDim, transform: showActive ? "rotate(90deg)" : "none", transition: "transform .15s" }}/>
+    </button>
+    {showActive && (loadingActive ? <div className="text-xs py-4 text-center" style={{ color: C.textDim }}>Mitglieder werden geladen …</div> : (
+      <div className="space-y-2">
+        {activeMembers.map((member) => (
+          <div key={member.id} className="flex items-center gap-3 rounded-xl px-3 py-2.5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-bold truncate" style={{ color: C.ink }}>{member.display_name}</div>
+              <div className="text-[10px] truncate" style={{ color: C.textDim }}>{member.email || "Keine E-Mail hinterlegt"}</div>
+            </div>
+            <span className="text-[9px] font-bold px-2 py-1 rounded-full flex-shrink-0" style={{ background: member.status === "active" ? "#E7F3EC" : "#FDECEC", color: member.status === "active" ? C.green : C.red }}>{member.status === "active" ? "Aktiv" : member.status === "blocked" ? "Gesperrt" : "Inaktiv"}</span>
+            <button disabled={workingId === member.id} onClick={() => toggleMemberActive(member)} className="px-3 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: member.status === "active" ? "#FDECEC" : "#E7F3EC", color: member.status === "active" ? C.red : C.green, opacity: workingId === member.id ? .6 : 1 }}>{member.status === "active" ? "Beenden" : "Reaktivieren"}</button>
+          </div>
+        ))}
+        {activeMembers.length === 0 && <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Keine Mitgliedschaften vorhanden.</div>}
+      </div>
+    ))}
   </div>;
 }
 
