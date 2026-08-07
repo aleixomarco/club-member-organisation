@@ -1702,7 +1702,7 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
           <div className="flex items-center gap-2">
             <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder="Nachricht schreiben…"
               className="flex-1 px-3 py-2.5 rounded-full text-sm outline-none" style={{ background: C.paperDim, fontFamily: "Inter", color: C.ink }} />
-            <button onClick={send} className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: C.red }}><Send size={16} color="#fff" /></button>
+            <button onClick={send} aria-label="Nachricht senden" className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: C.red }}><Send size={16} color="#fff" /></button>
           </div>
         )}
       </div>
@@ -3006,9 +3006,9 @@ function VehiclesView({ currentUser, currentClub }) {
         {vehicles.length === 0 && !loading && <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Noch keine Fahrzeuge hinterlegt.</div>}
       </div>
       <div className="flex items-center justify-between mb-3">
-        <button onClick={() => setMonthDate((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1))} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><ArrowLeft size={14}/></button>
+        <button onClick={() => setMonthDate((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1))} aria-label="Vorheriger Monat" className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><ArrowLeft size={14}/></button>
         <div className="text-sm font-bold" style={{ color: C.ink, textTransform: "capitalize" }}>{monthLabel}</div>
-        <button onClick={() => setMonthDate((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1))} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><ArrowLeft size={14} style={{ transform: "rotate(180deg)" }}/></button>
+        <button onClick={() => setMonthDate((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1))} aria-label="Nächster Monat" className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><ArrowLeft size={14} style={{ transform: "rotate(180deg)" }}/></button>
       </div>
       {loading ? <div className="text-xs py-4 text-center" style={{ color: C.textDim }}>Kalender wird geladen …</div> : (
         <div className="rounded-2xl p-2 mb-4" style={{ background: C.white, border: `1px solid ${C.line}` }}>
@@ -3728,7 +3728,7 @@ function MemberDetailPanel({ member, onClose }) {
               <div className="text-xs" style={{ color: C.textDim }}>{member.email || "—"}</div>
             </div>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><X size={15}/></button>
+          <button onClick={onClose} aria-label="Schließen" className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><X size={15}/></button>
         </div>
         {message && <div className="text-[11px] mb-3" style={{ color: C.red }}>{message}</div>}
         {loading ? <div className="text-xs py-4" style={{ color: C.textDim }}>Wird geladen …</div> : <>
@@ -5845,7 +5845,7 @@ export default function ClubMemberOrganisationApp() {
               <div className="flex items-center px-4 pt-3 pb-2 flex-shrink-0" style={{ background: C.paper }}>
                 <div className="flex items-center gap-2">
                   {tabHistory.length > 0 ? (
-                    <button onClick={goBack} className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+                    <button onClick={goBack} aria-label="Zurück" className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: C.white, border: `1px solid ${C.line}` }}>
                       <ArrowLeft size={15} style={{ color: C.ink }} />
                     </button>
                   ) : (
