@@ -2,6 +2,54 @@
 
 _Letzte Aktualisierung: 2026-08-07 — via Claude Code, direkt im Terminal_
 
+## NATIVE APP (CAPACITOR) — Grundgerüst aufgesetzt (2026-08-07)
+
+Bisher gab es keine native iOS/Android-Projektstruktur, nur die PWA (Web
+App, "Zum Home-Bildschirm hinzufügen"). Auf Wunsch jetzt aufgesetzt, wie
+in dieser Datei bereits als künftiger Plan dokumentiert (Abschnitt
+"Push-Benachrichtigungen"): Capacitor lädt die live gehostete Web-App per
+URL in einer nativen Hülle — kein separates Frontend, keine doppelte
+Codebasis. Die komplette Next.js-Infrastruktur (API-Routen, Supabase,
+PayPal) bleibt unverändert nutzbar.
+
+**Was gemacht wurde:**
+- `@capacitor/core`, `/ios`, `/android`, `/push-notifications` installiert,
+  `@capacitor/cli` als devDependency
+- `capacitor.config.ts` mit App-ID `de.idbranding.clubmemberorganisation`
+  und App-Name "Club Member Organisation" (aus manifest.json übernommen)
+- `ios/` und `android/` Projektordner generiert (`npx cap add ios/android`)
+- iOS Info.plist: `NSPhotoLibraryUsageDescription` und
+  `NSCameraUsageDescription` ergänzt (nötig für Bild-Upload bei
+  Vereinslogo/News — sonst stürzt die App beim Öffnen des Datei-Pickers ab)
+- Android AndroidManifest.xml: `POST_NOTIFICATIONS`-Berechtigung ergänzt
+  (Pflicht ab Android 13 für Push)
+- npm-Skripte `cap:sync`, `ios:open`, `android:open` ergänzt
+
+**⚠️ Vor dem ersten echten Build noch nötig (kann nicht durch Code-Arbeit
+allein geschlossen werden):**
+1. `capacitor.config.ts` → `server.url` auf die echte Produktions-Domain
+   ändern, sobald diese feststeht (zeigt aktuell auf die
+   `paypal-sandbox-test`-Preview-URL).
+2. App-Icons & Splash-Screens fehlen noch (nur Capacitor-Platzhalter
+   vorhanden) — braucht ein echtes Icon-Set, am einfachsten über
+   `@capacitor/assets` aus einer hochauflösenden Logo-Datei generiert.
+3. **iOS:** `GoogleService-Info.plist` aus der Firebase-Konsole ins
+   Xcode-Projekt einfügen, APNs-Auth-Key in Firebase hinterlegen — sonst
+   funktionieren native Push-Benachrichtigungen auf iOS nicht. Braucht
+   außerdem ein Apple-Developer-Konto zum Signieren/Einreichen.
+4. **Android:** `google-services.json` aus der Firebase-Konsole nach
+   `android/app/` legen — sonst funktioniert natives Push auf Android
+   nicht. Braucht ein Google-Play-Konsole-Konto zum Signieren/Einreichen.
+5. Für Apple In-App-Käufe (iOS-Abo laut Nutzungsbedingungen) fehlt noch
+   die eigentliche StoreKit-Anbindung — die App nutzt aktuell nur PayPal.
+6. Xcode/Android Studio zum tatsächlichen Bauen, Signieren und auf einem
+   Gerät/Simulator testen — in dieser Sandbox nicht vollständig vorhanden
+   (nur Command Line Tools, kein Android SDK).
+
+Damit ist die native-App-Lücke von "existiert gar nicht" zu "Grundgerüst
+vorhanden, braucht noch Zugangsdaten/Konten/Assets, die nur der
+Projektinhaber beschaffen kann" verschoben.
+
 ## RECHTS- & STORE-COMPLIANCE-AUDIT (2026-08-07)
 
 Anlass: Vorbereitung auf App-Store-/Play-Store-Einreichung. Vollständige Durchsicht

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Club Member Organisation</string>
+    <string name="title_activity_main">Club Member Organisation</string>
+    <string name="package_name">de.idbranding.clubmemberorganisation</string>
+    <string name="custom_url_scheme">de.idbranding.clubmemberorganisation</string>
+</resources>
