@@ -1,23 +1,18 @@
-require_relative '../../node_modules/@capacitor/ios/scripts/pods_helpers'
-
+# Capacitor 8 bindet sich selbst und sämtliche Capacitor-Plugins über Swift Package
+# Manager ein — siehe CapApp-SPM/Package.swift, das die Capacitor-CLI bei `cap sync`
+# schreibt. CocoaPods wird hier ausschließlich für Firebase Cloud Messaging gebraucht.
+#
+# WICHTIG: Capacitor, CapacitorCordova und die Plugin-Pods dürfen hier NICHT zusätzlich
+# stehen. Sonst landen sie doppelt im Build (einmal via SPM, einmal via CocoaPods) und
+# der Linker bricht mit doppelten Symbolen ab.
 platform :ios, '15.0'
 use_frameworks!
 
 install! 'cocoapods', :disable_input_output_paths => true
 
-def capacitor_pods
-  pod 'Capacitor', :path => '../../node_modules/@capacitor/ios'
-  pod 'CapacitorCordova', :path => '../../node_modules/@capacitor/ios'
-  pod 'CapacitorPushNotifications', :path => '../../node_modules/@capacitor/push-notifications'
-end
-
 target 'App' do
-  capacitor_pods
-  # Firebase Cloud Messaging: GoogleService-Info.plist liegt bereits in ios/App/App/.
+  # GoogleService-Info.plist liegt in ios/App/App/ und wird von FirebaseApp.configure()
+  # im AppDelegate gelesen.
   pod 'FirebaseCore'
   pod 'FirebaseMessaging'
-end
-
-post_install do |installer|
-  assertDeploymentTarget(installer)
 end
