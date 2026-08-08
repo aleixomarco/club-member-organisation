@@ -8,18 +8,20 @@ import {
   Sparkles, Image as ImageIcon, ChevronDown, Star, Mail, Lock, LogOut,
   ShieldCheck, ArrowRight, ArrowLeft, AlertCircle, UserPlus, Eye, EyeOff,
   Target, ClipboardList, Newspaper, Bell, KeyRound, Settings, RefreshCw,
-  Bug, Smartphone, Save, Plus, Building2, ExternalLink, Phone, Copy
+  Bug, Smartphone, Save, Plus, Building2, ExternalLink, Phone, Copy, PlayCircle, ChevronUp
 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { enablePushNotifications, disablePushNotifications, listenForForegroundMessages } from "@/lib/firebase-push";
+import { Capacitor } from "@capacitor/core";
+import { nativePurchasesSupported, fetchTierOfferings, purchaseTierPackage, restoreNativePurchases } from "@/lib/revenuecat";
 import { legal } from "./legal-shell";
 
 /* ------------------------------------------------------------------ */
 /* Tokens                                                              */
 /* ------------------------------------------------------------------ */
 const C = {
-  red: "#C8102E",
-  redDark: "#8E0C21",
+  red: "var(--club-primary)",
+  redDark: "var(--club-primary-dark)",
   ink: "#14151A",
   asphalt: "#202127",
   paper: "#F6F3EC",
@@ -29,7 +31,39 @@ const C = {
   green: "#2F9E58",
   line: "#E1DCD0",
   textDim: "#6B6A66",
+  secondary: "var(--club-secondary)",
 };
+
+/* Vereinsfarben: Primär (ersetzt C.red/redDark überall) + Sekundär (für
+   Logo-Kachel, Trainings-/Spielkarten-Akzent, Bottom-Nav). Über CSS-Custom-
+   Properties injiziert (siehe globals.css für die Default-Werte und den
+   Wrapper in ClubMemberOrganisationApp fürs Überschreiben pro Verein) —
+   dadurch muss keiner der hunderten C.red-Aufrufe im Code angefasst werden. */
+const DEFAULT_CLUB_COLORS = { primary: "#C8102E", secondary: "#14151A" };
+const CLUB_COLOR_PRESETS = [
+  { label: "Rot & Schwarz", primary: "#C8102E", secondary: "#14151A" },
+  { label: "Schwarz & Gelb", primary: "#14151A", secondary: "#F2B134" },
+  { label: "Blau & Weiß", primary: "#1E5FA8", secondary: "#FFFFFF" },
+  { label: "Rot & Weiß", primary: "#C8102E", secondary: "#FFFFFF" },
+  { label: "Grün & Weiß", primary: "#1F7A5C", secondary: "#FFFFFF" },
+  { label: "Dunkelblau & Rot", primary: "#1B2A6B", secondary: "#C8102E" },
+  { label: "Orange & Schwarz", primary: "#D66B1F", secondary: "#14151A" },
+  { label: "Violett & Weiß", primary: "#6F5B9A", secondary: "#FFFFFF" },
+];
+function darkenHex(hex, amount = 0.32) {
+  const clean = String(hex || "").replace("#", "");
+  if (!/^[0-9a-fA-F]{6}$/.test(clean)) return hex;
+  const num = parseInt(clean, 16);
+  const chan = (shift) => Math.max(0, Math.round(((num >> shift) & 255) * (1 - amount)));
+  return `#${[chan(16), chan(8), chan(0)].map((v) => v.toString(16).padStart(2, "0")).join("")}`;
+}
+function hexIsLight(hex) {
+  const clean = String(hex || "").replace("#", "");
+  if (!/^[0-9a-fA-F]{6}$/.test(clean)) return false;
+  const num = parseInt(clean, 16);
+  const r = (num >> 16) & 255, g = (num >> 8) & 255, b = num & 255;
+  return (0.299 * r + 0.587 * g + 0.114 * b) > 175;
+}
 
 const FONTS = `
 @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap');
@@ -40,7 +74,35 @@ button:active { transform: scale(0.97); }
 .tabFade { animation: tabFadeIn .22s ease; }
 @keyframes tabFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 .erg-app ::-webkit-scrollbar { width: 0px; height: 0px; }
+.splashRing { stroke-dasharray: 1; stroke-dashoffset: 1; transform-origin: 420px 300px; animation: splashDraw 0.65s cubic-bezier(.4,0,.2,1) 0.1s forwards, splashRingBounce 0.55s linear 0.75s forwards; }
+@keyframes splashDraw { to { stroke-dashoffset: 0; } }
+@keyframes splashRingBounce { 0% { transform: scale(1); } 30% { transform: scale(1.18); } 55% { transform: scale(0.9); } 75% { transform: scale(1.08); } 90% { transform: scale(0.97); } 100% { transform: scale(1); } }
+.splashDot { transform: scale(0); transform-origin: 420px 300px; animation: splashPop 0.7s linear 0.75s forwards; }
+@keyframes splashPop { 0% { transform: scale(0); } 38% { transform: scale(1.75); } 58% { transform: scale(0.7); } 76% { transform: scale(1.25); } 88% { transform: scale(0.9); } 100% { transform: scale(1); } }
 `;
+
+/* Öffnungs-Animation der App (Marke, unabhängig von der Vereinsfarbe): zeichnet den Ring,
+   lässt Ring + Punkt einmal einschwingen, hält kurz und blendet dann zur eigentlichen App über.
+   Läuft bei jedem App-Start erneut (kein Persistenz-Flag). */
+function AppSplashIntro({ onDone }) {
+  const [fading, setFading] = useState(false);
+  useEffect(() => {
+    const fadeTimer = setTimeout(() => setFading(true), 2600);
+    const doneTimer = setTimeout(() => onDone(), 3000);
+    return () => { clearTimeout(fadeTimer); clearTimeout(doneTimer); };
+  }, [onDone]);
+  return (
+    <div
+      className="absolute inset-0 flex items-center justify-center"
+      style={{ zIndex: 999, background: "#F6F3EC", opacity: fading ? 0 : 1, transition: "opacity 0.4s ease" }}
+    >
+      <svg width="160" height="160" viewBox="0 0 600 600" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path className="splashRing" d="M420 140 A210 210 0 1 0 420 460" stroke="#C8102E" strokeWidth="72" strokeLinecap="round" fill="none" pathLength="1" />
+        <circle className="splashDot" cx="420" cy="300" r="46" fill="#14151A" />
+      </svg>
+    </div>
+  );
+}
 
 const TEAMS = ["Herren 1", "Herren 2", "Damen 1", "U15", "U11", "Eltern / Angehörige"];
 const DEMO_CLUB_ID = "00000000-0000-4000-8000-000000000001";
@@ -129,6 +191,23 @@ const CLUB_FEATURES = [
     settingsDesc: () => "Mitglieder stimmen ab, wer Athlet/in der Saison wird." },
 ];
 const DEFAULT_CLUB_FEATURES = Object.fromEntries(CLUB_FEATURES.map((f) => [f.key, true]));
+
+/* Reihenfolge der "Aktionen & Abstimmungen"-Kacheln auf dem Dashboard — von
+   Vereinsadmin/Vorstand/Sysadmin einstellbar (siehe ClubFeatureSettingsPanel). */
+const DASHBOARD_TILE_LABELS = {
+  season_award: "Athlet/in der Saison",
+  tippspiel: "Tippspiel",
+  duty_roster: "Helferplanung",
+  tasks: "Aufgaben",
+  vehicle_booking: (sport) => sportConfig(sport).vehicleTabLabel,
+};
+const DEFAULT_DASHBOARD_TILE_ORDER = ["season_award", "tippspiel", "duty_roster", "tasks", "vehicle_booking"];
+const dashboardTileLabel = (key, sport) => { const l = DASHBOARD_TILE_LABELS[key]; return typeof l === "function" ? l(sport) : (l || key); };
+const resolveDashboardTileOrder = (order) => {
+  const clean = Array.isArray(order) ? order.filter((key) => DEFAULT_DASHBOARD_TILE_ORDER.includes(key)) : [];
+  const missing = DEFAULT_DASHBOARD_TILE_ORDER.filter((key) => !clean.includes(key));
+  return [...clean, ...missing];
+};
 const STATION_CAP = 2;
 const COUNTRY_CODES = "AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS XK YE YT ZA ZM ZW".split(" ");
 const NOTIFICATION_OPTIONS = [
@@ -158,7 +237,7 @@ function initialsOf(name) {
 }
 
 function ClubLogo({ club, size = 36, rounded = 10 }) {
-  return <div className="flex items-center justify-center flex-shrink-0 overflow-hidden" style={{ width: size, height: size, borderRadius: rounded, background: C.red }}>
+  return <div className="flex items-center justify-center flex-shrink-0 overflow-hidden" style={{ width: size, height: size, borderRadius: rounded, background: club?.primaryColor || C.red }}>
     {club?.logoUrl
       ? <img src={club.logoUrl} alt={`Vereinslogo ${club.name}`} className="w-full h-full object-cover" />
       : <span style={{ color: "#fff", fontFamily: "Oswald", fontWeight: 700, fontSize: Math.max(13, size * .38) }}>{club?.shortName?.[0] || "V"}</span>}
@@ -202,6 +281,43 @@ const isSysAdmin = (m) => !!m && m.roles.includes("sysadmin");
 const canWriteNews = (m) => isAdmin(m) || (!!m && m.roles.includes("redakteur"));
 const canManageSponsors = (m) => isAdmin(m) || (!!m && m.roles.includes("sponsorenmanager"));
 const canManageDuty = (m) => isAdmin(m) || (!!m && m.roles.includes("organisator"));
+
+// "App kennenlernen": Kurzvideos, gefiltert nach den Aktionen, die die Rolle
+// des jeweiligen Nutzers tatsächlich ausführen kann (gleiche Berechtigungslogik
+// wie die Aktion selbst, z. B. canCreateSportEvent für Trainings).
+const HOWTO_VIDEO_BUCKET = "howto-videos";
+const HOWTO_VIDEOS = [
+  {
+    id: "mitglied-dashboard",
+    title: "Dashboard & Profil kennenlernen",
+    description: "Termine, Aufgaben und dein persönliches Profil im Überblick.",
+    file: "howto-mitglied-dashboard.mp4",
+    can: () => true,
+  },
+  {
+    id: "vorstand-event",
+    title: "Einen Vereinstermin anlegen",
+    description: "Ein Vereins-Event eintragen, das für alle Mitglieder sichtbar ist.",
+    file: "howto-vorstand-event.mp4",
+    can: (user) => isAdmin(user),
+  },
+  {
+    id: "trainer-training",
+    title: "Ein Training oder Spiel ansetzen",
+    description: "Für deine Mannschaft ein neues Training mit Ort und Uhrzeit anlegen.",
+    file: "howto-trainer-training.mp4",
+    can: (user) => isSysAdmin(user) || user.roles.some((role) => ["trainer", "kapitaen", "teammanager"].includes(role)),
+  },
+  {
+    id: "redakteur-news",
+    title: "Eine Vereins-News veröffentlichen",
+    description: "Eine News schreiben und sofort für alle Mitglieder freigeben.",
+    file: "howto-redakteur-news.mp4",
+    can: (user) => canWriteNews(user),
+  },
+];
+const howToVideosFor = (user) => HOWTO_VIDEOS.filter((video) => video.can(user));
+const howToVideoUrl = (file) => supabase?.storage.from(HOWTO_VIDEO_BUCKET).getPublicUrl(file).data.publicUrl || "";
 function linkFamilyRecords(list, firstId, secondId, firstRelation, linkId = null) {
   const first = list.find((m) => m.id === firstId);
   const second = list.find((m) => m.id === secondId);
@@ -563,6 +679,79 @@ function StatCard({ icon: Icon, label, value, sub, accent, onClick }) {
     </Tag>
   );
 }
+/* ------------------------------------------------------------------ */
+/* Abo-Sperre: alles außer Training/Spiele braucht ein Vereinsabo        */
+/* (Basic oder Premium), es sei denn der persönliche 2-Wochen-Trial des  */
+/* Nutzers läuft noch. Siehe member_entitlement_tier() in Supabase.      */
+/* ------------------------------------------------------------------ */
+function useClubEntitlement(user) {
+  const [state, setState] = useState({ loading: true, tier: "premium", trialing: false, trialEndsAt: null });
+  useEffect(() => {
+    if (!supabase || !isDbId(user?.id)) { setState({ loading: false, tier: "premium", trialing: false, trialEndsAt: null }); return; }
+    let cancelled = false;
+    (async () => {
+      const [{ data: tier }, { data: trialRows }] = await Promise.all([
+        supabase.rpc("member_entitlement_tier", { target_membership: user.id }),
+        supabase.rpc("member_trial_info", { target_membership: user.id }),
+      ]);
+      if (cancelled) return;
+      const trial = trialRows?.[0];
+      setState({ loading: false, tier: tier || "none", trialing: !!trial?.trialing, trialEndsAt: trial?.trial_ends_at || null });
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id]);
+  return state;
+}
+
+function LockedFeature({ entitlement, feature = "Diese Funktion", goSubscribe, requires = "premium", children }) {
+  if (entitlement.loading) return <div className="rounded-2xl p-8" style={{ background: C.paperDim }} />;
+  const unlocked = requires === "basic" ? entitlement.tier === "basic" || entitlement.tier === "premium" : entitlement.tier === "premium";
+  if (unlocked) return children;
+  return (
+    <div className="relative rounded-2xl overflow-hidden">
+      <div aria-hidden="true" className="pointer-events-none select-none" style={{ filter: "blur(4px)", opacity: 0.35 }}>{children}</div>
+      <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6 py-8" style={{ background: "rgba(246,243,236,0.9)" }}>
+        <div className="w-12 h-12 rounded-full flex items-center justify-center mb-3" style={{ background: C.white, border: `1px solid ${C.line}` }}><Lock size={20} style={{ color: C.red }} /></div>
+        <div className="text-sm font-bold mb-1" style={{ color: C.ink }}>{feature} braucht ein Abo</div>
+        <div className="text-xs mb-4" style={{ color: C.textDim }}>{requires === "basic" ? "Teil des Basic- und Premium-Vereinsabos." : "Teil des Premium-Vereinsabos."}</div>
+        <button onClick={goSubscribe} className="px-4 py-2 rounded-xl text-xs font-bold" style={{ background: C.red, color: C.white }}>Abo ansehen</button>
+      </div>
+    </div>
+  );
+}
+
+function TrialCountdownBanner({ entitlement, goSubscribe }) {
+  const [showInfo, setShowInfo] = useState(false);
+  if (entitlement.loading || !entitlement.trialing || !entitlement.trialEndsAt) return null;
+  const daysLeft = Math.max(0, Math.ceil((new Date(entitlement.trialEndsAt) - new Date()) / 86400000));
+  return (
+    <>
+      <button onClick={() => setShowInfo(true)} className="w-full flex items-center justify-between gap-2 rounded-2xl px-4 py-3 mb-5" style={{ background: "#FFF6E4", border: "1px solid #F2DDA8" }}>
+        <div className="flex items-center gap-2 text-left"><Sparkles size={16} style={{ color: C.amber, flexShrink: 0 }} /><div><div className="text-xs font-bold" style={{ color: C.ink }}>Noch {daysLeft} {daysLeft === 1 ? "Tag" : "Tage"} voller Zugriff</div><div className="text-[10px]" style={{ color: C.textDim }}>Dein persönlicher Test-Zeitraum läuft bald ab</div></div></div>
+        <ChevronRight size={15} style={{ color: C.textDim, flexShrink: 0 }} />
+      </button>
+      {showInfo && (
+        <div className="fixed inset-0 z-50 flex items-end p-3" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setShowInfo(false)}>
+          <div role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} className="w-full rounded-3xl p-5" style={{ background: C.white }}>
+            <div className="text-base font-bold mb-2" style={{ fontFamily: "Oswald", color: C.ink }}>Dein Test-Zeitraum</div>
+            <div className="text-xs mb-4" style={{ color: C.textDim }}>Noch {daysLeft} {daysLeft === 1 ? "Tag" : "Tage"} volle Funktionen. Danach:</div>
+            <div className="rounded-xl p-3 mb-3" style={{ background: C.paperDim }}>
+              <div className="text-xs font-bold mb-1" style={{ color: C.ink }}>Bleibt immer kostenlos</div>
+              <div className="text-[11px]" style={{ color: C.textDim }}>Training & Spiele ansehen, passend zu deiner Rolle.</div>
+            </div>
+            <div className="rounded-xl p-3 mb-4" style={{ background: "#FCEBEE" }}>
+              <div className="text-xs font-bold mb-1" style={{ color: C.red }}>Braucht ein Vereinsabo</div>
+              <div className="text-[11px]" style={{ color: C.textDim }}>Teams, Chat, Redaktion, Sponsoring, Vereinsfahrzeuge, Helferdienst, Tippspiel, Athlet/in der Saison, Kalender-Abo, Vereins-Events und mehr.</div>
+            </div>
+            <button onClick={goSubscribe} className="w-full py-3 rounded-xl text-sm font-bold" style={{ background: C.red, color: C.white }}>Abo ansehen</button>
+            <button onClick={() => setShowInfo(false)} className="w-full py-2.5 mt-2 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.textDim }}>Schließen</button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 function ToggleCard({ title, desc, value, onChange }) {
   return (
     <div>
@@ -576,11 +765,11 @@ function ToggleCard({ title, desc, value, onChange }) {
     </div>
   );
 }
-function SponsorSlot({ slotKey, bookings, onImpression, onClick }) {
+function SponsorSlot({ slotKey, bookings, onImpression, onClick, visible = true }) {
   const sponsor = bookings[slotKey];
   const [showDetails, setShowDetails] = useState(false);
-  useEffect(() => { if (sponsor) onImpression(slotKey); }, [sponsor, slotKey]);
-  if (!sponsor) return null;
+  useEffect(() => { if (sponsor && visible) onImpression(slotKey); }, [sponsor, slotKey, visible]);
+  if (!sponsor || !visible) return null;
   const data = typeof sponsor === "string" ? { title: sponsor, text: "", imageUrl: "", landingUrl: "" } : sponsor;
   const open = () => { onClick(slotKey); setShowDetails(true); };
   return (
@@ -673,8 +862,39 @@ function ClubSelectScreen({ clubs, onSelect, goNewClub }) {
   );
 }
 
+function ClubColorPicker({ primary, secondary, onChange }) {
+  const isCustom = !CLUB_COLOR_PRESETS.some((p) => p.primary === primary && p.secondary === secondary);
+  return (
+    <div className="mb-3">
+      <div className="text-[10px] font-bold mb-1.5 px-0.5" style={{ color: C.textDim }}>VEREINSFARBEN</div>
+      <div className="grid grid-cols-2 gap-2 mb-2">
+        {CLUB_COLOR_PRESETS.map((preset) => {
+          const active = !isCustom && preset.primary === primary && preset.secondary === secondary;
+          return (
+            <button key={preset.label} type="button" onClick={() => onChange(preset.primary, preset.secondary)}
+              className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold text-left"
+              style={{ background: active ? "#FCEBEE" : C.paperDim, border: active ? `1px solid ${preset.primary}` : "1px solid transparent", color: C.ink }}>
+              <span className="flex -space-x-1 flex-shrink-0">
+                <span className="w-4 h-4 rounded-full" style={{ background: preset.primary, border: "2px solid #fff" }} />
+                <span className="w-4 h-4 rounded-full" style={{ background: preset.secondary, border: "2px solid #fff" }} />
+              </span>
+              {preset.label}
+            </button>
+          );
+        })}
+      </div>
+      <div className="flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: isCustom ? "#FCEBEE" : C.paperDim, border: isCustom ? `1px solid ${primary}` : "1px solid transparent" }}>
+        <span className="text-xs font-bold flex-1" style={{ color: C.ink }}>Eigene Farben</span>
+        <input aria-label="Primärfarbe" type="color" value={primary} onChange={(e) => onChange(e.target.value, secondary)} className="w-8 h-8 rounded-lg cursor-pointer" style={{ border: "none", padding: 0, background: "none" }} />
+        <input aria-label="Sekundärfarbe" type="color" value={secondary} onChange={(e) => onChange(primary, e.target.value)} className="w-8 h-8 rounded-lg cursor-pointer" style={{ border: "none", padding: 0, background: "none" }} />
+      </div>
+      {hexIsLight(primary) && <div className="text-[10px] mt-1.5 px-0.5" style={{ color: "#8A5A1F" }}>Hinweis: Bei einer hellen Primärfarbe kann weißer Buttontext schwer lesbar sein.</div>}
+    </div>
+  );
+}
+
 function NewClubScreen({ onCreate, goBack }) {
-  const [form, setForm] = useState({ name: "", shortName: "", city: "", registerNumber: "", currency: "EUR", referralCode: "", logoDataUrl: "", sport: "rollhockey" });
+  const [form, setForm] = useState({ name: "", shortName: "", city: "", registerNumber: "", currency: "EUR", referralCode: "", logoDataUrl: "", sport: "rollhockey", primaryColor: DEFAULT_CLUB_COLORS.primary, secondaryColor: DEFAULT_CLUB_COLORS.secondary });
   const [error, setError] = useState("");
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
@@ -689,6 +909,7 @@ function NewClubScreen({ onCreate, goBack }) {
       foundedYear: new Date().getFullYear(),
       registerNumber: form.registerNumber.trim(), currency: form.currency, referralCode: form.referralCode.trim(),
       logoDataUrl: form.logoDataUrl, pendingRegistration: true, sport: form.sport,
+      primaryColor: form.primaryColor, secondaryColor: form.secondaryColor,
     });
   };
 
@@ -709,6 +930,7 @@ function NewClubScreen({ onCreate, goBack }) {
         <Field icon={Building2} placeholder="Vereinsregisternummer" value={form.registerNumber} onChange={set("registerNumber")} />
         <select value={form.currency} onChange={set("currency")} className="w-full px-3.5 py-3 rounded-xl text-sm mb-3 outline-none" style={{background:C.paperDim,color:C.ink}}><option value="EUR">Euro (€)</option><option value="CHF">Schweizer Franken (CHF)</option><option value="GBP">Britisches Pfund (£)</option><option value="USD">US-Dollar ($)</option><option value="DKK">Dänische Krone</option><option value="NOK">Norwegische Krone</option><option value="SEK">Schwedische Krone</option><option value="PLN">Polnischer Złoty</option><option value="CZK">Tschechische Krone</option></select>
         <Field icon={Gift} placeholder="Empfehlungscode (optional)" value={form.referralCode} onChange={set("referralCode")} />
+        <ClubColorPicker primary={form.primaryColor} secondary={form.secondaryColor} onChange={(primaryColor, secondaryColor) => setForm((f) => ({ ...f, primaryColor, secondaryColor }))} />
         <label className="w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-xs mb-3 cursor-pointer" style={{background:C.paperDim,color:C.textDim}}><span>{form.logoDataUrl?"Vereinslogo ausgewählt":"Vereinslogo optional auswählen"}</span><ImageIcon size={16}/><input type="file" accept="image/*" className="hidden" onChange={(e)=>{const file=e.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>setForm((old)=>({...old,logoDataUrl:String(reader.result||"")}));reader.readAsDataURL(file);}}/></label>
         {error && <div className="flex items-center gap-1.5 text-xs mb-3" style={{ color: C.red, fontFamily: "Inter" }}><AlertCircle size={13} /> {error}</div>}
         <button type="submit" className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm" style={{ background: C.red, color: "#fff", fontFamily: "Inter", fontWeight: 700 }}>
@@ -997,7 +1219,7 @@ function NextTrainingCard({ user }) {
     </div>
   );
 }
-function Dashboard({ user, members, feePaid, channels, dutyPlan, seasonVotes, polls, setPolls, sponsorBookings, onSponsorImpression, onSponsorClick, goEvents, goSeason, goTipp, goDuty, goNews, goTasks, goVehicles, currentClub, featureEnabled }) {
+function Dashboard({ user, members, feePaid, channels, dutyPlan, seasonVotes, polls, setPolls, sponsorBookings, onSponsorImpression, onSponsorClick, goEvents, goSeason, goTipp, goDuty, goNews, goTasks, goVehicles, currentClub, featureEnabled, dashboardTileOrder, entitlement, goSubscribe }) {
   const sport = currentClub?.sport || "rollhockey";
   const nextEvent = EVENTS.filter((e) => e.type === "spiel" && e.team === user.team && new Date(e.date) > new Date()).sort((a,b)=>new Date(a.date)-new Date(b.date))[0] || getNextMatch();
   const newsMsgs = (channels.find((c) => c.id === "news")?.messages || []).slice(-2).reverse();
@@ -1040,7 +1262,9 @@ function Dashboard({ user, members, feePaid, channels, dutyPlan, seasonVotes, po
         <ClubLogo club={currentClub} size={44} rounded={12} />
       </div>
 
-      <SponsorSlot slotKey="dashboard_top" bookings={sponsorBookings} onImpression={onSponsorImpression} onClick={onSponsorClick} />
+      <TrialCountdownBanner entitlement={entitlement} goSubscribe={goSubscribe} />
+
+      <SponsorSlot slotKey="dashboard_top" bookings={sponsorBookings} onImpression={onSponsorImpression} onClick={onSponsorClick} visible={featureEnabled("sponsor_dashboard_top")} />
 
       <Scoreboard nextEvent={nextEvent} goTo={goEvents} />
       <NextTrainingCard user={user} />
@@ -1061,11 +1285,22 @@ function Dashboard({ user, members, feePaid, channels, dutyPlan, seasonVotes, po
       <DashboardSection accent={C.red} background="#FBEDEF">
         <SectionTitle eyebrow="Mitmachen" title="Aktionen & Abstimmungen" />
         <div>
-          {featureEnabled("season_award") && <FeatureRow icon={Trophy} title="Athlet/in der Saison" subtitle={seasonSubtitle} onClick={goSeason} accent={C.amber} />}
-          {featureEnabled("tippspiel") && <FeatureRow icon={Target} title="Tippspiel" subtitle={tippSubtitle} onClick={goTipp} accent={C.red} />}
-          {featureEnabled("duty_roster") && <FeatureRow icon={ClipboardList} title="Helferplanung" subtitle={dutySubtitle} onClick={goDuty} accent={C.green} />}
-          <FeatureRow icon={ClipboardList} title="Aufgaben" subtitle="Für den Verein mithelfen" onClick={goTasks} accent={C.red} />
-          {featureEnabled("vehicle_booking") && <FeatureRow icon={Car} title={sportConfig(sport).vehicleTabLabel} subtitle="Kalender & Buchung" onClick={goVehicles} accent={C.amber} />}
+          {resolveDashboardTileOrder(dashboardTileOrder).map((tileKey) => {
+            switch (tileKey) {
+              case "season_award":
+                return featureEnabled("season_award") && <FeatureRow key={tileKey} icon={Trophy} title="Athlet/in der Saison" subtitle={seasonSubtitle} onClick={goSeason} accent={C.amber} />;
+              case "tippspiel":
+                return featureEnabled("tippspiel") && <FeatureRow key={tileKey} icon={Target} title="Tippspiel" subtitle={tippSubtitle} onClick={goTipp} accent={C.red} />;
+              case "duty_roster":
+                return featureEnabled("duty_roster") && <FeatureRow key={tileKey} icon={ClipboardList} title="Helferplanung" subtitle={dutySubtitle} onClick={goDuty} accent={C.green} />;
+              case "tasks":
+                return <FeatureRow key={tileKey} icon={ClipboardList} title="Aufgaben" subtitle="Für den Verein mithelfen" onClick={goTasks} accent={C.red} />;
+              case "vehicle_booking":
+                return featureEnabled("vehicle_booking") && <FeatureRow key={tileKey} icon={Car} title={sportConfig(sport).vehicleTabLabel} subtitle="Kalender & Buchung" onClick={goVehicles} accent={C.amber} />;
+              default:
+                return null;
+            }
+          })}
         </div>
       </DashboardSection>
 
@@ -1085,7 +1320,7 @@ function Dashboard({ user, members, feePaid, channels, dutyPlan, seasonVotes, po
         </div>
       </DashboardSection>
 
-      <SponsorSlot slotKey="dashboard_bottom" bookings={sponsorBookings} onImpression={onSponsorImpression} onClick={onSponsorClick} />
+      <SponsorSlot slotKey="dashboard_bottom" bookings={sponsorBookings} onImpression={onSponsorImpression} onClick={onSponsorClick} visible={featureEnabled("sponsor_dashboard_bottom")} />
 
       <DashboardSection accent={C.amber} background="#FFF7E7">
         <SectionTitle eyebrow="Mitmachen" title="Deine Stimme zählt" />
@@ -1301,7 +1536,7 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
     </div>
   );
 }
-function EventsView({ currentUser, members, events, setEvents, carpools, setCarpools, dutyPlan, setDutyPlan, sponsorBookings, onSponsorImpression, onSponsorClick, focusRequest, onFocusApplied, currentClub, featureEnabled }) {
+function EventsView({ currentUser, members, events, setEvents, carpools, setCarpools, dutyPlan, setDutyPlan, sponsorBookings, onSponsorImpression, onSponsorClick, focusRequest, onFocusApplied, currentClub, featureEnabled, entitlement, goSubscribe }) {
   const [filter, setFilter] = useState("alle");
   const [showCreate, setShowCreate] = useState(false);
   const [eventDraft, setEventDraft] = useState({ type: "training", team: "", title: "", date: "", location: "", desc: "", recurring: false, weekdays: [], startTime: "18:00", endTime: "19:30", rangeStart: "", rangeEnd: "" });
@@ -1329,7 +1564,7 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
   const myCarpools = carpools[userId] || {};
   const isAdminUser = isAdmin(currentUser);
   const canCreateSportEvent = isSysAdmin(currentUser) || currentUser.roles.some((role)=>["trainer","kapitaen","teammanager"].includes(role));
-  const canCreateClubEvent = isAdminUser;
+  const canCreateClubEvent = isAdminUser && entitlement?.tier === "premium";
   const [manageableTeams, setManageableTeams] = useState(null);
   useEffect(() => {
     if (!(supabase && isDbId(currentUser.id))) { setManageableTeams(null); return; }
@@ -1445,7 +1680,7 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
     <div className="px-4 pt-4 pb-24">
       <div className="flex items-start justify-between gap-3"><SectionTitle title="Termine" />{(canCreateSportEvent||canCreateClubEvent)&&<button onClick={openCreate} className="px-3 py-1.5 rounded-full text-xs flex-shrink-0" style={{background:C.red,color:C.white,fontWeight:700}}>＋ Eintragen</button>}</div>
       {showCreate&&<form onSubmit={createSportEvent} className="rounded-2xl p-4 mb-4 space-y-2.5" style={{background:C.white,border:`1px solid ${C.line}`}}><div className="text-sm font-bold">Termin eintragen</div><div className="text-[10px]" style={{color:C.textDim}}>{eventDraft.type==="event"?"Vereins-Events sind für alle Mitglieder sichtbar, unabhängig von Mannschaft.":isSysAdmin(currentUser)?"Als Vereins-Sysadmin kannst du jede Mannschaft auswählen.":currentUser.roles.includes("trainer")?"Du kannst nur deine im Profil hinterlegten Mannschaften auswählen.":"Als Kapitän oder Teammanager kannst du nur für deine hinterlegte Mannschaft eintragen."}</div><div className="text-[10px] font-bold" style={{color:C.red}}>* Pflichtfeld</div><div className="grid grid-cols-2 gap-2"><select value={eventDraft.type} onChange={(e)=>setEventDraft({...eventDraft,type:e.target.value,team:e.target.value==="event"?"":eventDraft.team})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}>{canCreateSportEvent&&<option value="training">Training</option>}{canCreateSportEvent&&<option value="spiel">Spiel</option>}{canCreateClubEvent&&<option value="event">Vereins-Event</option>}</select>{eventDraft.type!=="event"&&<select value={eventDraft.team} onChange={(e)=>setEventDraft({...eventDraft,team:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}>{allowedEventTeams.map((team)=><option key={team} value={team}>{team}</option>)}</select>}</div><input value={eventDraft.title} onChange={(e)=>setEventDraft({...eventDraft,title:e.target.value})} placeholder={eventDraft.type==="training"?"Titel des Trainings *":eventDraft.type==="event"?"Titel des Events *":"Titel des Spiels *"} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/>{eventDraft.type === "spiel" && <label className="flex items-center gap-2 px-0.5"><input type="checkbox" checked={eventDraft.isHome} onChange={(e)=>setEventDraft({...eventDraft,isHome:e.target.checked})}/><span className="text-xs font-bold" style={{color:C.ink}}>Heimspiel</span></label>}{eventDraft.type === "training" && <label className="flex items-center gap-2 px-0.5"><input type="checkbox" checked={eventDraft.recurring} onChange={(e)=>setEventDraft({...eventDraft,recurring:e.target.checked})}/><span className="text-xs font-bold" style={{color:C.ink}}>Wiederholend</span></label>}{!eventDraft.recurring ? <input type="datetime-local" value={eventDraft.date} onChange={(e)=>setEventDraft({...eventDraft,date:e.target.value})} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/> : <div className="space-y-2"><div className="flex gap-1.5 flex-wrap">{[["1","Mo"],["2","Di"],["3","Mi"],["4","Do"],["5","Fr"],["6","Sa"],["7","So"]].map(([num,label])=>{const n=Number(num);const active=eventDraft.weekdays.includes(n);return <button type="button" key={num} onClick={()=>setEventDraft({...eventDraft,weekdays:active?eventDraft.weekdays.filter((w)=>w!==n):[...eventDraft.weekdays,n]})} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?C.red:C.paperDim,color:active?C.white:C.textDim}}>{label}</button>;})}</div><div className="grid grid-cols-2 gap-2"><input type="time" value={eventDraft.startTime} onChange={(e)=>setEventDraft({...eventDraft,startTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><input type="time" value={eventDraft.endTime} onChange={(e)=>setEventDraft({...eventDraft,endTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></div><div className="grid grid-cols-2 gap-2"><input type="date" value={eventDraft.rangeStart} onChange={(e)=>setEventDraft({...eventDraft,rangeStart:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><input type="date" value={eventDraft.rangeEnd} onChange={(e)=>setEventDraft({...eventDraft,rangeEnd:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></div></div>}<input value={eventDraft.location} onChange={(e)=>setEventDraft({...eventDraft,location:e.target.value})} placeholder="Ort *" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><textarea value={eventDraft.desc} onChange={(e)=>setEventDraft({...eventDraft,desc:e.target.value})} placeholder="Beschreibung (optional)" rows={2} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none" style={{background:C.paperDim}}/><div className="flex gap-2"><button type="submit" className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{background:C.ink,color:C.white}}>Speichern</button><button type="button" onClick={()=>setShowCreate(false)} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{background:C.paperDim,color:C.textDim}}>Abbrechen</button></div></form>}
-      <SponsorSlot slotKey="events_header" bookings={sponsorBookings} onImpression={onSponsorImpression} onClick={onSponsorClick} />
+      <SponsorSlot slotKey="events_header" bookings={sponsorBookings} onImpression={onSponsorImpression} onClick={onSponsorClick} visible={featureEnabled("sponsor_events_header")} />
       <div className="flex gap-2 mb-4 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
         {[["alle", "Alle"], ["training", "Training"], ["spiel", "Spiele"], ["event", "Events"]].map(([k, l]) => (
           <button key={k} onClick={() => setFilter(k)} className="px-3 py-1.5 rounded-full text-xs flex-shrink-0"
@@ -3448,23 +3683,86 @@ function SubscriptionRecord({ subscription, accountLabel, onCancel, cancelling }
   </div>;
 }
 
+const CLUB_TIER_PRICES = {
+  basic: { monthly: { price: "34,99 €" }, yearly: { price: "299,88 €", equivalent: "24,99 € / Monat" } },
+  premium: { monthly: { price: "39,99 €" }, yearly: { price: "359,88 €", equivalent: "29,99 € / Monat" } },
+};
+const CLUB_TIER_INFO = {
+  basic: { label: "Basic", desc: "Training & Spiele anlegen und verwalten." },
+  premium: { label: "Premium", desc: "Alles: News, Sponsoring, Vereinsfahrzeuge, Helferdienst, Tippspiel, Kalender-Abo, Teams-Verwaltung und mehr." },
+};
+
 function SubscriptionPanel({ user }) {
   const [config, setConfig] = useState(null);
-  const [accountType, setAccountType] = useState("member");
+  const [tier, setTier] = useState("premium");
   const [cycle, setCycle] = useState("monthly");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
-  const [subscriptions, setSubscriptions] = useState({ member: [], club: [] });
+  const [subscriptions, setSubscriptions] = useState([]);
   const [subscriptionsLoading, setSubscriptionsLoading] = useState(true);
   const [cancellingId, setCancellingId] = useState(null);
   const [withdrawalConsent, setWithdrawalConsent] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
+  const [clubStatus, setClubStatus] = useState(null);
+  const [isNative, setIsNative] = useState(false);
+  const [nativeOfferings, setNativeOfferings] = useState(null);
+  const [nativeLoading, setNativeLoading] = useState(true);
+  const [purchasing, setPurchasing] = useState(false);
   const canBuyClubPlan = user.roles.some((role) => ["vereinsadmin", "sysadmin", "vorstand", "geschaeftsfuehrung"].includes(role));
-  const databaseProfile = user.authProfileId && isDbId(user.authProfileId);
   const databaseClub = isDbId(user.clubId);
 
+  useEffect(() => { setIsNative(nativePurchasesSupported()); }, []);
+
+  useEffect(() => {
+    if (!isNative || !databaseClub || !canBuyClubPlan) { setNativeLoading(false); return; }
+    setNativeLoading(true);
+    fetchTierOfferings(user.clubId)
+      .then((offerings) => setNativeOfferings(offerings))
+      .catch(() => setMessage("Angebote konnten nicht geladen werden."))
+      .finally(() => setNativeLoading(false));
+  }, [isNative, databaseClub, canBuyClubPlan, user.clubId]);
+
+  const refreshClubStatus = useCallback(() => {
+    if (!supabase || !databaseClub) return;
+    supabase.rpc("club_subscription_tier", { target_club: user.clubId }).then(({ data }) => {
+      if (!data) return;
+      supabase.rpc("club_trial_info", { target_club: user.clubId }).then(({ data: trialRows }) => {
+        setClubStatus({ tier: data, ...(trialRows?.[0] || {}) });
+      });
+    });
+  }, [databaseClub, user.clubId]);
+
+  const buyNativePackage = async () => {
+    const pkg = nativeOfferings?.[tier]?.[cycle];
+    if (!pkg) { setMessage("Dieses Paket ist im Store noch nicht verfügbar."); return; }
+    setPurchasing(true); setMessage("");
+    try {
+      await purchaseTierPackage(pkg);
+      setMessage("Kauf erfolgreich. Die Freischaltung kann kurz dauern.");
+      setShowWelcome(true);
+      setTimeout(refreshClubStatus, 2500);
+    } catch (error) {
+      if (!error?.userCancelled) setMessage(error?.message || "Der Kauf konnte nicht abgeschlossen werden.");
+    } finally {
+      setPurchasing(false);
+    }
+  };
+
+  const restorePurchases = async () => {
+    setPurchasing(true); setMessage("");
+    try {
+      await restoreNativePurchases();
+      setMessage("Käufe wiederhergestellt.");
+      setTimeout(refreshClubStatus, 1500);
+    } catch {
+      setMessage("Käufe konnten nicht wiederhergestellt werden.");
+    } finally {
+      setPurchasing(false);
+    }
+  };
+
   const loadSubscriptions = useCallback(async () => {
-    if (!supabase || !databaseProfile) { setSubscriptionsLoading(false); return; }
+    if (!supabase || !databaseClub || !canBuyClubPlan) { setSubscriptionsLoading(false); return; }
     const { data: sessionData } = await supabase.auth.getSession();
     const token = sessionData.session?.access_token;
     if (!token) { setSubscriptionsLoading(false); return; }
@@ -3472,15 +3770,17 @@ function SubscriptionPanel({ user }) {
       const response = await fetch(`/api/paypal/subscriptions?clubId=${encodeURIComponent(user.clubId || "")}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "Abonnements konnten nicht geladen werden.");
-      setSubscriptions({ member: payload.member || [], club: payload.club || [] });
+      setSubscriptions(payload.club || []);
     } catch (error) {
       setMessage(error.message || "Abonnements konnten nicht geladen werden.");
     } finally {
       setSubscriptionsLoading(false);
     }
-  }, [databaseProfile, user.clubId]);
+  }, [databaseClub, canBuyClubPlan, user.clubId]);
 
   useEffect(() => { loadSubscriptions(); }, [loadSubscriptions]);
+
+  useEffect(() => { refreshClubStatus(); }, [refreshClubStatus]);
 
   useEffect(() => {
     fetch("/api/paypal/config", { cache: "no-store" })
@@ -3493,11 +3793,9 @@ function SubscriptionPanel({ user }) {
       .finally(() => setLoading(false));
   }, []);
 
-  const selected = accountType === "club"
-    ? { monthly: { price: "29,99 €", setup: "5,00 €" }, yearly: { price: "299,88 €", setup: "5,00 €", equivalent: "24,99 € / Monat" } }[cycle]
-    : { monthly: { price: "2,99 €", setup: "1,50 €" }, yearly: { price: "11,88 €", setup: "1,50 €", equivalent: "0,99 € / Monat" } }[cycle];
-  const customId = accountType === "club" ? user.clubId : user.authProfileId;
-  const allowed = accountType === "club" ? canBuyClubPlan && databaseClub : databaseProfile;
+  const selected = CLUB_TIER_PRICES[tier][cycle];
+  const customId = user.clubId;
+  const allowed = canBuyClubPlan && databaseClub;
   const approved = useCallback(async (subscriptionId) => {
     setMessage("Das Abonnement wird gespeichert …");
     try {
@@ -3507,7 +3805,7 @@ function SubscriptionPanel({ user }) {
       const response = await fetch("/api/paypal/subscriptions", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ subscriptionId, accountType, clubId: user.clubId }),
+        body: JSON.stringify({ subscriptionId, tier, cycle, clubId: user.clubId }),
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "Das Abonnement konnte noch nicht gespeichert werden.");
@@ -3517,9 +3815,9 @@ function SubscriptionPanel({ user }) {
     } catch (error) {
       setMessage(error.message || "Die PayPal-Bestätigung wird noch verarbeitet. Bitte aktualisiere die Ansicht gleich erneut.");
     }
-  }, [accountType, loadSubscriptions, user.clubId]);
+  }, [tier, cycle, loadSubscriptions, user.clubId]);
 
-  const cancelSubscription = async (subscription, cancelAccountType) => {
+  const cancelSubscription = async (subscription) => {
     if (!window.confirm("Abonnement wirklich kündigen? Es bleibt bis zum Ende des bezahlten Zeitraums nutzbar und verlängert sich danach nicht mehr.")) return;
     setCancellingId(subscription.id); setMessage("");
     try {
@@ -3529,7 +3827,7 @@ function SubscriptionPanel({ user }) {
       const response = await fetch("/api/paypal/subscriptions", {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ subscriptionId: subscription.provider_subscription_id, accountType: cancelAccountType, clubId: user.clubId }),
+        body: JSON.stringify({ subscriptionId: subscription.provider_subscription_id, clubId: user.clubId }),
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "Das Abonnement konnte nicht gekündigt werden.");
@@ -3543,44 +3841,65 @@ function SubscriptionPanel({ user }) {
   };
 
   return <div>
-    <SectionTitle eyebrow="Verträge" title="Meine Abonnements" />
-    {subscriptionsLoading ? <div className="rounded-2xl p-4 mb-5 text-xs text-center" style={{ background: C.white, border: `1px solid ${C.line}`, color: C.textDim }}>Abonnements werden geladen …</div> :
-      subscriptions.member.length + subscriptions.club.length > 0 ? <div className="space-y-3 mb-6">
-        {subscriptions.member.map((subscription) => <SubscriptionRecord key={`member-${subscription.id}`} subscription={subscription} accountLabel="Persönliches Nutzerkonto" onCancel={() => cancelSubscription(subscription, "member")} cancelling={cancellingId === subscription.id} />)}
-        {subscriptions.club.map((subscription) => <SubscriptionRecord key={`club-${subscription.id}`} subscription={subscription} accountLabel="Vereinsaccount" onCancel={canBuyClubPlan ? () => cancelSubscription(subscription, "club") : null} cancelling={cancellingId === subscription.id} />)}
+    {clubStatus && <div className="rounded-2xl p-4 mb-5" style={{ background: clubStatus.tier === "none" ? "#FDECEC" : "#E7F3EC", border: `1px solid ${clubStatus.tier === "none" ? "#F3B9B9" : "#CFE8D6"}` }}>
+      <div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Aktueller Vereinstarif: {clubStatus.tier === "none" ? "Kein Abo" : CLUB_TIER_INFO[clubStatus.tier]?.label || clubStatus.tier}</div>
+      {clubStatus.trialing && <div className="text-[11px]" style={{ color: C.textDim }}>Trial läuft bis {subscriptionDate(clubStatus.trial_ends_at)} — danach wird ein Abo benötigt.</div>}
+      {!clubStatus.trialing && clubStatus.tier === "none" && <div className="text-[11px]" style={{ color: C.textDim }}>Nur Training/Spiele-Ansicht ist aktuell freigeschaltet. Mit Basic oder Premium mehr freischalten.</div>}
+    </div>}
+
+    <SectionTitle eyebrow="Verträge" title="Vereinsabo" />
+    {!canBuyClubPlan ? <div className="rounded-2xl p-4 mb-6" style={{ background: C.paperDim }}><div className="text-[11px]" style={{ color: C.textDim }}>Nur Vorstand, Vereinsadmin, Geschäftsführung oder Sysadmin können das Vereinsabo verwalten.</div></div> :
+    subscriptionsLoading ? <div className="rounded-2xl p-4 mb-5 text-xs text-center" style={{ background: C.white, border: `1px solid ${C.line}`, color: C.textDim }}>Abonnements werden geladen …</div> :
+      subscriptions.length > 0 ? <div className="space-y-3 mb-6">
+        {subscriptions.map((subscription) => <SubscriptionRecord key={subscription.id} subscription={subscription} accountLabel="Vereinsabo" onCancel={() => cancelSubscription(subscription)} cancelling={cancellingId === subscription.id} />)}
       </div> : <div className="rounded-2xl p-4 mb-6" style={{ background: C.paperDim }}><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Noch kein gespeichertes Abonnement</div><div className="text-[11px]" style={{ color: C.textDim }}>Nach einem erfolgreichen Abschluss erscheinen hier Tarif, Status, Erwerbsdatum und die nächste Abrechnung.</div></div>}
 
+    {canBuyClubPlan && <>
     <SectionTitle eyebrow="Tarif wählen" title="Abonnement abschließen" />
     <div className="rounded-2xl p-4 mb-5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
     <div className="flex items-center gap-2 mb-1"><Euro size={16} style={{ color: C.red }} /><div className="text-sm font-bold" style={{ color: C.ink }}>Abonnement</div></div>
-    <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Sicher über PayPal bezahlen. Alle Abos verlängern sich automatisch bis zur Kündigung.</div>
-    {canBuyClubPlan && <div className="grid grid-cols-2 gap-2 mb-2">
-      {[['member', 'Nutzerkonto'], ['club', 'Vereinsaccount']].map(([value, label]) => <button key={value} onClick={() => { setAccountType(value); setMessage(""); setWithdrawalConsent(false); }} className="py-2 rounded-xl text-xs font-bold" style={{ background: accountType === value ? C.ink : C.paperDim, color: accountType === value ? C.white : C.textDim }}>{label}</button>)}
-    </div>}
+    <div className="text-[11px] mb-3" style={{ color: C.textDim }}>{isNative ? `Sicher über ${Capacitor.getPlatform() === "ios" ? "den App Store" : "Google Play"} bezahlen.` : "Sicher über PayPal bezahlen."} Alle Abos verlängern sich automatisch bis zur Kündigung.</div>
+    <div className="grid grid-cols-2 gap-2 mb-2">
+      {[['basic', CLUB_TIER_INFO.basic.label], ['premium', CLUB_TIER_INFO.premium.label]].map(([value, label]) => <button key={value} onClick={() => { setTier(value); setMessage(""); setWithdrawalConsent(false); }} className="py-2 rounded-xl text-xs font-bold" style={{ background: tier === value ? C.ink : C.paperDim, color: tier === value ? C.white : C.textDim }}>{label}</button>)}
+    </div>
+    <div className="text-[11px] mb-3" style={{ color: C.textDim }}>{CLUB_TIER_INFO[tier].desc}</div>
     <div className="grid grid-cols-2 gap-2 mb-3">
       {[['monthly', 'Monatlich'], ['yearly', 'Jährlich']].map(([value, label]) => <button key={value} onClick={() => { setCycle(value); setMessage(""); setWithdrawalConsent(false); }} className="py-2 rounded-xl text-xs font-bold" style={{ background: cycle === value ? "#FCEBEE" : C.paperDim, color: cycle === value ? C.red : C.textDim, border: cycle === value ? `1px solid ${C.red}` : "1px solid transparent" }}>{label}</button>)}
     </div>
     <div className="rounded-xl p-3 mb-3" style={{ background: C.paperDim }}>
-      <div className="flex items-end justify-between"><div><div className="text-xl font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{selected.price}</div><div className="text-[10px]" style={{ color: C.textDim }}>{cycle === "yearly" ? "jährlich im Voraus" : "pro Monat"}{selected.equivalent ? ` · ${selected.equivalent}` : ""}</div></div><div className="text-[10px] text-right" style={{ color: C.textDim }}>einmalig<br/><b>{selected.setup} Einrichtung</b></div></div>
-      <div className="text-[10px] mt-2" style={{ color: C.textDim }}>19 % Umsatzsteuer im Preis enthalten. Keine Probezeit.</div>
+      <div className="text-xl font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{isNative ? (nativeOfferings?.[tier]?.[cycle]?.product.priceString || selected.price) : selected.price}</div>
+      <div className="text-[10px]" style={{ color: C.textDim }}>{cycle === "yearly" ? "jährlich im Voraus" : "pro Monat"}{selected.equivalent ? ` · ${selected.equivalent}` : ""}</div>
+      <div className="text-[10px] mt-2" style={{ color: C.textDim }}>19 % Umsatzsteuer im Preis enthalten. Keine Probezeit — der Verein hatte bereits 2 Wochen kostenlosen Testzeitraum ab Registrierung.</div>
       <div className="text-[10px] mt-1.5" style={{ color: C.textDim }}>Mindestlaufzeit {cycle === "yearly" ? "12 Monate" : "1 Monat"}. Verlängert sich automatisch um {cycle === "yearly" ? "weitere 12 Monate" : "einen weiteren Monat"}, jederzeit zum Laufzeitende kündbar.</div>
     </div>
-    {loading ? <div className="text-xs py-2 text-center" style={{ color: C.textDim }}>PayPal wird geladen …</div> : config && allowed ? <>
+    {isNative ? (
+      nativeLoading ? <div className="text-xs py-2 text-center" style={{ color: C.textDim }}>Angebote werden geladen …</div> :
+      !allowed ? <div className="text-[11px] rounded-xl px-3 py-2" style={{ background: "#FFF6E4", color: C.textDim }}>Nur für ein dauerhaft gespeichertes Vereinskonto verfügbar.</div> :
+      !nativeOfferings?.[tier]?.[cycle] ? <div className="text-[11px] rounded-xl px-3 py-2" style={{ background: "#FFF6E4", color: C.textDim }}>Dieses Paket ist im Store noch nicht eingerichtet.</div> :
+      <>
+        <label className="flex items-start gap-2 mb-3 px-0.5"><input type="checkbox" checked={withdrawalConsent} onChange={(e) => setWithdrawalConsent(e.target.checked)} className="mt-0.5"/><span className="text-[10px]" style={{ color: C.textDim }}>Ich akzeptiere die <a href="/nutzungsbedingungen" target="_blank" rel="noreferrer" style={{ color: C.red }}>Nutzungsbedingungen</a> und die darin enthaltene Widerrufsbelehrung. Ich stimme ausdrücklich zu, dass die Nutzung sofort beginnt, und weiß, dass mein Widerrufsrecht erlischt, sobald der Vertrag vollständig erfüllt ist.</span></label>
+        {withdrawalConsent
+          ? <button onClick={buyNativePackage} disabled={purchasing} className="w-full py-3 rounded-xl text-sm font-bold" style={{ background: C.ink, color: C.white, opacity: purchasing ? .6 : 1 }}>{purchasing ? "Wird verarbeitet …" : `${CLUB_TIER_INFO[tier].label} abonnieren`}</button>
+          : <div className="text-[11px] rounded-xl px-3 py-2 text-center" style={{ background: C.paperDim, color: C.textDim }}>Bitte zuerst zustimmen, um fortzufahren.</div>}
+        <button onClick={restorePurchases} disabled={purchasing} className="w-full mt-2 py-2 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.textDim }}>Käufe wiederherstellen</button>
+      </>
+    ) : loading ? <div className="text-xs py-2 text-center" style={{ color: C.textDim }}>PayPal wird geladen …</div> : config && allowed ? <>
       <label className="flex items-start gap-2 mb-3 px-0.5"><input type="checkbox" checked={withdrawalConsent} onChange={(e) => setWithdrawalConsent(e.target.checked)} className="mt-0.5"/><span className="text-[10px]" style={{ color: C.textDim }}>Ich akzeptiere die <a href="/nutzungsbedingungen" target="_blank" rel="noreferrer" style={{ color: C.red }}>Nutzungsbedingungen</a> und die darin enthaltene Widerrufsbelehrung. Ich stimme ausdrücklich zu, dass die Nutzung sofort beginnt, und weiß, dass mein Widerrufsrecht erlischt, sobald der Vertrag vollständig erfüllt ist.</span></label>
       {withdrawalConsent
-        ? <PayPalSubscriptionButton clientId={config.clientId} planId={config.plans[accountType][cycle]} customId={customId} onApproved={approved} onError={setMessage} />
+        ? <PayPalSubscriptionButton clientId={config.clientId} planId={config.plans[tier][cycle]} customId={customId} onApproved={approved} onError={setMessage} />
         : <div className="text-[11px] rounded-xl px-3 py-2 text-center" style={{ background: C.paperDim, color: C.textDim }}>Bitte zuerst zustimmen, um fortzufahren.</div>}
     </> :
-      <div className="text-[11px] rounded-xl px-3 py-2" style={{ background: "#FFF6E4", color: C.textDim }}>{message || "Der Checkout ist nur für ein angemeldetes, dauerhaft gespeichertes Konto verfügbar."}</div>}
-    {message && <div role="status" className="text-[11px] mt-2 rounded-xl px-3 py-2" style={{ background: (message.includes("gespeichert")||message.includes("gekündigt")) ? "#E7F3EC" : message.includes("wird") ? "#FFF6E4" : "#FDECEC", color: (message.includes("gespeichert")||message.includes("gekündigt")) ? C.green : message.includes("wird") ? C.textDim : C.red }}>{message}</div>}
-    <div className="text-[9px] mt-3 leading-relaxed" style={{ color: C.textDim }}>Mit dem Abschluss akzeptierst du die <a href="/nutzungsbedingungen" className="underline">Nutzungsbedingungen</a>. Kündigung über PayPal zum Ende des Abrechnungszeitraums.</div>
+      <div className="text-[11px] rounded-xl px-3 py-2" style={{ background: "#FFF6E4", color: C.textDim }}>{message || "PayPal ist noch nicht konfiguriert."}</div>}
+    {message && <div role="status" className="text-[11px] mt-2 rounded-xl px-3 py-2" style={{ background: (message.includes("gespeichert")||message.includes("gekündigt")||message.includes("erfolgreich")||message.includes("wiederhergestellt")) ? "#E7F3EC" : message.includes("wird") ? "#FFF6E4" : "#FDECEC", color: (message.includes("gespeichert")||message.includes("gekündigt")||message.includes("erfolgreich")||message.includes("wiederhergestellt")) ? C.green : message.includes("wird") ? C.textDim : C.red }}>{message}</div>}
+    <div className="text-[9px] mt-3 leading-relaxed" style={{ color: C.textDim }}>Mit dem Abschluss akzeptierst du die <a href="/nutzungsbedingungen" className="underline">Nutzungsbedingungen</a>. Kündigung {isNative ? (Capacitor.getPlatform() === "ios" ? "über die Apple-ID-Einstellungen" : "über Google Play") : "über PayPal"} zum Ende des Abrechnungszeitraums.</div>
     </div>
+    </>}
     {showWelcome && (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-5" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setShowWelcome(false)}>
         <div role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} className="w-full max-w-sm rounded-3xl p-6 text-center" style={{ background: C.white }}>
           <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: "#E7F3EC" }}><CheckCircle2 size={28} style={{ color: C.green }} /></div>
           <div className="text-lg font-bold mb-2" style={{ fontFamily: "Oswald", color: C.ink }}>Willkommen an Bord!</div>
-          <div className="text-sm mb-5" style={{ color: C.textDim }}>Dein Abonnement ist aktiv. Alle Funktionen sind ab sofort freigeschaltet — viel Spaß mit der App.</div>
+          <div className="text-sm mb-5" style={{ color: C.textDim }}>Dein Abonnement ist aktiv. Die Funktionen deines Tarifs sind ab sofort freigeschaltet.</div>
           <button onClick={() => setShowWelcome(false)} className="w-full py-3 rounded-xl text-sm font-bold" style={{ background: C.ink, color: C.white }}>Los geht's</button>
         </div>
       </div>
@@ -3601,6 +3920,41 @@ function ProfileUnderlay({ title, eyebrow = "Profileinstellungen", onClose, onSa
 
 function ProfileSettingsCard({ icon: Icon, title, description, onClick, color = C.red }) {
   return <button onClick={onClick} className="w-full flex items-center gap-3 rounded-2xl px-3.5 py-3 text-left" style={{ background: C.white, border: `1px solid ${C.line}` }}><div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: C.paperDim, color }}><Icon size={18}/></div><div className="flex-1 min-w-0"><div className="text-sm font-bold" style={{ color: C.ink }}>{title}</div><div className="text-[10px] leading-snug" style={{ color: C.textDim }}>{description}</div></div><ChevronRight size={15} style={{ color: C.textDim }}/></button>;
+}
+
+function HowToVideoLibrary({ user }) {
+  const [openId, setOpenId] = useState("");
+  const videos = howToVideosFor(user);
+  return (
+    <div className="space-y-2">
+      <div className="text-[11px] mb-1" style={{ color: C.textDim }}>Kurze Videos, passend zu dem, was du in ERGI tun kannst — nur Aktionen, die deine Rolle auch wirklich ausführen darf.</div>
+      {videos.map((video) => {
+        const open = openId === video.id;
+        return (
+          <div key={video.id} className="rounded-2xl overflow-hidden" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+            <button onClick={() => setOpenId(open ? "" : video.id)} className="w-full flex items-center gap-3 px-3.5 py-3 text-left">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: C.paperDim, color: C.red }}><PlayCircle size={18}/></div>
+              <div className="flex-1 min-w-0"><div className="text-sm font-bold" style={{ color: C.ink }}>{video.title}</div><div className="text-[10px] leading-snug" style={{ color: C.textDim }}>{video.description}</div></div>
+              <ChevronDown size={15} style={{ color: C.textDim, transform: open ? "rotate(180deg)" : "none", transition: "transform .2s" }}/>
+            </button>
+            {open && (
+              <div className="px-3.5 pb-3.5">
+                <video
+                  key={video.id}
+                  src={howToVideoUrl(video.file)}
+                  controls
+                  playsInline
+                  className="w-full rounded-xl"
+                  style={{ background: C.ink, aspectRatio: "9 / 16", maxHeight: 420 }}
+                />
+              </div>
+            )}
+          </div>
+        );
+      })}
+      {videos.length === 0 && <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>Für deine aktuellen Rollen gibt es noch keine Videos.</div>}
+    </div>
+  );
 }
 
 function BoardMemberOverview({ members, currentUser }) {
@@ -3988,7 +4342,8 @@ function BugReportSettings({user}) { const [busy,setBusy]=useState(false);const 
 
 function CalendarSyncSettings({user,saveRef}) { const [interval,setInterval]=useState(user.calendarSyncInterval||"never");const [token,setToken]=useState("");const [message,setMessage]=useState("");const sync=async()=>{if(!supabase){setMessage("Kalendersynchronisierung benötigt ein echtes Konto.");return;}const {data,error}=await supabase.rpc("configure_calendar_subscription",{target_club:user.clubId,requested_interval:interval});if(error){setMessage("Kalender konnte nicht verbunden werden.");return;}const row=data?.[0];setToken(row?.token||"");setMessage("Kalenderverbindung aktualisiert.");};saveRef.current=sync;const url=token&&`${window.location.origin}/api/calendar/feed/${token}`;return <div><div className="rounded-2xl p-4" style={{background:C.white,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">Spiel- und Trainingskalender</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>Verbinde alle für dich sichtbaren Spiele und Trainings mit deinem Gerätekalender.</div><select value={interval} onChange={(e)=>setInterval(e.target.value)} className="w-full px-3 py-3 rounded-xl text-xs mb-3" style={inputStyle}><option value="never">Nie automatisch</option><option value="daily">Täglich</option><option value="weekly">Wöchentlich · Sonntagabend</option><option value="monthly">Monatlich</option></select><button onClick={sync} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold" style={{background:C.ink,color:C.white}}><RefreshCw size={14}/> Jetzt synchronisieren</button>{url&&<a href={url.replace(/^https?:/,"webcal:")} className="block w-full text-center mt-2 py-2.5 rounded-xl text-xs font-bold" style={{background:"#E7F3EC",color:C.green}}>Mit Gerätekalender verbinden</a>}</div>{message&&<div className="text-[11px] mt-3" style={{color:message.includes("aktualisiert")?C.green:C.red}}>{message}</div>}</div>; }
 
-function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, onSponsorImpression, onSponsorClick, onLogout, clubFeatures, onClubFeaturesChanged }) {
+function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, onSponsorImpression, onSponsorClick, onLogout, clubFeatures, onClubFeaturesChanged, entitlement, goSubscribe }) {
+  const featureEnabled = (key) => clubFeatures[key] !== false;
   const goal = 1000;
   const eligible = isFormalMember(user) && age(user.birthdate) >= 16;
   const [deleteConfirm, setDeleteConfirm] = useState(false);
@@ -4045,6 +4400,7 @@ function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, 
         <ProfileSettingsCard icon={Bell} title="Benachrichtigungen & Kalender" description="Push-Einstellungen und Kalendersync" color={C.amber} onClick={() => setProfileFolder("notify")}/>
         <ProfileSettingsCard icon={Euro} title="Abo & Empfehlungen" description="Abonnement und Vereine werben Vereine" color={C.red} onClick={() => setProfileFolder("billing")}/>
         <ProfileSettingsCard icon={Star} title="Support & Feedback" description="Bewertung abgeben, Fehler melden" color={C.textDim} onClick={() => setProfileFolder("support")}/>
+        <ProfileSettingsCard icon={PlayCircle} title="App kennenlernen" description="Kurzvideos zu den Funktionen, die du nutzen kannst" color={C.green} onClick={() => setProfileFolder("howto")}/>
       </div>
 
       {profileFolder === "clubsettings" && isAdmin(user) && <ProfileUnderlay title="Vereinseinstellungen" eyebrow="Verein verwalten" onClose={() => setProfileFolder("")}>
@@ -4099,6 +4455,10 @@ function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, 
         </div>
       </ProfileUnderlay>}
 
+      {profileFolder === "howto" && <ProfileUnderlay title="App kennenlernen" eyebrow="Einstellungen" onClose={() => setProfileFolder("")}>
+        <HowToVideoLibrary user={user}/>
+      </ProfileUnderlay>}
+
       <div className="rounded-2xl p-4 mb-5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2 text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}><Sparkles size={15} style={{ color: C.amber }} /> Vereinspunkte</div>
@@ -4149,7 +4509,7 @@ function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, 
         <ChevronRight size={15} style={{ color: C.textDim }} />
       </button>
 
-      <SponsorSlot slotKey="profile_bottom" bookings={sponsorBookings} onImpression={onSponsorImpression} onClick={onSponsorClick} />
+      <SponsorSlot slotKey="profile_bottom" bookings={sponsorBookings} onImpression={onSponsorImpression} onClick={onSponsorClick} visible={featureEnabled("sponsor_profile_bottom")} />
 
       <div className="grid grid-cols-3 gap-2 mb-4 text-center">
         <a href="/datenschutz" className="py-2 rounded-xl text-[10px] font-bold" style={{ background: C.white, border: `1px solid ${C.line}`, color: C.textDim }}>Datenschutz</a>
@@ -4167,7 +4527,7 @@ function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, 
       {profileUnderlay === "password" && <ProfileUnderlay title="Passwort ändern" onClose={() => setProfileUnderlay("")} onSave={()=>sectionSaveRef.current?.()}><PasswordSettings user={user} onLogout={onLogout} saveRef={sectionSaveRef}/></ProfileUnderlay>}
       {profileUnderlay === "security" && <ProfileUnderlay title="Sicherheit" onClose={() => setProfileUnderlay("")} onSave={()=>sectionSaveRef.current?.()}><SecuritySettings user={user} setMembers={setMembers} saveRef={sectionSaveRef}/></ProfileUnderlay>}
       {profileUnderlay === "referral" && <ProfileUnderlay title="Vereine werben Vereine" onClose={() => setProfileUnderlay("")}><ReferralSettings user={user} club={currentClub}/></ProfileUnderlay>}
-      {profileUnderlay === "calendar" && <ProfileUnderlay title="Kalender synchronisieren" onClose={() => setProfileUnderlay("")} onSave={()=>sectionSaveRef.current?.()}><CalendarSyncSettings user={user} saveRef={sectionSaveRef}/></ProfileUnderlay>}
+      {profileUnderlay === "calendar" && <ProfileUnderlay title="Kalender synchronisieren" onClose={() => setProfileUnderlay("")} onSave={()=>sectionSaveRef.current?.()}><LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Kalender-Abo"><CalendarSyncSettings user={user} saveRef={sectionSaveRef}/></LockedFeature></ProfileUnderlay>}
       {profileUnderlay === "feedback" && <ProfileUnderlay title="App bewerten" onClose={() => setProfileUnderlay("")}><FeedbackSettings/></ProfileUnderlay>}
       {profileUnderlay === "bug" && <ProfileUnderlay title="Fehler melden" onClose={() => setProfileUnderlay("")}><BugReportSettings user={user}/></ProfileUnderlay>}
       {profileUnderlay === "player" && <ProfileUnderlay title="Athletenprofil" onClose={() => setProfileUnderlay("")}><PlayerTeamSettings user={user} setMembers={setMembers}/><PlayerDataCard user={user} setMembers={setMembers}/></ProfileUnderlay>}
@@ -4664,7 +5024,9 @@ function OverviewPanel({ members, feePaid, protocols, dutyPlan, seasonVotes, goP
 /* ------------------------------------------------------------------ */
 /* Sponsoring                                                            */
 /* ------------------------------------------------------------------ */
-function SponsoringPanel({ bookings, setBookings, stats }) {
+function SponsoringPanel({ bookings, setBookings, stats, currentClub, clubFeatures, onFeaturesChanged }) {
+  const [savingSlot, setSavingSlot] = useState("");
+  const [toggleError, setToggleError] = useState("");
   const update = (key, field, value) => setBookings((all) => ({ ...all, [key]: { ...(typeof all[key] === "object" ? all[key] : { title: all[key] || "" }), [field]: value } }));
   const uploadImage = (key, file) => {
     if (!file) return;
@@ -4673,20 +5035,37 @@ function SponsoringPanel({ bookings, setBookings, stats }) {
     reader.onload = () => update(key, "imageUrl", reader.result);
     reader.readAsDataURL(file);
   };
+  const toggleVisible = async (slotKey, value) => {
+    if (!supabase || !currentClub?.id) return;
+    const featureKey = `sponsor_${slotKey}`;
+    setSavingSlot(slotKey); setToggleError("");
+    const { error } = await supabase.from("club_feature_toggles").upsert({ club_id: currentClub.id, feature_key: featureKey, enabled: value });
+    setSavingSlot("");
+    if (error) { setToggleError("Konnte nicht gespeichert werden."); return; }
+    onFeaturesChanged?.();
+  };
   return (
     <div className="space-y-3">
-      <div className="text-xs mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>Sponsor 1 und Sponsor 2 sind zwei unabhängige Anzeigen im gleichen Design. Für beide können Titel, Text, Bild und eine optionale Landingpage separat hinterlegt werden. Leere Anzeigen bleiben für Mitglieder unsichtbar.</div>
+      <div className="text-xs mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>Sponsor 1 und Sponsor 2 sind zwei unabhängige Anzeigen im gleichen Design. Für beide können Titel, Text, Bild und eine optionale Landingpage separat hinterlegt werden. Leere Anzeigen bleiben für Mitglieder unsichtbar. Über den Schalter lässt sich jede Anzeigenfläche unabhängig davon komplett aus- oder einblenden.</div>
+      {toggleError && <div role="status" className="text-[11px] rounded-xl px-3 py-2" style={{ background: "#FDECEC", color: C.red }}>{toggleError}</div>}
       {SPONSOR_SLOT_DEFS.map((slot) => {
         const s = stats[slot.key] || { impressions: 0, clicks: 0 };
         const ctr = s.impressions ? ((s.clicks / s.impressions) * 100).toFixed(1) : "0.0";
         const raw = bookings[slot.key];
         const ad = typeof raw === "object" && raw ? raw : { title: raw || "", text: "", imageUrl: "", landingUrl: "" };
+        const on = (clubFeatures?.[`sponsor_${slot.key}`]) !== false;
         return (
           <div key={slot.key} className="rounded-2xl p-3" style={{ background: C.white, border: `1px solid ${C.line}` }}>
             <div className="flex items-center justify-between mb-2">
               <div className="text-xs" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{slot.label}</div>
               <span className="text-[10px]" style={{ fontFamily: "JetBrains Mono", color: C.textDim }}>{slot.key}</span>
             </div>
+            <button onClick={() => savingSlot !== slot.key && toggleVisible(slot.key, !on)} className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl mb-2.5" style={{ background: C.paperDim, border: `1px solid ${C.line}`, opacity: savingSlot === slot.key ? .6 : 1 }}>
+              <span className="text-xs text-left" style={{ fontFamily: "Inter", fontWeight: 600, color: C.ink }}>{on ? "Anzeigenfläche eingeblendet" : "Anzeigenfläche ausgeblendet"}</span>
+              <span className="w-10 h-6 rounded-full relative flex-shrink-0" style={{ background: on ? C.green : C.line }}>
+                <span className="absolute top-0.5 w-5 h-5 rounded-full" style={{ background: "#fff", left: on ? 18 : 2, transition: "left .2s" }} />
+              </span>
+            </button>
             <input value={ad.title} onChange={(e)=>update(slot.key,"title",e.target.value)} placeholder="Titel des Sponsors" className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2" style={{background:C.paperDim,border:`1px solid ${C.line}`}}/>
             <textarea value={ad.text||""} onChange={(e)=>update(slot.key,"text",e.target.value)} placeholder="Beschreibung / Anzeigentext" rows={3} className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2 resize-none" style={{background:C.paperDim,border:`1px solid ${C.line}`}}/>
             <input type="url" value={ad.landingUrl||""} onChange={(e)=>update(slot.key,"landingUrl",e.target.value)} placeholder="https://landingpage.de" className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2" style={{background:C.paperDim,border:`1px solid ${C.line}`}}/>
@@ -4766,24 +5145,51 @@ function MatchResultsPanel({ results, onSave }) {
 /* ------------------------------------------------------------------ */
 function RolesPanel({ members, setMembers }) {
   const [message, setMessage] = useState("");
-  const toggleRole = async (memberId, role) => {
+  const [expandedId, setExpandedId] = useState(null);
+  const [draftRoles, setDraftRoles] = useState([]);
+  const [saving, setSaving] = useState(false);
+
+  const openMember = (memberId, currentRoles) => {
+    setMessage("");
+    setExpandedId(memberId);
+    setDraftRoles([...currentRoles]);
+  };
+  const closeMember = () => { setExpandedId(null); setDraftRoles([]); };
+
+  const toggleDraftRole = (role) => {
     if (ROLE_META[role]?.alwaysOn) return; // "Mitglied" ist Basisrolle für alle
+    setDraftRoles((roles) => {
+      const has = roles.includes(role);
+      if (has && roles.length === 1) return roles; // mindestens eine Rolle behalten
+      return has ? roles.filter((r) => r !== role) : [...roles, role];
+    });
+  };
+
+  const saveMemberRoles = async (memberId) => {
     const member = members.find((item) => item.id === memberId);
     if (!member) return;
-    const has = member.roles.includes(role);
-    if (has && member.roles.length === 1) return; // mindestens eine Rolle behalten
+    setSaving(true);
+    setMessage("");
     if (supabase && isDbId(memberId)) {
-      setMessage("");
-      const { error } = has
-        ? await supabase.from("membership_roles").delete().eq("membership_id", memberId).eq("role", role)
-        : await supabase.from("membership_roles").insert({ membership_id: memberId, role, granted_by: (await supabase.auth.getUser()).data.user?.id || null });
-      if (error) { setMessage("Die Rollenänderung konnte nicht gespeichert werden."); return; }
+      const toAdd = draftRoles.filter((r) => !member.roles.includes(r));
+      const toRemove = member.roles.filter((r) => !draftRoles.includes(r));
+      const grantedBy = (await supabase.auth.getUser()).data.user?.id || null;
+      for (const role of toAdd) {
+        const { error } = await supabase.from("membership_roles").insert({ membership_id: memberId, role, granted_by: grantedBy });
+        if (error) { setMessage("Die Rollenänderung konnte nicht gespeichert werden."); setSaving(false); return; }
+      }
+      for (const role of toRemove) {
+        const { error } = await supabase.from("membership_roles").delete().eq("membership_id", memberId).eq("role", role);
+        if (error) { setMessage("Die Rollenänderung konnte nicht gespeichert werden."); setSaving(false); return; }
+      }
     }
-    setMembers((ms) => ms.map((m) => {
-      if (m.id !== memberId) return m;
-      return { ...m, roles: has ? m.roles.filter((r) => r !== role) : [...m.roles, role], ...(role === "teammanager" && has ? { managedTeam: null } : {}) };
-    }));
+    setMembers((ms) => ms.map((m) => (m.id === memberId
+      ? { ...m, roles: draftRoles, ...(!draftRoles.includes("teammanager") ? { managedTeam: null } : {}) }
+      : m)));
+    setSaving(false);
+    closeMember();
   };
+
   const assignManagedTeam = async (memberId, team) => {
     const member = members.find((item) => item.id === memberId);
     if (!member) return;
@@ -4828,29 +5234,50 @@ function RolesPanel({ members, setMembers }) {
   };
   return (
     <div className="space-y-3">
-      <div className="text-xs mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>Tippe eine Rolle an, um sie zu vergeben oder zu entziehen. Vereins-Administrator, Vorstand & Geschäftsführung können nur hier zugewiesen werden.</div>
+      <div className="text-xs mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>Tippe auf ein Mitglied, um die Rollen zu bearbeiten. Vereins-Administrator, Vorstand & Geschäftsführung können nur hier zugewiesen werden.</div>
       {message&&<div className="rounded-xl px-3 py-2 text-[11px] font-semibold" style={{background:"#FCEBEE",color:C.red}}>{message}</div>}
-      {members.map((m) => (
-        <div key={m.id} className="rounded-2xl p-3" style={{ background: C.white, border: `1px solid ${C.line}` }}>
-          <div className="flex items-center gap-2 mb-2.5">
-            <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0" style={{ background: m.color, color: "#fff", fontFamily: "Inter" }}>{initialsOf(m.name)}</div>
-            <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{m.name}</div>
+      {members.map((m) => {
+        const expanded = expandedId === m.id;
+        return (
+          <div key={m.id} className="rounded-2xl overflow-hidden" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+            <button type="button" onClick={() => (expanded ? closeMember() : openMember(m.id, m.roles))} className="w-full flex items-center gap-2 p-3 text-left">
+              <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0" style={{ background: m.color, color: "#fff", fontFamily: "Inter" }}>{initialsOf(m.name)}</div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{m.name}</div>
+                {!expanded && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {m.roles.map((r) => ROLE_META[r] && (
+                      <span key={r} className="px-2 py-0.5 rounded-full text-[10px]" style={{ fontFamily: "Inter", fontWeight: 700, background: C.paperDim, color: C.textDim }}>{ROLE_META[r].label}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <ChevronDown size={16} style={{ color: C.textDim, transform: expanded ? "rotate(180deg)" : "none", transition: "transform .15s ease", flexShrink: 0 }} />
+            </button>
+            {expanded && (
+              <div className="px-3 pb-3">
+                <div className="flex flex-wrap gap-1.5">
+                  {Object.keys(ROLE_META).map((r) => {
+                    const active = draftRoles.includes(r);
+                    return (
+                      <button key={r} type="button" onClick={() => toggleDraftRole(r)} className="px-2.5 py-1 rounded-full text-[11px]"
+                        style={{ fontFamily: "Inter", fontWeight: 700, background: active ? ROLE_META[r].color : C.paperDim, color: active ? "#fff" : C.textDim }}>
+                        {ROLE_META[r].label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {m.roles.includes("trainer")&&<div className="mt-2.5 pt-2.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] mb-2 font-bold" style={{color:C.textDim}}>TRAINER FÜR · MEHRERE MANNSCHAFTEN MÖGLICH</div><div className="flex flex-wrap gap-1.5">{YOUTH_CLASSES.map((team)=>{const active=(m.trainerTeams||[]).includes(team.name);return <button type="button" key={team.name} onClick={()=>toggleTrainerTeam(m.id,team.name)} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?ROLE_META.trainer.color:C.paperDim,color:active?C.white:C.textDim}}>{active?"✓ ":""}{team.name}</button>})}</div></div>}
+                {m.roles.includes("teammanager")&&<div className="mt-2.5 pt-2.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] mb-1 font-bold" style={{color:C.textDim}}>Betreute Mannschaft · maximal ein Teammanager je Mannschaft</div><select value={m.managedTeam||""} onChange={(e)=>assignManagedTeam(m.id,e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{background:C.paperDim}}><option value="">Mannschaft auswählen …</option>{YOUTH_CLASSES.map((team)=><option key={team.name} value={team.name}>{team.name}</option>)}</select></div>}
+                <div className="flex gap-2 mt-3 pt-3" style={{ borderTop: `1px solid ${C.line}` }}>
+                  <button type="button" onClick={closeMember} disabled={saving} className="flex-1 py-2 rounded-lg text-xs" style={{ background: C.paperDim, color: C.ink, fontFamily: "Inter", fontWeight: 700 }}>Abbrechen</button>
+                  <button type="button" onClick={() => saveMemberRoles(m.id)} disabled={saving} className="flex-1 py-2 rounded-lg text-xs" style={{ background: C.ink, color: "#fff", fontFamily: "Inter", fontWeight: 700, opacity: saving ? 0.6 : 1 }}>{saving ? "Speichert …" : "Speichern"}</button>
+                </div>
+              </div>
+            )}
           </div>
-          <div className="flex flex-wrap gap-1.5">
-            {Object.keys(ROLE_META).map((r) => {
-              const active = m.roles.includes(r);
-              return (
-                <button key={r} onClick={() => toggleRole(m.id, r)} className="px-2.5 py-1 rounded-full text-[11px]"
-                  style={{ fontFamily: "Inter", fontWeight: 700, background: active ? ROLE_META[r].color : C.paperDim, color: active ? "#fff" : C.textDim }}>
-                  {ROLE_META[r].label}
-                </button>
-              );
-            })}
-          </div>
-          {m.roles.includes("trainer")&&<div className="mt-2.5 pt-2.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] mb-2 font-bold" style={{color:C.textDim}}>TRAINER FÜR · MEHRERE MANNSCHAFTEN MÖGLICH</div><div className="flex flex-wrap gap-1.5">{YOUTH_CLASSES.map((team)=>{const active=(m.trainerTeams||[]).includes(team.name);return <button type="button" key={team.name} onClick={()=>toggleTrainerTeam(m.id,team.name)} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?ROLE_META.trainer.color:C.paperDim,color:active?C.white:C.textDim}}>{active?"✓ ":""}{team.name}</button>})}</div></div>}
-          {m.roles.includes("teammanager")&&<div className="mt-2.5 pt-2.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] mb-1 font-bold" style={{color:C.textDim}}>Betreute Mannschaft · maximal ein Teammanager je Mannschaft</div><select value={m.managedTeam||""} onChange={(e)=>assignManagedTeam(m.id,e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{background:C.paperDim}}><option value="">Mannschaft auswählen …</option>{YOUTH_CLASSES.map((team)=><option key={team.name} value={team.name}>{team.name}</option>)}</select></div>}
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -4989,6 +5416,31 @@ function ClubLogoPanel({ club, onLogoUpdated }) {
       <ImageIcon size={15} /> {busy ? "Wird gespeichert …" : "Vereinslogo auswählen"}
       <input type="file" accept="image/jpeg,image/png,image/webp" onChange={uploadLogo} disabled={busy} className="hidden" />
     </label>
+    {message && <div className="text-[11px] mt-2" role="status" style={{ color: message.includes("gespeichert") ? C.green : C.red }}>{message}</div>}
+  </div>;
+}
+
+function ClubColorPanel({ club, onColorsUpdated }) {
+  const [primary, setPrimary] = useState(club.primaryColor || DEFAULT_CLUB_COLORS.primary);
+  const [secondary, setSecondary] = useState(club.secondaryColor || DEFAULT_CLUB_COLORS.secondary);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  const dirty = primary !== (club.primaryColor || DEFAULT_CLUB_COLORS.primary) || secondary !== (club.secondaryColor || DEFAULT_CLUB_COLORS.secondary);
+
+  const save = async () => {
+    setSaving(true); setMessage("");
+    if (!supabase) { onColorsUpdated(primary, secondary); setMessage("Vereinsfarben gespeichert."); setSaving(false); return; }
+    const { error } = await supabase.from("clubs").update({ primary_color: primary, secondary_color: secondary }).eq("id", club.id);
+    setSaving(false);
+    if (error) { setMessage("Die Vereinsfarben konnten nicht gespeichert werden."); return; }
+    onColorsUpdated(primary, secondary);
+    setMessage("Vereinsfarben gespeichert.");
+  };
+
+  return <div className="rounded-2xl p-4 mt-3" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+    <div className="text-sm font-bold mb-3" style={{ color: C.ink }}>Vereinsfarben</div>
+    <ClubColorPicker primary={primary} secondary={secondary} onChange={(p, s) => { setPrimary(p); setSecondary(s); setMessage(""); }} />
+    <button onClick={save} disabled={saving || !dirty} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: dirty ? C.ink : C.paperDim, color: dirty ? C.white : C.textDim, opacity: saving ? .6 : 1 }}>{saving ? "Wird gespeichert …" : "Farben speichern"}</button>
     {message && <div className="text-[11px] mt-2" role="status" style={{ color: message.includes("gespeichert") ? C.green : C.red }}>{message}</div>}
   </div>;
 }
@@ -5199,7 +5651,7 @@ function ClubRoleOverviewPanel({ members }) {
   );
 }
 
-function ClubFeatureSettingsPanel({ currentClub, clubFeatures, onFeaturesChanged }) {
+function ClubFeatureSettingsPanel({ currentClub, clubFeatures, onFeaturesChanged, dashboardTileOrder, setDashboardTileOrder }) {
   const sport = currentClub?.sport || "rollhockey";
   const [saving, setSaving] = useState("");
   const [message, setMessage] = useState("");
@@ -5211,16 +5663,37 @@ function ClubFeatureSettingsPanel({ currentClub, clubFeatures, onFeaturesChanged
     if (error) { setMessage("Konnte nicht gespeichert werden."); return; }
     onFeaturesChanged();
   };
+  const order = resolveDashboardTileOrder(dashboardTileOrder);
+  const moveTile = (index, dir) => {
+    const target = index + dir;
+    if (target < 0 || target >= order.length || !setDashboardTileOrder) return;
+    const next = [...order];
+    [next[index], next[target]] = [next[target], next[index]];
+    setDashboardTileOrder(next);
+  };
   return (
     <div>
       <SectionTitle eyebrow={sportConfig(sport).label} title="Funktionen" />
       <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>Welche Vereinsfunktionen aktiv sind. Deaktivierte Funktionen werden für alle Mitglieder ausgeblendet.</div>
       {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: "#FDECEC", color: C.red }}>{message}</div>}
-      <div className="space-y-3">
+      <div className="space-y-3 mb-6">
         {CLUB_FEATURES.map((f) => {
           const on = clubFeatures[f.key] !== false;
           return <ToggleCard key={f.key} title={f.label(sport)} desc={f.settingsDesc(sport)} value={on} onChange={(updater) => saving !== f.key && toggle(f.key, updater(on))} />;
         })}
+      </div>
+
+      <SectionTitle eyebrow="Dashboard" title="Reihenfolge der Aktionen" />
+      <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>Lege fest, in welcher Reihenfolge die Kacheln unter „Aktionen & Abstimmungen" auf dem Dashboard erscheinen.</div>
+      <div className="space-y-2">
+        {order.map((key, index) => (
+          <div key={key} className="flex items-center gap-3 px-3.5 py-3 rounded-2xl" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+            <span className="w-6 text-center text-xs" style={{ fontFamily: "JetBrains Mono", color: C.textDim }}>{index + 1}</span>
+            <span className="flex-1 text-sm font-bold" style={{ color: C.ink }}>{dashboardTileLabel(key, sport)}</span>
+            <button aria-label="Nach oben verschieben" onClick={() => moveTile(index, -1)} disabled={index === 0} className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: C.paperDim, opacity: index === 0 ? .35 : 1 }}><ChevronUp size={15} style={{ color: C.ink }}/></button>
+            <button aria-label="Nach unten verschieben" onClick={() => moveTile(index, 1)} disabled={index === order.length - 1} className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: C.paperDim, opacity: index === order.length - 1 ? .35 : 1 }}><ChevronDown size={15} style={{ color: C.ink }}/></button>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -5232,7 +5705,8 @@ function AdminView({
   protocols, setProtocols, remindersSent, setRemindersSent,
   welcomeAutomation, setWelcomeAutomation, billingAutomation, setBillingAutomation,
   sponsorBookings, setSponsorBookings, sponsorStats, polls, setPolls, tippResults, onSaveTippResult,
-  currentClub, onClubLogoUpdated, clubFeatures, onClubFeaturesChanged,
+  dashboardTileOrder, setDashboardTileOrder,
+  currentClub, onClubLogoUpdated, onClubColorsUpdated, clubFeatures, onClubFeaturesChanged,
 }) {
   const canManageClubFeatures = currentUser.roles.some((role) => ["vereinsadmin", "vorstand", "sysadmin"].includes(role));
   const dutyFeatureOn = clubFeatures?.duty_roster !== false;
@@ -5277,7 +5751,7 @@ function AdminView({
 
       {panel === "overview" && <OverviewPanel members={members} feePaid={feePaid} protocols={protocols} dutyPlan={dutyPlan} seasonVotes={seasonVotes} goPanel={setPanel} showFees={canSeeFees} />}
       {panel === "memberships" && currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role)) && <MembershipApprovalsPanel club={currentClub} members={members} setMembers={setMembers} />}
-      {panel === "clubprofile" && currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role)) && <ClubLogoPanel club={currentClub} onLogoUpdated={onClubLogoUpdated} />}
+      {panel === "clubprofile" && currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role)) && <><ClubLogoPanel club={currentClub} onLogoUpdated={onClubLogoUpdated} /><ClubColorPanel club={currentClub} onColorsUpdated={onClubColorsUpdated} /></>}
 
       {panel === "automation" && (
         <AutomationsPanel members={members} feePaid={feePaid} remindersSent={remindersSent} setRemindersSent={setRemindersSent}
@@ -5287,9 +5761,9 @@ function AdminView({
 
       {panel === "duty" && dutyFeatureOn && <AdminDutyPanel members={members} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} />}
       {panel === "duty-templates" && <DutyTemplatesPanel currentUser={currentUser} sport={currentClub?.sport} />}
-      {panel === "functions" && canManageClubFeatures && <ClubFeatureSettingsPanel currentClub={currentClub} clubFeatures={clubFeatures} onFeaturesChanged={onClubFeaturesChanged} />}
+      {panel === "functions" && canManageClubFeatures && <ClubFeatureSettingsPanel currentClub={currentClub} clubFeatures={clubFeatures} onFeaturesChanged={onClubFeaturesChanged} dashboardTileOrder={dashboardTileOrder} setDashboardTileOrder={setDashboardTileOrder} />}
       {panel === "protokolle" && <ProtokollePanel members={members} protocols={protocols} setProtocols={setProtocols} clubId={currentUser.clubId} />}
-      {panel === "sponsoring" && <SponsoringPanel bookings={sponsorBookings} setBookings={setSponsorBookings} stats={sponsorStats} />}
+      {panel === "sponsoring" && <SponsoringPanel bookings={sponsorBookings} setBookings={setSponsorBookings} stats={sponsorStats} currentClub={currentClub} clubFeatures={clubFeatures} onFeaturesChanged={onClubFeaturesChanged} />}
       {panel === "polls" && <PollManagerPanel polls={polls} setPolls={setPolls} clubId={currentUser.clubId} />}
       {panel === "roles" && <RolesPanel members={members} setMembers={setMembers} />}
       {panel === "results" && currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role)) && <MatchResultsPanel results={tippResults} onSave={onSaveTippResult} />}
@@ -5352,6 +5826,7 @@ export default function ClubMemberOrganisationApp() {
   const [authScreen, setAuthScreen] = useState("club"); // club | newclub | login | register
   const [tab, setTab] = useState("home");
   const [tabHistory, setTabHistory] = useState([]);
+  const [showSplash, setShowSplash] = useState(true);
   const [eventFocusRequest, setEventFocusRequest] = useState(null);
   const navigateTab = (nextTab) => {
     setTab((current) => {
@@ -5385,6 +5860,7 @@ export default function ClubMemberOrganisationApp() {
   const [billingAutomation, setBillingAutomation] = useState(true);
   const [sponsorBookings, setSponsorBookings] = useState(INITIAL_SPONSOR_BOOKINGS);
   const [sponsorStats, setSponsorStats] = useState({});
+  const [dashboardTileOrder, setDashboardTileOrder] = useState(DEFAULT_DASHBOARD_TILE_ORDER);
   const [polls, setPolls] = useState(INITIAL_POLLS);
   const [adminStateLoaded, setAdminStateLoaded] = useState(false);
   const adminSaveTimer = useRef(null);
@@ -5398,7 +5874,7 @@ export default function ClubMemberOrganisationApp() {
 
   useEffect(() => {
     if (!supabase) return;
-    supabase.from("clubs").select("id,name,short_name,city,founded_year,logo_url,register_number,currency,referral_code,referral_credit_months,sport").order("name").then(({ data }) => {
+    supabase.from("clubs").select("id,name,short_name,city,founded_year,logo_url,register_number,currency,referral_code,referral_credit_months,sport,primary_color,secondary_color").order("name").then(({ data }) => {
       if (data?.length) setClubs(data.map((club) => ({
         id: club.id,
         name: club.name,
@@ -5408,6 +5884,8 @@ export default function ClubMemberOrganisationApp() {
         logoUrl: club.logo_url || null,
         registerNumber: club.register_number || "", currency: club.currency || "EUR", referralCode: club.referral_code || "", referralCreditMonths: club.referral_credit_months || 0,
         sport: club.sport || "rollhockey",
+        primaryColor: club.primary_color || DEFAULT_CLUB_COLORS.primary,
+        secondaryColor: club.secondary_color || DEFAULT_CLUB_COLORS.secondary,
       })));
     });
   }, []);
@@ -5450,6 +5928,8 @@ export default function ClubMemberOrganisationApp() {
   const currentClub = clubs.find((c) => c.id === selectedClubId) || clubs.find((c) => c.id === currentUser?.clubId);
   const clubMembers = members.filter((m) => m.clubId === selectedClubId);
   const featureEnabled = (key) => clubFeatures[key] !== false;
+  const entitlement = useClubEntitlement(currentUser);
+  const goSubscribe = () => { setTab("profile"); setSubView(null); };
 
   const loadClubFeatures = useCallback(async () => {
     if (!supabase || !currentClub?.id) { setClubFeatures(DEFAULT_CLUB_FEATURES); return; }
@@ -5467,19 +5947,20 @@ export default function ClubMemberOrganisationApp() {
         club_id: selectedClubId,
         state: {
           events, dutyPlan, protocols, remindersSent, welcomeAutomation, billingAutomation,
-          polls, tippResults, maintenanceMode, seasonVotes, sponsorStats, sponsorBookings,
+          polls, tippResults, maintenanceMode, seasonVotes, sponsorStats, sponsorBookings, dashboardTileOrder,
           channels: channels.filter((channel) => channel.id !== "news"),
         },
         updated_by: authData?.user?.id || null,
       });
     }, 700);
     return () => clearTimeout(adminSaveTimer.current);
-  }, [adminStateLoaded, selectedClubId, currentUserId, events, dutyPlan, protocols, remindersSent, welcomeAutomation, billingAutomation, polls, tippResults, maintenanceMode, seasonVotes, sponsorStats, sponsorBookings, channels]);
+  }, [adminStateLoaded, selectedClubId, currentUserId, events, dutyPlan, protocols, remindersSent, welcomeAutomation, billingAutomation, polls, tippResults, maintenanceMode, seasonVotes, sponsorStats, sponsorBookings, dashboardTileOrder, channels]);
 
   const selectClub = (clubId) => { setSelectedClubId(clubId); setAuthScreen("login"); };
   const createClub = (club) => { setClubs((cs) => [...cs, club]); setSelectedClubId(club.id); setAuthScreen("register"); };
   const changeClub = () => { setSelectedClubId(null); setAuthScreen("club"); };
   const updateCurrentClubLogo = (logoUrl) => setClubs((items) => items.map((club) => club.id === currentClub?.id ? { ...club, logoUrl } : club));
+  const updateCurrentClubColors = (primaryColor, secondaryColor) => setClubs((items) => items.map((club) => club.id === currentClub?.id ? { ...club, primaryColor, secondaryColor } : club));
 
   const enterApp = (member, clubRoster = null) => {
     setMembers((current) => clubRoster
@@ -5589,6 +6070,7 @@ export default function ClubMemberOrganisationApp() {
     if (saved.seasonVotes) setSeasonVotes(saved.seasonVotes);
     if (saved.sponsorStats) setSponsorStats(saved.sponsorStats);
     if (saved.sponsorBookings) setSponsorBookings(saved.sponsorBookings);
+    if (Array.isArray(saved.dashboardTileOrder)) setDashboardTileOrder(saved.dashboardTileOrder);
     setChannels((current) => {
       const persistedChannels = Array.isArray(saved.channels) ? saved.channels : current.filter((channel) => channel.id !== "news");
       return [...persistedChannels, { ...(current.find((channel) => channel.id === "news") || INITIAL_CHANNELS.find((channel) => channel.id === "news")), messages: loadedNews }];
@@ -5615,13 +6097,15 @@ export default function ClubMemberOrganisationApp() {
         member_name: account.user_metadata?.full_name || account.email?.split("@")[0] || "Mitglied",
         member_birthdate: account.user_metadata?.birthdate || null,
         club_sport: pending.sport || "rollhockey",
+        club_primary_color: pending.primary_color || DEFAULT_CLUB_COLORS.primary,
+        club_secondary_color: pending.secondary_color || DEFAULT_CLUB_COLORS.secondary,
       });
       if (error || cancelled) return;
       const newClubId = registration?.[0]?.club_id;
       await supabase.auth.updateUser({ data: { ...account.user_metadata, pending_new_club: null } });
       if (!newClubId || cancelled) return;
       const { data: createdClub } = await supabase.from("clubs")
-        .select("id,name,short_name,city,founded_year,logo_url,register_number,currency,referral_code,referral_credit_months,sport")
+        .select("id,name,short_name,city,founded_year,logo_url,register_number,currency,referral_code,referral_credit_months,sport,primary_color,secondary_color")
         .eq("id", newClubId).single();
       if (createdClub && !cancelled) {
         setClubs((items) => [...items.filter((item) => item.id !== createdClub.id), {
@@ -5630,6 +6114,7 @@ export default function ClubMemberOrganisationApp() {
           logoUrl: createdClub.logo_url || null, registerNumber: createdClub.register_number || "",
           currency: createdClub.currency || "EUR", referralCode: createdClub.referral_code || "",
           referralCreditMonths: createdClub.referral_credit_months || 0, sport: createdClub.sport || "rollhockey",
+          primaryColor: createdClub.primary_color || DEFAULT_CLUB_COLORS.primary, secondaryColor: createdClub.secondary_color || DEFAULT_CLUB_COLORS.secondary,
         }]);
         setSelectedClubId(newClubId);
         setFeatureOnboardingClubId(newClubId);
@@ -5660,13 +6145,15 @@ export default function ClubMemberOrganisationApp() {
         member_name: metadata.full_name || email.split("@")[0],
         member_birthdate: metadata.birthdate || null,
         club_sport: pending.sport || "rollhockey",
+        club_primary_color: pending.primary_color || DEFAULT_CLUB_COLORS.primary,
+        club_secondary_color: pending.secondary_color || DEFAULT_CLUB_COLORS.secondary,
       });
       if (newClubError) return { error: "Die Vereinsregistrierung konnte nicht fertiggestellt werden." };
       const newClubId = registration?.[0]?.club_id;
       await supabase.auth.updateUser({ data: { ...metadata, pending_new_club: null } });
       if (!newClubId) return { error: "Der neue Verein konnte nicht geladen werden." };
       const { data: createdClub } = await supabase.from("clubs")
-        .select("id,name,short_name,city,founded_year,logo_url,register_number,currency,referral_code,referral_credit_months,sport")
+        .select("id,name,short_name,city,founded_year,logo_url,register_number,currency,referral_code,referral_credit_months,sport,primary_color,secondary_color")
         .eq("id", newClubId).single();
       if (createdClub) {
         setClubs((items) => [...items.filter((item) => item.id !== createdClub.id), {
@@ -5675,6 +6162,7 @@ export default function ClubMemberOrganisationApp() {
           logoUrl: createdClub.logo_url || null, registerNumber: createdClub.register_number || "",
           currency: createdClub.currency || "EUR", referralCode: createdClub.referral_code || "",
           referralCreditMonths: createdClub.referral_credit_months || 0, sport: createdClub.sport || "rollhockey",
+          primaryColor: createdClub.primary_color || DEFAULT_CLUB_COLORS.primary, secondaryColor: createdClub.secondary_color || DEFAULT_CLUB_COLORS.secondary,
         }]);
       }
       setSelectedClubId(newClubId);
@@ -5701,7 +6189,7 @@ export default function ClubMemberOrganisationApp() {
         options: { data: {
           full_name: draft.name,
           pending_club_id: pendingClub ? null : draft.clubId,
-          pending_new_club: pendingClub ? { name:pendingClub.name, short_name:pendingClub.shortName, city:pendingClub.city, register_number:pendingClub.registerNumber, currency:pendingClub.currency, referral_code:pendingClub.referralCode, sport:pendingClub.sport } : null,
+          pending_new_club: pendingClub ? { name:pendingClub.name, short_name:pendingClub.shortName, city:pendingClub.city, register_number:pendingClub.registerNumber, currency:pendingClub.currency, referral_code:pendingClub.referralCode, sport:pendingClub.sport, primary_color:pendingClub.primaryColor, secondary_color:pendingClub.secondaryColor } : null,
           account_role: familySetup?.accountType || "mitglied",
           birthdate: draft.birthdate || null,
           requested_team: draft.team || null,
@@ -5713,7 +6201,7 @@ export default function ClubMemberOrganisationApp() {
       }
       let registration; let registrationError;
       if (pendingClub) {
-        const result = await supabase.rpc("register_new_club", { club_name:pendingClub.name, club_short_name:pendingClub.shortName, club_city:pendingClub.city, club_register_number:pendingClub.registerNumber, club_currency:pendingClub.currency||"EUR", referral:pendingClub.referralCode||null, member_name:draft.name, member_birthdate:draft.birthdate||null, club_sport:pendingClub.sport||"rollhockey" });
+        const result = await supabase.rpc("register_new_club", { club_name:pendingClub.name, club_short_name:pendingClub.shortName, club_city:pendingClub.city, club_register_number:pendingClub.registerNumber, club_currency:pendingClub.currency||"EUR", referral:pendingClub.referralCode||null, member_name:draft.name, member_birthdate:draft.birthdate||null, club_sport:pendingClub.sport||"rollhockey", club_primary_color:pendingClub.primaryColor||DEFAULT_CLUB_COLORS.primary, club_secondary_color:pendingClub.secondaryColor||DEFAULT_CLUB_COLORS.secondary });
         registration=result.data; registrationError=result.error;
         const newClubId=registration?.[0]?.club_id;
         if(!registrationError&&newClubId&&pendingClub.logoDataUrl){try{const blob=await (await fetch(pendingClub.logoDataUrl)).blob();const path=`${newClubId}/logo-${Date.now()}.png`;const upload=await supabase.storage.from("club-logos").upload(path,blob,{upsert:true});if(!upload.error){const {data:publicLogo}=supabase.storage.from("club-logos").getPublicUrl(path);await supabase.from("clubs").update({logo_url:publicLogo.publicUrl}).eq("id",newClubId);}}catch{}}
@@ -5724,6 +6212,7 @@ export default function ClubMemberOrganisationApp() {
             logoUrl:pendingClub.logoDataUrl||null, registerNumber:pendingClub.registerNumber||"",
             currency:pendingClub.currency||"EUR", referralCode:pendingClub.referralCode||"", referralCreditMonths:0,
             sport:pendingClub.sport||"rollhockey",
+            primaryColor:pendingClub.primaryColor||DEFAULT_CLUB_COLORS.primary, secondaryColor:pendingClub.secondaryColor||DEFAULT_CLUB_COLORS.secondary,
           }]);
           setSelectedClubId(newClubId);setFeatureOnboardingClubId(newClubId);return loadSupabaseMembership(data.user.id,newClubId);
         }
@@ -5815,11 +6304,15 @@ export default function ClubMemberOrganisationApp() {
   const currentUserCanManageDuty = canManageDuty(currentUser);
   const currentUserCanManageFees = canManageFees(currentUser);
   const TABS = baseTabs(currentUserIsAdmin, currentUserCanEditNews, currentUserCanEditSponsors, currentUserCanManageFees, currentUserCanManageDuty);
+  const clubPrimary = currentClub?.primaryColor || DEFAULT_CLUB_COLORS.primary;
+  const clubSecondary = currentClub?.secondaryColor || DEFAULT_CLUB_COLORS.secondary;
+  const themeVars = { "--club-primary": clubPrimary, "--club-primary-dark": darkenHex(clubPrimary), "--club-secondary": clubSecondary };
 
   return (
-    <div className="erg-app w-full min-h-screen flex items-center justify-center p-4" style={{ background: "#DEDAD0", fontFamily: "Inter" }}>
+    <div className="erg-app w-full min-h-screen flex items-center justify-center p-4" style={{ background: "#DEDAD0", fontFamily: "Inter", ...themeVars }}>
       <style>{FONTS}</style>
       <div className="relative w-full flex flex-col overflow-hidden" style={{ maxWidth: 400, height: 820, background: C.paper, borderRadius: 36, boxShadow: "0 30px 60px rgba(0,0,0,0.25)", border: `8px solid ${C.ink}` }}>
+        {showSplash && <AppSplashIntro onDone={() => setShowSplash(false)} />}
         {!currentUser ? (
           authScreen === "club" ? (
             <ClubSelectScreen clubs={clubs} onSelect={selectClub} goNewClub={() => setAuthScreen("newclub")} />
@@ -5867,39 +6360,42 @@ export default function ClubMemberOrganisationApp() {
             )}
 
             <div key={`${tab}-${subView || ""}`} className="tabFade flex-1 overflow-y-auto" style={{ background: C.paper }}>
-              {subView === "season" && featureEnabled("season_award") && <SeasonVoteView currentUser={currentUser} seasonVotes={seasonVotes} setSeasonVotes={setSeasonVotes} />}
-              {subView === "tipp" && featureEnabled("tippspiel") && <TippView members={clubMembers} currentUser={currentUser} tippPredictions={tippPredictions} setTippPredictions={setTippPredictions} tippResults={tippResults} />}
-              {subView === "duty" && featureEnabled("duty_roster") && <DutyView members={clubMembers} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} />}
-              {subView === "tasks" && <TasksView currentUser={currentUser} members={clubMembers} />}
-              {subView === "vehicles" && featureEnabled("vehicle_booking") && <VehiclesView currentUser={currentUser} currentClub={currentClub} />}
+              {subView === "season" && featureEnabled("season_award") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Athlet/in der Saison"><SeasonVoteView currentUser={currentUser} seasonVotes={seasonVotes} setSeasonVotes={setSeasonVotes} /></LockedFeature>}
+              {subView === "tipp" && featureEnabled("tippspiel") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Tippspiel"><TippView members={clubMembers} currentUser={currentUser} tippPredictions={tippPredictions} setTippPredictions={setTippPredictions} tippResults={tippResults} /></LockedFeature>}
+              {subView === "duty" && featureEnabled("duty_roster") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Helferplanung"><DutyView members={clubMembers} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} /></LockedFeature>}
+              {subView === "tasks" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Aufgaben"><TasksView currentUser={currentUser} members={clubMembers} /></LockedFeature>}
+              {subView === "vehicles" && featureEnabled("vehicle_booking") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Vereinsfahrzeuge"><VehiclesView currentUser={currentUser} currentClub={currentClub} /></LockedFeature>}
 
               {!subView && tab === "home" && (
                 <Dashboard user={currentUser} members={clubMembers} feePaid={!!feePaid[currentUser.id]} channels={channels} dutyPlan={dutyPlan} seasonVotes={seasonVotes} polls={polls} setPolls={setPolls}
                   sponsorBookings={sponsorBookings} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick}
                   goEvents={goToMyNextMatch} goSeason={() => setSubView("season")} goTipp={() => setSubView("tipp")} goDuty={() => setSubView("duty")} goTasks={() => setSubView("tasks")} goVehicles={() => setSubView("vehicles")} goNews={goNews}
-                  currentClub={currentClub} featureEnabled={featureEnabled} />
+                  currentClub={currentClub} featureEnabled={featureEnabled} dashboardTileOrder={dashboardTileOrder} entitlement={entitlement} goSubscribe={goSubscribe} />
               )}
               {!subView && tab === "events" && (
                 <EventsView currentUser={currentUser} members={clubMembers} events={events} setEvents={setEvents} carpools={carpools} setCarpools={setCarpools}
-                  dutyPlan={dutyPlan} setDutyPlan={setDutyPlan}
+                  dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} entitlement={entitlement} goSubscribe={goSubscribe}
                   sponsorBookings={sponsorBookings} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick}
                   focusRequest={eventFocusRequest} onFocusApplied={()=>setEventFocusRequest(null)}
                   currentClub={currentClub} featureEnabled={featureEnabled} />
               )}
-              {!subView && tab === "teams" && <TeamsView currentUser={currentUser} members={clubMembers} setMembers={setMembers} currentClub={currentClub} />}
+              {!subView && tab === "teams" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Teams-Verwaltung"><TeamsView currentUser={currentUser} members={clubMembers} setMembers={setMembers} currentClub={currentClub} /></LockedFeature>}
               {!subView && tab === "fees" && currentUserCanManageFees && <FeesView members={clubMembers} records={feeRecords} setRecords={setFeeRecords} />}
-              {!subView && tab === "chat" && <ChatView user={currentUser} channels={channels} setChannels={setChannels} activeId={chatChannelId} setActiveId={setChatChannelId} members={clubMembers} />}
-              {!subView && tab === "redaktion" && currentUserCanEditNews && <RedaktionView user={currentUser} channels={channels} setChannels={setChannels} />}
+              {!subView && tab === "chat" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Chat"><ChatView user={currentUser} channels={channels} setChannels={setChannels} activeId={chatChannelId} setActiveId={setChatChannelId} members={clubMembers} /></LockedFeature>}
+              {!subView && tab === "redaktion" && currentUserCanEditNews && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Redaktion"><RedaktionView user={currentUser} channels={channels} setChannels={setChannels} /></LockedFeature>}
               {!subView && tab === "admin" && (currentUserIsAdmin || currentUserCanEditSponsors) && (
+                <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Verwaltung">
                 <AdminView members={clubMembers} setMembers={setMembers} feePaid={feePaid} setFeePaid={setFeePaid} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} seasonVotes={seasonVotes}
                   currentUser={currentUser} channels={channels} setChannels={setChannels} maintenanceMode={maintenanceMode} setMaintenanceMode={setMaintenanceMode} onResetDemo={resetDemoData}
                   protocols={protocols} setProtocols={setProtocols} remindersSent={remindersSent} setRemindersSent={setRemindersSent}
                   welcomeAutomation={welcomeAutomation} setWelcomeAutomation={setWelcomeAutomation} billingAutomation={billingAutomation} setBillingAutomation={setBillingAutomation}
                   sponsorBookings={sponsorBookings} setSponsorBookings={setSponsorBookings} sponsorStats={sponsorStats} polls={polls} setPolls={setPolls}
                   tippResults={tippResults} onSaveTippResult={saveTippResult}
-                  currentClub={currentClub} onClubLogoUpdated={updateCurrentClubLogo} clubFeatures={clubFeatures} onClubFeaturesChanged={loadClubFeatures} />
+                  dashboardTileOrder={dashboardTileOrder} setDashboardTileOrder={setDashboardTileOrder}
+                  currentClub={currentClub} onClubLogoUpdated={updateCurrentClubLogo} onClubColorsUpdated={updateCurrentClubColors} clubFeatures={clubFeatures} onClubFeaturesChanged={loadClubFeatures} />
+                </LockedFeature>
               )}
-              {!subView && tab === "profile" && <ProfileView user={currentUser} members={clubMembers} setMembers={setMembers} currentClub={currentClub} sponsorBookings={sponsorBookings} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick} onLogout={logout} clubFeatures={clubFeatures} onClubFeaturesChanged={loadClubFeatures} />}
+              {!subView && tab === "profile" && <ProfileView user={currentUser} members={clubMembers} setMembers={setMembers} currentClub={currentClub} sponsorBookings={sponsorBookings} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick} onLogout={logout} clubFeatures={clubFeatures} onClubFeaturesChanged={loadClubFeatures} entitlement={entitlement} goSubscribe={goSubscribe} />}
             </div>
 
             {!subView && (

@@ -21,6 +21,7 @@
     "@capacitor/core": "^8.5.0",
     "@capacitor/ios": "^8.5.0",
     "@capacitor/push-notifications": "^8.1.2",
+    "@revenuecat/purchases-capacitor": "^13.4.0",
     "@supabase/supabase-js": "^2.111.0",
     "drizzle-orm": "0.45.2",
     "firebase": "^12.17.1",

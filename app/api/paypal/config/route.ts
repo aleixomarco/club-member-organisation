@@ -9,8 +9,8 @@ export async function GET() {
       clientId: process.env.PAYPAL_CLIENT_ID,
       currency: "EUR",
       plans: {
-        member: { monthly: paypalPlanId("member_monthly"), yearly: paypalPlanId("member_yearly") },
-        club: { monthly: paypalPlanId("club_monthly"), yearly: paypalPlanId("club_yearly") },
+        basic: { monthly: paypalPlanId("club_basic_monthly"), yearly: paypalPlanId("club_basic_yearly") },
+        premium: { monthly: paypalPlanId("club_premium_monthly"), yearly: paypalPlanId("club_premium_yearly") },
       },
       environment: process.env.PAYPAL_ENVIRONMENT === "live" ? "live" : "sandbox",
     });

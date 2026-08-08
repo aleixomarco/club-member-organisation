@@ -35,23 +35,20 @@ export async function POST(request: Request) {
     provider_subscription_id: subscriptionId || null, verified: true, payload: event, processed_at: new Date().toISOString(),
   }, { onConflict: "provider,provider_event_id", ignoreDuplicates: true });
 
-  const profileId = resource.custom_id;
+  const clubId = resource.custom_id;
   const planId = resource.plan_id;
-  if (subscriptionId && profileId && planId && event.event_type === "BILLING.SUBSCRIPTION.ACTIVATED") {
+  if (subscriptionId && clubId && planId && event.event_type === "BILLING.SUBSCRIPTION.ACTIVATED") {
     const clubPlanCodes: Record<string, string> = {
-      [process.env.PAYPAL_CLUB_MONTHLY_PLAN_ID || "missing-club-monthly"]: "club_monthly",
-      [process.env.PAYPAL_CLUB_YEARLY_PLAN_ID || "missing-club-yearly"]: "club_yearly",
+      [process.env.PAYPAL_CLUB_BASIC_MONTHLY_PLAN_ID || "missing-club-basic-monthly"]: "club_basic_monthly",
+      [process.env.PAYPAL_CLUB_BASIC_YEARLY_PLAN_ID || "missing-club-basic-yearly"]: "club_basic_yearly",
+      [process.env.PAYPAL_CLUB_PREMIUM_MONTHLY_PLAN_ID || "missing-club-premium-monthly"]: "club_premium_monthly",
+      [process.env.PAYPAL_CLUB_PREMIUM_YEARLY_PLAN_ID || "missing-club-premium-yearly"]: "club_premium_yearly",
     };
-    const memberPlanCodes: Record<string, string> = {
-      [process.env.PAYPAL_MONTHLY_PLAN_ID || "missing-member-monthly"]: "member_monthly",
-      [process.env.PAYPAL_YEARLY_PLAN_ID || "missing-member-yearly"]: "member_yearly",
-    };
-    const code = clubPlanCodes[planId] || memberPlanCodes[planId];
+    const code = clubPlanCodes[planId];
     if (!code) return NextResponse.json({ error: "Unknown PayPal plan" }, { status: 400 });
     const { data: plan } = await admin.from("subscription_plans").select("id").eq("code", code).single();
-    const isClubPlan = code.startsWith("club_");
-    if (plan) await admin.from(isClubPlan ? "club_subscriptions" : "user_subscriptions").upsert({
-      [isClubPlan ? "club_id" : "profile_id"]: profileId,
+    if (plan) await admin.from("club_subscriptions").upsert({
+      club_id: clubId,
       plan_id: plan.id, provider: "paypal", provider_subscription_id: subscriptionId,
       status: "active",
       current_period_start: resource.start_time || new Date().toISOString(),
@@ -69,10 +66,8 @@ export async function POST(request: Request) {
     if (resource.billing_info?.next_billing_time) {
       subscriptionUpdate.current_period_end = resource.billing_info.next_billing_time;
     }
-    await Promise.all(["user_subscriptions", "club_subscriptions"].map((table) =>
-      admin.from(table).update(subscriptionUpdate)
-        .eq("provider", "paypal").eq("provider_subscription_id", subscriptionId)
-    ));
+    await admin.from("club_subscriptions").update(subscriptionUpdate)
+      .eq("provider", "paypal").eq("provider_subscription_id", subscriptionId);
   }
   return NextResponse.json({ received: true });
 }

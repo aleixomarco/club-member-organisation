@@ -47,10 +47,6 @@ export async function GET(request: Request) {
   if (adminError) return adminError;
   const clubId = new URL(request.url).searchParams.get("clubId");
 
-  const { data: member, error: memberError } = await admin.from("user_subscriptions")
-    .select(selection).eq("profile_id", user.id).order("created_at", { ascending: false });
-  if (memberError) return NextResponse.json({ error: "Subscriptions could not be loaded" }, { status: 500 });
-
   let club: unknown[] = [];
   if (clubId && await canManageClub(admin, user.id, clubId)) {
     const { data, error } = await admin.from("club_subscriptions")
@@ -58,32 +54,30 @@ export async function GET(request: Request) {
     if (error) return NextResponse.json({ error: "Club subscriptions could not be loaded" }, { status: 500 });
     club = data || [];
   }
-  return NextResponse.json({ member: member || [], club });
+  return NextResponse.json({ club });
 }
 
 export async function POST(request: Request) {
   const user = await authenticatedUser(request);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const { subscriptionId, accountType, clubId } = await request.json();
-  if (!subscriptionId || !["member", "club"].includes(accountType)) {
+  const { subscriptionId, tier, cycle, clubId } = await request.json();
+  if (!subscriptionId || !["basic", "premium"].includes(tier) || !["monthly", "yearly"].includes(cycle)) {
     return NextResponse.json({ error: "Invalid subscription" }, { status: 400 });
   }
 
   const { admin, error: adminError } = safeGetSupabaseAdmin();
   if (adminError) return adminError;
-  if (accountType === "club" && (!clubId || !await canManageClub(admin, user.id, clubId))) {
+  if (!clubId || !await canManageClub(admin, user.id, clubId)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const details = await getPayPalSubscription(subscriptionId);
-  const expectedCustomId = accountType === "club" ? clubId : user.id;
-  if (details.custom_id !== expectedCustomId) {
+  if (details.custom_id !== clubId) {
     return NextResponse.json({ error: "Subscription owner does not match" }, { status: 403 });
   }
 
-  const codes: PayPalPlanCode[] = ["member_monthly", "member_yearly", "club_monthly", "club_yearly"];
-  const code = codes.find((candidate) => paypalPlanId(candidate) === details.plan_id);
-  if (!code || (accountType === "club") !== code.startsWith("club_")) {
+  const code = `club_${tier}_${cycle === "yearly" ? "yearly" : "monthly"}` as PayPalPlanCode;
+  if (paypalPlanId(code) !== details.plan_id) {
     return NextResponse.json({ error: "Unknown subscription plan" }, { status: 400 });
   }
   const { data: plan } = await admin.from("subscription_plans").select("id").eq("code", code).single();
@@ -94,7 +88,7 @@ export async function POST(request: Request) {
     SUSPENDED: "suspended", CANCELLED: "cancelled", EXPIRED: "expired",
   };
   const record = {
-    [accountType === "club" ? "club_id" : "profile_id"]: expectedCustomId,
+    club_id: clubId,
     plan_id: plan.id,
     provider: "paypal",
     provider_subscription_id: subscriptionId,
@@ -105,8 +99,7 @@ export async function POST(request: Request) {
     cancel_at_period_end: details.status === "CANCELLED",
     cancelled_at: details.status === "CANCELLED" ? details.status_update_time || new Date().toISOString() : null,
   };
-  const table = accountType === "club" ? "club_subscriptions" : "user_subscriptions";
-  const { error } = await admin.from(table).upsert(record, { onConflict: "provider,provider_subscription_id" });
+  const { error } = await admin.from("club_subscriptions").upsert(record, { onConflict: "provider,provider_subscription_id" });
   if (error) return NextResponse.json({ error: "Subscription could not be saved" }, { status: 500 });
   return NextResponse.json({ saved: true });
 }
@@ -114,23 +107,20 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   const user = await authenticatedUser(request);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const { subscriptionId, accountType, clubId } = await request.json();
-  if (!subscriptionId || !["member", "club"].includes(accountType)) {
+  const { subscriptionId, clubId } = await request.json();
+  if (!subscriptionId || !clubId) {
     return NextResponse.json({ error: "Invalid subscription" }, { status: 400 });
   }
 
   const { admin, error: adminError } = safeGetSupabaseAdmin();
   if (adminError) return adminError;
-  const table = accountType === "club" ? "club_subscriptions" : "user_subscriptions";
-  const ownerColumn = accountType === "club" ? "club_id" : "profile_id";
-  const ownerId = accountType === "club" ? clubId : user.id;
-  if (accountType === "club" && (!clubId || !await canManageClub(admin, user.id, clubId))) {
+  if (!await canManageClub(admin, user.id, clubId)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { data: existing } = await admin.from(table)
+  const { data: existing } = await admin.from("club_subscriptions")
     .select("id,provider,provider_subscription_id,status")
-    .eq("provider_subscription_id", subscriptionId).eq(ownerColumn, ownerId).maybeSingle();
+    .eq("provider_subscription_id", subscriptionId).eq("club_id", clubId).maybeSingle();
   if (!existing) return NextResponse.json({ error: "Subscription not found" }, { status: 404 });
   if (["cancelled", "expired", "refunded"].includes(existing.status)) {
     return NextResponse.json({ error: "Subscription is already inactive" }, { status: 409 });
@@ -144,7 +134,7 @@ export async function DELETE(request: Request) {
     }
   }
 
-  const { error } = await admin.from(table).update({
+  const { error } = await admin.from("club_subscriptions").update({
     status: "cancelled",
     cancel_at_period_end: true,
     cancelled_at: new Date().toISOString(),

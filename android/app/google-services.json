@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "852910274539",
+    "project_id": "club-member-organisation-acbf3",
+    "storage_bucket": "club-member-organisation-acbf3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:852910274539:android:ad7448254c54b7b3fecbae",
+        "android_client_info": {
+          "package_name": "de.idbranding.clubmemberorganisation"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD1gwrN9rRvspSHWgxjcQu5XlnuD0-WhNY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
