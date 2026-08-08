@@ -70,5 +70,11 @@
 	<string>Wird benötigt, um ein Vereinslogo oder ein Bild für einen News-Beitrag aus deiner Fotomediathek auszuwählen.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Wird benötigt, um direkt ein Foto für einen News-Beitrag oder das Vereinslogo aufzunehmen.</string>
+	<!-- Export-Compliance: Die App nutzt ausschließlich Standard-Verschlüsselung
+	     (HTTPS/TLS zu Vercel, Supabase und Firebase) und keine eigene oder
+	     nicht-ausgenommene Kryptografie. Ohne diesen Schlüssel fragt App Store
+	     Connect bei jedem Upload erneut nach und verzögert die Freigabe. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>
