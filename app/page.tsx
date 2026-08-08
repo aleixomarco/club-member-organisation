@@ -262,6 +262,9 @@ const ROLE_META = {
   organisator: { label: "Organisator/in", color: "#9A6B3F", admin: false, formalMember: true, selfService: false },
 };
 const ROLE_OVERVIEW_KEYS = ["vereinsadmin", "vorstand", "geschaeftsfuehrung", "finanzmanager", "organisator", "trainer", "teammanager", "kapitaen", "spieler", "eltern"];
+/* Sys-Admin ist eine plattformweite Rolle für den Produkt-Owner, keine Vereinsrolle — daher in der
+   Rollenvergabe der Vereine nicht wähl-/sichtbar. Technisch höchste vergebbare Rolle ist Vereins-Administrator. */
+const ASSIGNABLE_ROLES = Object.keys(ROLE_META).filter((r) => r !== "sysadmin");
 const isDbId = (id) => /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(id));
 const CLUB_ADMIN_ROLES = ["vereinsadmin", "sysadmin", "vorstand", "geschaeftsfuehrung"];
 const notifyClubAdmins = async (clubId, notifType, title, body, excludeMembershipId) => {
@@ -5246,7 +5249,7 @@ function RolesPanel({ members, setMembers }) {
                 <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{m.name}</div>
                 {!expanded && (
                   <div className="flex flex-wrap gap-1 mt-1">
-                    {m.roles.map((r) => ROLE_META[r] && (
+                    {m.roles.filter((r) => ASSIGNABLE_ROLES.includes(r)).map((r) => (
                       <span key={r} className="px-2 py-0.5 rounded-full text-[10px]" style={{ fontFamily: "Inter", fontWeight: 700, background: C.paperDim, color: C.textDim }}>{ROLE_META[r].label}</span>
                     ))}
                   </div>
@@ -5257,7 +5260,7 @@ function RolesPanel({ members, setMembers }) {
             {expanded && (
               <div className="px-3 pb-3">
                 <div className="flex flex-wrap gap-1.5">
-                  {Object.keys(ROLE_META).map((r) => {
+                  {ASSIGNABLE_ROLES.map((r) => {
                     const active = draftRoles.includes(r);
                     return (
                       <button key={r} type="button" onClick={() => toggleDraftRole(r)} className="px-2.5 py-1 rounded-full text-[11px]"
