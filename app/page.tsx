@@ -19,18 +19,26 @@ import { legal } from "./legal-shell";
 /* ------------------------------------------------------------------ */
 /* Tokens                                                              */
 /* ------------------------------------------------------------------ */
+/* Design: Glas-Optik (Apple-Stil). Flächen sind durchscheinend und liegen über einer
+   farbigen Verlaufs-Wäsche im Hintergrund (siehe .erg-canvas); die Unschärfe dahinter
+   kommt zentral über CSS (siehe FONTS), damit sie nicht an jeder der ~350 Flächen
+   einzeln gesetzt werden muss. `glass` = Kartenfläche, `glassDim` = eingelassene
+   Fläche (Eingabefelder, sekundäre Buttons, Chips). */
 const C = {
   red: "var(--club-primary)",
   redDark: "var(--club-primary-dark)",
-  ink: "#14151A",
-  asphalt: "#202127",
-  paper: "#F6F3EC",
-  paperDim: "#EDE9DF",
+  ink: "#2A2028",
+  asphalt: "#3B2F38",
+  paper: "transparent",
+  paperDim: "rgba(92,72,86,0.07)",
   white: "#FFFFFF",
+  glass: "rgba(255,255,255,0.55)",
+  glassDim: "rgba(92,72,86,0.07)",
   amber: "#F2B134",
   green: "#2F9E58",
-  line: "#E1DCD0",
-  textDim: "#6B6A66",
+  line: "rgba(70,50,65,0.12)",
+  edge: "rgba(255,255,255,0.65)",
+  textDim: "#8A7F85",
   secondary: "var(--club-secondary)",
 };
 
@@ -69,16 +77,50 @@ const FONTS = `
 @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap');
 * { -webkit-tap-highlight-color: transparent; }
 html { scroll-behavior: smooth; }
-button { transition: transform .12s ease, opacity .12s ease, background-color .15s ease; }
-button:active { transform: scale(0.97); }
+button { transition: transform .16s cubic-bezier(.34,1.56,.64,1), opacity .12s ease, background-color .15s ease, box-shadow .18s ease; }
+button:active { transform: scale(0.96); }
 .tabFade { animation: tabFadeIn .22s ease; }
 @keyframes tabFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 .erg-app ::-webkit-scrollbar { width: 0px; height: 0px; }
-.splashRing { stroke-dasharray: 1; stroke-dashoffset: 1; transform-origin: 420px 300px; animation: splashDraw 0.65s cubic-bezier(.4,0,.2,1) 0.1s forwards, splashRingBounce 0.55s linear 0.75s forwards; }
+
+/* --- Glas-Optik (Apple-Stil) ---------------------------------------------
+   Die Unschärfe hinter den durchscheinenden Flächen wird hier zentral gesetzt,
+   statt an jeder der ~350 Flächen einzeln. Auf undurchsichtigen Flächen (Buttons
+   in Vereinsfarbe, Avatare) hat backdrop-filter keinen sichtbaren Effekt, daher
+   ist die pauschale Regel unkritisch. */
+/* Die Wäsche nimmt oben die Vereins-Primärfarbe auf; die beiden anderen Punkte sind
+   bewusst feste Töne — die Sekundärfarbe ist oft Schwarz oder Weiß und ergäbe hier
+   nur einen grauen Fleck statt eines Farbverlaufs. */
+.erg-canvas {
+  background:
+    radial-gradient(70% 50% at 85% -5%, color-mix(in srgb, var(--club-primary) 38%, transparent), transparent 62%),
+    radial-gradient(65% 45% at -10% 12%, rgba(255,178,140,0.38), transparent 62%),
+    radial-gradient(70% 45% at 50% 104%, rgba(150,125,235,0.24), transparent 62%),
+    linear-gradient(180deg, #F7F4F5 0%, #EDEAF0 100%);
+}
+.erg-app .rounded-lg, .erg-app .rounded-xl, .erg-app .rounded-2xl, .erg-app .rounded-3xl {
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+}
+/* Weichere, durchgehend größere Rundungen als Tailwinds Standard. */
+.erg-app .rounded-lg { border-radius: 14px; }
+.erg-app .rounded-xl { border-radius: 18px; }
+.erg-app .rounded-2xl { border-radius: 24px; }
+.erg-app .rounded-3xl { border-radius: 30px; }
+.splashRing { stroke-dasharray: 1; stroke-dashoffset: 1; transform-origin: 420px 300px; animation: splashDraw 0.65s cubic-bezier(.4,0,.2,1) 0.35s forwards, splashRingBounce 0.55s linear 1s forwards; }
 @keyframes splashDraw { to { stroke-dashoffset: 0; } }
 @keyframes splashRingBounce { 0% { transform: scale(1); } 30% { transform: scale(1.18); } 55% { transform: scale(0.9); } 75% { transform: scale(1.08); } 90% { transform: scale(0.97); } 100% { transform: scale(1); } }
-.splashDot { transform: scale(0); transform-origin: 420px 300px; animation: splashPop 0.7s linear 0.75s forwards; }
+.splashDot { transform: scale(0); transform-origin: 420px 300px; animation: splashPop 0.7s linear 1s forwards; }
 @keyframes splashPop { 0% { transform: scale(0); } 38% { transform: scale(1.75); } 58% { transform: scale(0.7); } 76% { transform: scale(1.25); } 88% { transform: scale(0.9); } 100% { transform: scale(1); } }
+/* Glaskachel der Öffnungs-Animation: federt herein, atmet kurz und weitet sich beim
+   Ausblenden leicht, sodass der Übergang in die App wie ein Aufziehen wirkt. */
+.splashTile { animation: splashTileIn 0.72s cubic-bezier(.34,1.56,.64,1) forwards, splashTileBreathe 1.4s ease-in-out 1.7s; }
+@keyframes splashTileIn { 0% { opacity: 0; transform: scale(0.62); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes splashTileBreathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.035); } }
+.splashHalo { animation: splashHaloIn 1.1s ease-out forwards; }
+@keyframes splashHaloIn { 0% { opacity: 0; transform: scale(0.5); } 100% { opacity: 1; transform: scale(1); } }
+.splashWord { opacity: 0; animation: splashWordIn 0.6s cubic-bezier(.4,0,.2,1) 1.45s forwards; }
+@keyframes splashWordIn { 0% { opacity: 0; transform: translateY(10px); } 100% { opacity: 1; transform: translateY(0); } }
 `;
 
 /* Öffnungs-Animation der App (Marke, unabhängig von der Vereinsfarbe): zeichnet den Ring,
@@ -93,13 +135,22 @@ function AppSplashIntro({ onDone }) {
   }, [onDone]);
   return (
     <div
-      className="absolute inset-0 flex items-center justify-center"
-      style={{ zIndex: 999, background: "#F6F3EC", opacity: fading ? 0 : 1, transition: "opacity 0.4s ease" }}
+      className="erg-canvas absolute inset-0 flex flex-col items-center justify-center"
+      style={{ zIndex: 999, opacity: fading ? 0 : 1, transform: fading ? "scale(1.06)" : "scale(1)", transition: "opacity 0.4s ease, transform 0.4s ease" }}
     >
-      <svg width="160" height="160" viewBox="0 0 600 600" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path className="splashRing" d="M420 140 A210 210 0 1 0 420 460" stroke="#C8102E" strokeWidth="72" strokeLinecap="round" fill="none" pathLength="1" />
-        <circle className="splashDot" cx="420" cy="300" r="46" fill="#14151A" />
-      </svg>
+      <div className="relative flex items-center justify-center">
+        <div className="splashHalo absolute rounded-full" style={{ width: 300, height: 300, background: "radial-gradient(circle, rgba(226,58,84,0.20), transparent 70%)" }} />
+        <div className="splashTile relative flex items-center justify-center" style={{ width: 168, height: 168, borderRadius: 50, background: "rgba(255,255,255,0.72)", border: "1px solid rgba(255,255,255,0.85)", backdropFilter: "blur(24px) saturate(180%)", WebkitBackdropFilter: "blur(24px) saturate(180%)", boxShadow: "0 26px 56px rgba(60,30,45,0.16), inset 0 1px 0 rgba(255,255,255,0.9)" }}>
+          <svg width="104" height="104" viewBox="0 0 600 600" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path className="splashRing" d="M420 140 A210 210 0 1 0 420 460" stroke="#C8102E" strokeWidth="72" strokeLinecap="round" fill="none" pathLength="1" />
+            <circle className="splashDot" cx="420" cy="300" r="46" fill="#2A2028" />
+          </svg>
+        </div>
+      </div>
+      <div className="splashWord text-center" style={{ marginTop: 34 }}>
+        <div className="text-sm" style={{ fontFamily: "Oswald", fontWeight: 600, color: "#2A2028", letterSpacing: "0.22em", textTransform: "uppercase" }}>Club Member</div>
+        <div className="text-[10px] mt-1" style={{ fontFamily: "Inter", fontWeight: 600, color: "#8A7F85", letterSpacing: "0.3em", textTransform: "uppercase" }}>Organisation</div>
+      </div>
     </div>
   );
 }
@@ -237,7 +288,8 @@ function initialsOf(name) {
 }
 
 function ClubLogo({ club, size = 36, rounded = 10 }) {
-  return <div className="flex items-center justify-center flex-shrink-0 overflow-hidden" style={{ width: size, height: size, borderRadius: rounded, background: club?.primaryColor || C.red }}>
+  const base = club?.primaryColor || C.red;
+  return <div className="flex items-center justify-center flex-shrink-0 overflow-hidden" style={{ width: size, height: size, borderRadius: Math.round(rounded * 1.6), background: `linear-gradient(155deg, color-mix(in srgb, ${base} 78%, #fff), ${base})`, boxShadow: `0 8px 20px color-mix(in srgb, ${base} 42%, transparent), inset 0 1px 0 rgba(255,255,255,0.4)` }}>
     {club?.logoUrl
       ? <img src={club.logoUrl} alt={`Vereinslogo ${club.name}`} className="w-full h-full object-cover" />
       : <span style={{ color: "#fff", fontFamily: "Oswald", fontWeight: 700, fontSize: Math.max(13, size * .38) }}>{club?.shortName?.[0] || "V"}</span>}
@@ -627,20 +679,23 @@ function Pill({ children, bg, fg = C.white, style }) {
 }
 function SectionTitle({ eyebrow, title, right }) {
   return (
-    <div className="flex items-end justify-between mb-3">
+    <div className="flex items-end justify-between mb-3.5">
       <div>
-        {eyebrow && <div className="text-xs font-semibold tracking-widest uppercase mb-0.5" style={{ color: C.red, fontFamily: "Inter" }}>{eyebrow}</div>}
-        <div className="text-lg" style={{ fontFamily: "Oswald", fontWeight: 600, color: C.ink }}>{title}</div>
+        {eyebrow && <div className="text-[10px] font-bold tracking-[0.18em] uppercase mb-1" style={{ color: C.red, fontFamily: "Inter" }}>{eyebrow}</div>}
+        <div className="text-xl" style={{ fontFamily: "Oswald", fontWeight: 600, color: C.ink, letterSpacing: "-0.01em" }}>{title}</div>
       </div>
       {right}
     </div>
   );
 }
 
-function DashboardSection({ children, accent, background, className = "" }) {
+/* Im Glas-Design tragen die Abschnitte selbst keine Fläche mehr: Überschrift steht
+   direkt auf der Hintergrund-Wäsche, die Inhalte darunter sind die Glaskarten. Die
+   früheren Pastellflächen mit Akzentbalken entfallen (accent/background bleiben als
+   Props erhalten, damit die ~8 Aufrufstellen unverändert bleiben können). */
+function DashboardSection({ children, className = "" }) {
   return (
-    <section className={`relative overflow-hidden rounded-3xl p-4 mb-5 ${className}`} style={{ background, border: `1px solid ${accent}26`, boxShadow: "0 7px 20px rgba(20,21,26,0.055)" }}>
-      <div className="absolute left-0 top-5 bottom-5 w-1 rounded-r-full" style={{ background: accent }} />
+    <section className={`relative mb-7 ${className}`}>
       {children}
     </section>
   );
@@ -654,11 +709,12 @@ function Field({ icon: Icon, ...props }) {
   );
 }
 function FeatureRow({ icon: Icon, title, subtitle, onClick, accent }) {
+  const tint = accent || C.red;
   return (
-    <button onClick={onClick} className="w-full flex items-center justify-between px-4 py-3 rounded-2xl mb-2" style={{ background: C.white, border: `1px solid ${C.line}` }}>
-      <span className="flex items-center gap-3">
-        <span className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: C.paper }}>
-          <Icon size={15} style={{ color: accent || C.red }} />
+    <button onClick={onClick} className="w-full flex items-center justify-between px-4 py-3.5 rounded-2xl mb-2.5" style={{ background: C.glass, border: `1px solid ${C.edge}`, boxShadow: "0 10px 26px rgba(60,30,45,0.07)" }}>
+      <span className="flex items-center gap-3.5">
+        <span className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `linear-gradient(155deg, color-mix(in srgb, ${tint} 72%, #fff), ${tint})`, boxShadow: `0 6px 14px color-mix(in srgb, ${tint} 34%, transparent), inset 0 1px 0 rgba(255,255,255,0.45)` }}>
+          <Icon size={17} style={{ color: "#fff" }} />
         </span>
         <span className="text-left">
           <span className="block text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{title}</span>
@@ -672,9 +728,9 @@ function FeatureRow({ icon: Icon, title, subtitle, onClick, accent }) {
 function StatCard({ icon: Icon, label, value, sub, accent, onClick }) {
   const Tag = onClick ? "button" : "div";
   return (
-    <Tag onClick={onClick} className="rounded-2xl p-3.5 text-left w-full" style={{ background: C.white, border: `1px solid ${C.line}` }}>
-      <div className="w-8 h-8 rounded-full flex items-center justify-center mb-2.5" style={{ background: C.paper }}>
-        <Icon size={15} style={{ color: accent || C.red }} />
+    <Tag onClick={onClick} className="rounded-2xl p-4 text-left w-full" style={{ background: C.glass, border: `1px solid ${C.edge}`, boxShadow: "0 10px 26px rgba(60,30,45,0.07)" }}>
+      <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3" style={{ background: `linear-gradient(155deg, color-mix(in srgb, ${accent || C.red} 72%, #fff), ${accent || C.red})`, boxShadow: `0 6px 14px color-mix(in srgb, ${accent || C.red} 34%, transparent), inset 0 1px 0 rgba(255,255,255,0.45)` }}>
+        <Icon size={17} style={{ color: "#fff" }} />
       </div>
       <div className="text-lg leading-tight" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>{value}</div>
       <div className="text-[11px]" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{label}</div>
@@ -719,7 +775,7 @@ function LockedFeature({ entitlement, feature = "Diese Funktion", goSubscribe, r
     <div className="relative rounded-2xl overflow-hidden">
       <div aria-hidden="true" className="pointer-events-none select-none" style={{ filter: "blur(4px)", opacity: 0.35 }}>{children}</div>
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6 py-8" style={{ background: "rgba(246,243,236,0.9)" }}>
-        <div className="w-12 h-12 rounded-full flex items-center justify-center mb-3" style={{ background: C.white, border: `1px solid ${C.line}` }}><Lock size={20} style={{ color: C.red }} /></div>
+        <div className="w-12 h-12 rounded-full flex items-center justify-center mb-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}><Lock size={20} style={{ color: C.red }} /></div>
         <div className="text-sm font-bold mb-1" style={{ color: C.ink }}>{feature} braucht ein Abo</div>
         <div className="text-xs mb-4" style={{ color: C.textDim }}>{requires === "basic" ? "Teil des Basic- und Premium-Vereinsabos." : "Teil des Premium-Vereinsabos."}</div>
         <button onClick={goSubscribe} className="px-4 py-2 rounded-xl text-xs font-bold" style={{ background: C.red, color: C.white }}>Abo ansehen</button>
@@ -734,13 +790,13 @@ function TrialCountdownBanner({ entitlement, goSubscribe }) {
   const daysLeft = Math.max(0, Math.ceil((new Date(entitlement.trialEndsAt) - new Date()) / 86400000));
   return (
     <>
-      <button onClick={() => setShowInfo(true)} className="w-full flex items-center justify-between gap-2 rounded-2xl px-4 py-3 mb-5" style={{ background: "#FFF6E4", border: "1px solid #F2DDA8" }}>
+      <button onClick={() => setShowInfo(true)} className="w-full flex items-center justify-between gap-2 rounded-2xl px-4 py-3 mb-5" style={{ background: "rgba(255,246,228,0.72)", border: `1px solid ${C.edge}` }}>
         <div className="flex items-center gap-2 text-left"><Sparkles size={16} style={{ color: C.amber, flexShrink: 0 }} /><div><div className="text-xs font-bold" style={{ color: C.ink }}>Noch {daysLeft} {daysLeft === 1 ? "Tag" : "Tage"} voller Zugriff</div><div className="text-[10px]" style={{ color: C.textDim }}>Dein persönlicher Test-Zeitraum läuft bald ab</div></div></div>
         <ChevronRight size={15} style={{ color: C.textDim, flexShrink: 0 }} />
       </button>
       {showInfo && (
         <div className="fixed inset-0 z-50 flex items-end p-3" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setShowInfo(false)}>
-          <div role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} className="w-full rounded-3xl p-5" style={{ background: C.white }}>
+          <div role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} className="w-full rounded-3xl p-5" style={{ background: C.glass }}>
             <div className="text-base font-bold mb-2" style={{ fontFamily: "Oswald", color: C.ink }}>Dein Test-Zeitraum</div>
             <div className="text-xs mb-4" style={{ color: C.textDim }}>Noch {daysLeft} {daysLeft === 1 ? "Tag" : "Tage"} volle Funktionen. Danach:</div>
             <div className="rounded-xl p-3 mb-3" style={{ background: C.paperDim }}>
@@ -764,7 +820,7 @@ function ToggleCard({ title, desc, value, onChange }) {
   return (
     <div>
       <div className="text-sm mb-2" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{title}</div>
-      <button onClick={() => onChange((v) => !v)} className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-2xl" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+      <button onClick={() => onChange((v) => !v)} className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-2xl" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
         <span className="text-xs text-left" style={{ fontFamily: "Inter", color: C.textDim }}>{desc}</span>
         <span className="w-10 h-6 rounded-full relative flex-shrink-0" style={{ background: value ? C.green : C.paperDim }}>
           <span className="absolute top-0.5 w-5 h-5 rounded-full" style={{ background: "#fff", left: value ? 18 : 2, transition: "left .2s" }} />
@@ -783,7 +839,7 @@ function SponsorSlot({ slotKey, bookings, onImpression, onClick, visible = true 
   return (
     <>
     <button onClick={open} className="w-full rounded-2xl px-4 py-3 mb-5 flex items-center gap-3 text-left overflow-hidden" style={{ background: C.paperDim, border: `1px dashed ${C.line}` }}>
-      <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+      <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
         {data.imageUrl ? <img src={data.imageUrl} alt="" className="w-full h-full object-cover rounded-lg"/> : <Sparkles size={14} style={{ color: C.amber }} />}
       </div>
       <div className="flex-1 min-w-0">
@@ -794,7 +850,7 @@ function SponsorSlot({ slotKey, bookings, onImpression, onClick, visible = true 
       <ChevronRight size={14} style={{ color: C.textDim, flexShrink: 0 }} />
     </button>
     {showDetails&&<div className="absolute inset-0 z-50 flex items-end p-3" style={{background:"rgba(20,21,26,.72)"}} onClick={()=>setShowDetails(false)}>
-      <div role="dialog" aria-modal="true" aria-label={`Sponsor ${data.title}`} onClick={(e)=>e.stopPropagation()} className="w-full rounded-3xl overflow-hidden" style={{background:C.white,maxHeight:"88%"}}>
+      <div role="dialog" aria-modal="true" aria-label={`Sponsor ${data.title}`} onClick={(e)=>e.stopPropagation()} className="w-full rounded-3xl overflow-hidden" style={{background:C.glass,maxHeight:"88%"}}>
         <div className="p-4 flex items-start justify-between"><div><div className="text-[9px] uppercase tracking-widest font-bold mb-1" style={{color:C.amber}}>Sponsor der ERG</div><h2 className="text-xl m-0" style={{fontFamily:"Oswald",color:C.ink}}>{data.title}</h2></div><button onClick={()=>setShowDetails(false)} aria-label="Overlay schließen" className="w-8 h-8 rounded-full flex items-center justify-center" style={{background:C.paperDim}}><X size={15}/></button></div>
         {data.text&&<p className="px-4 pb-3 text-sm leading-relaxed" style={{color:C.textDim}}>{data.text}</p>}
         {data.landingUrl&&<div className="px-4 pb-4"><a href={data.landingUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between rounded-xl px-3 py-2.5 text-xs font-bold" style={{background:"#FCEBEE",color:C.red}}>Zur Landingpage des Sponsors <ArrowRight size={14}/></a></div>}
@@ -831,8 +887,8 @@ function ClubSelectScreen({ clubs, onSelect, goNewClub }) {
   return (
     <div className="flex flex-col h-full px-6 pt-10 pb-6 overflow-y-auto" style={{ background: C.paper }}>
       <div className="flex flex-col items-center mb-8">
-        <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-3" style={{ background: C.ink }}>
-          <Users size={22} style={{ color: "#fff" }} />
+        <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style={{ background: `linear-gradient(155deg, color-mix(in srgb, ${C.red} 78%, #fff), ${C.red})`, boxShadow: `0 12px 26px color-mix(in srgb, ${C.red} 38%, transparent), inset 0 1px 0 rgba(255,255,255,0.45)` }}>
+          <Users size={24} style={{ color: "#fff" }} />
         </div>
         <div className="text-xl text-center" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>Willkommen</div>
         <div className="text-xs text-center mt-1" style={{ color: C.textDim, fontFamily: "Inter" }}>Wähle deinen Verein, um dich anzumelden oder zu registrieren.</div>
@@ -848,7 +904,7 @@ function ClubSelectScreen({ clubs, onSelect, goNewClub }) {
         {filtered.length === 0 ? (
           <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>Kein Verein gefunden.</div>
         ) : filtered.map((c) => (
-          <button key={c.id} onClick={() => onSelect(c.id)} className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+          <button key={c.id} onClick={() => onSelect(c.id)} className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
             <ClubLogo club={c} size={36} rounded={9} />
             <div className="text-left flex-1">
               <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{c.name}</div>
@@ -998,7 +1054,7 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub }) {
         <div className="text-xs uppercase tracking-widest font-semibold mb-2.5" style={{ color: C.textDim, fontFamily: "Inter" }}>Demo-Zugänge zum Ausprobieren</div>
         <div className="space-y-2">
           {members.filter((m) => !m.accountPending).map((m) => (
-            <button key={m.id} onClick={() => quick(m)} className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+            <button key={m.id} onClick={() => quick(m)} className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
               <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0" style={{ background: m.color, color: "#fff", fontFamily: "Inter" }}>{initialsOf(m.name)}</div>
               <div className="text-left flex-1">
                 <div className="text-xs" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{m.name}</div>
@@ -1089,7 +1145,7 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
           </select>
         </div>
 
-        {form.accountType !== "mitglied" && <div className="rounded-2xl p-3 mb-4" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+        {form.accountType !== "mitglied" && <div className="rounded-2xl p-3 mb-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
           <div className="text-xs font-bold mb-1" style={{ color: C.ink }}>{form.accountType === "eltern" ? "Kind / Athlet/in verknüpfen" : "Elternteil verknüpfen"}</div>
           <div className="text-[11px] mb-2" style={{ color: C.textDim }}>Ist das Profil bereits vorhanden, suche es hier. Die Verbindung wird automatisch auf beiden Profilen angezeigt.</div>
           <div className="flex items-center gap-2 rounded-xl px-3 py-2 mb-2" style={{ background: C.paperDim }}><Users size={14}/><input value={relativeSearch} onChange={(e)=>setRelativeSearch(e.target.value)} placeholder={form.accountType === "eltern" ? "Athlet/in suchen …" : "Elternteil suchen …"} className="flex-1 bg-transparent outline-none text-xs"/></div>
@@ -1126,32 +1182,32 @@ function Scoreboard({ nextEvent, goTo }) {
   const digit = (n) => String(n).padStart(2, "0");
   if (!nextEvent) {
     return (
-      <div className="rounded-2xl p-4 mb-5 flex items-center gap-2" style={{ background: C.paperDim }}>
+      <div className="rounded-2xl p-4 mb-5 flex items-center gap-2" style={{ background: C.glass, border: `1px solid ${C.edge}` }}>
         <CalendarDays size={16} style={{ color: C.textDim }} />
         <span className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>Keine Termine zur Zeit geplant</span>
       </div>
     );
   }
   return (
-    <div className="rounded-2xl p-4 mb-5 relative overflow-hidden cursor-pointer" style={{ background: `linear-gradient(160deg, ${C.ink} 0%, ${C.asphalt} 100%)` }} onClick={goTo}>
-      <div className="absolute inset-0 opacity-[0.06] pointer-events-none" style={{ backgroundImage: `repeating-linear-gradient(115deg, ${C.white} 0px, ${C.white} 2px, transparent 2px, transparent 26px)` }} />
-      <div className="relative flex items-center justify-between mb-3">
-        <Pill bg={typeMeta[nextEvent.type].color}>NÄCHSTES SPIEL</Pill>
-        <span className="text-xs" style={{ color: "#9A9AA2", fontFamily: "Inter" }}>{formatDate(nextEvent.date)} · {formatTime(nextEvent.date)}</span>
+    <div className="rounded-3xl p-5 mb-6 relative overflow-hidden cursor-pointer" style={{ background: `linear-gradient(160deg, color-mix(in srgb, ${C.red} 82%, #fff) 0%, ${C.red} 55%, ${C.redDark} 100%)`, boxShadow: `0 22px 46px color-mix(in srgb, ${C.red} 34%, transparent), inset 0 1px 0 rgba(255,255,255,0.35)` }} onClick={goTo}>
+      <div className="absolute pointer-events-none" style={{ top: "-40%", left: "-10%", width: "80%", height: "100%", background: "radial-gradient(circle, rgba(255,255,255,0.28), transparent 65%)" }} />
+      <div className="relative flex items-center justify-between mb-4">
+        <span className="text-[10px] font-extrabold uppercase px-3.5 py-1.5 rounded-full" style={{ fontFamily: "Inter", letterSpacing: "0.14em", color: "#fff", background: "rgba(255,255,255,0.22)", border: "1px solid rgba(255,255,255,0.3)" }}>Nächstes Spiel</span>
+        <span className="text-xs" style={{ color: "rgba(255,255,255,0.85)", fontFamily: "Inter" }}>{formatDate(nextEvent.date)} · {formatTime(nextEvent.date)}</span>
       </div>
-      <div className="relative text-white text-base mb-3" style={{ fontFamily: "Oswald", fontWeight: 600 }}>{nextEvent.title}</div>
-      <div className="relative flex items-center gap-1.5" style={{ fontFamily: "JetBrains Mono" }}>
+      <div className="relative text-white text-xl mb-1.5" style={{ fontFamily: "Oswald", fontWeight: 700, letterSpacing: "-0.01em" }}>{nextEvent.title}</div>
+      <div className="relative flex items-center gap-1.5 mb-5 text-xs" style={{ color: "rgba(255,255,255,0.8)", fontFamily: "Inter" }}><MapPin size={12} /> {nextEvent.location}</div>
+      <div className="relative flex items-center gap-2">
         {[["TAGE", d], ["STD", h], ["MIN", m]].map(([label, val], i) => (
           <React.Fragment key={label}>
-            <div className="flex flex-col items-center">
-              <div className="rounded-md px-2.5 py-1.5 text-2xl font-bold" style={{ background: "#000", color: C.red, minWidth: 46, textAlign: "center", boxShadow: `inset 0 0 0 1px ${C.redDark}` }}>{digit(val)}</div>
-              <div className="text-[9px] mt-1 tracking-widest" style={{ color: "#8B8B93" }}>{label}</div>
+            <div className="flex flex-col items-center rounded-2xl px-3.5 py-2.5 flex-1" style={{ background: "rgba(255,255,255,0.16)", border: "1px solid rgba(255,255,255,0.26)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)" }}>
+              <div className="text-2xl font-bold" style={{ fontFamily: "JetBrains Mono", color: "#fff", lineHeight: 1 }}>{digit(val)}</div>
+              <div className="text-[9px] mt-1.5 tracking-[0.16em]" style={{ color: "rgba(255,255,255,0.75)", fontFamily: "Inter", fontWeight: 600 }}>{label}</div>
             </div>
-            {i < 2 && <span className="text-xl pb-4" style={{ color: C.red }}>:</span>}
+            {i < 2 && <span className="text-lg pb-3" style={{ color: "rgba(255,255,255,0.55)", fontFamily: "JetBrains Mono" }}>:</span>}
           </React.Fragment>
         ))}
       </div>
-      <div className="relative flex items-center gap-1 mt-3 text-xs" style={{ color: "#9A9AA2", fontFamily: "Inter" }}><MapPin size={12} /> {nextEvent.location}</div>
     </div>
   );
 }
@@ -1161,7 +1217,7 @@ function PollWidget({ poll, userId, setPolls }) {
   const total = options.reduce((a, o) => a + o.votes, 0);
   const vote = (i) => { if (voted) return; setPolls((ps)=>ps.map((p)=>p.id===poll.id?{...p,options:p.options.map((x,idx)=>idx===i?{...x,votes:x.votes+1}:x),voterIds:[...(p.voterIds||[]),userId]}:p)); };
   return (
-    <div className="rounded-2xl p-4" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+    <div className="rounded-2xl p-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
       <div className="flex items-center gap-2 mb-3">
         <div className="rounded-full p-1.5" style={{ background: C.paperDim }}><Megaphone size={14} style={{ color: C.red }} /></div>
         <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{poll.title}</div>
@@ -1199,23 +1255,24 @@ function NextTrainingCard({ user }) {
   }
   const digit = (n) => String(n).padStart(2, "0");
   return (
-    <div className="rounded-2xl p-4 mb-5" style={{ background: `linear-gradient(160deg, ${C.green}, #237A44)` }}>
-      <div className="text-xs uppercase tracking-widest font-semibold mb-2" style={{ color: "#D9F2E1", fontFamily: "Inter" }}>Nächstes Training · {info.youthClass?.name}</div>
-      <div className="text-white text-base mb-2" style={{ fontFamily: "Oswald", fontWeight: 600 }}>{formatDate(info.event.date)} · {formatTime(info.event.date)}</div>
-      <div className="flex items-center gap-1 text-xs mb-3" style={{ color: "#D9F2E1", fontFamily: "Inter" }}><MapPin size={12} /> {info.event.location}</div>
-      <div className="flex items-center gap-1.5" style={{ fontFamily: "JetBrains Mono" }}>
+    <div className="rounded-3xl p-5 mb-6 relative overflow-hidden" style={{ background: `linear-gradient(160deg, #4FC47C 0%, ${C.green} 55%, #1F6E3E 100%)`, boxShadow: "0 22px 46px rgba(47,158,88,0.3), inset 0 1px 0 rgba(255,255,255,0.3)" }}>
+      <div className="absolute pointer-events-none" style={{ top: "-40%", left: "-10%", width: "80%", height: "100%", background: "radial-gradient(circle, rgba(255,255,255,0.24), transparent 65%)" }} />
+      <div className="relative text-[10px] uppercase font-bold mb-2.5" style={{ color: "rgba(255,255,255,0.82)", fontFamily: "Inter", letterSpacing: "0.14em" }}>Nächstes Training · {info.youthClass?.name}</div>
+      <div className="relative text-white text-xl mb-1.5" style={{ fontFamily: "Oswald", fontWeight: 700, letterSpacing: "-0.01em" }}>{formatDate(info.event.date)} · {formatTime(info.event.date)}</div>
+      <div className="relative flex items-center gap-1.5 text-xs mb-5" style={{ color: "rgba(255,255,255,0.8)", fontFamily: "Inter" }}><MapPin size={12} /> {info.event.location}</div>
+      <div className="relative flex items-center gap-2">
         {[["TAGE", d], ["STD", h], ["MIN", m]].map(([label, val], i) => (
           <React.Fragment key={label}>
-            <div className="flex flex-col items-center">
-              <div className="rounded-md px-2.5 py-1.5 text-xl font-bold" style={{ background: "#0C3D22", color: "#fff", minWidth: 42, textAlign: "center" }}>{digit(val)}</div>
-              <div className="text-[8px] mt-1 tracking-widest" style={{ color: "#B9E6CB" }}>{label}</div>
+            <div className="flex flex-col items-center rounded-2xl px-3.5 py-2.5 flex-1" style={{ background: "rgba(255,255,255,0.16)", border: "1px solid rgba(255,255,255,0.26)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)" }}>
+              <div className="text-2xl font-bold" style={{ fontFamily: "JetBrains Mono", color: "#fff", lineHeight: 1 }}>{digit(val)}</div>
+              <div className="text-[9px] mt-1.5 tracking-[0.16em]" style={{ color: "rgba(255,255,255,0.75)", fontFamily: "Inter", fontWeight: 600 }}>{label}</div>
             </div>
-            {i < 2 && <span className="text-lg pb-4" style={{ color: "#B9E6CB" }}>:</span>}
+            {i < 2 && <span className="text-lg pb-3" style={{ color: "rgba(255,255,255,0.55)", fontFamily: "JetBrains Mono" }}>:</span>}
           </React.Fragment>
         ))}
       </div>
       {info.trainers.length > 0 && (
-        <div className="flex items-center gap-3 mt-3 pt-3" style={{ borderTop: "1px solid rgba(255,255,255,0.2)" }}>
+        <div className="relative flex items-center gap-3 mt-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.22)" }}>
           {info.trainers.map((t) => (
             <div key={t.id} className="flex items-center gap-1.5">
               <div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold" style={{ background: "#fff", color: C.green }}>{initialsOf(t.name)}</div>
@@ -1278,13 +1335,13 @@ function Dashboard({ user, members, feePaid, channels, dutyPlan, seasonVotes, po
       <NextTrainingCard user={user} />
 
       {taskReminder && (
-        <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 mb-5" style={{ background: "#EEF5F8", border: `1px solid #CEE2EA` }}>
+        <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 mb-5" style={{ background: "rgba(238,245,248,0.72)", border: `1px solid ${C.edge}` }}>
           <ClipboardList size={16} style={{ color: "#2D6F8E" }} />
           <div className="text-sm flex-1" style={{ fontFamily: "Inter", color: C.ink }}>Schon <b>70%</b> haben sich für Aufgaben eingetragen. Hilf mit! <button onClick={goTasks} className="underline font-bold">Jetzt eintragen</button></div>
         </div>
       )}
       {BIRTHDAYS_TODAY.length > 0 && (
-        <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 mb-5" style={{ background: "#FFF6E4", border: `1px solid #F2DDA8` }}>
+        <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 mb-5" style={{ background: "rgba(255,246,228,0.72)", border: `1px solid ${C.edge}` }}>
           <Cake size={16} style={{ color: C.amber }} />
           <div className="text-sm" style={{ fontFamily: "Inter", color: C.ink }}><b>Heute Geburtstag:</b> {BIRTHDAYS_TODAY.join(" · ")} 🎉</div>
         </div>
@@ -1313,7 +1370,7 @@ function Dashboard({ user, members, feePaid, channels, dutyPlan, seasonVotes, po
       </DashboardSection>
 
       <DashboardSection accent="#2D6F8E" background="#EEF5F8">
-        <SectionTitle eyebrow="Vereins-News" title="Neueste Nachrichten" right={<button onClick={goNews} className="text-xs font-bold" style={{ color: "#2D6F8E", fontFamily: "Inter" }}>Alle ansehen</button>} />
+        <SectionTitle eyebrow="Vereins-News" title="Neueste Nachrichten" right={<button onClick={goNews} className="text-xs font-bold" style={{ color: C.red, fontFamily: "Inter" }}>Alle ansehen</button>} />
         <div className="rounded-2xl px-3" style={{ background: "rgba(255,255,255,0.82)", border: `1px solid ${C.white}` }}>
         {newsMsgs.length === 0 ? (
           <div className="text-xs py-3" style={{ color: C.textDim, fontFamily: "Inter" }}>Noch keine News.</div>
@@ -1338,7 +1395,7 @@ function Dashboard({ user, members, feePaid, channels, dutyPlan, seasonVotes, po
       <DashboardSection accent={C.green} background="#EDF7F0">
         <SectionTitle eyebrow="Partner" title="Unsere Sponsoren" />
         <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
-          {SPONSORS.map((s) => <div key={s} className="flex-shrink-0 px-3 py-2.5 rounded-xl text-xs whitespace-nowrap" style={{ background: C.white, border: "1px solid #D8EBDD", color: C.textDim, fontFamily: "Inter", fontWeight: 600 }}>{s}</div>)}
+          {SPONSORS.map((s) => <div key={s} className="flex-shrink-0 px-3 py-2.5 rounded-xl text-xs whitespace-nowrap" style={{ background: C.glass, border: "1px solid #D8EBDD", color: C.textDim, fontFamily: "Inter", fontWeight: 600 }}>{s}</div>)}
         </div>
       </DashboardSection>
 
@@ -1465,8 +1522,8 @@ function CarpoolSection({ ev, currentUser }) {
                 {c.passengers.length > 0 && <div className="text-[10px] mb-1.5" style={{ color: C.textDim }}>Mitfahrer: {c.passengers.map((p) => p.name).join(", ")}</div>}
                 <div className="flex gap-2">
                   {!isDriver && !isPassenger && free > 0 && <button onClick={() => join(c.id)} className="flex-1 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: C.ink, color: C.white }}>Mitfahren</button>}
-                  {!isDriver && isPassenger && <button onClick={() => leave(c.id)} className="flex-1 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: C.white, color: C.red }}>Austragen</button>}
-                  {isDriver && <button onClick={() => removeCarpool(c.id)} className="flex-1 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: C.white, color: C.red }}>Fahrgemeinschaft löschen</button>}
+                  {!isDriver && isPassenger && <button onClick={() => leave(c.id)} className="flex-1 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: C.glass, color: C.red }}>Austragen</button>}
+                  {isDriver && <button onClick={() => removeCarpool(c.id)} className="flex-1 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: C.glass, color: C.red }}>Fahrgemeinschaft löschen</button>}
                 </div>
               </div>
             );
@@ -1477,11 +1534,11 @@ function CarpoolSection({ ev, currentUser }) {
           <button onClick={() => setShowCreate(true)} className="w-full py-2 rounded-lg text-xs font-bold" style={{ background: C.ink, color: C.white }}>Platz anbieten</button>
         ) : (
           <div className="rounded-xl p-2.5" style={{ background: C.paperDim }}>
-            <input value={seats} onChange={(e) => setSeats(e.target.value)} inputMode="numeric" placeholder="Freie Plätze, z. B. 3" className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-1.5" style={{ background: C.white, color: C.ink }}/>
-            <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Notiz (optional), z. B. Abfahrtsort" className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-1.5" style={{ background: C.white, color: C.ink }}/>
+            <input value={seats} onChange={(e) => setSeats(e.target.value)} inputMode="numeric" placeholder="Freie Plätze, z. B. 3" className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-1.5" style={{ background: C.glass, color: C.ink }}/>
+            <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Notiz (optional), z. B. Abfahrtsort" className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-1.5" style={{ background: C.glass, color: C.ink }}/>
             <div className="flex gap-2">
               <button onClick={createCarpool} disabled={saving || !seats.trim()} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: seats.trim() ? C.ink : C.line, color: C.white }}>{saving ? "…" : "Anbieten"}</button>
-              <button onClick={() => { setShowCreate(false); setSeats(""); setNote(""); }} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.white, color: C.textDim }}>Abbrechen</button>
+              <button onClick={() => { setShowCreate(false); setSeats(""); setNote(""); }} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>Abbrechen</button>
             </div>
           </div>
         )}
@@ -1499,7 +1556,7 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
   const eventIsReal = !!supabase && isDbId(ev.id);
 
   return (
-    <div className="rounded-2xl mb-3 overflow-hidden" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+    <div className="rounded-2xl mb-3 overflow-hidden" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
       <button className="w-full text-left p-4" onClick={() => setOpen((o) => !o)}>
         <div className="flex items-start justify-between">
           <div className="flex gap-3">
@@ -1687,7 +1744,7 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
   return (
     <div className="px-4 pt-4 pb-24">
       <div className="flex items-start justify-between gap-3"><SectionTitle title="Termine" />{(canCreateSportEvent||canCreateClubEvent)&&<button onClick={openCreate} className="px-3 py-1.5 rounded-full text-xs flex-shrink-0" style={{background:C.red,color:C.white,fontWeight:700}}>＋ Eintragen</button>}</div>
-      {showCreate&&<form onSubmit={createSportEvent} className="rounded-2xl p-4 mb-4 space-y-2.5" style={{background:C.white,border:`1px solid ${C.line}`}}><div className="text-sm font-bold">Termin eintragen</div><div className="text-[10px]" style={{color:C.textDim}}>{eventDraft.type==="event"?"Vereins-Events sind für alle Mitglieder sichtbar, unabhängig von Mannschaft.":isSysAdmin(currentUser)?"Als Vereins-Sysadmin kannst du jede Mannschaft auswählen.":currentUser.roles.includes("trainer")?"Du kannst nur deine im Profil hinterlegten Mannschaften auswählen.":"Als Kapitän oder Teammanager kannst du nur für deine hinterlegte Mannschaft eintragen."}</div><div className="text-[10px] font-bold" style={{color:C.red}}>* Pflichtfeld</div><div className="grid grid-cols-2 gap-2"><select value={eventDraft.type} onChange={(e)=>setEventDraft({...eventDraft,type:e.target.value,team:e.target.value==="event"?"":eventDraft.team})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}>{canCreateSportEvent&&<option value="training">Training</option>}{canCreateSportEvent&&<option value="spiel">Spiel</option>}{canCreateClubEvent&&<option value="event">Vereins-Event</option>}</select>{eventDraft.type!=="event"&&<select value={eventDraft.team} onChange={(e)=>setEventDraft({...eventDraft,team:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}>{allowedEventTeams.map((team)=><option key={team} value={team}>{team}</option>)}</select>}</div><input value={eventDraft.title} onChange={(e)=>setEventDraft({...eventDraft,title:e.target.value})} placeholder={eventDraft.type==="training"?"Titel des Trainings *":eventDraft.type==="event"?"Titel des Events *":"Titel des Spiels *"} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/>{eventDraft.type === "spiel" && <label className="flex items-center gap-2 px-0.5"><input type="checkbox" checked={eventDraft.isHome} onChange={(e)=>setEventDraft({...eventDraft,isHome:e.target.checked})}/><span className="text-xs font-bold" style={{color:C.ink}}>Heimspiel</span></label>}{eventDraft.type === "training" && <label className="flex items-center gap-2 px-0.5"><input type="checkbox" checked={eventDraft.recurring} onChange={(e)=>setEventDraft({...eventDraft,recurring:e.target.checked})}/><span className="text-xs font-bold" style={{color:C.ink}}>Wiederholend</span></label>}{!eventDraft.recurring ? <input type="datetime-local" value={eventDraft.date} onChange={(e)=>setEventDraft({...eventDraft,date:e.target.value})} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/> : <div className="space-y-2"><div className="flex gap-1.5 flex-wrap">{[["1","Mo"],["2","Di"],["3","Mi"],["4","Do"],["5","Fr"],["6","Sa"],["7","So"]].map(([num,label])=>{const n=Number(num);const active=eventDraft.weekdays.includes(n);return <button type="button" key={num} onClick={()=>setEventDraft({...eventDraft,weekdays:active?eventDraft.weekdays.filter((w)=>w!==n):[...eventDraft.weekdays,n]})} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?C.red:C.paperDim,color:active?C.white:C.textDim}}>{label}</button>;})}</div><div className="grid grid-cols-2 gap-2"><input type="time" value={eventDraft.startTime} onChange={(e)=>setEventDraft({...eventDraft,startTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><input type="time" value={eventDraft.endTime} onChange={(e)=>setEventDraft({...eventDraft,endTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></div><div className="grid grid-cols-2 gap-2"><input type="date" value={eventDraft.rangeStart} onChange={(e)=>setEventDraft({...eventDraft,rangeStart:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><input type="date" value={eventDraft.rangeEnd} onChange={(e)=>setEventDraft({...eventDraft,rangeEnd:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></div></div>}<input value={eventDraft.location} onChange={(e)=>setEventDraft({...eventDraft,location:e.target.value})} placeholder="Ort *" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><textarea value={eventDraft.desc} onChange={(e)=>setEventDraft({...eventDraft,desc:e.target.value})} placeholder="Beschreibung (optional)" rows={2} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none" style={{background:C.paperDim}}/><div className="flex gap-2"><button type="submit" className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{background:C.ink,color:C.white}}>Speichern</button><button type="button" onClick={()=>setShowCreate(false)} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{background:C.paperDim,color:C.textDim}}>Abbrechen</button></div></form>}
+      {showCreate&&<form onSubmit={createSportEvent} className="rounded-2xl p-4 mb-4 space-y-2.5" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold">Termin eintragen</div><div className="text-[10px]" style={{color:C.textDim}}>{eventDraft.type==="event"?"Vereins-Events sind für alle Mitglieder sichtbar, unabhängig von Mannschaft.":isSysAdmin(currentUser)?"Als Vereins-Sysadmin kannst du jede Mannschaft auswählen.":currentUser.roles.includes("trainer")?"Du kannst nur deine im Profil hinterlegten Mannschaften auswählen.":"Als Kapitän oder Teammanager kannst du nur für deine hinterlegte Mannschaft eintragen."}</div><div className="text-[10px] font-bold" style={{color:C.red}}>* Pflichtfeld</div><div className="grid grid-cols-2 gap-2"><select value={eventDraft.type} onChange={(e)=>setEventDraft({...eventDraft,type:e.target.value,team:e.target.value==="event"?"":eventDraft.team})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}>{canCreateSportEvent&&<option value="training">Training</option>}{canCreateSportEvent&&<option value="spiel">Spiel</option>}{canCreateClubEvent&&<option value="event">Vereins-Event</option>}</select>{eventDraft.type!=="event"&&<select value={eventDraft.team} onChange={(e)=>setEventDraft({...eventDraft,team:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}>{allowedEventTeams.map((team)=><option key={team} value={team}>{team}</option>)}</select>}</div><input value={eventDraft.title} onChange={(e)=>setEventDraft({...eventDraft,title:e.target.value})} placeholder={eventDraft.type==="training"?"Titel des Trainings *":eventDraft.type==="event"?"Titel des Events *":"Titel des Spiels *"} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/>{eventDraft.type === "spiel" && <label className="flex items-center gap-2 px-0.5"><input type="checkbox" checked={eventDraft.isHome} onChange={(e)=>setEventDraft({...eventDraft,isHome:e.target.checked})}/><span className="text-xs font-bold" style={{color:C.ink}}>Heimspiel</span></label>}{eventDraft.type === "training" && <label className="flex items-center gap-2 px-0.5"><input type="checkbox" checked={eventDraft.recurring} onChange={(e)=>setEventDraft({...eventDraft,recurring:e.target.checked})}/><span className="text-xs font-bold" style={{color:C.ink}}>Wiederholend</span></label>}{!eventDraft.recurring ? <input type="datetime-local" value={eventDraft.date} onChange={(e)=>setEventDraft({...eventDraft,date:e.target.value})} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/> : <div className="space-y-2"><div className="flex gap-1.5 flex-wrap">{[["1","Mo"],["2","Di"],["3","Mi"],["4","Do"],["5","Fr"],["6","Sa"],["7","So"]].map(([num,label])=>{const n=Number(num);const active=eventDraft.weekdays.includes(n);return <button type="button" key={num} onClick={()=>setEventDraft({...eventDraft,weekdays:active?eventDraft.weekdays.filter((w)=>w!==n):[...eventDraft.weekdays,n]})} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?C.red:C.paperDim,color:active?C.white:C.textDim}}>{label}</button>;})}</div><div className="grid grid-cols-2 gap-2"><input type="time" value={eventDraft.startTime} onChange={(e)=>setEventDraft({...eventDraft,startTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><input type="time" value={eventDraft.endTime} onChange={(e)=>setEventDraft({...eventDraft,endTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></div><div className="grid grid-cols-2 gap-2"><input type="date" value={eventDraft.rangeStart} onChange={(e)=>setEventDraft({...eventDraft,rangeStart:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><input type="date" value={eventDraft.rangeEnd} onChange={(e)=>setEventDraft({...eventDraft,rangeEnd:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></div></div>}<input value={eventDraft.location} onChange={(e)=>setEventDraft({...eventDraft,location:e.target.value})} placeholder="Ort *" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><textarea value={eventDraft.desc} onChange={(e)=>setEventDraft({...eventDraft,desc:e.target.value})} placeholder="Beschreibung (optional)" rows={2} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none" style={{background:C.paperDim}}/><div className="flex gap-2"><button type="submit" className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{background:C.ink,color:C.white}}>Speichern</button><button type="button" onClick={()=>setShowCreate(false)} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{background:C.paperDim,color:C.textDim}}>Abbrechen</button></div></form>}
       <SponsorSlot slotKey="events_header" bookings={sponsorBookings} onImpression={onSponsorImpression} onClick={onSponsorClick} visible={featureEnabled("sponsor_events_header")} />
       <div className="flex gap-2 mb-4 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
         {[["alle", "Alle"], ["training", "Training"], ["spiel", "Spiele"], ["event", "Events"]].map(([k, l]) => (
@@ -1695,7 +1752,7 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
             style={{ fontFamily: "Inter", fontWeight: 700, background: filter === k ? C.ink : C.paperDim, color: filter === k ? C.white : C.textDim }}>{l}</button>
         ))}
       </div>
-      {teamFilterActive && <div className="flex items-center gap-2 mb-4 px-2.5 py-2 rounded-xl" style={{background:C.white,border:`1px solid ${C.line}`}}>
+      {teamFilterActive && <div className="flex items-center gap-2 mb-4 px-2.5 py-2 rounded-xl" style={{background:C.glass,border:`1px solid ${C.line}`}}>
         <Users size={13} style={{color:C.textDim,flexShrink:0}}/>
         <select aria-label="Mannschaft filtern" value={teamFilter} onChange={(e)=>setTeamFilter(e.target.value)} className="flex-1 min-w-0 bg-transparent text-[11px] font-bold outline-none" style={{color:C.ink}}>
           <option value="alle">Alle Mannschaften</option>{filterTeams.map((team)=><option key={team} value={team}>{team}</option>)}
@@ -1718,7 +1775,7 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
         })()
       ))}
       {filtered.length===0&&<div className="rounded-2xl p-6 text-center text-xs" style={{background:C.paperDim,color:C.textDim}}>Für diese Mannschaft sind aktuell keine {filter === "training" ? "Trainingstermine" : "Spiele"} hinterlegt.</div>}
-      {deleteRequest && <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setDeleteRequest(null)}><div role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()} className="w-full max-w-sm rounded-2xl p-5" style={{ background: C.white }}>{deleteRequest.seriesId ? <><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Wiederkehrendes Training</div><div className="text-xs mb-4" style={{ color: C.textDim }}>Sollen alle geplanten Sessions dieser Serie gelöscht werden, oder nur diese eine?</div><button onClick={performSeriesDelete} className="w-full py-2.5 rounded-xl text-xs font-bold mb-2" style={{ background: C.red, color: C.white }}>Alle Sessions</button><button onClick={performSingleDelete} className="w-full py-2.5 rounded-xl text-xs font-bold mb-2" style={{ background: C.paperDim, color: C.ink }}>Nur eine Session</button><button onClick={() => setDeleteRequest(null)} className="w-full py-2 text-xs font-bold" style={{ color: C.textDim }}>Abbrechen</button></> : <><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Wollen Sie die Trainingseinheit wirklich löschen?</div><div className="flex gap-2 mt-4"><button onClick={() => setDeleteRequest(null)} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>Nein</button><button onClick={performSingleDelete} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.red, color: C.white }}>Ja</button></div></>}</div></div>}
+      {deleteRequest && <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setDeleteRequest(null)}><div role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()} className="w-full max-w-sm rounded-2xl p-5" style={{ background: C.glass }}>{deleteRequest.seriesId ? <><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Wiederkehrendes Training</div><div className="text-xs mb-4" style={{ color: C.textDim }}>Sollen alle geplanten Sessions dieser Serie gelöscht werden, oder nur diese eine?</div><button onClick={performSeriesDelete} className="w-full py-2.5 rounded-xl text-xs font-bold mb-2" style={{ background: C.red, color: C.white }}>Alle Sessions</button><button onClick={performSingleDelete} className="w-full py-2.5 rounded-xl text-xs font-bold mb-2" style={{ background: C.paperDim, color: C.ink }}>Nur eine Session</button><button onClick={() => setDeleteRequest(null)} className="w-full py-2 text-xs font-bold" style={{ color: C.textDim }}>Abbrechen</button></> : <><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Wollen Sie die Trainingseinheit wirklich löschen?</div><div className="flex gap-2 mt-4"><button onClick={() => setDeleteRequest(null)} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>Nein</button><button onClick={performSingleDelete} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.red, color: C.white }}>Ja</button></div></>}</div></div>}
     </div>
   );
 }
@@ -1793,7 +1850,7 @@ function FeesView({ members, records, setRecords }) {
             const entries = records.filter((record) => record.memberId === member.id);
             const open = entries.filter((record) => !record.paid).length;
             return (
-              <button key={member.id} onClick={() => setSelectedMemberId(member.id)} className="w-full flex items-center gap-3 p-3 rounded-2xl text-left" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+              <button key={member.id} onClick={() => setSelectedMemberId(member.id)} className="w-full flex items-center gap-3 p-3 rounded-2xl text-left" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
                 <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0" style={{ background: member.color, color: C.white }}>{initialsOf(member.name)}</div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm truncate" style={{ fontWeight: 700, color: C.ink }}>{member.name}</div>
@@ -1815,7 +1872,7 @@ function FeesView({ members, records, setRecords }) {
       <SectionTitle eyebrow={selectedMember.team} title={selectedMember.name} />
       <div className="space-y-2 mb-5">
         {memberRecords.map((record) => (
-          <div key={record.id} className="rounded-2xl p-3.5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+          <div key={record.id} className="rounded-2xl p-3.5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
             <div className="flex items-start justify-between gap-2">
               <div><div className="text-sm" style={{ fontWeight: 700, color: C.ink }}>{record.type}</div><div className="text-[11px]" style={{ color: C.textDim }}>Jahr {record.year} · {record.invoiceNumber || "ohne Rechnungsnummer"}</div></div>
               <div className="text-right"><div className="text-sm" style={{ fontFamily: "JetBrains Mono", fontWeight: 700 }}>{record.amount} €</div></div>
@@ -1835,7 +1892,7 @@ function FeesView({ members, records, setRecords }) {
       </div>
       <SectionTitle eyebrow="Neuer Datensatz" title="Beitrag hinterlegen" />
       {message&&<div className="mb-3 rounded-xl px-3 py-2 text-[11px] font-semibold" style={{background:message.includes("gespeichert")?"#E7F3EC":"#FCEBEE",color:message.includes("gespeichert")?C.green:C.red}}>{message}</div>}
-      <form onSubmit={addRecord} className="rounded-2xl p-4 space-y-3" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+      <form onSubmit={addRecord} className="rounded-2xl p-4 space-y-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
         <div className="grid grid-cols-2 gap-2">
           <input value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} placeholder="Jahr" inputMode="numeric" className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }} />
           <input value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder="Beitragshöhe €" inputMode="decimal" className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }} />
@@ -1860,12 +1917,12 @@ function FeesView({ members, records, setRecords }) {
             </div>
             <div>
               <label className="block text-[10px] mb-1" style={{ color: C.textDim, fontWeight: 700 }}>Weitere Namen ohne Benutzerkonto</label>
-              <textarea value={form.manualNames} onChange={(e) => setForm({ ...form, manualNames: e.target.value })} placeholder="z. B. Max Mustermann, Lea Mustermann" rows={2} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none" style={{ background: C.white }} />
+              <textarea value={form.manualNames} onChange={(e) => setForm({ ...form, manualNames: e.target.value })} placeholder="z. B. Max Mustermann, Lea Mustermann" rows={2} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none" style={{ background: C.glass }} />
               <div className="text-[9px] mt-1" style={{ color: C.textDim }}>Mehrere Namen bitte durch Komma trennen.</div>
             </div>
             <div>
               <label className="block text-[10px] mb-1" style={{ color: C.textDim, fontWeight: 700 }}>Anzahl der Personen insgesamt</label>
-              <input value={form.personCount} onChange={(e) => setForm({ ...form, personCount: e.target.value })} min="1" type="number" inputMode="numeric" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.white }} />
+              <input value={form.personCount} onChange={(e) => setForm({ ...form, personCount: e.target.value })} min="1" type="number" inputMode="numeric" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.glass }} />
             </div>
           </div>
         )}
@@ -2063,7 +2120,7 @@ function RedaktionView({ user, channels, setChannels }) {
       } />
 
       {showForm && (
-        <div className="rounded-2xl p-3 mb-5 space-y-2.5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+        <div className="rounded-2xl p-3 mb-5 space-y-2.5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
           <div className="text-xs font-bold" style={{ fontFamily: "Inter", color: C.ink }}>{editingPost ? "News bearbeiten" : "Neue News"}</div>
           <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Titel"
             className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={{ background: C.paperDim, fontFamily: "Inter", color: C.ink }} />
@@ -2087,7 +2144,7 @@ function RedaktionView({ user, channels, setChannels }) {
         {items.length === 0 ? (
           <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>Noch keine News veröffentlicht.</div>
         ) : items.map((m) => (
-          <div key={m.id || m.idx} className="rounded-2xl overflow-hidden" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+          <div key={m.id || m.idx} className="rounded-2xl overflow-hidden" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
             {m.imageUrl && <img src={m.imageUrl} alt="" className="w-full block" style={{ maxHeight: 160, objectFit: "cover" }} />}
             <div className="p-3">
               <div className="flex items-center justify-between mb-1">
@@ -2127,7 +2184,7 @@ function FamilyTree({ user, members }) {
   ].filter((r) => r.list.length);
 
   return (
-    <div className="rounded-2xl p-4" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+    <div className="rounded-2xl p-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
       {rows.map((r, i) => (
         <div key={r.role}>
           <div className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: C.textDim, fontFamily: "Inter" }}>{r.label}</div>
@@ -2207,7 +2264,7 @@ function FamilyLinkManager({ user, members, setMembers, adminMode = false }) {
     setMembers((all) => unlinkFamilyRecords(all, user.id, target.id));
     setSaving(false);
   };
-  return <div className="rounded-2xl p-4 mb-5" style={{background:C.white,border:`1px solid ${C.line}`}}>
+  return <div className="rounded-2xl p-4 mb-5" style={{background:C.glass,border:`1px solid ${C.line}`}}>
     <div className="flex items-center justify-between"><div><div className="text-sm font-bold" style={{color:C.ink}}>Familienverknüpfung</div><div className="text-[11px]" style={{color:C.textDim}}>{adminMode ? `Sysadmin bearbeitet das Profil von ${user.name}.` : "Du verwaltest dein Familienprofil selbst."} Verknüpfungen gelten automatisch für beide Profile.</div></div><button disabled={saving} onClick={()=>setOpen(!open)} className="px-3 py-1.5 rounded-full text-xs font-bold" style={{background:C.paperDim,color:C.ink}}>{open?"Schließen":"＋ Verknüpfen"}</button></div>
     {message&&<div className="mt-2 text-[11px] font-semibold" style={{color:C.red}}>{message}</div>}
     {familyConnections.length>0&&<div className="mt-3 pt-3 space-y-1.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] font-bold mb-1" style={{color:C.textDim}}>BESTEHENDE VERKNÜPFUNGEN</div>{familyConnections.map((member)=><div key={member.id} className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{background:C.paperDim}}><div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold" style={{background:member.color,color:C.white}}>{initialsOf(member.name)}</div><div className="flex-1 min-w-0"><div className="text-xs font-bold truncate" style={{color:C.ink}}>{member.name}</div><div className="text-[10px]" style={{color:C.textDim}}>{member.familyRole||"Familie"}</div></div><button onClick={()=>removeConnection(member)} className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold" style={{background:"#FCEBEE",color:C.red}}>Löschen</button></div>)}</div>}
@@ -2218,7 +2275,7 @@ function FamilyLinkManager({ user, members, setMembers, adminMode = false }) {
 function AdminFamilyPanel({ members, setMembers }) {
   const [selectedId, setSelectedId] = useState("");
   const selected = members.find((member) => member.id === selectedId);
-  return <div className="space-y-3"><div className="text-xs" style={{color:C.textDim}}>Nur der Sysadmin kann Familienprofile anderer Mitglieder ergänzen. Vorstand und weitere Verwaltungsrollen haben keinen Zugriff.</div><select value={selectedId} onChange={(e)=>setSelectedId(e.target.value)} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.white,border:`1px solid ${C.line}`}}><option value="">Mitglied auswählen …</option>{members.map((member)=><option key={member.id} value={member.id}>{member.name} · {member.team}</option>)}</select>{selected&&<><FamilyTree user={selected} members={members}/><FamilyLinkManager user={selected} members={members} setMembers={setMembers} adminMode /></>}</div>;
+  return <div className="space-y-3"><div className="text-xs" style={{color:C.textDim}}>Nur der Sysadmin kann Familienprofile anderer Mitglieder ergänzen. Vorstand und weitere Verwaltungsrollen haben keinen Zugriff.</div><select value={selectedId} onChange={(e)=>setSelectedId(e.target.value)} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.glass,border:`1px solid ${C.line}`}}><option value="">Mitglied auswählen …</option>{members.map((member)=><option key={member.id} value={member.id}>{member.name} · {member.team}</option>)}</select>{selected&&<><FamilyTree user={selected} members={members}/><FamilyLinkManager user={selected} members={members} setMembers={setMembers} adminMode /></>}</div>;
 }
 
 /* ------------------------------------------------------------------ */
@@ -2298,7 +2355,7 @@ function TrainerTeamSettings({ user, members, setMembers }) {
     setSaving(false);
   };
 
-  return <div className="rounded-2xl p-4 mb-5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+  return <div className="rounded-2xl p-4 mb-5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
     <div className="flex items-center gap-2 mb-1 text-sm font-bold" style={{ color: C.ink }}><Trophy size={15} style={{ color: C.amber }}/> Trainer-Einstellungen</div>
     <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Deine Trainer-Mannschaften werden vom Vereinsadmin oder Sys-Admin zugewiesen. Für diese Teams kannst du anschließend einen Athlet/in als Kapitän bestimmen.</div>
     {loading ? <div className="text-xs py-3" style={{ color: C.textDim }}>Mannschaften werden geladen …</div> : <>
@@ -2352,7 +2409,7 @@ function PlayerTeamSettings({ user, setMembers }) {
     };
     load();
   }, [user.id, user.clubId, databaseMembership]);
-  return <div className="rounded-2xl p-4 mb-5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+  return <div className="rounded-2xl p-4 mb-5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
     <div className="flex items-center gap-2 mb-1 text-sm font-bold" style={{ color: C.ink }}><Users size={15} style={{ color: C.green }}/> Meine Mannschaften</div>
     <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Deine Mannschaftszuordnung wird von Trainer, Teammanager oder Vereins-Admin verwaltet.</div>
     {loading ? <div className="text-xs py-3" style={{ color: C.textDim }}>Wird geladen …</div> : teams.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Du bist aktuell keiner Mannschaft zugeordnet.</div> : <div className="flex flex-wrap gap-2">{teams.map((team) => <span key={team.id} className="px-3 py-1.5 rounded-full text-xs font-bold" style={{ background: "#E7F3EC", color: C.green }}>{team.name}</span>)}</div>}
@@ -2573,16 +2630,16 @@ function TeamsView({ currentUser, members, setMembers, currentClub }) {
   };
   const TeamCard = ({ team }) => {
     const roster = rosterFor(team); const own = ownNames.includes(team.name);
-    return <button onClick={() => setSelectedTeamId(team.id)} className="w-full flex items-center gap-3 rounded-2xl px-3.5 py-3 text-left" style={{ background: C.white, border: own ? `1px solid ${C.green}` : `1px solid ${C.line}` }}><div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: own ? "#E7F3EC" : C.paperDim, color: own ? C.green : C.red }}><Users size={18}/></div><div className="flex-1 min-w-0"><div className="text-sm font-bold truncate" style={{ color: C.ink }}>{team.name}</div><div className="text-[11px]" style={{ color: C.textDim }}>{team.category || "Mannschaft"} · {roster.length} Athlet{roster.length === 1 ? "" : "/innen"}</div></div>{own && <span className="text-[9px] font-bold px-2 py-1 rounded-full" style={{ background: "#E7F3EC", color: C.green }}>MEIN TEAM</span>}<ChevronRight size={15} style={{ color: C.textDim }}/></button>;
+    return <button onClick={() => setSelectedTeamId(team.id)} className="w-full flex items-center gap-3 rounded-2xl px-3.5 py-3 text-left" style={{ background: C.glass, border: own ? `1px solid ${C.green}` : `1px solid ${C.line}` }}><div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: own ? "#E7F3EC" : C.paperDim, color: own ? C.green : C.red }}><Users size={18}/></div><div className="flex-1 min-w-0"><div className="text-sm font-bold truncate" style={{ color: C.ink }}>{team.name}</div><div className="text-[11px]" style={{ color: C.textDim }}>{team.category || "Mannschaft"} · {roster.length} Athlet{roster.length === 1 ? "" : "/innen"}</div></div>{own && <span className="text-[9px] font-bold px-2 py-1 rounded-full" style={{ background: "#E7F3EC", color: C.green }}>MEIN TEAM</span>}<ChevronRight size={15} style={{ color: C.textDim }}/></button>;
   };
 
   return <div className="px-4 pt-4 pb-24">
     <SectionTitle eyebrow="Verein" title="Teams" right={canCreate ? <button onClick={() => setShowCreate((value) => !value)} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showCreate ? "Schließen" : "+ Team"}</button> : null}/>
     <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>Alle Mannschaften von {currentClub?.shortName}. Öffne ein Team, um den Athletenkader anzusehen.</div>
-    {showCreate && <form onSubmit={createTeam} className="rounded-2xl p-4 mb-5" style={{ background: C.white, border: `1px solid ${C.line}` }}><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Neue Mannschaft anlegen</div><div className="text-[11px] mb-3" style={{ color: C.textDim }}>Danach können Athlet/innen das Team in ihrem Profil auswählen.</div><input value={name} onChange={(event) => setName(event.target.value)} maxLength={80} placeholder="Mannschaftsname, z. B. U17" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}/><input value={category} onChange={(event) => setCategory(event.target.value)} maxLength={80} placeholder="Kategorie, z. B. Jugend oder Herren" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}/><button type="button" onClick={() => setIsAdultTeam((v) => !v)} className="w-full flex items-center justify-between rounded-xl px-3 py-2.5 mb-2" style={{ background: isAdultTeam ? "#FDECEC" : C.paperDim, border: isAdultTeam ? `1px solid ${C.red}` : "1px solid transparent" }}><div className="text-left"><div className="text-xs font-bold" style={{ color: C.ink }}>Erwachsenenmannschaft?</div><div className="text-[10px]" style={{ color: C.textDim }}>Nur dann gibt es Strafenkatalog & Zuweisungen für dieses Team.</div></div><span className="w-10 h-6 rounded-full flex items-center px-0.5" style={{ background: isAdultTeam ? C.red : C.line, justifyContent: isAdultTeam ? "flex-end" : "flex-start" }}><span className="w-5 h-5 rounded-full" style={{ background: C.white }}/></span></button><button disabled={saving || !name.trim()} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: name.trim() ? C.red : C.line, color: C.white }}>{saving ? "Wird angelegt …" : "Mannschaft anlegen"}</button></form>}
+    {showCreate && <form onSubmit={createTeam} className="rounded-2xl p-4 mb-5" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Neue Mannschaft anlegen</div><div className="text-[11px] mb-3" style={{ color: C.textDim }}>Danach können Athlet/innen das Team in ihrem Profil auswählen.</div><input value={name} onChange={(event) => setName(event.target.value)} maxLength={80} placeholder="Mannschaftsname, z. B. U17" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}/><input value={category} onChange={(event) => setCategory(event.target.value)} maxLength={80} placeholder="Kategorie, z. B. Jugend oder Herren" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}/><button type="button" onClick={() => setIsAdultTeam((v) => !v)} className="w-full flex items-center justify-between rounded-xl px-3 py-2.5 mb-2" style={{ background: isAdultTeam ? "#FDECEC" : C.paperDim, border: isAdultTeam ? `1px solid ${C.red}` : "1px solid transparent" }}><div className="text-left"><div className="text-xs font-bold" style={{ color: C.ink }}>Erwachsenenmannschaft?</div><div className="text-[10px]" style={{ color: C.textDim }}>Nur dann gibt es Strafenkatalog & Zuweisungen für dieses Team.</div></div><span className="w-10 h-6 rounded-full flex items-center px-0.5" style={{ background: isAdultTeam ? C.red : C.line, justifyContent: isAdultTeam ? "flex-end" : "flex-start" }}><span className="w-5 h-5 rounded-full" style={{ background: C.glass }}/></span></button><button disabled={saving || !name.trim()} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: name.trim() ? C.red : C.line, color: C.white }}>{saving ? "Wird angelegt …" : "Mannschaft anlegen"}</button></form>}
     {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: (message.includes("angelegt")||message.includes("geändert")||message.includes("archiviert")) ? "#E7F3EC" : "#FDECEC", color: (message.includes("angelegt")||message.includes("geändert")||message.includes("archiviert")) ? C.green : C.red }}>{message}</div>}
-    {selectedTeam ? <div><button onClick={() => { setSelectedTeamId(""); setShowPlayerPicker(false); setEditingTeam(false); }} className="flex items-center gap-1 text-xs font-bold mb-3" style={{ color: C.red }}><ArrowLeft size={14}/> Alle Teams</button><div className="rounded-2xl p-4 mb-4" style={{ background: C.ink, color: C.white }}><div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: "#B7B6BC" }}>{selectedTeam.category || "Mannschaft"}</div><div className="text-xl font-bold" style={{ fontFamily: "Oswald" }}>{selectedTeam.name}</div><div className="text-xs mt-1" style={{ color: "#B7B6BC" }}>{rosterFor(selectedTeam).length} verknüpfte Athlet/innen</div></div>{canCreate && !editingTeam && <div className="flex gap-2 mb-4"><button onClick={() => openEditTeam(selectedTeam)} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>Bearbeiten</button><button onClick={archiveTeam} disabled={archivingTeam} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: "#FDECEC", color: C.red }}>{archivingTeam ? "…" : "Archivieren"}</button></div>}{canCreate && editingTeam && <div className="rounded-2xl p-3.5 mb-4" style={{ background: C.paperDim }}><input value={editName} onChange={(e) => setEditName(e.target.value)} maxLength={80} placeholder="Mannschaftsname" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.white }}/><input value={editCategory} onChange={(e) => setEditCategory(e.target.value)} maxLength={80} placeholder="Kategorie" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.white }}/><div className="flex gap-2"><button onClick={saveTeamEdit} disabled={savingTeamEdit} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{savingTeamEdit ? "…" : "Speichern"}</button><button onClick={() => setEditingTeam(false)} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.white, color: C.textDim }}>Abbrechen</button></div></div>}<SectionTitle eyebrow="Kader" title="Athlet/innen" right={canAssignPlayers ? <button onClick={() => setShowPlayerPicker((value) => !value)} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showPlayerPicker ? "Schließen" : "+ Zuweisen"}</button> : null}/>{showPlayerPicker && <div className="rounded-2xl p-3 mb-4" style={{ background: C.paperDim }}><div className="text-[11px] mb-2" style={{ color: C.textDim }}>Athlet/in auswählen und anschließend seine Mannschaften festlegen.</div>{!showNewPlayer ? <button type="button" onClick={() => setShowNewPlayer(true)} className="w-full flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 mb-2 text-[11px] font-bold" style={{ background: C.white, color: C.red, border: `1px dashed ${C.red}` }}><Plus size={13}/> Spieler ohne Account anlegen</button> : <div className="rounded-xl p-2.5 mb-2" style={{ background: C.white }}><div className="text-[10px] mb-1.5" style={{ color: C.textDim }}>Für Athlet/innen ohne eigenes Handy/Konto (z. B. Kindermannschaften). Vorname und Nachname reichen — die Verknüpfung mit einem Elternteil erfolgt separat in den Familienprofilen.</div><input value={newPlayerName} onChange={(e) => setNewPlayerName(e.target.value)} placeholder="Vor- und Nachname" className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2" style={{ background: C.paperDim }}/><div className="flex gap-2"><button type="button" onClick={() => { setShowNewPlayer(false); setNewPlayerName(""); }} className="flex-1 py-2 rounded-lg text-[11px] font-bold" style={{ background: C.paperDim, color: C.ink }}>Abbrechen</button><button type="button" disabled={creatingPlayer || !newPlayerName.trim()} onClick={createPlayerWithoutAccount} className="flex-1 py-2 rounded-lg text-[11px] font-bold" style={{ background: newPlayerName.trim() ? C.ink : C.line, color: C.white }}>{creatingPlayer ? "…" : "Anlegen"}</button></div></div>}<div className="space-y-1.5 max-h-56 overflow-y-auto">{players.map((player) => <button key={player.id} onClick={() => openPlayer(player)} className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-left" style={{ background: C.white }}><div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold" style={{ background: player.color, color: C.white }}>{initialsOf(player.name)}</div><div className="flex-1"><div className="text-xs font-bold" style={{ color: C.ink }}>{player.name}</div><div className="text-[9px]" style={{ color: C.textDim }}>{memberPlayerTeams(player).join(" · ") || "Noch ohne Mannschaft"}</div></div><ChevronRight size={13} style={{ color: C.textDim }}/></button>)}</div></div>}{rosterFor(selectedTeam).length ? <div className="space-y-2">{rosterFor(selectedTeam).map((player) => <button key={player.id} onClick={() => openPlayer(player)} className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left" style={{ background: C.white, border: `1px solid ${C.line}` }}><div className="w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: player.color, color: C.white }}>{initialsOf(player.name)}</div><div className="flex-1"><div className="text-xs font-bold" style={{ color: C.ink }}>{player.name}</div><div className="text-[10px]" style={{ color: C.textDim }}>{memberPlayerTeams(player).join(" · ")}</div></div><ChevronRight size={14} style={{ color: C.textDim }}/></button>)}</div> : <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>Dieser Mannschaft sind noch keine Athlet/innen zugeordnet.</div>}</div> : loading ? <div className="text-xs py-4" style={{ color: C.textDim }}>Mannschaften werden geladen …</div> : <><SectionTitle eyebrow="Persönlich" title="Meine Teams"/><div className="space-y-2 mb-6">{ownTeams.length ? ownTeams.map((team) => <TeamCard key={team.id} team={team}/>) : <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>Du bist noch keiner Mannschaft als Athlet/in zugeordnet. Athlet/innen können im Profil bis zu drei Teams auswählen.</div>}</div><SectionTitle eyebrow="Vereinsübersicht" title="Alle Mannschaften"/><div className="space-y-2">{teams.map((team) => <TeamCard key={team.id} team={team}/>)}{teams.length === 0 && <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>Noch keine Mannschaften angelegt.</div>}</div></>}
-    {selectedPlayer && <div className="absolute inset-0 z-50 flex items-end p-3" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setSelectedPlayerId("")}><div role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()} className="w-full rounded-3xl p-5 max-h-[82%] overflow-y-auto" style={{ background: C.white }}><div className="flex items-start justify-between mb-4"><div className="flex items-center gap-3"><div className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold" style={{ background: selectedPlayer.color, color: C.white }}>{initialsOf(selectedPlayer.name)}</div><div><div className="text-lg font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{selectedPlayer.name}</div><div className="text-xs" style={{ color: C.textDim }}>Athlet/in · dabei seit {selectedPlayer.since}</div></div></div><button onClick={() => setSelectedPlayerId("")} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><X size={15}/></button></div><div className="flex items-center justify-between mb-2"><div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.textDim }}>Mannschaften</div>{canAssignPlayers && <span className="text-[10px] font-bold" style={{ color: playerTeamIds.length === 3 ? C.red : C.textDim }}>{playerTeamIds.length}/3</span>}{canAssignPlayers && <button type="button" onClick={() => setTeamsOpen((v) => !v)} className="p-1"><ChevronRight size={14} style={{ color: C.textDim, transform: teamsOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .15s" }}/></button>}</div>{canAssignPlayers ? (teamsOpen && <div className="space-y-2">{teams.map((team) => { const active = playerTeamIds.includes(team.id); return <button key={team.id} onClick={() => togglePlayerTeam(team.id)} className="w-full flex items-center justify-between rounded-xl px-3 py-2.5 text-left" style={{ background: active ? "#E7F3EC" : C.paperDim, border: active ? `1px solid ${C.green}` : "1px solid transparent" }}><div><div className="text-xs font-bold" style={{ color: C.ink }}>{team.name}</div><div className="text-[9px]" style={{ color: C.textDim }}>{team.category || "Mannschaft"}</div></div><span className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: active ? C.green : C.white, color: C.white }}>{active && <Check size={13}/>}</span></button>; })}<button onClick={savePlayerTeams} disabled={savingPlayer || JSON.stringify([...playerTeamIds].sort()) === JSON.stringify([...savedPlayerTeamIds].sort())} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: JSON.stringify([...playerTeamIds].sort()) !== JSON.stringify([...savedPlayerTeamIds].sort()) ? C.ink : C.paperDim, color: JSON.stringify([...playerTeamIds].sort()) !== JSON.stringify([...savedPlayerTeamIds].sort()) ? C.white : C.textDim, opacity: savingPlayer ? .6 : 1 }}>{savingPlayer ? "Wird gespeichert …" : "Zuordnung speichern"}</button>{playerMessage && <div role="status" className="text-[11px]" style={{ color: playerMessage.includes("gespeichert") ? C.green : C.red }}>{playerMessage}</div>}</div>) : <div className="flex flex-wrap gap-2">{memberPlayerTeams(selectedPlayer).length ? memberPlayerTeams(selectedPlayer).map((team) => <span key={team} className="px-3 py-1.5 rounded-full text-xs font-bold" style={{ background: "#E7F3EC", color: C.green }}>{team}</span>) : <span className="text-xs" style={{ color: C.textDim }}>Noch keiner Mannschaft zugeordnet.</span>}</div>}{canManagePenalties && (<div className="mt-4 pt-4" style={{ borderTop: `1px solid ${C.line}` }}><button type="button" onClick={() => setPenaltyOpen((v) => !v)} className="w-full flex items-center justify-between mb-2"><div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.textDim }}>Strafenverwaltung</div><ChevronRight size={14} style={{ color: C.textDim, transform: penaltyOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .15s" }}/></button>{penaltyOpen && (<><div className="flex gap-2 mb-3"><select value={assignRuleId} onChange={(e) => setAssignRuleId(e.target.value)} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}><option value="">Strafe wählen …</option>{penaltyRules.map((r) => <option key={r.id} value={r.id}>{r.title} ({r.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €)</option>)}</select><button onClick={assignPenaltyToPlayer} disabled={assigningPenalty || !assignRuleId} className="px-4 rounded-xl text-xs font-bold" style={{ background: assignRuleId ? C.ink : C.line, color: C.white }}>{assigningPenalty ? "…" : "Zuweisen"}</button></div>{penaltyMessage && <div role="status" className="text-[11px] mb-2" style={{ color: penaltyMessage.includes("zugewiesen") ? C.green : C.red }}>{penaltyMessage}</div>}<div className="text-[10px] uppercase tracking-widest font-bold mb-1.5" style={{ color: C.textDim }}>Bisherige Strafen</div><div className="space-y-1.5">{playerPenalties.map((p) => <div key={p.id} className="flex items-center justify-between px-3 py-2 rounded-xl" style={{ background: C.paperDim }}><span className="text-xs font-bold" style={{ color: C.ink }}>{p.title}</span><span className="text-xs font-bold" style={{ color: C.red, fontFamily: "JetBrains Mono" }}>{p.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span><button type="button" onClick={() => togglePlayerPenaltyPaid(p)} className="px-2 py-1 rounded-lg text-[9px] font-bold flex-shrink-0" style={{ background: p.paidAt ? "#E7F3EC" : C.white, color: p.paidAt ? C.green : C.textDim }}>{p.paidAt ? "Bezahlt" : "Offen"}</button><button type="button" onClick={() => removePlayerPenalty(p)} aria-label="Strafe entfernen" className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.white, color: C.red }}><X size={12}/></button></div>)}{playerPenalties.length === 0 && <div className="text-[11px]" style={{ color: C.textDim }}>Noch keine Strafen vergeben.</div>}</div></>)}</div>)}</div></div>}
+    {selectedTeam ? <div><button onClick={() => { setSelectedTeamId(""); setShowPlayerPicker(false); setEditingTeam(false); }} className="flex items-center gap-1 text-xs font-bold mb-3" style={{ color: C.red }}><ArrowLeft size={14}/> Alle Teams</button><div className="rounded-2xl p-4 mb-4" style={{ background: C.ink, color: C.white }}><div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: "#B7B6BC" }}>{selectedTeam.category || "Mannschaft"}</div><div className="text-xl font-bold" style={{ fontFamily: "Oswald" }}>{selectedTeam.name}</div><div className="text-xs mt-1" style={{ color: "#B7B6BC" }}>{rosterFor(selectedTeam).length} verknüpfte Athlet/innen</div></div>{canCreate && !editingTeam && <div className="flex gap-2 mb-4"><button onClick={() => openEditTeam(selectedTeam)} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>Bearbeiten</button><button onClick={archiveTeam} disabled={archivingTeam} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: "#FDECEC", color: C.red }}>{archivingTeam ? "…" : "Archivieren"}</button></div>}{canCreate && editingTeam && <div className="rounded-2xl p-3.5 mb-4" style={{ background: C.paperDim }}><input value={editName} onChange={(e) => setEditName(e.target.value)} maxLength={80} placeholder="Mannschaftsname" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.glass }}/><input value={editCategory} onChange={(e) => setEditCategory(e.target.value)} maxLength={80} placeholder="Kategorie" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.glass }}/><div className="flex gap-2"><button onClick={saveTeamEdit} disabled={savingTeamEdit} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{savingTeamEdit ? "…" : "Speichern"}</button><button onClick={() => setEditingTeam(false)} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>Abbrechen</button></div></div>}<SectionTitle eyebrow="Kader" title="Athlet/innen" right={canAssignPlayers ? <button onClick={() => setShowPlayerPicker((value) => !value)} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showPlayerPicker ? "Schließen" : "+ Zuweisen"}</button> : null}/>{showPlayerPicker && <div className="rounded-2xl p-3 mb-4" style={{ background: C.paperDim }}><div className="text-[11px] mb-2" style={{ color: C.textDim }}>Athlet/in auswählen und anschließend seine Mannschaften festlegen.</div>{!showNewPlayer ? <button type="button" onClick={() => setShowNewPlayer(true)} className="w-full flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 mb-2 text-[11px] font-bold" style={{ background: C.glass, color: C.red, border: `1px dashed ${C.red}` }}><Plus size={13}/> Spieler ohne Account anlegen</button> : <div className="rounded-xl p-2.5 mb-2" style={{ background: C.glass }}><div className="text-[10px] mb-1.5" style={{ color: C.textDim }}>Für Athlet/innen ohne eigenes Handy/Konto (z. B. Kindermannschaften). Vorname und Nachname reichen — die Verknüpfung mit einem Elternteil erfolgt separat in den Familienprofilen.</div><input value={newPlayerName} onChange={(e) => setNewPlayerName(e.target.value)} placeholder="Vor- und Nachname" className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2" style={{ background: C.paperDim }}/><div className="flex gap-2"><button type="button" onClick={() => { setShowNewPlayer(false); setNewPlayerName(""); }} className="flex-1 py-2 rounded-lg text-[11px] font-bold" style={{ background: C.paperDim, color: C.ink }}>Abbrechen</button><button type="button" disabled={creatingPlayer || !newPlayerName.trim()} onClick={createPlayerWithoutAccount} className="flex-1 py-2 rounded-lg text-[11px] font-bold" style={{ background: newPlayerName.trim() ? C.ink : C.line, color: C.white }}>{creatingPlayer ? "…" : "Anlegen"}</button></div></div>}<div className="space-y-1.5 max-h-56 overflow-y-auto">{players.map((player) => <button key={player.id} onClick={() => openPlayer(player)} className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-left" style={{ background: C.glass }}><div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold" style={{ background: player.color, color: C.white }}>{initialsOf(player.name)}</div><div className="flex-1"><div className="text-xs font-bold" style={{ color: C.ink }}>{player.name}</div><div className="text-[9px]" style={{ color: C.textDim }}>{memberPlayerTeams(player).join(" · ") || "Noch ohne Mannschaft"}</div></div><ChevronRight size={13} style={{ color: C.textDim }}/></button>)}</div></div>}{rosterFor(selectedTeam).length ? <div className="space-y-2">{rosterFor(selectedTeam).map((player) => <button key={player.id} onClick={() => openPlayer(player)} className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: player.color, color: C.white }}>{initialsOf(player.name)}</div><div className="flex-1"><div className="text-xs font-bold" style={{ color: C.ink }}>{player.name}</div><div className="text-[10px]" style={{ color: C.textDim }}>{memberPlayerTeams(player).join(" · ")}</div></div><ChevronRight size={14} style={{ color: C.textDim }}/></button>)}</div> : <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>Dieser Mannschaft sind noch keine Athlet/innen zugeordnet.</div>}</div> : loading ? <div className="text-xs py-4" style={{ color: C.textDim }}>Mannschaften werden geladen …</div> : <><SectionTitle eyebrow="Persönlich" title="Meine Teams"/><div className="space-y-2 mb-6">{ownTeams.length ? ownTeams.map((team) => <TeamCard key={team.id} team={team}/>) : <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>Du bist noch keiner Mannschaft als Athlet/in zugeordnet. Athlet/innen können im Profil bis zu drei Teams auswählen.</div>}</div><SectionTitle eyebrow="Vereinsübersicht" title="Alle Mannschaften"/><div className="space-y-2">{teams.map((team) => <TeamCard key={team.id} team={team}/>)}{teams.length === 0 && <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>Noch keine Mannschaften angelegt.</div>}</div></>}
+    {selectedPlayer && <div className="absolute inset-0 z-50 flex items-end p-3" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setSelectedPlayerId("")}><div role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()} className="w-full rounded-3xl p-5 max-h-[82%] overflow-y-auto" style={{ background: C.glass }}><div className="flex items-start justify-between mb-4"><div className="flex items-center gap-3"><div className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold" style={{ background: selectedPlayer.color, color: C.white }}>{initialsOf(selectedPlayer.name)}</div><div><div className="text-lg font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{selectedPlayer.name}</div><div className="text-xs" style={{ color: C.textDim }}>Athlet/in · dabei seit {selectedPlayer.since}</div></div></div><button onClick={() => setSelectedPlayerId("")} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><X size={15}/></button></div><div className="flex items-center justify-between mb-2"><div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.textDim }}>Mannschaften</div>{canAssignPlayers && <span className="text-[10px] font-bold" style={{ color: playerTeamIds.length === 3 ? C.red : C.textDim }}>{playerTeamIds.length}/3</span>}{canAssignPlayers && <button type="button" onClick={() => setTeamsOpen((v) => !v)} className="p-1"><ChevronRight size={14} style={{ color: C.textDim, transform: teamsOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .15s" }}/></button>}</div>{canAssignPlayers ? (teamsOpen && <div className="space-y-2">{teams.map((team) => { const active = playerTeamIds.includes(team.id); return <button key={team.id} onClick={() => togglePlayerTeam(team.id)} className="w-full flex items-center justify-between rounded-xl px-3 py-2.5 text-left" style={{ background: active ? "#E7F3EC" : C.paperDim, border: active ? `1px solid ${C.green}` : "1px solid transparent" }}><div><div className="text-xs font-bold" style={{ color: C.ink }}>{team.name}</div><div className="text-[9px]" style={{ color: C.textDim }}>{team.category || "Mannschaft"}</div></div><span className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: active ? C.green : C.white, color: C.white }}>{active && <Check size={13}/>}</span></button>; })}<button onClick={savePlayerTeams} disabled={savingPlayer || JSON.stringify([...playerTeamIds].sort()) === JSON.stringify([...savedPlayerTeamIds].sort())} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: JSON.stringify([...playerTeamIds].sort()) !== JSON.stringify([...savedPlayerTeamIds].sort()) ? C.ink : C.paperDim, color: JSON.stringify([...playerTeamIds].sort()) !== JSON.stringify([...savedPlayerTeamIds].sort()) ? C.white : C.textDim, opacity: savingPlayer ? .6 : 1 }}>{savingPlayer ? "Wird gespeichert …" : "Zuordnung speichern"}</button>{playerMessage && <div role="status" className="text-[11px]" style={{ color: playerMessage.includes("gespeichert") ? C.green : C.red }}>{playerMessage}</div>}</div>) : <div className="flex flex-wrap gap-2">{memberPlayerTeams(selectedPlayer).length ? memberPlayerTeams(selectedPlayer).map((team) => <span key={team} className="px-3 py-1.5 rounded-full text-xs font-bold" style={{ background: "#E7F3EC", color: C.green }}>{team}</span>) : <span className="text-xs" style={{ color: C.textDim }}>Noch keiner Mannschaft zugeordnet.</span>}</div>}{canManagePenalties && (<div className="mt-4 pt-4" style={{ borderTop: `1px solid ${C.line}` }}><button type="button" onClick={() => setPenaltyOpen((v) => !v)} className="w-full flex items-center justify-between mb-2"><div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.textDim }}>Strafenverwaltung</div><ChevronRight size={14} style={{ color: C.textDim, transform: penaltyOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .15s" }}/></button>{penaltyOpen && (<><div className="flex gap-2 mb-3"><select value={assignRuleId} onChange={(e) => setAssignRuleId(e.target.value)} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}><option value="">Strafe wählen …</option>{penaltyRules.map((r) => <option key={r.id} value={r.id}>{r.title} ({r.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €)</option>)}</select><button onClick={assignPenaltyToPlayer} disabled={assigningPenalty || !assignRuleId} className="px-4 rounded-xl text-xs font-bold" style={{ background: assignRuleId ? C.ink : C.line, color: C.white }}>{assigningPenalty ? "…" : "Zuweisen"}</button></div>{penaltyMessage && <div role="status" className="text-[11px] mb-2" style={{ color: penaltyMessage.includes("zugewiesen") ? C.green : C.red }}>{penaltyMessage}</div>}<div className="text-[10px] uppercase tracking-widest font-bold mb-1.5" style={{ color: C.textDim }}>Bisherige Strafen</div><div className="space-y-1.5">{playerPenalties.map((p) => <div key={p.id} className="flex items-center justify-between px-3 py-2 rounded-xl" style={{ background: C.paperDim }}><span className="text-xs font-bold" style={{ color: C.ink }}>{p.title}</span><span className="text-xs font-bold" style={{ color: C.red, fontFamily: "JetBrains Mono" }}>{p.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span><button type="button" onClick={() => togglePlayerPenaltyPaid(p)} className="px-2 py-1 rounded-lg text-[9px] font-bold flex-shrink-0" style={{ background: p.paidAt ? "#E7F3EC" : C.white, color: p.paidAt ? C.green : C.textDim }}>{p.paidAt ? "Bezahlt" : "Offen"}</button><button type="button" onClick={() => removePlayerPenalty(p)} aria-label="Strafe entfernen" className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.glass, color: C.red }}><X size={12}/></button></div>)}{playerPenalties.length === 0 && <div className="text-[11px]" style={{ color: C.textDim }}>Noch keine Strafen vergeben.</div>}</div></>)}</div>)}</div></div>}
   </div>;
 }
 
@@ -2829,14 +2886,14 @@ function TeamPenaltyCatalog({ user }) {
   const filteredAssignments = filterRuleId ? assignments.filter((a) => a.ruleId === filterRuleId) : assignments;
   const totalsByPlayer = filteredAssignments.reduce((acc, a) => { acc[a.playerName] = (acc[a.playerName] || 0) + a.amount; return acc; }, {});
   const historyBySeasons = historyAssignments.reduce((acc, a) => { (acc[a.season] = acc[a.season] || []).push(a); return acc; }, {});
-  return <div className="rounded-2xl p-4 mb-5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+  return <div className="rounded-2xl p-4 mb-5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
     <div className="flex items-center gap-2 mb-1 text-sm font-bold" style={{ color: C.ink }}><ClipboardList size={16} style={{ color: C.red }}/> Strafenkatalog</div>
     <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Regeln und Kosten werden für jede Mannschaft getrennt geführt.</div>
     {loading ? <div className="text-xs py-3" style={{ color: C.textDim }}>Mannschaften werden geladen …</div> : teams.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Der Strafenkatalog ist nur für Erwachsenenmannschaften verfügbar. Dir ist aktuell keine Erwachsenenmannschaft als Athlet/in, Kapitän/in, Trainer/in oder Teammanager/in zugeordnet.</div> : <>
       <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>MANNSCHAFT</div>
       <select value={selectedTeamId} onChange={(event) => { setSelectedTeamId(event.target.value); setMessage(""); setShowHistory(false); }} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-3" style={{ background: C.paperDim, color: C.ink }}>{teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select>
       <div className="space-y-2 mb-3">
-        {rules.map((rule) => <div key={rule.id} className="flex items-center gap-2 px-3 py-2.5 rounded-xl" style={{ background: C.paperDim }}><div className="flex-1 min-w-0"><div className="text-xs font-bold truncate" style={{ color: C.ink }}>{rule.title}</div></div><div className="text-xs font-bold whitespace-nowrap" style={{ color: C.red, fontFamily: "JetBrains Mono" }}>{rule.amount.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</div>{canManageSelectedTeam && <><button type="button" disabled={saving} onClick={() => editRule(rule)} className="px-2 py-1.5 rounded-lg text-[10px] font-bold" style={{ background: C.white, color: C.ink }}>Ändern</button><button type="button" disabled={saving} onClick={() => removeRule(rule)} aria-label={`${rule.title} löschen`} className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: C.white, color: C.red }}><X size={14}/></button></>}</div>)}
+        {rules.map((rule) => <div key={rule.id} className="flex items-center gap-2 px-3 py-2.5 rounded-xl" style={{ background: C.paperDim }}><div className="flex-1 min-w-0"><div className="text-xs font-bold truncate" style={{ color: C.ink }}>{rule.title}</div></div><div className="text-xs font-bold whitespace-nowrap" style={{ color: C.red, fontFamily: "JetBrains Mono" }}>{rule.amount.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</div>{canManageSelectedTeam && <><button type="button" disabled={saving} onClick={() => editRule(rule)} className="px-2 py-1.5 rounded-lg text-[10px] font-bold" style={{ background: C.glass, color: C.ink }}>Ändern</button><button type="button" disabled={saving} onClick={() => removeRule(rule)} aria-label={`${rule.title} löschen`} className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: C.glass, color: C.red }}><X size={14}/></button></>}</div>)}
         {rules.length === 0 && <div className="text-[11px] rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Für diese Mannschaft sind noch keine Regeln hinterlegt.</div>}
       </div>
       {canManageSelectedTeam && <form onSubmit={addRule} className="pt-3" style={{ borderTop: `1px solid ${C.line}` }}><div className="flex items-center justify-between mb-2"><div className="text-[10px] font-bold" style={{ color: C.textDim }}>{editingId ? "REGEL BEARBEITEN" : "NEUE REGEL"}</div>{editingId && <button type="button" onClick={() => { setEditingId(""); setTitle(""); setAmount(""); }} className="text-[10px] font-bold" style={{ color: C.red }}>Abbrechen</button>}</div><input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={120} placeholder="Titel, z. B. Zuspätkommen" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim, color: C.ink }}/><div className="flex gap-2"><div className="relative flex-1"><input value={amount} onChange={(event) => setAmount(event.target.value)} inputMode="decimal" placeholder="Kosten" className="w-full px-3 pr-8 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}/><span className="absolute right-3 top-2.5 text-xs" style={{ color: C.textDim }}>€</span></div><button type="submit" disabled={saving || !title.trim() || !amount.trim()} className="px-4 rounded-xl text-xs font-bold" style={{ background: title.trim() && amount.trim() ? C.ink : C.line, color: C.white }}>{saving ? "…" : editingId ? "Speichern" : "Hinzufügen"}</button></div></form>}
@@ -2877,10 +2934,10 @@ function TeamPenaltyCatalog({ user }) {
                 </div>
                 <div className="text-xs font-bold whitespace-nowrap" style={{ color: C.red, fontFamily: "JetBrains Mono" }}>{a.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</div>
                 <button type="button" onClick={() => toggleAssignmentPaid(a)} className="px-2 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: a.paidAt ? "#E7F3EC" : C.white, color: a.paidAt ? C.green : C.textDim }}>{a.paidAt ? "Bezahlt" : "Offen"}</button>
-                <button type="button" onClick={() => removeAssignment(a)} aria-label={`Strafe bei ${a.playerName} entfernen`} className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.white, color: C.red }}><X size={14}/></button>
+                <button type="button" onClick={() => removeAssignment(a)} aria-label={`Strafe bei ${a.playerName} entfernen`} className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.glass, color: C.red }}><X size={14}/></button>
               </div>
             ))}
-            {filteredAssignments.length === 0 && <div className="text-[11px] rounded-xl p-3" style={{ background: C.white, color: C.textDim }}>Noch keine Strafen vergeben.</div>}
+            {filteredAssignments.length === 0 && <div className="text-[11px] rounded-xl p-3" style={{ background: C.glass, color: C.textDim }}>Noch keine Strafen vergeben.</div>}
           </div>
           {databaseMembership && <button type="button" onClick={() => setShowHistory((v) => !v)} className="text-[11px] font-bold mb-2" style={{ color: C.ink }}>{showHistory ? "Historie ausblenden" : "Saison-Historie anzeigen"}</button>}
           {showHistory && (
@@ -2889,7 +2946,7 @@ function TeamPenaltyCatalog({ user }) {
                 <div key={season} className="mb-3 last:mb-0">
                   <div className="text-[10px] font-bold mb-1.5" style={{ color: C.ink }}>Saison {season} · {items.reduce((sum, i) => sum + i.amount, 0).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</div>
                   <div className="space-y-1">
-                    {items.map((i) => <div key={i.id} className="flex items-center justify-between text-[11px] px-2 py-1.5 rounded-lg" style={{ background: C.white }}><span style={{ color: C.ink }}>{i.playerName} · {i.ruleTitle}</span><span className="font-bold" style={{ color: C.red, fontFamily: "JetBrains Mono" }}>{i.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></div>)}
+                    {items.map((i) => <div key={i.id} className="flex items-center justify-between text-[11px] px-2 py-1.5 rounded-lg" style={{ background: C.glass }}><span style={{ color: C.ink }}>{i.playerName} · {i.ruleTitle}</span><span className="font-bold" style={{ color: C.red, fontFamily: "JetBrains Mono" }}>{i.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span></div>)}
                   </div>
                 </div>
               ))}
@@ -2914,15 +2971,15 @@ function TeamPenaltyCatalog({ user }) {
 function TaskCreateForm({ form, setForm, onSubmit, onCancel, editing = false }) {
   return (
     <div className="rounded-2xl p-3.5 mb-3" style={{ background: C.paperDim }}>
-      <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} maxLength={120} placeholder="Titel, z. B. Kuchen backen" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.white, color: C.ink }}/>
-      <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} maxLength={300} placeholder="Beschreibung (optional)" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.white, color: C.ink }}/>
+      <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} maxLength={120} placeholder="Titel, z. B. Kuchen backen" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.glass, color: C.ink }}/>
+      <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} maxLength={300} placeholder="Beschreibung (optional)" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.glass, color: C.ink }}/>
       <div className="flex gap-2 mb-2">
-        <input type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.white, color: C.ink }}/>
-        <input type="number" min="1" value={form.slots} onChange={(e) => setForm({ ...form, slots: e.target.value })} placeholder="Personen" className="w-24 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.white, color: C.ink }}/>
+        <input type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.glass, color: C.ink }}/>
+        <input type="number" min="1" value={form.slots} onChange={(e) => setForm({ ...form, slots: e.target.value })} placeholder="Personen" className="w-24 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.glass, color: C.ink }}/>
       </div>
       <div className="flex gap-2">
         <button onClick={onSubmit} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{editing ? "Änderungen speichern" : "Anlegen"}</button>
-        <button onClick={onCancel} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.white, color: C.textDim }}>Abbrechen</button>
+        <button onClick={onCancel} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>Abbrechen</button>
       </div>
     </div>
   );
@@ -3029,7 +3086,7 @@ function TasksView({ currentUser, members }) {
     const isSignedUp = task.signups.some((s) => s.membershipId === currentUser.id);
     const isCreator = task.createdBy === currentUser.id;
     return (
-      <div className="rounded-2xl p-3.5 mb-2" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+      <div className="rounded-2xl p-3.5 mb-2" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
         <div className="flex items-start justify-between gap-2 mb-1">
           <div className="text-sm font-bold" style={{ color: C.ink }}>{task.title}</div>
           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={{ background: free > 0 ? "#E7F3EC" : "#FDECEC", color: free > 0 ? C.green : C.red }}>{free > 0 ? `${free}/${task.slots} frei` : "voll"}</span>
@@ -3243,7 +3300,7 @@ function VehiclesView({ currentUser, currentClub }) {
       <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>{cfg.vehicleIntro} Buchen können Vorstand, Vereinsadmin, Trainer, Teammanager, Kapitäne, Finanzmanager und Geschäftsführung.</div>
       {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: "#FDECEC", color: C.red }}>{message}</div>}
       {showAddVehicle && (
-        <div className="rounded-2xl p-4 mb-4" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+        <div className="rounded-2xl p-4 mb-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
           <div className="text-sm font-bold mb-2">{editingVehicleId ? "Fahrzeug bearbeiten" : "Neues Fahrzeug"}</div>
           <input value={newVehicle.label} onChange={(e) => setNewVehicle({ ...newVehicle, label: e.target.value })} placeholder="Bezeichnung, z. B. Vereinsbus" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}/>
           <input value={newVehicle.plate} onChange={(e) => setNewVehicle({ ...newVehicle, plate: e.target.value })} placeholder="Kennzeichen" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}/>
@@ -3256,7 +3313,7 @@ function VehiclesView({ currentUser, currentClub }) {
       )}
       <div className="space-y-2 mb-5">
         {vehicles.map((v) => (
-          <div key={v.id} className="flex items-center gap-3 rounded-2xl px-3.5 py-3" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+          <div key={v.id} className="flex items-center gap-3 rounded-2xl px-3.5 py-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
             <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: C.paperDim, color: C.red }}><Car size={18}/></div>
             <button onClick={() => { if (!canBook) return; if (!hasPhone) { setMessage("Bitte hinterlege zuerst eine Telefonnummer in deinem Profil (Profil → Kontaktdaten), um ein Fahrzeug zu buchen."); return; } openBooking(v); }} disabled={!canBook} className="flex-1 text-left">
               <div className="text-sm font-bold" style={{ color: C.ink }}>{v.label}</div>
@@ -3275,7 +3332,7 @@ function VehiclesView({ currentUser, currentClub }) {
         <button onClick={() => setMonthDate((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1))} aria-label="Nächster Monat" className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><ArrowLeft size={14} style={{ transform: "rotate(180deg)" }}/></button>
       </div>
       {loading ? <div className="text-xs py-4 text-center" style={{ color: C.textDim }}>Kalender wird geladen …</div> : (
-        <div className="rounded-2xl p-2 mb-4" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+        <div className="rounded-2xl p-2 mb-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
           <div className="grid grid-cols-7 gap-1 mb-1">
             {["Mo","Di","Mi","Do","Fr","Sa","So"].map((d) => <div key={d} className="text-center text-[9px] font-bold py-1" style={{ color: C.textDim }}>{d}</div>)}
           </div>
@@ -3298,7 +3355,7 @@ function VehiclesView({ currentUser, currentClub }) {
       <SectionTitle eyebrow="Übersicht" title="Buchungen diesen Monat"/>
       <div className="space-y-2">
         {bookings.map((b) => (
-          <div key={b.id} className="flex items-center gap-3 rounded-xl px-3 py-2.5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+          <div key={b.id} className="flex items-center gap-3 rounded-xl px-3 py-2.5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
             <button onClick={() => openBookingDetail(b)} className="flex-1 min-w-0 text-left">
               <div className="text-xs font-bold truncate" style={{ color: C.ink }}>{b.vehicleLabel} · {b.label}</div>
               <div className="text-[10px] truncate" style={{ color: C.textDim }}>{b.bookedBy} · {b.startsAt.toLocaleDateString("de-DE")} {String(b.startsAt.getHours()).padStart(2,"0")}:00 – {b.endsAt.toLocaleDateString("de-DE")} {String(b.endsAt.getHours()).padStart(2,"0")}:00</div>
@@ -3315,7 +3372,7 @@ function VehiclesView({ currentUser, currentClub }) {
       </div>
       {selectedVehicle && (
         <div className="fixed inset-0 z-50 flex items-end p-3" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => { setSelectedVehicle(null); setEditingBookingId(null); }}>
-          <div role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} className="w-full rounded-3xl p-5 max-h-[85%] overflow-y-auto" style={{ background: C.white }}>
+          <div role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} className="w-full rounded-3xl p-5 max-h-[85%] overflow-y-auto" style={{ background: C.glass }}>
             <div className="flex items-center justify-between mb-4">
               <div className="text-lg font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{selectedVehicle.label} {editingBookingId ? "bearbeiten" : "buchen"}</div>
               <button onClick={() => { setSelectedVehicle(null); setEditingBookingId(null); }} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><X size={15}/></button>
@@ -3345,7 +3402,7 @@ function VehiclesView({ currentUser, currentClub }) {
       )}
       {viewingBooking && (
         <div className="fixed inset-0 z-50 flex items-end p-3" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setViewingBooking(null)}>
-          <div role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} className="w-full rounded-3xl p-5 max-h-[85%] overflow-y-auto" style={{ background: C.white }}>
+          <div role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} className="w-full rounded-3xl p-5 max-h-[85%] overflow-y-auto" style={{ background: C.glass }}>
             <div className="flex items-center justify-between mb-4">
               <div className="text-lg font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{viewingBooking.vehicleLabel}</div>
               <button onClick={() => setViewingBooking(null)} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><X size={15}/></button>
@@ -3364,7 +3421,7 @@ function VehiclesView({ currentUser, currentClub }) {
                       <a href={`tel:${phone.replace(/\s+/g, "")}`} className="flex-1 flex items-center gap-2 text-sm font-bold" style={{ color: C.red }}>
                         <Phone size={14}/> {phone}
                       </a>
-                      <button onClick={() => copyPhone(phone)} aria-label="Telefonnummer kopieren" className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.white, color: copiedPhone === phone ? C.green : C.textDim }}>
+                      <button onClick={() => copyPhone(phone)} aria-label="Telefonnummer kopieren" className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.glass, color: copiedPhone === phone ? C.green : C.textDim }}>
                         {copiedPhone === phone ? <Check size={13}/> : <Copy size={13}/>}
                       </button>
                     </div>
@@ -3480,16 +3537,16 @@ function DutyTasksSection({ ev, currentUser, sport }) {
               </div>
               {canManage && (
                 <div className="flex gap-1.5">
-                  <select value={task.assigneeId || ""} onChange={(e) => assignTask(task.id, e.target.value)} className="flex-1 px-2 py-1.5 rounded-lg text-[11px] outline-none" style={{ background: C.white, color: C.ink }}>
+                  <select value={task.assigneeId || ""} onChange={(e) => assignTask(task.id, e.target.value)} className="flex-1 px-2 py-1.5 rounded-lg text-[11px] outline-none" style={{ background: C.glass, color: C.ink }}>
                     <option value="">Nicht zugewiesen</option>
                     {duMembers.map((m) => <option key={m.id} value={m.id}>{m.display_name}</option>)}
                   </select>
-                  <input type="date" value={task.dueDate || ""} onChange={(e) => setDueDate(task.id, e.target.value)} className="px-2 py-1.5 rounded-lg text-[11px] outline-none" style={{ background: C.white, color: C.ink }}/>
+                  <input type="date" value={task.dueDate || ""} onChange={(e) => setDueDate(task.id, e.target.value)} className="px-2 py-1.5 rounded-lg text-[11px] outline-none" style={{ background: C.glass, color: C.ink }}/>
                   <button onClick={() => toggleDone(task)} className="px-2 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: task.done ? "#E7F3EC" : C.white, color: task.done ? C.green : C.textDim }}>{task.done ? "Erledigt" : "Erledigt?"}</button>
                 </div>
               )}
               {!canManage && !task.assigneeId && <button onClick={() => claimTask(task.id)} className="w-full py-1.5 rounded-lg text-[11px] font-bold" style={{ background: C.ink, color: C.white }}>Ich übernehme das</button>}
-              {!canManage && task.assigneeId === currentUser.id && <button onClick={() => claimTask(task.id)} className="w-full py-1.5 rounded-lg text-[11px] font-bold" style={{ background: C.white, color: C.red }}>Zurückziehen</button>}
+              {!canManage && task.assigneeId === currentUser.id && <button onClick={() => claimTask(task.id)} className="w-full py-1.5 rounded-lg text-[11px] font-bold" style={{ background: C.glass, color: C.red }}>Zurückziehen</button>}
             </div>
           ))}
         </div>
@@ -3558,7 +3615,7 @@ function DutyTemplatesPanel({ currentUser, sport }) {
       {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: messageOk ? "#E7F3EC" : "#FDECEC", color: messageOk ? C.green : C.red }}>{message}</div>}
       <div className="rounded-2xl p-3.5 mb-4" style={{ background: C.paperDim }}>
         <div className="flex gap-2">
-          <input value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={80} placeholder={`Name, z. B. Standard ${cfg.homeEventLabel}tag`} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.white, color: C.ink }}/>
+          <input value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={80} placeholder={`Name, z. B. Standard ${cfg.homeEventLabel}tag`} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.glass, color: C.ink }}/>
           <button onClick={createTemplate} disabled={!newName.trim()} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: newName.trim() ? C.ink : C.line, color: C.white }}>Anlegen</button>
         </div>
       </div>
@@ -3567,7 +3624,7 @@ function DutyTemplatesPanel({ currentUser, sport }) {
       ) : templates.map((t) => {
         const open = expandedId === t.id;
         return (
-          <div key={t.id} className="rounded-2xl mb-2.5 overflow-hidden" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+          <div key={t.id} className="rounded-2xl mb-2.5 overflow-hidden" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
             <button className="w-full text-left p-3.5 flex items-center justify-between" onClick={() => setExpandedId(open ? null : t.id)}>
               <div>
                 <div className="text-sm font-bold" style={{ color: C.ink }}>{t.name}</div>
@@ -3608,7 +3665,7 @@ function PlayerDataCard({ user, setMembers }) {
   const cancel = () => { setNumber(user.number ?? ""); setEditing(false); };
 
   return (
-    <div className="rounded-2xl p-4 mb-5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+    <div className="rounded-2xl p-4 mb-5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2 text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}><Star size={15} style={{ color: C.green }} /> Athletendaten</div>
         {!editing && (
@@ -3691,7 +3748,7 @@ function SubscriptionRecord({ subscription, accountLabel, onCancel, cancelling }
   const canCancel = !!onCancel && !subscription.cancel_at_period_end && !["cancelled", "expired", "refunded"].includes(subscription.status);
   const interval = plan?.interval === "year" ? "Jährlich" : "Monatlich";
   const amount = typeof plan?.price_cents === "number" ? new Intl.NumberFormat("de-DE", { style: "currency", currency: plan.currency || "EUR" }).format(plan.price_cents / 100) : "—";
-  return <div className="rounded-2xl p-3.5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+  return <div className="rounded-2xl p-3.5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
     <div className="flex items-start justify-between gap-2 mb-3">
       <div><div className="text-[9px] uppercase tracking-widest font-bold" style={{ color: C.red }}>{accountLabel}</div><div className="text-sm font-bold" style={{ color: C.ink }}>{plan?.name || `${interval}es Abonnement`}</div></div>
       <span className="text-[9px] font-bold px-2 py-1 rounded-full whitespace-nowrap" style={{ color: status.color, background: status.background }}>{status.label}</span>
@@ -3878,14 +3935,14 @@ function SubscriptionPanel({ user }) {
 
     <SectionTitle eyebrow="Verträge" title="Vereinsabo" />
     {!canBuyClubPlan ? <div className="rounded-2xl p-4 mb-6" style={{ background: C.paperDim }}><div className="text-[11px]" style={{ color: C.textDim }}>Nur Vorstand, Vereinsadmin, Geschäftsführung oder Sysadmin können das Vereinsabo verwalten.</div></div> :
-    subscriptionsLoading ? <div className="rounded-2xl p-4 mb-5 text-xs text-center" style={{ background: C.white, border: `1px solid ${C.line}`, color: C.textDim }}>Abonnements werden geladen …</div> :
+    subscriptionsLoading ? <div className="rounded-2xl p-4 mb-5 text-xs text-center" style={{ background: C.glass, border: `1px solid ${C.line}`, color: C.textDim }}>Abonnements werden geladen …</div> :
       subscriptions.length > 0 ? <div className="space-y-3 mb-6">
         {subscriptions.map((subscription) => <SubscriptionRecord key={subscription.id} subscription={subscription} accountLabel="Vereinsabo" onCancel={() => cancelSubscription(subscription)} cancelling={cancellingId === subscription.id} />)}
       </div> : <div className="rounded-2xl p-4 mb-6" style={{ background: C.paperDim }}><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Noch kein gespeichertes Abonnement</div><div className="text-[11px]" style={{ color: C.textDim }}>Nach einem erfolgreichen Abschluss erscheinen hier Tarif, Status, Erwerbsdatum und die nächste Abrechnung.</div></div>}
 
     {canBuyClubPlan && <>
     <SectionTitle eyebrow="Tarif wählen" title="Abonnement abschließen" />
-    <div className="rounded-2xl p-4 mb-5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+    <div className="rounded-2xl p-4 mb-5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
     <div className="flex items-center gap-2 mb-1"><Euro size={16} style={{ color: C.red }} /><div className="text-sm font-bold" style={{ color: C.ink }}>Abonnement</div></div>
     <div className="text-[11px] mb-3" style={{ color: C.textDim }}>{isNative ? `Sicher über ${Capacitor.getPlatform() === "ios" ? "den App Store" : "Google Play"} bezahlen.` : "Sicher über PayPal bezahlen."} Alle Abos verlängern sich automatisch bis zur Kündigung.</div>
     <div className="grid grid-cols-2 gap-2 mb-2">
@@ -3925,7 +3982,7 @@ function SubscriptionPanel({ user }) {
     </>}
     {showWelcome && (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-5" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setShowWelcome(false)}>
-        <div role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} className="w-full max-w-sm rounded-3xl p-6 text-center" style={{ background: C.white }}>
+        <div role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} className="w-full max-w-sm rounded-3xl p-6 text-center" style={{ background: C.glass }}>
           <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: "#E7F3EC" }}><CheckCircle2 size={28} style={{ color: C.green }} /></div>
           <div className="text-lg font-bold mb-2" style={{ fontFamily: "Oswald", color: C.ink }}>Willkommen an Bord!</div>
           <div className="text-sm mb-5" style={{ color: C.textDim }}>Dein Abonnement ist aktiv. Die Funktionen deines Tarifs sind ab sofort freigeschaltet.</div>
@@ -3939,7 +3996,7 @@ function SubscriptionPanel({ user }) {
 function ProfileUnderlay({ title, eyebrow = "Profileinstellungen", onClose, onSave, saving = false, saveDisabled = false, children }) {
   return <div className="absolute inset-0 z-40 flex flex-col" style={{ background: C.paper }}>
     <div className="flex items-center gap-3 px-4 py-3 flex-shrink-0" style={{ borderBottom: `1px solid ${C.line}`, background: C.paper }}>
-      <button onClick={onClose} aria-label="Zurück zum Profil" className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: C.white, border: `1px solid ${C.line}` }}><ArrowLeft size={16}/></button>
+      <button onClick={onClose} aria-label="Zurück zum Profil" className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: C.glass, border: `1px solid ${C.line}` }}><ArrowLeft size={16}/></button>
       <div className="flex-1 min-w-0"><div className="text-[9px] uppercase tracking-widest font-bold" style={{ color: C.red }}>{eyebrow}</div><div className="text-base font-bold truncate" style={{ fontFamily: "Oswald", color: C.ink }}>{title}</div></div>
       {onSave && <button onClick={onSave} disabled={saving || saveDisabled} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold" style={{ background: C.red, color: C.white, opacity: saving || saveDisabled ? .45 : 1 }}><Save size={13}/>{saving ? "Speichert …" : "Speichern"}</button>}
     </div>
@@ -3948,7 +4005,7 @@ function ProfileUnderlay({ title, eyebrow = "Profileinstellungen", onClose, onSa
 }
 
 function ProfileSettingsCard({ icon: Icon, title, description, onClick, color = C.red }) {
-  return <button onClick={onClick} className="w-full flex items-center gap-3 rounded-2xl px-3.5 py-3 text-left" style={{ background: C.white, border: `1px solid ${C.line}` }}><div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: C.paperDim, color }}><Icon size={18}/></div><div className="flex-1 min-w-0"><div className="text-sm font-bold" style={{ color: C.ink }}>{title}</div><div className="text-[10px] leading-snug" style={{ color: C.textDim }}>{description}</div></div><ChevronRight size={15} style={{ color: C.textDim }}/></button>;
+  return <button onClick={onClick} className="w-full flex items-center gap-3.5 rounded-2xl px-4 py-3.5 text-left" style={{ background: C.glass, border: `1px solid ${C.edge}`, boxShadow: "0 10px 26px rgba(60,30,45,0.07)" }}><div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `linear-gradient(155deg, color-mix(in srgb, ${color} 72%, #fff), ${color})`, boxShadow: `0 6px 14px color-mix(in srgb, ${color} 34%, transparent), inset 0 1px 0 rgba(255,255,255,0.45)`, color: "#fff" }}><Icon size={18}/></div><div className="flex-1 min-w-0"><div className="text-sm font-bold" style={{ color: C.ink }}>{title}</div><div className="text-[10px] leading-snug" style={{ color: C.textDim }}>{description}</div></div><ChevronRight size={15} style={{ color: C.textDim }}/></button>;
 }
 
 function HowToVideoLibrary({ user }) {
@@ -3960,7 +4017,7 @@ function HowToVideoLibrary({ user }) {
       {videos.map((video) => {
         const open = openId === video.id;
         return (
-          <div key={video.id} className="rounded-2xl overflow-hidden" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+          <div key={video.id} className="rounded-2xl overflow-hidden" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
             <button onClick={() => setOpenId(open ? "" : video.id)} className="w-full flex items-center gap-3 px-3.5 py-3 text-left">
               <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: C.paperDim, color: C.red }}><PlayCircle size={18}/></div>
               <div className="flex-1 min-w-0"><div className="text-sm font-bold" style={{ color: C.ink }}>{video.title}</div><div className="text-[10px] leading-snug" style={{ color: C.textDim }}>{video.description}</div></div>
@@ -4026,7 +4083,7 @@ function BoardMemberOverview({ members, currentUser }) {
     {loading && !liveMembers && supabase && <div className="text-xs py-3" style={{ color: C.textDim }}>Wird geladen …</div>}
     {message && <div className="text-[11px] mb-2" style={{ color: C.red }}>{message}</div>}
     <div className="space-y-2">
-      {filtered.map((m) => <div key={m.id} onClick={() => setSelectedMember(m)} role="button" tabIndex={0} className="rounded-2xl p-3 cursor-pointer" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+      {filtered.map((m) => <div key={m.id} onClick={() => setSelectedMember(m)} role="button" tabIndex={0} className="rounded-2xl p-3 cursor-pointer" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
         <div className="flex items-center gap-3 mb-1.5">
           <div className="w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0" style={{ background: m.color, color: C.white }}>{initialsOf(m.name)}</div>
           <div className="flex-1 min-w-0">
@@ -4102,7 +4159,7 @@ function MemberDetailPanel({ member, onClose }) {
   const historyPenalties = penalties.filter((p) => p.season);
   return (
     <div className="fixed inset-0 z-[60] flex items-end p-3" style={{ background: "rgba(20,21,26,.72)" }} onClick={onClose}>
-      <div role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} className="w-full rounded-3xl p-5 max-h-[85%] overflow-y-auto" style={{ background: C.white }}>
+      <div role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} className="w-full rounded-3xl p-5 max-h-[85%] overflow-y-auto" style={{ background: C.glass }}>
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold" style={{ background: member.color, color: C.white }}>{initialsOf(member.name)}</div>
@@ -4184,7 +4241,7 @@ function JoinRequestsManager({ currentUser }) {
   return <div>
     <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Neue Mitglieder, die deinem Verein beitreten möchten. Beim Annehmen legst du die finale Rolle fest.</div>
     {loading ? <div className="text-xs py-3" style={{ color: C.textDim }}>Wird geladen …</div> : requests.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Aktuell keine offenen Beitrittsanfragen.</div> : <div className="space-y-2">
-      {requests.map((r) => <div key={r.id} className="rounded-2xl p-3" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+      {requests.map((r) => <div key={r.id} className="rounded-2xl p-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
         <div className="text-xs font-bold mb-0.5" style={{ color: C.ink }}>{r.display_name}</div>
         <div className="text-[10px] mb-2" style={{ color: C.textDim }}>{r.email} · angefragte Rolle: {ROLE_META[r.requested_role]?.label || r.requested_role || "Mitglied"}</div>
         <select value={roleChoice[r.id] || r.requested_role || "mitglied"} onChange={(e) => setRoleChoice({ ...roleChoice, [r.id]: e.target.value })} className="w-full px-3 py-2 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim, color: C.ink }}>
@@ -4268,12 +4325,12 @@ function SysAdminUserManager({ members, setMembers }) {
 
   return <div>
     <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Als Sys-Admin kannst du die Vereinseinstellungen aller Nutzer bearbeiten. Login-E-Mail, Passwort und private Zahlungsdaten bleiben geschützt.</div>
-    <select value={selectedId} onChange={(event) => setSelectedId(event.target.value)} className="w-full px-3 py-3 rounded-xl text-xs outline-none mb-4" style={{ background: C.white, border: `1px solid ${C.line}`, color: C.ink }}><option value="">Nutzer auswählen …</option>{members.slice().sort((a, b) => a.name.localeCompare(b.name, "de")).map((member) => <option key={member.id} value={member.id}>{member.name} · {member.roles.map((role) => ROLE_META[role]?.label || role).join(", ")}</option>)}</select>
+    <select value={selectedId} onChange={(event) => setSelectedId(event.target.value)} className="w-full px-3 py-3 rounded-xl text-xs outline-none mb-4" style={{ background: C.glass, border: `1px solid ${C.line}`, color: C.ink }}><option value="">Nutzer auswählen …</option>{members.slice().sort((a, b) => a.name.localeCompare(b.name, "de")).map((member) => <option key={member.id} value={member.id}>{member.name} · {member.roles.map((role) => ROLE_META[role]?.label || role).join(", ")}</option>)}</select>
     {selected && <><div className="rounded-2xl p-4 mb-4 flex items-center gap-3" style={{ background: C.ink, color: C.white }}><div className="w-11 h-11 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: selected.color }}>{initialsOf(selected.name)}</div><div className="min-w-0"><div className="text-base font-bold truncate" style={{ fontFamily: "Oswald" }}>{selected.name}</div><div className="text-[10px] truncate" style={{ color: "#B7B6BC" }}>{selected.email || "Profil ohne eigene E-Mail"}</div></div></div>
       <div className="grid grid-cols-2 gap-2 mb-4">{[["overview", "Stammdaten"], ["roles", "Rollen & Trainer"], ["teams", "Athleten-Teams"], ["family", "Familie"]].map(([id, label]) => <button key={id} onClick={() => { setSection(id); setMessage(""); }} className="py-2.5 rounded-xl text-[11px] font-bold" style={{ background: section === id ? C.ink : C.white, color: section === id ? C.white : C.textDim, border: `1px solid ${section === id ? C.ink : C.line}` }}>{label}</button>)}</div>
-      {section === "overview" && <div className="rounded-2xl p-4 space-y-2" style={{ background: C.white, border: `1px solid ${C.line}` }}><div className="text-sm font-bold mb-2" style={{ color: C.ink }}>Vereinsprofil bearbeiten</div><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Anzeigename" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/><input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} placeholder="Kontakt-E-Mail im Verein" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/><div className="grid grid-cols-2 gap-2"><input type="date" value={form.birthdate} onChange={(event) => setForm({ ...form, birthdate: event.target.value })} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/><input type="number" min="1800" max="2200" value={form.since} onChange={(event) => setForm({ ...form, since: event.target.value })} placeholder="Mitglied seit" className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/></div><select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}><option value="active">Aktiv</option><option value="pending">Ausstehend</option><option value="inactive">Inaktiv</option><option value="blocked">Gesperrt</option></select><button onClick={saveProfile} disabled={saving} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: C.red, color: C.white }}>{saving ? "Wird gespeichert …" : "Stammdaten speichern"}</button></div>}
+      {section === "overview" && <div className="rounded-2xl p-4 space-y-2" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="text-sm font-bold mb-2" style={{ color: C.ink }}>Vereinsprofil bearbeiten</div><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Anzeigename" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/><input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} placeholder="Kontakt-E-Mail im Verein" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/><div className="grid grid-cols-2 gap-2"><input type="date" value={form.birthdate} onChange={(event) => setForm({ ...form, birthdate: event.target.value })} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/><input type="number" min="1800" max="2200" value={form.since} onChange={(event) => setForm({ ...form, since: event.target.value })} placeholder="Mitglied seit" className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/></div><select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}><option value="active">Aktiv</option><option value="pending">Ausstehend</option><option value="inactive">Inaktiv</option><option value="blocked">Gesperrt</option></select><button onClick={saveProfile} disabled={saving} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: C.red, color: C.white }}>{saving ? "Wird gespeichert …" : "Stammdaten speichern"}</button></div>}
       {section === "roles" && <RolesPanel members={[selected]} setMembers={setMembers}/>}
-      {section === "teams" && <div className="rounded-2xl p-4" style={{ background: C.white, border: `1px solid ${C.line}` }}>{!selected.roles.includes("spieler") ? <div className="text-xs" style={{ color: C.textDim }}>Vergib zuerst unter „Rollen & Trainer“ die Rolle Athlet/in.</div> : <><div className="flex items-center justify-between mb-2"><div className="text-sm font-bold">Athleten-Mannschaften</div><span className="text-[10px] font-bold" style={{ color: playerTeamIds.length === 3 ? C.red : C.textDim }}>{playerTeamIds.length}/3</span></div><div className="space-y-2 mb-3">{teams.map((team) => { const active = playerTeamIds.includes(team.id); return <button key={team.id} onClick={() => togglePlayerTeam(team.id)} className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left" style={{ background: active ? "#E7F3EC" : C.paperDim, border: active ? `1px solid ${C.green}` : "1px solid transparent" }}><span className="text-xs font-bold">{team.name}</span>{active && <Check size={14} style={{ color: C.green }}/>}</button>; })}</div><button onClick={savePlayerTeams} disabled={saving || JSON.stringify([...playerTeamIds].sort()) === JSON.stringify([...savedPlayerTeamIds].sort())} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white, opacity: JSON.stringify([...playerTeamIds].sort()) === JSON.stringify([...savedPlayerTeamIds].sort()) ? .35 : 1 }}>{saving ? "Wird gespeichert …" : "Mannschaften speichern"}</button></>}</div>}
+      {section === "teams" && <div className="rounded-2xl p-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>{!selected.roles.includes("spieler") ? <div className="text-xs" style={{ color: C.textDim }}>Vergib zuerst unter „Rollen & Trainer“ die Rolle Athlet/in.</div> : <><div className="flex items-center justify-between mb-2"><div className="text-sm font-bold">Athleten-Mannschaften</div><span className="text-[10px] font-bold" style={{ color: playerTeamIds.length === 3 ? C.red : C.textDim }}>{playerTeamIds.length}/3</span></div><div className="space-y-2 mb-3">{teams.map((team) => { const active = playerTeamIds.includes(team.id); return <button key={team.id} onClick={() => togglePlayerTeam(team.id)} className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left" style={{ background: active ? "#E7F3EC" : C.paperDim, border: active ? `1px solid ${C.green}` : "1px solid transparent" }}><span className="text-xs font-bold">{team.name}</span>{active && <Check size={14} style={{ color: C.green }}/>}</button>; })}</div><button onClick={savePlayerTeams} disabled={saving || JSON.stringify([...playerTeamIds].sort()) === JSON.stringify([...savedPlayerTeamIds].sort())} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white, opacity: JSON.stringify([...playerTeamIds].sort()) === JSON.stringify([...savedPlayerTeamIds].sort()) ? .35 : 1 }}>{saving ? "Wird gespeichert …" : "Mannschaften speichern"}</button></>}</div>}
       {section === "family" && <><FamilyTree user={selected} members={members}/><div className="mt-3"><FamilyLinkManager user={selected} members={members} setMembers={setMembers} adminMode /></div></>}
       {message && <div role="status" className="text-[11px] mt-3 rounded-xl px-3 py-2" style={{ background: message.includes("gespeichert") ? "#E7F3EC" : "#FDECEC", color: message.includes("gespeichert") ? C.green : C.red }}>{message}</div>}
     </>}
@@ -4318,13 +4375,13 @@ function ProfileDataSettings({ user, setMembers, saveRef }) {
   saveRef.current = save;
   const updateList = (key,index,value) => setForm((old)=>({...old,[key]:old[key].map((v,i)=>i===index?value:v)}));
   const addList = (key) => setForm((old)=>({...old,[key]:[...old[key],""]}));
-  const section = (title, children) => <div className="rounded-2xl p-4 mb-4 space-y-2" style={{background:C.white,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-2">{title}</div>{children}</div>;
+  const section = (title, children) => <div className="rounded-2xl p-4 mb-4 space-y-2" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-2">{title}</div>{children}</div>;
   return <div>
     {message&&<div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{background:message.includes("gespeichert")?"#E7F3EC":"#FDECEC",color:message.includes("gespeichert")?C.green:C.red}}>{message}</div>}
     {section("Persönliche Daten", <><input value={form.membershipNumber} onChange={(e)=>setForm({...form,membershipNumber:e.target.value})} placeholder="Mitgliederausweisnummer" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><input value={form.academicTitle} onChange={(e)=>setForm({...form,academicTitle:e.target.value})} placeholder="Akademischer Titel (optional)" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><div className="grid grid-cols-2 gap-2"><input value={form.firstName} onChange={(e)=>setForm({...form,firstName:e.target.value})} placeholder="Vorname" className="px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><input value={form.lastName} onChange={(e)=>setForm({...form,lastName:e.target.value})} placeholder="Nachname" className="px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/></div></>)}
     {section("Kontaktdaten", <><div className="text-[10px] font-bold" style={{color:C.textDim}}>E-Mail-Adressen</div>{form.emails.map((value,index)=><div key={`e-${index}`} className="flex gap-2"><input type="email" value={value} onChange={(e)=>updateList("emails",index,e.target.value)} placeholder="E-Mail-Adresse" className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/>{index>0&&<button onClick={()=>setForm({...form,emails:form.emails.filter((_,i)=>i!==index)})}><X size={15}/></button>}</div>)}<button onClick={()=>addList("emails")} className="flex items-center gap-1 text-[11px] font-bold" style={{color:C.red}}><Plus size={13}/> Weitere E-Mail</button><div className="text-[10px] font-bold pt-2" style={{color:C.textDim}}>Telefonnummern</div>{form.phones.map((value,index)=><div key={`p-${index}`} className="flex gap-2"><input type="tel" value={value} onChange={(e)=>updateList("phones",index,e.target.value)} placeholder="Telefonnummer" className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/>{index>0&&<button onClick={()=>setForm({...form,phones:form.phones.filter((_,i)=>i!==index)})}><X size={15}/></button>}</div>)}<button onClick={()=>addList("phones")} className="flex items-center gap-1 text-[11px] font-bold" style={{color:C.red}}><Plus size={13}/> Weitere Telefonnummer</button></>)}
-    {section("Weitere Angaben", <><input type="date" value={form.birthdate} onChange={(e)=>setForm({...form,birthdate:e.target.value})} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><label className="flex items-center justify-between gap-3 px-0.5 py-1"><span className="text-xs" style={{color:C.ink}}>Geburtstag im Verein anzeigen</span><button type="button" onClick={()=>setForm({...form,showBirthday:!form.showBirthday})} className="w-10 h-6 rounded-full flex items-center px-0.5" style={{background:form.showBirthday?C.green:C.line,justifyContent:form.showBirthday?"flex-end":"flex-start"}}><span className="w-5 h-5 rounded-full" style={{background:C.white}}/></button></label><select value={form.gender} onChange={(e)=>setForm({...form,gender:e.target.value})} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}><option value="weiblich">Weiblich</option><option value="maennlich">Männlich</option><option value="divers">Divers</option><option value="keine_angabe">Keine Angabe</option></select><input value={form.nationality} onChange={(e)=>setForm({...form,nationality:e.target.value})} placeholder="Nationalität" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/></>)}
-    {section("Adresse", <><input value={form.street} onChange={(e)=>setForm({...form,street:e.target.value})} placeholder="Straße und Hausnummer" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><div className="grid grid-cols-2 gap-2"><input value={form.postalCode} onChange={(e)=>setForm({...form,postalCode:e.target.value})} placeholder="PLZ" className="px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><input value={form.city} onChange={(e)=>setForm({...form,city:e.target.value})} placeholder="Stadt" className="px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/></div><div className="relative"><input value={countryQuery || countryNames.find((c)=>c.code===form.countryCode)?.name || form.countryCode} onChange={(e)=>setCountryQuery(e.target.value)} onFocus={()=>setCountryQuery("")} placeholder="Land suchen …" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/>{countryQuery&&<div className="absolute z-10 left-0 right-0 top-full mt-1 rounded-xl overflow-hidden shadow-xl" style={{background:C.white,border:`1px solid ${C.line}`}}>{matches.map((item)=><button key={item.code} onClick={()=>{setForm({...form,countryCode:item.code});setCountryQuery("");}} className="w-full px-3 py-2 text-left text-xs hover:bg-gray-50">{item.name} <span style={{color:C.textDim}}>({item.code})</span></button>)}</div>}</div></>)}
+    {section("Weitere Angaben", <><input type="date" value={form.birthdate} onChange={(e)=>setForm({...form,birthdate:e.target.value})} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><label className="flex items-center justify-between gap-3 px-0.5 py-1"><span className="text-xs" style={{color:C.ink}}>Geburtstag im Verein anzeigen</span><button type="button" onClick={()=>setForm({...form,showBirthday:!form.showBirthday})} className="w-10 h-6 rounded-full flex items-center px-0.5" style={{background:form.showBirthday?C.green:C.line,justifyContent:form.showBirthday?"flex-end":"flex-start"}}><span className="w-5 h-5 rounded-full" style={{background:C.glass}}/></button></label><select value={form.gender} onChange={(e)=>setForm({...form,gender:e.target.value})} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}><option value="weiblich">Weiblich</option><option value="maennlich">Männlich</option><option value="divers">Divers</option><option value="keine_angabe">Keine Angabe</option></select><input value={form.nationality} onChange={(e)=>setForm({...form,nationality:e.target.value})} placeholder="Nationalität" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/></>)}
+    {section("Adresse", <><input value={form.street} onChange={(e)=>setForm({...form,street:e.target.value})} placeholder="Straße und Hausnummer" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><div className="grid grid-cols-2 gap-2"><input value={form.postalCode} onChange={(e)=>setForm({...form,postalCode:e.target.value})} placeholder="PLZ" className="px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><input value={form.city} onChange={(e)=>setForm({...form,city:e.target.value})} placeholder="Stadt" className="px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/></div><div className="relative"><input value={countryQuery || countryNames.find((c)=>c.code===form.countryCode)?.name || form.countryCode} onChange={(e)=>setCountryQuery(e.target.value)} onFocus={()=>setCountryQuery("")} placeholder="Land suchen …" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/>{countryQuery&&<div className="absolute z-10 left-0 right-0 top-full mt-1 rounded-xl overflow-hidden shadow-xl" style={{background:C.glass,border:`1px solid ${C.line}`}}>{matches.map((item)=><button key={item.code} onClick={()=>{setForm({...form,countryCode:item.code});setCountryQuery("");}} className="w-full px-3 py-2 text-left text-xs hover:bg-gray-50">{item.name} <span style={{color:C.textDim}}>({item.code})</span></button>)}</div>}</div></>)}
   </div>;
 }
 
@@ -4352,24 +4409,24 @@ function NotificationSettings({ user, setMembers, saveRef }) {
   };
   const save = async()=>{ if(supabase&&user.authProfileId){const {error}=await supabase.from("profiles").update({notification_master:master,notification_preferences:prefs}).eq("id",user.authProfileId);if(error){setMessage("Benachrichtigungen konnten nicht gespeichert werden.");return;}} setMembers((items)=>items.map((item)=>item.id===user.id?{...item,notificationMaster:master,notificationPreferences:prefs}:item));setMessage("Benachrichtigungen gespeichert.");};
   saveRef.current=save;
-  return <div>{message&&<div className="mb-4 text-[11px] rounded-xl px-3 py-2" style={{background:"#E7F3EC",color:C.green}}>{message}</div>}{databaseMembership && <div className="rounded-2xl p-4 mb-4" style={{background:C.white,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1" style={{color:C.ink}}>Push-Benachrichtigungen auf diesem Gerät</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>Aktiviere Push, um Benachrichtigungen auch außerhalb der App zu erhalten. Auf dem iPhone funktioniert das nur, wenn die App über "Zum Home-Bildschirm hinzufügen" installiert wurde.</div><button onClick={pushStatus==="active"?deactivatePush:activatePush} disabled={pushStatus==="working"} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{background:pushStatus==="active"?"#FDECEC":C.ink,color:pushStatus==="active"?C.red:C.white}}>{pushStatus==="working"?"Wird bearbeitet …":pushStatus==="active"?"Push deaktivieren":"Push aktivieren"}</button></div>}<ToggleCard title="Benachrichtigungen auf diesem Gerät" desc="Master-Schalter für alle App-Benachrichtigungen" value={master} onChange={setMaster}/><div className="mt-4 rounded-2xl p-4space-y-3" style={{background:C.white,border:`1px solid ${C.line}`}}>{NOTIFICATION_OPTIONS.map(([key,label])=><label key={key} className="flex items-center justify-between gap-3"><span className="text-xsfont-bold">{label}</span><select disabled={!master} value={prefs[key]?"ja":"nein"} onChange={(e)=>setPrefs({...prefs,[key]:e.target.value==="ja"})} className="px-3 py-2 rounded-xl text-xs" style={{background:C.paperDim,opacity:master?1:.45}}><option value="ja">Ja</option><option value="nein">Nein</option></select></label>)}</div></div>;
+  return <div>{message&&<div className="mb-4 text-[11px] rounded-xl px-3 py-2" style={{background:"#E7F3EC",color:C.green}}>{message}</div>}{databaseMembership && <div className="rounded-2xl p-4 mb-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1" style={{color:C.ink}}>Push-Benachrichtigungen auf diesem Gerät</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>Aktiviere Push, um Benachrichtigungen auch außerhalb der App zu erhalten. Auf dem iPhone funktioniert das nur, wenn die App über "Zum Home-Bildschirm hinzufügen" installiert wurde.</div><button onClick={pushStatus==="active"?deactivatePush:activatePush} disabled={pushStatus==="working"} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{background:pushStatus==="active"?"#FDECEC":C.ink,color:pushStatus==="active"?C.red:C.white}}>{pushStatus==="working"?"Wird bearbeitet …":pushStatus==="active"?"Push deaktivieren":"Push aktivieren"}</button></div>}<ToggleCard title="Benachrichtigungen auf diesem Gerät" desc="Master-Schalter für alle App-Benachrichtigungen" value={master} onChange={setMaster}/><div className="mt-4 rounded-2xl p-4space-y-3" style={{background:C.glass,border:`1px solid ${C.line}`}}>{NOTIFICATION_OPTIONS.map(([key,label])=><label key={key} className="flex items-center justify-between gap-3"><span className="text-xsfont-bold">{label}</span><select disabled={!master} value={prefs[key]?"ja":"nein"} onChange={(e)=>setPrefs({...prefs,[key]:e.target.value==="ja"})} className="px-3 py-2 rounded-xl text-xs" style={{background:C.paperDim,opacity:master?1:.45}}><option value="ja">Ja</option><option value="nein">Nein</option></select></label>)}</div></div>;
 }
 
 function PasswordSettings({ user, onLogout, saveRef }) {
   const [form,setForm]=useState({old:"",next:"",repeat:"",logoutAll:false}); const [message,setMessage]=useState("");
   const save=async()=>{if(!supabase){setMessage("Passwortänderung ist nur mit einem echten Konto möglich.");return;}if(form.next.length<8||form.next!==form.repeat){setMessage("Das neue Passwort muss mindestens 8 Zeichen haben und übereinstimmen.");return;}const {error:loginError}=await supabase.auth.signInWithPassword({email:user.email,password:form.old});if(loginError){setMessage("Das bisherige Passwort ist nicht korrekt.");return;}const {error}=await supabase.auth.updateUser({password:form.next});if(error){setMessage("Das Passwort konnte nicht geändert werden.");return;}if(form.logoutAll){await supabase.auth.signOut({scope:"global"});await onLogout();return;}setForm({old:"",next:"",repeat:"",logoutAll:false});setMessage("Passwort erfolgreich geändert.");}; saveRef.current=save;
-  return <div className="rounded-2xl p-4 space-y-3" style={{background:C.white,border:`1px solid ${C.line}`}}><input type="password" value={form.old} onChange={(e)=>setForm({...form,old:e.target.value})} placeholder="Altes Passwort" className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><input type="password" value={form.next} onChange={(e)=>setForm({...form,next:e.target.value})} placeholder="Neues Passwort" className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><input type="password" value={form.repeat} onChange={(e)=>setForm({...form,repeat:e.target.value})} placeholder="Neues Passwort wiederholen" className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><ToggleCard title="Von allen Geräten ausloggen" desc="Nach der Änderung werden alle bestehenden Sitzungen beendet." value={form.logoutAll} onChange={(v)=>setForm((old)=>({...old,logoutAll:typeof v==="function"?v(old.logoutAll):v}))}/>{message&&<div className="text-[11px]" style={{color:message.includes("erfolgreich")?C.green:C.red}}>{message}</div>}</div>;
+  return <div className="rounded-2xl p-4 space-y-3" style={{background:C.glass,border:`1px solid ${C.line}`}}><input type="password" value={form.old} onChange={(e)=>setForm({...form,old:e.target.value})} placeholder="Altes Passwort" className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><input type="password" value={form.next} onChange={(e)=>setForm({...form,next:e.target.value})} placeholder="Neues Passwort" className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><input type="password" value={form.repeat} onChange={(e)=>setForm({...form,repeat:e.target.value})} placeholder="Neues Passwort wiederholen" className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><ToggleCard title="Von allen Geräten ausloggen" desc="Nach der Änderung werden alle bestehenden Sitzungen beendet." value={form.logoutAll} onChange={(v)=>setForm((old)=>({...old,logoutAll:typeof v==="function"?v(old.logoutAll):v}))}/>{message&&<div className="text-[11px]" style={{color:message.includes("erfolgreich")?C.green:C.red}}>{message}</div>}</div>;
 }
 
-function SecuritySettings({user,setMembers,saveRef}) { const [days,setDays]=useState(user.autoLogoutDays??"");const [message,setMessage]=useState("");const save=async()=>{const value=days===""?null:Number(days);if(supabase&&user.authProfileId){const {error}=await supabase.from("profiles").update({auto_logout_days:value}).eq("id",user.authProfileId);if(error){setMessage("Einstellung konnte nicht gespeichert werden.");return;}}setMembers((items)=>items.map((item)=>item.id===user.id?{...item,autoLogoutDays:value}:item));localStorage.setItem(`cmo-last-activity-${user.authProfileId||user.id}`,String(Date.now()));setMessage("Sicherheitseinstellung gespeichert.");};saveRef.current=save;return <div className="rounded-2xl p-4" style={{background:C.white,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">Automatischer Logout</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>Nach längerer Inaktivität wird dieses Konto automatisch abgemeldet.</div><select value={days} onChange={(e)=>setDays(e.target.value)} className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}><option value="">Nie</option><option value="30">Nach 30 Tagen</option><option value="60">Nach 60 Tagen</option><option value="90">Nach 90 Tagen</option></select>{message&&<div className="text-[11px] mt-3" style={{color:C.green}}>{message}</div>}</div>; }
+function SecuritySettings({user,setMembers,saveRef}) { const [days,setDays]=useState(user.autoLogoutDays??"");const [message,setMessage]=useState("");const save=async()=>{const value=days===""?null:Number(days);if(supabase&&user.authProfileId){const {error}=await supabase.from("profiles").update({auto_logout_days:value}).eq("id",user.authProfileId);if(error){setMessage("Einstellung konnte nicht gespeichert werden.");return;}}setMembers((items)=>items.map((item)=>item.id===user.id?{...item,autoLogoutDays:value}:item));localStorage.setItem(`cmo-last-activity-${user.authProfileId||user.id}`,String(Date.now()));setMessage("Sicherheitseinstellung gespeichert.");};saveRef.current=save;return <div className="rounded-2xl p-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">Automatischer Logout</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>Nach längerer Inaktivität wird dieses Konto automatisch abgemeldet.</div><select value={days} onChange={(e)=>setDays(e.target.value)} className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}><option value="">Nie</option><option value="30">Nach 30 Tagen</option><option value="60">Nach 60 Tagen</option><option value="90">Nach 90 Tagen</option></select>{message&&<div className="text-[11px] mt-3" style={{color:C.green}}>{message}</div>}</div>; }
 
-function ReferralSettings({user,club}) { const [code,setCode]=useState("");const [used,setUsed]=useState(false);const [loading,setLoading]=useState(false);useEffect(()=>{if(!supabase||!club?.id||!user.authProfileId)return;supabase.from("club_referral_codes").select("code,redeemed_at").eq("club_id",club.id).eq("profile_id",user.authProfileId).maybeSingle().then(({data})=>{setCode(data?.code||"");setUsed(Boolean(data?.redeemed_at));});},[club?.id,user.authProfileId]);const create=async()=>{setLoading(true);const {data,error}=await supabase.rpc("ensure_club_referral_code",{target_club:club.id});if(!error)setCode(data);setLoading(false);};if(used&&!user.roles.includes("sysadmin"))return <div className="rounded-2xl p-4 text-xs" style={{background:C.paperDim,color:C.textDim}}>Dein persönlicher Empfehlungscode wurde bereits einmal verwendet. Die drei kostenlosen Vereinsmonate werden automatisch berücksichtigt.</div>;return <div className="rounded-2xl p-4" style={{background:C.white,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">Vereine werben Vereine</div><div className="text-[11px] mb-4" style={{color:C.textDim}}>Wirbst du einmalig einen neuen Verein, erhält dein aktueller Verein drei kostenlose Monate. Der neue Verein gibt deinen persönlichen Code bei seiner Registrierung ein.</div>{code?<><div className="rounded-xl px-3 py-3 text-center font-bold tracking-wider" style={{background:C.paperDim}}>{code}</div><button onClick={()=>navigator.clipboard?.writeText(code)} className="w-full mt-2 py-2 text-xs font-bold" style={{color:C.red}}>Code kopieren</button></>:<button disabled={loading} onClick={create} className="w-full py-3 rounded-xl text-xs font-bold" style={{background:C.ink,color:C.white}}>{loading?"Wird erstellt …":"Persönlichen Code erstellen"}</button>}</div>; }
+function ReferralSettings({user,club}) { const [code,setCode]=useState("");const [used,setUsed]=useState(false);const [loading,setLoading]=useState(false);useEffect(()=>{if(!supabase||!club?.id||!user.authProfileId)return;supabase.from("club_referral_codes").select("code,redeemed_at").eq("club_id",club.id).eq("profile_id",user.authProfileId).maybeSingle().then(({data})=>{setCode(data?.code||"");setUsed(Boolean(data?.redeemed_at));});},[club?.id,user.authProfileId]);const create=async()=>{setLoading(true);const {data,error}=await supabase.rpc("ensure_club_referral_code",{target_club:club.id});if(!error)setCode(data);setLoading(false);};if(used&&!user.roles.includes("sysadmin"))return <div className="rounded-2xl p-4 text-xs" style={{background:C.paperDim,color:C.textDim}}>Dein persönlicher Empfehlungscode wurde bereits einmal verwendet. Die drei kostenlosen Vereinsmonate werden automatisch berücksichtigt.</div>;return <div className="rounded-2xl p-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">Vereine werben Vereine</div><div className="text-[11px] mb-4" style={{color:C.textDim}}>Wirbst du einmalig einen neuen Verein, erhält dein aktueller Verein drei kostenlose Monate. Der neue Verein gibt deinen persönlichen Code bei seiner Registrierung ein.</div>{code?<><div className="rounded-xl px-3 py-3 text-center font-bold tracking-wider" style={{background:C.paperDim}}>{code}</div><button onClick={()=>navigator.clipboard?.writeText(code)} className="w-full mt-2 py-2 text-xs font-bold" style={{color:C.red}}>Code kopieren</button></>:<button disabled={loading} onClick={create} className="w-full py-3 rounded-xl text-xs font-bold" style={{background:C.ink,color:C.white}}>{loading?"Wird erstellt …":"Persönlichen Code erstellen"}</button>}</div>; }
 
-function FeedbackSettings() { const apple=process.env.NEXT_PUBLIC_APP_STORE_REVIEW_URL;const google=process.env.NEXT_PUBLIC_PLAY_STORE_REVIEW_URL;return <div><div className="text-[11px] mb-4" style={{color:C.textDim}}>Danke, dass du CMO bewertest. Wähle den Store deines Geräts.</div><div className="space-y-2">{[[apple,"Im Apple App Store bewerten"],[google,"Im Google Play Store bewerten"]].map(([url,label])=><a key={label} href={url||"#"} onClick={(e)=>{if(!url)e.preventDefault();}} target="_blank" rel="noreferrer" className="flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-bold" style={{background:C.white,border:`1px solid ${C.line}`,color:url?C.ink:C.textDim}}>{label}<ExternalLink size={14}/></a>)}</div>{!apple&&!google&&<div className="text-[10px] mt-3" style={{color:C.textDim}}>Die Store-Links werden nach Veröffentlichung der Apps freigeschaltet.</div>}</div>; }
+function FeedbackSettings() { const apple=process.env.NEXT_PUBLIC_APP_STORE_REVIEW_URL;const google=process.env.NEXT_PUBLIC_PLAY_STORE_REVIEW_URL;return <div><div className="text-[11px] mb-4" style={{color:C.textDim}}>Danke, dass du CMO bewertest. Wähle den Store deines Geräts.</div><div className="space-y-2">{[[apple,"Im Apple App Store bewerten"],[google,"Im Google Play Store bewerten"]].map(([url,label])=><a key={label} href={url||"#"} onClick={(e)=>{if(!url)e.preventDefault();}} target="_blank" rel="noreferrer" className="flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-bold" style={{background:C.glass,border:`1px solid ${C.line}`,color:url?C.ink:C.textDim}}>{label}<ExternalLink size={14}/></a>)}</div>{!apple&&!google&&<div className="text-[10px] mt-3" style={{color:C.textDim}}>Die Store-Links werden nach Veröffentlichung der Apps freigeschaltet.</div>}</div>; }
 
-function BugReportSettings({user}) { const [busy,setBusy]=useState(false);const report=async()=>{setBusy(true);let number=`CMO-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`;if(supabase&&user.authProfileId){const {data}=await supabase.rpc("create_support_ticket",{target_club:user.clubId});if(data)number=data;}const subject=encodeURIComponent(`Fehlermeldung - CMO App #${number}`);const body=encodeURIComponent(`Hallo CMO-Team,\n\nfolgender Fehler ist aufgetreten:\n\n\nApp-Ticket: ${number}\nNutzer: ${user.name}\n`);window.location.href=`mailto:info@idbranding.de?subject=${subject}&body=${body}`;setBusy(false);};return <div className="rounded-2xl p-4" style={{background:C.white,border:`1px solid ${C.line}`}}><div className="text-[11px] mb-4" style={{color:C.textDim}}>Wir erzeugen eine eindeutige Bearbeitungsnummer und öffnen anschließend die E-Mail-App deines Geräts.</div><button onClick={report} disabled={busy} className="w-full py-3 rounded-xl text-xs font-bold" style={{background:C.red,color:C.white}}>{busy?"Nummer wird erstellt …":"Fehler per E-Mail melden"}</button></div>; }
+function BugReportSettings({user}) { const [busy,setBusy]=useState(false);const report=async()=>{setBusy(true);let number=`CMO-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`;if(supabase&&user.authProfileId){const {data}=await supabase.rpc("create_support_ticket",{target_club:user.clubId});if(data)number=data;}const subject=encodeURIComponent(`Fehlermeldung - CMO App #${number}`);const body=encodeURIComponent(`Hallo CMO-Team,\n\nfolgender Fehler ist aufgetreten:\n\n\nApp-Ticket: ${number}\nNutzer: ${user.name}\n`);window.location.href=`mailto:info@idbranding.de?subject=${subject}&body=${body}`;setBusy(false);};return <div className="rounded-2xl p-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-[11px] mb-4" style={{color:C.textDim}}>Wir erzeugen eine eindeutige Bearbeitungsnummer und öffnen anschließend die E-Mail-App deines Geräts.</div><button onClick={report} disabled={busy} className="w-full py-3 rounded-xl text-xs font-bold" style={{background:C.red,color:C.white}}>{busy?"Nummer wird erstellt …":"Fehler per E-Mail melden"}</button></div>; }
 
-function CalendarSyncSettings({user,saveRef}) { const [interval,setInterval]=useState(user.calendarSyncInterval||"never");const [token,setToken]=useState("");const [message,setMessage]=useState("");const sync=async()=>{if(!supabase){setMessage("Kalendersynchronisierung benötigt ein echtes Konto.");return;}const {data,error}=await supabase.rpc("configure_calendar_subscription",{target_club:user.clubId,requested_interval:interval});if(error){setMessage("Kalender konnte nicht verbunden werden.");return;}const row=data?.[0];setToken(row?.token||"");setMessage("Kalenderverbindung aktualisiert.");};saveRef.current=sync;const url=token&&`${window.location.origin}/api/calendar/feed/${token}`;return <div><div className="rounded-2xl p-4" style={{background:C.white,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">Spiel- und Trainingskalender</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>Verbinde alle für dich sichtbaren Spiele und Trainings mit deinem Gerätekalender.</div><select value={interval} onChange={(e)=>setInterval(e.target.value)} className="w-full px-3 py-3 rounded-xl text-xs mb-3" style={inputStyle}><option value="never">Nie automatisch</option><option value="daily">Täglich</option><option value="weekly">Wöchentlich · Sonntagabend</option><option value="monthly">Monatlich</option></select><button onClick={sync} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold" style={{background:C.ink,color:C.white}}><RefreshCw size={14}/> Jetzt synchronisieren</button>{url&&<a href={url.replace(/^https?:/,"webcal:")} className="block w-full text-center mt-2 py-2.5 rounded-xl text-xs font-bold" style={{background:"#E7F3EC",color:C.green}}>Mit Gerätekalender verbinden</a>}</div>{message&&<div className="text-[11px] mt-3" style={{color:message.includes("aktualisiert")?C.green:C.red}}>{message}</div>}</div>; }
+function CalendarSyncSettings({user,saveRef}) { const [interval,setInterval]=useState(user.calendarSyncInterval||"never");const [token,setToken]=useState("");const [message,setMessage]=useState("");const sync=async()=>{if(!supabase){setMessage("Kalendersynchronisierung benötigt ein echtes Konto.");return;}const {data,error}=await supabase.rpc("configure_calendar_subscription",{target_club:user.clubId,requested_interval:interval});if(error){setMessage("Kalender konnte nicht verbunden werden.");return;}const row=data?.[0];setToken(row?.token||"");setMessage("Kalenderverbindung aktualisiert.");};saveRef.current=sync;const url=token&&`${window.location.origin}/api/calendar/feed/${token}`;return <div><div className="rounded-2xl p-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">Spiel- und Trainingskalender</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>Verbinde alle für dich sichtbaren Spiele und Trainings mit deinem Gerätekalender.</div><select value={interval} onChange={(e)=>setInterval(e.target.value)} className="w-full px-3 py-3 rounded-xl text-xs mb-3" style={inputStyle}><option value="never">Nie automatisch</option><option value="daily">Täglich</option><option value="weekly">Wöchentlich · Sonntagabend</option><option value="monthly">Monatlich</option></select><button onClick={sync} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold" style={{background:C.ink,color:C.white}}><RefreshCw size={14}/> Jetzt synchronisieren</button>{url&&<a href={url.replace(/^https?:/,"webcal:")} className="block w-full text-center mt-2 py-2.5 rounded-xl text-xs font-bold" style={{background:"#E7F3EC",color:C.green}}>Mit Gerätekalender verbinden</a>}</div>{message&&<div className="text-[11px] mt-3" style={{color:message.includes("aktualisiert")?C.green:C.red}}>{message}</div>}</div>; }
 
 function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, onSponsorImpression, onSponsorClick, onLogout, clubFeatures, onClubFeaturesChanged, entitlement, goSubscribe }) {
   const featureEnabled = (key) => clubFeatures[key] !== false;
@@ -4488,7 +4545,7 @@ function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, 
         <HowToVideoLibrary user={user}/>
       </ProfileUnderlay>}
 
-      <div className="rounded-2xl p-4 mb-5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+      <div className="rounded-2xl p-4 mb-5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2 text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}><Sparkles size={15} style={{ color: C.amber }} /> Vereinspunkte</div>
           <span className="text-xs" style={{ color: C.textDim, fontFamily: "JetBrains Mono" }}>{user.points} / {goal}</span>
@@ -4510,7 +4567,7 @@ function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, 
           {(user.badges || []).map((bid) => {
             const b = BADGE_LIBRARY[bid];
             return (
-              <div key={bid} className="rounded-2xl p-3" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+              <div key={bid} className="rounded-2xl p-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
                 <div className="w-8 h-8 rounded-full flex items-center justify-center mb-2" style={{ background: C.paper }}><b.icon size={15} style={{ color: C.red }} /></div>
                 <div className="text-xs" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{b.label}</div>
                 <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{b.descFor ? b.descFor(user) : b.desc}</div>
@@ -4521,7 +4578,7 @@ function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, 
       )}
       </>}
 
-      <div className="rounded-2xl p-4 mb-5 flex items-center gap-3" style={{ background: "#FFF6E4", border: `1px solid #F2DDA8` }}>
+      <div className="rounded-2xl p-4 mb-5 flex items-center gap-3" style={{ background: "rgba(255,246,228,0.72)", border: `1px solid ${C.edge}` }}>
         <Gift size={22} style={{ color: C.amber, flexShrink: 0 }} />
         <div>
           <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Mitglied wirbt Mitglied</div>
@@ -4529,11 +4586,11 @@ function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, 
         </div>
       </div>
 
-      <button className="w-full flex items-center justify-between px-4 py-3 rounded-2xl mb-2" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+      <button className="w-full flex items-center justify-between px-4 py-3 rounded-2xl mb-2" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
         <span className="flex items-center gap-2 text-sm" style={{ fontFamily: "Inter", fontWeight: 600, color: C.ink }}><ImageIcon size={15} /> Fotogalerie · Sommerfest 2025</span>
         <ChevronRight size={15} style={{ color: C.textDim }} />
       </button>
-      <button className="w-full flex items-center justify-between px-4 py-3 rounded-2xl mb-5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+      <button className="w-full flex items-center justify-between px-4 py-3 rounded-2xl mb-5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
         <span className="flex items-center gap-2 text-sm" style={{ fontFamily: "Inter", fontWeight: 600, color: C.ink }}><Star size={15} /> Anwesenheitsquote: 92%</span>
         <ChevronRight size={15} style={{ color: C.textDim }} />
       </button>
@@ -4541,9 +4598,9 @@ function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, 
       <SponsorSlot slotKey="profile_bottom" bookings={sponsorBookings} onImpression={onSponsorImpression} onClick={onSponsorClick} visible={featureEnabled("sponsor_profile_bottom")} />
 
       <div className="grid grid-cols-3 gap-2 mb-4 text-center">
-        <a href="/datenschutz" className="py-2 rounded-xl text-[10px] font-bold" style={{ background: C.white, border: `1px solid ${C.line}`, color: C.textDim }}>Datenschutz</a>
-        <a href="/impressum" className="py-2 rounded-xl text-[10px] font-bold" style={{ background: C.white, border: `1px solid ${C.line}`, color: C.textDim }}>Impressum</a>
-        <a href="/nutzungsbedingungen" className="py-2 rounded-xl text-[10px] font-bold" style={{ background: C.white, border: `1px solid ${C.line}`, color: C.textDim }}>Bedingungen</a>
+        <a href="/datenschutz" className="py-2 rounded-xl text-[10px] font-bold" style={{ background: C.glass, border: `1px solid ${C.line}`, color: C.textDim }}>Datenschutz</a>
+        <a href="/impressum" className="py-2 rounded-xl text-[10px] font-bold" style={{ background: C.glass, border: `1px solid ${C.line}`, color: C.textDim }}>Impressum</a>
+        <a href="/nutzungsbedingungen" className="py-2 rounded-xl text-[10px] font-bold" style={{ background: C.glass, border: `1px solid ${C.line}`, color: C.textDim }}>Bedingungen</a>
       </div>
 
       <button onClick={onLogout} className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm" style={{ background: C.paperDim, color: C.red, fontFamily: "Inter", fontWeight: 700 }}>
@@ -4567,17 +4624,17 @@ function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, 
       {profileUnderlay === "board-overview" && user.roles.includes("vorstand") && <ProfileUnderlay title="Mitgliederübersicht" eyebrow="Vorstand" onClose={() => setProfileUnderlay("")}><BoardMemberOverview members={members} currentUser={user}/></ProfileUnderlay>}
       {profileUnderlay === "join-requests" && user.roles.some((role) => ["sysadmin","vereinsadmin","vorstand"].includes(role)) && <ProfileUnderlay title="Beitrittsanfragen" eyebrow="Verwalten" onClose={() => setProfileUnderlay("")}><JoinRequestsManager currentUser={user}/></ProfileUnderlay>}
       {profileUnderlay === "account" && <ProfileUnderlay title="Kontoeinstellungen" onClose={() => setProfileUnderlay("")}>
-        <div className="rounded-2xl p-4 mb-4" style={{ background: C.white, border: `1px solid ${C.line}` }}><div className="flex items-center gap-2 text-sm font-bold mb-1" style={{ color: C.ink }}><ShieldCheck size={16} style={{ color: C.green }}/> Sicherheit</div><div className="text-[11px]" style={{ color: C.textDim }}>Dein Konto ist über Supabase geschützt. Passwortänderungen und Wiederherstellung erfolgen über deine hinterlegte E-Mail-Adresse.</div></div>
-        <div className="space-y-2 mb-6"><a href="/datenschutz" className="w-full flex items-center justify-between rounded-2xl px-3.5 py-3" style={{ background: C.white, border: `1px solid ${C.line}` }}><span className="text-xs font-bold" style={{ color: C.ink }}>Datenschutz</span><ChevronRight size={14} style={{ color: C.textDim }}/></a><a href="/nutzungsbedingungen" className="w-full flex items-center justify-between rounded-2xl px-3.5 py-3" style={{ background: C.white, border: `1px solid ${C.line}` }}><span className="text-xs font-bold" style={{ color: C.ink }}>Nutzungsbedingungen</span><ChevronRight size={14} style={{ color: C.textDim }}/></a></div>
+        <div className="rounded-2xl p-4 mb-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="flex items-center gap-2 text-sm font-bold mb-1" style={{ color: C.ink }}><ShieldCheck size={16} style={{ color: C.green }}/> Sicherheit</div><div className="text-[11px]" style={{ color: C.textDim }}>Dein Konto ist über Supabase geschützt. Passwortänderungen und Wiederherstellung erfolgen über deine hinterlegte E-Mail-Adresse.</div></div>
+        <div className="space-y-2 mb-6"><a href="/datenschutz" className="w-full flex items-center justify-between rounded-2xl px-3.5 py-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}><span className="text-xs font-bold" style={{ color: C.ink }}>Datenschutz</span><ChevronRight size={14} style={{ color: C.textDim }}/></a><a href="/nutzungsbedingungen" className="w-full flex items-center justify-between rounded-2xl px-3.5 py-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}><span className="text-xs font-bold" style={{ color: C.ink }}>Nutzungsbedingungen</span><ChevronRight size={14} style={{ color: C.textDim }}/></a></div>
         <SectionTitle eyebrow="Weitere Optionen" title="Accountverwaltung"/>
         <ProfileSettingsCard icon={User} title="Account verwalten" description="Persönliche Kontodaten und weitere Kontoaktionen" color={C.textDim} onClick={() => setProfileUnderlay("account-delete")}/>
       </ProfileUnderlay>}
       {profileUnderlay === "account-delete" && <ProfileUnderlay title="Account verwalten" eyebrow="Kontoeinstellungen" onClose={() => { setProfileUnderlay("account"); setDeleteConfirm(false); setDeleteError(""); }}>
-        <div className="rounded-2xl p-4 mb-6" style={{ background: C.white, border: `1px solid ${C.line}` }}><div className="flex items-center gap-2 text-sm font-bold mb-1" style={{ color: C.ink }}><Mail size={15}/> Hinterlegte E-Mail</div><div className="text-xs" style={{ color: C.textDim }}>{user.email}</div></div>
+        <div className="rounded-2xl p-4 mb-6" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="flex items-center gap-2 text-sm font-bold mb-1" style={{ color: C.ink }}><Mail size={15}/> Hinterlegte E-Mail</div><div className="text-xs" style={{ color: C.textDim }}>{user.email}</div></div>
         <SectionTitle eyebrow="Gefahrenbereich" title="Account-Löschung"/>
         <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Die Löschfunktion befindet sich bewusst in diesem geschützten Unterbereich. Prüfe vor dem Fortfahren, ob noch ein aktives Abonnement besteht.</div>
-        {!deleteConfirm ? <button onClick={() => setDeleteConfirm(true)} className="w-full py-2.5 rounded-2xl text-xs" style={{ background: C.white, border: "1px solid #F3B9B9", color: C.red, fontWeight: 700 }}>Konto und persönliche Daten löschen</button> :
-          <div className="rounded-2xl p-3" style={{ background: "#FDECEC", border: "1px solid #F3B9B9" }}><div className="flex items-center gap-2 text-xs font-bold mb-2" style={{ color: C.red }}><AlertCircle size={15}/> Endgültige Löschung bestätigen</div><div className="text-xs mb-3" style={{ color: C.ink }}>Das Konto, Vereinsprofile und persönliche Inhalte werden dauerhaft gelöscht. Ein aktives PayPal-Abo wird beendet. Dieser Schritt kann nicht rückgängig gemacht werden.</div>{deleteError && <div className="text-xs mb-2" style={{ color: C.red }}>{deleteError}</div>}<div className="flex gap-2"><button disabled={deleting} onClick={deleteAccount} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: C.red, color: C.white }}>{deleting ? "Wird gelöscht …" : "Endgültig löschen"}</button><button onClick={() => { setDeleteConfirm(false); setDeleteError(""); }} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.white, color: C.textDim }}>Abbrechen</button></div></div>}
+        {!deleteConfirm ? <button onClick={() => setDeleteConfirm(true)} className="w-full py-2.5 rounded-2xl text-xs" style={{ background: C.glass, border: "1px solid #F3B9B9", color: C.red, fontWeight: 700 }}>Konto und persönliche Daten löschen</button> :
+          <div className="rounded-2xl p-3" style={{ background: "#FDECEC", border: "1px solid #F3B9B9" }}><div className="flex items-center gap-2 text-xs font-bold mb-2" style={{ color: C.red }}><AlertCircle size={15}/> Endgültige Löschung bestätigen</div><div className="text-xs mb-3" style={{ color: C.ink }}>Das Konto, Vereinsprofile und persönliche Inhalte werden dauerhaft gelöscht. Ein aktives PayPal-Abo wird beendet. Dieser Schritt kann nicht rückgängig gemacht werden.</div>{deleteError && <div className="text-xs mb-2" style={{ color: C.red }}>{deleteError}</div>}<div className="flex gap-2"><button disabled={deleting} onClick={deleteAccount} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: C.red, color: C.white }}>{deleting ? "Wird gelöscht …" : "Endgültig löschen"}</button><button onClick={() => { setDeleteConfirm(false); setDeleteError(""); }} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>Abbrechen</button></div></div>}
       </ProfileUnderlay>}
     </div>
   );
@@ -4607,7 +4664,7 @@ function SeasonVoteView({ currentUser, seasonVotes, setSeasonVotes }) {
       {!closed && <div className="text-xs mb-3" style={{ color: C.textDim, fontFamily: "Inter" }}>{total} Stimmen bisher abgegeben. Ergebnisse werden erst nach dem Stichtag veröffentlicht.</div>}
 
       {closed && sorted[0] && (
-        <div className="rounded-2xl p-4 mb-5 flex items-center gap-3" style={{ background: "#FFF6E4", border: "1px solid #F2DDA8" }}>
+        <div className="rounded-2xl p-4 mb-5 flex items-center gap-3" style={{ background: "rgba(255,246,228,0.72)", border: `1px solid ${C.edge}` }}>
           <Trophy size={22} style={{ color: C.amber }} />
           <div>
             <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>🏆 {sorted[0].name}</div>
@@ -4659,7 +4716,7 @@ function TippView({ members, currentUser, tippPredictions, setTippPredictions, t
 
   return (
     <div className="px-4 pt-4 pb-10">
-      <div className="rounded-2xl p-4 mb-5 flex items-center gap-3" style={{ background: "#FFF6E4", border: "1px solid #F2DDA8" }}>
+      <div className="rounded-2xl p-4 mb-5 flex items-center gap-3" style={{ background: "rgba(255,246,228,0.72)", border: `1px solid ${C.edge}` }}>
         <Gift size={20} style={{ color: C.amber }} />
         <div className="text-xs" style={{ color: C.ink, fontFamily: "Inter" }}><b>Platz 1</b> am Saisonende gewinnt einen CMO-Artikel nach Wahl — Schal, Trikot oder mehr.</div>
       </div>
@@ -4688,7 +4745,7 @@ function TippView({ members, currentUser, tippPredictions, setTippPredictions, t
         const pred = mine[match.id] || { home: "", away: "" };
         const earned = predictionPoints(pred, result);
         return (
-          <div key={match.id} className="rounded-2xl p-4 mb-3" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+          <div key={match.id} className="rounded-2xl p-4 mb-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
             <div className="flex items-center justify-between mb-3">
               <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{formatDate(match.date)} · {formatTime(match.date)}</div>
               {result ? <Pill bg={C.green}>Endstand {result.home}:{result.away} · +{earned} P</Pill> : locked ? <Pill bg={C.textDim}>Wartet auf Ergebnis</Pill> : null}
@@ -4723,7 +4780,7 @@ function DutyView({ members, currentUser, dutyPlan, setDutyPlan }) {
       <div className="text-xs mb-4" style={{ color: C.textDim, fontFamily: "Inter" }}>Von der Theke beim Heimspiel bis zum Kuchenbuffet auf dem Sommerfest — hier findest du alle offenen Helferstellen. Trag dich direkt ein!</div>
 
       {!oldEnough && (
-        <div className="rounded-2xl p-4 mb-5 text-xs" style={{ background: "#FFF6E4", border: "1px solid #F2DDA8", color: C.ink, fontFamily: "Inter" }}>
+        <div className="rounded-2xl p-4 mb-5 text-xs" style={{ background: "rgba(255,246,228,0.72)", border: `1px solid ${C.edge}`, color: C.ink, fontFamily: "Inter" }}>
           An Theke, Zeitnahme, Grill und Kasse bei Heimspielen helfen erst ab 16 Jahren mit — beim Sommerfest kannst du trotzdem schon zupacken.
           {familyHelpers.length > 0 && <> Für Heimspiele kann deine Familie einspringen: {familyHelpers.map((f) => f.name).join(", ")}.</>}
         </div>
@@ -4732,7 +4789,7 @@ function DutyView({ members, currentUser, dutyPlan, setDutyPlan }) {
       {helperEvents.map((ev) => {
         const eligible = formalMember && (ev.type !== "spiel" || oldEnough);
         return (
-          <div key={ev.id} className="rounded-2xl mb-4 p-4" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+          <div key={ev.id} className="rounded-2xl mb-4 p-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
             <div className="flex items-center justify-between mb-3">
               <div>
                 <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{ev.title}</div>
@@ -4772,7 +4829,7 @@ function AdminDutyPanel({ members, dutyPlan, setDutyPlan }) {
         const plan = dutyPlan[ev.id] || {};
         const pool = ev.type === "spiel" ? formalMembers.filter((m) => age(m.birthdate) >= 16) : formalMembers;
         return (
-          <div key={ev.id} className="rounded-2xl mb-4 p-4" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+          <div key={ev.id} className="rounded-2xl mb-4 p-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
             <div className="text-sm mb-3" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{ev.title} · {formatDate(ev.date)}</div>
             <div className="space-y-3">
               {ev.helperSlots.map((station) => {
@@ -4815,7 +4872,7 @@ function ProtocolCard({ protocol, members, onToggleTask }) {
   const [open, setOpen] = useState(false);
   const openCount = protocol.tasks.filter((t) => !t.done).length;
   return (
-    <div className="rounded-2xl overflow-hidden" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+    <div className="rounded-2xl overflow-hidden" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
       <button onClick={() => setOpen((o) => !o)} className="w-full text-left p-3 flex items-center justify-between">
         <div>
           <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{protocol.title}</div>
@@ -4891,7 +4948,7 @@ function ProtokollePanel({ members, protocols, setProtocols, clubId }) {
             {openTasks.map((t) => {
               const person = members.find((m) => m.id === t.assignee);
               return (
-                <div key={t.id} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+                <div key={t.id} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
                   <button onClick={() => toggleTaskDone(t.protocolId, t.id)} className="w-5 h-5 rounded-full flex-shrink-0" style={{ border: `1.5px solid ${C.line}` }} />
                   <div className="flex-1 min-w-0">
                     <div className="text-xs" style={{ fontFamily: "Inter", fontWeight: 600, color: C.ink }}>{t.text}</div>
@@ -4906,7 +4963,7 @@ function ProtokollePanel({ members, protocols, setProtocols, clubId }) {
 
       <div>
         <div className="text-sm mb-2" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Neues Protokoll erfassen</div>
-        <div className="rounded-2xl p-3 space-y-2.5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+        <div className="rounded-2xl p-3 space-y-2.5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
           <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Titel, z. B. Vorstandssitzung August"
             className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={{ background: C.paperDim, fontFamily: "Inter", color: C.ink }} />
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)}
@@ -4932,7 +4989,7 @@ function ProtokollePanel({ members, protocols, setProtocols, clubId }) {
 
       <div>
         <div className="text-sm mb-2" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Aufgaben für dieses Protokoll ({draftTasks.length})</div>
-        <div className="rounded-2xl p-3 mb-3" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+        <div className="rounded-2xl p-3 mb-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
           <input value={newTaskText} onChange={(e) => setNewTaskText(e.target.value)} placeholder="Neue Aufgabe eintippen…"
             className="w-full px-3 py-2 rounded-lg text-sm outline-none mb-2" style={{ background: C.paperDim, fontFamily: "Inter", color: C.ink }} />
           <div className="flex gap-2 mb-2">
@@ -4948,7 +5005,7 @@ function ProtokollePanel({ members, protocols, setProtocols, clubId }) {
         {draftTasks.length > 0 && (
           <div className="space-y-2 mb-3">
             {draftTasks.map((t) => (
-              <div key={t.id} className="rounded-xl p-3" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+              <div key={t.id} className="rounded-xl p-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <input value={t.text} onChange={(e) => updateDraftTask(t.id, { text: e.target.value })} className="flex-1 text-xs outline-none bg-transparent" style={{ fontFamily: "Inter", fontWeight: 600, color: C.ink }} />
                   <button onClick={() => removeDraftTask(t.id)}><X size={13} style={{ color: C.textDim }} /></button>
@@ -5000,7 +5057,7 @@ function AutomationsPanel({ members, feePaid, remindersSent, setRemindersSent, w
               const stage = reminderStage(days);
               const sent = remindersSent[m.id];
               return (
-                <div key={m.id} className="flex items-center justify-between px-3 py-2.5 rounded-xl" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+                <div key={m.id} className="flex items-center justify-between px-3 py-2.5 rounded-xl" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
                   <div>
                     <div className="text-xs" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{m.name}</div>
                     <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{days} Tage überfällig · <span style={{ color: stage.color, fontWeight: 700 }}>{stage.label}</span></div>
@@ -5084,7 +5141,7 @@ function SponsoringPanel({ bookings, setBookings, stats, currentClub, clubFeatur
         const ad = typeof raw === "object" && raw ? raw : { title: raw || "", text: "", imageUrl: "", landingUrl: "" };
         const on = (clubFeatures?.[`sponsor_${slot.key}`]) !== false;
         return (
-          <div key={slot.key} className="rounded-2xl p-3" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+          <div key={slot.key} className="rounded-2xl p-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
             <div className="flex items-center justify-between mb-2">
               <div className="text-xs" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{slot.label}</div>
               <span className="text-[10px]" style={{ fontFamily: "JetBrains Mono", color: C.textDim }}>{slot.key}</span>
@@ -5119,7 +5176,7 @@ function PollManagerPanel({ polls, setPolls, clubId }) {
     if (supabase && clubId) supabase.rpc("notify_club", { target_club: clubId, p_notif_type: "polls", p_title: "Neue Umfrage", p_body: title.trim() });
     setTitle(""); setOptions(["",""]);
   };
-  return <div className="space-y-4"><div className="rounded-2xl p-4" style={{background:C.white,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">Neue Mitmach-Umfrage</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>Mindestens zwei Antwortmöglichkeiten eintragen.</div><input value={title} onChange={(e)=>setTitle(e.target.value)} placeholder="Frage oder Titel" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim}}/>{options.map((o,i)=><input key={i} value={o} onChange={(e)=>setOptions((all)=>all.map((x,idx)=>idx===i?e.target.value:x))} placeholder={`Antwort ${i+1}`} className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2" style={{background:C.paperDim}}/>)}<div className="flex gap-2"><button onClick={()=>setOptions((o)=>[...o,""])} className="px-3 py-2 rounded-lg text-xs font-bold" style={{background:C.paperDim,color:C.ink}}>＋ Antwort</button><button onClick={create} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{background:C.red,color:C.white}}>Veröffentlichen</button></div></div><div className="space-y-2">{polls.map((poll)=><div key={poll.id} className="rounded-xl p-3 flex items-center gap-3" style={{background:C.white,border:`1px solid ${C.line}`}}><div className="flex-1"><div className="text-xs font-bold">{poll.title}</div><div className="text-[10px] mt-1" style={{color:C.textDim}}>{poll.options.length} Antworten · {poll.options.reduce((n,o)=>n+o.votes,0)} Stimmen</div></div><button onClick={()=>setPolls((ps)=>ps.map((p)=>p.id===poll.id?{...p,active:!p.active}:p))} className="px-2.5 py-1.5 rounded-full text-[10px] font-bold" style={{background:poll.active?"#E7F3EC":C.paperDim,color:poll.active?C.green:C.textDim}}>{poll.active?"Aktiv":"Inaktiv"}</button></div>)}</div></div>;
+  return <div className="space-y-4"><div className="rounded-2xl p-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">Neue Mitmach-Umfrage</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>Mindestens zwei Antwortmöglichkeiten eintragen.</div><input value={title} onChange={(e)=>setTitle(e.target.value)} placeholder="Frage oder Titel" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim}}/>{options.map((o,i)=><input key={i} value={o} onChange={(e)=>setOptions((all)=>all.map((x,idx)=>idx===i?e.target.value:x))} placeholder={`Antwort ${i+1}`} className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2" style={{background:C.paperDim}}/>)}<div className="flex gap-2"><button onClick={()=>setOptions((o)=>[...o,""])} className="px-3 py-2 rounded-lg text-xs font-bold" style={{background:C.paperDim,color:C.ink}}>＋ Antwort</button><button onClick={create} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{background:C.red,color:C.white}}>Veröffentlichen</button></div></div><div className="space-y-2">{polls.map((poll)=><div key={poll.id} className="rounded-xl p-3 flex items-center gap-3" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="flex-1"><div className="text-xs font-bold">{poll.title}</div><div className="text-[10px] mt-1" style={{color:C.textDim}}>{poll.options.length} Antworten · {poll.options.reduce((n,o)=>n+o.votes,0)} Stimmen</div></div><button onClick={()=>setPolls((ps)=>ps.map((p)=>p.id===poll.id?{...p,active:!p.active}:p))} className="px-2.5 py-1.5 rounded-full text-[10px] font-bold" style={{background:poll.active?"#E7F3EC":C.paperDim,color:poll.active?C.green:C.textDim}}>{poll.active?"Aktiv":"Inaktiv"}</button></div>)}</div></div>;
 }
 
 function MatchResultsPanel({ results, onSave }) {
@@ -5146,7 +5203,7 @@ function MatchResultsPanel({ results, onSave }) {
         {TIPP_MATCHES.map((match) => {
           const values = drafts[match.id] || results[match.id] || { home: "", away: "" };
           return (
-            <div key={match.id} className="rounded-2xl p-4" style={{ background: C.white, border: `1px solid ${results[match.id] ? "#A9D8B6" : C.line}` }}>
+            <div key={match.id} className="rounded-2xl p-4" style={{ background: C.glass, border: `1px solid ${results[match.id] ? "#A9D8B6" : C.line}` }}>
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs" style={{ color: C.textDim }}>{formatDate(match.date)} · {formatTime(match.date)}</span>
                 {results[match.id] && <Pill bg={C.green}>ausgewertet</Pill>}
@@ -5268,7 +5325,7 @@ function RolesPanel({ members, setMembers }) {
       {members.map((m) => {
         const expanded = expandedId === m.id;
         return (
-          <div key={m.id} className="rounded-2xl overflow-hidden" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+          <div key={m.id} className="rounded-2xl overflow-hidden" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
             <button type="button" onClick={() => (expanded ? closeMember() : openMember(m.id, m.roles))} className="w-full flex items-center gap-2 p-3 text-left">
               <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0" style={{ background: m.color, color: "#fff", fontFamily: "Inter" }}>{initialsOf(m.name)}</div>
               <div className="flex-1 min-w-0">
@@ -5335,7 +5392,7 @@ function SystemPanel({ members, channels, setChannels, maintenanceMode, setMaint
 
       <div>
         <div className="text-sm mb-2" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Neuen Chat-Kanal anlegen</div>
-        <div className="rounded-2xl p-3" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+        <div className="rounded-2xl p-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
           <div className="flex gap-2 mb-2">
             <input value={chEmoji} onChange={(e) => setChEmoji(e.target.value)} placeholder="🏒" maxLength={2}
               className="w-12 text-center py-2 rounded-lg text-sm outline-none" style={{ background: C.paperDim, fontFamily: "Inter" }} />
@@ -5362,7 +5419,7 @@ function SystemPanel({ members, channels, setChannels, maintenanceMode, setMaint
         <div className="text-sm mb-2" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Konten-Übersicht</div>
         <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${C.line}` }}>
           {members.map((m, i) => (
-            <div key={m.id} className="px-4 py-2.5" style={{ background: C.white, borderBottom: i < members.length - 1 ? `1px solid ${C.line}` : "none" }}>
+            <div key={m.id} className="px-4 py-2.5" style={{ background: C.glass, borderBottom: i < members.length - 1 ? `1px solid ${C.line}` : "none" }}>
               <div className="flex items-center justify-between">
                 <span className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{m.name}</span>
                 <span className="text-[10px]" style={{ fontFamily: "JetBrains Mono", color: C.textDim }}>{m.id}</span>
@@ -5384,7 +5441,7 @@ function SystemPanel({ members, channels, setChannels, maintenanceMode, setMaint
             <div className="text-xs mb-2" style={{ color: C.ink, fontFamily: "Inter" }}>Wirklich alle Aktivitätsdaten zurücksetzen? Konten, Rollen und Protokolle bleiben erhalten.</div>
             <div className="flex gap-2">
               <button onClick={() => { onResetDemo(); setConfirmReset(false); }} className="flex-1 py-2 rounded-lg text-xs" style={{ background: C.red, color: "#fff", fontFamily: "Inter", fontWeight: 700 }}>Ja, zurücksetzen</button>
-              <button onClick={() => setConfirmReset(false)} className="flex-1 py-2 rounded-lg text-xs" style={{ background: C.white, color: C.textDim, fontFamily: "Inter", fontWeight: 700, border: `1px solid ${C.line}` }}>Abbrechen</button>
+              <button onClick={() => setConfirmReset(false)} className="flex-1 py-2 rounded-lg text-xs" style={{ background: C.glass, color: C.textDim, fontFamily: "Inter", fontWeight: 700, border: `1px solid ${C.line}` }}>Abbrechen</button>
             </div>
           </div>
         )}
@@ -5436,7 +5493,7 @@ function ClubLogoPanel({ club, onLogoUpdated }) {
     onLogoUpdated(logoUrl); setMessage("Vereinslogo gespeichert."); setBusy(false);
   };
 
-  return <div className="rounded-2xl p-4" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+  return <div className="rounded-2xl p-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
     <div className="flex items-center gap-3 mb-3">
       <ClubLogo club={club} size={58} rounded={15} />
       <div><div className="text-sm font-bold" style={{ color: C.ink }}>Profilbild des Vereins</div><div className="text-[11px]" style={{ color: C.textDim }}>JPG, PNG oder WebP · maximal 2 MB</div></div>
@@ -5466,7 +5523,7 @@ function ClubColorPanel({ club, onColorsUpdated }) {
     setMessage("Vereinsfarben gespeichert.");
   };
 
-  return <div className="rounded-2xl p-4 mt-3" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+  return <div className="rounded-2xl p-4 mt-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
     <div className="text-sm font-bold mb-3" style={{ color: C.ink }}>Vereinsfarben</div>
     <ClubColorPicker primary={primary} secondary={secondary} onChange={(p, s) => { setPrimary(p); setSecondary(s); setMessage(""); }} />
     <button onClick={save} disabled={saving || !dirty} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: dirty ? C.ink : C.paperDim, color: dirty ? C.white : C.textDim, opacity: saving ? .6 : 1 }}>{saving ? "Wird gespeichert …" : "Farben speichern"}</button>
@@ -5549,18 +5606,18 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
   };
 
   return <div>
-    <div className="rounded-2xl p-4 mb-4" style={{ background: "#EEF5F8", border: "1px solid #CEE2EA" }}>
+    <div className="rounded-2xl p-4 mb-4" style={{ background: "rgba(238,245,248,0.72)", border: `1px solid ${C.edge}` }}>
       <div className="flex items-center justify-between gap-3">
         <div><div className="text-sm font-bold" style={{ color: C.ink }}>Offene Mitgliedsanträge</div><div className="text-[11px] mt-1" style={{ color: C.textDim }}>Nach der Freigabe kann sich das Mitglied sofort anmelden.</div></div>
-        <span className="min-w-8 h-8 px-2 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: C.white, color: C.red }}>{requests.length}</span>
+        <span className="min-w-8 h-8 px-2 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: C.glass, color: C.red }}>{requests.length}</span>
       </div>
     </div>
     {message && <div role="status" className="text-xs rounded-xl px-3 py-2.5 mb-3" style={{ background: message.includes("wurde") ? "#E7F3EC" : "#FDECEC", color: message.includes("wurde") ? C.green : C.red }}>{message}</div>}
     {loading ? <div className="text-xs py-5 text-center" style={{ color: C.textDim }}>Mitgliedsanträge werden geladen …</div> : requests.length === 0 ?
-      <div className="rounded-2xl p-5 text-center" style={{ background: C.white, border: `1px solid ${C.line}` }}><CheckCircle2 size={24} className="mx-auto mb-2" style={{ color: C.green }}/><div className="text-sm font-bold">Keine offenen Anträge</div><div className="text-[11px] mt-1" style={{ color: C.textDim }}>Neue Registrierungen erscheinen automatisch hier.</div></div> :
+      <div className="rounded-2xl p-5 text-center" style={{ background: C.glass, border: `1px solid ${C.line}` }}><CheckCircle2 size={24} className="mx-auto mb-2" style={{ color: C.green }}/><div className="text-sm font-bold">Keine offenen Anträge</div><div className="text-[11px] mt-1" style={{ color: C.textDim }}>Neue Registrierungen erscheinen automatisch hier.</div></div> :
       <div className="space-y-3">{requests.map((request) => {
         const roles = (request.membership_roles || []).map((entry) => ROLE_META[entry.role]?.label || entry.role);
-        return <div key={request.id} className="rounded-2xl p-4" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+        return <div key={request.id} className="rounded-2xl p-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
           <div className="flex items-start gap-3 mb-3"><div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: C.red, color: C.white }}>{initialsOf(request.display_name)}</div><div className="min-w-0"><div className="text-sm font-bold truncate" style={{ color: C.ink }}>{request.display_name}</div><div className="text-[11px] truncate" style={{ color: C.textDim }}>{request.email || "Keine E-Mail hinterlegt"}</div></div></div>
           <div className="grid grid-cols-2 gap-2 mb-3"><div className="rounded-xl px-3 py-2" style={{ background: C.paperDim }}><div className="text-[9px] uppercase tracking-wider" style={{ color: C.textDim }}>Registrierung</div><div className="text-xs font-bold mt-0.5">{roles.filter((role) => role !== "Mitglied").join(", ") || "Mitglied"}</div></div><div className="rounded-xl px-3 py-2" style={{ background: C.paperDim }}><div className="text-[9px] uppercase tracking-wider" style={{ color: C.textDim }}>Mannschaft</div><div className="text-xs font-bold mt-0.5">{request.requested_team || "Noch offen"}</div></div></div>
           <div className="flex gap-2"><button disabled={workingId === request.id} onClick={() => decide(request, "active")} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.green, color: C.white, opacity: workingId === request.id ? .6 : 1 }}>Freigeben</button><button disabled={workingId === request.id} onClick={() => decide(request, "blocked")} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: "#FCEBEE", color: C.red, opacity: workingId === request.id ? .6 : 1 }}>Ablehnen</button></div>
@@ -5575,7 +5632,7 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
     {showActive && (loadingActive ? <div className="text-xs py-4 text-center" style={{ color: C.textDim }}>Mitglieder werden geladen …</div> : (
       <div className="space-y-2">
         {activeMembers.map((member) => (
-          <div key={member.id} className="flex items-center gap-3 rounded-xl px-3 py-2.5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+          <div key={member.id} className="flex items-center gap-3 rounded-xl px-3 py-2.5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
             <div className="flex-1 min-w-0">
               <div className="text-xs font-bold truncate" style={{ color: C.ink }}>{member.display_name}</div>
               <div className="text-[10px] truncate" style={{ color: C.textDim }}>{member.email || "Keine E-Mail hinterlegt"}</div>
@@ -5618,7 +5675,7 @@ function ClubFeatureOnboarding({ club, onDone }) {
         <div className="text-[10px] uppercase tracking-widest font-bold mb-1" style={{ color: C.red, fontFamily: "Inter" }}>Verein einrichten · {cfg.label}</div>
         <div className="text-xl mb-1" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>Welche Funktionen braucht ihr?</div>
         <div className="text-xs mb-6" style={{ color: C.textDim, fontFamily: "Inter" }}>Frage {step + 1} von {CLUB_FEATURES.length} — lässt sich jederzeit in den Vereinseinstellungen unter „Funktionen" ändern.</div>
-        <div className="rounded-2xl p-5 mb-5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+        <div className="rounded-2xl p-5 mb-5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
           <div className="text-sm font-bold mb-2" style={{ color: C.ink, fontFamily: "Inter" }}>{feature.label(sport)}</div>
           <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{feature.question(sport)}</div>
         </div>
@@ -5646,7 +5703,7 @@ function ClubRoleOverviewPanel({ members }) {
           const holders = members.filter((m) => m.roles.includes(roleKey)).sort((a, b) => a.name.localeCompare(b.name, "de"));
           const open = expandedRole === roleKey;
           return (
-            <div key={roleKey} className="rounded-2xl overflow-hidden" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+            <div key={roleKey} className="rounded-2xl overflow-hidden" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
               <button className="w-full text-left px-3.5 py-3 flex items-center justify-between" onClick={() => setExpandedRole(open ? null : roleKey)}>
                 <div className="flex items-center gap-2">
                   <Pill bg={ROLE_META[roleKey]?.color}>{ROLE_META[roleKey]?.label}</Pill>
@@ -5716,7 +5773,7 @@ function ClubFeatureSettingsPanel({ currentClub, clubFeatures, onFeaturesChanged
       <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>Lege fest, in welcher Reihenfolge die Kacheln unter „Aktionen & Abstimmungen" auf dem Dashboard erscheinen.</div>
       <div className="space-y-2">
         {order.map((key, index) => (
-          <div key={key} className="flex items-center gap-3 px-3.5 py-3 rounded-2xl" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+          <div key={key} className="flex items-center gap-3 px-3.5 py-3 rounded-2xl" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
             <span className="w-6 text-center text-xs" style={{ fontFamily: "JetBrains Mono", color: C.textDim }}>{index + 1}</span>
             <span className="flex-1 text-sm font-bold" style={{ color: C.ink }}>{dashboardTileLabel(key, sport)}</span>
             <button aria-label="Nach oben verschieben" onClick={() => moveTile(index, -1)} disabled={index === 0} className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: C.paperDim, opacity: index === 0 ? .35 : 1 }}><ChevronUp size={15} style={{ color: C.ink }}/></button>
@@ -5767,7 +5824,7 @@ function ClaimManagedPlayerPanel({ members, setMembers, currentUser }) {
   if (!managedCandidates.length) return null;
 
   return (
-    <div className="rounded-2xl p-3.5 mt-4" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+    <div className="rounded-2xl p-3.5 mt-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
       <div className="text-sm mb-1" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Profile ohne Konto zusammenführen</div>
       <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Wenn ein ohne Konto angelegter Spieler (z. B. aus einer Kindermannschaft) später sein eigenes Konto registriert, hier das Platzhalter-Profil mit dem neuen echten Konto verknüpfen.</div>
       {message && <div className="rounded-xl px-3 py-2 text-[11px] font-semibold mb-2" style={{ background: message.includes("nicht") ? "#FCEBEE" : "#E7F3EC", color: message.includes("nicht") ? C.red : C.green }}>{message}</div>}
@@ -6397,9 +6454,9 @@ export default function ClubMemberOrganisationApp() {
   const themeVars = { "--club-primary": clubPrimary, "--club-primary-dark": darkenHex(clubPrimary), "--club-secondary": clubSecondary };
 
   return (
-    <div className="erg-app w-full min-h-screen flex items-center justify-center p-4" style={{ background: "#DEDAD0", fontFamily: "Inter", ...themeVars }}>
+    <div className="erg-app w-full min-h-screen flex items-center justify-center p-4" style={{ background: "#D9D9DF", fontFamily: "Inter", ...themeVars }}>
       <style>{FONTS}</style>
-      <div className="relative w-full flex flex-col overflow-hidden" style={{ maxWidth: 400, height: 820, background: C.paper, borderRadius: 36, boxShadow: "0 30px 60px rgba(0,0,0,0.25)", border: `8px solid ${C.ink}` }}>
+      <div className="erg-canvas relative w-full flex flex-col overflow-hidden" style={{ maxWidth: 400, height: 820, borderRadius: 44, boxShadow: "0 30px 70px rgba(60,30,45,0.28)" }}>
         {showSplash && <AppSplashIntro onDone={() => setShowSplash(false)} />}
         {!currentUser ? (
           authScreen === "club" ? (
@@ -6417,7 +6474,7 @@ export default function ClubMemberOrganisationApp() {
           <>
             {subView ? (
               <div className="flex items-center gap-3 px-4 pt-3 pb-2 flex-shrink-0" style={{ background: C.paper }}>
-                <button onClick={() => setSubView(null)} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+                <button onClick={() => setSubView(null)} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
                   <ArrowLeft size={15} style={{ color: C.ink }} />
                 </button>
                 <div className="text-sm" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>{SUBVIEW_TITLES[subView]}</div>
@@ -6426,7 +6483,7 @@ export default function ClubMemberOrganisationApp() {
               <div className="flex items-center px-4 pt-3 pb-2 flex-shrink-0" style={{ background: C.paper }}>
                 <div className="flex items-center gap-2">
                   {tabHistory.length > 0 ? (
-                    <button onClick={goBack} aria-label="Zurück" className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+                    <button onClick={goBack} aria-label="Zurück" className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
                       <ArrowLeft size={15} style={{ color: C.ink }} />
                     </button>
                   ) : (
@@ -6487,16 +6544,19 @@ export default function ClubMemberOrganisationApp() {
             </div>
 
             {!subView && (
-              <div className="absolute bottom-0 left-0 right-0 flex items-center justify-around py-2.5 px-1" style={{ background: "rgba(246,243,236,0.92)", backdropFilter: "blur(8px)", borderTop: `1px solid ${C.line}` }}>
-                {TABS.map((t) => {
-                  const activeTab = tab === t.id;
-                  return (
-                    <button key={t.id} onClick={() => navigateTab(t.id)} className="flex flex-col items-center gap-0.5 px-1.5 py-1 transition-colors duration-150">
-                      <t.icon size={18} style={{ color: activeTab ? C.red : "#A6A49C" }} strokeWidth={activeTab ? 2.4 : 2} />
-                      <span className="text-[9px]" style={{ fontFamily: "Inter", fontWeight: activeTab ? 700 : 500, color: activeTab ? C.red : "#A6A49C" }}>{t.label}</span>
-                    </button>
-                  );
-                })}
+              <div className="absolute bottom-0 left-0 right-0 px-3 pb-4 pt-2 pointer-events-none">
+                <div className="flex items-center justify-around rounded-3xl p-1.5 pointer-events-auto" style={{ background: "rgba(255,255,255,0.62)", border: `1px solid ${C.edge}`, boxShadow: "0 14px 34px rgba(60,30,45,0.14)" }}>
+                  {TABS.map((t) => {
+                    const activeTab = tab === t.id;
+                    return (
+                      <button key={t.id} onClick={() => navigateTab(t.id)} className="flex flex-col items-center gap-1 flex-1 py-2 rounded-2xl"
+                        style={activeTab ? { background: `linear-gradient(155deg, color-mix(in srgb, ${C.red} 78%, #fff), ${C.red})`, boxShadow: `0 8px 18px color-mix(in srgb, ${C.red} 38%, transparent)` } : undefined}>
+                        <t.icon size={18} style={{ color: activeTab ? "#fff" : C.textDim }} strokeWidth={activeTab ? 2.4 : 2} />
+                        <span className="text-[9px]" style={{ fontFamily: "Inter", fontWeight: activeTab ? 700 : 500, color: activeTab ? "#fff" : C.textDim }}>{t.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </>
