@@ -45,3 +45,7 @@ supabase/.temp/
 
 # Android: lokaler SDK-Pfad, gehört nicht ins Repository
 android/local.properties
+# Android-Signierung: Schlüssel und Passwörter gehören nie ins Repository
+android/keystore.properties
+*.jks
+*.keystore

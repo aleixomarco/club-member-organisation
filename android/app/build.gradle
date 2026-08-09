@@ -16,8 +16,31 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    /* Signierung für den Play Store. Die Zugangsdaten stehen bewusst NICHT hier,
+       sondern in android/keystore.properties — diese Datei ist von der
+       Versionsverwaltung ausgeschlossen. Fehlt sie (etwa auf einem anderen
+       Rechner oder in einer Bauumgebung), läuft der Debug-Build weiter durch;
+       nur der Release-Build ist dann unsigniert.
+
+       Anlegen des Schlüssels: siehe docs/android-release.md */
+    signingConfigs {
+        release {
+            def propsFile = rootProject.file('keystore.properties')
+            if (propsFile.exists()) {
+                def props = new Properties()
+                props.load(new FileInputStream(propsFile))
+                storeFile file(props['storeFile'])
+                storePassword props['storePassword']
+                keyAlias props['keyAlias']
+                keyPassword props['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
+            if (rootProject.file('keystore.properties').exists()) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
