@@ -182,6 +182,19 @@ button:active { transform: scale(0.96); }
 @keyframes splashWordIn { 0% { opacity: 0; transform: translateY(10px); } 100% { opacity: 1; transform: translateY(0); } }
 `;
 
+/* Markenzeichen der App (Ring + Punkt) — identisch mit dem App-Icon auf dem Homescreen.
+   Bewusst in der Markenfarbe und NICHT in der Vereinsfarbe: Es steht für die App selbst,
+   nicht für einen einzelnen Verein. `animated` schaltet die Zeichen-Animation zu, die die
+   Öffnungs-Animation nutzt. */
+function AppBrandMark({ size = 96, animated = false }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 600 600" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Club Member Organisation">
+      <path className={animated ? "splashRing" : undefined} d="M420 140 A210 210 0 1 0 420 460" stroke="#C8102E" strokeWidth="72" strokeLinecap="round" fill="none" pathLength="1" />
+      <circle className={animated ? "splashDot" : undefined} cx="420" cy="300" r="46" fill="#2A2028" />
+    </svg>
+  );
+}
+
 /* Öffnungs-Animation der App (Marke, unabhängig von der Vereinsfarbe): zeichnet den Ring,
    lässt Ring + Punkt einmal einschwingen, hält kurz und blendet dann zur eigentlichen App über.
    Läuft bei jedem App-Start erneut (kein Persistenz-Flag). */
@@ -207,10 +220,7 @@ function AppSplashIntro({ onDone }) {
       <div className="relative flex items-center justify-center">
         <div className="splashHalo absolute rounded-full" style={{ width: 300, height: 300, background: "radial-gradient(circle, rgba(226,58,84,0.20), transparent 70%)" }} />
         <div className="splashTile relative flex items-center justify-center" style={{ width: 168, height: 168, borderRadius: 50, background: "rgba(255,255,255,0.72)", border: "1px solid rgba(255,255,255,0.85)", backdropFilter: "blur(24px) saturate(180%)", WebkitBackdropFilter: "blur(24px) saturate(180%)", boxShadow: "0 26px 56px rgba(60,30,45,0.16), inset 0 1px 0 rgba(255,255,255,0.9)" }}>
-          <svg width="104" height="104" viewBox="0 0 600 600" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path className="splashRing" d="M420 140 A210 210 0 1 0 420 460" stroke="#C8102E" strokeWidth="72" strokeLinecap="round" fill="none" pathLength="1" />
-            <circle className="splashDot" cx="420" cy="300" r="46" fill="#2A2028" />
-          </svg>
+          <AppBrandMark size={104} animated />
         </div>
       </div>
       <div className="splashWord text-center" style={{ marginTop: 34 }}>
@@ -953,8 +963,10 @@ function ClubSelectScreen({ clubs, onSelect, goNewClub }) {
   return (
     <div className="flex flex-col h-full px-6 pt-10 pb-6 overflow-y-auto" style={{ background: C.paper }}>
       <div className="flex flex-col items-center mb-8">
-        <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style={{ background: `linear-gradient(155deg, color-mix(in srgb, ${C.red} 78%, #fff), ${C.red})`, boxShadow: `0 12px 26px color-mix(in srgb, ${C.red} 38%, transparent), inset 0 1px 0 rgba(255,255,255,0.45)` }}>
-          <Users size={24} style={{ color: "#fff" }} />
+        {/* Marke der App (nicht des Vereins) — dieselbe Glaskachel wie in der
+            Öffnungs-Animation, damit Start und Willkommen zusammenpassen. */}
+        <div className="flex items-center justify-center mb-4" style={{ width: 76, height: 76, borderRadius: 24, background: "rgba(255,255,255,0.72)", border: "1px solid rgba(255,255,255,0.85)", boxShadow: "0 14px 30px rgba(60,30,45,0.14), inset 0 1px 0 rgba(255,255,255,0.9)" }}>
+          <AppBrandMark size={46} />
         </div>
         <div className="text-xl text-center" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>Willkommen</div>
         <div className="text-xs text-center mt-1" style={{ color: C.textDim, fontFamily: "Inter" }}>Wähle deinen Verein, um dich anzumelden oder zu registrieren.</div>
