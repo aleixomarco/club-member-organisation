@@ -3862,6 +3862,13 @@ const CLUB_TIER_INFO = {
   premium: { label: "Premium", desc: "Alles: News, Sponsoring, Vereinsfahrzeuge, Helferdienst, Tippspiel, Kalender-Abo, Teams-Verwaltung und mehr." },
 };
 
+/* Persönliches Abo jedes Mitglieds — zusätzlich zum Vereinsabo. Nur eine Stufe:
+   Was ein Mitglied damit tun darf, ergibt sich aus seinen Rollen im Verein. */
+const MEMBER_PLAN_PRICES = {
+  monthly: { price: "2,99 €", note: "pro Monat" },
+  yearly: { price: "14,28 €", note: "jährlich im Voraus", equivalent: "1,19 € / Monat" },
+};
+
 function SubscriptionPanel({ user }) {
   const [config, setConfig] = useState(null);
   const [tier, setTier] = useState("premium");
@@ -3880,6 +3887,22 @@ function SubscriptionPanel({ user }) {
   const [purchasing, setPurchasing] = useState(false);
   const canBuyClubPlan = user.roles.some((role) => ["vereinsadmin", "sysadmin", "vorstand", "geschaeftsfuehrung"].includes(role));
   const databaseClub = isDbId(user.clubId);
+  /* Eigenes Basis-Abo: jedes Mitglied zahlt für sich selbst, deshalb hier keine
+     Rollenprüfung — nur ein echtes Konto ist Voraussetzung. */
+  const [memberSubs, setMemberSubs] = useState([]);
+  const [memberAccess, setMemberAccess] = useState(null);
+  const [memberCycle, setMemberCycle] = useState("monthly");
+  const [memberConsent, setMemberConsent] = useState(false);
+  /* PayPal muss die Subscription auf die PROFIL-ID ausstellen — user.id ist die
+     Mitgliedschafts-ID und wäre hier falsch. Die Profil-ID steht nur in der
+     Anmelde-Sitzung, deshalb wird sie einmalig von dort geholt. */
+  const [authUserId, setAuthUserId] = useState("");
+  const databaseMember = isDbId(user.id);
+
+  useEffect(() => {
+    if (!supabase) return;
+    supabase.auth.getUser().then(({ data }) => setAuthUserId(data.user?.id || ""));
+  }, []);
 
   useEffect(() => { setIsNative(nativePurchasesSupported()); }, []);
 
@@ -3931,8 +3954,11 @@ function SubscriptionPanel({ user }) {
     }
   };
 
+  /* Lädt beides in einem Zug: das eigene Basis-Abo (sieht jeder) und das Vereinsabo
+     (liefert die Route nur an berechtigte Rollen aus). Früher brach die Funktion ohne
+     Kaufrecht sofort ab — dann sah ein Mitglied sein eigenes Abo nie. */
   const loadSubscriptions = useCallback(async () => {
-    if (!supabase || !databaseClub || !canBuyClubPlan) { setSubscriptionsLoading(false); return; }
+    if (!supabase || !databaseMember) { setSubscriptionsLoading(false); return; }
     const { data: sessionData } = await supabase.auth.getSession();
     const token = sessionData.session?.access_token;
     if (!token) { setSubscriptionsLoading(false); return; }
@@ -3941,14 +3967,23 @@ function SubscriptionPanel({ user }) {
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "Abonnements konnten nicht geladen werden.");
       setSubscriptions(payload.club || []);
+      setMemberSubs(payload.member || []);
     } catch (error) {
       setMessage(error.message || "Abonnements konnten nicht geladen werden.");
     } finally {
       setSubscriptionsLoading(false);
     }
-  }, [databaseClub, canBuyClubPlan, user.clubId]);
+  }, [databaseMember, user.clubId]);
 
   useEffect(() => { loadSubscriptions(); }, [loadSubscriptions]);
+
+  const refreshMemberAccess = useCallback(() => {
+    if (!supabase || !databaseMember) return;
+    supabase.rpc("member_access_info", { target_membership: user.id })
+      .then(({ data }) => setMemberAccess(data?.[0] || null));
+  }, [databaseMember, user.id]);
+
+  useEffect(() => { refreshMemberAccess(); }, [refreshMemberAccess]);
 
   useEffect(() => { refreshClubStatus(); }, [refreshClubStatus]);
 
@@ -3987,6 +4022,54 @@ function SubscriptionPanel({ user }) {
     }
   }, [tier, cycle, loadSubscriptions, user.clubId]);
 
+  /* Abschluss des eigenen Basis-Abos. Läuft über dieselbe Route wie das Vereinsabo,
+     nur mit scope="member" — dort entfällt die Rollenprüfung, stattdessen wird
+     geprüft, dass PayPal die Subscription auf dieses Profil ausgestellt hat. */
+  const memberApproved = useCallback(async (subscriptionId) => {
+    setMessage("Dein Abonnement wird gespeichert …");
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("Bitte melde dich erneut an.");
+      const response = await fetch("/api/paypal/subscriptions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ subscriptionId, cycle: memberCycle, scope: "member" }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "Dein Abonnement konnte noch nicht gespeichert werden.");
+      await loadSubscriptions();
+      refreshMemberAccess();
+      setMessage("Dein Zugang ist freigeschaltet.");
+    } catch (error) {
+      setMessage(error.message || "Die PayPal-Bestätigung wird noch verarbeitet. Bitte gleich erneut aktualisieren.");
+    }
+  }, [memberCycle, loadSubscriptions, refreshMemberAccess]);
+
+  const cancelMemberSubscription = async (subscription) => {
+    if (!window.confirm("Deinen Zugang wirklich kündigen? Er bleibt bis zum Ende des bezahlten Zeitraums nutzbar.")) return;
+    setCancellingId(subscription.id); setMessage("");
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("Bitte melde dich erneut an.");
+      const response = await fetch("/api/paypal/subscriptions", {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ subscriptionId: subscription.provider_subscription_id, scope: "member" }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "Der Zugang konnte nicht gekündigt werden.");
+      await loadSubscriptions();
+      refreshMemberAccess();
+      setMessage("Dein Zugang wurde gekündigt.");
+    } catch (error) {
+      setMessage(error.message || "Der Zugang konnte nicht gekündigt werden.");
+    } finally {
+      setCancellingId(null);
+    }
+  };
+
   const cancelSubscription = async (subscription) => {
     if (!window.confirm("Abonnement wirklich kündigen? Es bleibt bis zum Ende des bezahlten Zeitraums nutzbar und verlängert sich danach nicht mehr.")) return;
     setCancellingId(subscription.id); setMessage("");
@@ -4010,7 +4093,63 @@ function SubscriptionPanel({ user }) {
     }
   };
 
+  const memberPrice = MEMBER_PLAN_PRICES[memberCycle];
+  const memberPaid = memberSubs.some((s) => s.status === "active");
+  const memberHasAccess = memberAccess?.has_access ?? false;
+
+  /* Rückmeldungen betreffen beide Bereiche und stehen deshalb auf oberster Ebene —
+     früher lagen sie im Vereinsblock, sodass ein Mitglied ohne Kaufrecht Fehler beim
+     eigenen Abo nie zu sehen bekam. */
+  const messageTone = /gespeichert|gekündigt|erfolgreich|wiederhergestellt|freigeschaltet/.test(message)
+    ? { bg: "rgba(231,243,236,0.72)", fg: C.green }
+    : /wird/.test(message) ? { bg: "rgba(255,246,228,0.72)", fg: C.textDim }
+    : { bg: "rgba(253,236,236,0.72)", fg: C.red };
+
   return <div>
+    {message && <div role="status" className="text-[11px] mb-4 rounded-xl px-3 py-2" style={{ background: messageTone.bg, color: messageTone.fg }}>{message}</div>}
+
+    {/* ---- Mein Zugang: betrifft jedes Mitglied, steht deshalb ganz oben ---- */}
+    <SectionTitle eyebrow="Mein Zugang" title="Basis-Zugang" />
+    <div className="rounded-2xl p-4 mb-3" style={{ background: memberHasAccess ? "rgba(231,243,236,0.72)" : "rgba(253,236,236,0.72)", border: `1px solid ${memberHasAccess ? "#CFE8D6" : "#F3B9B9"}` }}>
+      <div className="text-sm font-bold mb-1" style={{ color: C.ink }}>
+        {memberPaid ? "Basis-Zugang aktiv" : memberAccess?.trialing ? "Test-Zeitraum läuft" : "Kein persönlicher Zugang"}
+      </div>
+      <div className="text-[11px] leading-snug" style={{ color: C.textDim }}>
+        {memberPaid ? `Verlängert sich automatisch${memberAccess?.period_end ? ` — nächste Abrechnung ${subscriptionDate(memberAccess.period_end)}` : ""}.`
+          : memberAccess?.trialing ? `Kostenlos bis ${subscriptionDate(memberAccess.trial_ends_at)}. Danach brauchst du den Basis-Zugang.`
+          : "Ohne Basis-Zugang siehst du nur Training und Spiele. Alles Weitere hängt zusätzlich davon ab, was dein Verein gebucht hat."}
+      </div>
+    </div>
+
+    {memberSubs.length > 0 && <div className="space-y-3 mb-4">
+      {memberSubs.map((subscription) => <SubscriptionRecord key={subscription.id} subscription={subscription} accountLabel="Mein Basis-Zugang" onCancel={() => cancelMemberSubscription(subscription)} cancelling={cancellingId === subscription.id} />)}
+    </div>}
+
+    {!memberPaid && databaseMember && <div className="rounded-2xl p-4 mb-6" style={{ background: C.glass, border: `1px solid ${C.edge}` }}>
+      <div className="text-[11px] mb-3" style={{ color: C.textDim }}>{isNative ? `Sicher über ${Capacitor.getPlatform() === "ios" ? "den App Store" : "Google Play"} bezahlen.` : "Sicher über PayPal bezahlen."} Jederzeit zum Laufzeitende kündbar.</div>
+      <div className="grid grid-cols-2 gap-2 mb-3">
+        {[["monthly", "Monatlich"], ["yearly", "Jährlich"]].map(([value, label]) => (
+          <button key={value} onClick={() => { setMemberCycle(value); setMemberConsent(false); setMessage(""); }} className="py-2 rounded-xl text-xs font-bold" style={{ background: memberCycle === value ? "rgba(252,235,238,0.72)" : C.paperDim, color: memberCycle === value ? C.red : C.textDim, border: memberCycle === value ? `1px solid ${C.red}` : "1px solid transparent" }}>{label}</button>
+        ))}
+      </div>
+      <div className="rounded-xl p-3 mb-3" style={{ background: C.paperDim }}>
+        <div className="text-xl font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{memberPrice.price}</div>
+        <div className="text-[10px]" style={{ color: C.textDim }}>{memberPrice.note}{memberPrice.equivalent ? ` · ${memberPrice.equivalent}` : ""}</div>
+        <div className="text-[10px] mt-2" style={{ color: C.textDim }}>19 % Umsatzsteuer im Preis enthalten. Mindestlaufzeit {memberCycle === "yearly" ? "12 Monate" : "1 Monat"}, verlängert sich automatisch.</div>
+      </div>
+      {loading ? <div className="text-xs py-2 text-center" style={{ color: C.textDim }}>Zahlung wird vorbereitet …</div>
+        : config?.memberPlans?.[memberCycle] && authUserId ? <>
+          <label className="flex items-start gap-2 mb-3 px-0.5"><input type="checkbox" checked={memberConsent} onChange={(e) => setMemberConsent(e.target.checked)} className="mt-0.5"/><span className="text-[10px]" style={{ color: C.textDim }}>Ich akzeptiere die <a href="/nutzungsbedingungen" target="_blank" rel="noreferrer" style={{ color: C.red }}>Nutzungsbedingungen</a> und die Widerrufsbelehrung. Ich stimme zu, dass die Nutzung sofort beginnt, und weiß, dass mein Widerrufsrecht damit erlischt.</span></label>
+          {memberConsent
+            ? <PayPalSubscriptionButton clientId={config.clientId} planId={config.memberPlans[memberCycle]} customId={authUserId} onApproved={memberApproved} onError={setMessage} />
+            : <div className="text-[11px] rounded-xl px-3 py-2 text-center" style={{ background: C.paperDim, color: C.textDim }}>Bitte zuerst zustimmen, um fortzufahren.</div>}
+        </> : <div className="text-[11px] rounded-xl px-3 py-2" style={{ background: "rgba(255,246,228,0.72)", color: C.textDim }}>Der Basis-Zugang ist noch nicht zur Zahlung eingerichtet.</div>}
+    </div>}
+
+    {/* ---- Ab hier das Vereinsabo: nur für Rollen, die den Verein wirtschaftlich
+         vertreten. Athlet/innen und Eltern sehen ausschließlich ihren eigenen
+         Zugang darüber. ---- */}
+    {canManageSubscription(user) && <>
     {clubStatus && <div className="rounded-2xl p-4 mb-5" style={{ background: clubStatus.tier === "none" ? "rgba(253,236,236,0.72)" : "rgba(231,243,236,0.72)", border: `1px solid ${clubStatus.tier === "none" ? "#F3B9B9" : "#CFE8D6"}` }}>
       <div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Aktueller Vereinstarif: {clubStatus.tier === "none" ? "Kein Abo" : CLUB_TIER_INFO[clubStatus.tier]?.label || clubStatus.tier}</div>
       {clubStatus.trialing && <div className="text-[11px]" style={{ color: C.textDim }}>Trial läuft bis {subscriptionDate(clubStatus.trial_ends_at)} — danach wird ein Abo benötigt.</div>}
@@ -4085,9 +4224,9 @@ function SubscriptionPanel({ user }) {
         : <div className="text-[11px] rounded-xl px-3 py-2 text-center" style={{ background: C.paperDim, color: C.textDim }}>Bitte zuerst zustimmen, um fortzufahren.</div>}
     </> :
       <div className="text-[11px] rounded-xl px-3 py-2" style={{ background: "rgba(255,246,228,0.72)", color: C.textDim }}>{message || "PayPal ist noch nicht konfiguriert."}</div>}
-    {message && <div role="status" className="text-[11px] mt-2 rounded-xl px-3 py-2" style={{ background: (message.includes("gespeichert")||message.includes("gekündigt")||message.includes("erfolgreich")||message.includes("wiederhergestellt")) ? "rgba(231,243,236,0.72)" : message.includes("wird") ? "rgba(255,246,228,0.72)" : "rgba(253,236,236,0.72)", color: (message.includes("gespeichert")||message.includes("gekündigt")||message.includes("erfolgreich")||message.includes("wiederhergestellt")) ? C.green : message.includes("wird") ? C.textDim : C.red }}>{message}</div>}
     <div className="text-[9px] mt-3 leading-relaxed" style={{ color: C.textDim }}>Mit dem Abschluss akzeptierst du die <a href="/nutzungsbedingungen" className="underline">Nutzungsbedingungen</a>. Kündigung {isNative ? (Capacitor.getPlatform() === "ios" ? "über die Apple-ID-Einstellungen" : "über Google Play") : "über PayPal"} zum Ende des Abrechnungszeitraums.</div>
     </div>
+    </>}
     </>}
     {showWelcome && (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-5" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setShowWelcome(false)}>
@@ -4596,7 +4735,7 @@ function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, 
         <ProfileSettingsCard icon={KeyRound} title="Konto & Sicherheit" description="Passwort, Sicherheit, Rechtliches, Account" color="#4A4E9E" onClick={() => setProfileFolder("security")}/>
         <ProfileSettingsCard icon={Trophy} title="Verein & Mitgliedschaft" description="Athleten-, Trainer- und Vereinsrollen" color="#2D6F8E" onClick={() => setProfileFolder("club")}/>
         <ProfileSettingsCard icon={Bell} title="Benachrichtigungen & Kalender" description="Push-Einstellungen und Kalendersync" color={C.amber} onClick={() => setProfileFolder("notify")}/>
-        {canManageSubscription(user) && <ProfileSettingsCard icon={Euro} title="Abo & Empfehlungen" description="Abonnement und Vereine werben Vereine" color={C.red} onClick={() => setProfileFolder("billing")}/>}
+        <ProfileSettingsCard icon={Euro} title="Abo & Empfehlungen" description="Abonnement und Vereine werben Vereine" color={C.red} onClick={() => setProfileFolder("billing")}/>
         <ProfileSettingsCard icon={Star} title="Support & Feedback" description="Bewertung abgeben, Fehler melden" color={C.textDim} onClick={() => setProfileFolder("support")}/>
         <ProfileSettingsCard icon={PlayCircle} title="App kennenlernen" description="Kurzvideos zu den Funktionen, die du nutzen kannst" color={C.green} onClick={() => setProfileFolder("howto")}/>
       </div>
@@ -4639,7 +4778,7 @@ function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, 
         </div>
       </ProfileUnderlay>}
 
-      {profileFolder === "billing" && canManageSubscription(user) && <ProfileUnderlay title="Abo & Empfehlungen" eyebrow="Einstellungen" onClose={() => setProfileFolder("")}>
+      {profileFolder === "billing" && <ProfileUnderlay title="Abo & Empfehlungen" eyebrow="Einstellungen" onClose={() => setProfileFolder("")}>
         <div className="space-y-2">
           <ProfileSettingsCard icon={Euro} title="Meine Abonnements" description="Tarif, Status, Erwerbsdatum und nächste Abrechnung ansehen" onClick={() => setProfileUnderlay("subscription")}/>
           {(!referralAlreadyUsed || user.roles.includes("sysadmin")) && <ProfileSettingsCard icon={Building2} title="Vereine werben Vereine" description="Einen Verein werben und drei Gratismonate erhalten" color={C.red} onClick={() => setProfileUnderlay("referral")}/>}
