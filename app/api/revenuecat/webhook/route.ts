@@ -38,11 +38,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
   }
 
-  // app_user_id wird clientseitig via Purchases.logIn(clubId) gesetzt — siehe lib/revenuecat.ts.
-  const clubId: string | undefined = event.app_user_id;
+  // app_user_id wird clientseitig gesetzt — beim Vereinsabo die Vereins-ID, beim
+  // persönlichen Basis-Abo die Profil-ID (siehe lib/revenuecat.ts). Welche der beiden
+  // gemeint ist, verrät die Produkt-ID: sie entspricht dem Plancode, und member_*
+  // gehört zum Mitglied, club_* zum Verein.
+  const ownerId: string | undefined = event.app_user_id;
   const productId: string | undefined = event.product_id;
   const status = STATUS_BY_EVENT[event.type];
-  if (!clubId || !status) return NextResponse.json({ received: true, ignored: true });
+  if (!ownerId || !status) return NextResponse.json({ received: true, ignored: true });
 
   // Idempotenz: jedes RevenueCat-Event hat eine eigene id, mehrfaches Zustellen ist möglich.
   await admin.from("payment_events").upsert({
@@ -62,8 +65,7 @@ export async function POST(request: Request) {
   const providerSubscriptionId = event.original_transaction_id || event.transaction_id;
   if (!providerSubscriptionId) return NextResponse.json({ received: true });
 
-  await admin.from("club_subscriptions").upsert({
-    club_id: clubId,
+  const shared = {
     plan_id: plan.id,
     provider: PROVIDER_BY_STORE[event.store] || "apple",
     provider_subscription_id: providerSubscriptionId,
@@ -73,7 +75,15 @@ export async function POST(request: Request) {
     last_payment_at: event.type === "INITIAL_PURCHASE" || event.type === "RENEWAL" ? new Date().toISOString() : undefined,
     cancel_at_period_end: event.type === "CANCELLATION",
     cancelled_at: event.type === "CANCELLATION" ? new Date().toISOString() : null,
-  }, { onConflict: "provider,provider_subscription_id" });
+  };
+
+  if (productId.startsWith("member_")) {
+    await admin.from("user_subscriptions").upsert({ profile_id: ownerId, ...shared },
+      { onConflict: "provider,provider_subscription_id" });
+  } else {
+    await admin.from("club_subscriptions").upsert({ club_id: ownerId, ...shared },
+      { onConflict: "provider,provider_subscription_id" });
+  }
 
   return NextResponse.json({ received: true });
 }

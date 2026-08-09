@@ -8,10 +8,12 @@ export async function GET() {
     return NextResponse.json({
       clientId: process.env.PAYPAL_CLIENT_ID,
       currency: "EUR",
+      // Vereinstarife (Verein zahlt) und Mitgliedstarif (jedes Mitglied zahlt selbst).
       plans: {
         basic: { monthly: paypalPlanId("club_basic_monthly"), yearly: paypalPlanId("club_basic_yearly") },
         premium: { monthly: paypalPlanId("club_premium_monthly"), yearly: paypalPlanId("club_premium_yearly") },
       },
+      memberPlans: { monthly: paypalPlanId("member_monthly"), yearly: paypalPlanId("member_yearly") },
       environment: process.env.PAYPAL_ENVIRONMENT === "live" ? "live" : "sandbox",
     });
   } catch {

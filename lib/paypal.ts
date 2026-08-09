@@ -16,7 +16,12 @@ export async function paypalAccessToken() {
   return (await response.json()).access_token as string;
 }
 
-export type PayPalPlanCode = "club_basic_monthly" | "club_basic_yearly" | "club_premium_monthly" | "club_premium_yearly";
+/* Zwei Ebenen: Der Verein bucht Basic oder Premium (club_*), zusätzlich bucht jedes
+   Mitglied sein persönliches Basis-Abo (member_*). Beim Mitglied gibt es bewusst nur
+   eine Stufe — die Rollen im Verein entscheiden, was es damit tun darf. */
+export type PayPalClubPlanCode = "club_basic_monthly" | "club_basic_yearly" | "club_premium_monthly" | "club_premium_yearly";
+export type PayPalMemberPlanCode = "member_monthly" | "member_yearly";
+export type PayPalPlanCode = PayPalClubPlanCode | PayPalMemberPlanCode;
 
 export function paypalPlanId(code: PayPalPlanCode) {
   const variables: Record<PayPalPlanCode, string | undefined> = {
@@ -24,11 +29,16 @@ export function paypalPlanId(code: PayPalPlanCode) {
     club_basic_yearly: process.env.PAYPAL_CLUB_BASIC_YEARLY_PLAN_ID,
     club_premium_monthly: process.env.PAYPAL_CLUB_PREMIUM_MONTHLY_PLAN_ID,
     club_premium_yearly: process.env.PAYPAL_CLUB_PREMIUM_YEARLY_PLAN_ID,
+    member_monthly: process.env.PAYPAL_MEMBER_MONTHLY_PLAN_ID,
+    member_yearly: process.env.PAYPAL_MEMBER_YEARLY_PLAN_ID,
   };
   const value = variables[code];
   if (!value) throw new Error(`PayPal plan is missing: ${code}`);
   return value;
 }
+
+export const isMemberPlanCode = (code: string): code is PayPalMemberPlanCode =>
+  code === "member_monthly" || code === "member_yearly";
 
 export async function verifyPayPalWebhook(headers: Headers, event: unknown) {
   const webhookId = process.env.PAYPAL_WEBHOOK_ID;

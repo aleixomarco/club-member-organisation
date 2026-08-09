@@ -22,7 +22,16 @@ import { Purchases, LOG_LEVEL, type PurchasesPackage } from "@revenuecat/purchas
 // club_subscriptions, genau wie der bestehende PayPal-Webhook. Dieses Modul
 // dient nur dazu, den nativen Kaufdialog überhaupt zu öffnen.
 
-let configuredForClub: string | null = null;
+// Zusätzlich zum Vereinsabo gibt es das persönliche Basis-Abo jedes Mitglieds.
+// Dafür braucht RevenueCat ein drittes Offering "member" mit Monthly- und
+// Annual-Package; die Produkt-IDs müssen member_monthly und member_yearly heißen.
+//
+// Wichtig: RevenueCat kennt immer nur EINE Nutzerkennung gleichzeitig. Beim
+// Vereinsabo ist das die Vereins-ID, beim persönlichen Abo die Profil-ID —
+// zwischen beiden wird per logIn umgeschaltet. Der Webhook unterscheidet
+// anschließend anhand des Produkt-Präfixes, in welche Tabelle der Kauf gehört.
+
+let configuredForUser: string | null = null;
 
 export function nativePurchasesSupported() {
   if (typeof window === "undefined") return false;
@@ -36,13 +45,19 @@ function currentApiKey() {
   return "";
 }
 
-export async function ensureRevenueCatConfigured(clubId: string) {
-  if (!nativePurchasesSupported() || configuredForClub === clubId) return true;
+export async function ensureRevenueCatConfigured(appUserId: string) {
+  if (!nativePurchasesSupported() || !appUserId) return false;
+  if (configuredForUser === appUserId) return true;
   const apiKey = currentApiKey();
   if (!apiKey) return false;
-  await Purchases.configure({ apiKey, appUserID: clubId });
-  if (process.env.NODE_ENV !== "production") await Purchases.setLogLevel({ level: LOG_LEVEL.DEBUG });
-  configuredForClub = clubId;
+  if (configuredForUser === null) {
+    await Purchases.configure({ apiKey, appUserID: appUserId });
+    if (process.env.NODE_ENV !== "production") await Purchases.setLogLevel({ level: LOG_LEVEL.DEBUG });
+  } else {
+    // Bereits eingerichtet, aber auf eine andere Kennung — umschalten statt neu einrichten.
+    await Purchases.logIn({ appUserID: appUserId });
+  }
+  configuredForUser = appUserId;
   return true;
 }
 
@@ -61,6 +76,17 @@ export async function fetchTierOfferings(clubId: string): Promise<ClubTierOfferi
     basic: { monthly: basicOffering?.monthly || null, yearly: basicOffering?.annual || null },
     premium: { monthly: premiumOffering?.monthly || null, yearly: premiumOffering?.annual || null },
   };
+}
+
+/* Persönliches Basis-Abo: läuft auf die Profil-ID, nicht auf den Verein. */
+export type MemberOffering = { monthly: PurchasesPackage | null; yearly: PurchasesPackage | null };
+
+export async function fetchMemberOffering(profileId: string): Promise<MemberOffering | null> {
+  const ready = await ensureRevenueCatConfigured(profileId);
+  if (!ready) return null;
+  const offerings = await Purchases.getOfferings();
+  const memberOffering = offerings.all["member"] || null;
+  return { monthly: memberOffering?.monthly || null, yearly: memberOffering?.annual || null };
 }
 
 export async function purchaseTierPackage(pkg: PurchasesPackage) {
