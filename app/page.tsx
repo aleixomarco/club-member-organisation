@@ -5838,29 +5838,45 @@ function ClubFeatureSettingsPanel({ currentClub, clubFeatures, onFeaturesChanged
     [next[index], next[target]] = [next[target], next[index]];
     setDashboardTileOrder(next);
   };
+  /* Ein Eintrag je Dashboard-Kachel: an/aus und Position in einer Karte. Die Liste
+     folgt der Dashboard-Reihenfolge, damit die Nummer auch das ist, was der Nutzer
+     später sieht. "Aufgaben" hat bewusst keinen Schalter — die Funktion lässt sich
+     nicht abschalten, deshalb steht dort ein Hinweis statt eines toten Schalters. */
+  const featureByKey = Object.fromEntries(CLUB_FEATURES.map((f) => [f.key, f]));
+
   return (
     <div>
-      <SectionTitle eyebrow={sportConfig(sport).label} title="Funktionen" />
-      <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>Welche Vereinsfunktionen aktiv sind. Deaktivierte Funktionen werden für alle Mitglieder ausgeblendet.</div>
+      <SectionTitle eyebrow={sportConfig(sport).label} title="Funktionen & Reihenfolge" />
+      <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>Lege je Funktion fest, ob ihr sie nutzt und an welcher Stelle sie unter „Aktionen &amp; Abstimmungen" auf dem Dashboard erscheint. Abgeschaltete Funktionen sind für alle Mitglieder ausgeblendet.</div>
       {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: "rgba(253,236,236,0.72)", color: C.red }}>{message}</div>}
-      <div className="space-y-3 mb-6">
-        {CLUB_FEATURES.map((f) => {
-          const on = clubFeatures[f.key] !== false;
-          return <ToggleCard key={f.key} title={f.label(sport)} desc={f.settingsDesc(sport)} value={on} onChange={(updater) => saving !== f.key && toggle(f.key, updater(on))} />;
-        })}
-      </div>
 
-      <SectionTitle eyebrow="Dashboard" title="Reihenfolge der Aktionen" />
-      <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>Lege fest, in welcher Reihenfolge die Kacheln unter „Aktionen & Abstimmungen" auf dem Dashboard erscheinen.</div>
-      <div className="space-y-2">
-        {order.map((key, index) => (
-          <div key={key} className="flex items-center gap-3 px-3.5 py-3 rounded-2xl" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
-            <span className="w-6 text-center text-xs" style={{ fontFamily: "JetBrains Mono", color: C.textDim }}>{index + 1}</span>
-            <span className="flex-1 text-sm font-bold" style={{ color: C.ink }}>{dashboardTileLabel(key, sport)}</span>
-            <button aria-label="Nach oben verschieben" onClick={() => moveTile(index, -1)} disabled={index === 0} className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: C.paperDim, opacity: index === 0 ? .35 : 1 }}><ChevronUp size={15} style={{ color: C.ink }}/></button>
-            <button aria-label="Nach unten verschieben" onClick={() => moveTile(index, 1)} disabled={index === order.length - 1} className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: C.paperDim, opacity: index === order.length - 1 ? .35 : 1 }}><ChevronDown size={15} style={{ color: C.ink }}/></button>
-          </div>
-        ))}
+      <div className="space-y-2.5">
+        {order.map((key, index) => {
+          const feature = featureByKey[key];
+          const abschaltbar = !!feature;
+          const an = abschaltbar ? clubFeatures[key] !== false : true;
+          const beschreibung = abschaltbar ? feature.settingsDesc(sport) : "Aufgaben für den Verein verteilen und abhaken.";
+          return (
+            <div key={key} className="rounded-2xl px-3.5 py-3" style={{ background: C.glass, border: `1px solid ${C.edge}`, boxShadow: "0 10px 26px rgba(60,30,45,0.06)", opacity: an ? 1 : 0.66 }}>
+              <div className="flex items-center gap-3">
+                <span className="w-7 h-7 rounded-lg flex items-center justify-center text-[11px] flex-shrink-0" style={{ fontFamily: "JetBrains Mono", fontWeight: 700, background: an ? `color-mix(in srgb, ${C.red} 14%, transparent)` : C.paperDim, color: an ? C.red : C.textDim }}>{index + 1}</span>
+                <span className="flex-1 min-w-0 text-sm font-bold truncate" style={{ color: C.ink }}>{dashboardTileLabel(key, sport)}</span>
+                {abschaltbar ? (
+                  <button onClick={() => saving !== key && toggle(key, !an)} aria-label={`${dashboardTileLabel(key, sport)} ${an ? "abschalten" : "einschalten"}`} className="w-10 h-6 rounded-full relative flex-shrink-0" style={{ background: an ? C.green : C.paperDim, opacity: saving === key ? 0.5 : 1 }}>
+                    <span className="absolute top-0.5 w-5 h-5 rounded-full" style={{ background: "#fff", left: an ? 18 : 2, transition: "left .2s" }} />
+                  </button>
+                ) : (
+                  <span className="text-[9px] font-bold px-2 py-1 rounded-full flex-shrink-0" style={{ background: C.paperDim, color: C.textDim }}>IMMER AKTIV</span>
+                )}
+              </div>
+              <div className="flex items-end gap-2 mt-2">
+                <span className="flex-1 text-[11px] leading-snug" style={{ color: C.textDim }}>{beschreibung}</span>
+                <button aria-label="Nach oben verschieben" onClick={() => moveTile(index, -1)} disabled={index === 0} className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.paperDim, opacity: index === 0 ? .35 : 1 }}><ChevronUp size={15} style={{ color: C.ink }}/></button>
+                <button aria-label="Nach unten verschieben" onClick={() => moveTile(index, 1)} disabled={index === order.length - 1} className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.paperDim, opacity: index === order.length - 1 ? .35 : 1 }}><ChevronDown size={15} style={{ color: C.ink }}/></button>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
