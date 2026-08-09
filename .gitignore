@@ -42,3 +42,6 @@ next-env.d.ts
 /outputs/
 /work/
 supabase/.temp/
+
+# Android: lokaler SDK-Pfad, gehört nicht ins Repository
+android/local.properties
