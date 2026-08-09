@@ -790,7 +790,11 @@ function Field({ icon: Icon, ...props }) {
     </div>
   );
 }
-function FeatureRow({ icon: Icon, title, subtitle, onClick, accent }) {
+/* locked = Funktion ist im aktuellen Tarif nicht freigeschaltet. Rechts steht
+   dann ein graues Schloss statt des Pfeils, damit man das schon in der Liste
+   sieht und nicht erst nach dem Antippen. Die Zeile bleibt anklickbar — sie
+   führt zur Sperrseite mit dem Hinweis aufs Abo. */
+function FeatureRow({ icon: Icon, title, subtitle, onClick, accent, locked }) {
   const tint = accent || C.red;
   return (
     <button onClick={onClick} className="w-full flex items-center justify-between px-4 py-3.5 rounded-2xl mb-2.5" style={{ background: C.glass, border: `1px solid ${C.edge}`, boxShadow: "0 10px 26px rgba(60,30,45,0.07)" }}>
@@ -803,7 +807,9 @@ function FeatureRow({ icon: Icon, title, subtitle, onClick, accent }) {
           <span className="block text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{subtitle}</span>
         </span>
       </span>
-      <ChevronRight size={15} style={{ color: C.textDim, flexShrink: 0 }} />
+      {locked
+        ? <Lock size={15} aria-label="Nicht freigeschaltet" style={{ color: C.textDim, flexShrink: 0 }} />
+        : <ChevronRight size={15} style={{ color: C.textDim, flexShrink: 0 }} />}
     </button>
   );
 }
@@ -849,18 +855,32 @@ function useClubEntitlement(user) {
   return state;
 }
 
+/* Gesperrte Funktion. Der echte Inhalt wird bewusst NICHT gerendert:
+   Früher lag er unscharf im Hintergrund — dadurch wurde der Container so hoch wie
+   die vollständige Ansicht, die Seite ließ sich scrollen und die Meldung saß in der
+   Mitte dieser Höhe statt im Sichtbereich. Zusätzlich lud die App dabei Daten, die
+   das Mitglied gar nicht sehen darf.
+   Jetzt: feste Höhe innerhalb des Sichtfensters, kein Scrollen, im Hintergrund nur
+   ein paar dekorative Platzhalter ohne echten Inhalt. */
 function LockedFeature({ entitlement, feature = "Diese Funktion", goSubscribe, requires = "premium", children }) {
   if (entitlement.loading) return <div className="rounded-2xl p-8" style={{ background: C.paperDim }} />;
   const unlocked = requires === "basic" ? entitlement.tier === "basic" || entitlement.tier === "premium" : entitlement.tier === "premium";
   if (unlocked) return children;
   return (
-    <div className="relative rounded-2xl overflow-hidden">
-      <div aria-hidden="true" className="pointer-events-none select-none" style={{ filter: "blur(4px)", opacity: 0.35 }}>{children}</div>
-      <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6 py-8" style={{ background: "rgba(246,243,236,0.9)" }}>
-        <div className="w-12 h-12 rounded-full flex items-center justify-center mb-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}><Lock size={20} style={{ color: C.red }} /></div>
-        <div className="text-sm font-bold mb-1" style={{ color: C.ink }}>{feature} braucht ein Abo</div>
-        <div className="text-xs mb-4" style={{ color: C.textDim }}>{requires === "basic" ? "Teil des Basic- und Premium-Vereinsabos." : "Teil des Premium-Vereinsabos."}</div>
-        <button onClick={goSubscribe} className="px-4 py-2 rounded-xl text-xs font-bold" style={{ background: C.red, color: C.white }}>Abo ansehen</button>
+    <div
+      className="relative rounded-2xl overflow-hidden flex items-center justify-center"
+      style={{ height: "100%", minHeight: 320 }}
+    >
+      <div aria-hidden="true" className="absolute inset-0 p-4 pointer-events-none select-none" style={{ filter: "blur(5px)", opacity: 0.3 }}>
+        {[72, 72, 72, 72, 72].map((h, i) => (
+          <div key={i} className="rounded-2xl mb-3" style={{ height: h, background: C.glass, border: `1px solid ${C.edge}` }} />
+        ))}
+      </div>
+      <div className="relative flex flex-col items-center justify-center text-center px-7">
+        <div className="w-14 h-14 rounded-full flex items-center justify-center mb-4" style={{ background: C.glass, border: `1px solid ${C.edge}`, boxShadow: "0 10px 26px rgba(60,30,45,0.10)" }}><Lock size={22} style={{ color: C.red }} /></div>
+        <div className="text-base font-bold mb-1.5" style={{ fontFamily: "Oswald", color: C.ink }}>{feature} braucht ein Abo</div>
+        <div className="text-xs mb-5 leading-snug" style={{ color: C.textDim }}>{requires === "basic" ? "Teil des Basic- und Premium-Vereinsabos." : "Teil des Premium-Vereinsabos."}</div>
+        <button onClick={goSubscribe} className="px-5 py-2.5 rounded-2xl text-xs font-bold" style={{ background: C.red, color: C.white, boxShadow: `0 8px 20px color-mix(in srgb, ${C.red} 34%, transparent)` }}>Abo ansehen</button>
       </div>
     </div>
   );
@@ -1370,6 +1390,11 @@ function NextTrainingCard({ user }) {
 }
 function Dashboard({ user, members, feePaid, channels, dutyPlan, seasonVotes, polls, setPolls, sponsorBookings, onSponsorImpression, onSponsorClick, goEvents, goSeason, goTipp, goDuty, goNews, goTasks, goVehicles, currentClub, featureEnabled, dashboardTileOrder, entitlement, goSubscribe }) {
   const sport = currentClub?.sport || "rollhockey";
+  /* Alle Kacheln in „Aktionen & Abstimmungen" hängen am Premium-Tarif
+     (siehe die LockedFeature-Hüllen der jeweiligen Ansichten). Während der
+     Tarif noch geladen wird, zeigen wir kein Schloss — sonst blitzt es kurz
+     bei Mitgliedern auf, die die Funktionen längst freigeschaltet haben. */
+  const featureLocked = !entitlement.loading && entitlement.tier !== "premium";
   const nextEvent = EVENTS.filter((e) => e.type === "spiel" && e.team === user.team && new Date(e.date) > new Date()).sort((a,b)=>new Date(a.date)-new Date(b.date))[0] || getNextMatch();
   const newsMsgs = (channels.find((c) => c.id === "news")?.messages || []).slice(-2).reverse();
 
@@ -1437,15 +1462,15 @@ function Dashboard({ user, members, feePaid, channels, dutyPlan, seasonVotes, po
           {resolveDashboardTileOrder(dashboardTileOrder).map((tileKey) => {
             switch (tileKey) {
               case "season_award":
-                return featureEnabled("season_award") && <FeatureRow key={tileKey} icon={Trophy} title="Athlet/in der Saison" subtitle={seasonSubtitle} onClick={goSeason} accent={C.amber} />;
+                return featureEnabled("season_award") && <FeatureRow key={tileKey} icon={Trophy} title="Athlet/in der Saison" subtitle={seasonSubtitle} onClick={goSeason} accent={C.amber} locked={featureLocked} />;
               case "tippspiel":
-                return featureEnabled("tippspiel") && <FeatureRow key={tileKey} icon={Target} title="Tippspiel" subtitle={tippSubtitle} onClick={goTipp} accent={C.red} />;
+                return featureEnabled("tippspiel") && <FeatureRow key={tileKey} icon={Target} title="Tippspiel" subtitle={tippSubtitle} onClick={goTipp} accent={C.red} locked={featureLocked} />;
               case "duty_roster":
-                return featureEnabled("duty_roster") && <FeatureRow key={tileKey} icon={ClipboardList} title="Helferplanung" subtitle={dutySubtitle} onClick={goDuty} accent={C.green} />;
+                return featureEnabled("duty_roster") && <FeatureRow key={tileKey} icon={ClipboardList} title="Helferplanung" subtitle={dutySubtitle} onClick={goDuty} accent={C.green} locked={featureLocked} />;
               case "tasks":
-                return <FeatureRow key={tileKey} icon={ClipboardList} title="Aufgaben" subtitle="Für den Verein mithelfen" onClick={goTasks} accent={C.red} />;
+                return <FeatureRow key={tileKey} icon={ClipboardList} title="Aufgaben" subtitle="Für den Verein mithelfen" onClick={goTasks} accent={C.red} locked={featureLocked} />;
               case "vehicle_booking":
-                return featureEnabled("vehicle_booking") && <FeatureRow key={tileKey} icon={Car} title={sportConfig(sport).vehicleTabLabel} subtitle="Kalender & Buchung" onClick={goVehicles} accent={C.amber} />;
+                return featureEnabled("vehicle_booking") && <FeatureRow key={tileKey} icon={Car} title={sportConfig(sport).vehicleTabLabel} subtitle="Kalender & Buchung" onClick={goVehicles} accent={C.amber} locked={featureLocked} />;
               default:
                 return null;
             }
@@ -4864,7 +4889,9 @@ function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, 
       {profileUnderlay === "password" && <ProfileUnderlay title="Passwort ändern" onClose={() => setProfileUnderlay("")} onSave={()=>sectionSaveRef.current?.()}><PasswordSettings user={user} onLogout={onLogout} saveRef={sectionSaveRef}/></ProfileUnderlay>}
       {profileUnderlay === "security" && <ProfileUnderlay title="Sicherheit" onClose={() => setProfileUnderlay("")} onSave={()=>sectionSaveRef.current?.()}><SecuritySettings user={user} setMembers={setMembers} saveRef={sectionSaveRef}/></ProfileUnderlay>}
       {profileUnderlay === "referral" && <ProfileUnderlay title="Vereine werben Vereine" onClose={() => setProfileUnderlay("")}><ReferralSettings user={user} club={currentClub}/></ProfileUnderlay>}
-      {profileUnderlay === "calendar" && <ProfileUnderlay title="Kalender synchronisieren" onClose={() => setProfileUnderlay("")} onSave={()=>sectionSaveRef.current?.()}><LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Kalender-Abo"><CalendarSyncSettings user={user} saveRef={sectionSaveRef}/></LockedFeature></ProfileUnderlay>}
+      {/* Ohne Premium gibt es hier nichts zu speichern — der Knopf entfällt, sonst
+          stünde er wirkungslos über der Sperrmeldung. */}
+      {profileUnderlay === "calendar" && <ProfileUnderlay title="Kalender synchronisieren" onClose={() => setProfileUnderlay("")} onSave={entitlement.tier === "premium" ? ()=>sectionSaveRef.current?.() : undefined}><LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Kalender-Abo"><CalendarSyncSettings user={user} saveRef={sectionSaveRef}/></LockedFeature></ProfileUnderlay>}
       {profileUnderlay === "feedback" && <ProfileUnderlay title="App bewerten" onClose={() => setProfileUnderlay("")}><FeedbackSettings/></ProfileUnderlay>}
       {profileUnderlay === "bug" && <ProfileUnderlay title="Fehler melden" onClose={() => setProfileUnderlay("")}><BugReportSettings user={user}/></ProfileUnderlay>}
       {profileUnderlay === "player" && <ProfileUnderlay title="Athletenprofil" onClose={() => setProfileUnderlay("")}><PlayerTeamSettings user={user} setMembers={setMembers}/><PlayerDataCard user={user} setMembers={setMembers}/></ProfileUnderlay>}
