@@ -102,6 +102,24 @@ button:active { transform: scale(0.96); }
   backdrop-filter: blur(22px) saturate(180%);
   -webkit-backdrop-filter: blur(22px) saturate(180%);
 }
+
+/* Darstellungsrahmen: Am Rechner zeigen wir die App in einer Handy-Attrappe, damit
+   man das Format erkennt. Auf einem echten Telefon — und damit auch in der nativen
+   App-Hülle — muss sie dagegen bildschirmfüllend laufen, sonst steckt ein Handy im
+   Handy und der Inhalt wird rechts abgeschnitten. */
+.erg-shell { min-height: 100vh; min-height: 100dvh; padding: 16px; background: #D9D9DF; }
+.erg-frame { max-width: 400px; height: 820px; border-radius: 44px; box-shadow: 0 30px 70px rgba(60,30,45,0.28); }
+@media (max-width: 520px) {
+  .erg-shell { padding: 0; background: transparent; min-height: 100dvh; }
+  .erg-frame {
+    max-width: none;
+    height: 100dvh;
+    border-radius: 0;
+    box-shadow: none;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
 /* Weichere, durchgehend größere Rundungen als Tailwinds Standard. */
 .erg-app .rounded-lg { border-radius: 14px; }
 .erg-app .rounded-xl { border-radius: 18px; }
@@ -6454,9 +6472,9 @@ export default function ClubMemberOrganisationApp() {
   const themeVars = { "--club-primary": clubPrimary, "--club-primary-dark": darkenHex(clubPrimary), "--club-secondary": clubSecondary };
 
   return (
-    <div className="erg-app w-full min-h-screen flex items-center justify-center p-4" style={{ background: "#D9D9DF", fontFamily: "Inter", ...themeVars }}>
+    <div className="erg-app erg-shell w-full flex items-center justify-center" style={{ fontFamily: "Inter", ...themeVars }}>
       <style>{FONTS}</style>
-      <div className="erg-canvas relative w-full flex flex-col overflow-hidden" style={{ maxWidth: 400, height: 820, borderRadius: 44, boxShadow: "0 30px 70px rgba(60,30,45,0.28)" }}>
+      <div className="erg-canvas erg-frame relative w-full flex flex-col overflow-hidden">
         {showSplash && <AppSplashIntro onDone={() => setShowSplash(false)} />}
         {!currentUser ? (
           authScreen === "club" ? (
