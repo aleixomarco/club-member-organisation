@@ -15,7 +15,16 @@ export const metadata: Metadata = {
   },
 };
 export const viewport: Viewport = {
-  themeColor: "#141B26",
+  themeColor: "#F7F4F5",
+  // viewportFit: "cover" ist Voraussetzung dafür, dass env(safe-area-inset-*) auf
+  // iOS überhaupt Werte liefert — ohne das liegen Knöpfe hinter Dynamic Island,
+  // Notch oder Home-Indikator. maximumScale/userScalable verhindern, dass ein
+  // Doppeltipp die native App wegzoomt.
+  viewportFit: "cover",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 export default function RootLayout({
   children,

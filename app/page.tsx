@@ -109,16 +109,57 @@ button:active { transform: scale(0.96); }
    Handy und der Inhalt wird rechts abgeschnitten. */
 .erg-shell { min-height: 100vh; min-height: 100dvh; padding: 16px; background: #D9D9DF; }
 .erg-frame { max-width: 400px; height: 820px; border-radius: 44px; box-shadow: 0 30px 70px rgba(60,30,45,0.28); }
+
+/* Milchige Unterseite (Profil-Unterpunkte). Ohne eigene Deckung würde man durch die
+   Seite hindurch auf die Liste darunter lesen — die Ebene dahinter soll schemenhaft
+   bleiben, aber nicht mitlesbar. */
+.erg-underlay {
+  background: rgba(247,244,246,0.80);
+  backdrop-filter: blur(34px) saturate(180%);
+  -webkit-backdrop-filter: blur(34px) saturate(180%);
+}
+.erg-underlay-bar {
+  background: rgba(255,255,255,0.55);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+}
+
+/* Auf echten Geräten läuft die App randlos. Die Farbwäsche darf bis unter Statusleiste
+   und Home-Indikator reichen, die *Inhalte* müssen aber innerhalb der sicheren Fläche
+   bleiben — sonst verschwinden Knöpfe hinter Dynamic Island, Notch oder gerundeten
+   Ecken. Die Zusatzwerte oben auf die env()-Werte sorgen für Luft zum Rand, auch auf
+   Geräten ohne Aussparung (älteres iPhone SE, viele Android-Modelle). */
 @media (max-width: 520px) {
   .erg-shell { padding: 0; background: transparent; min-height: 100dvh; }
-  .erg-frame {
-    max-width: none;
-    height: 100dvh;
-    border-radius: 0;
-    box-shadow: none;
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
+  .erg-frame { max-width: none; height: 100dvh; border-radius: 0; box-shadow: none; }
+
+  .erg-topbar {
+    padding-top: calc(env(safe-area-inset-top, 0px) + 12px);
+    padding-left: calc(env(safe-area-inset-left, 0px) + 18px);
+    padding-right: calc(env(safe-area-inset-right, 0px) + 18px);
   }
+  .erg-underlay-bar {
+    padding-top: calc(env(safe-area-inset-top, 0px) + 12px);
+    padding-left: calc(env(safe-area-inset-left, 0px) + 18px);
+    padding-right: calc(env(safe-area-inset-right, 0px) + 18px);
+  }
+  .erg-navwrap {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+    padding-left: calc(env(safe-area-inset-left, 0px) + 14px);
+    padding-right: calc(env(safe-area-inset-right, 0px) + 14px);
+  }
+  /* Scrollbereiche: seitlich etwas mehr Luft als die 16px der Tailwind-Klassen, damit
+     Karten und Knöpfe auf gerundeten Displays nicht am Rand kleben. */
+  .erg-frame .px-4 { padding-left: calc(env(safe-area-inset-left, 0px) + 18px); padding-right: calc(env(safe-area-inset-right, 0px) + 18px); }
+  /* Untere Navigation überdeckt sonst die letzten Einträge einer Liste. */
+  .erg-frame .pb-24 { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 124px); }
+}
+
+/* Sehr schmale Geräte (iPhone SE, kompakte Android-Modelle): Abstände zurücknehmen,
+   damit der Inhalt nicht eingequetscht wird. */
+@media (max-width: 360px) {
+  .erg-topbar, .erg-underlay-bar { padding-left: calc(env(safe-area-inset-left, 0px) + 14px); padding-right: calc(env(safe-area-inset-right, 0px) + 14px); }
+  .erg-frame .px-4 { padding-left: calc(env(safe-area-inset-left, 0px) + 14px); padding-right: calc(env(safe-area-inset-right, 0px) + 14px); }
 }
 /* Weichere, durchgehend größere Rundungen als Tailwinds Standard. */
 .erg-app .rounded-lg { border-radius: 14px; }
@@ -146,11 +187,18 @@ button:active { transform: scale(0.96); }
    Läuft bei jedem App-Start erneut (kein Persistenz-Flag). */
 function AppSplashIntro({ onDone }) {
   const [fading, setFading] = useState(false);
+  /* onDone kommt als frische Funktion bei jedem Rendern der App herein. Stünde sie in
+     der Abhängigkeitsliste, würde der Effekt bei jedem Rendern neu aufgesetzt — und die
+     Countdown-Uhren im Dashboard rendern im Sekundentakt. Die 3-Sekunden-Timer würden
+     dadurch ständig zurückgesetzt und liefen nie ab: Die Animation bliebe für immer
+     stehen. Deshalb über eine Referenz, damit der Effekt genau einmal läuft. */
+  const doneRef = useRef(onDone);
+  doneRef.current = onDone;
   useEffect(() => {
     const fadeTimer = setTimeout(() => setFading(true), 2600);
-    const doneTimer = setTimeout(() => onDone(), 3000);
+    const doneTimer = setTimeout(() => doneRef.current(), 3000);
     return () => { clearTimeout(fadeTimer); clearTimeout(doneTimer); };
-  }, [onDone]);
+  }, []);
   return (
     <div
       className="erg-canvas absolute inset-0 flex flex-col items-center justify-center"
@@ -4011,12 +4059,15 @@ function SubscriptionPanel({ user }) {
   </div>;
 }
 
+/* Unterseite über dem Profil: liegt als eigene milchige Glasfläche über dem Inhalt.
+   Die Ebene dahinter bleibt schemenhaft sichtbar, wird aber kräftig weichgezeichnet —
+   ohne diese Deckung würde man mitten durch die Seite auf die Liste darunter lesen. */
 function ProfileUnderlay({ title, eyebrow = "Profileinstellungen", onClose, onSave, saving = false, saveDisabled = false, children }) {
-  return <div className="absolute inset-0 z-40 flex flex-col" style={{ background: C.paper }}>
-    <div className="flex items-center gap-3 px-4 py-3 flex-shrink-0" style={{ borderBottom: `1px solid ${C.line}`, background: C.paper }}>
-      <button onClick={onClose} aria-label="Zurück zum Profil" className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: C.glass, border: `1px solid ${C.line}` }}><ArrowLeft size={16}/></button>
+  return <div className="erg-underlay absolute inset-0 z-40 flex flex-col">
+    <div className="erg-underlay-bar flex items-center gap-3 px-4 py-3 flex-shrink-0" style={{ borderBottom: `1px solid ${C.line}` }}>
+      <button onClick={onClose} aria-label="Zurück zum Profil" className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: C.glass, border: `1px solid ${C.edge}` }}><ArrowLeft size={16}/></button>
       <div className="flex-1 min-w-0"><div className="text-[9px] uppercase tracking-widest font-bold" style={{ color: C.red }}>{eyebrow}</div><div className="text-base font-bold truncate" style={{ fontFamily: "Oswald", color: C.ink }}>{title}</div></div>
-      {onSave && <button onClick={onSave} disabled={saving || saveDisabled} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold" style={{ background: C.red, color: C.white, opacity: saving || saveDisabled ? .45 : 1 }}><Save size={13}/>{saving ? "Speichert …" : "Speichern"}</button>}
+      {onSave && <button onClick={onSave} disabled={saving || saveDisabled} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold flex-shrink-0" style={{ background: C.red, color: C.white, opacity: saving || saveDisabled ? .45 : 1 }}><Save size={13}/>{saving ? "Speichert …" : "Speichern"}</button>}
     </div>
     <div className="flex-1 overflow-y-auto px-4 pt-4 pb-24">{children}</div>
   </div>;
@@ -6491,14 +6542,14 @@ export default function ClubMemberOrganisationApp() {
         ) : (
           <>
             {subView ? (
-              <div className="flex items-center gap-3 px-4 pt-3 pb-2 flex-shrink-0" style={{ background: C.paper }}>
+              <div className="erg-topbar flex items-center gap-3 px-4 pt-3 pb-2 flex-shrink-0">
                 <button onClick={() => setSubView(null)} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
                   <ArrowLeft size={15} style={{ color: C.ink }} />
                 </button>
                 <div className="text-sm" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>{SUBVIEW_TITLES[subView]}</div>
               </div>
             ) : (
-              <div className="flex items-center px-4 pt-3 pb-2 flex-shrink-0" style={{ background: C.paper }}>
+              <div className="erg-topbar flex items-center px-4 pt-3 pb-2 flex-shrink-0">
                 <div className="flex items-center gap-2">
                   {tabHistory.length > 0 ? (
                     <button onClick={goBack} aria-label="Zurück" className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
@@ -6562,7 +6613,7 @@ export default function ClubMemberOrganisationApp() {
             </div>
 
             {!subView && (
-              <div className="absolute bottom-0 left-0 right-0 px-3 pb-4 pt-2 pointer-events-none">
+              <div className="erg-navwrap absolute bottom-0 left-0 right-0 px-3 pt-2 pointer-events-none">
                 <div className="flex items-center justify-around rounded-3xl p-1.5 pointer-events-auto" style={{ background: "rgba(255,255,255,0.62)", border: `1px solid ${C.edge}`, boxShadow: "0 14px 34px rgba(60,30,45,0.14)" }}>
                   {TABS.map((t) => {
                     const activeTab = tab === t.id;
