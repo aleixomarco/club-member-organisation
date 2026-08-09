@@ -412,6 +412,12 @@ const isSysAdmin = (m) => !!m && m.roles.includes("sysadmin");
 const canWriteNews = (m) => isAdmin(m) || (!!m && m.roles.includes("redakteur"));
 const canManageSponsors = (m) => isAdmin(m) || (!!m && m.roles.includes("sponsorenmanager"));
 const canManageDuty = (m) => isAdmin(m) || (!!m && m.roles.includes("organisator"));
+/* Abo und Vertragsdaten des Vereins gehen nur die Rollen etwas an, die den Verein
+   wirtschaftlich vertreten. Athlet/innen, Eltern, Trainer/innen, Kapitän/innen und
+   einfache Mitglieder sehen davon nichts — weder die Karte im Profil noch die
+   Aufforderung, ein Abo abzuschließen. */
+const SUBSCRIPTION_ROLES = ["vereinsadmin", "vorstand", "geschaeftsfuehrung", "finanzmanager", "organisator"];
+const canManageSubscription = (m) => !!m && (m.roles.includes("sysadmin") || m.roles.some((r) => SUBSCRIPTION_ROLES.includes(r)));
 
 // "App kennenlernen": Kurzvideos, gefiltert nach den Aktionen, die die Rolle
 // des jeweiligen Nutzers tatsächlich ausführen kann (gleiche Berechtigungslogik
@@ -4011,8 +4017,33 @@ function SubscriptionPanel({ user }) {
       {!clubStatus.trialing && clubStatus.tier === "none" && <div className="text-[11px]" style={{ color: C.textDim }}>Nur Training/Spiele-Ansicht ist aktuell freigeschaltet. Mit Basic oder Premium mehr freischalten.</div>}
     </div>}
 
+    {/* Tarifübersicht — bewusst auch ohne Kaufrecht sichtbar. Wer den Verein
+        mitverantwortet (etwa Finanzmanager oder Organisator), soll sehen können,
+        welcher Tarif läuft und was die Alternative kostet, ohne ihn ändern zu dürfen. */}
+    <SectionTitle eyebrow="Tarife" title="Modelle im Überblick" />
+    <div className="space-y-2.5 mb-6">
+      {["basic", "premium"].map((key) => {
+        const aktiv = clubStatus?.tier === key;
+        return (
+          <div key={key} className="rounded-2xl p-4" style={{ background: C.glass, border: `1px solid ${aktiv ? C.green : C.edge}`, boxShadow: aktiv ? `0 0 0 2px color-mix(in srgb, ${C.green} 28%, transparent)` : "0 10px 26px rgba(60,30,45,0.06)" }}>
+            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+              <div className="text-sm font-bold" style={{ color: C.ink }}>{CLUB_TIER_INFO[key].label}</div>
+              {aktiv && <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(231,243,236,0.9)", color: C.green }}>{clubStatus?.trialing ? "AKTUELL IM TEST" : "AKTUELLER TARIF"}</span>}
+            </div>
+            <div className="text-[11px] mb-2.5 leading-snug" style={{ color: C.textDim }}>{CLUB_TIER_INFO[key].desc}</div>
+            <div className="flex items-baseline gap-2 flex-wrap">
+              <span className="text-lg font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{CLUB_TIER_PRICES[key].monthly.price}</span>
+              <span className="text-[10px]" style={{ color: C.textDim }}>pro Monat</span>
+              <span className="text-[10px]" style={{ color: C.textDim }}>· jährlich {CLUB_TIER_PRICES[key].yearly.equivalent}</span>
+            </div>
+          </div>
+        );
+      })}
+      {clubStatus?.tier === "none" && <div className="text-[11px] px-1" style={{ color: C.textDim }}>Aktuell läuft keiner der beiden Tarife — nur Training und Spiele sind freigeschaltet.</div>}
+    </div>
+
     <SectionTitle eyebrow="Verträge" title="Vereinsabo" />
-    {!canBuyClubPlan ? <div className="rounded-2xl p-4 mb-6" style={{ background: C.paperDim }}><div className="text-[11px]" style={{ color: C.textDim }}>Nur Vorstand, Vereinsadmin, Geschäftsführung oder Sysadmin können das Vereinsabo verwalten.</div></div> :
+    {!canBuyClubPlan ? <div className="rounded-2xl p-4 mb-6" style={{ background: C.paperDim }}><div className="text-[11px]" style={{ color: C.textDim }}>Abschließen und kündigen können nur Vorstand, Vereinsadmin oder Geschäftsführung. Wende dich an eine dieser Rollen, wenn der Tarif geändert werden soll.</div></div> :
     subscriptionsLoading ? <div className="rounded-2xl p-4 mb-5 text-xs text-center" style={{ background: C.glass, border: `1px solid ${C.line}`, color: C.textDim }}>Abonnements werden geladen …</div> :
       subscriptions.length > 0 ? <div className="space-y-3 mb-6">
         {subscriptions.map((subscription) => <SubscriptionRecord key={subscription.id} subscription={subscription} accountLabel="Vereinsabo" onCancel={() => cancelSubscription(subscription)} cancelling={cancellingId === subscription.id} />)}
@@ -4565,7 +4596,7 @@ function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, 
         <ProfileSettingsCard icon={KeyRound} title="Konto & Sicherheit" description="Passwort, Sicherheit, Rechtliches, Account" color="#4A4E9E" onClick={() => setProfileFolder("security")}/>
         <ProfileSettingsCard icon={Trophy} title="Verein & Mitgliedschaft" description="Athleten-, Trainer- und Vereinsrollen" color="#2D6F8E" onClick={() => setProfileFolder("club")}/>
         <ProfileSettingsCard icon={Bell} title="Benachrichtigungen & Kalender" description="Push-Einstellungen und Kalendersync" color={C.amber} onClick={() => setProfileFolder("notify")}/>
-        <ProfileSettingsCard icon={Euro} title="Abo & Empfehlungen" description="Abonnement und Vereine werben Vereine" color={C.red} onClick={() => setProfileFolder("billing")}/>
+        {canManageSubscription(user) && <ProfileSettingsCard icon={Euro} title="Abo & Empfehlungen" description="Abonnement und Vereine werben Vereine" color={C.red} onClick={() => setProfileFolder("billing")}/>}
         <ProfileSettingsCard icon={Star} title="Support & Feedback" description="Bewertung abgeben, Fehler melden" color={C.textDim} onClick={() => setProfileFolder("support")}/>
         <ProfileSettingsCard icon={PlayCircle} title="App kennenlernen" description="Kurzvideos zu den Funktionen, die du nutzen kannst" color={C.green} onClick={() => setProfileFolder("howto")}/>
       </div>
@@ -4608,7 +4639,7 @@ function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, 
         </div>
       </ProfileUnderlay>}
 
-      {profileFolder === "billing" && <ProfileUnderlay title="Abo & Empfehlungen" eyebrow="Einstellungen" onClose={() => setProfileFolder("")}>
+      {profileFolder === "billing" && canManageSubscription(user) && <ProfileUnderlay title="Abo & Empfehlungen" eyebrow="Einstellungen" onClose={() => setProfileFolder("")}>
         <div className="space-y-2">
           <ProfileSettingsCard icon={Euro} title="Meine Abonnements" description="Tarif, Status, Erwerbsdatum und nächste Abrechnung ansehen" onClick={() => setProfileUnderlay("subscription")}/>
           {(!referralAlreadyUsed || user.roles.includes("sysadmin")) && <ProfileSettingsCard icon={Building2} title="Vereine werben Vereine" description="Einen Verein werben und drei Gratismonate erhalten" color={C.red} onClick={() => setProfileUnderlay("referral")}/>}
