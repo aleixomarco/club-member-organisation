@@ -13,7 +13,7 @@ import {
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { enablePushNotifications, disablePushNotifications, listenForForegroundMessages } from "@/lib/firebase-push";
 import { Capacitor } from "@capacitor/core";
-import { nativePurchasesSupported, fetchTierOfferings, purchaseTierPackage, restoreNativePurchases } from "@/lib/revenuecat";
+import { nativePurchasesSupported, fetchTierOfferings, fetchMemberOffering, purchasePackageAs, restorePurchasesAs, logOutRevenueCat } from "@/lib/revenuecat";
 import { legal } from "./legal-shell";
 
 /* ------------------------------------------------------------------ */
@@ -1284,14 +1284,10 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
 function Scoreboard({ nextEvent, goTo }) {
   const { d, h, m } = useCountdown(nextEvent ? nextEvent.date : "2099-01-01T00:00:00");
   const digit = (n) => String(n).padStart(2, "0");
-  if (!nextEvent) {
-    return (
-      <div className="rounded-2xl p-4 mb-5 flex items-center gap-2" style={{ background: C.glass, border: `1px solid ${C.edge}` }}>
-        <CalendarDays size={16} style={{ color: C.textDim }} />
-        <span className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>Keine Termine zur Zeit geplant</span>
-      </div>
-    );
-  }
+  /* Steht kein Spiel an, verschwindet die Kachel ganz. Ein Hinweis „Keine
+     Termine geplant" wäre hier schlicht falsch: Training oder andere Termine
+     können sehr wohl anstehen, sie stecken nur in anderen Kacheln. */
+  if (!nextEvent) return null;
   return (
     <div className="rounded-3xl p-5 mb-6 relative overflow-hidden cursor-pointer" style={{ background: `linear-gradient(160deg, color-mix(in srgb, ${C.red} 82%, #fff) 0%, ${C.red} 55%, ${C.redDark} 100%)`, boxShadow: `0 22px 46px color-mix(in srgb, ${C.red} 34%, transparent), inset 0 1px 0 rgba(255,255,255,0.35)` }} onClick={goTo}>
       <div className="absolute pointer-events-none" style={{ top: "-40%", left: "-10%", width: "80%", height: "100%", background: "radial-gradient(circle, rgba(255,255,255,0.28), transparent 65%)" }} />
@@ -1349,14 +1345,8 @@ function NextTrainingCard({ user }) {
   const info = isPlayer ? getNextTraining(user) : null;
   const { d, h, m } = useCountdown(info ? info.event.date : "2099-01-01T00:00:00");
   if (!isPlayer) return null;
-  if (!info) {
-    return (
-      <div className="rounded-2xl p-4 mb-5 flex items-center gap-2" style={{ background: C.paperDim }}>
-        <CalendarDays size={16} style={{ color: C.textDim }} />
-        <span className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>Keine Termine zur Zeit geplant</span>
-      </div>
-    );
-  }
+  /* Kein Training in Sicht: Kachel ausblenden statt eine leere Meldung zeigen. */
+  if (!info) return null;
   const digit = (n) => String(n).padStart(2, "0");
   return (
     <div className="rounded-3xl p-5 mb-6 relative overflow-hidden" style={{ background: `linear-gradient(160deg, #4FC47C 0%, ${C.green} 55%, #1F6E3E 100%)`, boxShadow: "0 22px 46px rgba(47,158,88,0.3), inset 0 1px 0 rgba(255,255,255,0.3)" }}>
@@ -1657,8 +1647,10 @@ function CarpoolSection({ ev, currentUser }) {
   );
 }
 
-function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser, dutyPlan, setDutyPlan, canCancelTraining, onCancelTraining, onDeleteTraining, currentClub, featureEnabled }) {
-  const [open, setOpen] = useState(false);
+/* initialOpen: Im Kalender-Overlay ist bereits klar, welcher Termin gemeint ist —
+   dort wird die Karte aufgeklappt gezeigt, statt noch einmal tippen zu lassen. */
+function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser, dutyPlan, setDutyPlan, canCancelTraining, onCancelTraining, onDeleteTraining, currentClub, featureEnabled, initialOpen = false }) {
+  const [open, setOpen] = useState(initialOpen);
   const meta = typeMeta[ev.type];
 
   const helperEligible = ev.helperSlots ? (isFormalMember(currentUser) && (ev.type !== "spiel" || age(currentUser.birthdate) >= 16)) : false;
@@ -1710,8 +1702,80 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
     </div>
   );
 }
+/* Monatsübersicht der Termine — dasselbe Raster wie bei den Fahrzeugen.
+   Sie zeigt genau die Termine, die auch die Liste zeigt (gleiche Filter, gleiche
+   Sichtbarkeit); ein Tippen auf einen Eintrag meldet ihn nach oben, wo er im
+   Overlay geöffnet wird. */
+function EventMonthCalendar({ events, onSelect }) {
+  const [monthDate, setMonthDate] = useState(() => { const now = new Date(); return new Date(now.getFullYear(), now.getMonth(), 1); });
+  const monthLabel = monthDate.toLocaleDateString("de-DE", { month: "long", year: "numeric" });
+  const startOfMonth = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+  const daysInMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate();
+  const startWeekday = (startOfMonth.getDay() + 6) % 7;
+  const totalCells = Math.ceil((startWeekday + daysInMonth) / 7) * 7;
+  const cells = Array.from({ length: totalCells }, (_, i) => {
+    const dayNum = i - startWeekday + 1;
+    if (dayNum < 1 || dayNum > daysInMonth) return null;
+    return new Date(monthDate.getFullYear(), monthDate.getMonth(), dayNum);
+  });
+  const today = new Date();
+  const isToday = (day) => day && day.toDateString() === today.toDateString();
+  const eventsForDay = (day) => {
+    if (!day) return [];
+    return events
+      .filter((ev) => new Date(ev.date).toDateString() === day.toDateString())
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+  };
+  const monthCount = events.filter((ev) => {
+    const d = new Date(ev.date);
+    return d.getFullYear() === monthDate.getFullYear() && d.getMonth() === monthDate.getMonth();
+  }).length;
+
+  return (
+    <div className="mb-5">
+      <div className="flex items-center justify-between mb-3">
+        <button onClick={() => setMonthDate((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1))} aria-label="Vorheriger Monat" className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><ArrowLeft size={14}/></button>
+        <div className="text-sm font-bold" style={{ color: C.ink, textTransform: "capitalize" }}>{monthLabel}</div>
+        <button onClick={() => setMonthDate((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1))} aria-label="Nächster Monat" className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><ArrowLeft size={14} style={{ transform: "rotate(180deg)" }}/></button>
+      </div>
+      <div className="rounded-2xl p-2" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
+        <div className="grid grid-cols-7 gap-1 mb-1">
+          {["Mo","Di","Mi","Do","Fr","Sa","So"].map((d) => <div key={d} className="text-center text-[9px] font-bold py-1" style={{ color: C.textDim }}>{d}</div>)}
+        </div>
+        <div className="grid grid-cols-7 gap-1">
+          {cells.map((day, i) => {
+            const dayEvents = eventsForDay(day);
+            return (
+              <div key={i} className="rounded-lg p-1 min-h-[54px]" style={{ background: day ? C.paperDim : "transparent", outline: isToday(day) ? `1.5px solid ${C.red}` : "none" }}>
+                {day && <div className="text-[9px] font-bold mb-0.5" style={{ color: isToday(day) ? C.red : C.textDim }}>{day.getDate()}</div>}
+                {dayEvents.slice(0, 2).map((ev) => {
+                  const meta = typeMeta[ev.type];
+                  return (
+                    <button key={ev.id} onClick={() => onSelect(ev)} className="w-full text-left text-[8px] px-1 py-0.5 rounded mb-0.5 truncate" style={{ background: `color-mix(in srgb, ${meta.color} 18%, transparent)`, color: meta.color, textDecoration: ev.cancelled ? "line-through" : "none" }} title={`${meta.label}: ${ev.title}`}>{ev.title}</button>
+                  );
+                })}
+                {dayEvents.length > 2 && <button onClick={() => onSelect(dayEvents[2])} className="text-[8px] w-full text-left" style={{ color: C.textDim }}>+{dayEvents.length - 2} mehr</button>}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <div className="flex items-center gap-3 flex-wrap mt-2 px-1">
+        {["training","spiel","event"].map((key) => (
+          <span key={key} className="flex items-center gap-1.5 text-[10px]" style={{ color: C.textDim }}>
+            <span className="w-2.5 h-2.5 rounded-full" style={{ background: typeMeta[key].color }} />{typeMeta[key].label}
+          </span>
+        ))}
+        <span className="text-[10px] ml-auto" style={{ color: C.textDim }}>{monthCount} in diesem Monat</span>
+      </div>
+    </div>
+  );
+}
+
 function EventsView({ currentUser, members, events, setEvents, carpools, setCarpools, dutyPlan, setDutyPlan, sponsorBookings, onSponsorImpression, onSponsorClick, focusRequest, onFocusApplied, currentClub, featureEnabled, entitlement, goSubscribe }) {
   const [filter, setFilter] = useState("alle");
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
   const [eventDraft, setEventDraft] = useState({ type: "training", team: "", title: "", date: "", location: "", desc: "", recurring: false, weekdays: [], startTime: "18:00", endTime: "19:30", rangeStart: "", rangeEnd: "" });
   const preferenceKey = `cmo-match-team-${currentUser.id}`;
@@ -1850,16 +1914,33 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
 
   const handleCarpool = (id) => setCarpools((c) => ({ ...c, [userId]: { ...(c[userId] || {}), [id]: !myCarpools[id] } }));
 
+  /* Einmal berechnet statt an zwei Stellen abgeschrieben: Liste und Kalender-
+     Overlay müssen zwingend dieselben Schreibrechte anwenden. */
+  const canCancelFor = (ev) => {
+    const trainerTeams = currentUser.trainerTeams?.length ? currentUser.trainerTeams : [currentUser.team];
+    return ev.type === "event"
+      ? isAdminUser
+      : (ev.type === "training" || ev.type === "spiel") && (isSysAdmin(currentUser) || (currentUser.roles.includes("trainer") && trainerTeams.includes(ev.team)) || (currentUser.roles.includes("kapitaen") && currentUser.team === ev.team) || (currentUser.roles.includes("teammanager") && currentUser.managedTeam === ev.team));
+  };
+
+  /* Der ausgewählte Termin wird bei jedem Rendern frisch aus events geholt.
+     Ein festgehaltenes Objekt würde nach einer Absage im Overlay den alten
+     Stand weiterzeigen. */
+  const openEvent = selectedEvent ? events.find((ev) => ev.id === selectedEvent) : null;
+
   return (
     <div className="px-4 pt-4 pb-24">
       <div className="flex items-start justify-between gap-3"><SectionTitle title="Termine" />{(canCreateSportEvent||canCreateClubEvent)&&<button onClick={openCreate} className="px-3 py-1.5 rounded-full text-xs flex-shrink-0" style={{background:C.red,color:C.white,fontWeight:700}}>＋ Eintragen</button>}</div>
       {showCreate&&<form onSubmit={createSportEvent} className="rounded-2xl p-4 mb-4 space-y-2.5" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold">Termin eintragen</div><div className="text-[10px]" style={{color:C.textDim}}>{eventDraft.type==="event"?"Vereins-Events sind für alle Mitglieder sichtbar, unabhängig von Mannschaft.":isSysAdmin(currentUser)?"Als Vereins-Sysadmin kannst du jede Mannschaft auswählen.":currentUser.roles.includes("trainer")?"Du kannst nur deine im Profil hinterlegten Mannschaften auswählen.":"Als Kapitän oder Teammanager kannst du nur für deine hinterlegte Mannschaft eintragen."}</div><div className="text-[10px] font-bold" style={{color:C.red}}>* Pflichtfeld</div><div className="grid grid-cols-2 gap-2"><select value={eventDraft.type} onChange={(e)=>setEventDraft({...eventDraft,type:e.target.value,team:e.target.value==="event"?"":eventDraft.team})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}>{canCreateSportEvent&&<option value="training">Training</option>}{canCreateSportEvent&&<option value="spiel">Spiel</option>}{canCreateClubEvent&&<option value="event">Vereins-Event</option>}</select>{eventDraft.type!=="event"&&<select value={eventDraft.team} onChange={(e)=>setEventDraft({...eventDraft,team:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}>{allowedEventTeams.map((team)=><option key={team} value={team}>{team}</option>)}</select>}</div><input value={eventDraft.title} onChange={(e)=>setEventDraft({...eventDraft,title:e.target.value})} placeholder={eventDraft.type==="training"?"Titel des Trainings *":eventDraft.type==="event"?"Titel des Events *":"Titel des Spiels *"} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/>{eventDraft.type === "spiel" && <label className="flex items-center gap-2 px-0.5"><input type="checkbox" checked={eventDraft.isHome} onChange={(e)=>setEventDraft({...eventDraft,isHome:e.target.checked})}/><span className="text-xs font-bold" style={{color:C.ink}}>Heimspiel</span></label>}{eventDraft.type === "training" && <label className="flex items-center gap-2 px-0.5"><input type="checkbox" checked={eventDraft.recurring} onChange={(e)=>setEventDraft({...eventDraft,recurring:e.target.checked})}/><span className="text-xs font-bold" style={{color:C.ink}}>Wiederholend</span></label>}{!eventDraft.recurring ? <input type="datetime-local" value={eventDraft.date} onChange={(e)=>setEventDraft({...eventDraft,date:e.target.value})} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/> : <div className="space-y-2"><div className="flex gap-1.5 flex-wrap">{[["1","Mo"],["2","Di"],["3","Mi"],["4","Do"],["5","Fr"],["6","Sa"],["7","So"]].map(([num,label])=>{const n=Number(num);const active=eventDraft.weekdays.includes(n);return <button type="button" key={num} onClick={()=>setEventDraft({...eventDraft,weekdays:active?eventDraft.weekdays.filter((w)=>w!==n):[...eventDraft.weekdays,n]})} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?C.red:C.paperDim,color:active?C.white:C.textDim}}>{label}</button>;})}</div><div className="grid grid-cols-2 gap-2"><input type="time" value={eventDraft.startTime} onChange={(e)=>setEventDraft({...eventDraft,startTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><input type="time" value={eventDraft.endTime} onChange={(e)=>setEventDraft({...eventDraft,endTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></div><div className="grid grid-cols-2 gap-2"><input type="date" value={eventDraft.rangeStart} onChange={(e)=>setEventDraft({...eventDraft,rangeStart:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><input type="date" value={eventDraft.rangeEnd} onChange={(e)=>setEventDraft({...eventDraft,rangeEnd:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></div></div>}<input value={eventDraft.location} onChange={(e)=>setEventDraft({...eventDraft,location:e.target.value})} placeholder="Ort *" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><textarea value={eventDraft.desc} onChange={(e)=>setEventDraft({...eventDraft,desc:e.target.value})} placeholder="Beschreibung (optional)" rows={2} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none" style={{background:C.paperDim}}/><div className="flex gap-2"><button type="submit" className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{background:C.ink,color:C.white}}>Speichern</button><button type="button" onClick={()=>setShowCreate(false)} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{background:C.paperDim,color:C.textDim}}>Abbrechen</button></div></form>}
       <SponsorSlot slotKey="events_header" bookings={sponsorBookings} onImpression={onSponsorImpression} onClick={onSponsorClick} visible={featureEnabled("sponsor_events_header")} />
-      <div className="flex gap-2 mb-4 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
-        {[["alle", "Alle"], ["training", "Training"], ["spiel", "Spiele"], ["event", "Events"]].map(([k, l]) => (
-          <button key={k} onClick={() => setFilter(k)} className="px-3 py-1.5 rounded-full text-xs flex-shrink-0"
-            style={{ fontFamily: "Inter", fontWeight: 700, background: filter === k ? C.ink : C.paperDim, color: filter === k ? C.white : C.textDim }}>{l}</button>
-        ))}
+      <div className="flex items-center gap-2 mb-3">
+        <div className="flex gap-2 overflow-x-auto pb-1 flex-1 min-w-0" style={{ scrollbarWidth: "none" }}>
+          {[["alle", "Alle"], ["training", "Training"], ["spiel", "Spiele"], ["event", "Events"]].map(([k, l]) => (
+            <button key={k} onClick={() => setFilter(k)} className="px-3 py-1.5 rounded-full text-xs flex-shrink-0"
+              style={{ fontFamily: "Inter", fontWeight: 700, background: filter === k ? C.ink : C.paperDim, color: filter === k ? C.white : C.textDim }}>{l}</button>
+          ))}
+        </div>
+        <button onClick={() => setCalendarOpen((v) => !v)} aria-pressed={calendarOpen} aria-label="Kalenderübersicht ein- oder ausblenden" className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: calendarOpen ? C.ink : C.paperDim, color: calendarOpen ? C.white : C.textDim }}><CalendarDays size={15}/></button>
       </div>
       {teamFilterActive && <div className="flex items-center gap-2 mb-4 px-2.5 py-2 rounded-xl" style={{background:C.glass,border:`1px solid ${C.line}`}}>
         <Users size={13} style={{color:C.textDim,flexShrink:0}}/>
@@ -1868,22 +1949,38 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
         </select>
         <button aria-label="Als Standardansicht speichern" title="Als Standard speichern" onClick={saveDefaultTeam} disabled={savedTeam===teamFilter} className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{background:savedTeam===teamFilter?"rgba(231,243,236,0.72)":C.paperDim,color:savedTeam===teamFilter?C.green:C.textDim}}><Star size={13} fill={savedTeam===teamFilter?C.green:"none"}/></button>
       </div>}
+      {calendarOpen && <EventMonthCalendar events={filtered} onSelect={(ev) => setSelectedEvent(ev.id)} />}
       {filtered.map((ev) => (
-        (() => {
-          const trainerTeams = currentUser.trainerTeams?.length ? currentUser.trainerTeams : [currentUser.team];
-          const canCancelTraining = ev.type === "event" ? isAdminUser : (ev.type === "training" || ev.type === "spiel") && (isSysAdmin(currentUser) || (currentUser.roles.includes("trainer") && trainerTeams.includes(ev.team)) || (currentUser.roles.includes("kapitaen") && currentUser.team === ev.team) || (currentUser.roles.includes("teammanager") && currentUser.managedTeam === ev.team));
-          return (
         <EventCard key={ev.id} ev={ev}
           carpoolOn={!!myCarpools[ev.id]} onCarpool={handleCarpool}
           currentUser={currentUser} members={members} isAdminUser={isAdminUser}
           currentClub={currentClub} featureEnabled={featureEnabled}
           dutyPlan={dutyPlan} setDutyPlan={setDutyPlan}
-          canCancelTraining={canCancelTraining} onCancelTraining={cancelTraining} onDeleteTraining={deleteTraining}
+          canCancelTraining={canCancelFor(ev)} onCancelTraining={cancelTraining} onDeleteTraining={deleteTraining}
         />
-          );
-        })()
       ))}
       {filtered.length===0&&<div className="rounded-2xl p-6 text-center text-xs" style={{background:C.paperDim,color:C.textDim}}>Für diese Mannschaft sind aktuell keine {filter === "training" ? "Trainingstermine" : "Spiele"} hinterlegt.</div>}
+
+      {/* Termin aus dem Kalender. Bewusst dieselbe EventCard wie in der Liste —
+          damit gelten hier zwangsläufig dieselben Lese- und Schreibrechte,
+          inklusive Absagen, Löschen, Fahrgemeinschaft und Helferplanung. */}
+      {openEvent && (
+        <div className="fixed inset-0 z-50 flex items-end p-3" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setSelectedEvent(null)}>
+          <div role="dialog" aria-modal="true" aria-label={openEvent.title} onClick={(e) => e.stopPropagation()} className="w-full rounded-3xl p-4 max-h-[85%] overflow-y-auto" style={{ background: C.glass }}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-sm font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{typeMeta[openEvent.type].label}</div>
+              <button onClick={() => setSelectedEvent(null)} aria-label="Schließen" className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><X size={15}/></button>
+            </div>
+            <EventCard ev={openEvent} initialOpen
+              carpoolOn={!!myCarpools[openEvent.id]} onCarpool={handleCarpool}
+              currentUser={currentUser} members={members} isAdminUser={isAdminUser}
+              currentClub={currentClub} featureEnabled={featureEnabled}
+              dutyPlan={dutyPlan} setDutyPlan={setDutyPlan}
+              canCancelTraining={canCancelFor(openEvent)} onCancelTraining={(id) => { cancelTraining(id); setSelectedEvent(null); }} onDeleteTraining={(...args) => { deleteTraining(...args); setSelectedEvent(null); }}
+            />
+          </div>
+        </div>
+      )}
       {deleteRequest && <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setDeleteRequest(null)}><div role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()} className="w-full max-w-sm rounded-2xl p-5" style={{ background: C.glass }}>{deleteRequest.seriesId ? <><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Wiederkehrendes Training</div><div className="text-xs mb-4" style={{ color: C.textDim }}>Sollen alle geplanten Sessions dieser Serie gelöscht werden, oder nur diese eine?</div><button onClick={performSeriesDelete} className="w-full py-2.5 rounded-xl text-xs font-bold mb-2" style={{ background: C.red, color: C.white }}>Alle Sessions</button><button onClick={performSingleDelete} className="w-full py-2.5 rounded-xl text-xs font-bold mb-2" style={{ background: C.paperDim, color: C.ink }}>Nur eine Session</button><button onClick={() => setDeleteRequest(null)} className="w-full py-2 text-xs font-bold" style={{ color: C.textDim }}>Abbrechen</button></> : <><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Wollen Sie die Trainingseinheit wirklich löschen?</div><div className="flex gap-2 mt-4"><button onClick={() => setDeleteRequest(null)} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>Nein</button><button onClick={performSingleDelete} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.red, color: C.white }}>Ja</button></div></>}</div></div>}
     </div>
   );
@@ -3854,7 +3951,13 @@ function subscriptionDate(value) {
 function SubscriptionRecord({ subscription, accountLabel, onCancel, cancelling }) {
   const plan = Array.isArray(subscription.subscription_plans) ? subscription.subscription_plans[0] : subscription.subscription_plans;
   const status = SUBSCRIPTION_STATUS[subscription.status] || SUBSCRIPTION_STATUS.pending;
-  const canCancel = !!onCancel && !subscription.cancel_at_period_end && !["cancelled", "expired", "refunded"].includes(subscription.status);
+  /* Store-Käufe lassen sich nicht aus der App heraus kündigen — das geht nur in
+     den Konto-Einstellungen von Apple bzw. Google. Der Kündigen-Knopf rief hier
+     bisher unabhängig vom Anbieter die PayPal-Route auf und wäre bei einem
+     Store-Abo ins Leere gelaufen. */
+  const storeManaged = subscription.provider === "apple" || subscription.provider === "google_play";
+  const stillRunning = !subscription.cancel_at_period_end && !["cancelled", "expired", "refunded"].includes(subscription.status);
+  const canCancel = !!onCancel && !storeManaged && stillRunning;
   const interval = plan?.interval === "year" ? "Jährlich" : "Monatlich";
   const amount = typeof plan?.price_cents === "number" ? new Intl.NumberFormat("de-DE", { style: "currency", currency: plan.currency || "EUR" }).format(plan.price_cents / 100) : "—";
   return <div className="rounded-2xl p-3.5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
@@ -3875,6 +3978,7 @@ function SubscriptionRecord({ subscription, accountLabel, onCancel, cancelling }
     </div>
     {(subscription.cancel_at_period_end || subscription.status === "cancelled") && <div className="mt-3 rounded-xl px-3 py-2 text-[10px]" style={{ background: C.paperDim, color: C.textDim }}>Dieses Abonnement wurde gekündigt und verlängert sich nicht erneut.</div>}
     {canCancel && <button onClick={onCancel} disabled={cancelling} className="w-full mt-3 py-2 rounded-lg text-xs font-bold" style={{ background: "rgba(253,236,236,0.72)", color: C.red, opacity: cancelling ? .6 : 1 }}>{cancelling ? "Wird gekündigt …" : "Abonnement kündigen"}</button>}
+    {storeManaged && stillRunning && <div className="mt-3 rounded-xl px-3 py-2 text-[10px] leading-snug" style={{ background: C.paperDim, color: C.textDim }}>Dieses Abonnement wurde über {subscription.provider === "apple" ? "den App Store" : "Google Play"} abgeschlossen. Kündigen kannst du es nur dort — {subscription.provider === "apple" ? "in den Einstellungen unter „Apple-ID“ › „Abonnements“" : "in der Play-Store-App unter „Zahlungen und Abos“"}.</div>}
   </div>;
 }
 
@@ -3918,6 +4022,9 @@ function SubscriptionPanel({ user }) {
   const [memberAccess, setMemberAccess] = useState(null);
   const [memberCycle, setMemberCycle] = useState("monthly");
   const [memberConsent, setMemberConsent] = useState(false);
+  const [memberOffering, setMemberOffering] = useState(null);
+  const [memberOfferingLoading, setMemberOfferingLoading] = useState(true);
+  const [memberPurchasing, setMemberPurchasing] = useState(false);
   /* PayPal muss die Subscription auf die PROFIL-ID ausstellen — user.id ist die
      Mitgliedschafts-ID und wäre hier falsch. Die Profil-ID steht nur in der
      Anmelde-Sitzung, deshalb wird sie einmalig von dort geholt. */
@@ -3940,6 +4047,18 @@ function SubscriptionPanel({ user }) {
       .finally(() => setNativeLoading(false));
   }, [isNative, databaseClub, canBuyClubPlan, user.clubId]);
 
+  /* Wartet bewusst auf authUserId: Ohne Profil-ID würde RevenueCat auf die
+     falsche Kennung konfiguriert und der Kauf später der falschen Person
+     zugeschrieben. */
+  useEffect(() => {
+    if (!isNative || !authUserId) { if (!isNative) setMemberOfferingLoading(false); return; }
+    setMemberOfferingLoading(true);
+    fetchMemberOffering(authUserId)
+      .then((offering) => setMemberOffering(offering))
+      .catch(() => setMessage("Angebote konnten nicht geladen werden."))
+      .finally(() => setMemberOfferingLoading(false));
+  }, [isNative, authUserId]);
+
   const refreshClubStatus = useCallback(() => {
     if (!supabase || !databaseClub) return;
     supabase.rpc("club_subscription_tier", { target_club: user.clubId }).then(({ data }) => {
@@ -3950,12 +4069,15 @@ function SubscriptionPanel({ user }) {
     });
   }, [databaseClub, user.clubId]);
 
+  /* Vereinsabo: läuft auf die Vereins-ID. Die Kennung steht hier ausdrücklich,
+     damit der Kauf nicht versehentlich auf der Profil-ID landet, falls zuvor
+     die Mitglieder-Angebote geladen wurden. */
   const buyNativePackage = async () => {
     const pkg = nativeOfferings?.[tier]?.[cycle];
     if (!pkg) { setMessage("Dieses Paket ist im Store noch nicht verfügbar."); return; }
     setPurchasing(true); setMessage("");
     try {
-      await purchaseTierPackage(pkg);
+      await purchasePackageAs(user.clubId, pkg);
       setMessage("Kauf erfolgreich. Die Freischaltung kann kurz dauern.");
       setShowWelcome(true);
       setTimeout(refreshClubStatus, 2500);
@@ -3969,13 +4091,44 @@ function SubscriptionPanel({ user }) {
   const restorePurchases = async () => {
     setPurchasing(true); setMessage("");
     try {
-      await restoreNativePurchases();
+      await restorePurchasesAs(user.clubId);
       setMessage("Käufe wiederhergestellt.");
       setTimeout(refreshClubStatus, 1500);
     } catch {
       setMessage("Käufe konnten nicht wiederhergestellt werden.");
     } finally {
       setPurchasing(false);
+    }
+  };
+
+  /* Persönliches Basis-Abo im nativen Store. Läuft auf die Profil-ID — dieselbe
+     Kennung, die auch PayPal als custom_id bekommt, damit beide Wege im selben
+     Datensatz landen. */
+  const buyMemberPackage = async () => {
+    const pkg = memberOffering?.[memberCycle];
+    if (!pkg) { setMessage("Dieses Paket ist im Store noch nicht verfügbar."); return; }
+    setMemberPurchasing(true); setMessage("");
+    try {
+      await purchasePackageAs(authUserId, pkg);
+      setMessage("Kauf erfolgreich. Die Freischaltung kann kurz dauern.");
+      setTimeout(() => { refreshMemberAccess(); loadSubscriptions(); }, 2500);
+    } catch (error) {
+      if (!error?.userCancelled) setMessage(error?.message || "Der Kauf konnte nicht abgeschlossen werden.");
+    } finally {
+      setMemberPurchasing(false);
+    }
+  };
+
+  const restoreMemberPurchases = async () => {
+    setMemberPurchasing(true); setMessage("");
+    try {
+      await restorePurchasesAs(authUserId);
+      setMessage("Käufe wiederhergestellt.");
+      setTimeout(() => { refreshMemberAccess(); loadSubscriptions(); }, 1500);
+    } catch {
+      setMessage("Käufe konnten nicht wiederhergestellt werden.");
+    } finally {
+      setMemberPurchasing(false);
     }
   };
 
@@ -4158,17 +4311,32 @@ function SubscriptionPanel({ user }) {
         ))}
       </div>
       <div className="rounded-xl p-3 mb-3" style={{ background: C.paperDim }}>
-        <div className="text-xl font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{memberPrice.price}</div>
+        <div className="text-xl font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{isNative ? (memberOffering?.[memberCycle]?.product.priceString || memberPrice.price) : memberPrice.price}</div>
         <div className="text-[10px]" style={{ color: C.textDim }}>{memberPrice.note}{memberPrice.equivalent ? ` · ${memberPrice.equivalent}` : ""}</div>
         <div className="text-[10px] mt-2" style={{ color: C.textDim }}>19 % Umsatzsteuer im Preis enthalten. Mindestlaufzeit {memberCycle === "yearly" ? "12 Monate" : "1 Monat"}, verlängert sich automatisch.</div>
       </div>
-      {loading ? <div className="text-xs py-2 text-center" style={{ color: C.textDim }}>Zahlung wird vorbereitet …</div>
+      {/* In der nativen App ist der In-App-Kauf Pflicht (Apple 3.1.1, Google Play
+          Billing). PayPal erscheint deshalb ausschließlich im Browser — vorher
+          stand hier „über den App Store bezahlen" und darunter ein PayPal-Knopf. */}
+      {isNative ? (
+        memberOfferingLoading ? <div className="text-xs py-2 text-center" style={{ color: C.textDim }}>Angebote werden geladen …</div> :
+        !authUserId ? <div className="text-[11px] rounded-xl px-3 py-2" style={{ background: "rgba(255,246,228,0.72)", color: C.textDim }}>Bitte melde dich erneut an, um den Zugang zu buchen.</div> :
+        !memberOffering?.[memberCycle] ? <div className="text-[11px] rounded-xl px-3 py-2" style={{ background: "rgba(255,246,228,0.72)", color: C.textDim }}>Dieses Paket ist im Store noch nicht eingerichtet.</div> :
+        <>
+          <label className="flex items-start gap-2 mb-3 px-0.5"><input type="checkbox" checked={memberConsent} onChange={(e) => setMemberConsent(e.target.checked)} className="mt-0.5"/><span className="text-[10px]" style={{ color: C.textDim }}>Ich akzeptiere die <a href="/nutzungsbedingungen" target="_blank" rel="noreferrer" style={{ color: C.red }}>Nutzungsbedingungen</a> und die Widerrufsbelehrung. Ich stimme zu, dass die Nutzung sofort beginnt, und weiß, dass mein Widerrufsrecht damit erlischt.</span></label>
+          {memberConsent
+            ? <button onClick={buyMemberPackage} disabled={memberPurchasing} className="w-full py-3 rounded-xl text-sm font-bold" style={{ background: C.ink, color: C.white, opacity: memberPurchasing ? .6 : 1 }}>{memberPurchasing ? "Wird verarbeitet …" : "Basis-Zugang buchen"}</button>
+            : <div className="text-[11px] rounded-xl px-3 py-2 text-center" style={{ background: C.paperDim, color: C.textDim }}>Bitte zuerst zustimmen, um fortzufahren.</div>}
+          <button onClick={restoreMemberPurchases} disabled={memberPurchasing} className="w-full mt-2 py-2 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.textDim }}>Käufe wiederherstellen</button>
+        </>
+      ) : loading ? <div className="text-xs py-2 text-center" style={{ color: C.textDim }}>Zahlung wird vorbereitet …</div>
         : config?.memberPlans?.[memberCycle] && authUserId ? <>
           <label className="flex items-start gap-2 mb-3 px-0.5"><input type="checkbox" checked={memberConsent} onChange={(e) => setMemberConsent(e.target.checked)} className="mt-0.5"/><span className="text-[10px]" style={{ color: C.textDim }}>Ich akzeptiere die <a href="/nutzungsbedingungen" target="_blank" rel="noreferrer" style={{ color: C.red }}>Nutzungsbedingungen</a> und die Widerrufsbelehrung. Ich stimme zu, dass die Nutzung sofort beginnt, und weiß, dass mein Widerrufsrecht damit erlischt.</span></label>
           {memberConsent
             ? <PayPalSubscriptionButton clientId={config.clientId} planId={config.memberPlans[memberCycle]} customId={authUserId} onApproved={memberApproved} onError={setMessage} />
             : <div className="text-[11px] rounded-xl px-3 py-2 text-center" style={{ background: C.paperDim, color: C.textDim }}>Bitte zuerst zustimmen, um fortzufahren.</div>}
         </> : <div className="text-[11px] rounded-xl px-3 py-2" style={{ background: "rgba(255,246,228,0.72)", color: C.textDim }}>Der Basis-Zugang ist noch nicht zur Zahlung eingerichtet.</div>}
+      <div className="text-[9px] mt-3 leading-relaxed" style={{ color: C.textDim }}>Kündigung {isNative ? (Capacitor.getPlatform() === "ios" ? "über die Apple-ID-Einstellungen" : "über Google Play") : "über PayPal"} zum Ende des Abrechnungszeitraums.</div>
     </div>}
 
     {/* ---- Ab hier das Vereinsabo: nur für Rollen, die den Verein wirtschaftlich
@@ -4702,7 +4870,104 @@ function FeedbackSettings() { const apple=process.env.NEXT_PUBLIC_APP_STORE_REVI
 
 function BugReportSettings({user}) { const [busy,setBusy]=useState(false);const report=async()=>{setBusy(true);let number=`CMO-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`;if(supabase&&user.authProfileId){const {data}=await supabase.rpc("create_support_ticket",{target_club:user.clubId});if(data)number=data;}const subject=encodeURIComponent(`Fehlermeldung - CMO App #${number}`);const body=encodeURIComponent(`Hallo CMO-Team,\n\nfolgender Fehler ist aufgetreten:\n\n\nApp-Ticket: ${number}\nNutzer: ${user.name}\n`);window.location.href=`mailto:info@idbranding.de?subject=${subject}&body=${body}`;setBusy(false);};return <div className="rounded-2xl p-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-[11px] mb-4" style={{color:C.textDim}}>Wir erzeugen eine eindeutige Bearbeitungsnummer und öffnen anschließend die E-Mail-App deines Geräts.</div><button onClick={report} disabled={busy} className="w-full py-3 rounded-xl text-xs font-bold" style={{background:C.red,color:C.white}}>{busy?"Nummer wird erstellt …":"Fehler per E-Mail melden"}</button></div>; }
 
-function CalendarSyncSettings({user,saveRef}) { const [interval,setInterval]=useState(user.calendarSyncInterval||"never");const [token,setToken]=useState("");const [message,setMessage]=useState("");const sync=async()=>{if(!supabase){setMessage("Kalendersynchronisierung benötigt ein echtes Konto.");return;}const {data,error}=await supabase.rpc("configure_calendar_subscription",{target_club:user.clubId,requested_interval:interval});if(error){setMessage("Kalender konnte nicht verbunden werden.");return;}const row=data?.[0];setToken(row?.token||"");setMessage("Kalenderverbindung aktualisiert.");};saveRef.current=sync;const url=token&&`${window.location.origin}/api/calendar/feed/${token}`;return <div><div className="rounded-2xl p-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">Spiel- und Trainingskalender</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>Verbinde alle für dich sichtbaren Spiele und Trainings mit deinem Gerätekalender.</div><select value={interval} onChange={(e)=>setInterval(e.target.value)} className="w-full px-3 py-3 rounded-xl text-xs mb-3" style={inputStyle}><option value="never">Nie automatisch</option><option value="daily">Täglich</option><option value="weekly">Wöchentlich · Sonntagabend</option><option value="monthly">Monatlich</option></select><button onClick={sync} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold" style={{background:C.ink,color:C.white}}><RefreshCw size={14}/> Jetzt synchronisieren</button>{url&&<a href={url.replace(/^https?:/,"webcal:")} className="block w-full text-center mt-2 py-2.5 rounded-xl text-xs font-bold" style={{background:"rgba(231,243,236,0.72)",color:C.green}}>Mit Gerätekalender verbinden</a>}</div>{message&&<div className="text-[11px] mt-3" style={{color:message.includes("aktualisiert")?C.green:C.red}}>{message}</div>}</div>; }
+/* Kalender-Abo. Vor dem Abonnieren wird ausgewählt, welche Terminarten in den
+   privaten Gerätekalender übertragen werden — jede Person plant anders, und ein
+   Elternteil will selten jedes Training aller Mannschaften im eigenen Kalender.
+   Die Auswahl wird am Abonnement gespeichert, nicht an die Adresse gehängt:
+   Der Gerätekalender ruft dieselbe Adresse dauerhaft ab, eine Änderung wirkt
+   deshalb beim nächsten Abruf ohne erneutes Einrichten im Gerät. */
+const CALENDAR_EVENT_TYPES = [
+  { key: "training", label: "Trainings", hint: "Deine Trainingseinheiten" },
+  { key: "spiel", label: "Spiele", hint: "Spiele deiner Mannschaften" },
+  { key: "event", label: "Events", hint: "Vereinstermine und Feiern" },
+];
+
+function CalendarSyncSettings({ user, saveRef }) {
+  const [interval, setInterval] = useState(user.calendarSyncInterval || "never");
+  const [types, setTypes] = useState(["training", "spiel", "event"]);
+  const [token, setToken] = useState("");
+  const [message, setMessage] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  /* Zuletzt gespeicherte Auswahl laden, damit die Haken den tatsächlichen
+     Stand zeigen und nicht bei jedem Öffnen auf „alles" zurückspringen. */
+  useEffect(() => {
+    if (!supabase || !isDbId(user.clubId)) return;
+    supabase.rpc("my_calendar_subscription", { target_club: user.clubId }).then(({ data }) => {
+      const row = data?.[0];
+      if (!row) return;
+      setToken(row.token || "");
+      setInterval(row.sync_interval || "never");
+      if (Array.isArray(row.event_types) && row.event_types.length) setTypes(row.event_types);
+    });
+  }, [user.clubId]);
+
+  const toggleType = (key) => {
+    setMessage("");
+    setTypes((current) => current.includes(key) ? current.filter((entry) => entry !== key) : [...current, key]);
+  };
+
+  const sync = async () => {
+    if (!supabase) { setMessage("Kalendersynchronisierung benötigt ein echtes Konto."); return; }
+    if (!types.length) { setMessage("Bitte wähle mindestens eine Terminart aus."); return; }
+    setSaving(true);
+    const { data, error } = await supabase.rpc("configure_calendar_subscription", {
+      target_club: user.clubId,
+      requested_interval: interval,
+      requested_types: types,
+    });
+    setSaving(false);
+    if (error) { setMessage("Kalender konnte nicht verbunden werden."); return; }
+    const row = data?.[0];
+    setToken(row?.token || "");
+    setMessage("Kalenderverbindung aktualisiert.");
+  };
+  saveRef.current = sync;
+
+  const url = token && `${window.location.origin}/api/calendar/feed/${token}`;
+  const selectedLabel = CALENDAR_EVENT_TYPES.filter((entry) => types.includes(entry.key)).map((entry) => entry.label).join(", ");
+
+  return <div>
+    <div className="rounded-2xl p-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
+      <div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Termine abonnieren</div>
+      <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Wähle aus, was in deinem privaten Gerätekalender erscheinen soll. Übertragen wird nur, was du ohnehin sehen darfst.</div>
+
+      <div className="space-y-2 mb-3">
+        {CALENDAR_EVENT_TYPES.map((entry) => {
+          const active = types.includes(entry.key);
+          return (
+            <button key={entry.key} onClick={() => toggleType(entry.key)} aria-pressed={active} className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left" style={{ background: active ? "rgba(231,243,236,0.72)" : C.paperDim, border: `1px solid ${active ? C.green : "transparent"}` }}>
+              <span className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0" style={{ background: active ? C.green : "transparent", border: `1px solid ${active ? C.green : C.line}` }}>
+                {active && <Check size={13} style={{ color: C.white }} />}
+              </span>
+              <span className="flex-1 min-w-0">
+                <span className="block text-xs font-bold" style={{ color: C.ink }}>{entry.label}</span>
+                <span className="block text-[10px]" style={{ color: C.textDim }}>{entry.hint}</span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      {!types.length && <div className="text-[11px] rounded-xl px-3 py-2 mb-3" style={{ background: "rgba(255,246,228,0.72)", color: C.textDim }}>Ohne Auswahl bliebe der Kalender leer — wähle mindestens eine Art.</div>}
+
+      <div className="text-[10px] font-bold uppercase tracking-widest mb-1.5" style={{ color: C.textDim }}>Aktualisierung</div>
+      <select value={interval} onChange={(e) => setInterval(e.target.value)} className="w-full px-3 py-3 rounded-xl text-xs mb-3" style={inputStyle}>
+        <option value="never">Nie automatisch</option>
+        <option value="daily">Täglich</option>
+        <option value="weekly">Wöchentlich · Sonntagabend</option>
+        <option value="monthly">Monatlich</option>
+      </select>
+
+      <button onClick={sync} disabled={saving || !types.length} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white, opacity: saving || !types.length ? .5 : 1 }}><RefreshCw size={14}/> {saving ? "Wird gespeichert …" : token ? "Auswahl übernehmen" : "Abonnement erstellen"}</button>
+
+      {url && <>
+        <a href={url.replace(/^https?:/, "webcal:")} className="block w-full text-center mt-2 py-2.5 rounded-xl text-xs font-bold" style={{ background: "rgba(231,243,236,0.72)", color: C.green }}>Mit Gerätekalender verbinden</a>
+        <div className="text-[10px] mt-2 leading-snug" style={{ color: C.textDim }}>Abonniert: {selectedLabel || "nichts"}. Änderst du die Auswahl, übernimmt dein Gerätekalender sie beim nächsten Abruf — ohne erneutes Einrichten.</div>
+      </>}
+    </div>
+    {message && <div role="status" className="text-[11px] mt-3" style={{ color: message.includes("aktualisiert") ? C.green : C.red }}>{message}</div>}
+  </div>;
+}
 
 function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, onSponsorImpression, onSponsorClick, onLogout, clubFeatures, onClubFeaturesChanged, entitlement, goSubscribe, dashboardTileOrder, setDashboardTileOrder }) {
   const featureEnabled = (key) => clubFeatures[key] !== false;
@@ -6689,7 +6954,10 @@ export default function ClubMemberOrganisationApp() {
     setTab("home");
     return { ok: true };
   };
-  const logout = async () => { if (supabase) await supabase.auth.signOut(); setCurrentUserId(null); setSelectedClubId(null); setAuthScreen("club"); setTab("home"); setTabHistory([]); setSubView(null); };
+  /* logOutRevenueCat trennt die Store-Kennung mit. Ohne das erbt die nächste
+     Anmeldung auf demselben Gerät die Kennung — und damit die Käufe — der
+     vorherigen Person. */
+  const logout = async () => { await logOutRevenueCat(); if (supabase) await supabase.auth.signOut(); setCurrentUserId(null); setSelectedClubId(null); setAuthScreen("club"); setTab("home"); setTabHistory([]); setSubView(null); };
   useEffect(() => {
     if (!currentUser || !currentUser.autoLogoutDays) return;
     const timeoutMs = Number(currentUser.autoLogoutDays) * 24 * 60 * 60 * 1000;
