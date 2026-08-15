@@ -41,7 +41,10 @@ Die App nutzt ausschließlich Standard-TLS zu Vercel, Supabase und Firebase.
 
 ### Kontolöschung
 Apple verlangt seit 2022 eine Löschmöglichkeit **in** der App, wenn dort Konten
-angelegt werden können. Vorhanden: Profil → Konto & Sicherheit → Konto löschen
+angelegt werden können. Vorhanden: Profil → Einstellungen → Konto löschen
+(zusätzlich weiterhin über Profil → Konto & Sicherheit → Kontoeinstellungen).
+Wartet die Aufnahme noch auf Freigabe, steht die Löschung direkt auf dem
+Hinweisbildschirm nach der Anmeldung
 (Route `app/api/account/delete`, Seite `/konto-loeschen`).
 
 ---

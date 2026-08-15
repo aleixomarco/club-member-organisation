@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Script from "next/script";
 import {
-  Home, CalendarDays, Wallet, MessageCircle, User, ChevronRight,
+  Home, CalendarDays, Wallet, MessageCircle, User, ChevronRight, Trash2,
   Check, X, Users, Award, Gift, MapPin, Clock, Send,
   Trophy, Flame, Cake, Megaphone, Euro, CheckCircle2, Circle, Car,
   Sparkles, Image as ImageIcon, ChevronDown, Star, Mail, Lock, LogOut,
@@ -1109,6 +1109,60 @@ function NewClubScreen({ onCreate, goBack }) {
   );
 }
 
+/* Angemeldet, aber ohne freigegebene Mitgliedschaft. Diese Ansicht existiert
+   vor allem wegen Apple-Richtlinie 5.1.1(v): Bisher blieb ein solches Konto auf
+   dem Anmeldebildschirm hängen — es war angelegt, aber aus der App heraus nie
+   wieder löschbar. Deshalb steht hier neben dem Abmelden auch die Löschung. */
+function PendingAccountScreen({ account, onLeave, onDelete }) {
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const waiting = account.reason === "membership_pending";
+
+  const remove = async () => {
+    setBusy(true); setError("");
+    const result = await onDelete();
+    if (result?.error) { setError(result.error); setBusy(false); }
+  };
+
+  return (
+    <div className="flex-1 overflow-y-auto px-6 pt-10 pb-12 flex flex-col justify-center">
+      <div className="mx-auto w-full" style={{ maxWidth: 380 }}>
+        <div className="flex justify-center mb-6"><AppBrandMark size={64} /></div>
+        <div className="rounded-3xl p-5 mb-4" style={{ background: C.glass, border: `1px solid ${C.edge}`, boxShadow: "0 18px 40px rgba(60,30,45,0.08)" }}>
+          <div className="text-lg font-bold mb-2" style={{ fontFamily: "Oswald", color: C.ink }}>
+            {waiting ? "Warten auf Freigabe" : "Noch keine Mitgliedschaft"}
+          </div>
+          <div className="text-xs leading-relaxed mb-1" style={{ color: C.textDim }}>
+            {waiting
+              ? "Dein Konto ist angelegt. Sobald der Verein deine Aufnahme bestätigt, kannst du dich anmelden und alle Funktionen nutzen."
+              : "Für dieses Konto besteht in diesem Verein noch keine Mitgliedschaft. Wende dich an die Vereinsverwaltung oder wähle einen anderen Verein."}
+          </div>
+          <div className="text-[11px]" style={{ color: C.textDim }}>Angemeldet als {account.email}</div>
+        </div>
+
+        <button onClick={onLeave} className="w-full py-3 rounded-xl text-sm font-bold mb-2.5" style={{ background: C.ink, color: C.white }}>Abmelden</button>
+
+        {!confirming ? (
+          <button onClick={() => setConfirming(true)} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.red }}>Konto und persönliche Daten löschen</button>
+        ) : (
+          <div className="rounded-2xl p-4" style={{ background: "rgba(253,236,236,0.72)", border: "1px solid #F3B9B9" }}>
+            <div className="text-xs font-bold mb-1.5" style={{ color: C.ink }}>Konto endgültig löschen?</div>
+            <div className="text-[11px] leading-snug mb-3" style={{ color: C.textDim }}>
+              Dein Konto und alle personenbezogenen Daten werden unwiderruflich entfernt. Ein über den App Store oder Google Play abgeschlossenes Abonnement endet dadurch <b>nicht</b> — das kündigst du in den Einstellungen deines Store-Kontos.
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setConfirming(false)} disabled={busy} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>Abbrechen</button>
+              <button onClick={remove} disabled={busy} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.red, color: C.white, opacity: busy ? .6 : 1 }}>{busy ? "Wird gelöscht …" : "Endgültig löschen"}</button>
+            </div>
+          </div>
+        )}
+        {error && <div role="status" className="text-[11px] mt-3 rounded-xl px-3 py-2" style={{ background: "rgba(253,236,236,0.72)", color: C.red }}>{error}</div>}
+      </div>
+    </div>
+  );
+}
+
 function LoginScreen({ onLogin, members, club, goRegister, goChangeClub }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -2149,6 +2203,24 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
   const active = visibleChannels.find((c) => c.id === activeId) || visibleChannels[0];
   const canPost = isAdmin(user) || (active.id === "news" && user.roles.includes("redakteur")) || (!active.adminOnly && (!active.writeRoles || active.writeRoles.some((r) => user.roles.includes(r))));
 
+  /* Apple-Richtlinie 1.2 verlangt bei nutzergenerierten Inhalten beides: melden
+     UND blockieren. Gemeldet werden konnte bisher, blockieren nicht.
+     Die Sperre gilt bewusst nur für die eigene Ansicht — sie ist kein
+     Vereinsausschluss, den dürfen weiterhin nur Administratoren aussprechen.
+     Deshalb liegt sie lokal auf dem Gerät und wird nicht in den Verein gespiegelt. */
+  const blockKey = `cmo-blocked-${user.id}`;
+  const [blocked, setBlocked] = useState(() => {
+    if (typeof window === "undefined") return [];
+    try { return JSON.parse(window.localStorage.getItem(blockKey) || "[]"); } catch { return []; }
+  });
+  const persistBlocked = (next) => {
+    setBlocked(next);
+    try { window.localStorage.setItem(blockKey, JSON.stringify(next)); } catch {}
+  };
+  const blockAuthor = (who) => { if (who && !blocked.includes(who)) persistBlocked([...blocked, who]); };
+  const unblockAuthor = (who) => persistBlocked(blocked.filter((name) => name !== who));
+  const visibleMessages = active.messages.filter((m) => m.who === user.name || !blocked.includes(m.who));
+
   const send = () => {
     if (!text.trim() || !canPost) return;
     setChannels((cs) => cs.map((c) => c.id === active.id
@@ -2177,8 +2249,21 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
           </button>
         ))}
       </div>
+      {blocked.length > 0 && (
+        <div className="mx-4 mb-3 rounded-xl px-3 py-2" style={{ background: C.paperDim }}>
+          <div className="text-[10px] font-bold mb-1.5" style={{ color: C.textDim }}>Für dich ausgeblendet</div>
+          <div className="flex flex-wrap gap-1.5">
+            {blocked.map((name) => (
+              <button key={name} onClick={() => unblockAuthor(name)} className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold" style={{ background: C.glass, border: `1px solid ${C.edge}`, color: C.ink }}>
+                {name} <X size={10} style={{ color: C.textDim }} />
+              </button>
+            ))}
+          </div>
+          <div className="text-[9px] mt-1.5" style={{ color: C.textDim }}>Tippe einen Namen an, um die Person wieder anzuzeigen.</div>
+        </div>
+      )}
       <div className="flex-1 overflow-y-auto px-4 space-y-3">
-        {active.messages.map((m, i) => {
+        {visibleMessages.map((m, i) => {
           const mine = m.who === user.name;
           return (
             <div key={i} className={`flex gap-2 ${mine ? "flex-row-reverse" : ""}`}>
@@ -2195,6 +2280,7 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
                 <div className="flex items-center gap-2 mt-0.5">
                   <div className="text-[10px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{m.time}</div>
                   {!mine && <a href={`mailto:${legal.email}?subject=${encodeURIComponent("Nachricht melden - " + (active.name || "Chat"))}&body=${encodeURIComponent(`Ich möchte folgende Nachricht melden:\n\nVerfasser: ${m.who}\nInhalt: ${m.text || ""}\n\nGrund:\n`)}`} className="text-[10px]" style={{ color: C.textDim, fontFamily: "Inter", textDecoration: "underline" }}>Melden</a>}
+                  {!mine && <button onClick={() => blockAuthor(m.who)} className="text-[10px]" style={{ color: C.textDim, fontFamily: "Inter", textDecoration: "underline" }}>Blockieren</button>}
                 </div>
               </div>
             </div>
@@ -4286,6 +4372,13 @@ function SubscriptionPanel({ user }) {
   return <div>
     {message && <div role="status" className="text-[11px] mb-4 rounded-xl px-3 py-2" style={{ background: messageTone.bg, color: messageTone.fg }}>{message}</div>}
 
+    {/* Apple verlangt, dass Käufe jederzeit wiederherstellbar sind. Vorher hing der
+        Knopf am untersten Zweig der Kaufansicht und verschwand mit ihr — etwa bei
+        bereits aktivem Abo oder wenn kein Store-Paket geladen werden konnte, also
+        genau in den Fällen, in denen man ihn braucht. Deshalb steht er jetzt
+        unabhängig davon ganz oben, sobald die App nativ läuft. */}
+    {isNative && <button onClick={() => restorePurchasesAs(authUserId || user.clubId).then(() => { setMessage("Käufe wiederhergestellt."); refreshMemberAccess(); refreshClubStatus(); loadSubscriptions(); }).catch(() => setMessage("Käufe konnten nicht wiederhergestellt werden."))} className="w-full mb-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.glass, border: `1px solid ${C.edge}`, color: C.ink }}>Käufe wiederherstellen</button>}
+
     {/* ---- Mein Zugang: betrifft jedes Mitglied, steht deshalb ganz oben ---- */}
     <SectionTitle eyebrow="Mein Zugang" title="Basis-Zugang" />
     <div className="rounded-2xl p-4 mb-3" style={{ background: memberHasAccess ? "rgba(231,243,236,0.72)" : "rgba(253,236,236,0.72)", border: `1px solid ${memberHasAccess ? "#CFE8D6" : "#F3B9B9"}` }}>
@@ -5028,6 +5121,11 @@ function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, 
         <ProfileSettingsCard icon={Euro} title="Abo & Empfehlungen" description="Abonnement und Vereine werben Vereine" color={C.red} onClick={() => setProfileFolder("billing")}/>
         <ProfileSettingsCard icon={Star} title="Support & Feedback" description="Bewertung abgeben, Fehler melden" color={C.textDim} onClick={() => setProfileFolder("support")}/>
         <ProfileSettingsCard icon={PlayCircle} title="App kennenlernen" description="Kurzvideos zu den Funktionen, die du nutzen kannst" color={C.green} onClick={() => setProfileFolder("howto")}/>
+        {/* Direkter Weg zur Kontolöschung. Vorher lag sie drei Overlay-Ebenen tief
+            und keine der Zwischenkacheln trug das Wort „löschen" — ein Prüfer, der
+            unserer eigenen Anleitung („Profil → Verwalten → Konto löschen") folgt,
+            hätte die Funktion nicht gefunden und als fehlend gemeldet. */}
+        <ProfileSettingsCard icon={Trash2} title="Konto löschen" description="Konto und persönliche Daten dauerhaft entfernen" color={C.red} onClick={() => setProfileUnderlay("account-delete")}/>
       </div>
 
       {profileFolder === "clubsettings" && isAdmin(user) && <ProfileUnderlay title="Vereinseinstellungen" eyebrow="Verein verwalten" onClose={() => setProfileFolder("")}>
@@ -5172,12 +5270,15 @@ function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, 
         <SectionTitle eyebrow="Weitere Optionen" title="Accountverwaltung"/>
         <ProfileSettingsCard icon={User} title="Account verwalten" description="Persönliche Kontodaten und weitere Kontoaktionen" color={C.textDim} onClick={() => setProfileUnderlay("account-delete")}/>
       </ProfileUnderlay>}
-      {profileUnderlay === "account-delete" && <ProfileUnderlay title="Account verwalten" eyebrow="Kontoeinstellungen" onClose={() => { setProfileUnderlay("account"); setDeleteConfirm(false); setDeleteError(""); }}>
+      {/* Schließt zurück ins Profil statt in die Kontoeinstellungen: Die Ansicht ist
+          jetzt auch direkt aus der Einstellungsliste erreichbar, und ein Zurück in
+          eine Ebene, die man nie geöffnet hat, wäre verwirrend. */}
+      {profileUnderlay === "account-delete" && <ProfileUnderlay title="Konto löschen" eyebrow="Kontoeinstellungen" onClose={() => { setProfileUnderlay(""); setDeleteConfirm(false); setDeleteError(""); }}>
         <div className="rounded-2xl p-4 mb-6" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="flex items-center gap-2 text-sm font-bold mb-1" style={{ color: C.ink }}><Mail size={15}/> Hinterlegte E-Mail</div><div className="text-xs" style={{ color: C.textDim }}>{user.email}</div></div>
         <SectionTitle eyebrow="Gefahrenbereich" title="Account-Löschung"/>
-        <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Die Löschfunktion befindet sich bewusst in diesem geschützten Unterbereich. Prüfe vor dem Fortfahren, ob noch ein aktives Abonnement besteht.</div>
+        <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Die Löschung entfernt dein Konto und alle personenbezogenen Daten dauerhaft.</div>
         {!deleteConfirm ? <button onClick={() => setDeleteConfirm(true)} className="w-full py-2.5 rounded-2xl text-xs" style={{ background: C.glass, border: "1px solid #F3B9B9", color: C.red, fontWeight: 700 }}>Konto und persönliche Daten löschen</button> :
-          <div className="rounded-2xl p-3" style={{ background: "rgba(253,236,236,0.72)", border: "1px solid #F3B9B9" }}><div className="flex items-center gap-2 text-xs font-bold mb-2" style={{ color: C.red }}><AlertCircle size={15}/> Endgültige Löschung bestätigen</div><div className="text-xs mb-3" style={{ color: C.ink }}>Das Konto, Vereinsprofile und persönliche Inhalte werden dauerhaft gelöscht. Ein aktives PayPal-Abo wird beendet. Dieser Schritt kann nicht rückgängig gemacht werden.</div>{deleteError && <div className="text-xs mb-2" style={{ color: C.red }}>{deleteError}</div>}<div className="flex gap-2"><button disabled={deleting} onClick={deleteAccount} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: C.red, color: C.white }}>{deleting ? "Wird gelöscht …" : "Endgültig löschen"}</button><button onClick={() => { setDeleteConfirm(false); setDeleteError(""); }} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>Abbrechen</button></div></div>}
+          <div className="rounded-2xl p-3" style={{ background: "rgba(253,236,236,0.72)", border: "1px solid #F3B9B9" }}><div className="flex items-center gap-2 text-xs font-bold mb-2" style={{ color: C.red }}><AlertCircle size={15}/> Endgültige Löschung bestätigen</div><div className="text-xs mb-3" style={{ color: C.ink }}>Das Konto, Vereinsprofile und persönliche Inhalte werden dauerhaft gelöscht. Ein über PayPal abgeschlossenes Abonnement wird beendet. Ein über den App Store oder Google Play abgeschlossenes Abonnement läuft dagegen <b>weiter und wird weiter abgerechnet</b> — kündige es vorher in den Einstellungen deines Store-Kontos. Dieser Schritt kann nicht rückgängig gemacht werden.</div>{deleteError && <div className="text-xs mb-2" style={{ color: C.red }}>{deleteError}</div>}<div className="flex gap-2"><button disabled={deleting} onClick={deleteAccount} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: C.red, color: C.white }}>{deleting ? "Wird gelöscht …" : "Endgültig löschen"}</button><button onClick={() => { setDeleteConfirm(false); setDeleteError(""); }} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>Abbrechen</button></div></div>}
       </ProfileUnderlay>}
     </div>
   );
@@ -6528,6 +6629,8 @@ export default function ClubMemberOrganisationApp() {
   const [members, setMembers] = useState(INITIAL_MEMBERS);
   const [currentUserId, setCurrentUserId] = useState(null);
   const [authScreen, setAuthScreen] = useState("club"); // club | newclub | login | register
+  /* Angemeldet, aber (noch) ohne freigegebene Mitgliedschaft — siehe login(). */
+  const [pendingAccount, setPendingAccount] = useState(null);
   const [tab, setTab] = useState("home");
   const [tabHistory, setTabHistory] = useState([]);
   const [showSplash, setShowSplash] = useState(true);
@@ -6681,7 +6784,7 @@ export default function ClubMemberOrganisationApp() {
       .eq("profile_id", profileId).eq("club_id", clubId).maybeSingle();
     if (error) return { error: "Das Vereinsprofil konnte nicht geladen werden." };
     if (!data) return { error: "Für dieses Konto besteht noch keine Mitgliedschaft in diesem Verein.", code: "membership_missing" };
-    if (data.status === "pending") return { error: "Deine Registrierung wartet noch auf die Freigabe durch den Vereins-Administrator." };
+    if (data.status === "pending") return { error: "Deine Registrierung wartet noch auf die Freigabe durch den Vereins-Administrator.", code: "membership_pending" };
     if (data.status !== "active") return { error: "Dieses Vereinsprofil ist derzeit nicht aktiv." };
     const { data: rosterData, error: rosterError } = await supabase.from("club_memberships")
       .select("id,profile_id,club_id,display_name,email,member_since,membership_number,status,is_managed_profile,membership_roles(role),team_members(function,teams(name)),profiles!club_memberships_profile_id_fkey(birthdate,academic_title,first_name,last_name,contact_emails,contact_phones,gender,nationality,street,postal_code,city,country_code,notification_master,notification_preferences,auto_logout_days,calendar_sync_interval,show_birthday)")
@@ -6828,7 +6931,7 @@ export default function ClubMemberOrganisationApp() {
     finishNewClubRegistration();
     return () => { cancelled = true; };
   }, []);
-  const login = async (email, password) => {
+  const attemptLogin = async (email, password) => {
     if (!supabase) {
       return { error: "E-Mail oder Passwort ist falsch." };
     }
@@ -6883,6 +6986,39 @@ export default function ClubMemberOrganisationApp() {
     });
     if (registrationError) return { error: "Das Vereinsprofil konnte nicht fertiggestellt werden." };
     return loadSupabaseMembership(data.user.id, selectedClubId);
+  };
+
+  /* Apple-Richtlinie 5.1.1(v): Ein Konto, das sich anlegen lässt, muss sich auch
+     in der App wieder löschen lassen. Wer einem bestehenden Verein beitritt,
+     wartet auf die Freigabe — und kam bisher nie über den Anmeldebildschirm
+     hinaus. Das Konto existierte in auth.users, war aus der App heraus aber
+     nicht mehr erreichbar und damit auch nicht löschbar. Diese Zustände landen
+     jetzt auf einer eigenen Ansicht, von der aus beides geht. */
+  const login = async (email, password) => {
+    const result = await attemptLogin(email, password);
+    if (result?.code === "membership_pending" || result?.code === "membership_missing") {
+      setPendingAccount({ email, reason: result.code });
+      return {};
+    }
+    return result;
+  };
+
+  const leavePendingAccount = async () => {
+    await logOutRevenueCat();
+    if (supabase) await supabase.auth.signOut();
+    setPendingAccount(null);
+    setAuthScreen("club");
+  };
+
+  const deletePendingAccount = async () => {
+    if (!supabase) return { error: "Löschen ist nur mit einem echten Konto möglich." };
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) return { error: "Die Sitzung ist abgelaufen. Bitte melde dich erneut an." };
+    const response = await fetch("/api/account/delete", { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+    if (!response.ok) return { error: "Das Konto konnte nicht vollständig gelöscht werden. Bitte wende dich an den Support." };
+    await leavePendingAccount();
+    return {};
   };
   const register = async (draft, familySetup) => {
     if (supabase) {
@@ -7021,7 +7157,9 @@ export default function ClubMemberOrganisationApp() {
       <div className="erg-canvas erg-frame relative w-full flex flex-col overflow-hidden">
         {showSplash && <AppSplashIntro onDone={() => setShowSplash(false)} />}
         {!currentUser ? (
-          authScreen === "club" ? (
+          pendingAccount ? (
+            <PendingAccountScreen account={pendingAccount} onLeave={leavePendingAccount} onDelete={deletePendingAccount} />
+          ) : authScreen === "club" ? (
             <ClubSelectScreen clubs={clubs} onSelect={selectClub} goNewClub={() => setAuthScreen("newclub")} />
           ) : authScreen === "newclub" ? (
             <NewClubScreen onCreate={createClub} goBack={() => setAuthScreen("club")} />

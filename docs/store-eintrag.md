@@ -105,8 +105,11 @@ Verein,Sportverein,Mannschaft,Training,Spielplan,Helferdienst,Kader,Vereinsapp
 Für beide Stores **4+ / USK 0**, mit einer Einschränkung: Die App enthält einen
 Chat zwischen Mitgliedern. Apple und Google fragen nach nutzergenerierten
 Inhalten — hier ist wahrheitsgemäß **Ja** anzugeben. Beide verlangen dann eine
-Melde- und Blockiermöglichkeit; die Meldefunktion ist im Chat vorhanden
-(„Melden" an jeder Nachricht).
+Melde- und Blockiermöglichkeit. Beides ist im Chat vorhanden: „Melden" an
+jeder fremden Nachricht (öffnet eine E-Mail an den Betreiber) und „Blockieren",
+womit alle Nachrichten dieser Person für die blockierende Person ausgeblendet
+werden. Blockierte Namen stehen oben im Chat und lassen sich dort wieder
+freigeben.
 
 ---
 
@@ -121,6 +124,9 @@ Melde- und Blockiermöglichkeit; die Meldefunktion ist im Chat vorhanden
 ## Screenshots
 
 Pflicht bei Apple: iPhone 6,7" (1290 × 2796) und 6,5" (1242 × 2688).
+Kein iPad-Set nötig — die App wird als reine iPhone-App eingereicht
+(`TARGETED_DEVICE_FAMILY = "1"`). Wird iPad später aktiviert, verlangt App Store
+Connect zusätzlich 2064 × 2752.
 Pflicht bei Google: mindestens zwei, empfohlen 1080 × 1920 oder größer.
 
 Die Aufnahmen liegen unter `docs/store-screenshots/` und wurden aus der laufenden

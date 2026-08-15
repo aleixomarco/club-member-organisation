@@ -25,13 +25,14 @@ export default function PrivacyPage() { return <LegalShell title="Datenschutzerk
     <li><strong>Supabase</strong> — Authentifizierung, Datenbank und Dateispeicher.</li>
     <li><strong>Vercel</strong> — Hosting und Bereitstellung der Web-App.</li>
     <li><strong>PayPal</strong> — Zahlungsabwicklung für Abonnements in der Web-App.</li>
+    <li><strong>RevenueCat</strong> — Abwicklung und Statusverwaltung von In-App-Abonnements in der iOS- und Android-App. Übermittelt werden eine pseudonyme Vereins- bzw. Profilkennung sowie Kauf- und Abostatus.</li>
     <li><strong>Apple</strong> — Zahlungsabwicklung für Abonnements in der iOS-App.</li>
     <li><strong>Google Firebase Cloud Messaging</strong> — Zustellung von Push-Benachrichtigungen, sofern aktiviert.</li>
   </ul>
-  <p>Mit Supabase, Vercel und Google bestehen bzw. werden Auftragsverarbeitungsverträge nach Art. 28 DSGVO abgeschlossen. PayPal und Apple verarbeiten Zahlungsdaten als jeweils eigenständig Verantwortliche gemäß ihrer eigenen Datenschutzerklärungen.</p>
+  <p>Mit Supabase, Vercel und Google bestehen bzw. werden Auftragsverarbeitungsverträge nach Art. 28 DSGVO abgeschlossen. PayPal, Apple und Google verarbeiten Zahlungsdaten als jeweils eigenständig Verantwortliche gemäß ihrer eigenen Datenschutzerklärungen; mit RevenueCat besteht ein Auftragsverarbeitungsvertrag nach Art. 28 DSGVO.</p>
 
   <h2>5. Datenübermittlung in Drittländer</h2>
-  <p>Einzelne Dienstleister (u. a. Vercel, Google/Firebase, PayPal, Apple) können Daten auch in den USA oder anderen Ländern außerhalb der EU/des EWR verarbeiten. Soweit dies der Fall ist, stützen wir uns auf Angemessenheitsbeschlüsse der EU-Kommission (z. B. EU-US Data Privacy Framework) oder auf EU-Standardvertragsklauseln gemäß Art. 46 DSGVO als geeignete Garantien.</p>
+  <p>Einzelne Dienstleister (u. a. Vercel, Google/Firebase, PayPal, Apple, RevenueCat) können Daten auch in den USA oder anderen Ländern außerhalb der EU/des EWR verarbeiten. Soweit dies der Fall ist, stützen wir uns auf Angemessenheitsbeschlüsse der EU-Kommission (z. B. EU-US Data Privacy Framework) oder auf EU-Standardvertragsklauseln gemäß Art. 46 DSGVO als geeignete Garantien.</p>
 
   <h2>6. Cookies, lokaler Speicher und Push-Token</h2>
   <p>Die App verwendet technisch notwendige Sitzungs-Cookies bzw. gleichwertige Speicherverfahren (localStorage) für die Anmeldung sowie zur Speicherung von Anzeigeeinstellungen (z. B. bevorzugte Mannschaft, zuletzt gewählter Verein). Diese sind gemäß § 25 Abs. 2 TTDSG für den Betrieb der App erforderlich und bedürfen keiner gesonderten Einwilligung. Für Push-Benachrichtigungen wird nach deiner Zustimmung ein Geräte-Token bei Google Firebase Cloud Messaging registriert.</p>
