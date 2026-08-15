@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Ohne diesen Eintrag scheitert PushNotifications.register() auf jedem echten
+	     Geraet mit "no valid aps-environment entitlement string found". Der Upload
+	     laeuft trotzdem durch und die App startet normal - es kommt nur nie eine
+	     Push-Nachricht an. Beim Archivieren fuer den App Store ersetzt Xcode den
+	     Wert anhand des Provisioning-Profils durch "production". -->
+	<key>aps-environment</key>
+	<string>development</string>
+</dict>
+</plist>
