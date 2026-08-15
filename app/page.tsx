@@ -208,9 +208,27 @@ function AppSplashIntro({ onDone }) {
   const doneRef = useRef(onDone);
   doneRef.current = onDone;
   useEffect(() => {
+    /* Erst wenn diese Animation wirklich auf dem Bildschirm steht, darf der
+       native Startbildschirm weichen. Vorher lag dazwischen eine weiße Fläche,
+       solange die Seite noch über das Netz lud — bei langsamer Verbindung
+       mehrere Sekunden. Zwei Bilder derselben Marke lösen sich jetzt ab, statt
+       durch Weiß getrennt zu sein.
+       Der Import läuft erst zur Laufzeit und nur nativ, damit die Web-Fassung
+       das Plugin nicht mitlädt. */
+    let cancelled = false;
+    (async () => {
+      try {
+        if (!Capacitor.isNativePlatform()) return;
+        const { SplashScreen } = await import("@capacitor/splash-screen");
+        if (!cancelled) await SplashScreen.hide();
+      } catch {
+        /* Ohne Plugin oder im Browser: Die Animation läuft trotzdem, nur ohne
+           vorgelagerten nativen Startbildschirm. Kein Grund abzubrechen. */
+      }
+    })();
     const fadeTimer = setTimeout(() => setFading(true), 2600);
     const doneTimer = setTimeout(() => doneRef.current(), 3000);
-    return () => { clearTimeout(fadeTimer); clearTimeout(doneTimer); };
+    return () => { cancelled = true; clearTimeout(fadeTimer); clearTimeout(doneTimer); };
   }, []);
   return (
     <div

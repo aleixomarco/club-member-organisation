@@ -22,6 +22,31 @@ const config: CapacitorConfig = {
   ios: {
     contentInset: "automatic",
   },
+  plugins: {
+    /* Der native Startbildschirm bleibt stehen, bis die Web-Oberfläche selbst
+       Bescheid gibt (SplashScreen.hide() in app/page.tsx). Ohne launchAutoHide
+       blendet iOS ihn aus, sobald das App-Fenster steht — also bevor die Seite
+       über das Netz geladen ist. Dazwischen sah man eine weiße Fläche, bei
+       langsamer Verbindung mehrere Sekunden lang.
+       Hintergrundfarbe und Marke entsprechen der Web-Animation, damit der
+       Übergang nicht als Bildwechsel auffällt. */
+    SplashScreen: {
+      /* Bewusst NICHT launchAutoHide:false. Damit bliebe der Startbildschirm
+         stehen, bis die Web-Oberfläche ihn ausblendet — lädt die Seite nicht
+         (kein Netz, Server nicht erreichbar), liefe kein JavaScript und die App
+         wirkte dauerhaft eingefroren.
+         Stattdessen eine Obergrenze: Normalerweise blendet app/page.tsx den
+         Startbildschirm nach etwa einer Sekunde selbst aus, sobald die
+         Animation steht. Klappt das nicht, verschwindet er spätestens nach
+         4 Sekunden von allein und der Nutzer sieht wenigstens die Fehlerseite. */
+      launchAutoHide: true,
+      launchShowDuration: 4000,
+      backgroundColor: "#F7F4F5",
+      showSpinner: false,
+      splashFullScreen: false,
+      splashImmersive: false,
+    },
+  },
 };
 
 export default config;
