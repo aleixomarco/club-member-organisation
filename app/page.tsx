@@ -4137,7 +4137,13 @@ function SubscriptionPanel({ user }) {
   const [withdrawalConsent, setWithdrawalConsent] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
   const [clubStatus, setClubStatus] = useState(null);
-  const [isNative, setIsNative] = useState(false);
+  /* Bewusst gleich beim ersten Rendern ermittelt statt in einem Effekt: Sonst
+     ist isNative im ersten Durchlauf noch false, die PayPal-Konfiguration wird
+     angefragt und ihre Fehlermeldung landet im Kaufbereich der nativen App —
+     genau der Hinweis auf einen externen Zahlungsanbieter, den Apple nach
+     Richtlinie 3.1.1 beanstandet. Die Funktion prueft selbst auf window und
+     ist damit auch beim Rendern auf dem Server unbedenklich. */
+  const [isNative, setIsNative] = useState(() => nativePurchasesSupported());
   const [nativeOfferings, setNativeOfferings] = useState(null);
   const [nativeLoading, setNativeLoading] = useState(true);
   const [purchasing, setPurchasing] = useState(false);
