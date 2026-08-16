@@ -1187,6 +1187,25 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub }) {
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [resetNote, setResetNote] = useState("");
+
+  /* Der Knopf "Passwort vergessen?" hatte bisher keine Funktion — wer sein
+     Passwort nicht mehr wusste, kam nie wieder in sein Konto.
+     Die Rückmeldung ist bewusst gleichlautend, ob die Adresse existiert oder
+     nicht: Sonst ließe sich über diesen Weg herausfinden, wer bei euch
+     Mitglied ist. */
+  const requestReset = async () => {
+    setError("");
+    const address = email.trim();
+    if (!address) { setResetNote("Bitte zuerst deine E-Mail-Adresse eintragen."); return; }
+    if (!supabase) { setResetNote("Zurücksetzen ist nur mit einem echten Konto möglich."); return; }
+    setBusy(true);
+    await supabase.auth.resetPasswordForEmail(address, {
+      redirectTo: `${window.location.origin}/passwort-neu`,
+    });
+    setBusy(false);
+    setResetNote("Falls ein Konto mit dieser Adresse besteht, ist eine E-Mail mit einem Link unterwegs. Prüfe auch den Spam-Ordner.");
+  };
 
   const submit = async (e) => {
     e && e.preventDefault();
@@ -1220,7 +1239,8 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub }) {
           <button type="button" onClick={() => setShowPw((s) => !s)}>{showPw ? <EyeOff size={15} style={{ color: C.textDim }} /> : <Eye size={15} style={{ color: C.textDim }} />}</button>
         </div>
         {error && <div className="flex items-center gap-1.5 text-xs mb-3" style={{ color: C.red, fontFamily: "Inter" }}><AlertCircle size={13} /> {error}</div>}
-        <button type="button" className="text-xs mb-4" style={{ color: C.textDim, fontFamily: "Inter" }}>Passwort vergessen?</button>
+        <button type="button" onClick={requestReset} disabled={busy} className="text-xs mb-2 underline" style={{ color: C.textDim, fontFamily: "Inter" }}>Passwort vergessen?</button>
+        {resetNote && <div role="status" className="text-[11px] mb-3 rounded-xl px-3 py-2" style={{ background: "rgba(231,243,236,0.72)", color: C.green, fontFamily: "Inter" }}>{resetNote}</div>}
         <button type="submit" disabled={busy} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm" style={{ background: C.ink, color: "#fff", fontFamily: "Inter", fontWeight: 700, opacity: busy ? 0.65 : 1 }}>
           {busy ? "Anmeldung läuft …" : "Anmelden"} {!busy && <ArrowRight size={15} />}
         </button>
