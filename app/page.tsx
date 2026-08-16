@@ -1246,7 +1246,10 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub }) {
         </button>
       </form>
 
-      <div className="mt-8">
+      {/* Mit angebundener Datenbank gibt es keine Demo-Zugaenge. Ohne diese
+          Bedingung blieb die Ueberschrift allein stehen - der erste Bildschirm,
+          den auch ein App-Pruefer sieht, wirkte dadurch unfertig. */}
+      {members.filter((m) => !m.accountPending).length > 0 && <div className="mt-8">
         <div className="text-xs uppercase tracking-widest font-semibold mb-2.5" style={{ color: C.textDim, fontFamily: "Inter" }}>Demo-Zugänge zum Ausprobieren</div>
         <div className="space-y-2">
           {members.filter((m) => !m.accountPending).map((m) => (
@@ -1260,7 +1263,7 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub }) {
             </button>
           ))}
         </div>
-      </div>
+      </div>}
     </AuthShell>
   );
 }
@@ -4290,6 +4293,11 @@ function SubscriptionPanel({ user }) {
   useEffect(() => { refreshClubStatus(); }, [refreshClubStatus]);
 
   useEffect(() => {
+    /* In der nativen App wird ueber den Store gekauft, PayPal spielt dort keine
+       Rolle. Ohne diese Bedingung erschien in der App die Meldung "PayPal ist
+       noch nicht konfiguriert" - ein Hinweis auf einen externen Zahlungsanbieter
+       mitten im Kaufbereich, den Apple nach Richtlinie 3.1.1 beanstanden kann. */
+    if (isNative) { setLoading(false); return; }
     fetch("/api/paypal/config", { cache: "no-store" })
       .then(async (response) => {
         const payload = await response.json();
@@ -4298,7 +4306,7 @@ function SubscriptionPanel({ user }) {
       })
       .catch((error) => setMessage(error.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [isNative]);
 
   const selected = CLUB_TIER_PRICES[tier][cycle];
   const customId = user.clubId;
@@ -4458,7 +4466,6 @@ function SubscriptionPanel({ user }) {
           {memberConsent
             ? <button onClick={buyMemberPackage} disabled={memberPurchasing} className="w-full py-3 rounded-xl text-sm font-bold" style={{ background: C.ink, color: C.white, opacity: memberPurchasing ? .6 : 1 }}>{memberPurchasing ? "Wird verarbeitet …" : "Basis-Zugang buchen"}</button>
             : <div className="text-[11px] rounded-xl px-3 py-2 text-center" style={{ background: C.paperDim, color: C.textDim }}>Bitte zuerst zustimmen, um fortzufahren.</div>}
-          <button onClick={restoreMemberPurchases} disabled={memberPurchasing} className="w-full mt-2 py-2 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.textDim }}>Käufe wiederherstellen</button>
         </>
       ) : loading ? <div className="text-xs py-2 text-center" style={{ color: C.textDim }}>Zahlung wird vorbereitet …</div>
         : config?.memberPlans?.[memberCycle] && authUserId ? <>
@@ -4539,7 +4546,6 @@ function SubscriptionPanel({ user }) {
         {withdrawalConsent
           ? <button onClick={buyNativePackage} disabled={purchasing} className="w-full py-3 rounded-xl text-sm font-bold" style={{ background: C.ink, color: C.white, opacity: purchasing ? .6 : 1 }}>{purchasing ? "Wird verarbeitet …" : `${CLUB_TIER_INFO[tier].label} abonnieren`}</button>
           : <div className="text-[11px] rounded-xl px-3 py-2 text-center" style={{ background: C.paperDim, color: C.textDim }}>Bitte zuerst zustimmen, um fortzufahren.</div>}
-        <button onClick={restorePurchases} disabled={purchasing} className="w-full mt-2 py-2 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.textDim }}>Käufe wiederherstellen</button>
       </>
     ) : loading ? <div className="text-xs py-2 text-center" style={{ color: C.textDim }}>PayPal wird geladen …</div> : config && allowed ? <>
       <label className="flex items-start gap-2 mb-3 px-0.5"><input type="checkbox" checked={withdrawalConsent} onChange={(e) => setWithdrawalConsent(e.target.checked)} className="mt-0.5"/><span className="text-[10px]" style={{ color: C.textDim }}>Ich akzeptiere die <a href="/nutzungsbedingungen" target="_blank" rel="noreferrer" style={{ color: C.red }}>Nutzungsbedingungen</a> und die darin enthaltene Widerrufsbelehrung. Ich stimme ausdrücklich zu, dass die Nutzung sofort beginnt, und weiß, dass mein Widerrufsrecht erlischt, sobald der Vertrag vollständig erfüllt ist.</span></label>
