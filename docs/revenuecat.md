@@ -20,11 +20,16 @@ Kauf als `unknown_product` verworfen und nichts freigeschaltet.
 | Produkt-ID | Was | Preis |
 |---|---|---|
 | `club_basic_monthly` | Verein Basic, monatlich | 34,99 € |
-| `club_basic_yearly` | Verein Basic, jährlich | 299,88 € |
+| `club_basic_yearly` | Verein Basic, jährlich | 299,99 € |
 | `club_premium_monthly` | Verein Premium, monatlich | 39,99 € |
-| `club_premium_yearly` | Verein Premium, jährlich | 359,88 € |
+| `club_premium_yearly` | Verein Premium, jährlich | 359,99 € |
 | `member_monthly` | Mitglied Basis, monatlich | 2,99 € |
-| `member_yearly` | Mitglied Basis, jährlich | 14,28 € |
+| `member_yearly` | Mitglied Basis, jährlich | 14,99 € |
+
+Die deutschen Preise stehen im Code in `lib/preise.ts` — eine einzige Stelle,
+aus der sowohl die Tarifübersicht in der App als auch die Nutzungsbedingungen
+lesen. Ändert sich ein Preis im App Store, muss diese Datei mitgezogen werden,
+sonst widerspricht sich die App selbst. Einmalige Gebühren gibt es nicht.
 
 Anzulegen in **App Store Connect** (Abonnements, je eine Abo-Gruppe für Verein
 und Mitglied) und in der **Play Console** (Abos → Abo erstellen).

@@ -167,7 +167,26 @@ Bei erforderlicher E-Mail-Bestätigung wird die ausstehende Vereinsregistrierung
 
 ## 9. PayPal-Stand
 
-Sandbox-Pläne bestehen für:
+> **Überholt am 17.08.2026.** Die unten beschriebenen Sandbox-Pläne stammen aus
+> einem früheren Preismodell: mit Einrichtungsgebühr und ohne die Trennung in
+> Basic und Premium. Beides gilt nicht mehr. Einmalige Gebühren entfallen
+> ersatzlos, und es werden **sechs** Pläne gebraucht statt vier. Maßgeblich ist
+> `lib/preise.ts`; die anzulegenden PayPal-Pläne stehen darunter.
+
+Anzulegen (ohne jede Einrichtungsgebühr):
+
+| Plan-Code | Preis |
+|---|---|
+| `member_monthly` | 2,99 EUR pro Monat |
+| `member_yearly` | 14,99 EUR pro Jahr, im Voraus |
+| `club_basic_monthly` | 34,99 EUR pro Monat |
+| `club_basic_yearly` | 299,99 EUR pro Jahr, im Voraus |
+| `club_premium_monthly` | 39,99 EUR pro Monat |
+| `club_premium_yearly` | 359,99 EUR pro Jahr, im Voraus |
+
+Alle mit automatischer Verlängerung.
+
+Historischer Stand vom 02.08.2026 — Sandbox-Pläne bestanden für:
 
 - Nutzer monatlich: 2,99 EUR plus einmalig 1,50 EUR Einrichtung
 - Nutzer jährlich: 11,88 EUR plus einmalig 1,50 EUR Einrichtung, automatische Verlängerung

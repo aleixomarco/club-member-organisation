@@ -15,6 +15,7 @@ import { enablePushNotifications, disablePushNotifications, listenForForegroundM
 import { Capacitor } from "@capacitor/core";
 import { nativePurchasesSupported, fetchTierOfferings, fetchMemberOffering, purchasePackageAs, restorePurchasesAs, logOutRevenueCat } from "@/lib/revenuecat";
 import { legal } from "./legal-shell";
+import { CLUB_TIER_PRICES, MEMBER_PLAN_PRICES } from "@/lib/preise";
 
 /* ------------------------------------------------------------------ */
 /* Tokens                                                              */
@@ -4109,20 +4110,9 @@ function SubscriptionRecord({ subscription, accountLabel, onCancel, cancelling }
   </div>;
 }
 
-const CLUB_TIER_PRICES = {
-  basic: { monthly: { price: "34,99 €" }, yearly: { price: "299,88 €", equivalent: "24,99 € / Monat" } },
-  premium: { monthly: { price: "39,99 €" }, yearly: { price: "359,88 €", equivalent: "29,99 € / Monat" } },
-};
 const CLUB_TIER_INFO = {
   basic: { label: "Basic", desc: "Training & Spiele anlegen und verwalten." },
   premium: { label: "Premium", desc: "Alles: News, Sponsoring, Vereinsfahrzeuge, Helferdienst, Tippspiel, Kalender-Abo, Teams-Verwaltung und mehr." },
-};
-
-/* Persönliches Abo jedes Mitglieds — zusätzlich zum Vereinsabo. Nur eine Stufe:
-   Was ein Mitglied damit tun darf, ergibt sich aus seinen Rollen im Verein. */
-const MEMBER_PLAN_PRICES = {
-  monthly: { price: "2,99 €", note: "pro Monat" },
-  yearly: { price: "14,28 €", note: "jährlich im Voraus", equivalent: "1,19 € / Monat" },
 };
 
 function SubscriptionPanel({ user }) {

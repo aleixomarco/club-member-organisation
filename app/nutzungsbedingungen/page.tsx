@@ -1,15 +1,22 @@
 import { LegalShell, legal } from "../legal-shell";
+import { CLUB_TIER_PRICES, MEMBER_PLAN_PRICES } from "@/lib/preise";
 export const metadata = { title: "Nutzungsbedingungen | Club Member Organisation" };
 export default function TermsPage() { return <LegalShell title="Nutzungsbedingungen">
   <p>Diese Bedingungen gelten für die Nutzung der Club Member Organisation durch registrierte Vereinsmitglieder. Vertragspartner ist {legal.name}, vertreten durch {legal.representative}.</p>
 
-  <h2>Abonnement für Nutzer</h2>
-  <p><strong>Monatsabo:</strong> 2,99 € pro Monat inkl. gesetzlicher Umsatzsteuer, zuzüglich einer einmaligen Einrichtungsgebühr von 1,50 €. Monatliche Abrechnung, automatische Verlängerung um jeweils einen weiteren Monat, sofern nicht rechtzeitig gekündigt.</p>
-  <p><strong>Jahresabo:</strong> 0,99 € pro Monat inkl. gesetzlicher Umsatzsteuer, macht 11,88 € für zwölf Monate, zuzüglich einmaliger Einrichtungsgebühr von 1,50 €, vollständig im Voraus fällig. Automatische Verlängerung um weitere zwölf Monate zum dann geltenden Jahrespreis, sofern nicht rechtzeitig gekündigt.</p>
+  <h2>Kostenloser Testzeitraum</h2>
+  <p>Neue Vereine und neu angelegte Mitgliedschaften können die App vierzehn Tage ab Registrierung kostenlos und in vollem Umfang nutzen. Danach ist ein Abonnement erforderlich. Der Testzeitraum endet automatisch und geht nicht in ein kostenpflichtiges Abonnement über.</p>
+
+  <h2>Persönlicher Zugang für Mitglieder</h2>
+  <p>Jedes Mitglied zahlt seinen persönlichen Zugang selbst. Er besteht unabhängig vom Tarif des Vereins; welche Funktionen damit nutzbar sind, ergibt sich zusätzlich aus dem Tarif des Vereins und den eigenen Rollen darin.</p>
+  <p><strong>Monatsabo:</strong> {MEMBER_PLAN_PRICES.monthly.price} pro Monat inkl. gesetzlicher Umsatzsteuer. Automatische Verlängerung um jeweils einen weiteren Monat, sofern nicht rechtzeitig gekündigt.</p>
+  <p><strong>Jahresabo:</strong> {MEMBER_PLAN_PRICES.yearly.price} für zwölf Monate inkl. gesetzlicher Umsatzsteuer ({MEMBER_PLAN_PRICES.yearly.equivalent}), vollständig im Voraus fällig. Automatische Verlängerung um weitere zwölf Monate zum dann geltenden Jahrespreis, sofern nicht rechtzeitig gekündigt.</p>
 
   <h2>Abonnement für Vereine</h2>
-  <p><strong>Monatsabo:</strong> 29,99 € pro Monat inkl. gesetzlicher Umsatzsteuer, zuzüglich einmaliger Einrichtungsgebühr von 5,00 €. Automatische Verlängerung um jeweils einen weiteren Monat, sofern nicht rechtzeitig gekündigt.</p>
-  <p><strong>Jahresabo:</strong> 24,99 € pro Monat inkl. gesetzlicher Umsatzsteuer, macht 299,88 € für zwölf Monate, zuzüglich einmaliger Einrichtungsgebühr von 5,00 €, vollständig im Voraus fällig. Automatische Verlängerung um weitere zwölf Monate zum dann geltenden Jahrespreis, sofern nicht rechtzeitig gekündigt.</p>
+  <p>Für Vereine bestehen zwei Tarife. <strong>Basic</strong> umfasst das Anlegen und Verwalten von Training und Spielen. <strong>Premium</strong> umfasst zusätzlich News, Sponsoring, Vereinsfahrzeuge, Helferdienst, Tippspiel, Kalender-Abonnement und die Verwaltung von Mannschaften.</p>
+  <p><strong>Basic:</strong> {CLUB_TIER_PRICES.basic.monthly.price} pro Monat oder {CLUB_TIER_PRICES.basic.yearly.price} für zwölf Monate im Voraus ({CLUB_TIER_PRICES.basic.yearly.equivalent}), jeweils inkl. gesetzlicher Umsatzsteuer.</p>
+  <p><strong>Premium:</strong> {CLUB_TIER_PRICES.premium.monthly.price} pro Monat oder {CLUB_TIER_PRICES.premium.yearly.price} für zwölf Monate im Voraus ({CLUB_TIER_PRICES.premium.yearly.equivalent}), jeweils inkl. gesetzlicher Umsatzsteuer.</p>
+  <p>Vereinsabonnements verlängern sich automatisch um den jeweils gebuchten Zeitraum zum dann geltenden Preis, sofern nicht rechtzeitig gekündigt. Abschließen und kündigen können nur Mitglieder mit der Rolle Vorstand, Vereinsadmin oder Geschäftsführung.</p>
   <p>In der iOS-App erfolgt die Abrechnung über Apples In-App-Kauf-System und dessen eigene Nutzungs- und Zahlungsbedingungen, in der Web-App über PayPal.</p>
 
   <h2>Kündigung</h2>
@@ -29,7 +36,7 @@ export default function TermsPage() { return <LegalShell title="Nutzungsbedingun
   Datum: _____________</p>
 
   <h2>Preise</h2>
-  <p>Alle genannten Preise verstehen sich in Euro inklusive der gesetzlichen Umsatzsteuer.</p>
+  <p>Alle genannten Preise verstehen sich in Euro inklusive der gesetzlichen Umsatzsteuer. Eine Einrichtungsgebühr oder sonstige einmalige Gebühr wird nicht erhoben. Außerhalb Deutschlands kann der Preis abweichen; maßgeblich ist der Betrag, der dir vor dem Kauf im App Store bzw. bei PayPal angezeigt wird.</p>
 
   <h2>Verhaltensregeln</h2>
   <p>Rechtswidrige, beleidigende oder fremde Rechte verletzende Inhalte sind untersagt. Nutzer:innen können unangemessene Inhalte oder Verhalten über die Funktion „Fehler melden" im Profil an uns melden. Vereinsadministratoren dürfen entsprechende Inhalte entfernen und Konten sperren.</p>
