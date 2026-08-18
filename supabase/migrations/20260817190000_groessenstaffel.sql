@@ -8,7 +8,7 @@
 --
 --   Basic  bis 100 Zugänge
 --   Plus   bis 350 Zugänge
---   Pro    ab  700 Zugänge, erweiterbar über Zusatzpakete
+--   Pro    ab  700 Zugänge, erweiterbar um 100 oder 500 weitere
 --
 -- Gezählt wird jedes selbst angemeldete Konto. Wer ohne eigenen Login
 -- eingetragen wird - ein Kind etwa, das der Vater anlegt - zählt nicht;
@@ -24,7 +24,6 @@ insert into public.subscription_plans (code, name, interval, price_cents) values
   ('club_pro_monthly',      'Pro – Monatsabo',                'month',  9999),
   ('club_pro_yearly',       'Pro – Jahresabo',                'year',  95999),
   ('club_addon_100_monthly','Pro + – 100 weitere Zugänge',    'month',  1499),
-  ('club_addon_250_monthly','Pro ++ – 250 weitere Zugänge',   'month',  2999),
   ('club_addon_500_monthly','Pro Max – 500 weitere Zugänge',  'month',  4999)
 on conflict (code) do update set
   name = excluded.name,
@@ -119,7 +118,6 @@ returns integer language sql stable security definer set search_path = '' as $$
     (
       select case p.code
         when 'club_addon_100_monthly' then 100
-        when 'club_addon_250_monthly' then 250
         when 'club_addon_500_monthly' then 500
       end
       from public.club_subscriptions s
@@ -130,8 +128,7 @@ returns integer language sql stable security definer set search_path = '' as $$
         and p.code like 'club_addon_%'
       order by case p.code
         when 'club_addon_500_monthly' then 0
-        when 'club_addon_250_monthly' then 1
-        else 2
+        else 1
       end
       limit 1
     ),

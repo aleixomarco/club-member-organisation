@@ -28,7 +28,6 @@ ZUSATZPAKETE ZUM PRO-TARIF
   Paket      Zugaenge insgesamt   Monatlich
   -----------------------------------------
   Pro +      bis   800            14,99 EUR
-  Pro ++     bis   950            29,99 EUR
   Pro Max    bis 1.200            49,99 EUR
 
 Darueber: individuelles Angebot.

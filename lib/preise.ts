@@ -62,6 +62,5 @@ export const CLUB_TIER_INFO = {
  * nicht stapeln: Der Verein wählt genau ein Paket, nicht mehrere. */
 export const CLUB_ADDONS = [
   { key: "addon_100", extra: 100, total: 800, label: "Pro +", price: "14,99 €" },
-  { key: "addon_250", extra: 250, total: 950, label: "Pro ++", price: "29,99 €" },
   { key: "addon_500", extra: 500, total: 1200, label: "Pro Max", price: "49,99 €" },
 ] as const;
