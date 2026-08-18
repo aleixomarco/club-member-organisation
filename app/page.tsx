@@ -13,9 +13,9 @@ import {
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { enablePushNotifications, disablePushNotifications, listenForForegroundMessages } from "@/lib/firebase-push";
 import { Capacitor } from "@capacitor/core";
-import { nativePurchasesSupported, fetchTierOfferings, fetchMemberOffering, purchasePackageAs, restorePurchasesAs, logOutRevenueCat } from "@/lib/revenuecat";
+import { nativePurchasesSupported, fetchTierOfferings, fetchAddonOfferings, purchasePackageAs, restorePurchasesAs, logOutRevenueCat } from "@/lib/revenuecat";
 import { legal } from "./legal-shell";
-import { CLUB_TIER_PRICES, MEMBER_PLAN_PRICES } from "@/lib/preise";
+import { CLUB_TIER_PRICES, CLUB_TIER_INFO, CLUB_TIERS, CLUB_ADDONS } from "@/lib/preise";
 
 /* ------------------------------------------------------------------ */
 /* Tokens                                                              */
@@ -851,9 +851,9 @@ function StatCard({ icon: Icon, label, value, sub, accent, onClick }) {
 /* Nutzers läuft noch. Siehe member_entitlement_tier() in Supabase.      */
 /* ------------------------------------------------------------------ */
 function useClubEntitlement(user) {
-  const [state, setState] = useState({ loading: true, tier: "premium", trialing: false, trialEndsAt: null });
+  const [state, setState] = useState({ loading: true, tier: "pro", trialing: false, trialEndsAt: null });
   useEffect(() => {
-    if (!supabase || !isDbId(user?.id)) { setState({ loading: false, tier: "premium", trialing: false, trialEndsAt: null }); return; }
+    if (!supabase || !isDbId(user?.id)) { setState({ loading: false, tier: "pro", trialing: false, trialEndsAt: null }); return; }
     let cancelled = false;
     (async () => {
       const [{ data: tier }, { data: trialRows }] = await Promise.all([
@@ -881,9 +881,12 @@ function useClubEntitlement(user) {
    das Mitglied gar nicht sehen darf.
    Jetzt: feste Höhe innerhalb des Sichtfensters, kein Scrollen, im Hintergrund nur
    ein paar dekorative Platzhalter ohne echten Inhalt. */
-function LockedFeature({ entitlement, feature = "Diese Funktion", goSubscribe, requires = "premium", children }) {
+function LockedFeature({ entitlement, feature = "Diese Funktion", goSubscribe, children }) {
   if (entitlement.loading) return <div className="rounded-2xl p-8" style={{ background: C.paperDim }} />;
-  const unlocked = requires === "basic" ? entitlement.tier === "basic" || entitlement.tier === "premium" : entitlement.tier === "premium";
+  /* Seit dem Groessenstaffel-Modell unterscheiden sich die Tarife nur noch in
+     der Zahl der Zugaenge, nicht im Funktionsumfang. Freigeschaltet ist also
+     alles, sobald ueberhaupt ein Tarif laeuft. */
+  const unlocked = entitlement.tier !== "none";
   if (unlocked) return children;
   return (
     <div
@@ -1480,7 +1483,7 @@ function Dashboard({ user, members, feePaid, channels, dutyPlan, seasonVotes, po
      (siehe die LockedFeature-Hüllen der jeweiligen Ansichten). Während der
      Tarif noch geladen wird, zeigen wir kein Schloss — sonst blitzt es kurz
      bei Mitgliedern auf, die die Funktionen längst freigeschaltet haben. */
-  const featureLocked = !entitlement.loading && entitlement.tier !== "premium";
+  const featureLocked = !entitlement.loading && entitlement.tier === "none";
   const nextEvent = EVENTS.filter((e) => e.type === "spiel" && e.team === user.team && new Date(e.date) > new Date()).sort((a,b)=>new Date(a.date)-new Date(b.date))[0] || getNextMatch();
   const newsMsgs = (channels.find((c) => c.id === "news")?.messages || []).slice(-2).reverse();
 
@@ -1898,7 +1901,7 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
   const myCarpools = carpools[userId] || {};
   const isAdminUser = isAdmin(currentUser);
   const canCreateSportEvent = isSysAdmin(currentUser) || currentUser.roles.some((role)=>["trainer","kapitaen","teammanager"].includes(role));
-  const canCreateClubEvent = isAdminUser && entitlement?.tier === "premium";
+  const canCreateClubEvent = isAdminUser && entitlement?.tier !== "none";
   const [manageableTeams, setManageableTeams] = useState(null);
   useEffect(() => {
     if (!(supabase && isDbId(currentUser.id))) { setManageableTeams(null); return; }
@@ -4110,14 +4113,10 @@ function SubscriptionRecord({ subscription, accountLabel, onCancel, cancelling }
   </div>;
 }
 
-const CLUB_TIER_INFO = {
-  basic: { label: "Basic", desc: "Training & Spiele anlegen und verwalten." },
-  premium: { label: "Premium", desc: "Alles: News, Sponsoring, Vereinsfahrzeuge, Helferdienst, Tippspiel, Kalender-Abo, Teams-Verwaltung und mehr." },
-};
 
 function SubscriptionPanel({ user }) {
   const [config, setConfig] = useState(null);
-  const [tier, setTier] = useState("premium");
+  const [tier, setTier] = useState("plus");
   const [cycle, setCycle] = useState("monthly");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
@@ -4170,17 +4169,21 @@ function SubscriptionPanel({ user }) {
       .finally(() => setNativeLoading(false));
   }, [isNative, databaseClub, canBuyClubPlan, user.clubId]);
 
-  /* Wartet bewusst auf authUserId: Ohne Profil-ID würde RevenueCat auf die
-     falsche Kennung konfiguriert und der Kauf später der falschen Person
-     zugeschrieben. */
+  /* Frueher wurde hier das RevenueCat-Angebot fuer den persoenlichen
+     Basis-Zugang geladen. Seit der Groessenstaffel zahlt nur noch der Verein;
+     die beiden Mitglieds-Produkte gibt es im Store nicht mehr. Der Aufruf
+     wurde entfernt, weil er sonst bei jedem Start "Angebote konnten nicht
+     geladen werden" anzeigen wuerde. */
+
+  /* Zugangszaehler: zeigt dem Verein, wie viele der bezahlten Zugaenge belegt
+     sind. Gerechnet wird in der Datenbank (club_account_usage), damit Anzeige
+     und Sperre nie auseinanderlaufen koennen. */
+  const [accountUsage, setAccountUsage] = useState(null);
   useEffect(() => {
-    if (!isNative || !authUserId) { if (!isNative) setMemberOfferingLoading(false); return; }
-    setMemberOfferingLoading(true);
-    fetchMemberOffering(authUserId)
-      .then((offering) => setMemberOffering(offering))
-      .catch(() => setMessage("Angebote konnten nicht geladen werden."))
-      .finally(() => setMemberOfferingLoading(false));
-  }, [isNative, authUserId]);
+    if (!supabase || !databaseClub) return;
+    supabase.rpc("club_account_usage", { target_club: user.clubId })
+      .then(({ data }) => setAccountUsage(data?.[0] || null));
+  }, [databaseClub, user.clubId, clubStatus]);
 
   const refreshClubStatus = useCallback(() => {
     if (!supabase || !databaseClub) return;
@@ -4399,8 +4402,6 @@ function SubscriptionPanel({ user }) {
     }
   };
 
-  const memberPrice = MEMBER_PLAN_PRICES[memberCycle];
-  const memberPaid = memberSubs.some((s) => s.status === "active");
   const memberHasAccess = memberAccess?.has_access ?? false;
 
   /* Rückmeldungen betreffen beide Bereiche und stehen deshalb auf oberster Ebene —
@@ -4421,57 +4422,19 @@ function SubscriptionPanel({ user }) {
         unabhängig davon ganz oben, sobald die App nativ läuft. */}
     {isNative && <button onClick={() => restorePurchasesAs(authUserId || user.clubId).then(() => { setMessage("Käufe wiederhergestellt."); refreshMemberAccess(); refreshClubStatus(); loadSubscriptions(); }).catch(() => setMessage("Käufe konnten nicht wiederhergestellt werden."))} className="w-full mb-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.glass, border: `1px solid ${C.edge}`, color: C.ink }}>Käufe wiederherstellen</button>}
 
-    {/* ---- Mein Zugang: betrifft jedes Mitglied, steht deshalb ganz oben ---- */}
-    <SectionTitle eyebrow="Mein Zugang" title="Basis-Zugang" />
-    <div className="rounded-2xl p-4 mb-3" style={{ background: memberHasAccess ? "rgba(231,243,236,0.72)" : "rgba(253,236,236,0.72)", border: `1px solid ${memberHasAccess ? "#CFE8D6" : "#F3B9B9"}` }}>
-      <div className="text-sm font-bold mb-1" style={{ color: C.ink }}>
-        {memberPaid ? "Basis-Zugang aktiv" : memberAccess?.trialing ? "Test-Zeitraum läuft" : "Kein persönlicher Zugang"}
-      </div>
+    {/* ---- Mein Zugang ----
+         Der persoenliche Zugang war frueher kostenpflichtig: Jedes Mitglied
+         zahlte zusaetzlich zum Vereinsabo. Mit der Groessenstaffel entfaellt
+         das - der Verein zahlt nach Zahl der Zugaenge, das Mitglied selbst
+         nichts mehr. ---- */}
+    <SectionTitle eyebrow="Mein Zugang" title="Für dich kostenlos" />
+    <div className="rounded-2xl p-4 mb-6" style={{ background: "rgba(231,243,236,0.72)", border: "1px solid #CFE8D6" }}>
+      <div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Kein eigenes Abo nötig</div>
       <div className="text-[11px] leading-snug" style={{ color: C.textDim }}>
-        {memberPaid ? `Verlängert sich automatisch${memberAccess?.period_end ? ` — nächste Abrechnung ${subscriptionDate(memberAccess.period_end)}` : ""}.`
-          : memberAccess?.trialing ? `Kostenlos bis ${subscriptionDate(memberAccess.trial_ends_at)}. Danach brauchst du den Basis-Zugang.`
-          : "Ohne Basis-Zugang siehst du nur Training und Spiele. Alles Weitere hängt zusätzlich davon ab, was dein Verein gebucht hat."}
+        Deinen Zugang bezahlt dein Verein. Welche Funktionen du nutzen kannst,
+        hängt allein von deinen Rollen im Verein ab.
       </div>
     </div>
-
-    {memberSubs.length > 0 && <div className="space-y-3 mb-4">
-      {memberSubs.map((subscription) => <SubscriptionRecord key={subscription.id} subscription={subscription} accountLabel="Mein Basis-Zugang" onCancel={() => cancelMemberSubscription(subscription)} cancelling={cancellingId === subscription.id} />)}
-    </div>}
-
-    {!memberPaid && databaseMember && <div className="rounded-2xl p-4 mb-6" style={{ background: C.glass, border: `1px solid ${C.edge}` }}>
-      <div className="text-[11px] mb-3" style={{ color: C.textDim }}>{isNative ? `Sicher über ${Capacitor.getPlatform() === "ios" ? "den App Store" : "Google Play"} bezahlen.` : "Sicher über PayPal bezahlen."} Jederzeit zum Laufzeitende kündbar.</div>
-      <div className="grid grid-cols-2 gap-2 mb-3">
-        {[["monthly", "Monatlich"], ["yearly", "Jährlich"]].map(([value, label]) => (
-          <button key={value} onClick={() => { setMemberCycle(value); setMemberConsent(false); setMessage(""); }} className="py-2 rounded-xl text-xs font-bold" style={{ background: memberCycle === value ? "rgba(252,235,238,0.72)" : C.paperDim, color: memberCycle === value ? C.red : C.textDim, border: memberCycle === value ? `1px solid ${C.red}` : "1px solid transparent" }}>{label}</button>
-        ))}
-      </div>
-      <div className="rounded-xl p-3 mb-3" style={{ background: C.paperDim }}>
-        <div className="text-xl font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{isNative ? (memberOffering?.[memberCycle]?.product.priceString || memberPrice.price) : memberPrice.price}</div>
-        <div className="text-[10px]" style={{ color: C.textDim }}>{memberPrice.note}{memberPrice.equivalent ? ` · ${memberPrice.equivalent}` : ""}</div>
-        <div className="text-[10px] mt-2" style={{ color: C.textDim }}>19 % Umsatzsteuer im Preis enthalten. Mindestlaufzeit {memberCycle === "yearly" ? "12 Monate" : "1 Monat"}, verlängert sich automatisch.</div>
-      </div>
-      {/* In der nativen App ist der In-App-Kauf Pflicht (Apple 3.1.1, Google Play
-          Billing). PayPal erscheint deshalb ausschließlich im Browser — vorher
-          stand hier „über den App Store bezahlen" und darunter ein PayPal-Knopf. */}
-      {isNative ? (
-        memberOfferingLoading ? <div className="text-xs py-2 text-center" style={{ color: C.textDim }}>Angebote werden geladen …</div> :
-        !authUserId ? <div className="text-[11px] rounded-xl px-3 py-2" style={{ background: "rgba(255,246,228,0.72)", color: C.textDim }}>Bitte melde dich erneut an, um den Zugang zu buchen.</div> :
-        !memberOffering?.[memberCycle] ? <div className="text-[11px] rounded-xl px-3 py-2" style={{ background: "rgba(255,246,228,0.72)", color: C.textDim }}>Dieses Paket ist im Store noch nicht eingerichtet.</div> :
-        <>
-          <label className="flex items-start gap-2 mb-3 px-0.5"><input type="checkbox" checked={memberConsent} onChange={(e) => setMemberConsent(e.target.checked)} className="mt-0.5"/><span className="text-[10px]" style={{ color: C.textDim }}>Ich akzeptiere die <a href="/nutzungsbedingungen" target="_blank" rel="noreferrer" style={{ color: C.red }}>Nutzungsbedingungen</a> und die Widerrufsbelehrung. Ich stimme zu, dass die Nutzung sofort beginnt, und weiß, dass mein Widerrufsrecht damit erlischt.</span></label>
-          {memberConsent
-            ? <button onClick={buyMemberPackage} disabled={memberPurchasing} className="w-full py-3 rounded-xl text-sm font-bold" style={{ background: C.ink, color: C.white, opacity: memberPurchasing ? .6 : 1 }}>{memberPurchasing ? "Wird verarbeitet …" : "Basis-Zugang buchen"}</button>
-            : <div className="text-[11px] rounded-xl px-3 py-2 text-center" style={{ background: C.paperDim, color: C.textDim }}>Bitte zuerst zustimmen, um fortzufahren.</div>}
-        </>
-      ) : loading ? <div className="text-xs py-2 text-center" style={{ color: C.textDim }}>Zahlung wird vorbereitet …</div>
-        : config?.memberPlans?.[memberCycle] && authUserId ? <>
-          <label className="flex items-start gap-2 mb-3 px-0.5"><input type="checkbox" checked={memberConsent} onChange={(e) => setMemberConsent(e.target.checked)} className="mt-0.5"/><span className="text-[10px]" style={{ color: C.textDim }}>Ich akzeptiere die <a href="/nutzungsbedingungen" target="_blank" rel="noreferrer" style={{ color: C.red }}>Nutzungsbedingungen</a> und die Widerrufsbelehrung. Ich stimme zu, dass die Nutzung sofort beginnt, und weiß, dass mein Widerrufsrecht damit erlischt.</span></label>
-          {memberConsent
-            ? <PayPalSubscriptionButton clientId={config.clientId} planId={config.memberPlans[memberCycle]} customId={authUserId} onApproved={memberApproved} onError={setMessage} />
-            : <div className="text-[11px] rounded-xl px-3 py-2 text-center" style={{ background: C.paperDim, color: C.textDim }}>Bitte zuerst zustimmen, um fortzufahren.</div>}
-        </> : <div className="text-[11px] rounded-xl px-3 py-2" style={{ background: "rgba(255,246,228,0.72)", color: C.textDim }}>Der Basis-Zugang ist noch nicht zur Zahlung eingerichtet.</div>}
-      <div className="text-[9px] mt-3 leading-relaxed" style={{ color: C.textDim }}>Kündigung {isNative ? (Capacitor.getPlatform() === "ios" ? "über die Apple-ID-Einstellungen" : "über Google Play") : "über PayPal"} zum Ende des Abrechnungszeitraums.</div>
-    </div>}
 
     {/* ---- Ab hier das Vereinsabo: nur für Rollen, die den Verein wirtschaftlich
          vertreten. Athlet/innen und Eltern sehen ausschließlich ihren eigenen
@@ -4480,7 +4443,10 @@ function SubscriptionPanel({ user }) {
     {clubStatus && <div className="rounded-2xl p-4 mb-5" style={{ background: clubStatus.tier === "none" ? "rgba(253,236,236,0.72)" : "rgba(231,243,236,0.72)", border: `1px solid ${clubStatus.tier === "none" ? "#F3B9B9" : "#CFE8D6"}` }}>
       <div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Aktueller Vereinstarif: {clubStatus.tier === "none" ? "Kein Abo" : CLUB_TIER_INFO[clubStatus.tier]?.label || clubStatus.tier}</div>
       {clubStatus.trialing && <div className="text-[11px]" style={{ color: C.textDim }}>Trial läuft bis {subscriptionDate(clubStatus.trial_ends_at)} — danach wird ein Abo benötigt.</div>}
-      {!clubStatus.trialing && clubStatus.tier === "none" && <div className="text-[11px]" style={{ color: C.textDim }}>Nur Training/Spiele-Ansicht ist aktuell freigeschaltet. Mit Basic oder Premium mehr freischalten.</div>}
+      {!clubStatus.trialing && clubStatus.tier === "none" && <div className="text-[11px]" style={{ color: C.textDim }}>Ohne Abo sind die Funktionen gesperrt und es lassen sich keine neuen Zugänge anlegen.</div>}
+      {accountUsage && <div className="text-[11px] mt-1.5" style={{ color: accountUsage.used >= accountUsage.allowed ? C.red : C.textDim }}>
+        {accountUsage.used} von {accountUsage.allowed} Zugängen belegt{accountUsage.used >= accountUsage.allowed ? " — für weitere Mitglieder braucht der Verein einen größeren Tarif." : "."}
+      </div>}
     </div>}
 
     {/* Tarifübersicht — bewusst auch ohne Kaufrecht sichtbar. Wer den Verein
@@ -4488,7 +4454,7 @@ function SubscriptionPanel({ user }) {
         welcher Tarif läuft und was die Alternative kostet, ohne ihn ändern zu dürfen. */}
     <SectionTitle eyebrow="Tarife" title="Modelle im Überblick" />
     <div className="space-y-2.5 mb-6">
-      {["basic", "premium"].map((key) => {
+      {CLUB_TIERS.map((key) => {
         const aktiv = clubStatus?.tier === key;
         return (
           <div key={key} className="rounded-2xl p-4" style={{ background: C.glass, border: `1px solid ${aktiv ? C.green : C.edge}`, boxShadow: aktiv ? `0 0 0 2px color-mix(in srgb, ${C.green} 28%, transparent)` : "0 10px 26px rgba(60,30,45,0.06)" }}>
@@ -4521,7 +4487,7 @@ function SubscriptionPanel({ user }) {
     <div className="flex items-center gap-2 mb-1"><Euro size={16} style={{ color: C.red }} /><div className="text-sm font-bold" style={{ color: C.ink }}>Abonnement</div></div>
     <div className="text-[11px] mb-3" style={{ color: C.textDim }}>{isNative ? `Sicher über ${Capacitor.getPlatform() === "ios" ? "den App Store" : "Google Play"} bezahlen.` : "Sicher über PayPal bezahlen."} Alle Abos verlängern sich automatisch bis zur Kündigung.</div>
     <div className="grid grid-cols-2 gap-2 mb-2">
-      {[['basic', CLUB_TIER_INFO.basic.label], ['premium', CLUB_TIER_INFO.premium.label]].map(([value, label]) => <button key={value} onClick={() => { setTier(value); setMessage(""); setWithdrawalConsent(false); }} className="py-2 rounded-xl text-xs font-bold" style={{ background: tier === value ? C.ink : C.paperDim, color: tier === value ? C.white : C.textDim }}>{label}</button>)}
+      {CLUB_TIERS.map((value) => [value, CLUB_TIER_INFO[value].label]).map(([value, label]) => <button key={value} onClick={() => { setTier(value); setMessage(""); setWithdrawalConsent(false); }} className="py-2 rounded-xl text-xs font-bold" style={{ background: tier === value ? C.ink : C.paperDim, color: tier === value ? C.white : C.textDim }}>{label}</button>)}
     </div>
     <div className="text-[11px] mb-3" style={{ color: C.textDim }}>{CLUB_TIER_INFO[tier].desc}</div>
     <div className="grid grid-cols-2 gap-2 mb-3">
@@ -5294,7 +5260,7 @@ function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, 
       {profileUnderlay === "referral" && <ProfileUnderlay title="Vereine werben Vereine" onClose={() => setProfileUnderlay("")}><ReferralSettings user={user} club={currentClub}/></ProfileUnderlay>}
       {/* Ohne Premium gibt es hier nichts zu speichern — der Knopf entfällt, sonst
           stünde er wirkungslos über der Sperrmeldung. */}
-      {profileUnderlay === "calendar" && <ProfileUnderlay title="Kalender synchronisieren" onClose={() => setProfileUnderlay("")} onSave={entitlement.tier === "premium" ? ()=>sectionSaveRef.current?.() : undefined}><LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Kalender-Abo"><CalendarSyncSettings user={user} saveRef={sectionSaveRef}/></LockedFeature></ProfileUnderlay>}
+      {profileUnderlay === "calendar" && <ProfileUnderlay title="Kalender synchronisieren" onClose={() => setProfileUnderlay("")} onSave={entitlement.tier !== "none" ? ()=>sectionSaveRef.current?.() : undefined}><LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Kalender-Abo"><CalendarSyncSettings user={user} saveRef={sectionSaveRef}/></LockedFeature></ProfileUnderlay>}
       {profileUnderlay === "feedback" && <ProfileUnderlay title="App bewerten" onClose={() => setProfileUnderlay("")}><FeedbackSettings/></ProfileUnderlay>}
       {profileUnderlay === "bug" && <ProfileUnderlay title="Fehler melden" onClose={() => setProfileUnderlay("")}><BugReportSettings user={user}/></ProfileUnderlay>}
       {profileUnderlay === "player" && <ProfileUnderlay title="Athletenprofil" onClose={() => setProfileUnderlay("")}><PlayerTeamSettings user={user} setMembers={setMembers}/><PlayerDataCard user={user} setMembers={setMembers}/></ProfileUnderlay>}
@@ -6277,7 +6243,16 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
       setWorkingId(null); return;
     }
     const { error: statusError } = await supabase.from("club_memberships").update({ status: nextStatus }).eq("id", request.id).eq("club_id", club.id);
-    if (statusError) { setMessage("Die Entscheidung konnte nicht gespeichert werden."); setWorkingId(null); return; }
+    /* Die Zugangsgrenze setzt ein Trigger in der Datenbank durch, damit sie auf
+       jedem Weg greift. Er meldet sich mit "club_account_limit_reached" - ohne
+       diese Uebersetzung stuende hier eine rohe Postgres-Meldung. */
+    if (statusError) {
+      const grenzeErreicht = `${statusError.message}${statusError.details || ""}`.includes("club_account_limit_reached");
+      setMessage(grenzeErreicht
+        ? "Der Tarif deines Vereins ist ausgeschöpft. Buche einen größeren Tarif oder ein Zusatzpaket unter Profil, Einstellungen, Abo & Empfehlungen — danach lässt sich die Mitgliedschaft freigeben."
+        : "Die Entscheidung konnte nicht gespeichert werden.");
+      setWorkingId(null); return;
+    }
 
     const requestedRoles = (request.membership_roles || []).map((entry) => entry.role);
     if (nextStatus === "active" && requestedRoles.includes("spieler") && request.requested_team) {

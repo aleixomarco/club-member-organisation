@@ -13,8 +13,9 @@ import { Purchases, LOG_LEVEL, type PurchasesPackage } from "@revenuecat/purchas
 //   - Jedes Offering hat ein "Monthly"- und ein "Annual"-Package.
 //   - Die Produkt-IDs in App Store Connect / Play Console müssen exakt den
 //     subscription_plans.code-Werten in Supabase entsprechen:
-//     club_basic_monthly, club_basic_yearly, club_premium_monthly,
-//     club_premium_yearly, member_monthly, member_yearly.
+//     club_basic_monthly, club_basic_yearly, club_plus_monthly,
+//     club_plus_yearly, club_pro_monthly, club_pro_yearly sowie die
+//     Zusatzpakete club_addon_100/250/500_monthly.
 //
 // Der Freischalt-Status kommt NICHT von hier, sondern aus Supabase
 // (club_subscription_tier() bzw. member_has_access()). RevenueCats Webhook
@@ -86,32 +87,38 @@ export async function logOutRevenueCat() {
   currentAppUserId = null;
 }
 
-export type ClubTierOfferings = {
-  basic: { monthly: PurchasesPackage | null; yearly: PurchasesPackage | null };
-  premium: { monthly: PurchasesPackage | null; yearly: PurchasesPackage | null };
-};
+type Paketpaar = { monthly: PurchasesPackage | null; yearly: PurchasesPackage | null };
 
+export type ClubTierOfferings = { basic: Paketpaar; plus: Paketpaar; pro: Paketpaar };
+
+/* Die drei Vereinstarife liegen in RevenueCat als Offerings "basic", "plus"
+   und "pro". Sie unterscheiden sich nur in der Zahl der erlaubten Zugaenge,
+   nicht im Funktionsumfang - durchgesetzt wird die Grenze in der Datenbank
+   (club_account_limit), nicht hier. */
 export async function fetchTierOfferings(clubId: string): Promise<ClubTierOfferings | null> {
   const ready = await ensureRevenueCatConfigured(clubId);
   if (!ready) return null;
   const offerings = await Purchases.getOfferings();
-  const basicOffering = offerings.all["basic"] || null;
-  const premiumOffering = offerings.all["premium"] || null;
-  return {
-    basic: { monthly: basicOffering?.monthly || null, yearly: basicOffering?.annual || null },
-    premium: { monthly: premiumOffering?.monthly || null, yearly: premiumOffering?.annual || null },
+  const paar = (name: string): Paketpaar => {
+    const angebot = offerings.all[name] || null;
+    return { monthly: angebot?.monthly || null, yearly: angebot?.annual || null };
   };
+  return { basic: paar("basic"), plus: paar("plus"), pro: paar("pro") };
 }
 
-/* Persönliches Basis-Abo: läuft auf die Profil-ID, nicht auf den Verein. */
-export type MemberOffering = { monthly: PurchasesPackage | null; yearly: PurchasesPackage | null };
+/* Zusatzpakete zum Pro-Tarif. Sie liegen in einer eigenen Abo-Gruppe, weil
+   Apple pro Gruppe nur ein aktives Abonnement erlaubt - genau deshalb lassen
+   sie sich auch nicht stapeln. */
+export type ClubAddonOfferings = Record<string, PurchasesPackage | null>;
 
-export async function fetchMemberOffering(profileId: string): Promise<MemberOffering | null> {
-  const ready = await ensureRevenueCatConfigured(profileId);
+export async function fetchAddonOfferings(clubId: string): Promise<ClubAddonOfferings | null> {
+  const ready = await ensureRevenueCatConfigured(clubId);
   if (!ready) return null;
   const offerings = await Purchases.getOfferings();
-  const memberOffering = offerings.all["member"] || null;
-  return { monthly: memberOffering?.monthly || null, yearly: memberOffering?.annual || null };
+  const angebot = offerings.all["addon"] || null;
+  const pakete: ClubAddonOfferings = {};
+  for (const q of angebot?.availablePackages || []) pakete[q.product.identifier] = q;
+  return pakete;
 }
 
 const NOT_AVAILABLE = "In-App-Käufe stehen auf diesem Gerät nicht zur Verfügung.";

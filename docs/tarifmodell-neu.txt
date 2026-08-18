@@ -1,0 +1,79 @@
+NEUES TARIFMODELL — entschieden am 17./18.08.2026
+=================================================
+Umgesetzt auf dem Branch "tarifmodell". In App Store Connect, RevenueCat und
+PayPal noch NICHT angelegt.
+
+
+DIE DREI TARIFE
+---------------
+
+  Tarif    Zugaenge     Monatlich    Jaehrlich     entspricht
+  ------------------------------------------------------------
+  Basic    bis 100      24,99 EUR    239,99 EUR    19,99 EUR/Monat
+  Plus     bis 350      49,99 EUR    479,99 EUR    39,99 EUR/Monat
+  Pro      ab  700      99,99 EUR    959,99 EUR    79,99 EUR/Monat
+
+Jaehrlich sind es ueberall 20 Prozent weniger. Alle Preise enden auf ,99 -
+Apple gibt nur solche Preisstufen her.
+
+Die Tarife unterscheiden sich AUSSCHLIESSLICH in der Zahl der Zugaenge.
+Jeder zahlende Verein bekommt den vollen Funktionsumfang. Das ist die
+wesentliche Aenderung gegenueber dem alten Modell, in dem Basic nur Training
+und Spiele konnte.
+
+
+ZUSATZPAKETE ZUM PRO-TARIF
+--------------------------
+
+  Paket      Zugaenge insgesamt   Monatlich
+  -----------------------------------------
+  Pro +      bis   800            14,99 EUR
+  Pro ++     bis   950            29,99 EUR
+  Pro Max    bis 1.200            49,99 EUR
+
+Darueber: individuelles Angebot.
+
+WICHTIG: Apple erlaubt pro Abo-Gruppe nur EIN aktives Abonnement, und
+Mengenangaben gibt es bei Abos nicht. Die Pakete lassen sich deshalb NICHT
+stapeln. Sie gehoeren in eine eigene Abo-Gruppe ("Zusatzpakete"), von der
+immer nur eines aktiv ist. Der individuelle Tarif darf kein In-App-Kauf sein
+und in der App auch nicht mit Kaufknopf oder Link beworben werden
+(Richtlinie 3.1.1).
+
+
+WAS GEZAEHLT WIRD
+-----------------
+Jedes selbst angemeldete Konto zaehlt einmal. Wer ohne eigenen Login
+eingetragen wird (Kind, das der Vater anlegt), zaehlt nicht - solche
+Datensaetze tragen is_managed_profile = true.
+
+  select count(*) from public.club_memberships
+  where club_id = <verein> and status = 'active'
+    and profile_id is not null and is_managed_profile = false;
+
+Geprueft am 18.08.2026 in der Testdatenbank, zwoelf Faelle, alle richtig -
+siehe docs/pruefung-zugangsgrenze.sql.
+
+
+BEIM UEBERSCHREITEN
+-------------------
+Ein Trigger auf club_memberships blockiert das Anlegen. Er greift auf jedem
+Weg: App, register_for_club, SQL-Editor. Bestehende Konten bleiben nutzbar
+und aenderbar - der Trigger prueft, ob eine Zeile NEU zu einem zaehlenden
+Konto wird.
+
+
+MITGLIEDER ZAHLEN NICHTS MEHR
+-----------------------------
+member_monthly und member_yearly sind stillgelegt. member_has_access liefert
+immer wahr. Ohne diese Aenderung haette jedes Mitglied vierzehn Tage nach
+seiner Anlage saemtliche Funktionen verloren.
+
+
+NOCH OFFEN
+----------
+1. Kaufmaske fuer die Zusatzpakete in der App
+2. App Store Connect: neun Produkte anlegen, alte aus dem Verkauf nehmen
+3. RevenueCat: Offerings basic / plus / pro / addon
+4. PayPal: Plaene fuer die Web-Version
+5. Erst nach der Freigabe der laufenden Einreichung auf main bringen
