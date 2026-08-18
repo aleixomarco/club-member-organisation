@@ -49,18 +49,27 @@ export const CLUB_TIER_INFO = {
   },
   pro: {
     label: "Pro",
-    accounts: 700,
-    accountLabel: "ab 700 Zugänge",
-    desc: "Für große Vereine. Alle Funktionen, 700 Konten — mit Zusatzpaketen erweiterbar.",
+    accounts: 1000,
+    accountLabel: "bis 1.000 Zugänge",
+    desc: "Für große Vereine. Alle Funktionen, bis zu 1.000 angemeldete Konten.",
   },
 } as const;
 
-/* Zusatzpakete zum Pro-Tarif.
+/* Ein einziges Zusatzpaket, buchbar oben auf den laufenden Tarif.
  *
- * Sie liegen im App Store in einer eigenen Abo-Gruppe, weil Apple pro Gruppe
- * nur ein aktives Abonnement erlaubt. Aus demselben Grund lassen sie sich
- * nicht stapeln: Der Verein wählt genau ein Paket, nicht mehrere. */
-export const CLUB_ADDONS = [
-  { key: "addon_100", extra: 100, total: 800, label: "Pro +", price: "14,99 €" },
-  { key: "addon_500", extra: 500, total: 1200, label: "Pro Max", price: "49,99 €" },
-] as const;
+ * Der Preis ist bewusst so gewählt, dass sich ein Aufstieg immer eher lohnt
+ * als Dazubuchen. Die Aufpreise zwischen den Stufen liegen bei 25 € (Basic auf
+ * Plus) und 50 € (Plus auf Pro); ein Paket für 49,99 € ist damit an jeder
+ * Stelle das schlechtere Geschäft, solange es noch eine größere Stufe gibt.
+ *
+ * Sinnvoll wird es erst oberhalb von Pro, wo kein Aufstieg mehr möglich ist.
+ * Es lässt sich nicht mehrfach buchen - Apple erlaubt pro Abo-Gruppe nur ein
+ * aktives Abonnement. Vereine über 1.100 Zugänge bekommen ein eigenes Angebot.
+ */
+export const CLUB_ADDON = {
+  key: "addon_100",
+  extra: 100,
+  label: "Zusatzpaket",
+  price: "49,99 €",
+  desc: "100 weitere Zugänge, zusätzlich zum gebuchten Tarif.",
+} as const;

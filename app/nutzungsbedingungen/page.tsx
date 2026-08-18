@@ -1,5 +1,5 @@
 import { LegalShell, legal } from "../legal-shell";
-import { CLUB_TIER_PRICES, CLUB_TIER_INFO, CLUB_ADDONS } from "@/lib/preise";
+import { CLUB_TIER_PRICES, CLUB_TIER_INFO, CLUB_ADDON } from "@/lib/preise";
 export const metadata = { title: "Nutzungsbedingungen | Club Member Organisation" };
 export default function TermsPage() { return <LegalShell title="Nutzungsbedingungen">
   <p>Diese Bedingungen gelten für die Nutzung der Club Member Organisation durch registrierte Vereinsmitglieder. Vertragspartner ist {legal.name}, vertreten durch {legal.representative}.</p>
@@ -17,8 +17,8 @@ export default function TermsPage() { return <LegalShell title="Nutzungsbedingun
   <p><strong>{CLUB_TIER_INFO.pro.label}</strong> ({CLUB_TIER_INFO.pro.accountLabel}): {CLUB_TIER_PRICES.pro.monthly.price} pro Monat oder {CLUB_TIER_PRICES.pro.yearly.price} für zwölf Monate im Voraus ({CLUB_TIER_PRICES.pro.yearly.equivalent}).</p>
   <p>Alle Preise verstehen sich inklusive der gesetzlichen Umsatzsteuer. Abonnements verlängern sich automatisch um den jeweils gebuchten Zeitraum zum dann geltenden Preis, sofern nicht rechtzeitig gekündigt wird. Abschließen und kündigen können nur Mitglieder mit der Rolle Vorstand, Vereinsadmin oder Geschäftsführung.</p>
 
-  <h2>Zusatzpakete</h2>
-  <p>Zum Tarif {CLUB_TIER_INFO.pro.label} lassen sich zusätzliche Zugänge buchen: {CLUB_ADDONS.map((a) => `${a.label} auf bis zu ${a.total} Zugänge für ${a.price} pro Monat`).join(", ")}. Es kann jeweils nur ein Paket gleichzeitig aktiv sein. Vereine mit mehr als {CLUB_ADDONS[CLUB_ADDONS.length - 1].total} Zugängen erhalten ein individuelles Angebot.</p>
+  <h2>Zusatzpaket</h2>
+  <p>Zusätzlich zum gebuchten Tarif lassen sich {CLUB_ADDON.extra} weitere Zugänge buchen, für {CLUB_ADDON.price} pro Monat. Das Paket kann nur einmal aktiv sein und nicht mehrfach gebucht werden. Vereine, die darüber hinaus Zugänge benötigen, erhalten ein individuelles Angebot.</p>
 
   <h2>Erreichen der Zugangsgrenze</h2>
   <p>Ist die Zahl der Zugänge des gebuchten Tarifs erreicht, lassen sich keine weiteren Konten anlegen oder freigeben. Bestehende Zugänge bleiben unverändert nutzbar. Der Verein kann jederzeit in einen größeren Tarif wechseln oder ein Zusatzpaket buchen.</p>

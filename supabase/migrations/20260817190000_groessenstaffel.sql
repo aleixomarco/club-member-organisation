@@ -8,7 +8,7 @@
 --
 --   Basic  bis 100 Zugänge
 --   Plus   bis 350 Zugänge
---   Pro    ab  700 Zugänge, erweiterbar um 100 oder 500 weitere
+--   Pro    bis 1000 Zugänge, erweiterbar um 100 weitere
 --
 -- Gezählt wird jedes selbst angemeldete Konto. Wer ohne eigenen Login
 -- eingetragen wird - ein Kind etwa, das der Vater anlegt - zählt nicht;
@@ -23,8 +23,7 @@ insert into public.subscription_plans (code, name, interval, price_cents) values
   ('club_plus_yearly',      'Plus – Jahresabo',               'year',  47999),
   ('club_pro_monthly',      'Pro – Monatsabo',                'month',  9999),
   ('club_pro_yearly',       'Pro – Jahresabo',                'year',  95999),
-  ('club_addon_100_monthly','Pro + – 100 weitere Zugänge',    'month',  1499),
-  ('club_addon_500_monthly','Pro Max – 500 weitere Zugänge',  'month',  4999)
+  ('club_addon_100_monthly','Zusatzpaket – 100 weitere Zugänge', 'month', 4999)
 on conflict (code) do update set
   name = excluded.name,
   interval = excluded.interval,
@@ -118,7 +117,6 @@ returns integer language sql stable security definer set search_path = '' as $$
     (
       select case p.code
         when 'club_addon_100_monthly' then 100
-        when 'club_addon_500_monthly' then 500
       end
       from public.club_subscriptions s
       join public.subscription_plans p on p.id = s.plan_id
@@ -126,10 +124,6 @@ returns integer language sql stable security definer set search_path = '' as $$
         and s.status = 'active'
         and (s.current_period_end is null or s.current_period_end > now())
         and p.code like 'club_addon_%'
-      order by case p.code
-        when 'club_addon_500_monthly' then 0
-        else 1
-      end
       limit 1
     ),
     0
@@ -145,7 +139,7 @@ returns integer language sql stable security definer set search_path = '' as $$
   select case public.club_subscription_tier(target_club)
     when 'basic' then 100
     when 'plus'  then 350
-    when 'pro'   then 700
+    when 'pro'   then 1000
     else 0
   end + public.club_account_addon(target_club);
 $$;

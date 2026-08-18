@@ -15,7 +15,7 @@ import { enablePushNotifications, disablePushNotifications, listenForForegroundM
 import { Capacitor } from "@capacitor/core";
 import { nativePurchasesSupported, fetchTierOfferings, fetchAddonOfferings, purchasePackageAs, restorePurchasesAs, logOutRevenueCat } from "@/lib/revenuecat";
 import { legal } from "./legal-shell";
-import { CLUB_TIER_PRICES, CLUB_TIER_INFO, CLUB_TIERS, CLUB_ADDONS } from "@/lib/preise";
+import { CLUB_TIER_PRICES, CLUB_TIER_INFO, CLUB_TIERS, CLUB_ADDON } from "@/lib/preise";
 
 /* ------------------------------------------------------------------ */
 /* Tokens                                                              */
