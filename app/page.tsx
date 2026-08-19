@@ -4214,6 +4214,30 @@ function SubscriptionPanel({ user }) {
     }
   };
 
+  /* Zusatzpaket: 100 weitere Zugaenge oben auf den laufenden Tarif. Es liegt
+     in einer eigenen Abo-Gruppe, weil Apple pro Gruppe nur ein aktives
+     Abonnement erlaubt - deshalb laesst es sich auch nicht mehrfach buchen. */
+  const [addonOffering, setAddonOffering] = useState<any>(null);
+  useEffect(() => {
+    if (!isNative || !isDbId(user?.clubId)) return;
+    fetchAddonOfferings(user.clubId).then(setAddonOffering).catch(() => {});
+  }, [isNative, user?.clubId]);
+
+  const buyAddonPackage = async () => {
+    const pkg = addonOffering?.["club_addon_100_monthly"] || Object.values(addonOffering || {})[0];
+    if (!pkg) { setMessage("Das Zusatzpaket ist im Store noch nicht verfügbar."); return; }
+    setPurchasing(true); setMessage("");
+    try {
+      await purchasePackageAs(user.clubId, pkg);
+      setMessage("Zusatzpaket gebucht. Die Freischaltung kann kurz dauern.");
+      setTimeout(refreshClubStatus, 2500);
+    } catch (error) {
+      if (!error?.userCancelled) setMessage(error?.message || "Das Zusatzpaket konnte nicht gebucht werden.");
+    } finally {
+      setPurchasing(false);
+    }
+  };
+
   const restorePurchases = async () => {
     setPurchasing(true); setMessage("");
     try {
@@ -4446,6 +4470,16 @@ function SubscriptionPanel({ user }) {
       {!clubStatus.trialing && clubStatus.tier === "none" && <div className="text-[11px]" style={{ color: C.textDim }}>Ohne Abo sind die Funktionen gesperrt und es lassen sich keine neuen Zugänge anlegen.</div>}
       {accountUsage && <div className="text-[11px] mt-1.5" style={{ color: accountUsage.used >= accountUsage.allowed ? C.red : C.textDim }}>
         {accountUsage.used} von {accountUsage.allowed} Zugängen belegt{accountUsage.used >= accountUsage.allowed ? " — für weitere Mitglieder braucht der Verein einen größeren Tarif." : "."}
+      </div>}
+
+      {/* Zusatzpaket nur bei Pro: Darunter ist ein Aufstieg immer das bessere
+          Geschaeft, und genau so ist der Preis gerechnet. */}
+      {clubStatus?.tier === "pro" && <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${C.edge}` }}>
+        <div className="text-[11px] font-bold mb-0.5" style={{ color: C.ink }}>{CLUB_ADDON.label}: {CLUB_ADDON.price} / Monat</div>
+        <div className="text-[10px] mb-2 leading-snug" style={{ color: C.textDim }}>{CLUB_ADDON.desc} Einmal buchbar. Für mehr melde dich bei uns.</div>
+        {isNative
+          ? <button onClick={buyAddonPackage} disabled={purchasing} className="w-full py-2 rounded-xl text-[11px] font-bold" style={{ background: C.ink, color: C.white, opacity: purchasing ? .6 : 1 }}>{purchasing ? "Wird verarbeitet …" : "Zusatzpaket buchen"}</button>
+          : <div className="text-[10px] rounded-xl px-3 py-2" style={{ background: C.paperDim, color: C.textDim }}>Das Zusatzpaket lässt sich derzeit nur in der App buchen.</div>}
       </div>}
     </div>}
 
