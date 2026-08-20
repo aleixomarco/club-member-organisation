@@ -4182,7 +4182,11 @@ function SubscriptionPanel({ user }) {
   useEffect(() => {
     if (!supabase || !databaseClub) return;
     supabase.rpc("club_account_usage", { target_club: user.clubId })
-      .then(({ data }) => setAccountUsage(data?.[0] || null));
+      .then(({ data }) => setAccountUsage(data?.[0] || null))
+      /* Faengt den Uebergang ab: Solange die Migration in einer Umgebung noch
+         nicht gelaufen ist, gibt es die Funktion dort nicht. Dann bleibt der
+         Zaehler einfach aus, statt einen Fehler zu werfen. */
+      .catch(() => setAccountUsage(null));
   }, [databaseClub, user.clubId, clubStatus]);
 
   const refreshClubStatus = useCallback(() => {
