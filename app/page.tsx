@@ -4448,7 +4448,7 @@ function SubscriptionPanel({ user }) {
         {accountUsage.used} von {accountUsage.allowed} Zugängen belegt{accountUsage.used >= accountUsage.allowed ? " — für weitere Mitglieder braucht der Verein einen größeren Tarif." : "."}
       </div>}
 
-      {clubStatus?.tier === "max" && <div className="text-[10px] mt-1.5" style={{ color: C.textDim }}>{UEBER_MAX_HINWEIS}</div>}
+      {clubStatus?.tier === "pro" && <div className="text-[10px] mt-1.5" style={{ color: C.textDim }}>{UEBER_MAX_HINWEIS}</div>}
     </div>}
 
     {/* Tarifübersicht — bewusst auch ohne Kaufrecht sichtbar. Wer den Verein

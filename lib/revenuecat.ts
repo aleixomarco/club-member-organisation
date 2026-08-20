@@ -14,8 +14,7 @@ import { Purchases, LOG_LEVEL, type PurchasesPackage } from "@revenuecat/purchas
 //   - Die Produkt-IDs in App Store Connect / Play Console müssen exakt den
 //     subscription_plans.code-Werten in Supabase entsprechen:
 //     club_basic_monthly, club_basic_yearly, club_plus_monthly,
-//     club_plus_yearly, club_pro_monthly, club_pro_yearly, club_max_monthly
-//     und club_max_yearly.
+//     club_plus_yearly, club_pro_monthly und club_pro_yearly.
 //
 // Der Freischalt-Status kommt NICHT von hier, sondern aus Supabase
 // (club_subscription_tier() bzw. member_has_access()). RevenueCats Webhook
@@ -89,7 +88,7 @@ export async function logOutRevenueCat() {
 
 type Paketpaar = { monthly: PurchasesPackage | null; yearly: PurchasesPackage | null };
 
-export type ClubTierOfferings = { basic: Paketpaar; plus: Paketpaar; pro: Paketpaar; max: Paketpaar };
+export type ClubTierOfferings = { basic: Paketpaar; plus: Paketpaar; pro: Paketpaar };
 
 /* Die drei Vereinstarife liegen in RevenueCat als Offerings "basic", "plus"
    und "pro". Sie unterscheiden sich nur in der Zahl der erlaubten Zugaenge,
@@ -103,7 +102,7 @@ export async function fetchTierOfferings(clubId: string): Promise<ClubTierOfferi
     const angebot = offerings.all[name] || null;
     return { monthly: angebot?.monthly || null, yearly: angebot?.annual || null };
   };
-  return { basic: paar("basic"), plus: paar("plus"), pro: paar("pro"), max: paar("max") };
+  return { basic: paar("basic"), plus: paar("plus"), pro: paar("pro") };
 }
 
 const NOT_AVAILABLE = "In-App-Käufe stehen auf diesem Gerät nicht zur Verfügung.";

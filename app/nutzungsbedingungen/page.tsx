@@ -15,10 +15,9 @@ export default function TermsPage() { return <LegalShell title="Nutzungsbedingun
   <p><strong>{CLUB_TIER_INFO.basic.label}</strong> ({CLUB_TIER_INFO.basic.accountLabel}): {CLUB_TIER_PRICES.basic.monthly.price} pro Monat oder {CLUB_TIER_PRICES.basic.yearly.price} für zwölf Monate im Voraus ({CLUB_TIER_PRICES.basic.yearly.equivalent}).</p>
   <p><strong>{CLUB_TIER_INFO.plus.label}</strong> ({CLUB_TIER_INFO.plus.accountLabel}): {CLUB_TIER_PRICES.plus.monthly.price} pro Monat oder {CLUB_TIER_PRICES.plus.yearly.price} für zwölf Monate im Voraus ({CLUB_TIER_PRICES.plus.yearly.equivalent}).</p>
   <p><strong>{CLUB_TIER_INFO.pro.label}</strong> ({CLUB_TIER_INFO.pro.accountLabel}): {CLUB_TIER_PRICES.pro.monthly.price} pro Monat oder {CLUB_TIER_PRICES.pro.yearly.price} für zwölf Monate im Voraus ({CLUB_TIER_PRICES.pro.yearly.equivalent}).</p>
-  <p><strong>{CLUB_TIER_INFO.max.label}</strong> ({CLUB_TIER_INFO.max.accountLabel}): {CLUB_TIER_PRICES.max.monthly.price} pro Monat oder {CLUB_TIER_PRICES.max.yearly.price} für zwölf Monate im Voraus ({CLUB_TIER_PRICES.max.yearly.equivalent}).</p>
   <p>Alle Preise verstehen sich inklusive der gesetzlichen Umsatzsteuer. Abonnements verlängern sich automatisch um den jeweils gebuchten Zeitraum zum dann geltenden Preis, sofern nicht rechtzeitig gekündigt wird. Abschließen und kündigen können nur Mitglieder mit der Rolle Vorstand, Vereinsadmin oder Geschäftsführung.</p>
 
-  <h2>Mehr als {CLUB_TIER_INFO.max.accounts} Zugänge</h2>
+  <h2>Mehr als {CLUB_TIER_INFO.pro.accounts} Zugänge</h2>
   <p>Vereine, die mehr Zugänge benötigen, als der größte Tarif umfasst, erhalten auf Anfrage ein individuelles Angebot.</p>
 
   <h2>Kostenlose Nutzung für kleine Vereine</h2>

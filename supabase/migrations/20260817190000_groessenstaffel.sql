@@ -9,7 +9,7 @@
 --   Basic  bis 100 Zugänge
 --   Plus   bis 350 Zugänge
 --   Pro    bis 1000 Zugänge
---   Max    bis 5000 Zugänge, darüber auf Anfrage
+--   Über 1000 Zugänge hinaus: auf Anfrage, kein Produkt im Store
 --   Ohne Abo: drei Zugänge kostenlos
 --
 -- Gezählt wird jedes selbst angemeldete Konto. Wer ohne eigenen Login
@@ -24,9 +24,7 @@ insert into public.subscription_plans (code, name, interval, price_cents) values
   ('club_plus_monthly',  'Plus – Monatsabo',  'month',   4999),
   ('club_plus_yearly',   'Plus – Jahresabo',  'year',   47999),
   ('club_pro_monthly',   'Pro – Monatsabo',   'month',   9999),
-  ('club_pro_yearly',    'Pro – Jahresabo',   'year',   95999),
-  ('club_max_monthly',   'Max – Monatsabo',   'month',  24999),
-  ('club_max_yearly',    'Max – Jahresabo',   'year',  239999)
+  ('club_pro_yearly',    'Pro – Jahresabo',   'year',   95999)
 on conflict (code) do update set
   name = excluded.name,
   interval = excluded.interval,
@@ -50,7 +48,6 @@ returns text language sql stable security definer set search_path = '' as $$
   select coalesce(
     (
       select case
-        when p.code like 'club_max_%'     then 'max'
         when p.code like 'club_pro_%'     then 'pro'
         when p.code like 'club_premium_%' then 'plus'
         when p.code like 'club_plus_%'    then 'plus'
@@ -63,17 +60,16 @@ returns text language sql stable security definer set search_path = '' as $$
         and s.status = 'active'
         and (s.current_period_end is null or s.current_period_end > now())
       order by case
-        when p.code like 'club_max_%'     then 0
-        when p.code like 'club_pro_%'     then 1
-        when p.code like 'club_premium_%' then 2
-        when p.code like 'club_plus_%'    then 2
-        else 3
+        when p.code like 'club_pro_%'     then 0
+        when p.code like 'club_premium_%' then 1
+        when p.code like 'club_plus_%'    then 1
+        else 2
       end
       limit 1
     ),
     -- Während des Testzeitraums gilt die höchste Stufe.
     (
-      select 'max'
+      select 'pro'
       from public.clubs c
       where c.id = target_club and c.created_at + public.trial_period() > now()
     ),
@@ -125,7 +121,6 @@ returns integer language sql stable security definer set search_path = '' as $$
     when 'basic' then 100
     when 'plus'  then 350
     when 'pro'   then 1000
-    when 'max'   then 5000
     else 3
   end;
 $$;

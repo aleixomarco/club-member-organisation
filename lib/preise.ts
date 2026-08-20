@@ -15,9 +15,9 @@
  */
 
 export type Abrechnung = "monthly" | "yearly";
-export type Vereinstarif = "basic" | "plus" | "pro" | "max";
+export type Vereinstarif = "basic" | "plus" | "pro";
 
-export const CLUB_TIERS: Vereinstarif[] = ["basic", "plus", "pro", "max"];
+export const CLUB_TIERS: Vereinstarif[] = ["basic", "plus", "pro"];
 
 /* Als Record statt "as const": Die Oberflaeche greift mit einer Variablen zu
    (CLUB_TIER_PRICES[tier]), und ein Literal-Objekt laesst das nicht zu. */
@@ -35,10 +35,6 @@ export const CLUB_TIER_PRICES: Record<string, Preisangabe> = {
   pro: {
     monthly: { price: "99,99 €" },
     yearly: { price: "959,99 €", equivalent: "79,99 € / Monat" },
-  },
-  max: {
-    monthly: { price: "249,99 €" },
-    yearly: { price: "2.399,99 €", equivalent: "199,99 € / Monat" },
   },
 };
 
@@ -63,12 +59,6 @@ export const CLUB_TIER_INFO: Record<string, Tarifangabe> = {
     accountLabel: "bis 1.000 Zugänge",
     desc: "Für große Vereine. Alle Funktionen, bis zu 1.000 angemeldete Konten.",
   },
-  max: {
-    label: "Max",
-    accounts: 5000,
-    accountLabel: "bis 5.000 Zugänge",
-    desc: "Für sehr große Vereine. Alle Funktionen, bis zu 5.000 angemeldete Konten.",
-  },
 };
 
 /* Kostenlose Kleinstufe.
@@ -79,7 +69,7 @@ export const CLUB_TIER_INFO: Record<string, Tarifangabe> = {
  * statt einer Mauer. */
 export const FREIE_ZUGAENGE = 3;
 
-/* Ueber 5000 Zugaenge hinaus gibt es kein Produkt im Store, sondern ein
+/* Ueber 1000 Zugaenge hinaus gibt es kein Produkt im Store, sondern ein
    Gespraech. Das darf in der App genannt, aber nicht mit Kaufknopf oder Link
    beworben werden - Apple untersagt das Vorbeileiten am In-App-Kauf. */
-export const UEBER_MAX_HINWEIS = "Mehr als 5.000 Zugänge? Sprich uns an.";
+export const UEBER_MAX_HINWEIS = "Mehr als 1.000 Zugänge? Sprich uns an.";
