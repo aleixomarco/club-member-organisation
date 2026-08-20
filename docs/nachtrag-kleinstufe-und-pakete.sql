@@ -1,7 +1,7 @@
 -- Nachtrag: kostenlose Kleinstufe und vier Zusatzpakete.
 --
 -- Aenderungen gegenueber der bisher eingespielten Fassung:
---   1. Ohne Abo gilt nicht mehr Grenze 0, sondern zehn kostenlose Zugaenge.
+--   1. Ohne Abo gilt nicht mehr Grenze 0, sondern drei kostenlose Zugaenge.
 --   2. Statt eines Pakets ueber 100 gibt es vier ueber 500 bis 2000.
 --   3. Zusatzpakete gelten nur zusammen mit dem Pro-Tarif.
 --
@@ -20,14 +20,14 @@ insert into public.subscription_plans (code, name, interval, price_cents) values
 on conflict (code) do update set
   name = excluded.name, price_cents = excluded.price_cents, active = true;
 
--- Kostenlose Kleinstufe: zehn Zugaenge ohne Abo.
+-- Kostenlose Kleinstufe: drei Zugaenge ohne Abo.
 create or replace function public.club_account_limit(target_club uuid)
 returns integer language sql stable security definer set search_path = '' as $$
   select case public.club_subscription_tier(target_club)
     when 'basic' then 100
     when 'plus'  then 350
     when 'pro'   then 1000
-    else 10
+    else 3
   end + public.club_account_addon(target_club);
 $$;
 

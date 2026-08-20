@@ -9,7 +9,7 @@
 --   Basic  bis 100 Zugänge
 --   Plus   bis 350 Zugänge
 --   Pro    bis 1000 Zugänge, erweiterbar um 500 bis 2000 weitere
---   Ohne Abo: zehn Zugänge kostenlos
+--   Ohne Abo: drei Zugänge kostenlos
 --
 -- Gezählt wird jedes selbst angemeldete Konto. Wer ohne eigenen Login
 -- eingetragen wird - ein Kind etwa, das der Vater anlegt - zählt nicht;
@@ -154,7 +154,7 @@ grant execute on function public.club_account_addon(uuid) to authenticated;
 
 -- Obergrenze: Grundstufe plus Paket.
 --
--- Ohne Abo gilt eine kostenlose Kleinstufe von zehn Zugängen. Ein kleiner
+-- Ohne Abo gilt eine kostenlose Kleinstufe von drei Zugängen. Ein kleiner
 -- Verein kann die App damit dauerhaft nutzen, ohne zu zahlen; wächst er
 -- darüber hinaus, wird daraus ein Angebot statt einer Mauer.
 create or replace function public.club_account_limit(target_club uuid)
@@ -163,7 +163,7 @@ returns integer language sql stable security definer set search_path = '' as $$
     when 'basic' then 100
     when 'plus'  then 350
     when 'pro'   then 1000
-    else 10
+    else 3
   end + public.club_account_addon(target_club);
 $$;
 

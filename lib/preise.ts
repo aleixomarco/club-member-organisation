@@ -61,7 +61,7 @@ export const CLUB_TIER_INFO = {
  * Zugaenge anlegen. Damit kann ein kleiner Verein die App dauerhaft nutzen,
  * ohne zu zahlen - und waechst er darueber hinaus, wird daraus ein Angebot
  * statt einer Mauer. */
-export const FREIE_ZUGAENGE = 10;
+export const FREIE_ZUGAENGE = 3;
 
 /* Zusatzpakete, buchbar nur zusaetzlich zum Pro-Tarif.
  *
