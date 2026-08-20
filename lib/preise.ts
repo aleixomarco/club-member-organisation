@@ -51,25 +51,31 @@ export const CLUB_TIER_INFO = {
     label: "Pro",
     accounts: 1000,
     accountLabel: "bis 1.000 Zugänge",
-    desc: "Für große Vereine. Alle Funktionen, bis zu 1.000 angemeldete Konten.",
+    desc: "Für große Vereine. Alle Funktionen, bis zu 1.000 Konten — erweiterbar.",
   },
 } as const;
 
-/* Ein einziges Zusatzpaket, buchbar oben auf den laufenden Tarif.
+/* Kostenlose Kleinstufe.
  *
- * Der Preis ist bewusst so gewählt, dass sich ein Aufstieg immer eher lohnt
- * als Dazubuchen. Die Aufpreise zwischen den Stufen liegen bei 25 € (Basic auf
- * Plus) und 50 € (Plus auf Pro); ein Paket für 49,99 € ist damit an jeder
- * Stelle das schlechtere Geschäft, solange es noch eine größere Stufe gibt.
+ * Ein Verein ohne Abo wird nicht ausgesperrt, sondern darf bis zu dieser Zahl
+ * Zugaenge anlegen. Damit kann ein kleiner Verein die App dauerhaft nutzen,
+ * ohne zu zahlen - und waechst er darueber hinaus, wird daraus ein Angebot
+ * statt einer Mauer. */
+export const FREIE_ZUGAENGE = 10;
+
+/* Zusatzpakete, buchbar nur zusaetzlich zum Pro-Tarif.
  *
- * Sinnvoll wird es erst oberhalb von Pro, wo kein Aufstieg mehr möglich ist.
- * Es lässt sich nicht mehrfach buchen - Apple erlaubt pro Abo-Gruppe nur ein
- * aktives Abonnement. Vereine über 1.100 Zugänge bekommen ein eigenes Angebot.
- */
-export const CLUB_ADDON = {
-  key: "addon_100",
-  extra: 100,
-  label: "Zusatzpaket",
-  price: "49,99 €",
-  desc: "100 weitere Zugänge, zusätzlich zum gebuchten Tarif.",
-} as const;
+ * Apple erlaubt pro Abo-Gruppe nur ein aktives Abonnement, und Mengenangaben
+ * gibt es bei Abos nicht. Mehrfach buchen ist deshalb unmoeglich. Stattdessen
+ * gibt es eine Leiter: Der Verein waehlt genau ein Paket und wechselt bei
+ * Bedarf auf ein groesseres - Apple rechnet den Rest anteilig an.
+ *
+ * Der Preis setzt die Kurve der Tarife fort: 0,10 EUR pro Konto wie bei Pro,
+ * und mit jedem groesseren Block etwas weniger. Das gibt einen Grund, gleich
+ * den groesseren zu nehmen statt spaeter nachzukaufen. */
+export const CLUB_ADDONS = [
+  { key: "addon_500",  extra: 500,  total: 1500, label: "+500",   price: "49,99 €" },
+  { key: "addon_1000", extra: 1000, total: 2000, label: "+1.000", price: "89,99 €" },
+  { key: "addon_1500", extra: 1500, total: 2500, label: "+1.500", price: "129,99 €" },
+  { key: "addon_2000", extra: 2000, total: 3000, label: "+2.000", price: "169,99 €" },
+] as const;

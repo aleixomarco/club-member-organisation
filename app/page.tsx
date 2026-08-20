@@ -15,7 +15,7 @@ import { enablePushNotifications, disablePushNotifications, listenForForegroundM
 import { Capacitor } from "@capacitor/core";
 import { nativePurchasesSupported, fetchTierOfferings, fetchAddonOfferings, purchasePackageAs, restorePurchasesAs, logOutRevenueCat } from "@/lib/revenuecat";
 import { legal } from "./legal-shell";
-import { CLUB_TIER_PRICES, CLUB_TIER_INFO, CLUB_TIERS, CLUB_ADDON } from "@/lib/preise";
+import { CLUB_TIER_PRICES, CLUB_TIER_INFO, CLUB_TIERS, CLUB_ADDONS } from "@/lib/preise";
 
 /* ------------------------------------------------------------------ */
 /* Tokens                                                              */
@@ -4223,8 +4223,8 @@ function SubscriptionPanel({ user }) {
     fetchAddonOfferings(user.clubId).then(setAddonOffering).catch(() => {});
   }, [isNative, user?.clubId]);
 
-  const buyAddonPackage = async () => {
-    const pkg = addonOffering?.["club_addon_100_monthly"] || Object.values(addonOffering || {})[0];
+  const buyAddonPackage = async (code) => {
+    const pkg = addonOffering?.[code];
     if (!pkg) { setMessage("Das Zusatzpaket ist im Store noch nicht verfügbar."); return; }
     setPurchasing(true); setMessage("");
     try {
@@ -4472,14 +4472,23 @@ function SubscriptionPanel({ user }) {
         {accountUsage.used} von {accountUsage.allowed} Zugängen belegt{accountUsage.used >= accountUsage.allowed ? " — für weitere Mitglieder braucht der Verein einen größeren Tarif." : "."}
       </div>}
 
-      {/* Zusatzpaket nur bei Pro: Darunter ist ein Aufstieg immer das bessere
-          Geschaeft, und genau so ist der Preis gerechnet. */}
+      {/* Zusatzpakete nur bei Pro: Darunter soll ein Verein aufsteigen, nicht
+          dazubuchen. Mehrfach buchen geht nicht - Apple erlaubt pro Abo-Gruppe
+          nur ein aktives Abonnement -, deshalb eine Leiter statt einer Menge. */}
       {clubStatus?.tier === "pro" && <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${C.edge}` }}>
-        <div className="text-[11px] font-bold mb-0.5" style={{ color: C.ink }}>{CLUB_ADDON.label}: {CLUB_ADDON.price} / Monat</div>
-        <div className="text-[10px] mb-2 leading-snug" style={{ color: C.textDim }}>{CLUB_ADDON.desc} Einmal buchbar. Für mehr melde dich bei uns.</div>
+        <div className="text-[11px] font-bold mb-0.5" style={{ color: C.ink }}>Weitere Zugänge dazubuchen</div>
+        <div className="text-[10px] mb-2 leading-snug" style={{ color: C.textDim }}>Immer nur ein Paket gleichzeitig. Auf ein größeres wechseln geht jederzeit.</div>
         {isNative
-          ? <button onClick={buyAddonPackage} disabled={purchasing} className="w-full py-2 rounded-xl text-[11px] font-bold" style={{ background: C.ink, color: C.white, opacity: purchasing ? .6 : 1 }}>{purchasing ? "Wird verarbeitet …" : "Zusatzpaket buchen"}</button>
-          : <div className="text-[10px] rounded-xl px-3 py-2" style={{ background: C.paperDim, color: C.textDim }}>Das Zusatzpaket lässt sich derzeit nur in der App buchen.</div>}
+          ? <div className="grid grid-cols-2 gap-1.5">
+              {CLUB_ADDONS.map((paket) => (
+                <button key={paket.key} onClick={() => buyAddonPackage(`club_${paket.key}_monthly`)} disabled={purchasing}
+                  className="py-2 px-2 rounded-xl text-[10px] font-bold text-left" style={{ background: C.paperDim, color: C.ink, opacity: purchasing ? .6 : 1 }}>
+                  <div>{paket.label} Zugänge</div>
+                  <div className="font-normal" style={{ color: C.textDim }}>{paket.price} · auf {paket.total}</div>
+                </button>
+              ))}
+            </div>
+          : <div className="text-[10px] rounded-xl px-3 py-2" style={{ background: C.paperDim, color: C.textDim }}>Zusatzpakete lassen sich derzeit nur in der App buchen.</div>}
       </div>}
     </div>}
 

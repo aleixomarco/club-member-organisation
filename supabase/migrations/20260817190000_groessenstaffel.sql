@@ -8,7 +8,8 @@
 --
 --   Basic  bis 100 Zugänge
 --   Plus   bis 350 Zugänge
---   Pro    bis 1000 Zugänge, erweiterbar um 100 weitere
+--   Pro    bis 1000 Zugänge, erweiterbar um 500 bis 2000 weitere
+--   Ohne Abo: zehn Zugänge kostenlos
 --
 -- Gezählt wird jedes selbst angemeldete Konto. Wer ohne eigenen Login
 -- eingetragen wird - ein Kind etwa, das der Vater anlegt - zählt nicht;
@@ -23,7 +24,10 @@ insert into public.subscription_plans (code, name, interval, price_cents) values
   ('club_plus_yearly',      'Plus – Jahresabo',               'year',  47999),
   ('club_pro_monthly',      'Pro – Monatsabo',                'month',  9999),
   ('club_pro_yearly',       'Pro – Jahresabo',                'year',  95999),
-  ('club_addon_100_monthly','Zusatzpaket – 100 weitere Zugänge', 'month', 4999)
+  ('club_addon_500_monthly', 'Zusatzpaket – 500 weitere Zugänge',   'month',  4999),
+  ('club_addon_1000_monthly','Zusatzpaket – 1000 weitere Zugänge',  'month',  8999),
+  ('club_addon_1500_monthly','Zusatzpaket – 1500 weitere Zugänge',  'month', 12999),
+  ('club_addon_2000_monthly','Zusatzpaket – 2000 weitere Zugänge',  'month', 16999)
 on conflict (code) do update set
   name = excluded.name,
   interval = excluded.interval,
@@ -109,14 +113,24 @@ $$;
 
 grant execute on function public.club_account_count(uuid) to authenticated;
 
--- Zusätzliche Zugänge aus einem gebuchten Paket. Es kann immer nur eines
--- aktiv sein - Apple erlaubt pro Abo-Gruppe genau ein Abonnement.
+-- Zusätzliche Zugänge aus einem gebuchten Paket.
+--
+-- Apple erlaubt pro Abo-Gruppe nur ein aktives Abonnement; mehrfach buchen ist
+-- deshalb unmöglich. Stattdessen gibt es eine Leiter aus vier Paketen, von der
+-- immer eines gilt - hier wird das größte genommen, falls durch einen Wechsel
+-- kurzzeitig zwei aktiv sind.
+--
+-- Zusatzpakete gelten NUR zusammen mit dem Pro-Tarif. Ein Basic- oder
+-- Plus-Verein soll aufsteigen, nicht dazubuchen.
 create or replace function public.club_account_addon(target_club uuid)
 returns integer language sql stable security definer set search_path = '' as $$
-  select coalesce(
+  select case when public.club_subscription_tier(target_club) <> 'pro' then 0 else coalesce(
     (
       select case p.code
-        when 'club_addon_100_monthly' then 100
+        when 'club_addon_500_monthly'  then 500
+        when 'club_addon_1000_monthly' then 1000
+        when 'club_addon_1500_monthly' then 1500
+        when 'club_addon_2000_monthly' then 2000
       end
       from public.club_subscriptions s
       join public.subscription_plans p on p.id = s.plan_id
@@ -124,23 +138,32 @@ returns integer language sql stable security definer set search_path = '' as $$
         and s.status = 'active'
         and (s.current_period_end is null or s.current_period_end > now())
         and p.code like 'club_addon_%'
+      order by case p.code
+        when 'club_addon_2000_monthly' then 0
+        when 'club_addon_1500_monthly' then 1
+        when 'club_addon_1000_monthly' then 2
+        else 3
+      end
       limit 1
     ),
     0
-  );
+  ) end;
 $$;
 
 grant execute on function public.club_account_addon(uuid) to authenticated;
 
--- Obergrenze: Grundstufe plus Paket. Ohne Abo wächst kein Verein mehr -
--- bestehende Konten bleiben nutzbar, neue kommen nicht hinzu.
+-- Obergrenze: Grundstufe plus Paket.
+--
+-- Ohne Abo gilt eine kostenlose Kleinstufe von zehn Zugängen. Ein kleiner
+-- Verein kann die App damit dauerhaft nutzen, ohne zu zahlen; wächst er
+-- darüber hinaus, wird daraus ein Angebot statt einer Mauer.
 create or replace function public.club_account_limit(target_club uuid)
 returns integer language sql stable security definer set search_path = '' as $$
   select case public.club_subscription_tier(target_club)
     when 'basic' then 100
     when 'plus'  then 350
     when 'pro'   then 1000
-    else 0
+    else 10
   end + public.club_account_addon(target_club);
 $$;
 
