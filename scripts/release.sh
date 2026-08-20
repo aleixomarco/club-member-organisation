@@ -8,8 +8,8 @@
 #   - Das PROD-SQL ist eingespielt
 #
 # Aufruf:
-#   scripts/release-1.1.sh            mergen, bauen, archivieren
-#   scripts/release-1.1.sh --upload   zusaetzlich hochladen
+#   scripts/release.sh            mergen, bauen, archivieren
+#   scripts/release.sh --upload   zusaetzlich hochladen
 #
 # Zum Hochladen braucht es einen App-Store-Connect-API-Schluessel:
 #   export ASC_KEY_ID=XXXXXXXXXX
@@ -19,8 +19,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-ARCHIV=/tmp/claude-501/cmo-1.1.xcarchive
-EXPORT=/tmp/claude-501/cmo-1.1-export
+ARCHIV=/tmp/claude-501/cmo-build2.xcarchive
+EXPORT=/tmp/claude-501/cmo-build2-export
 
 echo "-- 1/5  Arbeitsverzeichnis pruefen"
 test -z "$(git status --porcelain)" || { echo "FEHLER: nicht festgeschriebene Aenderungen"; exit 1; }

@@ -147,7 +147,7 @@ Dauert etwa zwanzig Minuten, davon merkst du nichts.
 
 # TEIL 5 — Einreichen
 
-App Store Connect → deine App → **+ Version** → `1.1`
+App Store Connect → deine App → die bestehende Version **1.0** bearbeiten
 
 | Feld | Inhalt |
 |---|---|
