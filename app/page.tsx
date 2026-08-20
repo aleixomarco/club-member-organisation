@@ -13,9 +13,9 @@ import {
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { enablePushNotifications, disablePushNotifications, listenForForegroundMessages } from "@/lib/firebase-push";
 import { Capacitor } from "@capacitor/core";
-import { nativePurchasesSupported, fetchTierOfferings, fetchAddonOfferings, purchasePackageAs, restorePurchasesAs, logOutRevenueCat } from "@/lib/revenuecat";
+import { nativePurchasesSupported, fetchTierOfferings, purchasePackageAs, restorePurchasesAs, logOutRevenueCat } from "@/lib/revenuecat";
 import { legal } from "./legal-shell";
-import { CLUB_TIER_PRICES, CLUB_TIER_INFO, CLUB_TIERS, CLUB_ADDONS } from "@/lib/preise";
+import { CLUB_TIER_PRICES, CLUB_TIER_INFO, CLUB_TIERS, UEBER_MAX_HINWEIS } from "@/lib/preise";
 
 /* ------------------------------------------------------------------ */
 /* Tokens                                                              */
@@ -4214,30 +4214,6 @@ function SubscriptionPanel({ user }) {
     }
   };
 
-  /* Zusatzpaket: 100 weitere Zugaenge oben auf den laufenden Tarif. Es liegt
-     in einer eigenen Abo-Gruppe, weil Apple pro Gruppe nur ein aktives
-     Abonnement erlaubt - deshalb laesst es sich auch nicht mehrfach buchen. */
-  const [addonOffering, setAddonOffering] = useState<any>(null);
-  useEffect(() => {
-    if (!isNative || !isDbId(user?.clubId)) return;
-    fetchAddonOfferings(user.clubId).then(setAddonOffering).catch(() => {});
-  }, [isNative, user?.clubId]);
-
-  const buyAddonPackage = async (code) => {
-    const pkg = addonOffering?.[code];
-    if (!pkg) { setMessage("Das Zusatzpaket ist im Store noch nicht verfügbar."); return; }
-    setPurchasing(true); setMessage("");
-    try {
-      await purchasePackageAs(user.clubId, pkg);
-      setMessage("Zusatzpaket gebucht. Die Freischaltung kann kurz dauern.");
-      setTimeout(refreshClubStatus, 2500);
-    } catch (error) {
-      if (!error?.userCancelled) setMessage(error?.message || "Das Zusatzpaket konnte nicht gebucht werden.");
-    } finally {
-      setPurchasing(false);
-    }
-  };
-
   const restorePurchases = async () => {
     setPurchasing(true); setMessage("");
     try {
@@ -4472,24 +4448,7 @@ function SubscriptionPanel({ user }) {
         {accountUsage.used} von {accountUsage.allowed} Zugängen belegt{accountUsage.used >= accountUsage.allowed ? " — für weitere Mitglieder braucht der Verein einen größeren Tarif." : "."}
       </div>}
 
-      {/* Zusatzpakete nur bei Pro: Darunter soll ein Verein aufsteigen, nicht
-          dazubuchen. Mehrfach buchen geht nicht - Apple erlaubt pro Abo-Gruppe
-          nur ein aktives Abonnement -, deshalb eine Leiter statt einer Menge. */}
-      {clubStatus?.tier === "pro" && <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${C.edge}` }}>
-        <div className="text-[11px] font-bold mb-0.5" style={{ color: C.ink }}>Weitere Zugänge dazubuchen</div>
-        <div className="text-[10px] mb-2 leading-snug" style={{ color: C.textDim }}>Immer nur ein Paket gleichzeitig. Auf ein größeres wechseln geht jederzeit.</div>
-        {isNative
-          ? <div className="grid grid-cols-2 gap-1.5">
-              {CLUB_ADDONS.map((paket) => (
-                <button key={paket.key} onClick={() => buyAddonPackage(`club_${paket.key}_monthly`)} disabled={purchasing}
-                  className="py-2 px-2 rounded-xl text-[10px] font-bold text-left" style={{ background: C.paperDim, color: C.ink, opacity: purchasing ? .6 : 1 }}>
-                  <div>{paket.label} Zugänge</div>
-                  <div className="font-normal" style={{ color: C.textDim }}>{paket.price} · auf {paket.total}</div>
-                </button>
-              ))}
-            </div>
-          : <div className="text-[10px] rounded-xl px-3 py-2" style={{ background: C.paperDim, color: C.textDim }}>Zusatzpakete lassen sich derzeit nur in der App buchen.</div>}
-      </div>}
+      {clubStatus?.tier === "max" && <div className="text-[10px] mt-1.5" style={{ color: C.textDim }}>{UEBER_MAX_HINWEIS}</div>}
     </div>}
 
     {/* Tarifübersicht — bewusst auch ohne Kaufrecht sichtbar. Wer den Verein
@@ -6292,7 +6251,7 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
     if (statusError) {
       const grenzeErreicht = `${statusError.message}${statusError.details || ""}`.includes("club_account_limit_reached");
       setMessage(grenzeErreicht
-        ? "Der Tarif deines Vereins ist ausgeschöpft. Buche einen größeren Tarif oder ein Zusatzpaket unter Profil, Einstellungen, Abo & Empfehlungen — danach lässt sich die Mitgliedschaft freigeben."
+        ? "Der Tarif deines Vereins ist ausgeschöpft. Wähle unter Profil, Einstellungen, Abo &amp; Empfehlungen einen größeren Tarif — danach lässt sich die Mitgliedschaft freigeben."
         : "Die Entscheidung konnte nicht gespeichert werden.");
       setWorkingId(null); return;
     }

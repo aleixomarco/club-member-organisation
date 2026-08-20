@@ -15,11 +15,15 @@
  */
 
 export type Abrechnung = "monthly" | "yearly";
-export type Vereinstarif = "basic" | "plus" | "pro";
+export type Vereinstarif = "basic" | "plus" | "pro" | "max";
 
-export const CLUB_TIERS: Vereinstarif[] = ["basic", "plus", "pro"];
+export const CLUB_TIERS: Vereinstarif[] = ["basic", "plus", "pro", "max"];
 
-export const CLUB_TIER_PRICES = {
+/* Als Record statt "as const": Die Oberflaeche greift mit einer Variablen zu
+   (CLUB_TIER_PRICES[tier]), und ein Literal-Objekt laesst das nicht zu. */
+type Preisangabe = { monthly: { price: string }; yearly: { price: string; equivalent: string } };
+
+export const CLUB_TIER_PRICES: Record<string, Preisangabe> = {
   basic: {
     monthly: { price: "24,99 €" },
     yearly: { price: "239,99 €", equivalent: "19,99 € / Monat" },
@@ -32,9 +36,15 @@ export const CLUB_TIER_PRICES = {
     monthly: { price: "99,99 €" },
     yearly: { price: "959,99 €", equivalent: "79,99 € / Monat" },
   },
-} as const;
+  max: {
+    monthly: { price: "249,99 €" },
+    yearly: { price: "2.399,99 €", equivalent: "199,99 € / Monat" },
+  },
+};
 
-export const CLUB_TIER_INFO = {
+type Tarifangabe = { label: string; accounts: number; accountLabel: string; desc: string };
+
+export const CLUB_TIER_INFO: Record<string, Tarifangabe> = {
   basic: {
     label: "Basic",
     accounts: 100,
@@ -51,9 +61,15 @@ export const CLUB_TIER_INFO = {
     label: "Pro",
     accounts: 1000,
     accountLabel: "bis 1.000 Zugänge",
-    desc: "Für große Vereine. Alle Funktionen, bis zu 1.000 Konten — erweiterbar.",
+    desc: "Für große Vereine. Alle Funktionen, bis zu 1.000 angemeldete Konten.",
   },
-} as const;
+  max: {
+    label: "Max",
+    accounts: 5000,
+    accountLabel: "bis 5.000 Zugänge",
+    desc: "Für sehr große Vereine. Alle Funktionen, bis zu 5.000 angemeldete Konten.",
+  },
+};
 
 /* Kostenlose Kleinstufe.
  *
@@ -63,19 +79,7 @@ export const CLUB_TIER_INFO = {
  * statt einer Mauer. */
 export const FREIE_ZUGAENGE = 3;
 
-/* Zusatzpakete, buchbar nur zusaetzlich zum Pro-Tarif.
- *
- * Apple erlaubt pro Abo-Gruppe nur ein aktives Abonnement, und Mengenangaben
- * gibt es bei Abos nicht. Mehrfach buchen ist deshalb unmoeglich. Stattdessen
- * gibt es eine Leiter: Der Verein waehlt genau ein Paket und wechselt bei
- * Bedarf auf ein groesseres - Apple rechnet den Rest anteilig an.
- *
- * Der Preis setzt die Kurve der Tarife fort: 0,10 EUR pro Konto wie bei Pro,
- * und mit jedem groesseren Block etwas weniger. Das gibt einen Grund, gleich
- * den groesseren zu nehmen statt spaeter nachzukaufen. */
-export const CLUB_ADDONS = [
-  { key: "addon_500",  extra: 500,  total: 1500, label: "+500",   price: "49,99 €" },
-  { key: "addon_1000", extra: 1000, total: 2000, label: "+1.000", price: "89,99 €" },
-  { key: "addon_1500", extra: 1500, total: 2500, label: "+1.500", price: "129,99 €" },
-  { key: "addon_2000", extra: 2000, total: 3000, label: "+2.000", price: "169,99 €" },
-] as const;
+/* Ueber 5000 Zugaenge hinaus gibt es kein Produkt im Store, sondern ein
+   Gespraech. Das darf in der App genannt, aber nicht mit Kaufknopf oder Link
+   beworben werden - Apple untersagt das Vorbeileiten am In-App-Kauf. */
+export const UEBER_MAX_HINWEIS = "Mehr als 5.000 Zugänge? Sprich uns an.";

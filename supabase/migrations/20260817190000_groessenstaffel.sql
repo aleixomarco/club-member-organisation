@@ -8,7 +8,8 @@
 --
 --   Basic  bis 100 Zugänge
 --   Plus   bis 350 Zugänge
---   Pro    bis 1000 Zugänge, erweiterbar um 500 bis 2000 weitere
+--   Pro    bis 1000 Zugänge
+--   Max    bis 5000 Zugänge, darüber auf Anfrage
 --   Ohne Abo: drei Zugänge kostenlos
 --
 -- Gezählt wird jedes selbst angemeldete Konto. Wer ohne eigenen Login
@@ -18,16 +19,14 @@
 -- ---------------------------------------------------------------- Tarife
 
 insert into public.subscription_plans (code, name, interval, price_cents) values
-  ('club_basic_monthly',    'Basic – Monatsabo',              'month',  2499),
-  ('club_basic_yearly',     'Basic – Jahresabo',              'year',  23999),
-  ('club_plus_monthly',     'Plus – Monatsabo',               'month',  4999),
-  ('club_plus_yearly',      'Plus – Jahresabo',               'year',  47999),
-  ('club_pro_monthly',      'Pro – Monatsabo',                'month',  9999),
-  ('club_pro_yearly',       'Pro – Jahresabo',                'year',  95999),
-  ('club_addon_500_monthly', 'Zusatzpaket – 500 weitere Zugänge',   'month',  4999),
-  ('club_addon_1000_monthly','Zusatzpaket – 1000 weitere Zugänge',  'month',  8999),
-  ('club_addon_1500_monthly','Zusatzpaket – 1500 weitere Zugänge',  'month', 12999),
-  ('club_addon_2000_monthly','Zusatzpaket – 2000 weitere Zugänge',  'month', 16999)
+  ('club_basic_monthly', 'Basic – Monatsabo', 'month',   2499),
+  ('club_basic_yearly',  'Basic – Jahresabo', 'year',   23999),
+  ('club_plus_monthly',  'Plus – Monatsabo',  'month',   4999),
+  ('club_plus_yearly',   'Plus – Jahresabo',  'year',   47999),
+  ('club_pro_monthly',   'Pro – Monatsabo',   'month',   9999),
+  ('club_pro_yearly',    'Pro – Jahresabo',   'year',   95999),
+  ('club_max_monthly',   'Max – Monatsabo',   'month',  24999),
+  ('club_max_yearly',    'Max – Jahresabo',   'year',  239999)
 on conflict (code) do update set
   name = excluded.name,
   interval = excluded.interval,
@@ -38,7 +37,8 @@ on conflict (code) do update set
 -- Produktion noch Zeilen in user_subscriptions gehören, und ein Fremdschlüssel
 -- verweist darauf. Sie werden nur stillgelegt.
 update public.subscription_plans set active = false
-where code in ('member_monthly', 'member_yearly', 'club_monthly', 'club_yearly');
+where code in ('member_monthly', 'member_yearly', 'club_monthly', 'club_yearly')
+   or code like 'club_addon_%';
 
 -- ------------------------------------------------------- Effektiver Tarif
 
@@ -50,6 +50,7 @@ returns text language sql stable security definer set search_path = '' as $$
   select coalesce(
     (
       select case
+        when p.code like 'club_max_%'     then 'max'
         when p.code like 'club_pro_%'     then 'pro'
         when p.code like 'club_premium_%' then 'plus'
         when p.code like 'club_plus_%'    then 'plus'
@@ -61,18 +62,18 @@ returns text language sql stable security definer set search_path = '' as $$
       where s.club_id = target_club
         and s.status = 'active'
         and (s.current_period_end is null or s.current_period_end > now())
-        and p.code not like 'club_addon_%'
       order by case
-        when p.code like 'club_pro_%'     then 0
-        when p.code like 'club_premium_%' then 1
-        when p.code like 'club_plus_%'    then 1
-        else 2
+        when p.code like 'club_max_%'     then 0
+        when p.code like 'club_pro_%'     then 1
+        when p.code like 'club_premium_%' then 2
+        when p.code like 'club_plus_%'    then 2
+        else 3
       end
       limit 1
     ),
     -- Während des Testzeitraums gilt die höchste Stufe.
     (
-      select 'pro'
+      select 'max'
       from public.clubs c
       where c.id = target_club and c.created_at + public.trial_period() > now()
     ),
@@ -113,45 +114,6 @@ $$;
 
 grant execute on function public.club_account_count(uuid) to authenticated;
 
--- Zusätzliche Zugänge aus einem gebuchten Paket.
---
--- Apple erlaubt pro Abo-Gruppe nur ein aktives Abonnement; mehrfach buchen ist
--- deshalb unmöglich. Stattdessen gibt es eine Leiter aus vier Paketen, von der
--- immer eines gilt - hier wird das größte genommen, falls durch einen Wechsel
--- kurzzeitig zwei aktiv sind.
---
--- Zusatzpakete gelten NUR zusammen mit dem Pro-Tarif. Ein Basic- oder
--- Plus-Verein soll aufsteigen, nicht dazubuchen.
-create or replace function public.club_account_addon(target_club uuid)
-returns integer language sql stable security definer set search_path = '' as $$
-  select case when public.club_subscription_tier(target_club) <> 'pro' then 0 else coalesce(
-    (
-      select case p.code
-        when 'club_addon_500_monthly'  then 500
-        when 'club_addon_1000_monthly' then 1000
-        when 'club_addon_1500_monthly' then 1500
-        when 'club_addon_2000_monthly' then 2000
-      end
-      from public.club_subscriptions s
-      join public.subscription_plans p on p.id = s.plan_id
-      where s.club_id = target_club
-        and s.status = 'active'
-        and (s.current_period_end is null or s.current_period_end > now())
-        and p.code like 'club_addon_%'
-      order by case p.code
-        when 'club_addon_2000_monthly' then 0
-        when 'club_addon_1500_monthly' then 1
-        when 'club_addon_1000_monthly' then 2
-        else 3
-      end
-      limit 1
-    ),
-    0
-  ) end;
-$$;
-
-grant execute on function public.club_account_addon(uuid) to authenticated;
-
 -- Obergrenze: Grundstufe plus Paket.
 --
 -- Ohne Abo gilt eine kostenlose Kleinstufe von drei Zugängen. Ein kleiner
@@ -163,8 +125,9 @@ returns integer language sql stable security definer set search_path = '' as $$
     when 'basic' then 100
     when 'plus'  then 350
     when 'pro'   then 1000
+    when 'max'   then 5000
     else 3
-  end + public.club_account_addon(target_club);
+  end;
 $$;
 
 grant execute on function public.club_account_limit(uuid) to authenticated;
@@ -215,7 +178,7 @@ begin
   if belegt >= grenze then
     raise exception 'club_account_limit_reached'
       using detail = format('%s von %s Zugängen belegt', belegt, grenze),
-            hint = 'Der Verein braucht einen größeren Tarif oder ein Zusatzpaket.';
+            hint = 'Der Verein braucht einen größeren Tarif.';
   end if;
 
   return new;

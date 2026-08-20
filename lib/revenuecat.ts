@@ -14,8 +14,8 @@ import { Purchases, LOG_LEVEL, type PurchasesPackage } from "@revenuecat/purchas
 //   - Die Produkt-IDs in App Store Connect / Play Console müssen exakt den
 //     subscription_plans.code-Werten in Supabase entsprechen:
 //     club_basic_monthly, club_basic_yearly, club_plus_monthly,
-//     club_plus_yearly, club_pro_monthly, club_pro_yearly sowie die
-//     Zusatzpakete club_addon_100/250/500_monthly.
+//     club_plus_yearly, club_pro_monthly, club_pro_yearly, club_max_monthly
+//     und club_max_yearly.
 //
 // Der Freischalt-Status kommt NICHT von hier, sondern aus Supabase
 // (club_subscription_tier() bzw. member_has_access()). RevenueCats Webhook
@@ -89,7 +89,7 @@ export async function logOutRevenueCat() {
 
 type Paketpaar = { monthly: PurchasesPackage | null; yearly: PurchasesPackage | null };
 
-export type ClubTierOfferings = { basic: Paketpaar; plus: Paketpaar; pro: Paketpaar };
+export type ClubTierOfferings = { basic: Paketpaar; plus: Paketpaar; pro: Paketpaar; max: Paketpaar };
 
 /* Die drei Vereinstarife liegen in RevenueCat als Offerings "basic", "plus"
    und "pro". Sie unterscheiden sich nur in der Zahl der erlaubten Zugaenge,
@@ -103,22 +103,7 @@ export async function fetchTierOfferings(clubId: string): Promise<ClubTierOfferi
     const angebot = offerings.all[name] || null;
     return { monthly: angebot?.monthly || null, yearly: angebot?.annual || null };
   };
-  return { basic: paar("basic"), plus: paar("plus"), pro: paar("pro") };
-}
-
-/* Zusatzpakete zum Pro-Tarif. Sie liegen in einer eigenen Abo-Gruppe, weil
-   Apple pro Gruppe nur ein aktives Abonnement erlaubt - genau deshalb lassen
-   sie sich auch nicht stapeln. */
-export type ClubAddonOfferings = Record<string, PurchasesPackage | null>;
-
-export async function fetchAddonOfferings(clubId: string): Promise<ClubAddonOfferings | null> {
-  const ready = await ensureRevenueCatConfigured(clubId);
-  if (!ready) return null;
-  const offerings = await Purchases.getOfferings();
-  const angebot = offerings.all["addon"] || null;
-  const pakete: ClubAddonOfferings = {};
-  for (const q of angebot?.availablePackages || []) pakete[q.product.identifier] = q;
-  return pakete;
+  return { basic: paar("basic"), plus: paar("plus"), pro: paar("pro"), max: paar("max") };
 }
 
 const NOT_AVAILABLE = "In-App-Käufe stehen auf diesem Gerät nicht zur Verfügung.";
