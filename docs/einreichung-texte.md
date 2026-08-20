@@ -1,45 +1,71 @@
-# Texte für die Einreichung 1.1
+# Texte für die Einreichung
+
+Stand: nur der Tarif Basic wird angeboten. Plus und Pro sind in der App
+ausgeblendet (KAUFBARE_TARIFE in lib/preise.ts), weil die Produkte im App
+Store noch nicht angelegt sind.
+
+---
 
 ## Was ist neu in dieser Version
 
 ```
 Die App ist für Mitglieder jetzt kostenlos. Den Zugang bezahlt der Verein.
 
-Neue Vereinstarife nach Größe: Basic bis 100, Plus bis 350 und Pro bis
-1.000 Zugänge. Alle Tarife enthalten denselben Funktionsumfang. Kleine
-Vereine können die App mit bis zu drei Zugängen dauerhaft kostenlos nutzen.
+Der Vereinstarif richtet sich nach der Zahl der angemeldeten Zugänge. Ohne
+Abonnement stehen dauerhaft drei Zugänge kostenlos zur Verfügung.
 ```
 
-## Hinweise für die Prüfung (App Review Information → Notes)
+---
+
+## Prüfhinweise (App-Prüfungsinformationen → Hinweise)
 
 ```
-Anmeldung mit dem beigefügten Demo-Konto. Der Verein dieses Kontos hat ein
-freigeschaltetes Abonnement, damit alle Funktionen sichtbar sind.
+Anmeldung
+Die App erfordert ein Konto. Bitte die unten hinterlegten Zugangsdaten
+verwenden. Nach der Anmeldung ist der Verein bereits ausgewählt.
 
-Die sechs Abonnements dieser Version sind Vereinstarife. Sie werden vom
-Verein abgeschlossen, nicht vom einzelnen Mitglied, und unterscheiden sich
-ausschliesslich in der Zahl der Zugaenge, nicht im Funktionsumfang.
+Wo die Abonnements zu finden sind
+Profil (unten rechts) → Einstellungen → Abo & Empfehlungen.
 
-Zu finden sind sie in der App unter: Profil -> Einstellungen -> Abo &
-Empfehlungen. Sichtbar ist der Kaufbereich nur fuer Mitglieder mit der Rolle
-Vorstand, Vereinsadmin oder Geschaeftsfuehrung - das Demo-Konto hat diese
-Rolle.
+Der Kaufbereich ist nur für Mitglieder mit der Rolle Vorstand, Vereinsadmin
+oder Geschäftsführung sichtbar, weil ein Abonnement den Verein als Ganzes
+betrifft und nicht das einzelne Mitglied. Der hinterlegte Demo-Zugang hat
+diese Rolle. Mitglieder ohne sie sehen dort den Hinweis, dass ihr Zugang vom
+Verein bezahlt wird.
 
-Mitglieder ohne diese Rolle sehen dort nur den Hinweis, dass ihr Zugang vom
-Verein bezahlt wird. Das ist beabsichtigt: Ein persoenliches Abonnement gibt
-es in dieser Version nicht mehr.
+Was angeboten wird
+Ein Vereinstarif, monatlich oder jährlich:
+Basic – bis 100 angemeldete Zugänge – 24,99 EUR pro Monat oder 239,99 EUR
+pro Jahr.
 
-Die Nutzungsbedingungen mit allen Preisen sind in der App unter Profil ->
-Rechtliches erreichbar und unter:
+Mitglieder zahlen nichts. Ein persönliches Abonnement gibt es nicht mehr;
+die früheren Produkte wurden aus dem Verkauf genommen.
+
+Nutzungsbedingungen und Datenschutz
+Beide sind in der App verlinkt (Profil → Einstellungen) und stehen zusätzlich
+in der App-Beschreibung:
 https://club-member-organisation.vercel.app/nutzungsbedingungen
+https://club-member-organisation.vercel.app/datenschutz
+
+Kostenloser Testzeitraum
+Neu angelegte Vereine können die App vierzehn Tage in vollem Umfang nutzen.
+Das ist keine Funktion des Abonnements, sondern der App selbst.
 ```
 
-## Wichtig vor dem Einreichen
+---
 
-Die sechs Abonnements muessen der Version **beigefuegt** werden - in der
-Versionsansicht unter "In-App-Kaeufe" auswaehlen. Sonst prueft Apple die App
-ohne die Produkte, und der Kaufbereich zeigt dem Pruefer "Dieses Paket ist im
-Store noch nicht verfuegbar" - ein sicherer Ablehnungsgrund.
+## Demo-Zugang
 
-Ebenso muss das Demo-Konto zu diesem Zeitpunkt in PROD ein aktives Abo haben,
-sonst sieht der Pruefer gesperrte Funktionen.
+Trage unter *App-Prüfungsinformationen* Benutzername und Passwort eines
+Kontos ein, das
+
+1. angemeldet werden kann,
+2. in einem Verein die Rolle Vorstand, Vereinsadmin oder Geschäftsführung hat,
+3. in PROD existiert, nicht nur in der Testdatenbank.
+
+Ohne funktionierenden Zugang lehnt Apple ab, ohne die App gesehen zu haben -
+das ist die häufigste Ablehnung überhaupt.
+
+Prüfe den Zugang vorher selbst: abmelden, mit genau diesen Daten anmelden,
+und schauen, ob unter Profil → Einstellungen → Abo & Empfehlungen der
+Kaufbereich erscheint.
