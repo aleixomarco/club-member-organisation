@@ -1,5 +1,5 @@
 import { LegalShell, legal } from "../legal-shell";
-import { CLUB_TIER_PRICES, CLUB_TIER_INFO, FREIE_ZUGAENGE } from "@/lib/preise";
+import { CLUB_TIER_PRICES, CLUB_TIER_INFO, KAUFBARE_TARIFE, FREIE_ZUGAENGE } from "@/lib/preise";
 export const metadata = { title: "Nutzungsbedingungen | Club Member Organisation" };
 export default function TermsPage() { return <LegalShell title="Nutzungsbedingungen">
   <p>Diese Bedingungen gelten für die Nutzung der Club Member Organisation durch registrierte Vereinsmitglieder. Vertragspartner ist {legal.name}, vertreten durch {legal.representative}.</p>
@@ -12,13 +12,13 @@ export default function TermsPage() { return <LegalShell title="Nutzungsbedingun
 
   <h2>Abonnement für Vereine</h2>
   <p>Der Verein zahlt nach der Zahl der Zugänge. Als Zugang zählt jedes selbst angemeldete Konto. Wer ohne eigenen Zugang eingetragen wird — etwa ein Kind, das ein Elternteil anlegt —, zählt nicht mit. Alle Tarife enthalten denselben Funktionsumfang; sie unterscheiden sich ausschließlich in der Zahl der Zugänge.</p>
-  <p><strong>{CLUB_TIER_INFO.basic.label}</strong> ({CLUB_TIER_INFO.basic.accountLabel}): {CLUB_TIER_PRICES.basic.monthly.price} pro Monat oder {CLUB_TIER_PRICES.basic.yearly.price} für zwölf Monate im Voraus ({CLUB_TIER_PRICES.basic.yearly.equivalent}).</p>
-  <p><strong>{CLUB_TIER_INFO.plus.label}</strong> ({CLUB_TIER_INFO.plus.accountLabel}): {CLUB_TIER_PRICES.plus.monthly.price} pro Monat oder {CLUB_TIER_PRICES.plus.yearly.price} für zwölf Monate im Voraus ({CLUB_TIER_PRICES.plus.yearly.equivalent}).</p>
-  <p><strong>{CLUB_TIER_INFO.pro.label}</strong> ({CLUB_TIER_INFO.pro.accountLabel}): {CLUB_TIER_PRICES.pro.monthly.price} pro Monat oder {CLUB_TIER_PRICES.pro.yearly.price} für zwölf Monate im Voraus ({CLUB_TIER_PRICES.pro.yearly.equivalent}).</p>
+  {KAUFBARE_TARIFE.map((t) => (
+    <p key={t}><strong>{CLUB_TIER_INFO[t].label}</strong> ({CLUB_TIER_INFO[t].accountLabel}): {CLUB_TIER_PRICES[t].monthly.price} pro Monat oder {CLUB_TIER_PRICES[t].yearly.price} für zwölf Monate im Voraus ({CLUB_TIER_PRICES[t].yearly.equivalent}).</p>
+  ))}
   <p>Alle Preise verstehen sich inklusive der gesetzlichen Umsatzsteuer. Abonnements verlängern sich automatisch um den jeweils gebuchten Zeitraum zum dann geltenden Preis, sofern nicht rechtzeitig gekündigt wird. Abschließen und kündigen können nur Mitglieder mit der Rolle Vorstand, Vereinsadmin oder Geschäftsführung.</p>
 
-  <h2>Mehr als {CLUB_TIER_INFO.pro.accounts} Zugänge</h2>
-  <p>Vereine, die mehr Zugänge benötigen, als der größte Tarif umfasst, erhalten auf Anfrage ein individuelles Angebot.</p>
+  <h2>Mehr Zugänge</h2>
+  <p>Vereine, die mehr Zugänge benötigen, als der größte angebotene Tarif umfasst, erhalten auf Anfrage ein individuelles Angebot.</p>
 
   <h2>Kostenlose Nutzung für kleine Vereine</h2>
   <p>Ohne Abonnement stehen dauerhaft {FREIE_ZUGAENGE} Zugänge zur Verfügung. Vereine bis zu dieser Größe können die App kostenlos und mit vollem Funktionsumfang nutzen.</p>

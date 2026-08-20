@@ -15,7 +15,7 @@ import { enablePushNotifications, disablePushNotifications, listenForForegroundM
 import { Capacitor } from "@capacitor/core";
 import { nativePurchasesSupported, fetchTierOfferings, purchasePackageAs, restorePurchasesAs, logOutRevenueCat } from "@/lib/revenuecat";
 import { legal } from "./legal-shell";
-import { CLUB_TIER_PRICES, CLUB_TIER_INFO, CLUB_TIERS, UEBER_MAX_HINWEIS } from "@/lib/preise";
+import { CLUB_TIER_PRICES, CLUB_TIER_INFO, KAUFBARE_TARIFE, UEBER_MAX_HINWEIS } from "@/lib/preise";
 
 /* ------------------------------------------------------------------ */
 /* Tokens                                                              */
@@ -4116,7 +4116,7 @@ function SubscriptionRecord({ subscription, accountLabel, onCancel, cancelling }
 
 function SubscriptionPanel({ user }) {
   const [config, setConfig] = useState(null);
-  const [tier, setTier] = useState("plus");
+  const [tier, setTier] = useState("basic");
   const [cycle, setCycle] = useState("monthly");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
@@ -4460,7 +4460,7 @@ function SubscriptionPanel({ user }) {
         welcher Tarif läuft und was die Alternative kostet, ohne ihn ändern zu dürfen. */}
     <SectionTitle eyebrow="Tarife" title="Modelle im Überblick" />
     <div className="space-y-2.5 mb-6">
-      {CLUB_TIERS.map((key) => {
+      {KAUFBARE_TARIFE.map((key) => {
         const aktiv = clubStatus?.tier === key;
         return (
           <div key={key} className="rounded-2xl p-4" style={{ background: C.glass, border: `1px solid ${aktiv ? C.green : C.edge}`, boxShadow: aktiv ? `0 0 0 2px color-mix(in srgb, ${C.green} 28%, transparent)` : "0 10px 26px rgba(60,30,45,0.06)" }}>
@@ -4493,7 +4493,7 @@ function SubscriptionPanel({ user }) {
     <div className="flex items-center gap-2 mb-1"><Euro size={16} style={{ color: C.red }} /><div className="text-sm font-bold" style={{ color: C.ink }}>Abonnement</div></div>
     <div className="text-[11px] mb-3" style={{ color: C.textDim }}>{isNative ? `Sicher über ${Capacitor.getPlatform() === "ios" ? "den App Store" : "Google Play"} bezahlen.` : "Sicher über PayPal bezahlen."} Alle Abos verlängern sich automatisch bis zur Kündigung.</div>
     <div className="grid grid-cols-2 gap-2 mb-2">
-      {CLUB_TIERS.map((value) => [value, CLUB_TIER_INFO[value].label]).map(([value, label]) => <button key={value} onClick={() => { setTier(value); setMessage(""); setWithdrawalConsent(false); }} className="py-2 rounded-xl text-xs font-bold" style={{ background: tier === value ? C.ink : C.paperDim, color: tier === value ? C.white : C.textDim }}>{label}</button>)}
+      {KAUFBARE_TARIFE.map((value) => [value, CLUB_TIER_INFO[value].label]).map(([value, label]) => <button key={value} onClick={() => { setTier(value); setMessage(""); setWithdrawalConsent(false); }} className="py-2 rounded-xl text-xs font-bold" style={{ background: tier === value ? C.ink : C.paperDim, color: tier === value ? C.white : C.textDim }}>{label}</button>)}
     </div>
     <div className="text-[11px] mb-3" style={{ color: C.textDim }}>{CLUB_TIER_INFO[tier].desc}</div>
     <div className="grid grid-cols-2 gap-2 mb-3">
@@ -6255,7 +6255,7 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
     if (statusError) {
       const grenzeErreicht = `${statusError.message}${statusError.details || ""}`.includes("club_account_limit_reached");
       setMessage(grenzeErreicht
-        ? "Der Tarif deines Vereins ist ausgeschöpft. Wähle unter Profil, Einstellungen, Abo &amp; Empfehlungen einen größeren Tarif — danach lässt sich die Mitgliedschaft freigeben."
+        ? "Der Tarif deines Vereins ist ausgeschöpft. Unter Profil, Einstellungen, Abo &amp; Empfehlungen findest du die verfügbaren Tarife — reicht keiner aus, sprich uns an."
         : "Die Entscheidung konnte nicht gespeichert werden.");
       setWorkingId(null); return;
     }

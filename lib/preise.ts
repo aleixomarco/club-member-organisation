@@ -19,6 +19,18 @@ export type Vereinstarif = "basic" | "plus" | "pro";
 
 export const CLUB_TIERS: Vereinstarif[] = ["basic", "plus", "pro"];
 
+/* Welche Tarife sich gerade kaufen lassen.
+ *
+ * Die Datenbank kennt weiterhin alle drei Stufen - ein Verein mit einem
+ * Plus-Abo behaelt seine 350 Zugaenge. Hier steht nur, was die App zum Kauf
+ * anbietet, und das haengt daran, welche Produkte im App Store angelegt und
+ * freigegeben sind.
+ *
+ * Sobald club_plus_* und club_pro_* dort stehen, diese Liste auf
+ * CLUB_TIERS erweitern - Tarifuebersicht, Kaufmaske und Nutzungsbedingungen
+ * ziehen automatisch nach. */
+export const KAUFBARE_TARIFE: Vereinstarif[] = ["basic"];
+
 /* Als Record statt "as const": Die Oberflaeche greift mit einer Variablen zu
    (CLUB_TIER_PRICES[tier]), und ein Literal-Objekt laesst das nicht zu. */
 type Preisangabe = { monthly: { price: string }; yearly: { price: string; equivalent: string } };
