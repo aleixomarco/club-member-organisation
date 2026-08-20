@@ -60,7 +60,26 @@ Level 3  Basic
 
 Danach erkennt Apple, was Upgrade und was Downgrade ist.
 
-## 1.5 Preis freigeben
+## 1.5 Prüf-Screenshot je Abo
+
+Jedes Abonnement verlangt einen Screenshot der Kaufansicht. Der vorhandene
+(`docs/store-screenshots/iap-pruefung-kaufansicht.png`) zeigt das ALTE Modell:
+Basis-Zugang, 2,99 EUR, Vereinstarif Premium. Damit eingereicht, sieht der
+Prüfer etwas, das es in der App nicht mehr gibt - sichere Ablehnung.
+
+Der neue Screenshot lässt sich erst aufnehmen, wenn die neue Oberfläche live
+ist, also nach Teil 4. Reihenfolge deshalb:
+
+1. Produkte anlegen (ohne Screenshot speichern geht)
+2. Teile 2 bis 4 abarbeiten
+3. Danach in der App: Profil → Einstellungen → Abo & Empfehlungen
+   aufnehmen und bei allen sechs Abos hochladen
+4. Erst dann Teil 5
+
+**Sag mir Bescheid, wenn die neue Oberfläche live ist** - den Screenshot nehme
+ich im Simulator auf.
+
+## 1.6 Preis freigeben
 
 Bei jedem Produkt prüfen, dass unter **Preise** Deutschland mit dem richtigen
 Betrag steht. Apple errechnet die anderen Länder automatisch.
