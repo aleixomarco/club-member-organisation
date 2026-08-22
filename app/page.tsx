@@ -139,7 +139,7 @@ button:active { transform: scale(0.96); }
      eine Zeile tiefer als das, was man sah.
      position: fixed mit inset: 0 fuellt genau die Flaeche der App-Huelle. Die
      bleibt konstant, egal was das System einblendet. */
-  html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+  html, body { height: 100%; overflow: hidden; overscroll-behavior: none; background: #F7F4F5; }
   .erg-shell { position: fixed; inset: 0; padding: 0; background: transparent; min-height: 0; }
   .erg-frame { max-width: none; height: 100%; border-radius: 0; box-shadow: none; }
 

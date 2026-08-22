@@ -20,7 +20,16 @@ const config: CapacitorConfig = {
     androidScheme: "https",
   },
   ios: {
-    contentInset: "automatic",
+    /* "never" statt "automatic": Bei "automatic" rueckt iOS die Webansicht
+       selbst um Statusleiste und Home-Indikator ein. Die Seite wird dadurch
+       oben und unten beschnitten, und dahinter kommt der schwarze
+       Fensterhintergrund zum Vorschein.
+       Diese App bringt die sicheren Bereiche schon selbst unter - siehe die
+       env(safe-area-inset-*)-Regeln in app/page.tsx. Beides zusammen rueckt
+       doppelt ein. Mit "never" spannt sich die Webansicht ueber den ganzen
+       Bildschirm, und das CSS haelt die Inhalte aus Dynamic Island und
+       gerundeten Ecken heraus. */
+    contentInset: "never",
   },
   plugins: {
     /* Der native Startbildschirm bleibt stehen, bis die Web-Oberfläche selbst
