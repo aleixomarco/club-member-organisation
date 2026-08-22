@@ -1022,8 +1022,12 @@ function ClubSelectScreen({ clubs, onSelect, goNewClub }) {
 
       <div className="flex items-center gap-2 rounded-xl px-3.5 py-3 mb-4" style={{ background: C.paperDim }}>
         <Users size={16} style={{ color: C.textDim, flexShrink: 0 }} />
+        {/* Kein autoFocus: Auf dem iPhone wird diese Seite bereits hinter der
+            Startanimation aufgebaut. Das Feld zog den Fokus, und iOS klappte
+            die Tastatur ueber die noch laufende Animation. Die Tastatur soll
+            erst erscheinen, wenn jemand wirklich tippen will. */}
         <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Verein auswählen …"
-          className="flex-1 bg-transparent outline-none text-sm" style={{ fontFamily: "Inter", color: C.ink }} autoFocus />
+          className="flex-1 bg-transparent outline-none text-sm" style={{ fontFamily: "Inter", color: C.ink }} />
       </div>
 
       <div className="space-y-2 mb-6">
