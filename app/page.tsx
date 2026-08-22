@@ -131,8 +131,17 @@ button:active { transform: scale(0.96); }
    Ecken. Die Zusatzwerte oben auf die env()-Werte sorgen für Luft zum Rand, auch auf
    Geräten ohne Aussparung (älteres iPhone SE, viele Android-Modelle). */
 @media (max-width: 520px) {
-  .erg-shell { padding: 0; background: transparent; min-height: 100dvh; }
-  .erg-frame { max-width: none; height: 100dvh; border-radius: 0; box-shadow: none; }
+  /* Fest am Fenster verankert statt an 100dvh.
+     Vorher mass sich der Rahmen an der dynamischen Fensterhoehe. Die aendert
+     sich, sobald iOS die Tastatur ein- oder ausblendet, und WKWebView
+     uebernimmt den korrigierten Wert nicht zuverlaessig zurueck. Folge: Die
+     Darstellung sass hoeher als die Trefferflaechen - ein Fingertipp landete
+     eine Zeile tiefer als das, was man sah.
+     position: fixed mit inset: 0 fuellt genau die Flaeche der App-Huelle. Die
+     bleibt konstant, egal was das System einblendet. */
+  html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+  .erg-shell { position: fixed; inset: 0; padding: 0; background: transparent; min-height: 0; }
+  .erg-frame { max-width: none; height: 100%; border-radius: 0; box-shadow: none; }
 
   .erg-topbar {
     padding-top: calc(env(safe-area-inset-top, 0px) + 12px);
