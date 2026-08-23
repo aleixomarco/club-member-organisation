@@ -4047,36 +4047,6 @@ function PlayerDataCard({ user, setMembers }) {
   );
 }
 
-function PayPalSubscriptionButton({ clientId, planId, customId, onApproved, onError }) {
-  const container = useRef(null);
-  const [sdkReady, setSdkReady] = useState(() => typeof window !== "undefined" && !!window.paypal);
-
-  useEffect(() => {
-    if (!sdkReady || !window.paypal || !container.current || !planId || !customId) return;
-    container.current.innerHTML = "";
-    const buttons = window.paypal.Buttons({
-      style: { shape: "pill", color: "gold", layout: "vertical", label: "subscribe", height: 40 },
-      createSubscription: (_data, actions) => actions.subscription.create({ plan_id: planId, custom_id: customId }),
-      onApprove: (data) => onApproved(data.subscriptionID),
-      onError: () => onError("PayPal konnte nicht geöffnet werden. Bitte versuche es erneut."),
-      onCancel: () => onError("Der Bezahlvorgang wurde abgebrochen."),
-    });
-    buttons.render(container.current).catch(() => onError("Der PayPal-Button konnte nicht geladen werden."));
-    return () => { if (buttons?.close) buttons.close().catch(() => {}); };
-  }, [sdkReady, planId, customId, onApproved, onError]);
-
-  return <>
-    <Script
-      id="paypal-subscriptions-sdk"
-      src={`https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=EUR&vault=true&intent=subscription`}
-      strategy="afterInteractive"
-      onLoad={() => setSdkReady(true)}
-      onError={() => onError("PayPal konnte nicht geladen werden.")}
-    />
-    <div ref={container} className="min-h-10" />
-  </>;
-}
-
 const SUBSCRIPTION_STATUS = {
   pending: { label: "Wird bestätigt", color: C.amber, background: "rgba(255,246,228,0.72)" },
   active: { label: "Aktiv", color: C.green, background: "rgba(231,243,236,0.72)" },
@@ -4092,16 +4062,16 @@ function subscriptionDate(value) {
   return new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
 }
 
-function SubscriptionRecord({ subscription, accountLabel, onCancel, cancelling }) {
+function SubscriptionRecord({ subscription, accountLabel }) {
   const plan = Array.isArray(subscription.subscription_plans) ? subscription.subscription_plans[0] : subscription.subscription_plans;
   const status = SUBSCRIPTION_STATUS[subscription.status] || SUBSCRIPTION_STATUS.pending;
-  /* Store-Käufe lassen sich nicht aus der App heraus kündigen — das geht nur in
-     den Konto-Einstellungen von Apple bzw. Google. Der Kündigen-Knopf rief hier
-     bisher unabhängig vom Anbieter die PayPal-Route auf und wäre bei einem
-     Store-Abo ins Leere gelaufen. */
+  /* Kein Kuendigen-Knopf: Abonnements laufen ausschliesslich ueber die Stores,
+     und die lassen sich nur in den Konto-Einstellungen von Apple bzw. Google
+     beenden. Ein Knopf hier waere ins Leere gelaufen.
+     Die beiden Werte tragen stattdessen den Hinweis weiter unten - er sagt dem
+     Nutzer, wo er kuendigen kann. */
   const storeManaged = subscription.provider === "apple" || subscription.provider === "google_play";
   const stillRunning = !subscription.cancel_at_period_end && !["cancelled", "expired", "refunded"].includes(subscription.status);
-  const canCancel = !!onCancel && !storeManaged && stillRunning;
   const interval = plan?.interval === "year" ? "Jährlich" : "Monatlich";
   const amount = typeof plan?.price_cents === "number" ? new Intl.NumberFormat("de-DE", { style: "currency", currency: plan.currency || "EUR" }).format(plan.price_cents / 100) : "—";
   return <div className="rounded-2xl p-3.5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
@@ -4121,26 +4091,23 @@ function SubscriptionRecord({ subscription, accountLabel, onCancel, cancelling }
       <div className="flex justify-between gap-3"><span style={{ color: C.textDim }}>Abonnement-ID</span><b className="text-right break-all" style={{ color: C.ink, fontFamily: "JetBrains Mono" }}>{subscription.provider_subscription_id}</b></div>
     </div>
     {(subscription.cancel_at_period_end || subscription.status === "cancelled") && <div className="mt-3 rounded-xl px-3 py-2 text-[10px]" style={{ background: C.paperDim, color: C.textDim }}>Dieses Abonnement wurde gekündigt und verlängert sich nicht erneut.</div>}
-    {canCancel && <button onClick={onCancel} disabled={cancelling} className="w-full mt-3 py-2 rounded-lg text-xs font-bold" style={{ background: "rgba(253,236,236,0.72)", color: C.red, opacity: cancelling ? .6 : 1 }}>{cancelling ? "Wird gekündigt …" : "Abonnement kündigen"}</button>}
     {storeManaged && stillRunning && <div className="mt-3 rounded-xl px-3 py-2 text-[10px] leading-snug" style={{ background: C.paperDim, color: C.textDim }}>Dieses Abonnement wurde über {subscription.provider === "apple" ? "den App Store" : "Google Play"} abgeschlossen. Kündigen kannst du es nur dort — {subscription.provider === "apple" ? "in den Einstellungen unter „Apple-ID“ › „Abonnements“" : "in der Play-Store-App unter „Zahlungen und Abos“"}.</div>}
   </div>;
 }
 
 
 function SubscriptionPanel({ user }) {
-  const [config, setConfig] = useState(null);
   const [tier, setTier] = useState("basic");
   const [cycle, setCycle] = useState("monthly");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [subscriptions, setSubscriptions] = useState([]);
   const [subscriptionsLoading, setSubscriptionsLoading] = useState(true);
-  const [cancellingId, setCancellingId] = useState(null);
   const [withdrawalConsent, setWithdrawalConsent] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
   const [clubStatus, setClubStatus] = useState(null);
   /* Bewusst gleich beim ersten Rendern ermittelt statt in einem Effekt: Sonst
-     ist isNative im ersten Durchlauf noch false, die PayPal-Konfiguration wird
+     ist isNative im ersten Durchlauf noch false, die Store-Angebote werden
      angefragt und ihre Fehlermeldung landet im Kaufbereich der nativen App —
      genau der Hinweis auf einen externen Zahlungsanbieter, den Apple nach
      Richtlinie 3.1.1 beanstandet. Die Funktion prueft selbst auf window und
@@ -4153,7 +4120,7 @@ function SubscriptionPanel({ user }) {
   const databaseClub = isDbId(user.clubId);
   /* Eigenes Basis-Abo: jedes Mitglied zahlt für sich selbst, deshalb hier keine
      Rollenprüfung — nur ein echtes Konto ist Voraussetzung. */
-  /* PayPal muss die Subscription auf die PROFIL-ID ausstellen — user.id ist die
+  /* Der Kauf laeuft auf die PROFIL-ID — user.id ist die
      Mitgliedschafts-ID und wäre hier falsch. Die Profil-ID steht nur in der
      Anmelde-Sitzung, deshalb wird sie einmalig von dort geholt. */
   const [authUserId, setAuthUserId] = useState("");
@@ -4226,7 +4193,7 @@ function SubscriptionPanel({ user }) {
 
 
   /* Persönliches Basis-Abo im nativen Store. Läuft auf die Profil-ID — dieselbe
-     Kennung, die auch PayPal als custom_id bekommt, damit beide Wege im selben
+     Kennung, unter der der Store den Kauf fuehrt, damit alles im selben
      Datensatz landen. */
 
 
@@ -4239,7 +4206,7 @@ function SubscriptionPanel({ user }) {
     const token = sessionData.session?.access_token;
     if (!token) { setSubscriptionsLoading(false); return; }
     try {
-      const response = await fetch(`/api/paypal/subscriptions?clubId=${encodeURIComponent(user.clubId || "")}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+      const response = await fetch(`/api/subscriptions?clubId=${encodeURIComponent(user.clubId || "")}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "Abonnements konnten nicht geladen werden.");
       setSubscriptions(payload.club || []);
@@ -4254,73 +4221,13 @@ function SubscriptionPanel({ user }) {
 
   useEffect(() => { refreshClubStatus(); }, [refreshClubStatus]);
 
-  useEffect(() => {
-    /* In der nativen App wird ueber den Store gekauft, PayPal spielt dort keine
-       Rolle. Ohne diese Bedingung erschien in der App die Meldung "PayPal ist
-       noch nicht konfiguriert" - ein Hinweis auf einen externen Zahlungsanbieter
-       mitten im Kaufbereich, den Apple nach Richtlinie 3.1.1 beanstanden kann. */
-    if (isNative) { setLoading(false); return; }
-    fetch("/api/paypal/config", { cache: "no-store" })
-      .then(async (response) => {
-        const payload = await response.json();
-        if (!response.ok) throw new Error(payload.error || "PayPal ist noch nicht konfiguriert.");
-        setConfig(payload);
-      })
-      .catch((error) => setMessage(error.message))
-      .finally(() => setLoading(false));
-  }, [isNative]);
 
   const selected = CLUB_TIER_PRICES[tier][cycle];
   const customId = user.clubId;
   const allowed = canBuyClubPlan && databaseClub;
-  const approved = useCallback(async (subscriptionId) => {
-    setMessage("Das Abonnement wird gespeichert …");
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
-      if (!token) throw new Error("Bitte melde dich erneut an.");
-      const response = await fetch("/api/paypal/subscriptions", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ subscriptionId, tier, cycle, clubId: user.clubId }),
-      });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || "Das Abonnement konnte noch nicht gespeichert werden.");
-      await loadSubscriptions();
-      setMessage("Abonnement gespeichert und automatisch freigeschaltet.");
-      setShowWelcome(true);
-    } catch (error) {
-      setMessage(error.message || "Die PayPal-Bestätigung wird noch verarbeitet. Bitte aktualisiere die Ansicht gleich erneut.");
-    }
-  }, [tier, cycle, loadSubscriptions, user.clubId]);
-
-  /* Abschluss des eigenen Basis-Abos. Läuft über dieselbe Route wie das Vereinsabo,
-     nur mit scope="member" — dort entfällt die Rollenprüfung, stattdessen wird
-     geprüft, dass PayPal die Subscription auf dieses Profil ausgestellt hat. */
 
 
-  const cancelSubscription = async (subscription) => {
-    if (!window.confirm("Abonnement wirklich kündigen? Es bleibt bis zum Ende des bezahlten Zeitraums nutzbar und verlängert sich danach nicht mehr.")) return;
-    setCancellingId(subscription.id); setMessage("");
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
-      if (!token) throw new Error("Bitte melde dich erneut an.");
-      const response = await fetch("/api/paypal/subscriptions", {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ subscriptionId: subscription.provider_subscription_id, clubId: user.clubId }),
-      });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || "Das Abonnement konnte nicht gekündigt werden.");
-      await loadSubscriptions();
-      setMessage("Abonnement wurde gekündigt.");
-    } catch (error) {
-      setMessage(error.message || "Das Abonnement konnte nicht gekündigt werden.");
-    } finally {
-      setCancellingId(null);
-    }
-  };
+
 
 
   /* Rückmeldungen betreffen beide Bereiche und stehen deshalb auf oberster Ebene —
@@ -4399,14 +4306,14 @@ function SubscriptionPanel({ user }) {
     {!canBuyClubPlan ? <div className="rounded-2xl p-4 mb-6" style={{ background: C.paperDim }}><div className="text-[11px]" style={{ color: C.textDim }}>Abschließen und kündigen können nur Vorstand, Vereinsadmin oder Geschäftsführung. Wende dich an eine dieser Rollen, wenn der Tarif geändert werden soll.</div></div> :
     subscriptionsLoading ? <div className="rounded-2xl p-4 mb-5 text-xs text-center" style={{ background: C.glass, border: `1px solid ${C.line}`, color: C.textDim }}>Abonnements werden geladen …</div> :
       subscriptions.length > 0 ? <div className="space-y-3 mb-6">
-        {subscriptions.map((subscription) => <SubscriptionRecord key={subscription.id} subscription={subscription} accountLabel="Vereinsabo" onCancel={() => cancelSubscription(subscription)} cancelling={cancellingId === subscription.id} />)}
+        {subscriptions.map((subscription) => <SubscriptionRecord key={subscription.id} subscription={subscription} accountLabel="Vereinsabo" />)}
       </div> : <div className="rounded-2xl p-4 mb-6" style={{ background: C.paperDim }}><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Noch kein gespeichertes Abonnement</div><div className="text-[11px]" style={{ color: C.textDim }}>Nach einem erfolgreichen Abschluss erscheinen hier Tarif, Status, Erwerbsdatum und die nächste Abrechnung.</div></div>}
 
     {canBuyClubPlan && <>
     <SectionTitle eyebrow="Tarif wählen" title="Abonnement abschließen" />
     <div className="rounded-2xl p-4 mb-5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
     <div className="flex items-center gap-2 mb-1"><Euro size={16} style={{ color: C.red }} /><div className="text-sm font-bold" style={{ color: C.ink }}>Abonnement</div></div>
-    <div className="text-[11px] mb-3" style={{ color: C.textDim }}>{isNative ? `Sicher über ${Capacitor.getPlatform() === "ios" ? "den App Store" : "Google Play"} bezahlen.` : "Sicher über PayPal bezahlen."} Alle Abos verlängern sich automatisch bis zur Kündigung.</div>
+    <div className="text-[11px] mb-3" style={{ color: C.textDim }}>{`Sicher über ${Capacitor.getPlatform() === "android" ? "Google Play" : "den App Store"} bezahlen.`} Alle Abos verlängern sich automatisch bis zur Kündigung.</div>
     <div className="grid grid-cols-2 gap-2 mb-2">
       {KAUFBARE_TARIFE.map((value) => [value, CLUB_TIER_INFO[value].label]).map(([value, label]) => <button key={value} onClick={() => { setTier(value); setMessage(""); setWithdrawalConsent(false); }} className="py-2 rounded-xl text-xs font-bold" style={{ background: tier === value ? C.ink : C.paperDim, color: tier === value ? C.white : C.textDim }}>{label}</button>)}
     </div>
@@ -4430,14 +4337,13 @@ function SubscriptionPanel({ user }) {
           ? <button onClick={buyNativePackage} disabled={purchasing} className="w-full py-3 rounded-xl text-sm font-bold" style={{ background: C.ink, color: C.white, opacity: purchasing ? .6 : 1 }}>{purchasing ? "Wird verarbeitet …" : `${CLUB_TIER_INFO[tier].label} abonnieren`}</button>
           : <div className="text-[11px] rounded-xl px-3 py-2 text-center" style={{ background: C.paperDim, color: C.textDim }}>Bitte zuerst zustimmen, um fortzufahren.</div>}
       </>
-    ) : loading ? <div className="text-xs py-2 text-center" style={{ color: C.textDim }}>PayPal wird geladen …</div> : config && allowed ? <>
-      <label className="flex items-start gap-2 mb-3 px-0.5"><input type="checkbox" checked={withdrawalConsent} onChange={(e) => setWithdrawalConsent(e.target.checked)} className="mt-0.5"/><span className="text-[10px]" style={{ color: C.textDim }}>Ich akzeptiere die <a href="/nutzungsbedingungen" target="_blank" rel="noreferrer" style={{ color: C.red }}>Nutzungsbedingungen</a> und die darin enthaltene Widerrufsbelehrung. Ich stimme ausdrücklich zu, dass die Nutzung sofort beginnt, und weiß, dass mein Widerrufsrecht erlischt, sobald der Vertrag vollständig erfüllt ist.</span></label>
-      {withdrawalConsent
-        ? <PayPalSubscriptionButton clientId={config.clientId} planId={config.plans[tier][cycle]} customId={customId} onApproved={approved} onError={setMessage} />
-        : <div className="text-[11px] rounded-xl px-3 py-2 text-center" style={{ background: C.paperDim, color: C.textDim }}>Bitte zuerst zustimmen, um fortzufahren.</div>}
-    </> :
-      <div className="text-[11px] rounded-xl px-3 py-2" style={{ background: "rgba(255,246,228,0.72)", color: C.textDim }}>{message || "PayPal ist noch nicht konfiguriert."}</div>}
-    <div className="text-[9px] mt-3 leading-relaxed" style={{ color: C.textDim }}>Mit dem Abschluss akzeptierst du die <a href="/nutzungsbedingungen" className="underline">Nutzungsbedingungen</a>. Kündigung {isNative ? (Capacitor.getPlatform() === "ios" ? "über die Apple-ID-Einstellungen" : "über Google Play") : "über PayPal"} zum Ende des Abrechnungszeitraums.</div>
+    ) : (
+      /* Gekauft wird ausschliesslich im Store. Diesen Zweig sieht nur, wer die
+         Seite ausserhalb der App oeffnet - und dort steht ohnehin die
+         Hinweisseite. Er bleibt als Rueckfallebene stehen. */
+      <div className="text-[11px] rounded-xl px-3 py-2" style={{ background: "rgba(255,246,228,0.72)", color: C.textDim }}>Abonnements werden in der App gebucht.</div>
+    )}
+    <div className="text-[9px] mt-3 leading-relaxed" style={{ color: C.textDim }}>Mit dem Abschluss akzeptierst du die <a href="/nutzungsbedingungen" className="underline">Nutzungsbedingungen</a>. Kündigung {Capacitor.getPlatform() === "android" ? "über Google Play" : "über die Apple-ID-Einstellungen"} zum Ende des Abrechnungszeitraums.</div>
     </div>
     </>}
     </>}
@@ -5205,7 +5111,7 @@ function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, 
         <SectionTitle eyebrow="Gefahrenbereich" title="Account-Löschung"/>
         <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Die Löschung entfernt dein Konto und alle personenbezogenen Daten dauerhaft.</div>
         {!deleteConfirm ? <button onClick={() => setDeleteConfirm(true)} className="w-full py-2.5 rounded-2xl text-xs" style={{ background: C.glass, border: "1px solid #F3B9B9", color: C.red, fontWeight: 700 }}>Konto und persönliche Daten löschen</button> :
-          <div className="rounded-2xl p-3" style={{ background: "rgba(253,236,236,0.72)", border: "1px solid #F3B9B9" }}><div className="flex items-center gap-2 text-xs font-bold mb-2" style={{ color: C.red }}><AlertCircle size={15}/> Endgültige Löschung bestätigen</div><div className="text-xs mb-3" style={{ color: C.ink }}>Das Konto, Vereinsprofile und persönliche Inhalte werden dauerhaft gelöscht. Ein über PayPal abgeschlossenes Abonnement wird beendet. Ein über den App Store oder Google Play abgeschlossenes Abonnement läuft dagegen <b>weiter und wird weiter abgerechnet</b> — kündige es vorher in den Einstellungen deines Store-Kontos. Dieser Schritt kann nicht rückgängig gemacht werden.</div>{deleteError && <div className="text-xs mb-2" style={{ color: C.red }}>{deleteError}</div>}<div className="flex gap-2"><button disabled={deleting} onClick={deleteAccount} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: C.red, color: C.white }}>{deleting ? "Wird gelöscht …" : "Endgültig löschen"}</button><button onClick={() => { setDeleteConfirm(false); setDeleteError(""); }} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>Abbrechen</button></div></div>}
+          <div className="rounded-2xl p-3" style={{ background: "rgba(253,236,236,0.72)", border: "1px solid #F3B9B9" }}><div className="flex items-center gap-2 text-xs font-bold mb-2" style={{ color: C.red }}><AlertCircle size={15}/> Endgültige Löschung bestätigen</div><div className="text-xs mb-3" style={{ color: C.ink }}>Das Konto, Vereinsprofile und persönliche Inhalte werden dauerhaft gelöscht. Ein über den App Store oder Google Play abgeschlossenes Abonnement läuft <b>weiter und wird weiter abgerechnet</b> — kündige es vorher in den Einstellungen deines Store-Kontos. Dieser Schritt kann nicht rückgängig gemacht werden.</div>{deleteError && <div className="text-xs mb-2" style={{ color: C.red }}>{deleteError}</div>}<div className="flex gap-2"><button disabled={deleting} onClick={deleteAccount} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: C.red, color: C.white }}>{deleting ? "Wird gelöscht …" : "Endgültig löschen"}</button><button onClick={() => { setDeleteConfirm(false); setDeleteError(""); }} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>Abbrechen</button></div></div>}
       </ProfileUnderlay>}
     </div>
   );
@@ -7148,7 +7054,7 @@ export default function ClubMemberOrganisationApp() {
    *
    * Die Vereins-Oberflaeche soll es ausschliesslich als App aus dem Store
    * geben, nicht im Browser. Der Server bleibt trotzdem noetig: Die native
-   * Huelle laedt ihre Oberflaeche von hier, und die API-Routen (PayPal,
+   * Huelle laedt ihre Oberflaeche von hier, und die API-Routen (Abos,
    * RevenueCat-Webhook, Kalender-Abo, Kontoloeschung) laufen ebenfalls hier.
    * Gesperrt wird also nur die Ansicht im Browser, nicht der Dienst.
    *

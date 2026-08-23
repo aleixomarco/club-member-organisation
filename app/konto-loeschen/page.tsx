@@ -10,7 +10,7 @@ export default function DeleteAccountPage() { return <LegalShell title="Konto l�
     <li>Bestätige die endgültige Löschung. Dein Konto, deine Vereinsprofile und persönlichen Inhalte werden unwiderruflich gelöscht.</li>
   </ol>
   <p>Wartet deine Aufnahme noch auf die Freigabe durch den Verein, findest du die Löschfunktion direkt nach der Anmeldung auf dem Hinweisbildschirm.</p>
-  <p><strong>Wichtig zu laufenden Abonnements:</strong> Ein über PayPal abgeschlossenes Abonnement wird bei der Kontolöschung beendet. Ein über den <strong>App Store</strong> oder <strong>Google Play</strong> abgeschlossenes Abonnement läuft dagegen weiter und wird weiter abgerechnet — es lässt sich technisch nur dort kündigen. Kündige es vor der Kontolöschung in den Einstellungen deines Store-Kontos (iOS: Einstellungen → Apple-ID → Abonnements; Android: Play Store → Zahlungen und Abos).</p>
+  <p><strong>Wichtig zu laufenden Abonnements:</strong> Ein über den <strong>App Store</strong> oder <strong>Google Play</strong> abgeschlossenes Abonnement läuft nach der Kontolöschung <strong>weiter und wird weiter abgerechnet</strong>. Kündige es vorher in den Einstellungen deines Apple- bzw. Google-Kontos — wir können das von hier aus nicht.</p>
   <p>Solltest du dich nicht mehr anmelden können (z. B. weil du keinen Zugriff mehr auf deine E-Mail-Adresse hast), schreibe uns an {legal.email}. Wir prüfen deine Identität und löschen dein Konto manuell.</p>
 
   <h2>Welche Daten gelöscht werden</h2>

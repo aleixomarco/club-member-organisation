@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
-import { cancelPayPalSubscription } from "@/lib/paypal";
 
 export const dynamic = "force-dynamic";
 
@@ -20,11 +19,10 @@ export async function DELETE(request: Request) {
   } catch {
     return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
   }
-  const { data: subscriptions } = await admin.from("user_subscriptions")
-    .select("provider,provider_subscription_id,status").eq("profile_id", user.id).in("status", ["active", "past_due", "suspended"]);
-  for (const subscription of subscriptions || []) {
-    if (subscription.provider === "paypal") await cancelPayPalSubscription(subscription.provider_subscription_id);
-  }
+  /* Frueher wurden hier laufende PayPal-Abos beendet. PayPal ist ausgebaut,
+     und Store-Abos kann diese Route nicht kuendigen - das geht nur in den
+     Einstellungen des Apple- bzw. Google-Kontos. Die Oberflaeche weist beim
+     Loeschen ausdruecklich darauf hin. */
 
   // Vereinsverantwortliche informieren, bevor das Konto gelöscht wird. Best effort:
   // ein Fehler hier darf die eigentliche Löschung nicht verhindern.

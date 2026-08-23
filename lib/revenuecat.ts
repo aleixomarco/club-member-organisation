@@ -3,7 +3,7 @@ import { Capacitor } from "@capacitor/core";
 import { Purchases, LOG_LEVEL, type PurchasesPackage } from "@revenuecat/purchases-capacitor";
 
 // Native In-App-Käufe (iOS/Android) über RevenueCat.
-// Web bleibt bei PayPal (siehe SubscriptionPanel in app/page.tsx) — Apple und
+// Gekauft wird ausschliesslich ueber die Stores — Apple und
 // Google verlangen für digitale Abos innerhalb der nativen App zwingend den
 // In-App-Kauf (Apple Guideline 3.1.1, Google Play Billing-Pflicht analog).
 //
@@ -19,7 +19,7 @@ import { Purchases, LOG_LEVEL, type PurchasesPackage } from "@revenuecat/purchas
 // Der Freischalt-Status kommt NICHT von hier, sondern aus Supabase
 // (club_subscription_tier() bzw. member_has_access()). RevenueCats Webhook
 // schreibt jeden Kauf in club_subscriptions bzw. user_subscriptions, genau wie
-// der PayPal-Webhook. Dieses Modul öffnet nur den nativen Kaufdialog.
+// der RevenueCat-Webhook. Dieses Modul oeffnet nur den nativen Kaufdialog.
 
 /* ------------------------------------------------------------------ */
 /* Nutzerkennung                                                       */
