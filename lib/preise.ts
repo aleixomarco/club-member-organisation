@@ -14,10 +14,7 @@
  * im Funktionsumfang: Jeder zahlende Verein bekommt alles.
  */
 
-export type Abrechnung = "monthly" | "yearly";
 export type Vereinstarif = "basic" | "plus" | "pro";
-
-export const CLUB_TIERS: Vereinstarif[] = ["basic", "plus", "pro"];
 
 /* Welche Tarife sich gerade kaufen lassen.
  *
@@ -26,9 +23,9 @@ export const CLUB_TIERS: Vereinstarif[] = ["basic", "plus", "pro"];
  * anbietet, und das haengt daran, welche Produkte im App Store angelegt und
  * freigegeben sind.
  *
- * Sobald club_plus_* und club_pro_* dort stehen, diese Liste auf
- * CLUB_TIERS erweitern - Tarifuebersicht, Kaufmaske und Nutzungsbedingungen
- * ziehen automatisch nach. */
+ * Sobald club_plus_* und club_pro_* dort stehen, hier auf
+ * ["basic", "plus", "pro"] erweitern - Tarifuebersicht, Kaufmaske und
+ * Nutzungsbedingungen ziehen automatisch nach. */
 export const KAUFBARE_TARIFE: Vereinstarif[] = ["basic"];
 
 /* Als Record statt "as const": Die Oberflaeche greift mit einer Variablen zu

@@ -51,9 +51,6 @@ export function paypalPlanId(code: PayPalPlanCode) {
   return value;
 }
 
-export const isMemberPlanCode = (code: string): code is PayPalMemberPlanCode =>
-  code === "member_monthly" || code === "member_yearly";
-
 export async function verifyPayPalWebhook(headers: Headers, event: unknown) {
   const webhookId = process.env.PAYPAL_WEBHOOK_ID;
   if (!webhookId) throw new Error("PayPal webhook ID is missing");

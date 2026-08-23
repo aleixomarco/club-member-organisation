@@ -684,11 +684,6 @@ const INITIAL_CHANNELS = [
   },
 ];
 
-const FEE_HISTORY = [
-  { month: "Juli 2026", amount: "45,00 €", date: "02.07.2026" },
-  { month: "Juni 2026", amount: "45,00 €", date: "01.06.2026" },
-  { month: "Mai 2026", amount: "45,00 €", date: "03.05.2026" },
-];
 
 /* ------------------------------------------------------------------ */
 /* Athlet/in der Saison                                                  */
@@ -1292,7 +1287,6 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub }) {
   );
 }
 
-const SELF_SERVICE_ROLES = Object.keys(ROLE_META).filter((r) => ROLE_META[r].selfService && !ROLE_META[r].alwaysOn);
 
 function RegisterScreen({ onRegister, members, club, goLogin }) {
   const [form, setForm] = useState({ name: "", email: "", team: TEAMS[0], birthdate: "", password: "", password2: "", accountType: "mitglied", relativeId: "", childName: "", childBirthdate: "", childTeam: "U11" });
@@ -2741,7 +2735,6 @@ const memberPlayerTeams = (member) => {
 
 function PlayerTeamSettings({ user, setMembers }) {
   const [teams, setTeams] = useState([]);
-  const [myTeamIds, setMyTeamIds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const databaseMembership = !!supabase && isDbId(user.id);
@@ -4160,9 +4153,6 @@ function SubscriptionPanel({ user }) {
   const databaseClub = isDbId(user.clubId);
   /* Eigenes Basis-Abo: jedes Mitglied zahlt für sich selbst, deshalb hier keine
      Rollenprüfung — nur ein echtes Konto ist Voraussetzung. */
-  const [memberSubs, setMemberSubs] = useState([]);
-  const [memberAccess, setMemberAccess] = useState(null);
-  const [memberPurchasing, setMemberPurchasing] = useState(false);
   /* PayPal muss die Subscription auf die PROFIL-ID ausstellen — user.id ist die
      Mitgliedschafts-ID und wäre hier falsch. Die Profil-ID steht nur in der
      Anmelde-Sitzung, deshalb wird sie einmalig von dort geholt. */
@@ -4234,35 +4224,11 @@ function SubscriptionPanel({ user }) {
     }
   };
 
-  const restorePurchases = async () => {
-    setPurchasing(true); setMessage("");
-    try {
-      await restorePurchasesAs(user.clubId);
-      setMessage("Käufe wiederhergestellt.");
-      setTimeout(refreshClubStatus, 1500);
-    } catch {
-      setMessage("Käufe konnten nicht wiederhergestellt werden.");
-    } finally {
-      setPurchasing(false);
-    }
-  };
 
   /* Persönliches Basis-Abo im nativen Store. Läuft auf die Profil-ID — dieselbe
      Kennung, die auch PayPal als custom_id bekommt, damit beide Wege im selben
      Datensatz landen. */
 
-  const restoreMemberPurchases = async () => {
-    setMemberPurchasing(true); setMessage("");
-    try {
-      await restorePurchasesAs(authUserId);
-      setMessage("Käufe wiederhergestellt.");
-      setTimeout(() => { refreshMemberAccess(); loadSubscriptions(); }, 1500);
-    } catch {
-      setMessage("Käufe konnten nicht wiederhergestellt werden.");
-    } finally {
-      setMemberPurchasing(false);
-    }
-  };
 
   /* Lädt beides in einem Zug: das eigene Basis-Abo (sieht jeder) und das Vereinsabo
      (liefert die Route nur an berechtigte Rollen aus). Früher brach die Funktion ohne
@@ -4277,7 +4243,6 @@ function SubscriptionPanel({ user }) {
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "Abonnements konnten nicht geladen werden.");
       setSubscriptions(payload.club || []);
-      setMemberSubs(payload.member || []);
     } catch (error) {
       setMessage(error.message || "Abonnements konnten nicht geladen werden.");
     } finally {
@@ -4286,14 +4251,6 @@ function SubscriptionPanel({ user }) {
   }, [databaseMember, user.clubId]);
 
   useEffect(() => { loadSubscriptions(); }, [loadSubscriptions]);
-
-  const refreshMemberAccess = useCallback(() => {
-    if (!supabase || !databaseMember) return;
-    supabase.rpc("member_access_info", { target_membership: user.id })
-      .then(({ data }) => setMemberAccess(data?.[0] || null));
-  }, [databaseMember, user.id]);
-
-  useEffect(() => { refreshMemberAccess(); }, [refreshMemberAccess]);
 
   useEffect(() => { refreshClubStatus(); }, [refreshClubStatus]);
 
@@ -4341,29 +4298,6 @@ function SubscriptionPanel({ user }) {
      nur mit scope="member" — dort entfällt die Rollenprüfung, stattdessen wird
      geprüft, dass PayPal die Subscription auf dieses Profil ausgestellt hat. */
 
-  const cancelMemberSubscription = async (subscription) => {
-    if (!window.confirm("Deinen Zugang wirklich kündigen? Er bleibt bis zum Ende des bezahlten Zeitraums nutzbar.")) return;
-    setCancellingId(subscription.id); setMessage("");
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
-      if (!token) throw new Error("Bitte melde dich erneut an.");
-      const response = await fetch("/api/paypal/subscriptions", {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ subscriptionId: subscription.provider_subscription_id, scope: "member" }),
-      });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || "Der Zugang konnte nicht gekündigt werden.");
-      await loadSubscriptions();
-      refreshMemberAccess();
-      setMessage("Dein Zugang wurde gekündigt.");
-    } catch (error) {
-      setMessage(error.message || "Der Zugang konnte nicht gekündigt werden.");
-    } finally {
-      setCancellingId(null);
-    }
-  };
 
   const cancelSubscription = async (subscription) => {
     if (!window.confirm("Abonnement wirklich kündigen? Es bleibt bis zum Ende des bezahlten Zeitraums nutzbar und verlängert sich danach nicht mehr.")) return;
@@ -4405,7 +4339,7 @@ function SubscriptionPanel({ user }) {
         bereits aktivem Abo oder wenn kein Store-Paket geladen werden konnte, also
         genau in den Fällen, in denen man ihn braucht. Deshalb steht er jetzt
         unabhängig davon ganz oben, sobald die App nativ läuft. */}
-    {isNative && <button onClick={() => restorePurchasesAs(authUserId || user.clubId).then(() => { setMessage("Käufe wiederhergestellt."); refreshMemberAccess(); refreshClubStatus(); loadSubscriptions(); }).catch(() => setMessage("Käufe konnten nicht wiederhergestellt werden."))} className="w-full mb-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.glass, border: `1px solid ${C.edge}`, color: C.ink }}>Käufe wiederherstellen</button>}
+    {isNative && <button onClick={() => restorePurchasesAs(authUserId || user.clubId).then(() => { setMessage("Käufe wiederhergestellt."); refreshClubStatus(); loadSubscriptions(); }).catch(() => setMessage("Käufe konnten nicht wiederhergestellt werden."))} className="w-full mb-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.glass, border: `1px solid ${C.edge}`, color: C.ink }}>Käufe wiederherstellen</button>}
 
     {/* ---- Mein Zugang ----
          Der persoenliche Zugang war frueher kostenpflichtig: Jedes Mitglied
