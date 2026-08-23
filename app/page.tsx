@@ -130,7 +130,14 @@ button:active { transform: scale(0.96); }
    bleiben — sonst verschwinden Knöpfe hinter Dynamic Island, Notch oder gerundeten
    Ecken. Die Zusatzwerte oben auf die env()-Werte sorgen für Luft zum Rand, auch auf
    Geräten ohne Aussparung (älteres iPhone SE, viele Android-Modelle). */
-@media (max-width: 520px) {
+/* Zwei Bedingungen, nicht nur die Breite.
+   Vorher hing die Handy-Darstellung allein an max-width: 520px. Im Querformat
+   wird ein iPhone aber 667 bis 932 Punkte breit - die Regel griff dann nicht
+   mehr, und die App fiel auf die Schreibtisch-Attrappe zurueck: ein schmaler
+   Rahmen mit runden Ecken auf grauem Grund, mitten auf dem Telefon.
+   (hover: none) and (pointer: coarse) trifft jedes Geraet, das mit dem Finger
+   bedient wird - unabhaengig von Breite und Ausrichtung. */
+@media (max-width: 520px), (hover: none) and (pointer: coarse) {
   /* Fest am Fenster verankert statt an 100dvh.
      Vorher mass sich der Rahmen an der dynamischen Fensterhoehe. Die aendert
      sich, sobald iOS die Tastatur ein- oder ausblendet, und WKWebView
