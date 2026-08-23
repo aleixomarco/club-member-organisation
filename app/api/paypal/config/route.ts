@@ -20,7 +20,10 @@ function planPaar(monthly: PayPalPlanCode, yearly: PayPalPlanCode) {
 export async function GET() {
   const clientId = process.env.PAYPAL_CLIENT_ID;
   if (!clientId) {
-    return NextResponse.json({ error: "PayPal ist noch nicht konfiguriert." }, { status: 503 });
+    return NextResponse.json(
+      { error: "PayPal ist noch nicht konfiguriert.", grund: "PAYPAL_CLIENT_ID fehlt" },
+      { status: 503 },
+    );
   }
 
   const stufen: Record<string, ReturnType<typeof planPaar>> = {
@@ -34,7 +37,10 @@ export async function GET() {
   const plans = Object.fromEntries(Object.entries(stufen).filter(([, wert]) => wert !== null));
 
   if (Object.keys(plans).length === 0) {
-    return NextResponse.json({ error: "PayPal ist noch nicht konfiguriert." }, { status: 503 });
+    return NextResponse.json(
+      { error: "PayPal ist noch nicht konfiguriert.", grund: "Keine einzige Plan-Kennung hinterlegt" },
+      { status: 503 },
+    );
   }
 
   return NextResponse.json({

@@ -6557,8 +6557,45 @@ function baseTabs(isAdminUser, canEditNews, canEditSponsors, canManageFees, canM
 }
 const SUBVIEW_TITLES = { season: "Athlet/in der Saison", tipp: "Tippspiel", duty: "Helferplanung" };
 
+/* Was der Browser zu sehen bekommt, wenn NEXT_PUBLIC_NUR_APP=1 gesetzt ist.
+   Bewusst schlicht und ohne Anmeldung: Diese Seite ist kein Zugang, sondern
+   ein Wegweiser in den Store. */
+function NurAlsAppHinweis() {
+  const appStore = process.env.NEXT_PUBLIC_APP_STORE_URL;
+  const playStore = process.env.NEXT_PUBLIC_PLAY_STORE_URL;
+  return (
+    <div className="min-h-screen w-full flex items-center justify-center px-6" style={{ background: C.paper, fontFamily: "Inter" }}>
+      <div className="w-full max-w-sm text-center">
+        <div className="mx-auto mb-6 flex items-center justify-center" style={{ width: 76, height: 76, borderRadius: 24, background: "rgba(255,255,255,0.72)", border: "1px solid rgba(255,255,255,0.85)" }}>
+          <AppBrandMark size={46} />
+        </div>
+        <h1 className="text-xl mb-2" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>Club Member Organisation</h1>
+        <p className="text-xs mb-7 leading-relaxed" style={{ color: C.textDim }}>
+          Die Vereins-App gibt es als App fürs Smartphone. Lade sie im Store,
+          melde dich dort an, und dein Verein ist sofort verfügbar.
+        </p>
+        <div className="space-y-2 mb-8">
+          {appStore && <a href={appStore} className="block py-3 rounded-2xl text-sm font-bold" style={{ background: C.ink, color: C.white }}>Im App Store laden</a>}
+          {playStore && <a href={playStore} className="block py-3 rounded-2xl text-sm font-bold" style={{ background: C.glass, border: `1px solid ${C.edge}`, color: C.ink }}>Bei Google Play laden</a>}
+          {!appStore && !playStore && <div className="text-[11px] rounded-2xl px-4 py-3" style={{ background: C.paperDim, color: C.textDim }}>Die App wird gerade veröffentlicht. Die Store-Links erscheinen hier, sobald sie verfügbar sind.</div>}
+        </div>
+        <div className="flex items-center justify-center gap-4 text-[11px]" style={{ color: C.textDim }}>
+          <a href="/nutzungsbedingungen" className="underline">Nutzungsbedingungen</a>
+          <a href="/datenschutz" className="underline">Datenschutz</a>
+          <a href="/impressum" className="underline">Impressum</a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ClubMemberOrganisationApp() {
   const [clubs, setClubs] = useState(INITIAL_CLUBS);
+  /* Erst nach dem ersten Rendern bekannt: Auf dem Server gibt es kein
+     Capacitor. Bis dahin gilt "noch unbekannt" - so blitzt weder die
+     Hinweisseite in der App auf noch die App im Browser. */
+  const [imGeraet, setImGeraet] = useState(null);
+  useEffect(() => { setImGeraet(Capacitor.isNativePlatform()); }, []);
 
   /* Tastatur offen? Nur fuer die Anzeige - die Groesse der Webansicht regelt
      das Keyboard-Plugin (resize: "native" in capacitor.config.ts).
@@ -7106,6 +7143,25 @@ export default function ClubMemberOrganisationApp() {
   const clubPrimary = currentClub?.primaryColor || DEFAULT_CLUB_COLORS.primary;
   const clubSecondary = currentClub?.secondaryColor || DEFAULT_CLUB_COLORS.secondary;
   const themeVars = { "--club-primary": clubPrimary, "--club-primary-dark": darkenHex(clubPrimary), "--club-secondary": clubSecondary };
+
+  /* Nur-App-Betrieb.
+   *
+   * Die Vereins-Oberflaeche soll es ausschliesslich als App aus dem Store
+   * geben, nicht im Browser. Der Server bleibt trotzdem noetig: Die native
+   * Huelle laedt ihre Oberflaeche von hier, und die API-Routen (PayPal,
+   * RevenueCat-Webhook, Kalender-Abo, Kontoloeschung) laufen ebenfalls hier.
+   * Gesperrt wird also nur die Ansicht im Browser, nicht der Dienst.
+   *
+   * Rechtsseiten bleiben oeffentlich erreichbar - eigene Routen unter
+   * /nutzungsbedingungen, /datenschutz und /impressum, die diese Sperre gar
+   * nicht durchlaufen. Apple verlangt das; genau daran ist die erste
+   * Einreichung gescheitert.
+   *
+   * Bewusst ohne Schalter: Die Nutzung soll ausschliesslich ueber die
+   * installierte App laufen. Wer die Adresse im Browser oeffnet, bekommt den
+   * Weg in den Store gezeigt - keine Anmeldung, kein Zugang. */
+  if (imGeraet === null) return <div style={{ minHeight: "100vh", background: C.paper }} />;
+  if (!imGeraet) return <NurAlsAppHinweis />;
 
   return (
     <div className="erg-app erg-shell w-full flex items-center justify-center" style={{ fontFamily: "Inter", ...themeVars }}>
