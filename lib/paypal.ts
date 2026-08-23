@@ -16,10 +16,20 @@ export async function paypalAccessToken() {
   return (await response.json()).access_token as string;
 }
 
-/* Zwei Ebenen: Der Verein bucht Basic oder Premium (club_*), zusätzlich bucht jedes
-   Mitglied sein persönliches Basis-Abo (member_*). Beim Mitglied gibt es bewusst nur
-   eine Stufe — die Rollen im Verein entscheiden, was es damit tun darf. */
-export type PayPalClubPlanCode = "club_basic_monthly" | "club_basic_yearly" | "club_premium_monthly" | "club_premium_yearly";
+/* Der Verein bucht eine Groessenstufe (club_*). Mitglieder zahlen nichts mehr.
+ *
+ * member_monthly und member_yearly bleiben nur als Altbestand stehen: Zu ihnen
+ * koennen in der Produktion noch laufende PayPal-Abos gehoeren, deren Ereignisse
+ * der Webhook weiterhin zuordnen koennen muss. Neu abgeschlossen werden koennen
+ * sie nicht - der Weg dorthin ist in app/api/paypal/subscriptions geschlossen.
+ *
+ * club_premium_* ist ebenfalls Altbestand aus dem vorherigen Modell und wird in
+ * der Datenbank auf die Stufe "plus" abgebildet. */
+export type PayPalClubPlanCode =
+  | "club_basic_monthly" | "club_basic_yearly"
+  | "club_plus_monthly"  | "club_plus_yearly"
+  | "club_pro_monthly"   | "club_pro_yearly"
+  | "club_premium_monthly" | "club_premium_yearly";
 export type PayPalMemberPlanCode = "member_monthly" | "member_yearly";
 export type PayPalPlanCode = PayPalClubPlanCode | PayPalMemberPlanCode;
 
@@ -27,6 +37,10 @@ export function paypalPlanId(code: PayPalPlanCode) {
   const variables: Record<PayPalPlanCode, string | undefined> = {
     club_basic_monthly: process.env.PAYPAL_CLUB_BASIC_MONTHLY_PLAN_ID,
     club_basic_yearly: process.env.PAYPAL_CLUB_BASIC_YEARLY_PLAN_ID,
+    club_plus_monthly: process.env.PAYPAL_CLUB_PLUS_MONTHLY_PLAN_ID,
+    club_plus_yearly: process.env.PAYPAL_CLUB_PLUS_YEARLY_PLAN_ID,
+    club_pro_monthly: process.env.PAYPAL_CLUB_PRO_MONTHLY_PLAN_ID,
+    club_pro_yearly: process.env.PAYPAL_CLUB_PRO_YEARLY_PLAN_ID,
     club_premium_monthly: process.env.PAYPAL_CLUB_PREMIUM_MONTHLY_PLAN_ID,
     club_premium_yearly: process.env.PAYPAL_CLUB_PREMIUM_YEARLY_PLAN_ID,
     member_monthly: process.env.PAYPAL_MEMBER_MONTHLY_PLAN_ID,

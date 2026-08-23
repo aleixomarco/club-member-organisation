@@ -70,39 +70,6 @@ const PAYPAL_STATUS: Record<string, string> = {
 /* Persönliches Basis-Abo eines Mitglieds. Anders als beim Vereinsabo gibt es hier
    keine Rollenprüfung — jeder zahlt für sich selbst. Geprüft wird stattdessen, dass
    die PayPal-Subscription auch wirklich auf dieses Profil ausgestellt wurde. */
-async function saveMemberSubscription(
-  admin: ReturnType<typeof getSupabaseAdmin>,
-  profileId: string,
-  subscriptionId: string,
-  cycle: string,
-) {
-  const details = await getPayPalSubscription(subscriptionId);
-  if (details.custom_id !== profileId) {
-    return NextResponse.json({ error: "Subscription owner does not match" }, { status: 403 });
-  }
-  const code = (cycle === "yearly" ? "member_yearly" : "member_monthly") as PayPalPlanCode;
-  if (paypalPlanId(code) !== details.plan_id) {
-    return NextResponse.json({ error: "Unknown subscription plan" }, { status: 400 });
-  }
-  const { data: plan } = await admin.from("subscription_plans").select("id").eq("code", code).single();
-  if (!plan) return NextResponse.json({ error: "Subscription plan is missing" }, { status: 500 });
-
-  const { error } = await admin.from("user_subscriptions").upsert({
-    profile_id: profileId,
-    plan_id: plan.id,
-    provider: "paypal",
-    provider_subscription_id: subscriptionId,
-    status: PAYPAL_STATUS[details.status] || "pending",
-    current_period_start: details.start_time || null,
-    current_period_end: details.billing_info?.next_billing_time || null,
-    last_payment_at: details.billing_info?.last_payment?.time || null,
-    cancel_at_period_end: details.status === "CANCELLED",
-    cancelled_at: details.status === "CANCELLED" ? details.status_update_time || new Date().toISOString() : null,
-  }, { onConflict: "provider,provider_subscription_id" });
-  if (error) return NextResponse.json({ error: "Subscription could not be saved" }, { status: 500 });
-  return NextResponse.json({ saved: true });
-}
-
 export async function POST(request: Request) {
   const user = await authenticatedUser(request);
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -114,11 +81,19 @@ export async function POST(request: Request) {
   const { admin, error: adminError } = safeGetSupabaseAdmin();
   if (adminError) return adminError;
 
+  /* Mitglieder zahlen nichts mehr. Der Weg ist geschlossen, statt ihn nur in
+     der Oberflaeche zu verstecken - sonst koennte ein alter Client oder ein
+     direkter Aufruf weiterhin ein Abo anlegen und jemandem Geld abbuchen. */
   if (scope === "member") {
-    return saveMemberSubscription(admin, user.id, subscriptionId, cycle);
+    return NextResponse.json(
+      { error: "Mitglieder zahlen nichts. Der Zugang wird vom Verein bezahlt." },
+      { status: 410 },
+    );
   }
 
-  if (!["basic", "premium"].includes(tier)) {
+  /* Die Stufen des aktuellen Modells. "premium" bleibt zulaessig, weil in der
+     Produktion noch Abos aus dem vorherigen Modell laufen koennen. */
+  if (!["basic", "plus", "pro", "premium"].includes(tier)) {
     return NextResponse.json({ error: "Invalid subscription" }, { status: 400 });
   }
   if (!clubId || !await canManageClub(admin, user.id, clubId)) {
