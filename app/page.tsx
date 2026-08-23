@@ -4155,10 +4155,6 @@ function SubscriptionPanel({ user }) {
      Rollenprüfung — nur ein echtes Konto ist Voraussetzung. */
   const [memberSubs, setMemberSubs] = useState([]);
   const [memberAccess, setMemberAccess] = useState(null);
-  const [memberCycle, setMemberCycle] = useState("monthly");
-  const [memberConsent, setMemberConsent] = useState(false);
-  const [memberOffering, setMemberOffering] = useState(null);
-  const [memberOfferingLoading, setMemberOfferingLoading] = useState(true);
   const [memberPurchasing, setMemberPurchasing] = useState(false);
   /* PayPal muss die Subscription auf die PROFIL-ID ausstellen — user.id ist die
      Mitgliedschafts-ID und wäre hier falsch. Die Profil-ID steht nur in der
@@ -4247,20 +4243,6 @@ function SubscriptionPanel({ user }) {
   /* Persönliches Basis-Abo im nativen Store. Läuft auf die Profil-ID — dieselbe
      Kennung, die auch PayPal als custom_id bekommt, damit beide Wege im selben
      Datensatz landen. */
-  const buyMemberPackage = async () => {
-    const pkg = memberOffering?.[memberCycle];
-    if (!pkg) { setMessage("Dieses Paket ist im Store noch nicht verfügbar."); return; }
-    setMemberPurchasing(true); setMessage("");
-    try {
-      await purchasePackageAs(authUserId, pkg);
-      setMessage("Kauf erfolgreich. Die Freischaltung kann kurz dauern.");
-      setTimeout(() => { refreshMemberAccess(); loadSubscriptions(); }, 2500);
-    } catch (error) {
-      if (!error?.userCancelled) setMessage(error?.message || "Der Kauf konnte nicht abgeschlossen werden.");
-    } finally {
-      setMemberPurchasing(false);
-    }
-  };
 
   const restoreMemberPurchases = async () => {
     setMemberPurchasing(true); setMessage("");
@@ -4351,26 +4333,6 @@ function SubscriptionPanel({ user }) {
   /* Abschluss des eigenen Basis-Abos. Läuft über dieselbe Route wie das Vereinsabo,
      nur mit scope="member" — dort entfällt die Rollenprüfung, stattdessen wird
      geprüft, dass PayPal die Subscription auf dieses Profil ausgestellt hat. */
-  const memberApproved = useCallback(async (subscriptionId) => {
-    setMessage("Dein Abonnement wird gespeichert …");
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
-      if (!token) throw new Error("Bitte melde dich erneut an.");
-      const response = await fetch("/api/paypal/subscriptions", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ subscriptionId, cycle: memberCycle, scope: "member" }),
-      });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || "Dein Abonnement konnte noch nicht gespeichert werden.");
-      await loadSubscriptions();
-      refreshMemberAccess();
-      setMessage("Dein Zugang ist freigeschaltet.");
-    } catch (error) {
-      setMessage(error.message || "Die PayPal-Bestätigung wird noch verarbeitet. Bitte gleich erneut aktualisieren.");
-    }
-  }, [memberCycle, loadSubscriptions, refreshMemberAccess]);
 
   const cancelMemberSubscription = async (subscription) => {
     if (!window.confirm("Deinen Zugang wirklich kündigen? Er bleibt bis zum Ende des bezahlten Zeitraums nutzbar.")) return;
@@ -4419,7 +4381,6 @@ function SubscriptionPanel({ user }) {
     }
   };
 
-  const memberHasAccess = memberAccess?.has_access ?? false;
 
   /* Rückmeldungen betreffen beide Bereiche und stehen deshalb auf oberster Ebene —
      früher lagen sie im Vereinsblock, sodass ein Mitglied ohne Kaufrecht Fehler beim
