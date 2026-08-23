@@ -6559,6 +6559,26 @@ const SUBVIEW_TITLES = { season: "Athlet/in der Saison", tipp: "Tippspiel", duty
 
 export default function ClubMemberOrganisationApp() {
   const [clubs, setClubs] = useState(INITIAL_CLUBS);
+
+  /* Tastatur offen? Nur fuer die Anzeige - die Groesse der Webansicht regelt
+     das Keyboard-Plugin (resize: "native" in capacitor.config.ts).
+     Waehrend getippt wird, weicht die untere Navigationsleiste. Sonst saesse
+     sie zwischen Schreibfeld und Tastatur und naehme der Nachrichtenliste
+     Platz weg - Messenger blenden sie deshalb aus. */
+  const [tastaturOffen, setTastaturOffen] = useState(false);
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    const griffe = [];
+    let abgemeldet = false;
+    import("@capacitor/keyboard")
+      .then(({ Keyboard }) => Promise.all([
+        Keyboard.addListener("keyboardWillShow", () => setTastaturOffen(true)),
+        Keyboard.addListener("keyboardWillHide", () => setTastaturOffen(false)),
+      ]))
+      .then((h) => { if (abgemeldet) h.forEach((x) => x.remove()); else griffe.push(...h); })
+      .catch(() => {});
+    return () => { abgemeldet = true; griffe.forEach((h) => h.remove()); };
+  }, []);
   const [selectedClubId, setSelectedClubId] = useState(null);
   const [clubFeatures, setClubFeatures] = useState(DEFAULT_CLUB_FEATURES);
   const [featureOnboardingClubId, setFeatureOnboardingClubId] = useState(null);
@@ -7180,7 +7200,7 @@ export default function ClubMemberOrganisationApp() {
             </div>
 
             {!subView && (
-              <div className="erg-navwrap absolute bottom-0 left-0 right-0 px-3 pt-2 pointer-events-none">
+              <div className="erg-navwrap absolute bottom-0 left-0 right-0 px-3 pt-2 pointer-events-none" style={{ display: tastaturOffen ? "none" : undefined }}>
                 <div className="flex items-center justify-around rounded-3xl p-1.5 pointer-events-auto" style={{ background: "rgba(255,255,255,0.62)", border: `1px solid ${C.edge}`, boxShadow: "0 14px 34px rgba(60,30,45,0.14)" }}>
                   {TABS.map((t) => {
                     const activeTab = tab === t.id;

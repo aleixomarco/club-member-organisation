@@ -32,6 +32,24 @@ const config: CapacitorConfig = {
     contentInset: "never",
   },
   plugins: {
+    /* Ohne dieses Plugin gilt das Standardverhalten von WKWebView: Die
+       Webansicht behaelt ihre volle Hoehe, und iOS scrollt die GANZE Seite nach
+       oben, um das Eingabefeld freizulegen. Im Chat schob sich dadurch die
+       komplette App samt Navigationsleiste nach oben.
+
+       resize: "native" verkleinert stattdessen die Webansicht selbst. Weil das
+       Layout mit position: fixed und inset: 0 an dieser Flaeche haengt (siehe
+       app/page.tsx), schrumpft die Nachrichtenliste, und das Schreibfeld sitzt
+       direkt ueber der Tastatur - so wie man es von Messengern kennt.
+
+       scrollAssist: false schaltet Apples automatisches Nachscrollen ab. Es
+       wuerde sonst zusaetzlich verschieben, obwohl das Feld bereits sichtbar
+       ist. */
+    Keyboard: {
+      resize: "native" as never,
+      scrollAssist: false,
+      resizeOnFullScreen: true,
+    },
     /* Der native Startbildschirm bleibt stehen, bis die Web-Oberfläche selbst
        Bescheid gibt (SplashScreen.hide() in app/page.tsx). Ohne launchAutoHide
        blendet iOS ihn aus, sobald das App-Fenster steht — also bevor die Seite
