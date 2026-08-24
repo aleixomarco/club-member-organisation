@@ -4162,14 +4162,19 @@ function SubscriptionPanel({ user }) {
       .catch(() => setAccountUsage(null));
   }, [databaseClub, user.clubId, clubStatus]);
 
+  /* Faellt einer der beiden Aufrufe aus - kein Netz, Server nicht erreichbar -,
+     blieb clubStatus vorher auf null stehen. Die Kaufmaske zeigte dann dauerhaft
+     "wird geladen", ohne Hinweis und ohne Ende; der Verein sah nicht, welchen
+     Tarif er hat, und konnte auch keinen buchen.
+     Jetzt faellt sie auf "kein Abo" zurueck und sagt es. Das ist die sichere
+     Richtung: Es wird nichts freigeschaltet, was nicht bezahlt ist, und der
+     Nutzer weiss, woran er ist. */
   const refreshClubStatus = useCallback(() => {
     if (!supabase || !databaseClub) return;
-    supabase.rpc("club_subscription_tier", { target_club: user.clubId }).then(({ data }) => {
-      if (!data) return;
-      supabase.rpc("club_trial_info", { target_club: user.clubId }).then(({ data: trialRows }) => {
-        setClubStatus({ tier: data, ...(trialRows?.[0] || {}) });
-      });
-    });
+    supabase.rpc("club_subscription_tier", { target_club: user.clubId })
+      .then(({ data }) => supabase.rpc("club_trial_info", { target_club: user.clubId })
+        .then(({ data: trialRows }) => setClubStatus({ tier: data || "none", ...(trialRows?.[0] || {}) })))
+      .catch(() => setClubStatus({ tier: "none", nichtGeladen: true }));
   }, [databaseClub, user.clubId]);
 
   /* Vereinsabo: läuft auf die Vereins-ID. Die Kennung steht hier ausdrücklich,
@@ -4267,7 +4272,8 @@ function SubscriptionPanel({ user }) {
          Zugang darüber. ---- */}
     {canManageSubscription(user) && <>
     {clubStatus && <div className="rounded-2xl p-4 mb-5" style={{ background: clubStatus.tier === "none" ? "rgba(253,236,236,0.72)" : "rgba(231,243,236,0.72)", border: `1px solid ${clubStatus.tier === "none" ? "#F3B9B9" : "#CFE8D6"}` }}>
-      <div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Aktueller Vereinstarif: {clubStatus.tier === "none" ? "Kein Abo" : CLUB_TIER_INFO[clubStatus.tier]?.label || clubStatus.tier}</div>
+      <div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Aktueller Vereinstarif: {clubStatus.nichtGeladen ? "nicht abrufbar" : clubStatus.tier === "none" ? "Kein Abo" : CLUB_TIER_INFO[clubStatus.tier]?.label || clubStatus.tier}</div>
+      {clubStatus.nichtGeladen && <div className="text-[11px] mb-1" style={{ color: C.red }}>Der Tarif konnte nicht geladen werden. Prüfe deine Verbindung und öffne die Ansicht erneut — ein bestehendes Abo bleibt davon unberührt.</div>}
       {clubStatus.trialing && <div className="text-[11px]" style={{ color: C.textDim }}>Trial läuft bis {subscriptionDate(clubStatus.trial_ends_at)} — danach wird ein Abo benötigt.</div>}
       {!clubStatus.trialing && clubStatus.tier === "none" && <div className="text-[11px]" style={{ color: C.textDim }}>Ohne Abo sind die Funktionen gesperrt und es lassen sich keine neuen Zugänge anlegen.</div>}
       {accountUsage && <div className="text-[11px] mt-1.5" style={{ color: accountUsage.used >= accountUsage.allowed ? C.red : C.textDim }}>
