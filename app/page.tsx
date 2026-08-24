@@ -170,6 +170,25 @@ button:active { transform: scale(0.96); }
   .erg-frame .px-4 { padding-left: calc(env(safe-area-inset-left, 0px) + 18px); padding-right: calc(env(safe-area-inset-right, 0px) + 18px); }
   /* Untere Navigation überdeckt sonst die letzten Einträge einer Liste. */
   .erg-frame .pb-24 { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 124px); }
+
+  /* Seiten OHNE obere Leiste - Vereinsauswahl, Anmeldung, Registrierung.
+     Die Hauptansicht schuetzt ihren Inhalt ueber .erg-topbar. Diese Seiten
+     haben keine solche Leiste; ihr Inhalt begann direkt an der Oberkante und
+     lief auf Geraeten mit Dynamic Island oder Aussparung darunter.
+
+     Der Zuschlag deckt jede Bauform ab, weil er nicht auf ein Geraet gemuenzt
+     ist, sondern auf den Wert, den iOS selbst meldet: 0 beim iPhone SE, rund
+     47px bei der Notch, rund 59px bei der Dynamic Island. Kommt morgen eine
+     neue Bauform, stimmt die Rechnung weiterhin. */
+  .erg-frame .pt-8  { padding-top: calc(env(safe-area-inset-top, 0px) + 32px); }
+  .erg-frame .pt-10 { padding-top: calc(env(safe-area-inset-top, 0px) + 40px); }
+
+  /* Dieselben Seiten seitlich: bisher war nur px-4 abgedeckt, die Anmeldung
+     benutzt aber px-6. Auf gerundeten Displays klebten Felder am Rand. */
+  .erg-frame .px-6 { padding-left: calc(env(safe-area-inset-left, 0px) + 24px); padding-right: calc(env(safe-area-inset-right, 0px) + 24px); }
+
+  /* Der untere Rand dieser Seiten: Home-Indikator freihalten. */
+  .erg-frame .pb-6 { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 24px); }
 }
 
 /* Sehr schmale Geräte (iPhone SE, kompakte Android-Modelle): Abstände zurücknehmen,
