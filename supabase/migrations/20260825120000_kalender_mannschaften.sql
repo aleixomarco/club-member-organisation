@@ -81,6 +81,10 @@ begin
 end;
 $$;
 
+-- Auch hier aendert sich der Rueckgabetyp - team_ids kommt dazu. PostgreSQL
+-- laesst das mit CREATE OR REPLACE nicht zu, die alte Fassung muss weichen.
+drop function if exists public.my_calendar_subscription(uuid);
+
 create or replace function public.my_calendar_subscription(target_club uuid)
 returns table(token uuid, sync_interval text, event_types text[], team_ids uuid[], enabled boolean)
 language sql security definer set search_path = '' as $$
