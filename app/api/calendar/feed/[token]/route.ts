@@ -18,7 +18,7 @@ export async function GET(_request: Request, context: { params: Promise<{ token:
   } catch {
     return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
   }
-  const { data: subscription } = await admin.from("calendar_subscriptions").select("profile_id,club_id,enabled,sync_interval,event_types").eq("token", token).maybeSingle();
+  const { data: subscription } = await admin.from("calendar_subscriptions").select("profile_id,club_id,enabled,sync_interval,event_types,team_ids").eq("token", token).maybeSingle();
   if (!subscription?.enabled) return NextResponse.json({ error: "Kalenderverbindung nicht gefunden" }, { status: 404 });
   const { data: membership } = await admin.from("club_memberships").select("id").eq("profile_id", subscription.profile_id).eq("club_id", subscription.club_id).eq("status", "active").maybeSingle();
   if (!membership) return NextResponse.json({ error: "Mitgliedschaft nicht aktiv" }, { status: 403 });
@@ -31,9 +31,26 @@ export async function GET(_request: Request, context: { params: Promise<{ token:
     if (link.second_membership_id === membership.id && link.second_to_first === "eltern") return [link.first_membership_id];
     return [];
   });
-  const relevantMembershipIds = [membership.id, ...relatedChildren];
-  const { data: assignments } = await admin.from("team_members").select("team_id").in("membership_id", relevantMembershipIds);
-  const teamIds = [...new Set((assignments || []).map((entry) => entry.team_id))];
+  /* Welche Mannschaften landen im Kalender?
+     Hat jemand ausdruecklich welche gewaehlt, gelten genau diese - auch solche,
+     in denen er selbst nicht steht (ein Elternteil, das der Mannschaft des
+     Kindes folgt, ein Vorstand, der eine Mannschaft beobachtet).
+     Ohne Auswahl bleibt es beim bisherigen Verhalten: die eigenen Mannschaften
+     und die der Kinder, mit denen eine Familienverbindung besteht. Bestehende
+     Abos aendern sich dadurch nicht. */
+  const gewaehlteTeams: string[] = Array.isArray(subscription.team_ids) ? subscription.team_ids : [];
+  let teamIds: string[];
+  if (gewaehlteTeams.length) {
+    /* Nachpruefen statt vertrauen: Die Auswahl steht seit dem Speichern in der
+       Datenbank, aber eine Mannschaft kann seither in einen anderen Verein
+       verschoben oder geloescht worden sein. */
+    const { data: erlaubt } = await admin.from("teams").select("id").eq("club_id", subscription.club_id).in("id", gewaehlteTeams);
+    teamIds = (erlaubt || []).map((entry) => entry.id);
+  } else {
+    const relevantMembershipIds = [membership.id, ...relatedChildren];
+    const { data: assignments } = await admin.from("team_members").select("team_id").in("membership_id", relevantMembershipIds);
+    teamIds = [...new Set((assignments || []).map((entry) => entry.team_id))];
+  }
   /* Nur die abonnierten Terminarten ausliefern. Ältere Abos ohne gespeicherte
      Auswahl bekommen weiterhin alles — sonst wäre ihr Gerätekalender nach der
      Umstellung stillschweigend leer. */
@@ -49,9 +66,18 @@ export async function GET(_request: Request, context: { params: Promise<{ token:
   const refreshInterval = { daily: "P1D", weekly: "P1W", monthly: "P1M", never: "P10Y" }[subscription.sync_interval] || "P1D";
   /* Der Name landet sichtbar im Gerätekalender — er soll verraten, was drinsteckt. */
   const typeLabels: Record<string, string> = { training: "Training", spiel: "Spiele", event: "Events" };
-  const calendarName = chosenTypes.length === ALL_TYPES.length
-    ? "CMO Termine"
-    : `CMO ${chosenTypes.map((entry) => typeLabels[entry]).join(" & ")}`;
+  const artenName = chosenTypes.length === ALL_TYPES.length
+    ? "Termine"
+    : chosenTypes.map((entry) => typeLabels[entry]).join(" & ");
+  /* Bei ausgewaehlten Mannschaften deren Namen in den Kalendernamen. Wer zwei
+     Abos im Geraet hat, muss sie auseinanderhalten koennen. */
+  let mannschaftsName = "";
+  if (gewaehlteTeams.length && teamIds.length) {
+    const { data: namen } = await admin.from("teams").select("name").in("id", teamIds).order("name");
+    const liste = (namen || []).map((entry) => entry.name);
+    mannschaftsName = liste.length <= 2 ? ` · ${liste.join(" & ")}` : ` · ${liste.length} Mannschaften`;
+  }
+  const calendarName = `CMO ${artenName}${mannschaftsName}`;
   const body = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//CMO//Club Member Organisation//DE", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", `X-WR-CALNAME:${escapeIcs(calendarName)}`, `REFRESH-INTERVAL;VALUE=DURATION:${refreshInterval}`, `X-PUBLISHED-TTL:${refreshInterval}`,
     ...(events || []).flatMap((event) => ["BEGIN:VEVENT", `UID:${event.id}@cmo.app`, `DTSTAMP:${icsDate(new Date().toISOString())}`, `DTSTART:${icsDate(event.starts_at)}`, `DTEND:${icsDate(event.ends_at || new Date(new Date(event.starts_at).getTime()+7200000).toISOString())}`, `SUMMARY:${escapeIcs(event.status === "cancelled" ? `ABGESAGT: ${event.title}` : event.title)}`, `DESCRIPTION:${escapeIcs(event.description || "")}`, `LOCATION:${escapeIcs(event.location || "")}`, `STATUS:${event.status === "cancelled" ? "CANCELLED" : "CONFIRMED"}`, "END:VEVENT"]), "END:VCALENDAR", ""].join("\r\n");
   return new NextResponse(body, { headers: { "Content-Type": "text/calendar; charset=utf-8", "Content-Disposition": "inline; filename=CMO-Kalender.ics", "Cache-Control": "no-store" } });

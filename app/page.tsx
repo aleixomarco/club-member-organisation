@@ -4836,6 +4836,11 @@ const CALENDAR_EVENT_TYPES = [
 function CalendarSyncSettings({ user, saveRef }) {
   const [interval, setInterval] = useState(user.calendarSyncInterval || "never");
   const [types, setTypes] = useState(["training", "spiel", "event"]);
+  /* Leere Auswahl heisst "meine Mannschaften" - genau das bisherige Verhalten.
+     Wer ausdruecklich waehlt, bekommt die gewaehlten, auch solche, in denen er
+     selbst nicht steht. */
+  const [teams, setTeams] = useState([]);
+  const [alleTeams, setAlleTeams] = useState([]);
   const [token, setToken] = useState("");
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
@@ -4850,8 +4855,17 @@ function CalendarSyncSettings({ user, saveRef }) {
       setToken(row.token || "");
       setInterval(row.sync_interval || "never");
       if (Array.isArray(row.event_types) && row.event_types.length) setTypes(row.event_types);
+      if (Array.isArray(row.team_ids)) setTeams(row.team_ids);
     });
+    supabase.from("teams").select("id,name").eq("club_id", user.clubId).order("name")
+      .then(({ data }) => setAlleTeams(data || []))
+      .catch(() => setAlleTeams([]));
   }, [user.clubId]);
+
+  const toggleTeam = (id) => {
+    setMessage("");
+    setTeams((current) => current.includes(id) ? current.filter((entry) => entry !== id) : [...current, id]);
+  };
 
   const toggleType = (key) => {
     setMessage("");
@@ -4866,6 +4880,7 @@ function CalendarSyncSettings({ user, saveRef }) {
       target_club: user.clubId,
       requested_interval: interval,
       requested_types: types,
+      requested_teams: teams,
     });
     setSaving(false);
     if (error) { setMessage("Kalender konnte nicht verbunden werden."); return; }
@@ -4900,6 +4915,29 @@ function CalendarSyncSettings({ user, saveRef }) {
         })}
       </div>
       {!types.length && <div className="text-[11px] rounded-xl px-3 py-2 mb-3" style={{ background: "rgba(255,246,228,0.72)", color: C.textDim }}>Ohne Auswahl bliebe der Kalender leer — wähle mindestens eine Art.</div>}
+
+      {alleTeams.length > 0 && <>
+        <div className="text-[10px] font-bold uppercase tracking-widest mb-1.5" style={{ color: C.textDim }}>Mannschaften</div>
+        <div className="text-[10px] mb-2 leading-snug" style={{ color: C.textDim }}>
+          {teams.length === 0
+            ? "Ohne Auswahl kommen die Mannschaften, in denen du oder deine Kinder stehen — dazu alle vereinsweiten Termine."
+            : "Nur die gewählten Mannschaften, dazu alle vereinsweiten Termine."}
+        </div>
+        <div className="space-y-1.5 mb-3">
+          {alleTeams.map((mannschaft) => {
+            const active = teams.includes(mannschaft.id);
+            return (
+              <button key={mannschaft.id} onClick={() => toggleTeam(mannschaft.id)} aria-pressed={active} className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left" style={{ background: active ? "rgba(231,243,236,0.72)" : C.paperDim, border: `1px solid ${active ? "#CFE8D6" : "transparent"}` }}>
+                <span className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0" style={{ background: active ? C.green : "transparent", border: `1px solid ${active ? C.green : C.edge}` }}>
+                  {active && <Check size={13} style={{ color: C.white }} />}
+                </span>
+                <span className="text-xs font-bold" style={{ color: C.ink }}>{mannschaft.name}</span>
+              </button>
+            );
+          })}
+          {teams.length > 0 && <button onClick={() => { setTeams([]); setMessage(""); }} className="w-full py-2 rounded-xl text-[11px] font-bold" style={{ background: C.glass, color: C.textDim }}>Auswahl aufheben — meine Mannschaften verwenden</button>}
+        </div>
+      </>}
 
       <div className="text-[10px] font-bold uppercase tracking-widest mb-1.5" style={{ color: C.textDim }}>Aktualisierung</div>
       <select value={interval} onChange={(e) => setInterval(e.target.value)} className="w-full px-3 py-3 rounded-xl text-xs mb-3" style={inputStyle}>
