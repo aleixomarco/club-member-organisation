@@ -480,7 +480,17 @@ const canManageFees = (m) => !!m && m.roles.some((r) => ["geschaeftsfuehrung", "
 const isFormalMember = (m) => !!m && m.roles.some((r) => ROLE_META[r]?.formalMember);
 const isSysAdmin = (m) => !!m && m.roles.includes("sysadmin");
 const canWriteNews = (m) => isAdmin(m) || (!!m && m.roles.includes("redakteur"));
-const canManageSponsors = (m) => isAdmin(m) || (!!m && m.roles.includes("sponsorenmanager"));
+/* Sponsoring wird von Vereinen nicht selbst verwaltet.
+ *
+ * Werbeflaechen vermarktet der Betreiber der App, nicht der einzelne Verein -
+ * er bucht sie, und die Anzeige wird zentral platziert. Der Reiter bleibt
+ * deshalb ausgeblendet; die Anzeigen selbst erscheinen weiterhin.
+ *
+ * Der Code bleibt vollstaendig stehen. Wird daraus spaeter ein Angebot fuer
+ * Vereine - "verwalte deine eigenen Sponsoren" -, genuegt hier true. */
+const SPONSOREN_VERWALTUNG_SICHTBAR = false;
+
+const canManageSponsors = (m) => SPONSOREN_VERWALTUNG_SICHTBAR && (isAdmin(m) || (!!m && m.roles.includes("sponsorenmanager")));
 const canManageDuty = (m) => isAdmin(m) || (!!m && m.roles.includes("organisator"));
 /* Abo und Vertragsdaten des Vereins gehen nur die Rollen etwas an, die den Verein
    wirtschaftlich vertreten. Athlet/innen, Eltern, Trainer/innen, Kapitän/innen und
@@ -6554,7 +6564,7 @@ function AdminView({
   ];
   const [panel, setPanel] = useState(restrictedOnly ? restrictedPanels[0][0] : "overview");
   const openCount = members.filter((m) => !feePaid[m.id]).length;
-  const panels = restrictedOnly ? restrictedPanels : [["overview", "Übersicht"], ["automation", "Automatisierung"], ...(dutyFeatureOn ? [["duty", "Helferplanung"], ["duty-templates", `${dutyCfg.dutyTabLabel}-Sätze`]] : []), ["protokolle", "Protokolle"], ["polls", "Umfragen"], ["sponsoring", "Sponsoring"], ["season", "Athlet/in der Saison"]];
+  const panels = restrictedOnly ? restrictedPanels : [["overview", "Übersicht"], ["automation", "Automatisierung"], ...(dutyFeatureOn ? [["duty", "Helferplanung"], ["duty-templates", `${dutyCfg.dutyTabLabel}-Sätze`]] : []), ["protokolle", "Protokolle"], ["polls", "Umfragen"], ...(SPONSOREN_VERWALTUNG_SICHTBAR ? [["sponsoring", "Sponsoring"]] : []), ["season", "Athlet/in der Saison"]];
   if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.push(["roles", "Rollen"]);
   if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.splice(1, 0, ["memberships", "Mitgliedsanträge"]);
   if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.splice(1, 0, ["clubprofile", "Vereinsprofil"]);
