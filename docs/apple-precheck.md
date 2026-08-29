@@ -1,7 +1,32 @@
 # Vorab-Prüfung gegen die App-Store-Richtlinien
 
-Durchgeführt am 25.08.2026 für Build 1.0 (4).
+Erste Durchsicht am 25.08.2026 für Build 1.0 (4).
+**Zweite, deutlich gründlichere Durchsicht am 29.08.2026 für Build 1.0 (5)** —
+sechs unabhängige Prüfer entlang der Richtlinien-Dimensionen, jeder Fund
+anschließend von einem weiteren Prüfer gezielt zu widerlegen versucht.
+
 Grundlage: die Richtlinien, die für diese App einschlägig sind, geprüft am Code.
+
+## Ergebnis der zweiten Durchsicht
+
+42 Verdachtsfälle, davon **26 bestätigt und 16 widerlegt**. 18 der bestätigten
+lagen auf Ablehnungsniveau. Alle 26 sind behoben.
+
+Die erste Durchsicht hatte zwölf Richtlinienpunkte geprüft und vier Fehler
+gefunden. Sie hat die schwersten Probleme übersehen — darunter drei Abstürze
+durch Variablen, die es im Quelltext gar nicht gibt. Der Grund dafür ist
+lehrreich: `next.config` setzt `ignoreBuildErrors: true`, kein Build meldet
+diese Fehlerklasse, und eine Durchsicht „von Hand" findet sie nur zufällig.
+
+Konsequenz für die Zukunft: Diese Fehlerklasse lässt sich vollständig prüfen mit
+
+```bash
+npx tsc --noEmit -p tsconfig.json 2>&1 | grep -E "TS2304|TS2552"
+```
+
+Nach den Korrekturen meldet der Befehl über `app/` und `lib/` **nichts mehr**.
+Dass er wirklich greift, zeigen die rund 1680 übrigen Meldungen allein in
+`app/page.tsx` — durchweg fehlende Typangaben ohne Laufzeitfolge.
 
 ---
 
@@ -24,7 +49,77 @@ Grundlage: die Richtlinien, die für diese App einschlägig sind, geprüft am Co
 
 ---
 
-## Gefunden und behoben
+## Zweite Durchsicht: die 26 bestätigten Funde
+
+### Abstürze — die Fehlerklasse, die kein Build meldet
+
+Drei Variablen wurden verwendet, aber nirgends deklariert. Jede davon reißt beim
+Rendern ab. Alle drei sind Reste früherer Umbauten.
+
+| Stelle | Wirkung |
+|---|---|
+| `requires` (page.tsx:970) | Die **Abo-Sperrseite** stürzte ab — also genau der Weg zum Kaufknopf |
+| `confirmReset` (page.tsx:6152) | Verwaltung → System stürzte beim Öffnen ab |
+| `setMyTeamIds` (page.tsx:2952, 2962) | „Meine Mannschaften" hing dauerhaft auf „Wird geladen …" |
+
+### Demo-Inhalte in den Ansichten echter Vereine
+
+Ein ganzer Satz Modul-Konstanten diente zugleich als Anfangszustand für **jeden**
+Verein. Wer sich neu registrierte, bekam fremde Inhalte als seine eigenen:
+
+- fünf Firmen als „Unsere Sponsoren" und drei vorbelegte Anzeigen mit echten
+  Namen und Links (Sparkasse Iserlohn, Stadtwerke Iserlohn, Autohaus Meyer)
+- zwei erfundene Geburtstage, täglich — jetzt aus den echten Mitgliedern,
+  unter Beachtung der Einstellung „Geburtstag im Verein anzeigen"
+- eine Abstimmung über eine Weihnachtsfeier mit 63 nie abgegebenen Stimmen
+- vier erfundene Begegnungen im Tippspiel
+- fünf erfundene Kandidaten mit zusammen 144 erfundenen Stimmen
+- ein ausformuliertes Vorstandsprotokoll vom 14.07.2026
+- erfundene Chat-Kanäle samt Unterhaltungen bei jedem Verein ohne eigene Kanäle
+- der Helferdienst las an drei Stellen die Demo-Termine
+- die Startseite fiel für „nächstes Spiel" auf einen Demo-Termin zurück
+
+### Funktionen, die nicht funktionierten
+
+**Ein neuer Verein konnte keinen einzigen Termin anlegen.** Die wählbaren
+Mannschaften kamen aus `filterTeams`, und das leitet sich ausschließlich aus
+*vorhandenen* Terminen ab — im frischen Verein also aus nichts. Das Auswahlfeld
+blieb leer, und `createSportEvent` brach kommentarlos ab. Auch vorher angelegte
+Mannschaften halfen nicht, weil die `teams`-Tabelle nie gelesen wurde.
+
+**Push funktionierte auf iOS grundsätzlich nie.** Der einzige Push-Code ist
+Firebase *Web* Push; im WKWebView gibt es weder `Notification` noch
+`serviceWorker`. Der Knopf öffnete also nie einen Berechtigungsdialog. Der Text
+verwies zusätzlich auf „Zum Home-Bildschirm hinzufügen" — auf eine Installation
+außerhalb des App Store, mitten in einer App-Store-App.
+
+**Ohne Netz blieb der Bildschirm dauerhaft leer.** Ohne `server.errorPath` lädt
+Capacitor bei einem gescheiterten Ladevorgang gar nichts nach.
+
+**Die Kontolöschung schlug fehl**, sobald jemand eine Neuigkeit verfasst hatte —
+`news_posts.author_id` verwies mit `on delete restrict` auf `profiles`.
+
+### Tote Bedienelemente
+
+- die Demo-Zugänge auf dem Anmeldebildschirm: 18 Knöpfe, keiner funktionierte,
+  und im echten Betrieb standen dort die Mitglieder mit Namen und Rollen —
+  vor jeder Anmeldung
+- „Fotogalerie · Sommerfest 2025" und „Anwesenheitsquote: 92%" im Profil: die
+  einzigen zwei Knöpfe der ganzen Datei ohne `onClick`
+- die beiden Store-Bewertungslinks, die bei der *ersten* Prüfung zwangsläufig
+  leer sind
+
+### Darstellung und Recht
+
+- **Statusleiste im Dunkelmodus unlesbar**: weiße Schrift auf fast weißem Grund,
+  auf jedem Bildschirm
+- **Platzhaltertext live auf allen drei Rechtsseiten**: „[Vertretungsberechtigte
+  Person in Vercel eintragen]" — auch auf den Nutzungsbedingungen, der Seite,
+  die Apple beim letzten Mal geprüft hat
+
+---
+
+## Erste Durchsicht: gefunden und behoben
 
 **Der Kauf des Prüfers wurde verworfen.** Der Webhook verwarf jedes Ereignis
 aus der Sandbox, solange nicht `REVENUECAT_ALLOW_SANDBOX=true` gesetzt war.
@@ -109,6 +204,26 @@ App zeigen, wie sie heute ist.
 Der Ablehnungsgrund der ersten Einreichung — der fehlende Link zu den
 Nutzungsbedingungen, Richtlinie 3.1.2 — ist behoben und belegt.
 
-Von den vier neu gefundenen Fehlern hätte einer mit hoher Wahrscheinlichkeit
-zur Ablehnung geführt: der weiße Bildschirm im Chat. Er war erst durch die
-Umstellung auf mannschaftsbezogene Kanäle entstanden, also am selben Tag.
+Von den vier Fehlern der ersten Durchsicht hätte einer mit hoher
+Wahrscheinlichkeit zur Ablehnung geführt: der weiße Bildschirm im Chat.
+
+Die zweite Durchsicht hat gezeigt, dass die erste nicht ausreichte. Von ihren
+26 bestätigten Funden lagen 18 auf Ablehnungsniveau, und mehrere davon hätte
+der Prüfer **zwangsläufig** getroffen — nicht bei ungewöhnlicher Bedienung,
+sondern auf dem geraden Weg: Die Abo-Sperrseite stürzte ab, ein neuer Verein
+konnte keinen Termin anlegen, und die Startseite zeigte fremde Firmen als
+Sponsoren des Vereins.
+
+Ehrlich betrachtet wäre die Einreichung ohne diese zweite Durchsicht sehr
+wahrscheinlich erneut abgelehnt worden.
+
+## Was der Prüfung noch fehlt
+
+**Die Sandbox-Zahlung.** Sie verlangt ein Gerät und ein Apple-Sandbox-Konto und
+ist von einer Kommandozeile aus nicht durchführbar. Jedes andere Glied der
+Kaufkette ist einzeln belegt (siehe oben).
+
+**Die Migration in der Produktionsdatenbank.** `20260829120000_news_author_loeschbar.sql`
+liegt bereit, muss aber im Supabase-SQL-Editor ausgeführt werden. Bis dahin
+scheitert die Kontolöschung weiterhin für jeden, der eine Neuigkeit verfasst
+hat — Richtlinie 5.1.1(v).
