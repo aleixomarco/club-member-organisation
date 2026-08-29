@@ -18,8 +18,22 @@ export async function GET(_request: Request, context: { params: Promise<{ token:
   } catch {
     return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
   }
-  const { data: subscription } = await admin.from("calendar_subscriptions").select("profile_id,club_id,enabled,sync_interval,event_types,team_ids").eq("token", token).maybeSingle();
-  if (!subscription?.enabled) return NextResponse.json({ error: "Kalenderverbindung nicht gefunden" }, { status: 404 });
+  /* Drei Faelle, drei Antworten - vorher liefen sie alle in dieselbe 404.
+     Ein Datenbankfehler sah damit aus wie ein unbekannter Token, und die
+     Ursache war von aussen nicht zu erkennen: Genau das hat die Suche nach
+     dem fehlgeschlagenen Kalenderabo unnoetig lange gemacht. */
+  const { data: subscription, error: leseFehler } = await admin
+    .from("calendar_subscriptions")
+    .select("profile_id,club_id,enabled,sync_interval,event_types,team_ids")
+    .eq("token", token)
+    .maybeSingle();
+
+  if (leseFehler) {
+    console.error("Kalender-Feed: Abo konnte nicht gelesen werden", leseFehler);
+    return NextResponse.json({ error: "Kalender konnte nicht geladen werden", code: leseFehler.code }, { status: 500 });
+  }
+  if (!subscription) return NextResponse.json({ error: "Kalenderverbindung nicht gefunden" }, { status: 404 });
+  if (!subscription.enabled) return NextResponse.json({ error: "Kalenderverbindung ist deaktiviert" }, { status: 410 });
   const { data: membership } = await admin.from("club_memberships").select("id").eq("profile_id", subscription.profile_id).eq("club_id", subscription.club_id).eq("status", "active").maybeSingle();
   if (!membership) return NextResponse.json({ error: "Mitgliedschaft nicht aktiv" }, { status: 403 });
   const { data: familyLinks } = await admin.from("family_links")
