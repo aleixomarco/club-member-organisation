@@ -967,7 +967,13 @@ function LockedFeature({ entitlement, feature = "Diese Funktion", goSubscribe, c
       <div className="relative flex flex-col items-center justify-center text-center px-7">
         <div className="w-14 h-14 rounded-full flex items-center justify-center mb-4" style={{ background: C.glass, border: `1px solid ${C.edge}`, boxShadow: "0 10px 26px rgba(60,30,45,0.10)" }}><Lock size={22} style={{ color: C.red }} /></div>
         <div className="text-base font-bold mb-1.5" style={{ fontFamily: "Oswald", color: C.ink }}>{feature} braucht ein Abo</div>
-        <div className="text-xs mb-5 leading-snug" style={{ color: C.textDim }}>{requires === "basic" ? "Teil des Basic- und Premium-Vereinsabos." : "Teil des Premium-Vereinsabos."}</div>
+        {/* Hier stand eine Fallunterscheidung auf "requires" - eine Variable, die
+            es nirgends gibt und die diesen Bildschirm mit einem ReferenceError
+            abgeraeumt hat, sobald ein Verein ohne Abo eine gesperrte Funktion
+            oeffnete. Sie stammte aus dem alten Modell mit unterschiedlichem
+            Funktionsumfang je Tarif. Seit der Groessenstaffel schaltet jeder
+            Tarif alles frei, also gibt es nichts mehr zu unterscheiden. */}
+        <div className="text-xs mb-5 leading-snug" style={{ color: C.textDim }}>Mit jedem Vereinsabo freigeschaltet.</div>
         <button onClick={goSubscribe} className="px-5 py-2.5 rounded-2xl text-xs font-bold" style={{ background: C.red, color: C.white, boxShadow: `0 8px 20px color-mix(in srgb, ${C.red} 34%, transparent)` }}>Abo ansehen</button>
       </div>
     </div>
@@ -2949,7 +2955,6 @@ function PlayerTeamSettings({ user, setMembers }) {
       if (!databaseMembership) {
         const names = memberPlayerTeams(user);
         setTeams(names.map((name) => ({ id: name, name })));
-        setMyTeamIds(names);
         setLoading(false); return;
       }
       const [{ data: teamData, error: teamError }, { data: assignmentData, error: assignmentError }] = await Promise.all([
@@ -2957,9 +2962,13 @@ function PlayerTeamSettings({ user, setMembers }) {
         supabase.from("team_members").select("team_id").eq("membership_id", user.id).eq("function", "spieler"),
       ]);
       if (teamError || assignmentError) { setMessage("Deine Mannschaften konnten nicht geladen werden."); setLoading(false); return; }
+      /* Hier standen zwei Aufrufe von setMyTeamIds - einer Funktion, die es
+         nirgends gibt. Sie warfen mitten im Laden, noch vor setLoading(false),
+         sodass "Meine Mannschaften" dauerhaft auf "Wird geladen ..." stand.
+         Gelesen wurde der Wert nie: Die Mannschaftszugehoerigkeit fuer die
+         Chat-Sichtbarkeit kommt aus user.team. */
       const myIds = (assignmentData || []).map((entry) => entry.team_id);
       setTeams((teamData || []).filter((team) => myIds.includes(team.id)));
-      setMyTeamIds(myIds);
       setLoading(false);
     };
     load();
@@ -6117,6 +6126,11 @@ function RolesPanel({ members, setMembers }) {
 /* System (Sys-Admin)                                                   */
 /* ------------------------------------------------------------------ */
 function SystemPanel({ members, channels, setChannels, maintenanceMode, setMaintenanceMode, onResetDemo }) {
+  /* Die Sicherheitsabfrage vor dem Zuruecksetzen. Der Zustand war beim Umbau der
+     Kanalverwaltung verschwunden, die beiden Verwendungen weiter unten blieben
+     stehen - damit riss Verwaltung > System mit einem ReferenceError ab, sobald
+     man den Reiter oeffnete. */
+  const [confirmReset, setConfirmReset] = useState(false);
 
   return (
     <div className="space-y-6">
