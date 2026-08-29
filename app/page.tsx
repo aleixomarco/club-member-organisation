@@ -690,6 +690,25 @@ const BIRTHDAYS_TODAY = ["Lena K. (U15)", "Timo B. (Herren 1)"];
 const INITIAL_POLLS = [{ id: "poll-1", title: "Termin für die Weihnachtsfeier", active: true, options: [{ label: "Fr, 11.12.", votes: 23 }, { label: "Sa, 12.12.", votes: 31 }, { label: "Fr, 18.12.", votes: 9 }], voterIds: [] }];
 const SPONSORS = ["Sparkasse Iserlohn", "Stadtwerke Iserlohn", "Autohaus Meyer", "Fitness Point Hemberg", "Bäckerei Sauerland"];
 
+/* Eine Zeile aus messages in die Form bringen, die ChatView erwartet.
+   Der Name kommt ueber die Verknuepfung zu profiles; fehlt sie - etwa bei
+   einer Realtime-Meldung, die nur die reine Zeile liefert -, steht dort
+   vorerst "Mitglied", bis der naechste vollstaendige Ladevorgang laeuft. */
+function zeileZuNachricht(zeile) {
+  const profil = Array.isArray(zeile.profiles) ? zeile.profiles[0] : zeile.profiles;
+  const name = profil?.full_name || "Mitglied";
+  const zeit = new Date(zeile.created_at);
+  return {
+    id: zeile.id,
+    who: name,
+    init: initialsOf(name),
+    color: C.red,
+    text: zeile.body,
+    time: zeit.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }),
+    authorId: zeile.author_id,
+  };
+}
+
 const INITIAL_CHANNELS = [
   {
     id: "team", name: "Herren 1", emoji: "🏒", team: "Herren 1", adminOnly: false, visibleRoles: ["spieler", "trainer", "kapitaen"], writeRoles: ["spieler", "trainer", "kapitaen"],
@@ -2333,11 +2352,39 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
   const unblockAuthor = (who) => persistBlocked(blocked.filter((name) => name !== who));
   const visibleMessages = active.messages.filter((m) => m.who === user.name || !blocked.includes(m.who));
 
-  const send = () => {
+  const [sendeFehler, setSendeFehler] = useState("");
+
+  const send = async () => {
     if (!text.trim() || !canPost) return;
-    setChannels((cs) => cs.map((c) => c.id === active.id
-      ? { ...c, messages: [...c.messages, { who: user.name, init: initialsOf(user.name), color: user.color, text, time: "jetzt", me: true }].slice(active.id === "news" ? -10 : -200) }
-      : c));
+    const inhalt = text.trim();
+
+    /* In der Datenbank gefuehrte Kanaele: schreiben und auf die Bestaetigung
+       warten. Erst danach steht die Nachricht in der Ansicht - sonst sieht der
+       Absender sie liegen, obwohl sie nie ankam.
+       Die Realtime-Meldung traegt sie bei allen anderen ein; beim Absender
+       verhindert die Pruefung auf die Kennung, dass sie doppelt erscheint. */
+    if (supabase && isDbId(active.id) && isDbId(user.authProfileId)) {
+      setSendeFehler("");
+      const { data: gespeichert, error } = await supabase
+        .from("messages")
+        .insert({ channel_id: active.id, author_id: user.authProfileId, body: inhalt })
+        .select("id,channel_id,body,created_at,author_id,profiles(full_name)")
+        .maybeSingle();
+      if (error) {
+        setSendeFehler("Die Nachricht konnte nicht gesendet werden.");
+        return;
+      }
+      if (gespeichert) {
+        setChannels((cs) => cs.map((c) => c.id !== active.id || c.messages.some((m) => m.id === gespeichert.id)
+          ? c
+          : { ...c, messages: [...c.messages, { ...zeileZuNachricht(gespeichert), me: true }].slice(-200) }));
+      }
+    } else {
+      /* Demo-Betrieb ohne Datenbank: fluechtig, wie bisher. */
+      setChannels((cs) => cs.map((c) => c.id === active.id
+        ? { ...c, messages: [...c.messages, { who: user.name, init: initialsOf(user.name), color: user.color, text: inhalt, time: "jetzt", me: true }].slice(active.id === "news" ? -10 : -200) }
+        : c));
+    }
     if (supabase && Array.isArray(members)) {
       const recipients = members
         .filter((m) => m.id !== user.id && (isAdmin(m) || ((!active.team || active.team === m.team) && (!active.visibleRoles || active.visibleRoles.some((r) => m.roles.includes(r))))))
@@ -2404,6 +2451,7 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
           <div className="text-xs text-center py-2 rounded-lg" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>{active.writeRoles ? "In dieser Gruppe schreiben Trainer, Kapitäne und freigegebene Teammitglieder." : "Nur berechtigte Rollen können hier schreiben."}</div>
         ) : (
           <div className="flex items-center gap-2">
+            {sendeFehler && <div className="text-[10px] mb-1.5 rounded-xl px-3 py-2" style={{ background: "rgba(253,236,236,0.72)", color: C.red }}>{sendeFehler}</div>}
             <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder="Nachricht schreiben…"
               className="flex-1 px-3 py-2.5 rounded-full text-sm outline-none" style={{ background: C.paperDim, fontFamily: "Inter", color: C.ink }} />
             <button onClick={send} aria-label="Nachricht senden" className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: C.red }}><Send size={16} color="#fff" /></button>
@@ -6651,6 +6699,83 @@ export default function ClubMemberOrganisationApp() {
   const [events, setEvents] = useState(EVENTS);
   const [carpools, setCarpools] = useState({});
   const [channels, setChannels] = useState(INITIAL_CHANNELS);
+
+  /* Chat aus der Datenbank.
+   *
+   * Bisher lagen Nachrichten nur im Arbeitsspeicher: Beim Senden gingen sie in
+   * den lokalen Zustand und als Push-Mitteilung hinaus - geschrieben wurde
+   * nichts. Der Empfaenger bekam "Neue Nachricht", oeffnete die App und fand
+   * nichts. Nach einem Neustart war auch beim Absender alles weg.
+   *
+   * Tabellen und Sicherheitsregeln lagen von Anfang an bereit; nur benutzt hat
+   * sie niemand. Genau das holt dieser Block nach.
+   *
+   * INITIAL_CHANNELS bleibt als Rueckfallebene fuer den Demo-Betrieb ohne
+   * Datenbank - dort ist ein fluechtiger Chat richtig, weil nichts bleiben
+   * soll. */
+  useEffect(() => {
+    if (!supabase || !isDbId(selectedClubId)) return;
+    let abgemeldet = false;
+
+    const laden = async () => {
+      const { data: kanaele, error } = await supabase
+        .from("channels")
+        .select("id,name,emoji,team_id,write_roles,visible_roles,teams(name)")
+        .eq("club_id", selectedClubId)
+        .order("created_at");
+      if (error || abgemeldet || !kanaele?.length) return;
+
+      const ids = kanaele.map((k) => k.id);
+      /* Die letzten 200 je Kanal reichen fuer die Ansicht. Aeltere holt der
+         Nutzer ueber "Frueheres laden" nach - alles auf einmal zu ziehen waere
+         bei einem Verein mit jahrelanger Historie eine lange Wartezeit beim
+         Oeffnen. */
+      const { data: nachrichten } = await supabase
+        .from("messages")
+        .select("id,channel_id,body,created_at,author_id,profiles(full_name)")
+        .in("channel_id", ids)
+        .order("created_at", { ascending: false })
+        .limit(200 * ids.length);
+      if (abgemeldet) return;
+
+      const proKanal = {};
+      for (const zeile of (nachrichten || []).reverse()) {
+        (proKanal[zeile.channel_id] ||= []).push(zeileZuNachricht(zeile));
+      }
+
+      setChannels(kanaele.map((k) => {
+        const team = Array.isArray(k.teams) ? k.teams[0] : k.teams;
+        return {
+          id: k.id,
+          name: k.name,
+          emoji: k.emoji || "💬",
+          team: team?.name || null,
+          adminOnly: (k.write_roles || []).length > 0,
+          writeRoles: (k.write_roles || []).length ? k.write_roles : null,
+          visibleRoles: (k.visible_roles || []).length ? k.visible_roles : null,
+          messages: proKanal[k.id] || [],
+        };
+      }));
+    };
+
+    laden();
+
+    /* Realtime: Neue Nachrichten erscheinen, ohne dass jemand die Ansicht neu
+       laedt. Ohne das muesste man die App schliessen und oeffnen, um eine
+       Antwort zu sehen - bei einem Chat der haeufigste Grund fuer den Eindruck,
+       er funktioniere nicht. */
+    const kanal = supabase
+      .channel(`chat-${selectedClubId}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (ereignis) => {
+        const neu = ereignis.new;
+        setChannels((cs) => cs.map((c) => c.id !== neu.channel_id || c.messages.some((m) => m.id === neu.id)
+          ? c
+          : { ...c, messages: [...c.messages, zeileZuNachricht(neu)].slice(-200) }));
+      })
+      .subscribe();
+
+    return () => { abgemeldet = true; supabase.removeChannel(kanal); };
+  }, [selectedClubId]);
   const [chatChannelId, setChatChannelId] = useState("team");
   const [seasonVotes, setSeasonVotes] = useState({});
   const [tippPredictions, setTippPredictions] = useState({});
