@@ -9,6 +9,7 @@ import {
   ShieldCheck, ArrowRight, ArrowLeft, AlertCircle, UserPlus, Eye, EyeOff,
   Target, ClipboardList, Newspaper, Bell, KeyRound, Settings, RefreshCw,
   Bug, Smartphone, Save, Plus, Building2, ExternalLink, Phone, Copy, PlayCircle, ChevronUp
+, ListFilter,
 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { enablePushNotifications, disablePushNotifications, listenForForegroundMessages } from "@/lib/firebase-push";
@@ -1458,13 +1459,17 @@ function Scoreboard({ nextEvent, goTo, mannschaften = [], gewaehlt, onWechsel })
         <div className="relative flex items-center justify-between mb-4">
           <span className="text-[10px] font-extrabold uppercase px-3.5 py-1.5 rounded-full" style={{ fontFamily: "Inter", letterSpacing: "0.14em", color: "#fff", background: "rgba(255,255,255,0.18)" }}>Nächstes Spiel</span>
         </div>
-        <div className="relative mb-3" onClick={(e) => e.stopPropagation()}>
-          <select aria-label="Mannschaft waehlen" value={gewaehlt} onChange={(e) => onWechsel(e.target.value)}
-            className="text-[11px] font-bold rounded-full px-3 py-1.5 outline-none appearance-none"
-            style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.28)", color: "#fff", fontFamily: "Inter" }}>
+        <label className="relative mb-3 inline-flex items-center gap-1.5 rounded-full pl-3 pr-2 py-1.5 cursor-pointer"
+          style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.28)" }}
+          onClick={(e) => e.stopPropagation()}>
+          <ListFilter size={13} style={{ color: "#fff", flexShrink: 0 }} />
+          <select aria-label="Mannschaft filtern" value={gewaehlt} onChange={(e) => onWechsel(e.target.value)}
+            className="text-[11px] font-bold outline-none appearance-none bg-transparent cursor-pointer pr-4"
+            style={{ color: "#fff", fontFamily: "Inter" }}>
             {mannschaften.map((m) => <option key={m} value={m} style={{ color: C.ink }}>{m}</option>)}
           </select>
-        </div>
+          <ChevronDown size={13} style={{ color: "rgba(255,255,255,0.8)", marginLeft: -14, pointerEvents: "none" }} />
+        </label>
         <div className="relative text-white text-sm" style={{ fontFamily: "Inter" }}>Für diese Mannschaft ist derzeit kein Spiel geplant.</div>
       </div>
     );
@@ -1480,14 +1485,20 @@ function Scoreboard({ nextEvent, goTo, mannschaften = [], gewaehlt, onWechsel })
       {mannschaften.length > 1 && (
         /* Die Auswahl liegt in der Kachel, nicht darueber: Sie gehoert zum
            Spielblock und soll nicht wie ein Filter fuer die ganze Startseite
-           wirken. Ein Klick darauf darf die Kachel nicht oeffnen. */
-        <div className="relative mb-3" onClick={(e) => e.stopPropagation()}>
-          <select aria-label="Mannschaft waehlen" value={gewaehlt} onChange={(e) => onWechsel(e.target.value)}
-            className="text-[11px] font-bold rounded-full px-3 py-1.5 outline-none appearance-none"
-            style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.28)", color: "#fff", fontFamily: "Inter" }}>
+           wirken. Ein Klick darauf darf die Kachel nicht oeffnen.
+           Das Symbol macht erkennbar, dass hier gefiltert wird - ein blosses
+           Auswahlfeld sieht auf dunklem Grund wie eine Beschriftung aus. */
+        <label className="relative mb-3 inline-flex items-center gap-1.5 rounded-full pl-3 pr-2 py-1.5 cursor-pointer"
+          style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.28)" }}
+          onClick={(e) => e.stopPropagation()}>
+          <ListFilter size={13} style={{ color: "#fff", flexShrink: 0 }} />
+          <select aria-label="Mannschaft filtern" value={gewaehlt} onChange={(e) => onWechsel(e.target.value)}
+            className="text-[11px] font-bold outline-none appearance-none bg-transparent cursor-pointer pr-4"
+            style={{ color: "#fff", fontFamily: "Inter" }}>
             {mannschaften.map((m) => <option key={m} value={m} style={{ color: C.ink }}>{m}</option>)}
           </select>
-        </div>
+          <ChevronDown size={13} style={{ color: "rgba(255,255,255,0.8)", marginLeft: -14, pointerEvents: "none" }} />
+        </label>
       )}
       <div className="relative text-white text-xl mb-1.5" style={{ fontFamily: "Oswald", fontWeight: 700, letterSpacing: "-0.01em" }}>{nextEvent.title}</div>
       <div className="relative flex items-center gap-1.5 mb-5 text-xs" style={{ color: "rgba(255,255,255,0.8)", fontFamily: "Inter" }}><MapPin size={12} /> {nextEvent.location}</div>
