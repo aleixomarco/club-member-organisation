@@ -1697,6 +1697,7 @@ function HelperSlots({ ev, members, currentUser, dutyPlan, setDutyPlan, eligible
 /* ------------------------------------------------------------------ */
 function CarpoolSection({ ev, currentUser }) {
   const [carpools, setCarpools] = useState([]);
+  const [abfahrt, setAbfahrt] = useState("");
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [seats, setSeats] = useState("");
@@ -1706,7 +1707,7 @@ function CarpoolSection({ ev, currentUser }) {
   const load = useCallback(async () => {
     setLoading(true);
     const { data, error } = await supabase.from("carpools")
-      .select("id,seats_available,note,driver_membership_id,club_memberships(display_name),carpool_passengers(membership_id,club_memberships(display_name))")
+      .select("id,seats_available,note,departure,driver_membership_id,club_memberships(display_name),carpool_passengers(membership_id,club_memberships(display_name))")
       .eq("event_id", ev.id)
       .order("created_at", { ascending: true });
     if (error) { setLoading(false); return; }
@@ -1716,7 +1717,7 @@ function CarpoolSection({ ev, currentUser }) {
         const m = Array.isArray(p.club_memberships) ? p.club_memberships[0] : p.club_memberships;
         return { membershipId: p.membership_id, name: m?.display_name || "—" };
       });
-      return { id: row.id, seats: row.seats_available, note: row.note, driverId: row.driver_membership_id, driverName: driver?.display_name || "—", passengers };
+      return { id: row.id, seats: row.seats_available, departure: row.departure, note: row.note, driverId: row.driver_membership_id, driverName: driver?.display_name || "—", passengers };
     }));
     setLoading(false);
   }, [ev.id]);
@@ -1725,9 +1726,10 @@ function CarpoolSection({ ev, currentUser }) {
     const seatCount = Number(seats);
     if (!Number.isFinite(seatCount) || seatCount < 1) { setMessage("Bitte eine gültige Anzahl freier Plätze angeben."); return; }
     setSaving(true); setMessage("");
-    const { error } = await supabase.from("carpools").insert({ event_id: ev.id, driver_membership_id: currentUser.id, seats_available: seatCount, note: note.trim() || null });
+    if (!abfahrt.trim()) { setMessage("Bitte gib an, von wo du losfährst."); return; }
+    const { error } = await supabase.from("carpools").insert({ event_id: ev.id, driver_membership_id: currentUser.id, seats_available: seatCount, departure: abfahrt.trim(), note: note.trim() || null });
     if (error) { setMessage("Fahrgemeinschaft konnte nicht angelegt werden."); setSaving(false); return; }
-    setSeats(""); setNote(""); setShowCreate(false); setSaving(false);
+    setSeats(""); setNote(""); setAbfahrt(""); setShowCreate(false); setSaving(false);
     await load();
   };
   const join = async (carpoolId) => {
@@ -1764,6 +1766,7 @@ function CarpoolSection({ ev, currentUser }) {
                   <div className="text-xs font-bold" style={{ color: C.ink }}>{c.driverName} fährt{isDriver ? " (du)" : ""}</div>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: free > 0 ? "rgba(231,243,236,0.72)" : "rgba(253,236,236,0.72)", color: free > 0 ? C.green : C.red }}>{free > 0 ? `${free} frei` : "voll"}</span>
                 </div>
+                {c.departure && <div className="text-[10px] mb-1 flex items-start gap-1" style={{ color: C.ink }}><MapPin size={11} style={{ color: C.textDim, flexShrink: 0, marginTop: 1 }} /><span>Abfahrt: {c.departure}</span></div>}
                 {c.note && <div className="text-[10px] mb-1" style={{ color: C.textDim }}>{c.note}</div>}
                 {c.passengers.length > 0 && <div className="text-[10px] mb-1.5" style={{ color: C.textDim }}>Mitfahrer: {c.passengers.map((p) => p.name).join(", ")}</div>}
                 <div className="flex gap-2">
@@ -1781,10 +1784,11 @@ function CarpoolSection({ ev, currentUser }) {
         ) : (
           <div className="rounded-xl p-2.5" style={{ background: C.paperDim }}>
             <input value={seats} onChange={(e) => setSeats(e.target.value)} inputMode="numeric" placeholder="Freie Plätze, z. B. 3" className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-1.5" style={{ background: C.glass, color: C.ink }}/>
-            <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Notiz (optional), z. B. Abfahrtsort" className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-1.5" style={{ background: C.glass, color: C.ink }}/>
+            <input value={abfahrt} onChange={(e) => setAbfahrt(e.target.value)} placeholder="Abfahrtsadresse *, z. B. Hauptstraße 12, Iserlohn" className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-1.5" style={{ background: C.glass, color: C.ink }}/>
+            <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Notiz (optional), z. B. Kofferraum begrenzt" className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-1.5" style={{ background: C.glass, color: C.ink }}/>
             <div className="flex gap-2">
               <button onClick={createCarpool} disabled={saving || !seats.trim()} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: seats.trim() ? C.ink : C.line, color: C.white }}>{saving ? "…" : "Anbieten"}</button>
-              <button onClick={() => { setShowCreate(false); setSeats(""); setNote(""); }} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>Abbrechen</button>
+              <button onClick={() => { setShowCreate(false); setSeats(""); setNote(""); setAbfahrt(""); }} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>Abbrechen</button>
             </div>
           </div>
         )}
@@ -4546,7 +4550,7 @@ function MemberDetailPanel({ member, onClose }) {
           .select("signed_up_at,club_tasks(title,due_date,teams(name))")
           .eq("membership_id", member.id).order("signed_up_at", { ascending: false }),
         supabase.from("carpools")
-          .select("id,seats_available,note,events(title,starts_at)")
+          .select("id,seats_available,note,departure,events(title,starts_at)")
           .eq("driver_membership_id", member.id).order("created_at", { ascending: false }),
         supabase.from("carpool_passengers")
           .select("joined_at,carpools(events(title,starts_at))")
@@ -4567,7 +4571,7 @@ function MemberDetailPanel({ member, onClose }) {
       }));
       setCarpoolsAsDriver((driverRes.data || []).map((row) => {
         const event = Array.isArray(row.events) ? row.events[0] : row.events;
-        return { id: row.id, seats: row.seats_available, note: row.note, eventTitle: event?.title, eventDate: event?.starts_at };
+        return { id: row.id, seats: row.seats_available, departure: row.departure, note: row.note, eventTitle: event?.title, eventDate: event?.starts_at };
       }));
       setCarpoolsAsPassenger((passengerRes.data || []).map((row, i) => {
         const carpool = Array.isArray(row.carpools) ? row.carpools[0] : row.carpools;

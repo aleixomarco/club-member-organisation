@@ -12,6 +12,7 @@ export default function PrivacyPage() { return <LegalShell title="Datenschutzerk
     <li><strong>Familienverknüpfungen</strong> (Eltern-Kind-Zuordnungen) — zur Vereinsorganisation von Jugendmannschaften, Art. 6 Abs. 1 lit. b und f DSGVO.</li>
     <li><strong>Termine, Nachrichten, Chat- und News-Inhalte, Umfragen</strong> — zur internen Vereinskommunikation, Art. 6 Abs. 1 lit. b und f DSGVO.</li>
     <li><strong>Beitrags-, Straf- und Abonnementdaten</strong> — zur Vertrags- und Zahlungsabwicklung sowie zur Erfüllung handels- und steuerrechtlicher Aufbewahrungspflichten, Art. 6 Abs. 1 lit. b und c DSGVO.</li>
+    <li><strong>Fahrgemeinschaften</strong> (Abfahrtsadresse, freie Plätze, Notiz, Mitfahrende) — zur Organisation gemeinsamer Fahrten zu Terminen, Art. 6 Abs. 1 lit. f DSGVO. Die Abfahrtsadresse gibst du selbst an und sie ist für die anderen Teilnehmenden des jeweiligen Termins sichtbar; sie wird mit der Fahrgemeinschaft gelöscht.</li>
     <li><strong>Push-Benachrichtigungs-Token</strong> — nur nach deiner ausdrücklichen Freigabe in den Benachrichtigungseinstellungen, Art. 6 Abs. 1 lit. a DSGVO.</li>
     <li><strong>Technische Nutzungsdaten</strong> (z. B. Anmeldezeitpunkt, Geräteinformationen bei Push) — zur sicheren Bereitstellung des Dienstes, Art. 6 Abs. 1 lit. f DSGVO.</li>
   </ul>
