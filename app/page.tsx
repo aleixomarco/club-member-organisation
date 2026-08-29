@@ -788,19 +788,11 @@ function totalTippPoints(userId, predictions, results) {
 /* ------------------------------------------------------------------ */
 /* Vorstandsprotokolle                                                  */
 /* ------------------------------------------------------------------ */
-const INITIAL_PROTOCOLS = [
-  {
-    id: "p1",
-    title: "Vorstandssitzung Juli",
-    date: "2026-07-14",
-    attendees: ["v1", "m6", "m1"],
-    rawText: "Kurzprotokoll Vorstandssitzung 14.07.2026, anwesend: Peter, Claudia, Marco. TOP 1 Bandenwerbung: Peter holt bis 15.08. drei Angebote für neue Bandenwerbung ein. TOP 2 Hallenzeiten: Claudia klärt bis 10.08. mit der Stadt die Hallenzeiten für September. TOP 3 Sommerfest: Planung läuft nach Plan, keine offenen Punkte.",
-    tasks: [
-      { id: "t1", text: "Angebote für neue Bandenwerbung einholen", assignee: "v1", due: "2026-08-15", done: false },
-      { id: "t2", text: "Hallenzeiten für September mit der Stadt klären", assignee: "m6", due: "2026-08-10", done: true },
-    ],
-  },
-];
+/* Hier stand ein ausformuliertes Vorstandsprotokoll vom 14.07.2026 samt
+   Teilnehmern und zwei Aufgaben - als Anfangszustand fuer jeden Verein. Wer die
+   App neu einrichtete, fand unter Verwaltung > Protokolle eine Sitzung, die es
+   bei ihm nie gegeben hat. Protokolle legt der Vorstand selbst an. */
+const INITIAL_PROTOCOLS = [];
 
 /* ------------------------------------------------------------------ */
 /* Helpers                                                              */
@@ -1324,10 +1316,16 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub }) {
         </button>
       </form>
 
-      {/* Mit angebundener Datenbank gibt es keine Demo-Zugaenge. Ohne diese
-          Bedingung blieb die Ueberschrift allein stehen - der erste Bildschirm,
-          den auch ein App-Pruefer sieht, wirkte dadurch unfertig. */}
-      {members.filter((m) => !m.accountPending).length > 0 && <div className="mt-8">
+      {/* Mit angebundener Datenbank gibt es keine Demo-Zugaenge.
+          Genau das sollte die Bedingung leisten, tat es aber nicht: Sie fragte
+          nur, ob ueberhaupt Mitglieder vorliegen. Im echten Betrieb erschienen
+          deshalb die Mitglieder des Vereins als Schnellzugaenge - mit Namen und
+          Rollen, noch vor jeder Anmeldung. Angemeldet hat sich damit niemand,
+          denn quick() reicht m.password weiter, und das ist bei Mitgliedern aus
+          der Datenbank leer. Es blieben also Knoepfe, die reihenweise
+          fehlschlagen, und nebenbei eine Mitgliederliste fuer jeden, der die App
+          oeffnet. Der fehlende Teil ist die Pruefung auf !supabase. */}
+      {!supabase && members.filter((m) => !m.accountPending).length > 0 && <div className="mt-8">
         <div className="text-xs uppercase tracking-widest font-semibold mb-2.5" style={{ color: C.textDim, fontFamily: "Inter" }}>Demo-Zugänge zum Ausprobieren</div>
         <div className="space-y-2">
           {members.filter((m) => !m.accountPending).map((m) => (
@@ -2099,11 +2097,36 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
     };
     loadManageableTeams();
   }, [currentUser.id]);
-  const allowedEventTeams = isSysAdmin(currentUser)
+
+  /* Die Mannschaften des Vereins, unabhaengig davon, ob sie schon Termine haben.
+     Genau daran scheiterte das Anlegen bisher: Die Auswahl kam aus filterTeams,
+     und das leitet sich ausschliesslich aus VORHANDENEN Terminen ab. In einem
+     frisch angelegten Verein gibt es keine - also war die Liste leer, das
+     Auswahlfeld im Formular blieb leer, und createSportEvent brach an der
+     Pruefung auf allowedEventTeams kommentarlos ab. Der Gruender konnte damit
+     keinen einzigen Termin anlegen, auch nicht nach dem Anlegen von
+     Mannschaften, weil die teams-Tabelle nie gelesen wurde.
+     Fuer den Filter bleibt filterTeams richtig - dort sollen nur Mannschaften
+     stehen, zu denen es auch etwas zu sehen gibt. */
+  const [clubTeams, setClubTeams] = useState(null);
+  useEffect(() => {
+    if (!(supabase && isDbId(currentUser.clubId))) { setClubTeams(null); return; }
+    supabase.from("teams").select("name").eq("club_id", currentUser.clubId).eq("active", true).order("name")
+      .then(({ data }) => setClubTeams([...new Set((data || []).map((t) => t.name).filter(Boolean))]));
+  }, [currentUser.clubId]);
+
+  /* Ohne Datenbank (Demo-Betrieb) bleibt es bei den Mannschaften aus den
+     Terminen; mit Datenbank zaehlen beide Quellen, damit auch ein Termin einer
+     inzwischen deaktivierten Mannschaft weiter bearbeitet werden kann. */
+  const waehlbareTeams = clubTeams === null
     ? filterTeams
+    : [...new Set([...clubTeams, ...filterTeams])].sort((a, b) => a.localeCompare(b, "de"));
+
+  const allowedEventTeams = isSysAdmin(currentUser)
+    ? waehlbareTeams
     : manageableTeams !== null
-      ? manageableTeams.filter((team) => filterTeams.includes(team))
-      : currentUser.roles.includes("trainer") ? (currentUser.trainerTeams?.length ? currentUser.trainerTeams : [currentUser.team]).filter((team) => filterTeams.includes(team)) : currentUser.roles.includes("teammanager") ? [currentUser.managedTeam || currentUser.team].filter((team)=>filterTeams.includes(team)) : [currentUser.team].filter((team) => filterTeams.includes(team));
+      ? manageableTeams.filter((team) => waehlbareTeams.includes(team))
+      : currentUser.roles.includes("trainer") ? (currentUser.trainerTeams?.length ? currentUser.trainerTeams : [currentUser.team]).filter((team) => waehlbareTeams.includes(team)) : currentUser.roles.includes("teammanager") ? [currentUser.managedTeam || currentUser.team].filter((team)=>waehlbareTeams.includes(team)) : [currentUser.team].filter((team) => waehlbareTeams.includes(team));
   const openCreate = () => {
     setEventDraft((draft) => ({ ...draft, type: canCreateSportEvent ? draft.type : "event", team: canCreateSportEvent ? (allowedEventTeams[0] || "") : "" }));
     setShowCreate(true);
@@ -2112,8 +2135,18 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
   const createSportEvent = async (event) => {
     event.preventDefault();
     const isClubEvent = eventDraft.type === "event";
-    if (!isClubEvent && (!eventDraft.team || !allowedEventTeams.includes(eventDraft.team))) return;
-    if (!eventDraft.title.trim() || !eventDraft.location.trim()) return;
+    /* Diese beiden Pruefungen brachen frueher stumm ab: Der Speichern-Knopf tat
+       schlicht nichts, ohne jeden Hinweis. */
+    if (!isClubEvent && (!eventDraft.team || !allowedEventTeams.includes(eventDraft.team))) {
+      setEventFehler(allowedEventTeams.length === 0
+        ? "Für Training und Spiel wird eine Mannschaft gebraucht. Lege zuerst unter „Mannschaften“ eine an."
+        : "Bitte wähle eine Mannschaft aus.");
+      return;
+    }
+    if (!eventDraft.title.trim() || !eventDraft.location.trim()) {
+      setEventFehler("Bitte gib einen Titel und einen Ort an.");
+      return;
+    }
     if (eventDraft.recurring) {
       if (!eventDraft.weekdays.length || !eventDraft.startTime || !eventDraft.endTime || !eventDraft.rangeStart || !eventDraft.rangeEnd) return;
       if (!supabase || !currentUser.authProfileId) return;
@@ -5038,7 +5071,14 @@ function SecuritySettings({user,setMembers,saveRef}) { const [days,setDays]=useS
 
 function ReferralSettings({user,club}) { const [code,setCode]=useState("");const [used,setUsed]=useState(false);const [loading,setLoading]=useState(false);useEffect(()=>{if(!supabase||!club?.id||!user.authProfileId)return;supabase.from("club_referral_codes").select("code,redeemed_at").eq("club_id",club.id).eq("profile_id",user.authProfileId).maybeSingle().then(({data})=>{setCode(data?.code||"");setUsed(Boolean(data?.redeemed_at));});},[club?.id,user.authProfileId]);const create=async()=>{setLoading(true);const {data,error}=await supabase.rpc("ensure_club_referral_code",{target_club:club.id});if(!error)setCode(data);setLoading(false);};if(used&&!user.roles.includes("sysadmin"))return <div className="rounded-2xl p-4 text-xs" style={{background:C.paperDim,color:C.textDim}}>Dein persönlicher Empfehlungscode wurde bereits einmal verwendet. Die drei kostenlosen Vereinsmonate werden automatisch berücksichtigt.</div>;return <div className="rounded-2xl p-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">Vereine werben Vereine</div><div className="text-[11px] mb-4" style={{color:C.textDim}}>Wirbst du einmalig einen neuen Verein, erhält dein aktueller Verein drei kostenlose Monate. Der neue Verein gibt deinen persönlichen Code bei seiner Registrierung ein.</div>{code?<><div className="rounded-xl px-3 py-3 text-center font-bold tracking-wider" style={{background:C.paperDim}}>{code}</div><button onClick={()=>navigator.clipboard?.writeText(code)} className="w-full mt-2 py-2 text-xs font-bold" style={{color:C.red}}>Code kopieren</button></>:<button disabled={loading} onClick={create} className="w-full py-3 rounded-xl text-xs font-bold" style={{background:C.ink,color:C.white}}>{loading?"Wird erstellt …":"Persönlichen Code erstellen"}</button>}</div>; }
 
-function FeedbackSettings() { const apple=process.env.NEXT_PUBLIC_APP_STORE_REVIEW_URL;const google=process.env.NEXT_PUBLIC_PLAY_STORE_REVIEW_URL;return <div><div className="text-[11px] mb-4" style={{color:C.textDim}}>Danke, dass du CMO bewertest. Wähle den Store deines Geräts.</div><div className="space-y-2">{[[apple,"Im Apple App Store bewerten"],[google,"Im Google Play Store bewerten"]].map(([url,label])=><a key={label} href={url||"#"} onClick={(e)=>{if(!url)e.preventDefault();}} target="_blank" rel="noreferrer" className="flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-bold" style={{background:C.glass,border:`1px solid ${C.line}`,color:url?C.ink:C.textDim}}>{label}<ExternalLink size={14}/></a>)}</div>{!apple&&!google&&<div className="text-[10px] mt-3" style={{color:C.textDim}}>Die Store-Links werden nach Veröffentlichung der Apps freigeschaltet.</div>}</div>; }
+/* Die Store-Links koennen erst nach der Veroeffentlichung existieren. Vorher
+   wurden beide Zeilen trotzdem angezeigt - als Kacheln mit Pfeilsymbol, die beim
+   Antippen nichts taten (href="#" mit preventDefault). Ausgerechnet bei der
+   ERSTEN Pruefung sind sie zwangslaeufig beide leer, der Pruefer trifft also
+   garantiert auf zwei tote Bedienelemente.
+   Jetzt erscheint nur, was auch wirklich irgendwohin fuehrt; fehlen beide,
+   steht dort nur der erklaerende Satz. */
+function FeedbackSettings() { const apple=process.env.NEXT_PUBLIC_APP_STORE_REVIEW_URL;const google=process.env.NEXT_PUBLIC_PLAY_STORE_REVIEW_URL;const stores=[[apple,"Im Apple App Store bewerten"],[google,"Im Google Play Store bewerten"]].filter(([url])=>!!url);return <div><div className="text-[11px] mb-4" style={{color:C.textDim}}>{stores.length?"Danke, dass du CMO bewertest. Wähle den Store deines Geräts.":"Danke, dass du CMO bewerten möchtest."}</div>{stores.length>0&&<div className="space-y-2">{stores.map(([url,label])=><a key={label} href={url} target="_blank" rel="noreferrer" className="flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-bold" style={{background:C.glass,border:`1px solid ${C.line}`,color:C.ink}}>{label}<ExternalLink size={14}/></a>)}</div>}{stores.length===0&&<div className="text-[11px] rounded-2xl p-4" style={{background:C.paperDim,color:C.textDim}}>Die Bewertungslinks werden freigeschaltet, sobald die App im jeweiligen Store verfügbar ist.</div>}</div>; }
 
 function BugReportSettings({user}) { const [busy,setBusy]=useState(false);const report=async()=>{setBusy(true);let number=`CMO-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`;if(supabase&&user.authProfileId){const {data}=await supabase.rpc("create_support_ticket",{target_club:user.clubId});if(data)number=data;}const subject=encodeURIComponent(`Fehlermeldung - CMO App #${number}`);const body=encodeURIComponent(`Hallo CMO-Team,\n\nfolgender Fehler ist aufgetreten:\n\n\nApp-Ticket: ${number}\nNutzer: ${user.name}\n`);window.location.href=`mailto:info@idbranding.de?subject=${subject}&body=${body}`;setBusy(false);};return <div className="rounded-2xl p-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-[11px] mb-4" style={{color:C.textDim}}>Wir erzeugen eine eindeutige Bearbeitungsnummer und öffnen anschließend die E-Mail-App deines Geräts.</div><button onClick={report} disabled={busy} className="w-full py-3 rounded-xl text-xs font-bold" style={{background:C.red,color:C.white}}>{busy?"Nummer wird erstellt …":"Fehler per E-Mail melden"}</button></div>; }
 
@@ -5342,14 +5382,14 @@ function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, 
         </div>
       </div>
 
-      <button className="w-full flex items-center justify-between px-4 py-3 rounded-2xl mb-2" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
-        <span className="flex items-center gap-2 text-sm" style={{ fontFamily: "Inter", fontWeight: 600, color: C.ink }}><ImageIcon size={15} /> Fotogalerie · Sommerfest 2025</span>
-        <ChevronRight size={15} style={{ color: C.textDim }} />
-      </button>
-      <button className="w-full flex items-center justify-between px-4 py-3 rounded-2xl mb-5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
-        <span className="flex items-center gap-2 text-sm" style={{ fontFamily: "Inter", fontWeight: 600, color: C.ink }}><Star size={15} /> Anwesenheitsquote: 92%</span>
-        <ChevronRight size={15} style={{ color: C.textDim }} />
-      </button>
+      {/* Hier standen zwei Zeilen, die wie Knoepfe aussahen und mit einem Pfeil
+          nach rechts weiterzufuehren versprachen: "Fotogalerie · Sommerfest 2025"
+          und "Anwesenheitsquote: 92%". Beide hatten keinen onClick - die einzigen
+          zwei Knoepfe der ganzen Datei ohne Handler. Beim Antippen passierte
+          nichts. Die 92% waren fest verdrahtet und standen auch bei einem Konto,
+          das noch nie an einem Termin war; das Sommerfest 2025 gehoert dem
+          Demo-Verein. Eine Fotogalerie gibt es nicht, eine Anwesenheitsstatistik
+          auch nicht - deshalb beides entfernt statt verlinkt. */}
 
       <SponsorSlot slotKey="profile_bottom" bookings={sponsorBookings} onImpression={onSponsorImpression} onClick={onSponsorClick} visible={featureEnabled("sponsor_profile_bottom")} />
 
@@ -6879,7 +6919,15 @@ export default function ClubMemberOrganisationApp() {
         .select("id,name,emoji,team_id,write_roles,visible_roles,teams(name)")
         .eq("club_id", selectedClubId)
         .order("created_at");
-      if (error || abgemeldet || !kanaele?.length) return;
+      if (error || abgemeldet) return;
+
+      /* Ein Verein ohne Kanaele bekommt eine leere Liste - nicht die
+         Demo-Kanaele. Vorher kehrte die Funktion hier einfach zurueck, und
+         INITIAL_CHANNELS blieb stehen: Ein frisch angelegter Verein sah damit
+         erfundene Unterhaltungen fremder Leute als seinen eigenen Chat.
+         Beim Fehler wird bewusst nichts geleert - dann ist der bisherige Stand
+         besser als eine leere Ansicht. */
+      if (!kanaele.length) { setChannels([]); return; }
 
       const ids = kanaele.map((k) => k.id);
       /* Die letzten 200 je Kanal reichen fuer die Ansicht. Aeltere holt der
