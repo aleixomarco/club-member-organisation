@@ -669,11 +669,9 @@ const TRAINERS = [
   { id: "tr2", name: "Miguel Costa", youthClassIds: ["herren1", "damen1"] },
   { id: "tr3", name: "Sandra Klein", youthClassIds: ["u11"] },
 ];
-function getNextMatch() {
-  const now = new Date();
-  const upcoming = EVENTS.filter((e) => e.type === "spiel" && new Date(e.date) > now).sort((a, b) => new Date(a.date) - new Date(b.date));
-  return upcoming[0] || null;
-}
+/* getNextMatch() stand hier und filterte die Demo-Konstante EVENTS. Es war der
+   Rueckfall der Startseite und zeigte echten Vereinen ein Spiel aus dem
+   Demo-Verein. Die Startseite nimmt jetzt nur noch echte Termine. */
 
 /* Sponsor-Slots: reservierte, buchbare Werbeflächen zwischen den Layout-Bereichen */
 const SPONSOR_SLOT_DEFS = [
@@ -682,15 +680,18 @@ const SPONSOR_SLOT_DEFS = [
   { key: "events_header", label: "Termine – Kopfbereich" },
   { key: "profile_bottom", label: "Profil unten" },
 ];
-const INITIAL_SPONSOR_BOOKINGS = {
-  dashboard_top: { title: "Sparkasse Iserlohn", text: "Gemeinsam für den Sport in unserer Region.", imageUrl: "", landingUrl: "https://www.sparkasse-iserlohn.de" },
-  dashboard_bottom: { title: "Autohaus Meyer", text: "Mobilität für den Verein und die Region.", imageUrl: "", landingUrl: "" },
-  events_header: { title: "Stadtwerke Iserlohn", text: "Energie, die unsere Mannschaften bewegt.", imageUrl: "", landingUrl: "https://www.stadtwerke-iserlohn.de" },
-};
+/* Alle drei Listen waren mit Demo-Inhalten vorbelegt und dienen zugleich als
+   Anfangszustand fuer JEDEN Verein. Ein frisch angelegter Verein bekam dadurch
+   fremde Firmen als seine Sponsoren angezeigt - Sparkasse Iserlohn, Stadtwerke
+   Iserlohn, Autohaus Meyer, samt Links auf deren Webseiten -, dazu zwei
+   erfundene Geburtstage und eine Abstimmung ueber eine Weihnachtsfeier mit 63
+   Stimmen, die nie jemand abgegeben hat.
 
-const BIRTHDAYS_TODAY = ["Lena K. (U15)", "Timo B. (Herren 1)"];
-const INITIAL_POLLS = [{ id: "poll-1", title: "Termin für die Weihnachtsfeier", active: true, options: [{ label: "Fr, 11.12.", votes: 23 }, { label: "Sa, 12.12.", votes: 31 }, { label: "Fr, 18.12.", votes: 9 }], voterIds: [] }];
-const SPONSORS = ["Sparkasse Iserlohn", "Stadtwerke Iserlohn", "Autohaus Meyer", "Fitness Point Hemberg", "Bäckerei Sauerland"];
+   Werbung schaltet ohnehin nur der Betreiber ueber die Sponsor-Slots, die
+   Geburtstage kommen jetzt aus den echten Mitgliedern, und Abstimmungen legt
+   der Verein selbst an. */
+const INITIAL_SPONSOR_BOOKINGS = {};
+const INITIAL_POLLS = [];
 
 /* Eine Zeile aus messages in die Form bringen, die ChatView erwartet.
    Der Name kommt ueber die Verknuepfung zu profiles; fehlt sie - etwa bei
@@ -744,14 +745,12 @@ const INITIAL_CHANNELS = [
 /* Athlet/in der Saison                                                  */
 /* ------------------------------------------------------------------ */
 const SEASON_VOTE_DEADLINE = "2026-08-31T23:59:59";
-const CANDIDATES = [
-  { id: "c1", name: "Marco Aleixo", team: "Herren 1", number: 14 },
-  { id: "c2", name: "Marco Aleixo", team: "Damen 1", number: 7 },
-  { id: "c3", name: "Luca Fischer", team: "Herren 1", number: 9 },
-  { id: "c4", name: "Nina König", team: "Damen 1", number: 11 },
-  { id: "c5", name: "Elias Brandt", team: "Herren 1", number: 3 },
-];
-const BASE_VOTE_COUNTS = { c1: 34, c2: 29, c3: 41, c4: 22, c5: 18 };
+/* Fuenf erfundene Kandidaten mit zusammen 144 erfundenen Stimmen - jedem Verein
+   als seine eigene Wahl angezeigt. Die Kandidatenliste muss aus dem Verein
+   kommen; bis es dafuer eine Pflege gibt, bleibt sie leer und die Ansicht sagt
+   das auch. */
+const CANDIDATES = [];
+const BASE_VOTE_COUNTS = {};
 function seasonResults(seasonVotes) {
   const counts = CANDIDATES.reduce((acc, c) => {
     acc[c.id] = (BASE_VOTE_COUNTS[c.id] || 0) + Object.values(seasonVotes).filter((v) => v === c.id).length;
@@ -765,12 +764,11 @@ function seasonResults(seasonVotes) {
 /* ------------------------------------------------------------------ */
 /* Tippspiel                                                            */
 /* ------------------------------------------------------------------ */
-const TIPP_MATCHES = [
-  { id: 1, home: "Club Member Organisation", away: "Herringen", date: "2026-08-09T19:00:00" },
-  { id: 2, home: "ERC Wimbern", away: "Club Member Organisation", date: "2026-08-16T20:00:00" },
-  { id: 3, home: "Club Member Organisation", away: "Cronenberg", date: "2026-08-30T19:00:00" },
-  { id: 4, home: "SG Bielefeld", away: "Club Member Organisation", date: "2026-09-06T19:00:00" },
-];
+/* Vier frei erfundene Begegnungen, die jedem Verein als seine naechsten Spiele
+   angezeigt wurden. Die Paarungen muessen aus dem Spielplan des Vereins kommen;
+   bis diese Verknuepfung steht, bleibt die Liste leer und beide Ansichten sagen
+   es dem Nutzer, statt etwas zu erfinden. */
+const TIPP_MATCHES = [];
 
 function predictionPoints(prediction, result) {
   if (!prediction || !result || prediction.home === "" || prediction.away === "") return 0;
@@ -1618,7 +1616,22 @@ function Dashboard({ user, members, events, feePaid, channels, dutyPlan, seasonV
   const [spielTeam, setSpielTeam] = useState(user.team || "");
   const gewaehlteMannschaft = spielMannschaften.includes(spielTeam) ? spielTeam : spielMannschaften[0] || "";
 
-  const nextEvent = kommende.find((e) => e.type === "spiel" && e.team === gewaehlteMannschaft) || getNextMatch();
+  /* Kein Rueckfall mehr auf getNextMatch(): Das las die Demo-Konstante EVENTS und
+     zeigte einem echten Verein damit ein Spiel, das es bei ihm nie gab. Findet
+     sich kein Spiel, blendet Scoreboard die Kachel selbst aus. */
+  const nextEvent = kommende.find((e) => e.type === "spiel" && e.team === gewaehlteMannschaft) || null;
+
+  /* Geburtstage aus den echten Mitgliedern, nicht aus einer Liste im Quelltext.
+     Verglichen werden nur Tag und Monat; fehlt das Geburtsdatum, faellt das
+     Mitglied heraus. Ohne Treffer erscheint die Zeile gar nicht. */
+  const heute = new Date();
+  const geburtstageHeute = (members || [])
+    .filter((m) => m.birthdate && !m.accountPending)
+    .filter((m) => {
+      const tag = new Date(m.birthdate);
+      return tag.getDate() === heute.getDate() && tag.getMonth() === heute.getMonth();
+    })
+    .map((m) => (m.team && m.team !== "Mitglied" ? `${m.name} (${m.team})` : m.name));
   /* Das Training bleibt bewusst bei der eigenen Mannschaft: Es beantwortet die
      Frage "wann muss ich hin", nicht "was laeuft im Verein". */
   const naechstesTraining = kommende.find((e) => e.type === "training" && e.team === user.team);
@@ -1630,7 +1643,11 @@ function Dashboard({ user, members, events, feePaid, channels, dutyPlan, seasonV
   const leaderboard = [...members].sort((a, b) => b.tippPoints - a.tippPoints);
   const myRank = leaderboard.findIndex((m) => m.id === user.id) + 1;
   const tippSubtitle = `Platz ${myRank} von ${leaderboard.length} · Gewinn: CMO-Artikel`;
-  const [taskReminder, setTaskReminder] = useState(false);
+  /* Der Anteil in Prozent, sobald der Hinweis faellig ist - sonst null. Vorher
+     stand hier ein blosses true und im Text eine feste 70. Angezeigt wurde damit
+     immer "Schon 70%", auch wenn sich laengst neunzig Prozent eingetragen
+     hatten. Jetzt steht dort die tatsaechliche Quote. */
+  const [taskReminder, setTaskReminder] = useState(null);
   useEffect(() => {
     const databaseMembership = !!supabase && isDbId(user.id);
     if (!databaseMembership || !user.clubId) return;
@@ -1638,7 +1655,7 @@ function Dashboard({ user, members, events, feePaid, channels, dutyPlan, seasonV
       const { data: ratio } = await supabase.rpc("get_task_signup_ratio", { target_club: user.clubId });
       if ((ratio || 0) < 0.7) return;
       const { data: mine } = await supabase.from("club_task_signups").select("id").eq("membership_id", user.id).limit(1);
-      if (!mine || mine.length === 0) setTaskReminder(true);
+      if (!mine || mine.length === 0) setTaskReminder(Math.round((ratio || 0) * 100));
     };
     checkReminder();
   }, [user.id, user.clubId]);
@@ -1649,7 +1666,12 @@ function Dashboard({ user, members, events, feePaid, channels, dutyPlan, seasonV
     Object.entries(dutyPlan).forEach(([eid, stations]) => {
       Object.entries(stations).forEach(([station, list]) => { if (list.includes(user.id)) assigned = { eid, station }; });
     });
-    dutySubtitle = assigned ? `${assigned.station} · ${formatDate(EVENTS.find((e) => e.id === Number(assigned.eid))?.date)}` : "Jetzt eintragen";
+    /* Der Termin kommt aus den echten Vereinsterminen. Vorher wurde er in der
+       Demo-Konstante EVENTS gesucht - bei einem echten Verein fand sich dort
+       nichts, und hinter der Station stand "Invalid Date". Die Kennung kann je
+       nach Herkunft Zahl oder Text sein, deshalb der Vergleich ueber String(). */
+    const zugehoeriger = (events || []).find((e) => String(e.id) === String(assigned.eid));
+    dutySubtitle = assigned && zugehoeriger ? `${assigned.station} · ${formatDate(zugehoeriger.date)}` : assigned ? assigned.station : "Jetzt eintragen";
   }
 
   return (
@@ -1669,16 +1691,16 @@ function Dashboard({ user, members, events, feePaid, channels, dutyPlan, seasonV
       <Scoreboard nextEvent={nextEvent} goTo={goEvents} mannschaften={spielMannschaften} gewaehlt={gewaehlteMannschaft} onWechsel={setSpielTeam} />
       <NextTrainingCard training={naechstesTraining} />
 
-      {taskReminder && (
+      {taskReminder !== null && (
         <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 mb-5" style={{ background: "rgba(238,245,248,0.72)", border: `1px solid ${C.edge}` }}>
           <ClipboardList size={16} style={{ color: "#2D6F8E" }} />
-          <div className="text-sm flex-1" style={{ fontFamily: "Inter", color: C.ink }}>Schon <b>70%</b> haben sich für Aufgaben eingetragen. Hilf mit! <button onClick={goTasks} className="underline font-bold">Jetzt eintragen</button></div>
+          <div className="text-sm flex-1" style={{ fontFamily: "Inter", color: C.ink }}>Schon <b>{taskReminder}%</b> haben sich für Aufgaben eingetragen. Hilf mit! <button onClick={goTasks} className="underline font-bold">Jetzt eintragen</button></div>
         </div>
       )}
-      {BIRTHDAYS_TODAY.length > 0 && (
+      {geburtstageHeute.length > 0 && (
         <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 mb-5" style={{ background: "rgba(255,246,228,0.72)", border: `1px solid ${C.edge}` }}>
           <Cake size={16} style={{ color: C.amber }} />
-          <div className="text-sm" style={{ fontFamily: "Inter", color: C.ink }}><b>Heute Geburtstag:</b> {BIRTHDAYS_TODAY.join(" · ")} 🎉</div>
+          <div className="text-sm" style={{ fontFamily: "Inter", color: C.ink }}><b>Heute Geburtstag:</b> {geburtstageHeute.join(" · ")} 🎉</div>
         </div>
       )}
 
@@ -1722,17 +1744,21 @@ function Dashboard({ user, members, events, feePaid, channels, dutyPlan, seasonV
 
       <SponsorSlot slotKey="dashboard_bottom" bookings={sponsorBookings} onImpression={onSponsorImpression} onClick={onSponsorClick} visible={featureEnabled("sponsor_dashboard_bottom")} />
 
-      <DashboardSection accent={C.amber} background="#FFF7E7">
-        <SectionTitle eyebrow="Mitmachen" title="Deine Stimme zählt" />
-        <div className="space-y-3">{polls.filter((p)=>p.active).map((poll)=><PollWidget key={poll.id} poll={poll} userId={user.id} setPolls={setPolls}/>)}</div>
-      </DashboardSection>
+      {/* Die Abstimmungen erscheinen nur, wenn es welche gibt. Vorher stand die
+          Ueberschrift auch dann da, wenn der Verein keine einzige angelegt hat. */}
+      {polls.some((p) => p.active) && (
+        <DashboardSection accent={C.amber} background="#FFF7E7">
+          <SectionTitle eyebrow="Mitmachen" title="Deine Stimme zählt" />
+          <div className="space-y-3">{polls.filter((p)=>p.active).map((poll)=><PollWidget key={poll.id} poll={poll} userId={user.id} setPolls={setPolls}/>)}</div>
+        </DashboardSection>
+      )}
 
-      <DashboardSection accent={C.green} background="#EDF7F0">
-        <SectionTitle eyebrow="Partner" title="Unsere Sponsoren" />
-        <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
-          {SPONSORS.map((s) => <div key={s} className="flex-shrink-0 px-3 py-2.5 rounded-xl text-xs whitespace-nowrap" style={{ background: C.glass, border: "1px solid #D8EBDD", color: C.textDim, fontFamily: "Inter", fontWeight: 600 }}>{s}</div>)}
-        </div>
-      </DashboardSection>
+      {/* Hier stand ein Block "Unsere Sponsoren" mit fuenf fest verdrahteten
+          Firmennamen aus dem Demo-Datensatz - Sparkasse Iserlohn, Stadtwerke
+          Iserlohn und weitere. Jeder echte Verein bekam fremde Unternehmen als
+          seine eigenen Partner angezeigt. Werbung schaltet ohnehin nur der
+          Betreiber ueber die Sponsor-Slots, deshalb ist der Block ersatzlos
+          entfallen. */}
 
     </div>
   );
@@ -5408,6 +5434,12 @@ function SeasonVoteView({ currentUser, seasonVotes, setSeasonVotes }) {
         </div>
       )}
 
+      {sorted.length === 0 && (
+        <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>
+          Für diese Wahl sind noch keine Kandidat/innen hinterlegt.
+        </div>
+      )}
+
       <div className="space-y-2">
         {sorted.map((c, i) => {
           const pct = total ? Math.round((counts[c.id] / total) * 100) : 0;
@@ -5474,6 +5506,11 @@ function TippView({ members, currentUser, tippPredictions, setTippPredictions, t
       </div>
 
       <SectionTitle eyebrow="Nächste Spiele" title="Jetzt tippen" />
+      {TIPP_MATCHES.length === 0 && (
+        <div className="rounded-2xl p-4 mb-3 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>
+          Für das Tippspiel sind noch keine Begegnungen hinterlegt. Sobald der Verein Spiele einträgt, könnt ihr hier tippen.
+        </div>
+      )}
       {TIPP_MATCHES.map((match) => {
         const result = tippResults[match.id];
         const locked = new Date(match.date) < new Date() || !!result;
@@ -5504,8 +5541,8 @@ function TippView({ members, currentUser, tippPredictions, setTippPredictions, t
 /* ------------------------------------------------------------------ */
 /* Helferplanung — eigene Ansicht                                       */
 /* ------------------------------------------------------------------ */
-function DutyView({ members, currentUser, dutyPlan, setDutyPlan }) {
-  const helperEvents = EVENTS.filter((e) => e.helperSlots && e.helperSlots.length);
+function DutyView({ members, currentUser, events, dutyPlan, setDutyPlan }) {
+  const helperEvents = (events || []).filter((e) => e.helperSlots && e.helperSlots.length);
   const formalMember = isFormalMember(currentUser);
   const oldEnough = age(currentUser.birthdate) >= 16;
   const familyHelpers = (!formalMember || !oldEnough) ? members.filter((m) => m.familyId && m.familyId === currentUser.familyId && m.id !== currentUser.id && isFormalMember(m) && age(m.birthdate) >= 16) : [];
@@ -5549,8 +5586,8 @@ function DutyView({ members, currentUser, dutyPlan, setDutyPlan }) {
     </div>
   );
 }
-function AdminDutyPanel({ members, dutyPlan, setDutyPlan }) {
-  const helperEvents = EVENTS.filter((e) => e.helperSlots && e.helperSlots.length);
+function AdminDutyPanel({ members, events, dutyPlan, setDutyPlan }) {
+  const helperEvents = (events || []).filter((e) => e.helperSlots && e.helperSlots.length);
   const formalMembers = members.filter((m) => isFormalMember(m));
   const add = (eventId, station, memberId) => {
     if (!memberId) return;
@@ -5836,7 +5873,7 @@ function OverviewPanel({ members, events, feePaid, protocols, dutyPlan, seasonVo
   const feeRate = members.length ? Math.round((paidCount / members.length) * 100) : 100;
   const openTasks = protocols.flatMap((p) => p.tasks.filter((t) => !t.done)).length;
 
-  const helperEvents = EVENTS.filter((e) => e.helperSlots && e.helperSlots.length);
+  const helperEvents = (events || []).filter((e) => e.helperSlots && e.helperSlots.length);
   let openSlots = 0, totalSlots = 0;
   helperEvents.forEach((ev) => {
     const plan = dutyPlan[ev.id] || {};
@@ -5953,6 +5990,11 @@ function MatchResultsPanel({ results, onSave }) {
         <div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Ergebnisse & Punkte</div>
         <div className="text-xs" style={{ color: C.textDim }}>Endstand nach dem Spiel eintragen. Das System wertet danach alle Tipps aus: exakt 3 Punkte, richtige Tendenz 1 Punkt.</div>
       </div>
+      {TIPP_MATCHES.length === 0 && (
+        <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>
+          Es sind noch keine Begegnungen für das Tippspiel hinterlegt.
+        </div>
+      )}
       <div className="space-y-3">
         {TIPP_MATCHES.map((match) => {
           const values = drafts[match.id] || results[match.id] || { home: "", away: "" };
@@ -6660,7 +6702,7 @@ function AdminView({
           billingAutomation={billingAutomation} setBillingAutomation={setBillingAutomation} />
       )}
 
-      {panel === "duty" && dutyFeatureOn && <AdminDutyPanel members={members} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} />}
+      {panel === "duty" && dutyFeatureOn && <AdminDutyPanel members={members} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} />}
       {panel === "duty-templates" && <DutyTemplatesPanel currentUser={currentUser} sport={currentClub?.sport} />}
       {panel === "functions" && canManageClubFeatures && <ClubFeatureSettingsPanel currentClub={currentClub} clubFeatures={clubFeatures} onFeaturesChanged={onClubFeaturesChanged} dashboardTileOrder={dashboardTileOrder} setDashboardTileOrder={setDashboardTileOrder} />}
       {panel === "protokolle" && <ProtokollePanel members={members} protocols={protocols} setProtocols={setProtocols} clubId={currentUser.clubId} />}
@@ -6678,6 +6720,11 @@ function AdminView({
         return (
           <div>
             <div className="text-xs mb-3" style={{ color: C.textDim, fontFamily: "Inter" }}>Nur für den Vorstand sichtbar — {total} Stimmen bisher.</div>
+            {sorted.length === 0 && (
+              <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>
+                Für diese Wahl sind noch keine Kandidat/innen hinterlegt.
+              </div>
+            )}
             <div className="space-y-2">
               {sorted.map((c, i) => {
                 const pct = total ? Math.round((counts[c.id] / total) * 100) : 0;
@@ -7459,7 +7506,7 @@ export default function ClubMemberOrganisationApp() {
             <div key={`${tab}-${subView || ""}`} className="tabFade flex-1 overflow-y-auto" style={{ background: C.paper }}>
               {subView === "season" && featureEnabled("season_award") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Athlet/in der Saison"><SeasonVoteView currentUser={currentUser} seasonVotes={seasonVotes} setSeasonVotes={setSeasonVotes} /></LockedFeature>}
               {subView === "tipp" && featureEnabled("tippspiel") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Tippspiel"><TippView members={clubMembers} currentUser={currentUser} tippPredictions={tippPredictions} setTippPredictions={setTippPredictions} tippResults={tippResults} /></LockedFeature>}
-              {subView === "duty" && featureEnabled("duty_roster") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Helferplanung"><DutyView members={clubMembers} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} /></LockedFeature>}
+              {subView === "duty" && featureEnabled("duty_roster") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Helferplanung"><DutyView members={clubMembers} currentUser={currentUser} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} /></LockedFeature>}
               {subView === "tasks" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Aufgaben"><TasksView currentUser={currentUser} members={clubMembers} /></LockedFeature>}
               {subView === "vehicles" && featureEnabled("vehicle_booking") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Vereinsfahrzeuge"><VehiclesView currentUser={currentUser} currentClub={currentClub} /></LockedFeature>}
 
