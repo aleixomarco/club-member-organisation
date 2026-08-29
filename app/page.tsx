@@ -2409,6 +2409,27 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
   const [text, setText] = useState("");
   const visibleChannels = channels.filter((c) => isAdmin(user) || ((!c.team || c.team === user.team) && (!c.visibleRoles || c.visibleRoles.some((r) => user.roles.includes(r)))));
   const active = visibleChannels.find((c) => c.id === activeId) || visibleChannels[0];
+
+  /* Kein einziger Kanal sichtbar - moeglich, seit die Sichtbarkeit an der
+     Mannschaft haengt: ein Mitglied ohne Mannschaft, ein Elternteil ohne
+     Familienverknuepfung, ein frisch freigegebenes Konto.
+     Ohne diesen Zweig liefe die Ansicht in active.messages auf undefined und
+     der Chat bliebe weiss. */
+  if (!active) {
+    return (
+      <div className="px-4 pt-4 pb-10">
+        <div className="rounded-2xl p-5 text-center" style={{ background: C.paperDim }}>
+          <MessageCircle size={22} style={{ color: C.textDim, margin: "0 auto 10px" }} />
+          <div className="text-sm font-bold mb-1" style={{ color: C.ink, fontFamily: "Inter" }}>Noch kein Chat für dich</div>
+          <div className="text-[11px] leading-snug" style={{ color: C.textDim, fontFamily: "Inter" }}>
+            Chats gehören zu Mannschaften. Sobald du einer Mannschaft zugeordnet bist —
+            oder dein Kind in einer steht — erscheint sie hier. Frag im Zweifel deinen
+            Trainer oder die Vereinsverwaltung.
+          </div>
+        </div>
+      </div>
+    );
+  }
   const canPost = isAdmin(user) || (active.id === "news" && user.roles.includes("redakteur")) || (!active.adminOnly && (!active.writeRoles || active.writeRoles.some((r) => user.roles.includes(r))));
 
   /* Apple-Richtlinie 1.2 verlangt bei nutzergenerierten Inhalten beides: melden
@@ -2500,7 +2521,13 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
       )}
       <div className="flex-1 overflow-y-auto px-4 space-y-3">
         {visibleMessages.map((m, i) => {
-          const mine = m.who === user.name;
+          /* Nach Kennung vergleichen, nicht nach Namen: Datenbank-Nachrichten
+             tragen den Namen aus profiles, der angemeldete Nutzer seinen
+             Anzeigenamen aus der Mitgliedschaft. Weichen die ab, erschienen
+             eigene Nachrichten als fremde - samt "Melden" und "Blockieren" an
+             der eigenen Nachricht. Der Namensvergleich bleibt als Rueckfall
+             fuer den Demo-Betrieb ohne Datenbank. */
+          const mine = m.authorId ? m.authorId === user.authProfileId : m.who === user.name;
           return (
             <div key={i} className={`flex gap-2 ${mine ? "flex-row-reverse" : ""}`}>
               <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0" style={{ background: m.color, color: C.white, fontFamily: "Inter" }}>{m.init}</div>
