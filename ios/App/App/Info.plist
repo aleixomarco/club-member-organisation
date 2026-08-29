@@ -61,6 +61,17 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<!-- Die Oberfläche ist durchgehend hell: .erg-canvas endet in einem
+	     Verlauf von #F7F4F5 nach #EDEAF0, und es gibt im ganzen Projekt keine
+	     einzige prefers-color-scheme-Regel. Ohne die beiden folgenden Schlüssel
+	     schaltet iOS im Dunkelmodus trotzdem auf weiße Statusleistenschrift -
+	     und weil contentInset "never" ist, zieht sich die Webansicht bis unter
+	     die Statusleiste. Uhrzeit, Empfang und Batterie standen dann weiß auf
+	     fast weißem Grund, auf jedem Bildschirm der App. -->
+	<key>UIUserInterfaceStyle</key>
+	<string>Light</string>
+	<key>UIStatusBarStyle</key>
+	<string>UIStatusBarStyleDarkContent</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Wird benötigt, um ein Vereinslogo oder ein Bild für einen News-Beitrag aus deiner Fotomediathek auszuwählen.</string>
 	<key>NSCameraUsageDescription</key>

@@ -1624,7 +1624,11 @@ function Dashboard({ user, members, events, feePaid, channels, dutyPlan, seasonV
      Mitglied heraus. Ohne Treffer erscheint die Zeile gar nicht. */
   const heute = new Date();
   const geburtstageHeute = (members || [])
-    .filter((m) => m.birthdate && !m.accountPending)
+    /* showBirthday ist die Einstellung "Geburtstag im Verein anzeigen" aus dem
+       Profil. Wer sie abwaehlt, taucht hier nicht auf. Fehlt das Feld - etwa bei
+       aelteren Datensaetzen -, gilt die Voreinstellung der Oberflaeche, also
+       sichtbar. */
+    .filter((m) => m.birthdate && !m.accountPending && m.showBirthday !== false)
     .filter((m) => {
       const tag = new Date(m.birthdate);
       return tag.getDate() === heute.getDate() && tag.getMonth() === heute.getMonth();
@@ -5058,7 +5062,16 @@ function NotificationSettings({ user, setMembers, saveRef }) {
   };
   const save = async()=>{ if(supabase&&user.authProfileId){const {error}=await supabase.from("profiles").update({notification_master:master,notification_preferences:prefs}).eq("id",user.authProfileId);if(error){setMessage("Benachrichtigungen konnten nicht gespeichert werden.");return;}} setMembers((items)=>items.map((item)=>item.id===user.id?{...item,notificationMaster:master,notificationPreferences:prefs}:item));setMessage("Benachrichtigungen gespeichert.");};
   saveRef.current=save;
-  return <div>{message&&<div className="mb-4 text-[11px] rounded-xl px-3 py-2" style={{background:"rgba(231,243,236,0.72)",color:C.green}}>{message}</div>}{databaseMembership && <div className="rounded-2xl p-4 mb-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1" style={{color:C.ink}}>Push-Benachrichtigungen auf diesem Gerät</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>Aktiviere Push, um Benachrichtigungen auch außerhalb der App zu erhalten. Auf dem iPhone funktioniert das nur, wenn die App über "Zum Home-Bildschirm hinzufügen" installiert wurde.</div><button onClick={pushStatus==="active"?deactivatePush:activatePush} disabled={pushStatus==="working"} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{background:pushStatus==="active"?"rgba(253,236,236,0.72)":C.ink,color:pushStatus==="active"?C.red:C.white}}>{pushStatus==="working"?"Wird bearbeitet …":pushStatus==="active"?"Push deaktivieren":"Push aktivieren"}</button></div>}<ToggleCard title="Benachrichtigungen auf diesem Gerät" desc="Master-Schalter für alle App-Benachrichtigungen" value={master} onChange={setMaster}/><div className="mt-4 rounded-2xl p-4space-y-3" style={{background:C.glass,border:`1px solid ${C.line}`}}>{NOTIFICATION_OPTIONS.map(([key,label])=><label key={key} className="flex items-center justify-between gap-3"><span className="text-xsfont-bold">{label}</span><select disabled={!master} value={prefs[key]?"ja":"nein"} onChange={(e)=>setPrefs({...prefs,[key]:e.target.value==="ja"})} className="px-3 py-2 rounded-xl text-xs" style={{background:C.paperDim,opacity:master?1:.45}}><option value="ja">Ja</option><option value="nein">Nein</option></select></label>)}</div></div>;
+  return <div>{message&&<div className="mb-4 text-[11px] rounded-xl px-3 py-2" style={{background:"rgba(231,243,236,0.72)",color:C.green}}>{message}</div>}{/* Die Push-Karte erscheint nur ausserhalb der nativen App. In der
+      nativen Huelle laeuft die Oberflaeche in einem WKWebView, und dort gibt es
+      weder Notification noch serviceWorker - enablePushNotifications kehrte
+      sofort mit "unsupported" zurueck. Der Knopf oeffnete also nie einen
+      Berechtigungsdialog, sondern zeigte zuverlaessig eine Fehlermeldung.
+      Der erklaerende Satz verwies zudem auf "Zum Home-Bildschirm hinzufuegen",
+      also auf eine Installation ausserhalb des App Store - mitten in der
+      App-Store-App. Benachrichtigungen innerhalb der App sind davon unberuehrt,
+      die laufen ueber die Datenbank. */}
+    {databaseMembership && !Capacitor.isNativePlatform() && <div className="rounded-2xl p-4 mb-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1" style={{color:C.ink}}>Push-Benachrichtigungen auf diesem Gerät</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>Aktiviere Push, um Benachrichtigungen auch außerhalb der App zu erhalten.</div><button onClick={pushStatus==="active"?deactivatePush:activatePush} disabled={pushStatus==="working"} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{background:pushStatus==="active"?"rgba(253,236,236,0.72)":C.ink,color:pushStatus==="active"?C.red:C.white}}>{pushStatus==="working"?"Wird bearbeitet …":pushStatus==="active"?"Push deaktivieren":"Push aktivieren"}</button></div>}<ToggleCard title="Benachrichtigungen auf diesem Gerät" desc="Master-Schalter für alle App-Benachrichtigungen" value={master} onChange={setMaster}/><div className="mt-4 rounded-2xl p-4space-y-3" style={{background:C.glass,border:`1px solid ${C.line}`}}>{NOTIFICATION_OPTIONS.map(([key,label])=><label key={key} className="flex items-center justify-between gap-3"><span className="text-xsfont-bold">{label}</span><select disabled={!master} value={prefs[key]?"ja":"nein"} onChange={(e)=>setPrefs({...prefs,[key]:e.target.value==="ja"})} className="px-3 py-2 rounded-xl text-xs" style={{background:C.paperDim,opacity:master?1:.45}}><option value="ja">Ja</option><option value="nein">Nein</option></select></label>)}</div></div>;
 }
 
 function PasswordSettings({ user, onLogout, saveRef }) {
