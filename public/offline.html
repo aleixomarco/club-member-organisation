@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>Keine Verbindung — Club Member Organisation</title>
+<!--
+  Diese Seite liegt IM App-Bundle und wird von Capacitor geladen, wenn die
+  Webansicht die gehostete App nicht erreicht (server.errorPath in
+  capacitor.config.ts). Sie muss deshalb ohne jede Netzverbindung auskommen:
+  keine externen Schriften, keine Bilder, kein Skript von aussen.
+
+  Ohne sie blieb die App bei fehlendem Netz dauerhaft weiss - der
+  Startbildschirm verschwand nach vier Sekunden, und dahinter kam nichts.
+-->
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    display: flex; align-items: center; justify-content: center;
+    padding: calc(env(safe-area-inset-top) + 28px) 26px calc(env(safe-area-inset-bottom) + 28px);
+    background: #F7F4F5; color: #14151A;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  main { width: 100%; max-width: 340px; text-align: center; }
+  .mark {
+    width: 56px; height: 56px; margin: 0 auto 22px; border-radius: 17px;
+    background: #C8102E; color: #fff; font-weight: 800; font-size: 19px;
+    display: flex; align-items: center; justify-content: center; letter-spacing: .5px;
+  }
+  h1 { font-size: 21px; margin: 0 0 10px; letter-spacing: -.2px; }
+  p { font-size: 14px; line-height: 1.6; color: #5C5F66; margin: 0 0 26px; }
+  button {
+    width: 100%; padding: 14px; border: 0; border-radius: 14px;
+    background: #C8102E; color: #fff; font-size: 15px; font-weight: 700;
+    font-family: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  button:active { opacity: .82; }
+  .hint { margin: 18px 0 0; font-size: 12px; color: #8A8D93; }
+</style>
+</head>
+<body>
+  <main>
+    <div class="mark">CMO</div>
+    <h1>Keine Verbindung</h1>
+    <p>Die App konnte den Server nicht erreichen. Prüfe deine Internetverbindung und versuche es dann erneut.</p>
+    <button id="retry" type="button">Erneut versuchen</button>
+    <p class="hint" id="hint"></p>
+  </main>
+<script>
+  // Die Adresse steht hier fest, weil die Seite aus dem Bundle geladen wird und
+  // damit nicht mehr weiss, wohin die App eigentlich zeigt.
+  var APP = "https://club-member-organisation.vercel.app";
+  var retry = document.getElementById("retry");
+  var hint = document.getElementById("hint");
+
+  retry.addEventListener("click", function () {
+    retry.disabled = true;
+    retry.textContent = "Wird geladen …";
+    hint.textContent = "";
+    // Cache umgehen, sonst laedt iOS gelegentlich denselben Fehler erneut.
+    window.location.replace(APP + "?wieder=" + Date.now());
+  });
+
+  // Kommt das Netz von allein zurueck, muss niemand tippen.
+  window.addEventListener("online", function () {
+    hint.textContent = "Verbindung wieder da — wird geladen …";
+    window.location.replace(APP + "?wieder=" + Date.now());
+  });
+</script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
-// Die App läuft komplett serverseitig (Next.js API-Routen, Supabase, PayPal),
+// Die App läuft komplett serverseitig (Next.js API-Routen, Supabase),
 // deshalb lädt die native Hülle die gehostete Web-App per URL, statt einen
 // statischen Export mitzuliefern.
 //
@@ -18,6 +18,17 @@ const config: CapacitorConfig = {
     url: "https://club-member-organisation.vercel.app",
     cleartext: false,
     androidScheme: "https",
+    /* Ohne errorPath laedt Capacitor bei einem gescheiterten Ladevorgang gar
+       nichts nach und schreibt nur eine Zeile ins Log (WebViewDelegationHandler,
+       didFailProvisionalNavigation). Die Webansicht blieb dann weiss: Der
+       Startbildschirm verschwand nach vier Sekunden, und dahinter kam nichts
+       mehr - ohne Netz war die App also stumm kaputt, mit Beenden als einzigem
+       Ausweg. Das ist genau das leere Bild, wegen dem Apple nach Richtlinie 2.1
+       ablehnt.
+       public/offline.html liegt im Bundle und kommt deshalb auch ohne Netz
+       hoch; sie bietet einen Neuversuch an und laedt von selbst nach, sobald
+       die Verbindung zurueck ist. */
+    errorPath: "offline.html",
   },
   ios: {
     /* "never" statt "automatic": Bei "automatic" rueckt iOS die Webansicht
