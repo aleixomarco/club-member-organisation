@@ -1441,10 +1441,35 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
 function Scoreboard({ nextEvent, goTo, mannschaften = [], gewaehlt, onWechsel }) {
   const { d, h, m } = useCountdown(nextEvent ? nextEvent.date : "2099-01-01T00:00:00");
   const digit = (n) => String(n).padStart(2, "0");
-  /* Steht kein Spiel an, verschwindet die Kachel ganz. Ein Hinweis „Keine
-     Termine geplant" wäre hier schlicht falsch: Training oder andere Termine
-     können sehr wohl anstehen, sie stecken nur in anderen Kacheln. */
-  if (!nextEvent) return null;
+  /* Ohne Mannschaftsauswahl verschwindet die Kachel, wenn kein Spiel ansteht -
+     ein Hinweis "keine Termine geplant" waere falsch, denn Training und anderes
+     stecken in eigenen Kacheln.
+     Mit Auswahl bleibt sie stehen: Verschwaende sie beim Wechsel auf eine
+     Mannschaft ohne Spiel, waere die Auswahl selbst mit weg und man kaeme nicht
+     zurueck. */
+  if (!nextEvent && mannschaften.length <= 1) return null;
+
+  /* Mannschaft ohne geplantes Spiel: eigene, schlichte Fassung der Kachel.
+     Der Rest des Aufbaus greift auf nextEvent.date und .title zu - ohne diesen
+     Zweig faende er dort nichts und die Startseite bliebe weiss. */
+  if (!nextEvent) {
+    return (
+      <div className="rounded-3xl p-5 mb-6 relative overflow-hidden" style={{ background: `linear-gradient(160deg, color-mix(in srgb, ${C.red} 82%, #fff) 0%, ${C.red} 100%)` }}>
+        <div className="relative flex items-center justify-between mb-4">
+          <span className="text-[10px] font-extrabold uppercase px-3.5 py-1.5 rounded-full" style={{ fontFamily: "Inter", letterSpacing: "0.14em", color: "#fff", background: "rgba(255,255,255,0.18)" }}>Nächstes Spiel</span>
+        </div>
+        <div className="relative mb-3" onClick={(e) => e.stopPropagation()}>
+          <select aria-label="Mannschaft waehlen" value={gewaehlt} onChange={(e) => onWechsel(e.target.value)}
+            className="text-[11px] font-bold rounded-full px-3 py-1.5 outline-none appearance-none"
+            style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.28)", color: "#fff", fontFamily: "Inter" }}>
+            {mannschaften.map((m) => <option key={m} value={m} style={{ color: C.ink }}>{m}</option>)}
+          </select>
+        </div>
+        <div className="relative text-white text-sm" style={{ fontFamily: "Inter" }}>Für diese Mannschaft ist derzeit kein Spiel geplant.</div>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-3xl p-5 mb-6 relative overflow-hidden cursor-pointer" style={{ background: `linear-gradient(160deg, color-mix(in srgb, ${C.red} 82%, #fff) 0%, ${C.red} 55%, ${C.redDark} 100%)`, boxShadow: `0 22px 46px color-mix(in srgb, ${C.red} 34%, transparent), inset 0 1px 0 rgba(255,255,255,0.35)` }} onClick={goTo}>
       <div className="absolute pointer-events-none" style={{ top: "-40%", left: "-10%", width: "80%", height: "100%", background: "radial-gradient(circle, rgba(255,255,255,0.28), transparent 65%)" }} />
@@ -1557,7 +1582,11 @@ function Dashboard({ user, members, events, feePaid, channels, dutyPlan, seasonV
   /* Fuer den Spielblock laesst sich die Mannschaft waehlen - ein Vorstand
      moechte auch sehen, wann die U15 spielt, nicht nur die eigene Mannschaft.
      Vorbelegt ist die eigene; wer keine hat, bekommt die erste mit Spielen. */
-  const spielMannschaften = [...new Set(kommende.filter((e) => e.type === "spiel").map((e) => e.team))]
+  /* Zur Wahl stehen alle Mannschaften mit Terminen - nicht nur die mit
+     anstehenden Spielen. Sonst verschwindet die Auswahl genau dann, wenn nur
+     eine Mannschaft gerade spielt, und man kann nicht nachsehen, ob eine
+     andere etwas geplant hat. */
+  const spielMannschaften = [...new Set((events || []).map((e) => e.team).filter(Boolean))]
     .sort((a, b) => a.localeCompare(b, "de"));
   const [spielTeam, setSpielTeam] = useState(user.team || "");
   const gewaehlteMannschaft = spielMannschaften.includes(spielTeam) ? spielTeam : spielMannschaften[0] || "";
