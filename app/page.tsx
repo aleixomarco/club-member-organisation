@@ -5485,6 +5485,16 @@ function DutyView({ members, currentUser, dutyPlan, setDutyPlan }) {
         </div>
       )}
 
+      {helperEvents.length === 0 && (
+        /* Ohne Leerfassung blieb hier eine weisse Flaeche: helperEvents filtert
+           das Demo-Feld EVENTS nach helperSlots, und echte Termine aus der
+           Datenbank tragen diese Eigenschaft nicht. Ein Pruefer sieht sonst
+           eine Ansicht, die nichts tut. */
+        <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>
+          Für die kommenden Termine sind noch keine Helferdienste eingeplant.
+          Sobald der Verein welche anlegt, erscheinen sie hier.
+        </div>
+      )}
       {helperEvents.map((ev) => {
         const eligible = formalMember && (ev.type !== "spiel" || oldEnough);
         return (
@@ -5524,6 +5534,11 @@ function AdminDutyPanel({ members, dutyPlan, setDutyPlan }) {
   return (
     <div>
       <div className="text-xs mb-4" style={{ color: C.textDim, fontFamily: "Inter" }}>{formalMembers.length} Vereinsmitglieder sind hinterlegt und einteilbar (Heimspiel-Stationen zusätzlich ab 16 Jahren).</div>
+      {helperEvents.length === 0 && (
+        <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>
+          Noch keine Termine mit Helferdiensten. Lege einen Termin an und weise ihm Dienste zu.
+        </div>
+      )}
       {helperEvents.map((ev) => {
         const plan = dutyPlan[ev.id] || {};
         const pool = ev.type === "spiel" ? formalMembers.filter((m) => age(m.birthdate) >= 16) : formalMembers;
@@ -5780,7 +5795,7 @@ function AutomationsPanel({ members, feePaid, remindersSent, setRemindersSent, w
 /* ------------------------------------------------------------------ */
 /* Übersicht (Vorstands-Dashboard)                                      */
 /* ------------------------------------------------------------------ */
-function OverviewPanel({ members, feePaid, protocols, dutyPlan, seasonVotes, goPanel, showFees }) {
+function OverviewPanel({ members, events, feePaid, protocols, dutyPlan, seasonVotes, goPanel, showFees }) {
   const paidCount = members.filter((m) => feePaid[m.id]).length;
   const feeRate = members.length ? Math.round((paidCount / members.length) * 100) : 100;
   const openTasks = protocols.flatMap((p) => p.tasks.filter((t) => !t.done)).length;
@@ -5792,7 +5807,11 @@ function OverviewPanel({ members, feePaid, protocols, dutyPlan, seasonVotes, goP
     ev.helperSlots.forEach((s) => { totalSlots += STATION_CAP; openSlots += STATION_CAP - (plan[s]?.length || 0); });
   });
   const { total: seasonTotal } = seasonResults(seasonVotes);
-  const nextEvent = EVENTS[0];
+  /* Zeigte bislang den ersten Eintrag des Demo-Feldes - in einem echten Verein
+     also einen Termin, den es dort nie gab. Jetzt der naechste echte. */
+  const nextEvent = [...(events || [])]
+    .filter((e) => !e.cancelled && new Date(e.date) > new Date())
+    .sort((a, b) => new Date(a.date) - new Date(b.date))[0];
 
   return (
     <div className="grid grid-cols-2 gap-3">
@@ -5801,7 +5820,7 @@ function OverviewPanel({ members, feePaid, protocols, dutyPlan, seasonVotes, goP
       <StatCard icon={ClipboardList} label="Offene Aufgaben" value={openTasks} sub="aus Protokollen" accent={C.red} onClick={() => goPanel("protokolle")} />
       <StatCard icon={AlertCircle} label="Helfer-Lücken" value={openSlots} sub={`von ${totalSlots} Plätzen offen`} accent={C.amber} onClick={() => goPanel("duty")} />
       <StatCard icon={Trophy} label="Saison-Stimmen" value={seasonTotal} sub="Athlet/in der Saison" accent={C.amber} onClick={() => goPanel("season")} />
-      <StatCard icon={CalendarDays} label="Nächstes Event" value={formatDate(nextEvent.date)} sub={nextEvent.title} accent={C.red} />
+      <StatCard icon={CalendarDays} label="Nächstes Event" value={nextEvent ? formatDate(nextEvent.date) : "—"} sub={nextEvent ? nextEvent.title : "Kein Termin geplant"} accent={C.red} />
     </div>
   );
 }
@@ -6541,7 +6560,7 @@ function ClaimManagedPlayerPanel({ members, setMembers, currentUser }) {
 }
 
 function AdminView({
-  members, setMembers, feePaid, setFeePaid, dutyPlan, setDutyPlan, seasonVotes, currentUser,
+  members, setMembers, events, feePaid, setFeePaid, dutyPlan, setDutyPlan, seasonVotes, currentUser,
   channels, setChannels, maintenanceMode, setMaintenanceMode, onResetDemo,
   protocols, setProtocols, remindersSent, setRemindersSent,
   welcomeAutomation, setWelcomeAutomation, billingAutomation, setBillingAutomation,
@@ -6590,7 +6609,7 @@ function AdminView({
         ))}
       </div>
 
-      {panel === "overview" && <OverviewPanel members={members} feePaid={feePaid} protocols={protocols} dutyPlan={dutyPlan} seasonVotes={seasonVotes} goPanel={setPanel} showFees={canSeeFees} />}
+      {panel === "overview" && <OverviewPanel members={members} events={events} feePaid={feePaid} protocols={protocols} dutyPlan={dutyPlan} seasonVotes={seasonVotes} goPanel={setPanel} showFees={canSeeFees} />}
       {panel === "memberships" && currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role)) && <MembershipApprovalsPanel club={currentClub} members={members} setMembers={setMembers} />}
       {panel === "clubprofile" && currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role)) && <><ClubLogoPanel club={currentClub} onLogoUpdated={onClubLogoUpdated} /><ClubColorPanel club={currentClub} onColorsUpdated={onClubColorsUpdated} /></>}
 
@@ -7422,7 +7441,7 @@ export default function ClubMemberOrganisationApp() {
               {!subView && tab === "redaktion" && currentUserCanEditNews && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Redaktion"><RedaktionView user={currentUser} channels={channels} setChannels={setChannels} /></LockedFeature>}
               {!subView && tab === "admin" && (currentUserIsAdmin || currentUserCanEditSponsors) && (
                 <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Verwaltung">
-                <AdminView members={clubMembers} setMembers={setMembers} feePaid={feePaid} setFeePaid={setFeePaid} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} seasonVotes={seasonVotes}
+                <AdminView members={clubMembers} setMembers={setMembers} events={events} feePaid={feePaid} setFeePaid={setFeePaid} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} seasonVotes={seasonVotes}
                   currentUser={currentUser} channels={channels} setChannels={setChannels} maintenanceMode={maintenanceMode} setMaintenanceMode={setMaintenanceMode} onResetDemo={resetDemoData}
                   protocols={protocols} setProtocols={setProtocols} remindersSent={remindersSent} setRemindersSent={setRemindersSent}
                   welcomeAutomation={welcomeAutomation} setWelcomeAutomation={setWelcomeAutomation} billingAutomation={billingAutomation} setBillingAutomation={setBillingAutomation}
