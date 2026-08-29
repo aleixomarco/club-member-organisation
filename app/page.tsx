@@ -6915,7 +6915,11 @@ export default function ClubMemberOrganisationApp() {
         state: {
           events, dutyPlan, protocols, remindersSent, welcomeAutomation, billingAutomation,
           polls, tippResults, maintenanceMode, seasonVotes, sponsorStats, sponsorBookings, dashboardTileOrder,
-          channels: channels.filter((channel) => channel.id !== "news"),
+          /* Kanaele stehen seit dem Umbau des Chats in einer eigenen Tabelle.
+             Wuerden sie hier weiter mitgeschrieben, ueberschriebe der
+             Zustandsblock beim naechsten Laden die echten Kanaele mit den alten
+             Demo-Eintraegen - deren Kennungen sind keine UUIDs, und das Senden
+             fiele zurueck in den fluechtigen Modus. */
         },
         updated_by: authData?.user?.id || null,
       });
@@ -7038,10 +7042,9 @@ export default function ClubMemberOrganisationApp() {
     if (saved.sponsorStats) setSponsorStats(saved.sponsorStats);
     if (saved.sponsorBookings) setSponsorBookings(saved.sponsorBookings);
     if (Array.isArray(saved.dashboardTileOrder)) setDashboardTileOrder(saved.dashboardTileOrder);
-    setChannels((current) => {
-      const persistedChannels = Array.isArray(saved.channels) ? saved.channels : current.filter((channel) => channel.id !== "news");
-      return [...persistedChannels, { ...(current.find((channel) => channel.id === "news") || INITIAL_CHANNELS.find((channel) => channel.id === "news")), messages: loadedNews }];
-    });
+    /* Kanaele werden hier bewusst nicht mehr gesetzt: Sie kommen aus der
+       Tabelle channels. Der Zustandsblock traegt sie nur noch als Altbestand
+       und wuerde die echten Kanaele ueberschreiben. */
     enterApp(member, hydratedRoster);
     setAdminStateLoaded(true);
     return { ok: true };
