@@ -658,15 +658,6 @@ const TRAINERS = [
   { id: "tr2", name: "Miguel Costa", youthClassIds: ["herren1", "damen1"] },
   { id: "tr3", name: "Sandra Klein", youthClassIds: ["u11"] },
 ];
-function getNextTraining(user) {
-  const ycId = TEAM_TO_YOUTHCLASS[user.team];
-  if (!ycId) return null;
-  const now = new Date();
-  const upcoming = EVENTS.filter((e) => e.type === "training" && e.youthClassIds?.includes(ycId) && new Date(e.date) > now)
-    .sort((a, b) => new Date(a.date) - new Date(b.date));
-  if (!upcoming.length) return null;
-  return { event: upcoming[0], trainers: TRAINERS.filter((t) => t.youthClassIds.includes(ycId)), youthClass: YOUTH_CLASSES.find((y) => y.id === ycId) };
-}
 function getNextMatch() {
   const now = new Date();
   const upcoming = EVENTS.filter((e) => e.type === "spiel" && new Date(e.date) > now).sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -1506,13 +1497,17 @@ function PollWidget({ poll, userId, setPolls }) {
     </div>
   );
 }
-function NextTrainingCard({ user }) {
-  const isPlayer = user.roles.includes("spieler");
-  const info = isPlayer ? getNextTraining(user) : null;
-  const { d, h, m } = useCountdown(info ? info.event.date : "2099-01-01T00:00:00");
-  if (!isPlayer) return null;
-  /* Kein Training in Sicht: Kachel ausblenden statt eine leere Meldung zeigen. */
-  if (!info) return null;
+/* Naechstes Training der eigenen Mannschaft.
+   Frueher hing die Kachel an zwei Bedingungen, die sie fast immer verhinderten:
+   der Rolle "spieler" und einer hinterlegten Jugendklasse. Fuer Herren 1 gibt
+   es keine Jugendklasse - die Kachel blieb dort immer aus. Und gerechnet wurde
+   mit dem Demo-Feld, nicht mit den echten Terminen.
+   Jetzt gilt die Regel, die gemeint war: Wer einer Mannschaft angehoert, sieht
+   deren naechstes Training. Wer keiner angehoert, sieht die Kachel nicht. */
+function NextTrainingCard({ training }) {
+  const { d, h, m } = useCountdown(training ? training.date : "2099-01-01T00:00:00");
+  if (!training) return null;
+  const info = { event: training };
   const digit = (n) => String(n).padStart(2, "0");
   return (
     <div className="rounded-3xl p-5 mb-6 relative overflow-hidden" style={{ background: `linear-gradient(160deg, #4FC47C 0%, ${C.green} 55%, #1F6E3E 100%)`, boxShadow: "0 22px 46px rgba(47,158,88,0.3), inset 0 1px 0 rgba(255,255,255,0.3)" }}>
@@ -1531,27 +1526,23 @@ function NextTrainingCard({ user }) {
           </React.Fragment>
         ))}
       </div>
-      {info.trainers.length > 0 && (
-        <div className="relative flex items-center gap-3 mt-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.22)" }}>
-          {info.trainers.map((t) => (
-            <div key={t.id} className="flex items-center gap-1.5">
-              <div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold" style={{ background: "#fff", color: C.green }}>{initialsOf(t.name)}</div>
-              <span className="text-xs" style={{ color: "#fff", fontFamily: "Inter", fontWeight: 600 }}>{t.name}</span>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
-function Dashboard({ user, members, feePaid, channels, dutyPlan, seasonVotes, polls, setPolls, sponsorBookings, onSponsorImpression, onSponsorClick, goEvents, goSeason, goTipp, goDuty, goNews, goTasks, goVehicles, currentClub, featureEnabled, dashboardTileOrder, entitlement, goSubscribe }) {
+function Dashboard({ user, members, events, feePaid, channels, dutyPlan, seasonVotes, polls, setPolls, sponsorBookings, onSponsorImpression, onSponsorClick, goEvents, goSeason, goTipp, goDuty, goNews, goTasks, goVehicles, currentClub, featureEnabled, dashboardTileOrder, entitlement, goSubscribe }) {
   const sport = currentClub?.sport || "rollhockey";
   /* Alle Kacheln in „Aktionen & Abstimmungen" hängen am Premium-Tarif
      (siehe die LockedFeature-Hüllen der jeweiligen Ansichten). Während der
      Tarif noch geladen wird, zeigen wir kein Schloss — sonst blitzt es kurz
      bei Mitgliedern auf, die die Funktionen längst freigeschaltet haben. */
   const featureLocked = !entitlement.loading && entitlement.tier === "none";
-  const nextEvent = EVENTS.filter((e) => e.type === "spiel" && e.team === user.team && new Date(e.date) > new Date()).sort((a,b)=>new Date(a.date)-new Date(b.date))[0] || getNextMatch();
+  /* Naechste Termine aus den echten Daten, nicht mehr aus dem Demo-Feld.
+     Ohne hinterlegte Mannschaft gibt es nichts anzuzeigen - dann bleibt die
+     Kachel weg, statt einen fremden Termin zu zeigen. */
+  const meineTermine = (events || []).filter((e) => !e.cancelled && e.team && e.team === user.team && new Date(e.date) > new Date())
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+  const nextEvent = meineTermine.find((e) => e.type === "spiel") || getNextMatch();
+  const naechstesTraining = meineTermine.find((e) => e.type === "training");
   const newsMsgs = (channels.find((c) => c.id === "news")?.messages || []).slice(-2).reverse();
 
   const seasonClosed = new Date() > new Date(SEASON_VOTE_DEADLINE);
@@ -1597,7 +1588,7 @@ function Dashboard({ user, members, feePaid, channels, dutyPlan, seasonVotes, po
       <SponsorSlot slotKey="dashboard_top" bookings={sponsorBookings} onImpression={onSponsorImpression} onClick={onSponsorClick} visible={featureEnabled("sponsor_dashboard_top")} />
 
       <Scoreboard nextEvent={nextEvent} goTo={goEvents} />
-      <NextTrainingCard user={user} />
+      <NextTrainingCard training={naechstesTraining} />
 
       {taskReminder && (
         <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 mb-5" style={{ background: "rgba(238,245,248,0.72)", border: `1px solid ${C.edge}` }}>
@@ -1961,13 +1952,26 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
     setTeamFilter(focusRequest.team || "alle");
     onFocusApplied?.();
   }, [focusRequest]);
-  const filterTeams = YOUTH_CLASSES.map((t) => t.name);
-  const teamFilterActive = filter === "spiel" || filter === "training";
+  /* Die Auswahlliste kommt aus den vorhandenen Terminen, nicht aus einer festen
+     Aufzaehlung. Vorher standen dort nur die Jugendklassen - Herren 1, Herren 2
+     und Damen 1 fehlten, obwohl sie Termine haben. */
+  const filterTeams = [...new Set(events.map((e) => e.team).filter(Boolean))].sort((a, b) => a.localeCompare(b, "de"));
+
+  /* Der Filter ist immer sichtbar. Frueher erschien er erst, nachdem man auf
+     "Spiele" oder "Training" umgeschaltet hatte - in der Voreinstellung "alle",
+     also genau dort, wo man ihn sucht, war er unsichtbar. */
+  const teamFilterActive = filterTeams.length > 1;
+
   const filtered = events.filter((e) => {
     if (filter !== "alle" && e.type !== filter) return false;
-    if (!teamFilterActive || teamFilter === "alle") return true;
-    if (filter === "spiel") return e.team === teamFilter;
-    return e.youthClassIds?.includes(TEAM_TO_YOUTHCLASS[teamFilter]);
+    if (teamFilter === "alle") return true;
+    /* Fuer Spiele und Trainings dieselbe Regel: die Mannschaft am Termin.
+       Vorher liefen Trainings ueber die Jugendklasse - fuer Mannschaften ohne
+       eine solche lieferte das nie ein Ergebnis.
+       Vereinsweite Termine ohne Mannschaft bleiben sichtbar; sie betreffen
+       alle, egal welche Mannschaft gerade gewaehlt ist. */
+    if (!e.team) return true;
+    return e.team === teamFilter;
   });
   const userId = currentUser.id;
   const myCarpools = carpools[userId] || {};
@@ -7324,7 +7328,7 @@ export default function ClubMemberOrganisationApp() {
               {subView === "vehicles" && featureEnabled("vehicle_booking") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Vereinsfahrzeuge"><VehiclesView currentUser={currentUser} currentClub={currentClub} /></LockedFeature>}
 
               {!subView && tab === "home" && (
-                <Dashboard user={currentUser} members={clubMembers} feePaid={!!feePaid[currentUser.id]} channels={channels} dutyPlan={dutyPlan} seasonVotes={seasonVotes} polls={polls} setPolls={setPolls}
+                <Dashboard user={currentUser} members={clubMembers} events={events} feePaid={!!feePaid[currentUser.id]} channels={channels} dutyPlan={dutyPlan} seasonVotes={seasonVotes} polls={polls} setPolls={setPolls}
                   sponsorBookings={sponsorBookings} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick}
                   goEvents={goToMyNextMatch} goSeason={() => setSubView("season")} goTipp={() => setSubView("tipp")} goDuty={() => setSubView("duty")} goTasks={() => setSubView("tasks")} goVehicles={() => setSubView("vehicles")} goNews={goNews}
                   currentClub={currentClub} featureEnabled={featureEnabled} dashboardTileOrder={dashboardTileOrder} entitlement={entitlement} goSubscribe={goSubscribe} />
