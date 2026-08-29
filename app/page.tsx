@@ -1438,7 +1438,7 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
 /* ------------------------------------------------------------------ */
 /* Dashboard                                                            */
 /* ------------------------------------------------------------------ */
-function Scoreboard({ nextEvent, goTo }) {
+function Scoreboard({ nextEvent, goTo, mannschaften = [], gewaehlt, onWechsel }) {
   const { d, h, m } = useCountdown(nextEvent ? nextEvent.date : "2099-01-01T00:00:00");
   const digit = (n) => String(n).padStart(2, "0");
   /* Steht kein Spiel an, verschwindet die Kachel ganz. Ein Hinweis „Keine
@@ -1452,6 +1452,18 @@ function Scoreboard({ nextEvent, goTo }) {
         <span className="text-[10px] font-extrabold uppercase px-3.5 py-1.5 rounded-full" style={{ fontFamily: "Inter", letterSpacing: "0.14em", color: "#fff", background: "rgba(255,255,255,0.22)", border: "1px solid rgba(255,255,255,0.3)" }}>Nächstes Spiel</span>
         <span className="text-xs" style={{ color: "rgba(255,255,255,0.85)", fontFamily: "Inter" }}>{formatDate(nextEvent.date)} · {formatTime(nextEvent.date)}</span>
       </div>
+      {mannschaften.length > 1 && (
+        /* Die Auswahl liegt in der Kachel, nicht darueber: Sie gehoert zum
+           Spielblock und soll nicht wie ein Filter fuer die ganze Startseite
+           wirken. Ein Klick darauf darf die Kachel nicht oeffnen. */
+        <div className="relative mb-3" onClick={(e) => e.stopPropagation()}>
+          <select aria-label="Mannschaft waehlen" value={gewaehlt} onChange={(e) => onWechsel(e.target.value)}
+            className="text-[11px] font-bold rounded-full px-3 py-1.5 outline-none appearance-none"
+            style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.28)", color: "#fff", fontFamily: "Inter" }}>
+            {mannschaften.map((m) => <option key={m} value={m} style={{ color: C.ink }}>{m}</option>)}
+          </select>
+        </div>
+      )}
       <div className="relative text-white text-xl mb-1.5" style={{ fontFamily: "Oswald", fontWeight: 700, letterSpacing: "-0.01em" }}>{nextEvent.title}</div>
       <div className="relative flex items-center gap-1.5 mb-5 text-xs" style={{ color: "rgba(255,255,255,0.8)", fontFamily: "Inter" }}><MapPin size={12} /> {nextEvent.location}</div>
       <div className="relative flex items-center gap-2">
@@ -1539,10 +1551,21 @@ function Dashboard({ user, members, events, feePaid, channels, dutyPlan, seasonV
   /* Naechste Termine aus den echten Daten, nicht mehr aus dem Demo-Feld.
      Ohne hinterlegte Mannschaft gibt es nichts anzuzeigen - dann bleibt die
      Kachel weg, statt einen fremden Termin zu zeigen. */
-  const meineTermine = (events || []).filter((e) => !e.cancelled && e.team && e.team === user.team && new Date(e.date) > new Date())
+  const kommende = (events || []).filter((e) => !e.cancelled && e.team && new Date(e.date) > new Date())
     .sort((a, b) => new Date(a.date) - new Date(b.date));
-  const nextEvent = meineTermine.find((e) => e.type === "spiel") || getNextMatch();
-  const naechstesTraining = meineTermine.find((e) => e.type === "training");
+
+  /* Fuer den Spielblock laesst sich die Mannschaft waehlen - ein Vorstand
+     moechte auch sehen, wann die U15 spielt, nicht nur die eigene Mannschaft.
+     Vorbelegt ist die eigene; wer keine hat, bekommt die erste mit Spielen. */
+  const spielMannschaften = [...new Set(kommende.filter((e) => e.type === "spiel").map((e) => e.team))]
+    .sort((a, b) => a.localeCompare(b, "de"));
+  const [spielTeam, setSpielTeam] = useState(user.team || "");
+  const gewaehlteMannschaft = spielMannschaften.includes(spielTeam) ? spielTeam : spielMannschaften[0] || "";
+
+  const nextEvent = kommende.find((e) => e.type === "spiel" && e.team === gewaehlteMannschaft) || getNextMatch();
+  /* Das Training bleibt bewusst bei der eigenen Mannschaft: Es beantwortet die
+     Frage "wann muss ich hin", nicht "was laeuft im Verein". */
+  const naechstesTraining = kommende.find((e) => e.type === "training" && e.team === user.team);
   const newsMsgs = (channels.find((c) => c.id === "news")?.messages || []).slice(-2).reverse();
 
   const seasonClosed = new Date() > new Date(SEASON_VOTE_DEADLINE);
@@ -1587,7 +1610,7 @@ function Dashboard({ user, members, events, feePaid, channels, dutyPlan, seasonV
 
       <SponsorSlot slotKey="dashboard_top" bookings={sponsorBookings} onImpression={onSponsorImpression} onClick={onSponsorClick} visible={featureEnabled("sponsor_dashboard_top")} />
 
-      <Scoreboard nextEvent={nextEvent} goTo={goEvents} />
+      <Scoreboard nextEvent={nextEvent} goTo={goEvents} mannschaften={spielMannschaften} gewaehlt={gewaehlteMannschaft} onWechsel={setSpielTeam} />
       <NextTrainingCard training={naechstesTraining} />
 
       {taskReminder && (
