@@ -57,7 +57,8 @@ In Vercel hinterlegen (und lokal in `.env.local`):
 | `NEXT_PUBLIC_REVENUECAT_IOS_KEY` | RevenueCat → API Keys → Apple |
 | `NEXT_PUBLIC_REVENUECAT_ANDROID_KEY` | RevenueCat → API Keys → Google |
 | `REVENUECAT_WEBHOOK_SECRET` | frei wählbar, siehe Schritt 4 |
-| `REVENUECAT_ALLOW_SANDBOX` | nur zum Testen, siehe unten |
+
+Eine Variable für die Sandbox gibt es nicht mehr — siehe unten.
 
 Die beiden `NEXT_PUBLIC_`-Schlüssel sind öffentlich sichtbar — das ist bei
 RevenueCat so vorgesehen und unbedenklich. Das Webhook-Secret ist es **nicht**.
@@ -74,9 +75,24 @@ funktionierenden Webhook wird bezahlt, aber **nicht** freigeschaltet.
 
 ### Sandbox
 
-Ein Sandbox-Konto im Store kostet nichts. Damit daraus kein kostenloser Zugang
-wird, verwirft der Webhook Sandbox-Events standardmäßig. Zum Durchtesten der
-Kette `REVENUECAT_ALLOW_SANDBOX=true` setzen — **und danach wieder entfernen.**
+Sandbox-Käufe werden verbucht wie echte. Das ist Absicht und keine offene Tür:
+Eine aus dem App Store geladene App handelt **immer** über die Produktivumgebung.
+Ein `SANDBOX`-Ereignis kann nur aus einem Entwicklungs- oder TestFlight-Build
+stammen oder aus Apples Prüfung — und wer davon kauft, soll den Kauf auch
+freigeschaltet bekommen.
+
+Früher wurden diese Käufe verworfen, solange nicht `REVENUECAT_ALLOW_SANDBOX`
+gesetzt war. Das hätte die Prüfung bei Apple gekostet: Der Prüfer kauft
+ausschliesslich in der Sandbox, hätte "Kauf erfolgreich" gelesen und wäre
+trotzdem ohne Abo dagestanden — ein Kauf ohne Wirkung, Richtlinie 2.1.
+
+Für die Buchhaltung bleiben beide Umgebungen trennbar, weil `payment_events`
+das vollständige Ereignis samt `environment` festhält. Umsatz ist nur, was aus
+`PRODUCTION` kam.
+
+Abschalten liesse sich die Annahme mit `REVENUECAT_BLOCK_SANDBOX=true`. Im
+Normalbetrieb bleibt die Variable ungesetzt — insbesondere **vor und während**
+einer Apple-Prüfung.
 
 ---
 
@@ -104,20 +120,22 @@ erben.
 
 RevenueCat entscheidet **nicht**, was freigeschaltet ist. Das tun weiterhin
 `club_subscription_tier()` und `member_has_access()` in Supabase. Der Webhook
-schreibt lediglich den Kauf in dieselben Tabellen, die auch PayPal befüllt —
-beide Zahlungswege enden also im selben Datensatz.
+schreibt lediglich den Kauf in `club_subscriptions` bzw. `user_subscriptions`.
+Seit dem Wegfall von PayPal ist er der einzige Weg, auf dem eine Zahlung dort
+ankommt — fällt er aus, ist der Kauf bezahlt und nicht freigeschaltet.
 
 ## Testen
 
 1. In App Store Connect bzw. Play Console ein Sandbox-/Test-Konto anlegen.
-2. `REVENUECAT_ALLOW_SANDBOX=true` setzen.
-3. App auf einem echten Gerät installieren (im Simulator funktionieren
+2. App auf einem echten Gerät installieren (im Simulator funktionieren
    In-App-Käufe nur eingeschränkt).
-4. Kauf durchführen, dann in RevenueCat unter *Customer History* prüfen, ob das
+3. Kauf durchführen, dann in RevenueCat unter *Customer History* prüfen, ob das
    Event angekommen ist.
-5. In Supabase prüfen, ob in `club_subscriptions` bzw. `user_subscriptions` eine
+4. In Supabase prüfen, ob in `club_subscriptions` bzw. `user_subscriptions` eine
    Zeile mit `status = 'active'` steht.
-6. `REVENUECAT_ALLOW_SANDBOX` wieder entfernen.
+
+Nichts umzustellen und nichts zurückzustellen — genau so läuft auch Apples
+Prüfung ab.
 
 Bleibt Schritt 5 leer, steht der Grund in den Vercel-Logs der Webhook-Route —
 sie protokolliert unbekannte Produkte, unbekannte Kennungen und Schreibfehler

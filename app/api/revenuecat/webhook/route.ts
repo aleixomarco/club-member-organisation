@@ -74,11 +74,22 @@ export async function POST(request: Request) {
 
   if (!ownerId || !status) return NextResponse.json({ received: true, ignored: true });
 
-  /* Sandbox-Käufe dürfen in der Produktion keinen echten Zugang freischalten:
-     Ein Sandbox-Konto im Store kostet nichts, das wäre eine offene Tür. Zum
-     Testen der Kette lässt sich REVENUECAT_ALLOW_SANDBOX setzen. */
-  const isSandbox = event.environment === "SANDBOX";
-  if (isSandbox && process.env.REVENUECAT_ALLOW_SANDBOX !== "true") {
+  /* Sandbox-Käufe werden verbucht wie echte. Das klingt nach einer offenen Tür,
+     ist aber keine: Eine aus dem App Store geladene App handelt immer über die
+     Produktivumgebung. Ein SANDBOX-Ereignis kann nur aus einem Entwicklungs-
+     oder TestFlight-Build stammen oder aus Apples Prüfung — und wer davon
+     kauft, soll den Kauf auch freigeschaltet bekommen.
+
+     Vorher wurden diese Käufe verworfen. Der Prüfer bei Apple hätte damit
+     "Kauf erfolgreich" gelesen, während der Verein unverändert ohne Abo
+     dagestanden hätte: ein Kauf, der nichts bewirkt, und damit ein Verstoss
+     gegen Richtlinie 2.1.
+
+     Unterscheidbar bleiben beide Umgebungen trotzdem, denn payment_events hält
+     das vollständige Ereignis samt environment fest — für die Buchhaltung
+     zählt also weiterhin nur, was aus PRODUCTION kam. Notfalls lässt sich die
+     Annahme mit REVENUECAT_BLOCK_SANDBOX=true wieder abstellen. */
+  if (event.environment === "SANDBOX" && process.env.REVENUECAT_BLOCK_SANDBOX === "true") {
     return NextResponse.json({ received: true, ignored: "sandbox" });
   }
 

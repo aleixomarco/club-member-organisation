@@ -26,6 +26,25 @@ Grundlage: die Richtlinien, die für diese App einschlägig sind, geprüft am Co
 
 ## Gefunden und behoben
 
+**Der Kauf des Prüfers wurde verworfen.** Der Webhook verwarf jedes Ereignis
+aus der Sandbox, solange nicht `REVENUECAT_ALLOW_SANDBOX=true` gesetzt war.
+Apples Prüfer kauft ausschliesslich in der Sandbox. Sein Kauf hätte also keine
+Zeile in `club_subscriptions` erzeugt — und weil der Zugang genau daran hängt
+(`club_subscription_tier()`, siehe `lib/revenuecat.ts:19`), hätte er "Kauf
+erfolgreich" gelesen und wäre unverändert ohne Abo dagestanden. Ein Kauf ohne
+Wirkung ist ein Verstoss gegen Richtlinie 2.1 und einer der häufigsten
+Ablehnungsgründe überhaupt. **Der schwerste Fund der gesamten Prüfung.**
+
+Behoben durch Umkehr der Vorgabe: Sandbox-Käufe werden angenommen, abschaltbar
+über `REVENUECAT_BLOCK_SANDBOX`. Die Richtung ist wesentlich — als Variable, die
+gesetzt werden *muss*, hinge das Bestehen der Prüfung daran, dass sie niemand
+vergisst oder wieder entfernt; die Anleitung forderte das Entfernen sogar
+ausdrücklich.
+
+Eine offene Tür entsteht dadurch nicht: Eine aus dem App Store geladene App
+handelt immer über die Produktivumgebung. `SANDBOX` entsteht nur bei
+Entwicklungsbuilds, TestFlight und Apples Prüfung.
+
 **Absturz im Chat ohne Kanäle.** ChatView berechnete `active` als
 `visibleChannels[0]` und griff direkt auf `active.messages` zu. Ist die Liste
 leer, blieb der Chat weiß. Seit die Sichtbarkeit an der Mannschaft hängt, tritt
