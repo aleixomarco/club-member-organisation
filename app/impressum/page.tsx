@@ -3,7 +3,7 @@ export const metadata = { title: "Impressum | Club Member Organisation" };
 export default function ImprintPage() { return <LegalShell title="Impressum">
   <h2>Angaben gemäß § 5 DDG</h2>
   <p><strong>{legal.name}</strong><br/>{legal.legalForm}<br/>{legal.address}</p>
-  <p>Vertreten durch: {legal.representative}</p>
+  {!legal.representedBySelf && <p>Vertreten durch: {legal.representative}</p>}
   {legal.register && <p>Registereintrag: {legal.register}</p>}
   <h2>Kontakt</h2>
   <p>E-Mail: {legal.email}{legal.phone && <><br/>Telefon: {legal.phone}</>}</p>

@@ -2,7 +2,7 @@ import { LegalShell, legal } from "../legal-shell";
 export const metadata = { title: "Datenschutz | Club Member Organisation" };
 export default function PrivacyPage() { return <LegalShell title="Datenschutzerklärung">
   <h2>1. Verantwortlicher</h2>
-  <p>Verantwortlich im Sinne der DSGVO: <strong>{legal.name}</strong>, vertreten durch {legal.representative}, {legal.address}, Kontakt: {legal.email}{legal.phone ? `, ${legal.phone}` : ""}.</p>
+  <p>Verantwortlich im Sinne der DSGVO: <strong>{legal.name}</strong>{legal.representedBySelf ? "" : `, vertreten durch ${legal.representative}`}, {legal.address}, Kontakt: {legal.email}{legal.phone ? `, ${legal.phone}` : ""}.</p>
   <p>Ein Datenschutzbeauftragter ist nicht bestellt, da die gesetzlichen Voraussetzungen hierfür (§ 38 BDSG, Art. 37 DSGVO) nicht vorliegen.</p>
 
   <h2>2. Welche Daten wir verarbeiten und warum</h2>

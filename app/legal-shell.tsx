@@ -11,12 +11,29 @@ export function LegalShell({ title, children }: { title: string; children: React
   </main>;
 }
 
+const name = process.env.NEXT_PUBLIC_LEGAL_NAME || "[Betreibername in Vercel eintragen]";
+
+/* Die Vertretung faellt auf den Betreibernamen zurueck, statt einen Platzhalter
+   anzuzeigen. Bei einem Einzelunternehmen sind beide dieselbe Person, und §5 DDG
+   verlangt die Angabe ohnehin nur fuer juristische Personen.
+
+   Vorher stand hier ein Platzhalter, und weil NEXT_PUBLIC_LEGAL_REPRESENTATIVE in
+   Vercel nie gesetzt wurde, las man auf Impressum, Datenschutz UND
+   Nutzungsbedingungen woertlich "[Vertretungsberechtigte Person in Vercel
+   eintragen]". Apples Pruefer oeffnet die Nutzungsbedingungen - das war schon der
+   Grund der Ablehnung nach Richtlinie 3.1.2 - und Platzhaltertext in einer
+   fertigen App ist zusaetzlich ein Verstoss gegen Richtlinie 2.1. */
+const representative = process.env.NEXT_PUBLIC_LEGAL_REPRESENTATIVE || name;
+
 export const legal = {
-  name: process.env.NEXT_PUBLIC_LEGAL_NAME || "[Betreibername in Vercel eintragen]",
+  name,
   legalForm: process.env.NEXT_PUBLIC_LEGAL_FORM || "[Rechtsform in Vercel eintragen]",
   address: process.env.NEXT_PUBLIC_LEGAL_ADDRESS || "[Anschrift in Vercel eintragen]",
   email: process.env.NEXT_PUBLIC_LEGAL_EMAIL || "[Kontakt-E-Mail in Vercel eintragen]",
-  representative: process.env.NEXT_PUBLIC_LEGAL_REPRESENTATIVE || "[Vertretungsberechtigte Person in Vercel eintragen]",
+  representative,
+  /* Wahr, solange Betreiber und Vertretung dieselbe Person sind. Dann erspart sich
+     der Satz "Marco Aleixo, vertreten durch Marco Aleixo". */
+  representedBySelf: representative === name,
   phone: process.env.NEXT_PUBLIC_LEGAL_PHONE || "",
   register: process.env.NEXT_PUBLIC_LEGAL_REGISTER || "",
   vatId: process.env.NEXT_PUBLIC_LEGAL_VAT_ID || "",

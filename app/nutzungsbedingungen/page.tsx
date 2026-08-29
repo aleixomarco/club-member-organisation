@@ -2,7 +2,7 @@ import { LegalShell, legal } from "../legal-shell";
 import { CLUB_TIER_PRICES, CLUB_TIER_INFO, KAUFBARE_TARIFE, FREIE_ZUGAENGE } from "@/lib/preise";
 export const metadata = { title: "Nutzungsbedingungen | Club Member Organisation" };
 export default function TermsPage() { return <LegalShell title="Nutzungsbedingungen">
-  <p>Diese Bedingungen gelten für die Nutzung der Club Member Organisation durch registrierte Vereinsmitglieder. Vertragspartner ist {legal.name}, vertreten durch {legal.representative}.</p>
+  <p>Diese Bedingungen gelten für die Nutzung der Club Member Organisation durch registrierte Vereinsmitglieder. Vertragspartner ist {legal.name}{legal.representedBySelf ? "" : `, vertreten durch ${legal.representative}`}.</p>
 
   <h2>Kostenloser Testzeitraum</h2>
   <p>Neu angelegte Vereine können die App vierzehn Tage ab Registrierung kostenlos und in vollem Umfang nutzen. Danach ist ein Abonnement erforderlich. Der Testzeitraum endet automatisch und geht nicht in ein kostenpflichtiges Abonnement über.</p>
