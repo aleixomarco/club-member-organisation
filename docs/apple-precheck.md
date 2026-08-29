@@ -56,12 +56,25 @@ Blockieren-Knopf an der eigenen Nachricht.
 
 ---
 
+## Die Kaufkette, Glied für Glied geprüft
+
+| Glied | Beleg |
+|---|---|
+| Produkte in App Store Connect | Basic monatlich und jährlich, Status "bereit zur Einreichung" |
+| RevenueCat-Offering `basic` | `$rc_monthly` → club_basic_monthly, `$rc_annual` → club_basic_yearly |
+| App fragt genau dieses Offering ab | fetchTierOfferings in lib/revenuecat.ts |
+| Webhook erreichbar und abgesichert | POST ohne Schlüssel liefert 401, nicht 500 — das Geheimnis ist also hinterlegt und die Prüfung greift |
+| Produkt-ID → Plan-Code | identische Kennungen; die Pläne liegen in PROD |
+| Dienstkonto darf schreiben | Rechte am 25.08. repariert, über den Kalender-Feed nachgewiesen |
+
+Jedes Glied ist einzeln belegt. Was bleibt, ist die Zahlung selbst.
+
 ## Was nur am lebenden System prüfbar ist
 
-**Der Kauf in der Sandbox.** Ob RevenueCat das Offering `basic` liefert und der
-Kauf über den Webhook in `club_subscriptions` landet. Erst seit der Reparatur
-der Zugriffsrechte am 25.08. überhaupt möglich — vorher scheiterte jeder
-Serverzugriff mit 42501.
+**Die Zahlung in der Sandbox.** Sie verlangt ein Gerät und ein
+Apple-Sandbox-Konto - beides liegt ausserhalb dessen, was sich von einer
+Kommandozeile aus pruefen laesst. Alle Glieder davor und danach sind belegt
+(siehe oben); offen ist allein, ob Apple die Testzahlung durchstellt.
 
 Weg: In TestFlight mit demo@idbranding.de anmelden, Profil → Einstellungen →
 Abo & Empfehlungen, Basic wählen, bis zum Kaufdialog gehen. Erscheint er mit
