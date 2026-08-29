@@ -5994,48 +5994,20 @@ function RolesPanel({ members, setMembers }) {
 /* System (Sys-Admin)                                                   */
 /* ------------------------------------------------------------------ */
 function SystemPanel({ members, channels, setChannels, maintenanceMode, setMaintenanceMode, onResetDemo }) {
-  const [chName, setChName] = useState("");
-  const [chEmoji, setChEmoji] = useState("💬");
-  const [chRoles, setChRoles] = useState([]);
-  const [confirmReset, setConfirmReset] = useState(false);
-  const toggleChRole = (r) => setChRoles((rs) => (rs.includes(r) ? rs.filter((x) => x !== r) : [...rs, r]));
-
-  const createChannel = () => {
-    if (!chName.trim()) return;
-    const slug = chName.trim().toLowerCase().replace(/[^a-z0-9äöüß]+/g, "-").replace(/^-+|-+$/g, "") || "kanal";
-    const id = channels.some((c) => c.id === slug) ? `${slug}-${Date.now()}` : slug;
-    setChannels((cs) => [...cs, { id, name: chName.trim(), emoji: chEmoji || "💬", adminOnly: false, visibleRoles: chRoles.length ? chRoles : null, messages: [] }]);
-    setChName(""); setChEmoji("💬"); setChRoles([]);
-  };
 
   return (
     <div className="space-y-6">
       <ToggleCard title="Wartungsmodus" desc="Hinweis-Banner für alle Nutzer:innen einblenden." value={maintenanceMode} onChange={setMaintenanceMode} />
 
-      <div>
-        <div className="text-sm mb-2" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Neuen Chat-Kanal anlegen</div>
-        <div className="rounded-2xl p-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
-          <div className="flex gap-2 mb-2">
-            <input value={chEmoji} onChange={(e) => setChEmoji(e.target.value)} placeholder="🏒" maxLength={2}
-              className="w-12 text-center py-2 rounded-lg text-sm outline-none" style={{ background: C.paperDim, fontFamily: "Inter" }} />
-            <input value={chName} onChange={(e) => setChName(e.target.value)} placeholder="Kanalname, z. B. U15 Team"
-              className="flex-1 px-3 py-2 rounded-lg text-sm outline-none" style={{ background: C.paperDim, fontFamily: "Inter", color: C.ink }} />
+        <div className="rounded-2xl p-3 mb-3" style={{ background: C.paperDim }}>
+          <div className="text-sm mb-1" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Chat-Kanäle</div>
+          <div className="text-[11px] leading-snug" style={{ color: C.textDim }}>
+            Kanäle entstehen automatisch: Jede Mannschaft hat genau einen. Sichtbar ist er
+            für ihre Mitglieder und deren Eltern, schreiben dürfen Trainer, Kapitäne,
+            Teammanager sowie Vorstand und Vereinsverwaltung. Von Hand angelegt wird nichts —
+            so kann kein Kanal entstehen, den niemand pflegt, und keiner fehlen.
           </div>
-          <div className="text-[11px] mb-1.5" style={{ color: C.textDim, fontFamily: "Inter" }}>Sichtbar für (leer = alle Rollen):</div>
-          <div className="flex flex-wrap gap-1.5 mb-3">
-            {Object.keys(ROLE_META).map((r) => {
-              const active = chRoles.includes(r);
-              return (
-                <button key={r} type="button" onClick={() => toggleChRole(r)} className="px-2.5 py-1 rounded-full text-[11px]"
-                  style={{ fontFamily: "Inter", fontWeight: 700, background: active ? ROLE_META[r].color : C.paperDim, color: active ? "#fff" : C.textDim }}>
-                  {ROLE_META[r].label}
-                </button>
-              );
-            })}
-          </div>
-          <button onClick={createChannel} className="w-full py-2 rounded-lg text-xs" style={{ background: C.ink, color: "#fff", fontFamily: "Inter", fontWeight: 700 }}>Kanal anlegen</button>
         </div>
-      </div>
 
       <div>
         <div className="text-sm mb-2" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Konten-Übersicht</div>
