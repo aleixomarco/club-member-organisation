@@ -2546,6 +2546,24 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
   };
   const blockAuthor = (who) => { if (who && !blocked.includes(who)) persistBlocked([...blocked, who]); };
   const unblockAuthor = (who) => persistBlocked(blocked.filter((name) => name !== who));
+
+  /* Auf eine Meldung muss man auch reagieren koennen. Bisher gab es den
+     Meldeknopf, aber niemand konnte eine Nachricht entfernen - auch der Vorstand
+     nicht. Wer schreibt, darf zuruecknehmen; die Vereinsleitung darf jede
+     Nachricht ihres Vereins entfernen. Trainer und Kapitaene bleiben aussen vor,
+     sonst loescht der Kapitaen die unbequeme Nachricht seines Trainers.
+     Dieselbe Aufteilung steht als Regel in der Datenbank - die Oberflaeche
+     blendet nur aus, was ohnehin abgelehnt wuerde. */
+  const darfModerieren = user.roles.some((r) => ["vorstand", "geschaeftsfuehrung", "vereinsadmin", "sysadmin"].includes(r));
+  const nachrichtLoeschen = async (m) => {
+    if (!window.confirm("Diese Nachricht dauerhaft loeschen?")) return;
+    if (supabase && isDbId(m.id)) {
+      const { error } = await supabase.from("messages").delete().eq("id", m.id);
+      if (error) { setSendeFehler("Die Nachricht konnte nicht geloescht werden."); return; }
+    }
+    setSendeFehler("");
+    setChannels((cs) => cs.map((c) => (c.id !== active.id ? c : { ...c, messages: c.messages.filter((x) => x.id !== m.id) })));
+  };
   const visibleMessages = active.messages.filter((m) => m.who === user.name || !blocked.includes(m.who));
 
   const send = async () => {
@@ -2640,6 +2658,7 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
                   <div className="text-[10px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{m.time}</div>
                   {!mine && <a href={`mailto:${legal.email}?subject=${encodeURIComponent("Nachricht melden - " + (active.name || "Chat"))}&body=${encodeURIComponent(`Ich möchte folgende Nachricht melden:\n\nVerfasser: ${m.who}\nInhalt: ${m.text || ""}\n\nGrund:\n`)}`} className="text-[10px]" style={{ color: C.textDim, fontFamily: "Inter", textDecoration: "underline" }}>Melden</a>}
                   {!mine && <button onClick={() => blockAuthor(m.who)} className="text-[10px]" style={{ color: C.textDim, fontFamily: "Inter", textDecoration: "underline" }}>Blockieren</button>}
+                  {(mine || darfModerieren) && <button onClick={() => nachrichtLoeschen(m)} className="text-[10px]" style={{ color: C.textDim, fontFamily: "Inter", textDecoration: "underline" }}>Löschen</button>}
                 </div>
               </div>
             </div>
@@ -7041,6 +7060,20 @@ export default function ClubMemberOrganisationApp() {
         setChannels((cs) => cs.map((c) => c.id !== neu.channel_id || c.messages.some((m) => m.id === neu.id)
           ? c
           : { ...c, messages: [...c.messages, zeileZuNachricht(neu)].slice(-200) }));
+      })
+      /* Auch Loeschungen weitergeben. Ohne das verschwaende eine entfernte
+         Nachricht nur beim Loeschenden und stuende bei allen anderen weiter da,
+         bis sie die App neu starten - bei einer gemeldeten Nachricht genau das
+         Gegenteil dessen, was passieren soll.
+         Die Zeile kommt vollstaendig an, weil die Migration
+         "replica identity full" setzt; sonst enthielte das Ereignis nur die
+         Kennung und wir wuessten den Kanal nicht. */
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "messages" }, (ereignis) => {
+        const weg = ereignis.old;
+        if (!weg?.id) return;
+        setChannels((cs) => cs.map((c) => (weg.channel_id && c.id !== weg.channel_id
+          ? c
+          : { ...c, messages: c.messages.filter((m) => m.id !== weg.id) })));
       })
       .subscribe();
 
