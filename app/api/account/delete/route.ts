@@ -48,7 +48,23 @@ export async function DELETE(request: Request) {
   }
 
   const { error: deletionError } = await admin.auth.admin.deleteUser(user.id);
-  if (deletionError) return NextResponse.json({ error: "Deletion failed" }, { status: 500 });
+  if (deletionError) {
+    /* Ein Fremdschluessel kann die Loeschung blockieren. Bekannter Fall:
+       news_posts.author_id verwies mit "on delete restrict" auf profiles - wer je
+       eine Neuigkeit verfasst hatte, kam nicht mehr aus dem Verein heraus. Die
+       Migration 20260829120000_news_author_loeschbar.sql stellt das auf
+       "set null" um.
+       Solange sie nicht eingespielt ist, soll wenigstens im Log stehen, WARUM es
+       scheitert - "Deletion failed" allein hat niemandem geholfen und sah nach
+       einem Serverfehler aus, obwohl es einer an einer bestimmten Stelle ist. */
+    const blockiert = /foreign key|violates|constraint/i.test(deletionError.message || "");
+    console.error(`Kontoloeschung fehlgeschlagen fuer ${user.id}${blockiert ? " - ein Fremdschluessel blockiert sie" : ""}:`, deletionError.message);
+    return NextResponse.json({
+      error: blockiert
+        ? "Dein Konto konnte nicht gelöscht werden, weil noch Beiträge daran hängen. Wir haben den Fall protokolliert — melde dich bitte kurz beim Verein, dann erledigen wir es von Hand."
+        : "Deletion failed",
+    }, { status: 500 });
+  }
   return NextResponse.json({ deleted: true });
 }
 
