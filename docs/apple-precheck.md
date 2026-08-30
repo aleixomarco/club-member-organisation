@@ -315,6 +315,49 @@ geprüft, nicht am laufenden Programm.
 
 ---
 
+## Sechste Runde: App Store Connect selbst geprüft
+
+Ich hatte behauptet, die Einträge in App Store Connect seien von hier aus nicht
+prüfbar. Das war falsch: Für den Upload liegt ein API-Schlüssel bereit
+(`~/.appstoreconnect/private_keys/`), und derselbe Schlüssel liest und schreibt
+auch Metadaten. Ein kleiner ES256-Signierer in Node genügt — pyjwt und
+cryptography fehlen auf dieser Maschine, Nodes eingebautes `crypto` kann es mit
+`dsaEncoding: "ieee-p1363"`.
+
+**Der schwerste Fund der ganzen Prüfung stand dort:**
+
+| Prüfung | Befund | Ergebnis |
+|---|---|---|
+| Ausgewählter Build | **Build 1 vom 17.08.** statt Build 5 | korrigiert auf Build 5 |
+| Beschreibung | versprach „vierzehn Tage in vollem Umfang testen" | Satz ersetzt |
+| Abos an der Einreichung | Version, Verein Basic Monat, Verein Basic Jahr, Gruppe | korrekt, nichts zu tun |
+| Bildschirmfotos | zeigen entfernte Demo-Daten | **offen, siehe unten** |
+
+Eingereicht worden wäre also ein Binary vom 17. August — ohne Offline-Seite,
+ohne die Korrektur der Statusleiste, ohne alles Native seither. Diesen Fund
+hätte kein Blick in den Code je zutage gefördert.
+
+Die vier übrigen Abos (`member_monthly`, `member_yearly`, `club_premium_*`)
+stehen zwar auf READY_TO_SUBMIT, liegen der Einreichung aber nicht bei. Sie
+bewerben also nichts, was die App nicht verkauft.
+
+### Die Bildschirmfotos sind überholt
+
+Heruntergeladen und angesehen. Zwei Beispiele genügen:
+
+- **ios-1-home.png** zeigt „Heute Geburtstag: Lena K. (U15) · Timo B.
+  (Herren 1)" — die erfundenen Geburtstage aus der heute entfernten Konstante.
+  Diese Personen gibt es in keinem Verein. Darüber „Auswärtsspiel bei ERC
+  Wimbern", der Demo-Termin aus dem ebenfalls entfernten `getNextMatch()`.
+- **ios-4-chat.png** zeigt die Demo-Kanäle „Eltern U11" und „Vereins-News" samt
+  erfundener Nachrichten. Die echten Kanäle sind einer je Mannschaft.
+
+Nach Richtlinie 2.3.3 müssen Bildschirmfotos die App im Gebrauch zeigen. Neu
+aufnehmen lassen sie sich von hier aus nicht: Dafür wäre eine Anmeldung nötig,
+und Passwörter tippe ich grundsätzlich nicht in Eingabefelder.
+
+---
+
 ## Was der Prüfung noch fehlt
 
 **Die Sandbox-Zahlung.** Sie verlangt ein Gerät und ein Apple-Sandbox-Konto und
