@@ -1249,13 +1249,18 @@ function PendingAccountScreen({ account, onLeave, onDelete }) {
   );
 }
 
-function LoginScreen({ onLogin, members, club, goRegister, goChangeClub }) {
+function LoginScreen({ onLogin, members, club, goRegister, goChangeClub, offeneSitzung, onSitzungNutzen }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [resetNote, setResetNote] = useState("");
+  const [uebernahmeLaeuft, setUebernahmeLaeuft] = useState(false);
+
+  /* Die Mitgliedschaft dieser Sitzung im gerade gewaehlten Verein - falls es
+     eine gibt. Nur dann lohnt der Knopf. */
+  const eigeneMitgliedschaft = (offeneSitzung?.mitgliedschaften || []).find((m) => m.club_id === club?.id) || null;
 
   /* Der Knopf "Passwort vergessen?" hatte bisher keine Funktion — wer sein
      Passwort nicht mehr wusste, kam nie wieder in sein Konto.
@@ -1298,6 +1303,38 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub }) {
         <div className="text-xl" style={{ fontFamily: "Oswald", fontWeight: 600, color: C.ink }}>Willkommen zurück</div>
         <button onClick={goChangeClub} className="text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>Verein wechseln</button>
       </div>
+      {/* Besteht schon eine Sitzung und gehoert dieses Konto zu dem Verein, den
+          man gerade gewaehlt hat, braucht es keine erneute Anmeldung: ein Tipp,
+          und man ist in der Vereinsuebersicht.
+
+          Angezeigt wird ausschliesslich das eigene Konto dieser Sitzung - nicht
+          die Mitglieder des Vereins. */}
+      {eigeneMitgliedschaft && (
+        <div className="mb-5">
+          <div className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: C.textDim, fontFamily: "Inter" }}>Angemeldet bleiben</div>
+          <button
+            onClick={async () => {
+              setUebernahmeLaeuft(true); setError("");
+              const ergebnis = await onSitzungNutzen?.(eigeneMitgliedschaft);
+              if (ergebnis?.error) { setError(ergebnis.error); setUebernahmeLaeuft(false); }
+            }}
+            disabled={uebernahmeLaeuft}
+            className="w-full flex items-center gap-3 rounded-xl px-3 py-3"
+            style={{ background: C.glass, border: `1px solid ${C.edge}`, opacity: uebernahmeLaeuft ? .6 : 1 }}
+          >
+            <div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0" style={{ background: C.red, color: "#fff", fontFamily: "Inter" }}>{initialsOf(eigeneMitgliedschaft.display_name || offeneSitzung?.email || "?")}</div>
+            <div className="text-left flex-1 min-w-0">
+              <div className="text-xs font-bold truncate" style={{ color: C.ink, fontFamily: "Inter" }}>{eigeneMitgliedschaft.display_name || offeneSitzung?.email}</div>
+              <div className="text-[11px] truncate" style={{ color: C.textDim, fontFamily: "Inter" }}>
+                {uebernahmeLaeuft ? "Wird geöffnet …" : eigeneMitgliedschaft.status === "pending" ? "Aufnahme noch nicht bestätigt" : "Als dieses Konto fortfahren"}
+              </div>
+            </div>
+            <ArrowRight size={15} style={{ color: C.textDim, flexShrink: 0 }} />
+          </button>
+          <div className="text-[10px] text-center mt-3 mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>oder mit einem anderen Konto anmelden</div>
+        </div>
+      )}
+
       <form onSubmit={submit}>
         <Field icon={Mail} type="email" placeholder="E-Mail-Adresse" value={email} onChange={(e) => setEmail(e.target.value)} />
         <div className="flex items-center gap-2 rounded-xl px-3.5 py-3 mb-2" style={{ background: C.paperDim }}>
@@ -7659,6 +7696,38 @@ export default function ClubMemberOrganisationApp() {
     setAdminStateLoaded(true);
     return { ok: true };
   };
+  /* Wer angemeldet ist, soll das auch merken.
+
+     Bisher fragte die App beim Start nie nach einer bestehenden Sitzung. Sie
+     zeigte immer Vereinsauswahl und danach das Anmeldeformular - auch wenn die
+     Supabase-Sitzung noch gueltig war. Man musste sich also jedes Mal erneut
+     anmelden, obwohl man angemeldet war.
+
+     Hier wird die vorhandene Sitzung einmal gelesen und dazu, in welchen
+     Vereinen dieses Konto Mitglied ist. Der Anmeldebildschirm bietet daraus
+     einen Knopf an: ein Tipp, und man ist drin.
+
+     Bewusst nur das EIGENE Konto. Frueher standen dort alle Mitglieder des
+     Vereins mit Namen und Rollen, noch vor jeder Anmeldung - das war ein
+     Datenschutzproblem und wurde entfernt. */
+  const [offeneSitzung, setOffeneSitzung] = useState(null);
+  useEffect(() => {
+    if (!supabase) return;
+    let abgebrochen = false;
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      const konto = data.session?.user;
+      if (!konto || abgebrochen) return;
+      const { data: zugehoerig } = await supabase.from("club_memberships")
+        .select("id,club_id,display_name,status")
+        .eq("profile_id", konto.id)
+        .in("status", ["active", "pending"]);
+      if (abgebrochen) return;
+      setOffeneSitzung({ profileId: konto.id, email: konto.email, mitgliedschaften: zugehoerig || [] });
+    })();
+    return () => { abgebrochen = true; };
+  }, []);
+
   useEffect(() => {
     if (!supabase) return;
     let cancelled = false;
@@ -7956,7 +8025,15 @@ export default function ClubMemberOrganisationApp() {
           ) : authScreen === "newclub" ? (
             <NewClubScreen onCreate={createClub} goBack={() => setAuthScreen("club")} />
           ) : authScreen === "login" ? (
-            <LoginScreen onLogin={login} members={clubMembers} club={currentClub} goRegister={() => setAuthScreen("register")} goChangeClub={changeClub} />
+            <LoginScreen onLogin={login} members={clubMembers} club={currentClub} goRegister={() => setAuthScreen("register")} goChangeClub={changeClub}
+              offeneSitzung={offeneSitzung}
+              onSitzungNutzen={async (mitgliedschaft) => {
+                /* Die Sitzung ist gueltig, die Mitgliedschaft gehoert diesem
+                   Konto - es braucht also keine erneute Anmeldung, nur das
+                   Laden des Vereins. */
+                setSelectedClubId(mitgliedschaft.club_id);
+                return loadSupabaseMembership(offeneSitzung.profileId, mitgliedschaft.club_id);
+              }} />
           ) : (
             <RegisterScreen onRegister={register} members={clubMembers} club={currentClub} goLogin={() => setAuthScreen("login")} />
           )
