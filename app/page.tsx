@@ -6627,18 +6627,21 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
       setMessage(nextStatus === "active" ? "Mitgliedschaft wurde freigegeben." : "Mitgliedschaft wurde abgelehnt.");
       setWorkingId(null); return;
     }
-    /* Ablehnen heisst "diesmal nicht" - nicht "nie wieder".
-    
+    /* Ablehnen heisst "diesmal nicht" - und stellt sich keiner neuen Anfrage in
+       den Weg.
+
        Vorher setzte es den Status auf 'blocked'. register_for_club weist damit
        jede weitere Anfrage dauerhaft ab: Wer einmal abgelehnt wurde, kam nie
        wieder herein, auch nach Jahren nicht und ohne dass es jemandem auffiel.
-       
-       Stattdessen jetzt eine Frist. Die Mitgliedschaft geht auf 'inactive',
-       rejection_count zaehlt mit, und blocked_until sperrt eine Woche - genau
-       die beiden Spalten, die dafuer angelegt, aber nie beschrieben wurden.
-       Danach darf die Person erneut anfragen. Die Frist verhindert nur, dass
-       jemand im Minutentakt klopft.
-       
+
+       Jetzt geht die Mitgliedschaft auf 'inactive', blocked_until wird
+       ausdruecklich geleert, und die Person kann sich sofort erneut bewerben -
+       so oft sie moechte. Entschieden wird jedes Mal neu von der
+       Vereinsleitung.
+
+       rejection_count zaehlt weiter mit. Er sperrt nichts, er sagt der
+       Vereinsleitung nur, dass hier schon einmal abgelehnt wurde.
+
        Wer wirklich draussen bleiben soll, laesst sich weiterhin auf 'blocked'
        setzen - dann aber als bewusste Entscheidung, nicht als Nebenwirkung
        eines Ablehnens. */
@@ -6647,7 +6650,7 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
       ? {
           status: "inactive",
           rejection_count: (request.rejection_count || 0) + 1,
-          blocked_until: new Date(Date.now() + 7 * 86400000).toISOString(),
+          blocked_until: null,
         }
       : { status: nextStatus, blocked_until: null };
     const { error: statusError } = await supabase.from("club_memberships").update(aenderung).eq("id", request.id).eq("club_id", club.id);
@@ -6670,7 +6673,7 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
     setRequests((items) => items.filter((item) => item.id !== request.id));
     setMessage(nextStatus === "active"
       ? "Mitgliedschaft wurde freigegeben."
-      : "Mitgliedschaft wurde abgelehnt. Eine neue Anfrage ist in einer Woche wieder möglich.");
+      : "Mitgliedschaft wurde abgelehnt. Eine neue Anfrage ist jederzeit möglich.");
     setWorkingId(null);
   };
 
