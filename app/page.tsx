@@ -1346,7 +1346,7 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub }) {
 
 
 function RegisterScreen({ onRegister, members, club, goLogin }) {
-  const [form, setForm] = useState({ name: "", email: "", team: TEAMS[0], birthdate: "", password: "", password2: "", accountType: "mitglied", relativeId: "", childName: "", childBirthdate: "", childTeam: "U11" });
+  const [form, setForm] = useState({ name: "", email: "", team: supabase ? "" : TEAMS[0], birthdate: "", password: "", password2: "", accountType: "mitglied", relativeId: "", childName: "", childBirthdate: "", childTeam: "U11" });
   const [legalAccepted, setLegalAccepted] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -1412,12 +1412,28 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
           })}
         </div>
 
+        {/* Die Mannschaften des Vereins lassen sich hier nicht laden: Die Regel
+            auf teams lautet "using (public.is_club_member(club_id))", und wer
+            sich gerade erst registriert, ist noch kein Mitglied. Vorher stand
+            deshalb die feste Liste TEAMS da - also die Mannschaften des
+            Demo-Vereins. Ein Neuling bei einem echten Verein bekam "Herren 1",
+            "U15" und "Damen 1" angeboten, die es bei ihm gar nicht gibt, und
+            trug sich in eine erfundene Mannschaft ein.
+            Ohne Datenbank bleibt die Liste richtig, dort IST der Demo-Verein der
+            Verein. Mit Datenbank wird gefragt statt geraten; die Angabe landet
+            als Wunsch in requested_team, und die Vereinsverwaltung ordnet bei
+            der Freigabe zu. */}
         <div className="flex items-center gap-2 rounded-xl px-3.5 py-3 mb-3" style={{ background: C.paperDim }}>
           <Users size={16} style={{ color: C.textDim, flexShrink: 0 }} />
-          <select value={form.team} onChange={set("team")} className="flex-1 bg-transparent outline-none text-sm" style={{ fontFamily: "Inter", color: C.ink }}>
-            {TEAMS.map((t) => <option key={t} value={t}>{t}</option>)}
-          </select>
+          {supabase ? (
+            <input value={form.team} onChange={set("team")} placeholder="Mannschaft (optional)" className="flex-1 bg-transparent outline-none text-sm" style={{ fontFamily: "Inter", color: C.ink }} />
+          ) : (
+            <select value={form.team} onChange={set("team")} className="flex-1 bg-transparent outline-none text-sm" style={{ fontFamily: "Inter", color: C.ink }}>
+              {TEAMS.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+          )}
         </div>
+        {supabase && <div className="text-[10px] -mt-2 mb-3 px-1" style={{ color: C.textDim, fontFamily: "Inter" }}>Wenn du sie noch nicht kennst, lass das Feld leer — die Vereinsverwaltung ordnet dich bei der Freigabe zu.</div>}
 
         {form.accountType !== "mitglied" && <div className="rounded-2xl p-3 mb-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
           <div className="text-xs font-bold mb-1" style={{ color: C.ink }}>{form.accountType === "eltern" ? "Kind / Athlet/in verknüpfen" : "Elternteil verknüpfen"}</div>
@@ -6142,6 +6158,23 @@ function MatchResultsPanel({ results, onSave }) {
 /* Rollenverwaltung                                                     */
 /* ------------------------------------------------------------------ */
 function RolesPanel({ members, setMembers }) {
+  /* Die Mannschaften kommen aus dem Verein, nicht aus der Demo-Konstante.
+     YOUTH_CLASSES ist eine feste Liste - Herren 1, Herren 2, Damen 1, U15, U11 -,
+     und genau die wurde jedem Verein zur Auswahl gestellt: Ein Vorstand konnte
+     seine Trainer nur Mannschaften zuweisen, die es bei ihm nicht gibt, waehrend
+     die eigenen fehlten.
+     Hier ist der Nutzer angemeldet und Mitglied, die teams-Tabelle also lesbar.
+     Ohne Datenbank bleibt es bei der Konstante - dort IST der Demo-Verein der
+     Verein. */
+  const [vereinsTeams, setVereinsTeams] = useState(null);
+  useEffect(() => {
+    const clubId = members.find((m) => m.clubId)?.clubId;
+    if (!supabase || !isDbId(clubId)) { setVereinsTeams(null); return; }
+    supabase.from("teams").select("name").eq("club_id", clubId).eq("active", true).order("name")
+      .then(({ data }) => setVereinsTeams([...new Set((data || []).map((t) => t.name).filter(Boolean))].map((name) => ({ id: name, name }))));
+  }, [members]);
+  const waehlbareMannschaften = vereinsTeams === null ? YOUTH_CLASSES : vereinsTeams;
+
   const [message, setMessage] = useState("");
   const [expandedId, setExpandedId] = useState(null);
   const [draftRoles, setDraftRoles] = useState([]);
@@ -6265,8 +6298,8 @@ function RolesPanel({ members, setMembers }) {
                     );
                   })}
                 </div>
-                {m.roles.includes("trainer")&&<div className="mt-2.5 pt-2.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] mb-2 font-bold" style={{color:C.textDim}}>TRAINER FÜR · MEHRERE MANNSCHAFTEN MÖGLICH</div><div className="flex flex-wrap gap-1.5">{YOUTH_CLASSES.map((team)=>{const active=(m.trainerTeams||[]).includes(team.name);return <button type="button" key={team.name} onClick={()=>toggleTrainerTeam(m.id,team.name)} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?ROLE_META.trainer.color:C.paperDim,color:active?C.white:C.textDim}}>{active?"✓ ":""}{team.name}</button>})}</div></div>}
-                {m.roles.includes("teammanager")&&<div className="mt-2.5 pt-2.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] mb-1 font-bold" style={{color:C.textDim}}>Betreute Mannschaft · maximal ein Teammanager je Mannschaft</div><select value={m.managedTeam||""} onChange={(e)=>assignManagedTeam(m.id,e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{background:C.paperDim}}><option value="">Mannschaft auswählen …</option>{YOUTH_CLASSES.map((team)=><option key={team.name} value={team.name}>{team.name}</option>)}</select></div>}
+                {m.roles.includes("trainer")&&<div className="mt-2.5 pt-2.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] mb-2 font-bold" style={{color:C.textDim}}>TRAINER FÜR · MEHRERE MANNSCHAFTEN MÖGLICH</div><div className="flex flex-wrap gap-1.5">{waehlbareMannschaften.length===0&&<span className="text-[11px]" style={{color:C.textDim}}>Noch keine Mannschaften angelegt — das geht im Reiter „Mannschaften“.</span>}{waehlbareMannschaften.map((team)=>{const active=(m.trainerTeams||[]).includes(team.name);return <button type="button" key={team.name} onClick={()=>toggleTrainerTeam(m.id,team.name)} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?ROLE_META.trainer.color:C.paperDim,color:active?C.white:C.textDim}}>{active?"✓ ":""}{team.name}</button>})}</div></div>}
+                {m.roles.includes("teammanager")&&<div className="mt-2.5 pt-2.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] mb-1 font-bold" style={{color:C.textDim}}>Betreute Mannschaft · maximal ein Teammanager je Mannschaft</div><select value={m.managedTeam||""} onChange={(e)=>assignManagedTeam(m.id,e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{background:C.paperDim}}><option value="">Mannschaft auswählen …</option>{waehlbareMannschaften.map((team)=><option key={team.name} value={team.name}>{team.name}</option>)}</select></div>}
                 <div className="flex gap-2 mt-3 pt-3" style={{ borderTop: `1px solid ${C.line}` }}>
                   <button type="button" onClick={closeMember} disabled={saving} className="flex-1 py-2 rounded-lg text-xs" style={{ background: C.paperDim, color: C.ink, fontFamily: "Inter", fontWeight: 700 }}>Abbrechen</button>
                   <button type="button" onClick={() => saveMemberRoles(m.id)} disabled={saving} className="flex-1 py-2 rounded-lg text-xs" style={{ background: C.ink, color: "#fff", fontFamily: "Inter", fontWeight: 700, opacity: saving ? 0.6 : 1 }}>{saving ? "Speichert …" : "Speichern"}</button>
