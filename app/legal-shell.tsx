@@ -1,7 +1,13 @@
 import Link from "next/link";
 
 export function LegalShell({ title, children }: { title: string; children: React.ReactNode }) {
-  return <main style={{ maxWidth: 760, margin: "0 auto", padding: "48px 22px 80px", fontFamily: "Arial, sans-serif", lineHeight: 1.65, color: "#14151A" }}>
+  /* Die sicheren Bereiche gehoeren hier hinein, weil contentInset in
+     capacitor.config.ts auf "never" steht: Die Webansicht spannt sich ueber den
+     ganzen Bildschirm, auch unter Dynamic Island und Home-Indikator. Mit den
+     festen 48px oben konnte ausgerechnet "← Zur App" darunter verschwinden -
+     und das ist auf diesen Seiten der einzige Rueckweg, denn im WebView gibt es
+     keine Browserleiste. */
+  return <main style={{ maxWidth: 760, margin: "0 auto", padding: "calc(env(safe-area-inset-top) + 28px) calc(env(safe-area-inset-right) + 22px) calc(env(safe-area-inset-bottom) + 80px) calc(env(safe-area-inset-left) + 22px)", fontFamily: "Arial, sans-serif", lineHeight: 1.65, color: "#14151A" }}>
     <Link href="/" style={{ color: "#C8102E", fontWeight: 700, textDecoration: "none" }}>← Zur App</Link>
     <h1 style={{ fontSize: 36, margin: "28px 0 22px" }}>{title}</h1>
     {children}

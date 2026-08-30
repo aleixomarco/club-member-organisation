@@ -44,7 +44,11 @@ export default function PasswordResetPage() {
   };
 
   const box: React.CSSProperties = {
-    maxWidth: 380, margin: "0 auto", padding: "48px 24px",
+    /* Sichere Bereiche, wie auf den Rechtsseiten: contentInset steht auf
+       "never", die Webansicht reicht also unter Dynamic Island und
+       Home-Indikator. */
+    maxWidth: 380, margin: "0 auto",
+    padding: "calc(env(safe-area-inset-top) + 28px) calc(env(safe-area-inset-right) + 24px) calc(env(safe-area-inset-bottom) + 48px) calc(env(safe-area-inset-left) + 24px)",
     fontFamily: "system-ui, -apple-system, sans-serif", color: "#2A2028",
   };
   const field: React.CSSProperties = {
