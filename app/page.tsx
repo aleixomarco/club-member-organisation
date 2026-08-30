@@ -4566,11 +4566,27 @@ function SubscriptionPanel({ user }) {
          Deshalb wird jetzt nachgesehen statt behauptet. Bis zu fuenf Versuche
          ueber etwa fuenfzehn Sekunden - so lange darf ein Webhook brauchen. */
       setMessage("Kauf bei Apple abgeschlossen. Freischaltung wird geprüft …");
+
+      /* Gesucht wird ein Abo AUS DEM STORE, das seit dem Kauf hinzugekommen ist -
+         nicht bloss "irgendein Tarif".
+
+         Der erste Versuch fragte club_subscription_tier ab. Das war zu grob:
+         Ein Verein mit einem von Hand eingetragenen Abo hat immer einen Tarif,
+         die Pruefung konnte dort also gar nicht fehlschlagen und meldete Erfolg,
+         obwohl vom Kauf nichts ankam. Genau so geschehen am 30.08.2026 bei
+         ERG Iserlohn, der ein manuelles Abo auf 'plus' traegt. */
+      const seit = new Date(Date.now() - 120000).toISOString();
       let freigeschaltet = false;
       for (let versuch = 0; versuch < 5 && !freigeschaltet; versuch++) {
         await new Promise((r) => setTimeout(r, 3000));
-        const { data: tarif } = await supabase.rpc("club_subscription_tier", { target_club: user.clubId });
-        if (tarif && tarif !== "none") freigeschaltet = true;
+        const { count } = await supabase
+          .from("club_subscriptions")
+          .select("id", { count: "exact", head: true })
+          .eq("club_id", user.clubId)
+          .eq("status", "active")
+          .neq("provider", "manual")
+          .gte("updated_at", seit);
+        if ((count || 0) > 0) freigeschaltet = true;
       }
       refreshClubStatus();
       loadSubscriptions();
