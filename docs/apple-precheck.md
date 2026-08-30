@@ -356,7 +356,26 @@ gibt**; eines ist in Ordnung.
 
 Nach Richtlinie 2.3.3 müssen Bildschirmfotos die App im Gebrauch zeigen.
 
-**Warum ich sie nicht ersetzen kann:** Dafür wäre eine Anmeldung in der App
+**Erledigt am 30.08.2026.** Vier neue Aufnahmen vom Gerät des Betreibers, über
+die App-Store-Connect-API ausgetauscht und nachgeprüft — das erste Bild wurde
+zur Kontrolle wieder heruntergeladen und zeigt den neuen Stand.
+
+Zwei Hürden dabei, beide erwähnenswert:
+
+*Die Größe.* Die Aufnahmen kamen mit 1179 × 2556 (6,1 Zoll), der Satz verlangt
+1320 × 2868. Exakt umskaliert; die Seitenverhältnisse unterscheiden sich um
+0,2 %, das ist unsichtbar.
+
+*Die Sperre.* App Store Connect lehnt neue Bilder ab, solange die Version für
+die Prüfung vorgemerkt ist („Can't Create Screenshot while Ready For Review").
+Der Weg führt über das kurzzeitige Herausnehmen des Versions-Postens aus der
+Einreichung — die Version geht dabei auf DEVELOPER_REJECTED — und das
+Wiedereinhängen danach. Nachgeprüft: Version wieder READY_FOR_REVIEW, die
+Einreichung enthält wieder alle vier Posten.
+
+Nicht mehr zutreffend, aber lehrreich:
+
+**Warum ich sie nicht selbst aufnehmen kann:** Dafür wäre eine Anmeldung in der App
 nötig, und Passwörter tippe ich grundsätzlich nicht in Eingabefelder. Zwei
 Umwege wurden geprüft und scheiden aus: Ein Supabase-Anmeldelink würde greifen
 (`detectSessionInUrl` steht auf true), landete aber in Safari statt in der App —
