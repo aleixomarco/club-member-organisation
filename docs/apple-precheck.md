@@ -217,6 +217,41 @@ Sponsoren des Vereins.
 Ehrlich betrachtet wäre die Einreichung ohne diese zweite Durchsicht sehr
 wahrscheinlich erneut abgelehnt worden.
 
+## Dritte Runde: Gegenprüfung der eigenen Korrekturen
+
+Die Korrekturen wurden anschließend selbst geprüft — mit demselben Verfahren.
+Das war notwendig: **Sechs der Änderungen hatten neue Fehler eingeführt**, zwei
+davon schwerer als das, was sie beheben sollten.
+
+| Regression | Wirkung |
+|---|---|
+| `assigned.eid` vor der Null-Prüfung | Absturz der Startseite direkt nach dem Login |
+| Hook-Reihenfolge in ChatView | React-Absturz, sobald die Kanalliste zwischen leer und gefüllt wechselt |
+| Kanäle luden vor der Anmeldung | Chat die ganze Sitzung leer, obwohl der Verein Kanäle hat |
+| `🏆 undefined` auf der Saison-Kachel | ab dem 01.09. auf jeder Startseite |
+| Fehlermeldung nur im Einzeltermin-Zweig | bei Serien wieder stummes Speichern |
+| Hinweis schickte Trainer an eine Stelle ohne Rechte | falsche Anleitung |
+
+Der Chat-Absturz ist der lehrreichste Fall: Die Hook-Reihenfolge war schon
+vorher falsch, aber praktisch unerreichbar. Erst die Korrektur — ein Verein ohne
+Kanäle bekommt jetzt wirklich eine leere Liste — machte den Wechsel möglich und
+den Fehler scharf.
+
+Auch hier wurde die ganze Fehlerklasse geprüft, nicht nur die eine Stelle:
+
+```bash
+npx eslint --no-config-lookup -c hooks.check.mjs app lib   # react-hooks/rules-of-hooks
+```
+
+meldet über `app/` und `lib/` nichts mehr. Dass die Regel wirklich greift, wurde
+mit einer absichtlich fehlerhaften Datei gegengeprüft — sie wurde erkannt.
+
+**Die Lehre**: Eine Korrektur ist kein Endzustand. Jede Änderung an einem
+7300-Zeilen-Monolithen ohne Typprüfung braucht denselben Prüfblick wie der
+Fehler, den sie behebt.
+
+---
+
 ## Was der Prüfung noch fehlt
 
 **Die Sandbox-Zahlung.** Sie verlangt ein Gerät und ein Apple-Sandbox-Konto und
