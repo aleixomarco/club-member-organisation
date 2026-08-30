@@ -108,6 +108,10 @@ spielen.
 
 ## Preise
 
+> **Hinweis nach der Umstellung vom 31.08.2026:** In der App wird nichts mehr
+> verkauft. Der Verein fragt an, bekommt ein Angebot und eine Rechnung. Auf der
+> Website dürfen Preise offen stehen — Apples Einschränkung gilt nur für die App.
+
 ### Der Grundsatz
 
 **Mitglieder zahlen nichts.** Nie. Der Zugang wird vom Verein bezahlt, und was
@@ -119,16 +123,19 @@ Geldbeutel.
 Drei Zugänge je Verein, ohne zeitliche Begrenzung. Damit lassen sich Trainings-
 und Spielpläne führen und einsehen. Kein Testzeitraum, der abläuft.
 
-### Vereinsabo
+### Vollzugang
 
-Ab **24,99 € im Monat** oder **239,99 € im Jahr** für bis zu 100 angemeldete
-Konten. Das schaltet alles Weitere frei: Mannschaftsverwaltung, Chat,
-Vereins-News, Helferplanung, Fahrzeugbuchung, Kalender-Abo und Vereinstermine.
+Ab **24,99 € im Monat** für bis zu 100 angemeldete Konten. Das schaltet alles
+Weitere frei: Mannschaftsverwaltung, Chat, Vereins-News, Helferplanung,
+Fahrzeugbuchung, Kalender-Abo und Vereinstermine.
 
 Größere Vereine sprechen uns an — für sie machen wir ein eigenes Angebot.
 
-Alle Preise inklusive 19 % Umsatzsteuer. Monatlich kündbar zum Ende der
-Laufzeit.
+**Auf Rechnung an den Verein**, nicht über einen privaten App-Store-Zugang.
+Verbuchbar, prüfbar, unabhängig von einer Privatperson. Wechselt die
+Vereinsleitung, bleibt der Zugang beim Verein.
+
+Monatlich kündbar zum Ende der Laufzeit.
 
 ---
 
@@ -144,6 +151,11 @@ ein Kind zum Beispiel, das ein Elternteil anlegt — zählt nicht mit.
 **Können mehrere Vereine dieselbe App nutzen?**
 Ja. Jeder Verein sieht ausschließlich seine eigenen Daten.
 
+**Wie läuft die Bezahlung?**
+Auf Rechnung an den Verein. Ihr fragt an, bekommt ein Angebot, und nach dem
+Zahlungseingang ist der Verein freigeschaltet. In der App findet keine Zahlung
+statt.
+
 **Was passiert mit unseren Daten?**
 Sie gehören dem Verein. Jedes Mitglied kann sein Konto jederzeit selbst
 löschen — direkt in der App, ohne Umweg über uns.
@@ -155,6 +167,8 @@ anderen lesen mit.
 ---
 
 ## Handlungsaufforderungen
+
+**Verein anfragen** — wir melden uns mit einem Angebot.
 
 **Verein kostenlos anlegen** — drei Zugänge, keine Frist, keine Kreditkarte.
 
@@ -180,8 +194,8 @@ Zum Nachlesen, damit es niemand versehentlich verspricht:
 
 - **Push-Benachrichtigungen** funktionieren auf iOS noch nicht. Mitteilungen
   innerhalb der App gibt es.
-- **Plus und Pro** (350 bzw. 1000 Zugänge) sind vorbereitet, aber noch nicht
-  kaufbar. Bis dahin: „auf Anfrage".
+- **Selbstbedienung gibt es nicht.** Der Vollzugang lässt sich nicht online
+  kaufen — es gibt Anfrage, Angebot, Rechnung.
 - **Android** gibt es noch nicht.
 - Einen **Testzeitraum** gibt es nicht mehr — dafür die dauerhaft kostenlose
   Stufe.
