@@ -109,7 +109,18 @@ export async function POST(request: Request) {
     ]);
 
     if (verein) {
-      const { error } = await admin.from("club_subscriptions").update({ club_id: nach }).in("club_id", alteKennungen);
+      /* Nur Abos DIESES Anbieters umhaengen - niemals von Hand eingetragene.
+      
+         Der erste Wurf verschob alles, was am alten Verein hing. Am 31.08.2026
+         um 01:05 kam ein TRANSFER von ERG Iserlohn auf einen neu gegruendeten
+         Verein, und damit wanderte auch das manuell eingetragene Dauerabo mit:
+         ERG Iserlohn stand ohne da, der neue Verein hatte eines, das nie
+         gekauft wurde.
+         
+         Ein TRANSFER betrifft immer nur den Kauf aus dem Store, der die Kennung
+         gewechselt hat. Alles andere - manuelle Eintraege, Abos aus einem
+         anderen Store - bleibt, wo es ist. */
+      const { error } = await admin.from("club_subscriptions").update({ club_id: nach }).in("club_id", alteKennungen).eq("provider", provider);
       if (error) {
         console.error(`RevenueCat: Abo-Uebertrag auf Verein ${nach} fehlgeschlagen (Event ${event.id})`, error);
         return NextResponse.json({ error: "Could not transfer subscription" }, { status: 500 });
@@ -117,7 +128,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ received: true, transferred: "club" });
     }
     if (profil) {
-      const { error } = await admin.from("user_subscriptions").update({ profile_id: nach }).in("profile_id", alteKennungen);
+      // Gleiche Regel wie beim Verein: nur Abos dieses Anbieters.
+      const { error } = await admin.from("user_subscriptions").update({ profile_id: nach }).in("profile_id", alteKennungen).eq("provider", provider);
       if (error) {
         console.error(`RevenueCat: Abo-Uebertrag auf Profil ${nach} fehlgeschlagen (Event ${event.id})`, error);
         return NextResponse.json({ error: "Could not transfer subscription" }, { status: 500 });
