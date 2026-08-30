@@ -1937,9 +1937,19 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
       <button className="w-full text-left p-4" onClick={() => setOpen((o) => !o)}>
         <div className="flex items-start justify-between">
           <div className="flex gap-3">
+            {/* Die Kachel zeigte Wochentag und Tageszahl, aber nie den Monat.
+                Bei einer Liste, die ueber Monatsgrenzen laeuft, ist "4" damit
+                mehrdeutig - und der Spielplan reicht bis ins naechste Jahr.
+                Das Jahr steht nur dann dabei, wenn der Termin nicht im
+                laufenden liegt; sonst wuerde es die schmale Kachel unnoetig
+                fuellen. */}
             <div className="flex flex-col items-center justify-center rounded-xl px-2.5 py-1.5" style={{ background: C.paper, minWidth: 50 }}>
               <span className="text-[10px] uppercase font-bold" style={{ color: C.red, fontFamily: "Inter" }}>{formatDate(ev.date).split(" ")[0]}</span>
-              <span className="text-lg" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>{new Date(ev.date).getDate()}</span>
+              <span className="text-lg leading-tight" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>{new Date(ev.date).getDate()}</span>
+              <span className="text-[10px] uppercase font-bold leading-tight" style={{ color: C.textDim, fontFamily: "Inter" }}>
+                {new Date(ev.date).toLocaleDateString("de-DE", { month: "short" })}
+                {new Date(ev.date).getFullYear() !== new Date().getFullYear() ? ` ${String(new Date(ev.date).getFullYear()).slice(-2)}` : ""}
+              </span>
             </div>
             <div>
               <div className="flex flex-wrap gap-1 mb-1"><Pill bg={meta.color}>{meta.label}{ev.team ? ` · ${ev.team}` : ""}{ev.type === "spiel" ? ` · ${ev.home ? "Heim" : "Auswärts"}` : ""}</Pill>{ev.cancelled&&<Pill bg={C.red}>ABGESAGT</Pill>}</div>
@@ -6468,6 +6478,38 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
     }
   };
 
+  /* Endgueltig aus dem Verein entfernen - im Unterschied zum Beenden, das die
+     Mitgliedschaft nur stilllegt und in der Historie belaesst.
+
+     Was mitgeht, regeln die Fremdschluessel: Rollen, Mannschaftszuordnung,
+     Fahrgemeinschaften, Helfereinteilung, Beitraege und Benachrichtigungen
+     haengen mit CASCADE daran und verschwinden. Angelegte Aufgaben, Fahrzeuge
+     und Vorlagen bleiben dem Verein erhalten und verlieren nur den Vermerk, wer
+     sie angelegt hat - sie gehoeren dem Verein, nicht der Person.
+
+     Das Benutzerkonto selbst bleibt bestehen. Wer entfernt wurde, kann sich
+     erneut um Aufnahme bewerben; loeschen kann das Konto nur die Person selbst
+     (Profil > Konto loeschen). */
+  const removeMember = async (member) => {
+    if (!window.confirm(`${member.display_name} endgültig aus dem Verein entfernen?\n\nRollen, Mannschaftszuordnung, Helfereinteilungen und Beiträge gehen dabei verloren. Das Benutzerkonto selbst bleibt bestehen.\n\nSoll die Person nur nicht mehr teilnehmen, ist „Beenden“ der schonendere Weg.`)) return;
+    setWorkingId(member.id); setMessage("");
+    const { error } = await supabase.from("club_memberships").delete().eq("id", member.id).eq("club_id", club.id);
+    if (error) {
+      /* Ein Fremdschluessel kann die Loeschung weiterhin sperren, wenn spaeter
+         eine neue Tabelle ohne cascade hinzukommt. Dann soll dastehen, was los
+         ist, statt nur "ging nicht". */
+      setMessage(/foreign key|violates|constraint/i.test(error.message || "")
+        ? "Die Person kann nicht entfernt werden, weil noch Einträge an ihr hängen. Beende die Mitgliedschaft stattdessen."
+        : "Die Person konnte nicht entfernt werden.");
+      setWorkingId(null); return;
+    }
+    setActiveMembers((items) => items.filter((item) => item.id !== member.id));
+    setMembers((items) => items.filter((item) => item.id !== member.id));
+    setMessage(`${member.display_name} wurde aus dem Verein entfernt.`);
+    setWorkingId(null);
+    notifyClubAdmins(club.id, "membership", "Mitglied entfernt", `${member.display_name} wurde aus dem Verein entfernt.`);
+  };
+
   const loadRequests = async () => {
     setLoading(true); setMessage("");
     if (!supabase) {
@@ -6550,6 +6592,11 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
             </div>
             <span className="text-[9px] font-bold px-2 py-1 rounded-full flex-shrink-0" style={{ background: member.status === "active" ? "rgba(231,243,236,0.72)" : "rgba(253,236,236,0.72)", color: member.status === "active" ? C.green : C.red }}>{member.status === "active" ? "Aktiv" : member.status === "blocked" ? "Gesperrt" : "Inaktiv"}</span>
             <button disabled={workingId === member.id} onClick={() => toggleMemberActive(member)} className="px-3 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: member.status === "active" ? "rgba(253,236,236,0.72)" : "rgba(231,243,236,0.72)", color: member.status === "active" ? C.red : C.green, opacity: workingId === member.id ? .6 : 1 }}>{member.status === "active" ? "Beenden" : "Reaktivieren"}</button>
+            {/* Zwei getrennte Wege, bewusst unterschiedlich gewichtet:
+                "Beenden" legt die Mitgliedschaft still und laesst sie in der
+                Historie - das ist der Regelfall. "Entfernen" loescht sie
+                endgueltig und steht deshalb unauffaelliger daneben. */}
+            <button disabled={workingId === member.id} onClick={() => removeMember(member)} title="Endgültig aus dem Verein entfernen" className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: C.paperDim, color: C.textDim, opacity: workingId === member.id ? .6 : 1 }}>Entfernen</button>
           </div>
         ))}
         {activeMembers.length === 0 && <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Keine Mitgliedschaften vorhanden.</div>}
