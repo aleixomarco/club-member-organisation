@@ -291,12 +291,26 @@ Die restlichen sieben halten der Prüfung stand:
 ist von einer Kommandozeile aus nicht durchführbar. Jedes andere Glied der
 Kaufkette ist einzeln belegt (siehe oben).
 
-**Zwei Migrationen in der Produktionsdatenbank.** Sie liegen bereit, müssen aber
-im Supabase-SQL-Editor ausgeführt werden — die Kommandozeile hier hat weder ein
-Zugangstoken noch ein verknüpftes Projekt.
+**Erledigt: Die beiden Migrationen sind eingespielt** (29.08.2026).
 
-- `20260829120000_news_author_loeschbar.sql` — bis dahin scheitert die
-  Kontolöschung für jeden, der eine Neuigkeit verfasst hat (5.1.1(v)).
-- `20260829140000_nachrichten_loeschen.sql` — bis dahin lehnt die Datenbank
-  jedes Löschen einer Nachricht ab. Die Oberfläche zeigt dann eine Fehlermeldung,
-  statt stillschweigend nichts zu tun.
+Der Weg dorthin ist erwähnenswert, weil er eine Falle enthielt: Der
+Migrationsverlauf in der Produktion war **leer** — alle 38 Migrationen standen
+auf `remote: ""`. Die Datenbank wurde von Hand aufgebaut, protokolliert wurde
+nie etwas. Ein schlichtes `supabase db push` hätte deshalb alle 38 von vorn
+angewendet, samt der `insert`-Anweisungen mit Demo-Daten.
+
+Richtig war der Zweischritt: erst die 36 bestehenden Migrationen einzeln per
+`migration repair --status applied` mit der Wirklichkeit in Deckung bringen —
+das schreibt nur Verlaufszeilen, nichts am Schema —, dann `db push`, das genau
+die zwei neuen anwendet.
+
+Am lebenden System nachgeprüft:
+
+| Prüfung | Ergebnis |
+|---|---|
+| `news_posts.author_id` | `not_null: false`, `on_delete: n` (SET NULL) |
+| Regeln auf `messages` | vier, davon zwei für DELETE |
+| `messages` replica identity | `f` (FULL) — Löschungen erreichen alle Geräte |
+
+Damit funktioniert die Kontolöschung auch für Autoren von Neuigkeiten
+(5.1.1(v)), und gemeldete Nachrichten lassen sich entfernen (1.2).
