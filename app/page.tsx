@@ -4422,18 +4422,24 @@ function SubscriptionPanel({ user }) {
   const [purchasing, setPurchasing] = useState(false);
   const canBuyClubPlan = user.roles.some((role) => ["vereinsadmin", "sysadmin", "vorstand", "geschaeftsfuehrung"].includes(role));
   const databaseClub = isDbId(user.clubId);
-  /* Eigenes Basis-Abo: jedes Mitglied zahlt für sich selbst, deshalb hier keine
-     Rollenprüfung — nur ein echtes Konto ist Voraussetzung. */
-  /* Der Kauf laeuft auf die PROFIL-ID — user.id ist die
-     Mitgliedschafts-ID und wäre hier falsch. Die Profil-ID steht nur in der
-     Anmelde-Sitzung, deshalb wird sie einmalig von dort geholt. */
-  const [authUserId, setAuthUserId] = useState("");
-  const databaseMember = isDbId(user.id);
+  /* authUserId stammt aus der Zeit, als es ein persoenliches Basis-Abo gab: Das
+     lief auf die Profil-ID, weil user.id die Mitgliedschafts-ID ist. Seit der
+     Groessenstaffel zahlt nur noch der Verein, verkauft wird ausschliesslich
+     club_basic_*.
 
-  useEffect(() => {
-    if (!supabase) return;
-    supabase.auth.getUser().then(({ data }) => setAuthUserId(data.user?.id || ""));
-  }, []);
+     Das Wiederherstellen lief trotzdem weiter ueber authUserId, und die ist bei
+     jedem angemeldeten Konto gesetzt - der Rueckfall auf user.clubId griff also
+     nie. RevenueCat haengte die Kaeufe damit an die Profil-ID, der Webhook sucht
+     bei einem club_*-Produkt aber in clubs, fand die Profil-ID dort nicht und
+     verwarf das Ereignis mit "owner_not_found". Die App meldete gleichwohl
+     "Kaeufe wiederhergestellt", ohne dass ein Abo zurueckkam.
+     Wiederhergestellt wird deshalb jetzt auf der Vereins-ID - derselben, auf die
+     auch gekauft wird. Damit war authUserId ueberall unbenutzt und ist samt dem
+     Effekt, der die Profil-ID einmalig aus der Anmelde-Sitzung holte, entfallen.
+     Solche Reste sind nicht harmlos: Drei der heute behobenen Abstuerze waren
+     genau das - eine Verwendung, deren Deklaration bei einem frueheren Umbau
+     verschwunden war. */
+  const databaseMember = isDbId(user.id);
 
   useEffect(() => { setIsNative(nativePurchasesSupported()); }, []);
 
@@ -4555,7 +4561,7 @@ function SubscriptionPanel({ user }) {
         bereits aktivem Abo oder wenn kein Store-Paket geladen werden konnte, also
         genau in den Fällen, in denen man ihn braucht. Deshalb steht er jetzt
         unabhängig davon ganz oben, sobald die App nativ läuft. */}
-    {isNative && <button onClick={() => restorePurchasesAs(authUserId || user.clubId).then(() => { setMessage("Käufe wiederhergestellt."); refreshClubStatus(); loadSubscriptions(); }).catch(() => setMessage("Käufe konnten nicht wiederhergestellt werden."))} className="w-full mb-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.glass, border: `1px solid ${C.edge}`, color: C.ink }}>Käufe wiederherstellen</button>}
+    {isNative && <button onClick={() => restorePurchasesAs(user.clubId).then(() => { setMessage("Käufe wiederhergestellt."); refreshClubStatus(); loadSubscriptions(); }).catch(() => setMessage("Käufe konnten nicht wiederhergestellt werden."))} className="w-full mb-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.glass, border: `1px solid ${C.edge}`, color: C.ink }}>Käufe wiederherstellen</button>}
 
     {/* ---- Mein Zugang ----
          Der persoenliche Zugang war frueher kostenpflichtig: Jedes Mitglied
@@ -4601,10 +4607,16 @@ function SubscriptionPanel({ user }) {
               {aktiv && <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(231,243,236,0.9)", color: C.green }}>{clubStatus?.trialing ? "AKTUELL IM TEST" : "AKTUELLER TARIF"}</span>}
             </div>
             <div className="text-[11px] mb-2.5 leading-snug" style={{ color: C.textDim }}>{CLUB_TIER_INFO[key].desc}</div>
+            {/* Wenn der Store einen Preis liefert, gilt seiner. Die Kachel zeigte
+                bisher immer den Wert aus lib/preise.ts, waehrend der Kaufkasten
+                weiter unten laengst den Store-Preis nimmt. Solange beide gleich
+                sind, faellt das nicht auf - nach einer Preisaenderung in App
+                Store Connect stuenden zwei verschiedene Preise fuer dasselbe Abo
+                auf einem Bildschirm. */}
             <div className="flex items-baseline gap-2 flex-wrap">
-              <span className="text-lg font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{CLUB_TIER_PRICES[key].monthly.price}</span>
+              <span className="text-lg font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{(isNative && nativeOfferings?.[key]?.monthly?.product?.priceString) || CLUB_TIER_PRICES[key].monthly.price}</span>
               <span className="text-[10px]" style={{ color: C.textDim }}>pro Monat</span>
-              <span className="text-[10px]" style={{ color: C.textDim }}>· jährlich {CLUB_TIER_PRICES[key].yearly.equivalent}</span>
+              <span className="text-[10px]" style={{ color: C.textDim }}>· jährlich {(isNative && nativeOfferings?.[key]?.yearly?.product?.priceString) || CLUB_TIER_PRICES[key].yearly.equivalent}</span>
             </div>
           </div>
         );
@@ -4653,7 +4665,12 @@ function SubscriptionPanel({ user }) {
          Hinweisseite. Er bleibt als Rueckfallebene stehen. */
       <div className="text-[11px] rounded-xl px-3 py-2" style={{ background: "rgba(255,246,228,0.72)", color: C.textDim }}>Abonnements werden in der App gebucht.</div>
     )}
-    <div className="text-[9px] mt-3 leading-relaxed" style={{ color: C.textDim }}>Mit dem Abschluss akzeptierst du die <a href="/nutzungsbedingungen" className="underline">Nutzungsbedingungen</a>. Kündigung {Capacitor.getPlatform() === "android" ? "über Google Play" : "über die Apple-ID-Einstellungen"} zum Ende des Abrechnungszeitraums.</div>
+    {/* Richtlinie 3.1.2 verlangt im Kaufbereich BEIDE Verweise: Nutzungs-
+        bedingungen UND Datenschutzerklaerung. Hier stand nur der erste. Es gibt
+        die Datenschutzerklaerung zwar im Profil, aber genau unter 3.1.2 lief
+        bereits die erste Ablehnung - an dieser Stelle zu sparen waere die
+        teuerste Zeile der ganzen App. */}
+    <div className="text-[9px] mt-3 leading-relaxed" style={{ color: C.textDim }}>Mit dem Abschluss akzeptierst du die <a href="/nutzungsbedingungen" className="underline">Nutzungsbedingungen</a> und die <a href="/datenschutz" className="underline">Datenschutzerklärung</a>. Kündigung {Capacitor.getPlatform() === "android" ? "über Google Play" : "über die Apple-ID-Einstellungen"} zum Ende des Abrechnungszeitraums.</div>
     </div>
     </>}
     </>}
