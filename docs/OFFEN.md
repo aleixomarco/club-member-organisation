@@ -1,87 +1,82 @@
 # Was noch offen ist
 
-Stand: 30.08.2026, nach dem Apple-Vorabcheck.
-
-Alles, was sich aus dem Code oder über eine Schnittstelle lösen ließ, ist
-erledigt und ausgeliefert. Hier steht, was Zugänge braucht, die nur der
-Betreiber hat.
+Stand: 30.08.2026, 23:45 — nach Vorabcheck, Reparatur und Gerätetests.
 
 ---
 
-## 1. Der RevenueCat-Webhook — blockiert die Einreichung
+## Einreichungsbereit
 
-**Befund:** `payment_events` ist leer. Nicht seit gestern, sondern seit es die
-Tabelle gibt. Beim Sandbox-Testkauf am 30.08. lief der Kauf bei Apple durch,
-kam aber nie in der Datenbank an.
+Es blockiert nichts mehr. Build 1.0 (5) hängt an der Version, die Bildschirmfotos
+sind aktuell, die Beschreibung stimmt.
 
-**Folge:** Der Zugang hängt an `club_subscriptions`. Solange dort nichts
-ankommt, ist jeder Kauf bezahlt und wirkungslos — Richtlinie 2.1, einer der
-häufigsten Ablehnungsgründe. Dass es bisher niemandem auffiel, liegt nur an den
-manuellen Abos von ERG Iserlohn und SV Musterstadt.
+### Am Gerät bestätigt
 
-**Zu prüfen:** RevenueCat → Integrations → Webhooks
-
-| | |
+| Prüfung | Ergebnis |
 |---|---|
-| URL | `https://club-member-organisation.vercel.app/api/revenuecat/webhook` |
-| Authorization | exakt der Wert von `REVENUECAT_WEBHOOK_SECRET` aus Vercel |
+| Flugmodus | „Keine Verbindung"-Seite erscheint — die Offline-Seite aus Build 5 wirkt |
+| Kaufdialog | erscheint mit korrektem Preis |
+| Chat schreiben als Trainer | funktioniert seit der Rechte-Korrektur |
+| Monat im Terminkalender | sichtbar |
 
-Zwei mögliche Ursachen, beide dort sichtbar:
+### Vom Rechner aus bewiesen
 
-1. **Kein Webhook eingetragen.** Dann geht nichts hinaus.
-2. **Falscher Authorization-Header.** Der Endpunkt antwortet dann mit 401 —
-   und zwar *bevor* er protokolliert. Von außen sieht das aus wie „nie gerufen".
+| Prüfung | Ergebnis |
+|---|---|
+| Kontolöschung | vollständig durchgetestet, inklusive der behobenen Sperre an `news_posts` |
+| Webhook-Zustellung | echtes RevenueCat-Ereignis kam an und wurde verarbeitet |
+| Sandbox-Annahme | greift |
+| Rechtsseiten | ohne Platzhalter, live geprüft |
 
-RevenueCat zeigt unter Webhooks die Zustellversuche samt Fehlercode. Daran ist
-sofort erkennbar, welcher der beiden Fälle vorliegt.
+---
 
-**Gegenprobe nach der Korrektur:** Testkauf wiederholen, dann
+## Ein Restrisiko, klein
+
+**Das Anlegen eines Vereinsabos aus einem echten `INITIAL_PURCHASE`** ist nie im
+Betrieb passiert.
+
+Nicht weil etwas kaputt wäre: Das Testgerät besitzt das Abo bereits, Apple meldet
+„bereits abonniert", und RevenueCat erzeugt ohne Zustandsänderung kein Ereignis.
+Der Kauf, der es erzeugt hätte, lief am 30.08. gegen den damals noch kaputten
+Webhook und ist verloren.
+
+Alle Vorstufen sind belegt. Apples Prüfer arbeitet mit einem frischen
+Sandbox-Konto — sein Kauf ist zwangsläufig ein Neukauf und nimmt genau den Weg,
+der jetzt nachweislich funktioniert.
+
+**Nach der Freigabe zu prüfen:** Ob beim ersten echten Kauf eine Zeile in
+`club_subscriptions` entsteht.
 
 ```sql
-select provider, event_type, payload->>'environment', processed_at
-from public.payment_events order by processed_at desc limit 5;
+select c.name, p.code, s.status, s.provider, s.created_at
+from public.club_subscriptions s
+join public.clubs c on c.id = s.club_id
+join public.subscription_plans p on p.id = s.plan_id
+where s.provider <> 'manual'
+order by s.created_at desc;
 ```
 
-Steht dort ein Eintrag, ist die Kette geschlossen.
-
 ---
 
-## 2. Push-Benachrichtigungen auf iOS
+## Was fehlt, aber nicht blockiert
 
-**Befund:** Der einzige Push-Code ist Firebase *Web* Push. Im WKWebView gibt es
-weder `Notification` noch `serviceWorker`, die Funktion kehrt sofort mit
-„unsupported" zurück. Das native Plugin `@capacitor/push-notifications` liegt
-zwar als Abhängigkeit bei und `aps-environment` steht in den Entitlements, aber
-aufgerufen wird es nirgends.
+### Push-Benachrichtigungen auf iOS
 
-**Derzeit:** Die Karte ist in der nativen App ausgeblendet. Sie verspricht also
-nichts, was sie nicht hält. Benachrichtigungen *innerhalb* der App laufen über
-die Datenbank und funktionieren.
+Der einzige Push-Code ist Firebase *Web* Push; im WKWebView gibt es weder
+`Notification` noch `serviceWorker`. Die Karte ist deshalb in der nativen App
+ausgeblendet — die App verspricht also nichts, was sie nicht hält.
+Benachrichtigungen *innerhalb* der App laufen über die Datenbank und
+funktionieren.
 
-**Was fehlt:** ein APNs-Schlüssel in Firebase, die Registrierung über das native
-Plugin, die Weiterleitung im AppDelegate und der Versandweg auf dem Server. Der
-Schlüssel liegt in deinem Apple-Developer-Konto — ohne ihn geht keiner der
-Schritte.
+Was fehlt: ein APNs-Schlüssel aus dem Apple-Developer-Konto, die Registrierung
+über `@capacitor/push-notifications`, die Weiterleitung im AppDelegate und der
+Versandweg auf dem Server.
 
----
+### Altlasten ohne Wirkung
 
-## 3. Zwei Kleinigkeiten aus dem Testkauf
-
-- Das Testkonto heißt im Chat **„TT"** (Test Trainer). Für Bildschirmfotos
-  besser einen normalen Namen im Profil hinterlegen.
-- Die Nachricht **„Hallo A"** im Mannschaftschat liest sich wie ein
-  abgebrochener Test. Ersetzen, falls davon noch ein Bild entsteht.
-
----
-
-## Erledigt und nachgeprüft
-
-Zur Abgrenzung, was *nicht* mehr offen ist:
-
-- Vier Datenbank-Migrationen eingespielt und am lebenden System kontrolliert
-- Build 5 an die Version gehängt (ausgewählt war Build 1 vom 17.08.)
-- Beschreibung ohne Testzeitraum, vier Bildschirmfotos ausgetauscht
-- Demo-Inhalte aus dem gespeicherten Zustand aller fünf Vereine entfernt
-- Tippspiel und Saisonwahl arbeiten mit echten Daten statt mit Leerfassungen
-- Der Kauf meldet nur noch Erfolg, wenn die Freischaltung wirklich ankam
-- Zwei Administratoren überschreiben sich nicht mehr gegenseitig
+- `member_monthly` und `member_yearly` sind nicht mehr verkäuflich, tauchen aber
+  noch in alten Store-Ereignissen auf.
+- Neun `PAYPAL_*`-Variablen in Vercel, nur auf „Preview", ohne Verwendung.
+- Der gemeinsame Zustandsblock `club_app_state` hält weiterhin Helferplan,
+  Protokolle, Umfragen und Sponsoren. Der lautlose Datenverlust bei zwei
+  gleichzeitigen Administratoren ist behoben; eigene Tabellen wären trotzdem der
+  sauberere Weg.
