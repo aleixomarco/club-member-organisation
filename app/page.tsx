@@ -745,30 +745,47 @@ const INITIAL_CHANNELS = [
 /* Athlet/in der Saison                                                  */
 /* ------------------------------------------------------------------ */
 const SEASON_VOTE_DEADLINE = "2026-08-31T23:59:59";
-/* Fuenf erfundene Kandidaten mit zusammen 144 erfundenen Stimmen - jedem Verein
-   als seine eigene Wahl angezeigt. Die Kandidatenliste muss aus dem Verein
-   kommen; bis es dafuer eine Pflege gibt, bleibt sie leer und die Ansicht sagt
-   das auch. */
-const CANDIDATES = [];
-const BASE_VOTE_COUNTS = {};
-function seasonResults(seasonVotes) {
-  const counts = CANDIDATES.reduce((acc, c) => {
-    acc[c.id] = (BASE_VOTE_COUNTS[c.id] || 0) + Object.values(seasonVotes).filter((v) => v === c.id).length;
+/* Zur Wahl stehen die Athletinnen und Athleten des Vereins. Frueher war das eine
+   feste Liste mit fuenf erfundenen Namen und zusammen 144 erfundenen Stimmen,
+   die jedem Verein als seine eigene Wahl angezeigt wurde.
+
+   Jetzt kommen die Kandidaten aus den Mitgliedern: wer die Rolle "spieler"
+   traegt und freigegeben ist, steht zur Wahl. Damit pflegt sich die Liste von
+   selbst - ein neuer Spieler ist automatisch waehlbar, ein ausgetretener
+   verschwindet. */
+const saisonKandidaten = (members) => (members || [])
+  .filter((m) => !m.accountPending && m.roles?.includes("spieler"))
+  .map((m) => ({ id: m.id, name: m.name, team: m.team, number: m.number }))
+  .sort((a, b) => a.name.localeCompare(b.name, "de"));
+
+/* Gezaehlt werden ausschliesslich echte Stimmen - der frueher aufaddierte
+   Grundstock ist ersatzlos entfallen. */
+function seasonResults(seasonVotes, kandidaten = []) {
+  const counts = kandidaten.reduce((acc, c) => {
+    acc[c.id] = Object.values(seasonVotes).filter((v) => v === c.id).length;
     return acc;
   }, {});
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
-  const sorted = [...CANDIDATES].sort((a, b) => counts[b.id] - counts[a.id]);
+  const sorted = [...kandidaten].sort((a, b) => counts[b.id] - counts[a.id]);
   return { counts, total, sorted };
 }
 
 /* ------------------------------------------------------------------ */
 /* Tippspiel                                                            */
 /* ------------------------------------------------------------------ */
-/* Vier frei erfundene Begegnungen, die jedem Verein als seine naechsten Spiele
-   angezeigt wurden. Die Paarungen muessen aus dem Spielplan des Vereins kommen;
-   bis diese Verknuepfung steht, bleibt die Liste leer und beide Ansichten sagen
-   es dem Nutzer, statt etwas zu erfinden. */
-const TIPP_MATCHES = [];
+/* Getippt wird auf die echten Spiele des Vereins. Frueher standen hier vier frei
+   erfundene Begegnungen, die jedem Verein als seine naechsten Spiele angezeigt
+   wurden.
+
+   Bewusst wird nur der Titel des Termins uebernommen und nicht versucht, aus
+   ihm einen Gegner zu lesen: Die Titel sind frei geschrieben ("Heimspiel gegen
+   SG Lindental", "Gastspiel bei SV Buchenfelde", "GEGEN Herringen", "Turnier"),
+   jede Zerlegung waere geraten. Getippt wird deshalb "wir : sie" - das ist
+   eindeutig, unabhaengig davon, ob heim oder auswaerts gespielt wird. */
+const tippBegegnungen = (events) => (events || [])
+  .filter((e) => e.type === "spiel" && e.date && !e.cancelled)
+  .sort((a, b) => new Date(a.date) - new Date(b.date))
+  .map((e) => ({ id: e.id, titel: e.title, team: e.team, heim: e.home !== false, date: e.date }));
 
 function predictionPoints(prediction, result) {
   if (!prediction || !result || prediction.home === "" || prediction.away === "") return 0;
@@ -781,8 +798,8 @@ function predictionPoints(prediction, result) {
   return tendency(predictedHome, predictedAway) === tendency(actualHome, actualAway) ? 1 : 0;
 }
 
-function totalTippPoints(userId, predictions, results) {
-  return TIPP_MATCHES.reduce((sum, match) => sum + predictionPoints(predictions[userId]?.[match.id], results[match.id]), 0);
+function totalTippPoints(userId, predictions, results, begegnungen = []) {
+  return begegnungen.reduce((sum, match) => sum + predictionPoints(predictions[userId]?.[match.id], results[match.id]), 0);
 }
 
 /* ------------------------------------------------------------------ */
@@ -1641,7 +1658,7 @@ function Dashboard({ user, members, events, feePaid, channels, dutyPlan, seasonV
      aber undefined landete in der Zeichenkette - auf der Kachel stand woertlich
      "🏆 undefined", sobald die Frist verstrichen war. Die beiden anderen
      Ansichten fangen den leeren Fall ab, diese hier war uebersehen. */
-  const seasonSieger = seasonResults(seasonVotes).sorted[0];
+  const seasonSieger = seasonResults(seasonVotes, saisonKandidaten(members)).sorted[0];
   const seasonSubtitle = !seasonClosed
     ? "Bis 31.08. abstimmen"
     : seasonSieger ? `🏆 ${seasonSieger.name}` : "Keine Kandidat/innen hinterlegt";
@@ -5582,11 +5599,11 @@ function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, 
 /* ------------------------------------------------------------------ */
 /* Athlet/in der Saison — Wahl                                            */
 /* ------------------------------------------------------------------ */
-function SeasonVoteView({ currentUser, seasonVotes, setSeasonVotes }) {
+function SeasonVoteView({ currentUser, members, seasonVotes, setSeasonVotes }) {
   const closed = new Date() > new Date(SEASON_VOTE_DEADLINE);
   const { d, h, m } = useCountdown(SEASON_VOTE_DEADLINE);
   const myVote = seasonVotes[currentUser.id];
-  const { counts, total, sorted } = seasonResults(seasonVotes);
+  const { counts, total, sorted } = seasonResults(seasonVotes, saisonKandidaten(members));
   const vote = (id) => !closed && setSeasonVotes((v) => ({ ...v, [currentUser.id]: id }));
 
   return (
@@ -5647,7 +5664,8 @@ function SeasonVoteView({ currentUser, seasonVotes, setSeasonVotes }) {
 /* ------------------------------------------------------------------ */
 /* Tippspiel                                                            */
 /* ------------------------------------------------------------------ */
-function TippView({ members, currentUser, tippPredictions, setTippPredictions, tippResults }) {
+function TippView({ members, currentUser, events, tippPredictions, setTippPredictions, tippResults }) {
+  const begegnungen = tippBegegnungen(events);
   const mine = tippPredictions[currentUser.id] || {};
   const setPred = (matchId, side, val) => {
     setTippPredictions((tp) => {
@@ -5656,7 +5674,7 @@ function TippView({ members, currentUser, tippPredictions, setTippPredictions, t
       return { ...tp, [currentUser.id]: { ...userPreds, [matchId]: { ...cur, [side]: val } } };
     });
   };
-  const leaderboard = members.map((member) => ({ ...member, calculatedTippPoints: totalTippPoints(member.id, tippPredictions, tippResults) }))
+  const leaderboard = members.map((member) => ({ ...member, calculatedTippPoints: totalTippPoints(member.id, tippPredictions, tippResults, begegnungen) }))
     .sort((a, b) => b.calculatedTippPoints - a.calculatedTippPoints);
 
   return (
@@ -5684,12 +5702,12 @@ function TippView({ members, currentUser, tippPredictions, setTippPredictions, t
       </div>
 
       <SectionTitle eyebrow="Nächste Spiele" title="Jetzt tippen" />
-      {TIPP_MATCHES.length === 0 && (
+      {begegnungen.length === 0 && (
         <div className="rounded-2xl p-4 mb-3 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>
-          Für das Tippspiel sind noch keine Begegnungen hinterlegt. Sobald der Verein Spiele einträgt, könnt ihr hier tippen.
+          Noch keine Spiele im Terminplan. Sobald der Verein welche einträgt, könnt ihr hier tippen.
         </div>
       )}
-      {TIPP_MATCHES.map((match) => {
+      {begegnungen.map((match) => {
         const result = tippResults[match.id];
         const locked = new Date(match.date) < new Date() || !!result;
         const pred = mine[match.id] || { home: "", away: "" };
@@ -5697,17 +5715,17 @@ function TippView({ members, currentUser, tippPredictions, setTippPredictions, t
         return (
           <div key={match.id} className="rounded-2xl p-4 mb-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
             <div className="flex items-center justify-between mb-3">
-              <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{formatDate(match.date)} · {formatTime(match.date)}</div>
+              <div><div className="text-sm font-bold" style={{ color: C.ink, fontFamily: "Inter" }}>{match.titel}</div><div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{formatDate(match.date)} · {formatTime(match.date)}{match.team ? ` · ${match.team}` : ""}</div></div>
               {result ? <Pill bg={C.green}>Endstand {result.home}:{result.away} · +{earned} P</Pill> : locked ? <Pill bg={C.textDim}>Wartet auf Ergebnis</Pill> : null}
             </div>
             <div className="flex items-center justify-center gap-3">
-              <span className="text-sm flex-1 text-right" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{match.home}</span>
+              <span className="text-sm flex-1 text-right" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Wir</span>
               <input type="number" min="0" disabled={locked} value={pred.home} onChange={(e) => setPred(match.id, "home", e.target.value)}
                 className="w-12 text-center py-1.5 rounded-lg text-sm outline-none" style={{ background: C.paperDim, fontFamily: "JetBrains Mono", fontWeight: 700 }} />
               <span style={{ color: C.textDim }}>:</span>
               <input type="number" min="0" disabled={locked} value={pred.away} onChange={(e) => setPred(match.id, "away", e.target.value)}
                 className="w-12 text-center py-1.5 rounded-lg text-sm outline-none" style={{ background: C.paperDim, fontFamily: "JetBrains Mono", fontWeight: 700 }} />
-              <span className="text-sm flex-1" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{match.away}</span>
+              <span className="text-sm flex-1" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Gegner</span>
             </div>
           </div>
         );
@@ -6057,7 +6075,7 @@ function OverviewPanel({ members, events, feePaid, protocols, dutyPlan, seasonVo
     const plan = dutyPlan[ev.id] || {};
     ev.helperSlots.forEach((s) => { totalSlots += STATION_CAP; openSlots += STATION_CAP - (plan[s]?.length || 0); });
   });
-  const { total: seasonTotal } = seasonResults(seasonVotes);
+  const { total: seasonTotal } = seasonResults(seasonVotes, saisonKandidaten(members));
   /* Zeigte bislang den ersten Eintrag des Demo-Feldes - in einem echten Verein
      also einen Termin, den es dort nie gab. Jetzt der naechste echte. */
   const nextEvent = [...(events || [])]
@@ -6148,7 +6166,8 @@ function PollManagerPanel({ polls, setPolls, clubId }) {
   return <div className="space-y-4"><div className="rounded-2xl p-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">Neue Mitmach-Umfrage</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>Mindestens zwei Antwortmöglichkeiten eintragen.</div><input value={title} onChange={(e)=>setTitle(e.target.value)} placeholder="Frage oder Titel" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim}}/>{options.map((o,i)=><input key={i} value={o} onChange={(e)=>setOptions((all)=>all.map((x,idx)=>idx===i?e.target.value:x))} placeholder={`Antwort ${i+1}`} className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2" style={{background:C.paperDim}}/>)}<div className="flex gap-2"><button onClick={()=>setOptions((o)=>[...o,""])} className="px-3 py-2 rounded-lg text-xs font-bold" style={{background:C.paperDim,color:C.ink}}>＋ Antwort</button><button onClick={create} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{background:C.red,color:C.white}}>Veröffentlichen</button></div></div><div className="space-y-2">{polls.map((poll)=><div key={poll.id} className="rounded-xl p-3 flex items-center gap-3" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="flex-1"><div className="text-xs font-bold">{poll.title}</div><div className="text-[10px] mt-1" style={{color:C.textDim}}>{poll.options.length} Antworten · {poll.options.reduce((n,o)=>n+o.votes,0)} Stimmen</div></div><button onClick={()=>setPolls((ps)=>ps.map((p)=>p.id===poll.id?{...p,active:!p.active}:p))} className="px-2.5 py-1.5 rounded-full text-[10px] font-bold" style={{background:poll.active?"rgba(231,243,236,0.72)":C.paperDim,color:poll.active?C.green:C.textDim}}>{poll.active?"Aktiv":"Inaktiv"}</button></div>)}</div></div>;
 }
 
-function MatchResultsPanel({ results, onSave }) {
+function MatchResultsPanel({ results, onSave, events }) {
+  const begegnungen = tippBegegnungen(events);
   const [drafts, setDrafts] = useState({});
   const [savedId, setSavedId] = useState(null);
   const update = (matchId, side, value) => setDrafts((current) => ({
@@ -6168,18 +6187,18 @@ function MatchResultsPanel({ results, onSave }) {
         <div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Ergebnisse & Punkte</div>
         <div className="text-xs" style={{ color: C.textDim }}>Endstand nach dem Spiel eintragen. Das System wertet danach alle Tipps aus: exakt 3 Punkte, richtige Tendenz 1 Punkt.</div>
       </div>
-      {TIPP_MATCHES.length === 0 && (
+      {begegnungen.length === 0 && (
         <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>
-          Es sind noch keine Begegnungen für das Tippspiel hinterlegt.
+          Noch keine Spiele im Terminplan, für die sich ein Ergebnis eintragen ließe.
         </div>
       )}
       <div className="space-y-3">
-        {TIPP_MATCHES.map((match) => {
+        {begegnungen.map((match) => {
           const values = drafts[match.id] || results[match.id] || { home: "", away: "" };
           return (
             <div key={match.id} className="rounded-2xl p-4" style={{ background: C.glass, border: `1px solid ${results[match.id] ? "#A9D8B6" : C.line}` }}>
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs" style={{ color: C.textDim }}>{formatDate(match.date)} · {formatTime(match.date)}</span>
+                <div><div className="text-xs font-bold" style={{ color: C.ink }}>{match.titel}</div><span className="text-[11px]" style={{ color: C.textDim }}>{formatDate(match.date)} · {formatTime(match.date)}</span></div>
                 {results[match.id] && <Pill bg={C.green}>ausgewertet</Pill>}
               </div>
               <div className="flex items-center gap-2 mb-3">
@@ -6941,14 +6960,14 @@ function AdminView({
       {panel === "sponsoring" && <SponsoringPanel bookings={sponsorBookings} setBookings={setSponsorBookings} stats={sponsorStats} currentClub={currentClub} clubFeatures={clubFeatures} onFeaturesChanged={onClubFeaturesChanged} />}
       {panel === "polls" && <PollManagerPanel polls={polls} setPolls={setPolls} clubId={currentUser.clubId} />}
       {panel === "roles" && <><RolesPanel members={members} setMembers={setMembers} /><ClaimManagedPlayerPanel members={members} setMembers={setMembers} currentUser={currentUser} /></>}
-      {panel === "results" && currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role)) && <MatchResultsPanel results={tippResults} onSave={onSaveTippResult} />}
+      {panel === "results" && currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role)) && <MatchResultsPanel results={tippResults} onSave={onSaveTippResult} events={events} />}
       {panel === "families" && isSysAdmin(currentUser) && <AdminFamilyPanel members={members} setMembers={setMembers} />}
       {panel === "system" && isSysAdmin(currentUser) && (
         <SystemPanel members={members} channels={channels} setChannels={setChannels} maintenanceMode={maintenanceMode} setMaintenanceMode={setMaintenanceMode} onResetDemo={onResetDemo} />
       )}
 
       {panel === "season" && (() => {
-        const { counts, total, sorted } = seasonResults(seasonVotes);
+        const { counts, total, sorted } = seasonResults(seasonVotes, saisonKandidaten(members));
         return (
           <div>
             <div className="text-xs mb-3" style={{ color: C.textDim, fontFamily: "Inter" }}>Nur für den Vorstand sichtbar — {total} Stimmen bisher.</div>
@@ -7685,7 +7704,7 @@ export default function ClubMemberOrganisationApp() {
       const nextResults = { ...currentResults, [matchId]: result };
       setMembers((currentMembers) => currentMembers.map((member) => ({
         ...member,
-        tippPoints: totalTippPoints(member.id, tippPredictions, nextResults),
+        tippPoints: totalTippPoints(member.id, tippPredictions, nextResults, tippBegegnungen(events)),
       })));
       return nextResults;
     });
@@ -7775,8 +7794,8 @@ export default function ClubMemberOrganisationApp() {
             )}
 
             <div key={`${tab}-${subView || ""}`} className="tabFade flex-1 overflow-y-auto" style={{ background: C.paper }}>
-              {subView === "season" && featureEnabled("season_award") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Athlet/in der Saison"><SeasonVoteView currentUser={currentUser} seasonVotes={seasonVotes} setSeasonVotes={setSeasonVotes} /></LockedFeature>}
-              {subView === "tipp" && featureEnabled("tippspiel") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Tippspiel"><TippView members={clubMembers} currentUser={currentUser} tippPredictions={tippPredictions} setTippPredictions={setTippPredictions} tippResults={tippResults} /></LockedFeature>}
+              {subView === "season" && featureEnabled("season_award") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Athlet/in der Saison"><SeasonVoteView currentUser={currentUser} members={clubMembers} seasonVotes={seasonVotes} setSeasonVotes={setSeasonVotes} /></LockedFeature>}
+              {subView === "tipp" && featureEnabled("tippspiel") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Tippspiel"><TippView members={clubMembers} currentUser={currentUser} events={events} tippPredictions={tippPredictions} setTippPredictions={setTippPredictions} tippResults={tippResults} /></LockedFeature>}
               {subView === "duty" && featureEnabled("duty_roster") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Helferplanung"><DutyView members={clubMembers} currentUser={currentUser} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} /></LockedFeature>}
               {subView === "tasks" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Aufgaben"><TasksView currentUser={currentUser} members={clubMembers} /></LockedFeature>}
               {subView === "vehicles" && featureEnabled("vehicle_booking") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Vereinsfahrzeuge"><VehiclesView currentUser={currentUser} currentClub={currentClub} /></LockedFeature>}
