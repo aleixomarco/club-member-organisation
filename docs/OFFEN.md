@@ -1,66 +1,87 @@
 # Was noch offen ist
 
-Stand 21.08.2026. Alles Technische ist erledigt und geprüft. Es fehlen drei
-Eingaben in App Store Connect.
+Stand: 30.08.2026, nach dem Apple-Vorabcheck.
+
+Alles, was sich aus dem Code oder über eine Schnittstelle lösen ließ, ist
+erledigt und ausgeliefert. Hier steht, was Zugänge braucht, die nur der
+Betreiber hat.
 
 ---
 
-## 1 — Die zwei Basic-Abos in den Übermittlungsentwurf
+## 1. Der RevenueCat-Webhook — blockiert die Einreichung
 
-Im Entwurf stand zuletzt nur die App-Version. Ohne die Abos prüft Apple eine
-App, die Käufe anbietet, deren Produkte nicht mitgeprüft werden.
+**Befund:** `payment_events` ist leer. Nicht seit gestern, sondern seit es die
+Tabelle gibt. Beim Sandbox-Testkauf am 30.08. lief der Kauf bei Apple durch,
+kam aber nie in der Datenbank an.
 
-Vereinstarife → **Verein Basic Monat** → oben rechts *Zur Prüfung hinzufügen*.
-Dasselbe bei **Verein Basic Jahr**.
+**Folge:** Der Zugang hängt an `club_subscriptions`. Solange dort nichts
+ankommt, ist jeder Kauf bezahlt und wirkungslos — Richtlinie 2.1, einer der
+häufigsten Ablehnungsgründe. Dass es bisher niemandem auffiel, liegt nur an den
+manuellen Abos von ERG Iserlohn und SV Musterstadt.
 
-Danach müssen vier Elemente im Entwurf stehen: App-Version, zwei Abos, Gruppe.
+**Zu prüfen:** RevenueCat → Integrations → Webhooks
 
-## 2 — Demo-Zugang eintragen
+| | |
+|---|---|
+| URL | `https://club-member-organisation.vercel.app/api/revenuecat/webhook` |
+| Authorization | exakt der Wert von `REVENUECAT_WEBHOOK_SECRET` aus Vercel |
 
-Versionsseite → **App-Prüfungsinformationen** → Benutzername und Passwort.
+Zwei mögliche Ursachen, beide dort sichtbar:
 
-Geeignet ist das Konto eines dieser drei Vereine:
+1. **Kein Webhook eingetragen.** Dann geht nichts hinaus.
+2. **Falscher Authorization-Header.** Der Endpunkt antwortet dann mit 401 —
+   und zwar *bevor* er protokolliert. Von außen sieht das aus wie „nie gerufen".
 
-    ERGI TEST
-    Ringen Iserlohn
-    Schwimmen Iserlohn
+RevenueCat zeigt unter Webhooks die Zustellversuche samt Fehlercode. Daran ist
+sofort erkennbar, welcher der beiden Fälle vorliegt.
 
-Alle drei haben genau ein Konto und kein Abo. Wer einen Verein anlegt, wird
-laut register_for_club automatisch vereinsadmin - damit ist der Kaufbereich
-sichtbar, und weil kein Abo läuft, kann der Prüfer den Kauf durchspielen.
+**Gegenprobe nach der Korrektur:** Testkauf wiederholen, dann
 
-Passwort unbekannt: in der App "Passwort vergessen" nutzen. Danach selbst
-anmelden und prüfen, ob unter Profil → Einstellungen → Abo & Empfehlungen die
-Tarifauswahl erscheint.
+```sql
+select provider, event_type, payload->>'environment', processed_at
+from public.payment_events order by processed_at desc limit 5;
+```
 
-Prüfhinweise: siehe docs/einreichung-texte.md
-
-## 3 — Übermitteln
-
-Entwurf öffnen, vier Elemente prüfen, *Zur Prüfung übermitteln*.
+Steht dort ein Eintrag, ist die Kette geschlossen.
 
 ---
 
-# Was bereits erledigt ist
+## 2. Push-Benachrichtigungen auf iOS
 
-    Lizenzvertrag angenommen
-    Alte Übermittlung abgebrochen
-    Premium- und Mitglieds-Abos aus dem Verkauf genommen
-    Basic-Preise auf 24,99 / 239,99 geändert
-    Basic-Beschreibungen aktualisiert
-    App-Beschreibung mit Pflichtlinks (behebt Guideline 3.1.2)
-    Datenschutz-URL eingetragen
-    PROD-Datenbank auf dem neuen Tarifmodell
-    main deployed, Live-Bedingungen nennen nur Basic
-    Plus und Pro in der App ausgeblendet
+**Befund:** Der einzige Push-Code ist Firebase *Web* Push. Im WKWebView gibt es
+weder `Notification` noch `serviceWorker`, die Funktion kehrt sofort mit
+„unsupported" zurück. Das native Plugin `@capacitor/push-notifications` liegt
+zwar als Abhängigkeit bei und `aps-environment` steht in den Entitlements, aber
+aufgerufen wird es nirgends.
 
-# Wenn Plus und Pro dazukommen sollen
+**Derzeit:** Die Karte ist in der nativen App ausgeblendet. Sie verspricht also
+nichts, was sie nicht hält. Benachrichtigungen *innerhalb* der App laufen über
+die Datenbank und funktionieren.
 
-Vier Produkte in App Store Connect anlegen (club_plus_monthly,
-club_plus_yearly, club_pro_monthly, club_pro_yearly - Werte in
-docs/produkte-einrichten.md), dann in lib/preise.ts:
+**Was fehlt:** ein APNs-Schlüssel in Firebase, die Registrierung über das native
+Plugin, die Weiterleitung im AppDelegate und der Versandweg auf dem Server. Der
+Schlüssel liegt in deinem Apple-Developer-Konto — ohne ihn geht keiner der
+Schritte.
 
-    export const KAUFBARE_TARIFE: Vereinstarif[] = ["basic", "plus", "pro"];
+---
 
-Tarifübersicht, Kaufmaske und Nutzungsbedingungen ziehen automatisch nach.
-Danach die App-Beschreibung wieder um Plus und Pro ergänzen.
+## 3. Zwei Kleinigkeiten aus dem Testkauf
+
+- Das Testkonto heißt im Chat **„TT"** (Test Trainer). Für Bildschirmfotos
+  besser einen normalen Namen im Profil hinterlegen.
+- Die Nachricht **„Hallo A"** im Mannschaftschat liest sich wie ein
+  abgebrochener Test. Ersetzen, falls davon noch ein Bild entsteht.
+
+---
+
+## Erledigt und nachgeprüft
+
+Zur Abgrenzung, was *nicht* mehr offen ist:
+
+- Vier Datenbank-Migrationen eingespielt und am lebenden System kontrolliert
+- Build 5 an die Version gehängt (ausgewählt war Build 1 vom 17.08.)
+- Beschreibung ohne Testzeitraum, vier Bildschirmfotos ausgetauscht
+- Demo-Inhalte aus dem gespeicherten Zustand aller fünf Vereine entfernt
+- Tippspiel und Saisonwahl arbeiten mit echten Daten statt mit Leerfassungen
+- Der Kauf meldet nur noch Erfolg, wenn die Freischaltung wirklich ankam
+- Zwei Administratoren überschreiben sich nicht mehr gegenseitig
