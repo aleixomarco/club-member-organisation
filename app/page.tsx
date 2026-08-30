@@ -4681,9 +4681,24 @@ function SubscriptionPanel({ user }) {
       {[['monthly', 'Monatlich'], ['yearly', 'Jährlich']].map(([value, label]) => <button key={value} onClick={() => { setCycle(value); setMessage(""); setWithdrawalConsent(false); }} className="py-2 rounded-xl text-xs font-bold" style={{ background: cycle === value ? "rgba(252,235,238,0.72)" : C.paperDim, color: cycle === value ? C.red : C.textDim, border: cycle === value ? `1px solid ${C.red}` : "1px solid transparent" }}>{label}</button>)}
     </div>
     <div className="rounded-xl p-3 mb-3" style={{ background: C.paperDim }}>
-      <div className="text-xl font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{isNative ? (nativeOfferings?.[tier]?.[cycle]?.product.priceString || selected.price) : selected.price}</div>
-      <div className="text-[10px]" style={{ color: C.textDim }}>{cycle === "yearly" ? "jährlich im Voraus" : "pro Monat"}{selected.equivalent ? ` · ${selected.equivalent}` : ""}</div>
-      <div className="text-[10px] mt-2" style={{ color: C.textDim }}>19 % Umsatzsteuer im Preis enthalten. Keine Probezeit — der Verein hatte bereits 2 Wochen kostenlosen Testzeitraum ab Registrierung.</div>
+      {(() => {
+        /* Der Store nennt den Preis in der Waehrung des Kontos - bei einem
+           Sandbox-Konto aus den USA steht dort $22.99 statt 24,99 EUR. Der
+           Hinweis auf 19 % Umsatzsteuer passt dann nicht mehr; er gilt nur fuer
+           den deutschen Preis. Deshalb haengt er am tatsaechlich angezeigten
+           Betrag, nicht an einer Annahme. */
+        const angezeigt = isNative ? (nativeOfferings?.[tier]?.[cycle]?.product?.priceString || selected.price) : selected.price;
+        const inEuro = /€|EUR/.test(String(angezeigt));
+        return <>
+          <div className="text-xl font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{angezeigt}</div>
+          <div className="text-[10px]" style={{ color: C.textDim }}>{cycle === "yearly" ? "jährlich im Voraus" : "pro Monat"}{inEuro && selected.equivalent ? ` · ${selected.equivalent}` : ""}</div>
+          {/* Hier stand zusaetzlich "Keine Probezeit - der Verein hatte bereits
+              2 Wochen kostenlosen Testzeitraum ab Registrierung." Den
+              Testzeitraum gibt es nicht mehr; der Satz behauptete also etwas
+              Falsches, ausgerechnet im Kaufbereich. */}
+          {inEuro && <div className="text-[10px] mt-2" style={{ color: C.textDim }}>19 % Umsatzsteuer im Preis enthalten.</div>}
+        </>;
+      })()}
       <div className="text-[10px] mt-1.5" style={{ color: C.textDim }}>Mindestlaufzeit {cycle === "yearly" ? "12 Monate" : "1 Monat"}. Verlängert sich automatisch um {cycle === "yearly" ? "weitere 12 Monate" : "einen weiteren Monat"}, jederzeit zum Laufzeitende kündbar.</div>
     </div>
     {isNative ? (
