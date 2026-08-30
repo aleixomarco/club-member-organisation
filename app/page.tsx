@@ -4545,12 +4545,43 @@ function SubscriptionPanel({ user }) {
   /* Vereinsabo: läuft auf die Vereins-ID. Die Kennung steht hier ausdrücklich,
      damit der Kauf nicht versehentlich auf der Profil-ID landet, falls zuvor
      die Mitglieder-Angebote geladen wurden. */
+  /* Welcher Preis angezeigt wird.
+
+     Grundsatz: Was der Store nennt, gilt - der Nutzer wird schliesslich vom
+     Store abgebucht. Aber nur, wenn es auch Euro sind.
+
+     Beim Testen fiel auf, dass RevenueCat $22.99 lieferte, waehrend Apples
+     eigener Kaufdialog 24,99 EUR anzeigte: Der Store-Preis kam aus einer
+     anderen Waehrungsregion als die tatsaechliche Abrechnung. Diese App
+     verkauft an deutsche Vereine, alle Texte und Rechtsseiten sind deutsch,
+     und die hinterlegten Preise in lib/preise.ts sind Euro. Ein Dollarbetrag
+     daneben ist dann keine Genauigkeit, sondern ein Fehler.
+
+     Deshalb: Store-Preis nur uebernehmen, wenn er auf Euro lautet. Sonst der
+     hinterlegte deutsche Preis. */
+  const istEuro = (preis) => typeof preis === "string" && /€|EUR/.test(preis);
+  const storePreis = (schluessel, takt) => {
+    const p = isNative ? nativeOfferings?.[schluessel]?.[takt]?.product?.priceString : null;
+    return istEuro(p) ? p : null;
+  };
+
   const buyNativePackage = async () => {
     const pkg = nativeOfferings?.[tier]?.[cycle];
     if (!pkg) { setMessage("Dieses Paket ist im Store noch nicht verfügbar."); return; }
     setPurchasing(true); setMessage("");
     try {
-      await purchasePackageAs(user.clubId, pkg);
+      const kundeninfo = await purchasePackageAs(user.clubId, pkg);
+
+      /* Ein Abo gehoert bei Apple der Apple-ID, nicht dem Verein. Wer dasselbe
+         Produkt schon einmal gekauft hat, bekommt beim zweiten Verein kein
+         neues Abo, sondern "Du hast diesen Artikel derzeit abonniert" - und
+         damit auch keinen neuen Kaufvorgang, den RevenueCat melden koennte.
+
+         Das ist keine Stoerung, sondern Apples Modell. Nur muss man es sagen,
+         sonst steht der Grunder eines zweiten Vereins vor einer Freischaltung,
+         die nie kommt, und sucht den Fehler bei sich. */
+      const schonAktiv = Object.keys(kundeninfo?.entitlements?.active || {}).length > 0
+        || (kundeninfo?.activeSubscriptions || []).length > 0;
 
       /* Der Kauf bei Apple ist damit durch - die Freischaltung aber noch nicht.
          Dazwischen liegt der Webhook von RevenueCat, der den Kauf in
@@ -4597,7 +4628,9 @@ function SubscriptionPanel({ user }) {
         /* Kein Grund zur Panik fuer den Kaeufer - bezahlt ist bezahlt, und ein
            verspaeteter Webhook holt es nach. Aber es wird gesagt, statt einen
            Erfolg vorzutaeuschen. */
-        setMessage("Der Kauf ist bei Apple angekommen, die Freischaltung steht aber noch aus. Das kann ein paar Minuten dauern. Bleibt es dabei, melde dich bitte beim Verein — der Kauf geht dabei nicht verloren.");
+        setMessage(schonAktiv
+          ? "Dieses Abo läuft bereits über deine Apple-ID — vermutlich für einen anderen Verein. Ein Abo gehört bei Apple der Apple-ID, nicht dem Verein, deshalb lässt sich dasselbe Produkt kein zweites Mal kaufen. Für einen weiteren Verein braucht es eine andere Apple-ID; sprich uns sonst gerne an."
+          : "Der Kauf ist bei Apple angekommen, die Freischaltung steht aber noch aus. Das kann ein paar Minuten dauern. Bleibt es dabei, melde dich bitte beim Verein — der Kauf geht dabei nicht verloren.");
       }
     } catch (error) {
       if (!error?.userCancelled) setMessage(error?.message || "Der Kauf konnte nicht abgeschlossen werden.");
@@ -4713,9 +4746,9 @@ function SubscriptionPanel({ user }) {
                 Store Connect stuenden zwei verschiedene Preise fuer dasselbe Abo
                 auf einem Bildschirm. */}
             <div className="flex items-baseline gap-2 flex-wrap">
-              <span className="text-lg font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{(isNative && nativeOfferings?.[key]?.monthly?.product?.priceString) || CLUB_TIER_PRICES[key].monthly.price}</span>
+              <span className="text-lg font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{storePreis(key, "monthly") || CLUB_TIER_PRICES[key].monthly.price}</span>
               <span className="text-[10px]" style={{ color: C.textDim }}>pro Monat</span>
-              <span className="text-[10px]" style={{ color: C.textDim }}>· jährlich {(isNative && nativeOfferings?.[key]?.yearly?.product?.priceString) || CLUB_TIER_PRICES[key].yearly.equivalent}</span>
+              <span className="text-[10px]" style={{ color: C.textDim }}>· jährlich {storePreis(key, "yearly") || CLUB_TIER_PRICES[key].yearly.equivalent}</span>
             </div>
           </div>
         );
@@ -4744,21 +4777,18 @@ function SubscriptionPanel({ user }) {
     </div>
     <div className="rounded-xl p-3 mb-3" style={{ background: C.paperDim }}>
       {(() => {
-        /* Der Store nennt den Preis in der Waehrung des Kontos - bei einem
-           Sandbox-Konto aus den USA steht dort $22.99 statt 24,99 EUR. Der
-           Hinweis auf 19 % Umsatzsteuer passt dann nicht mehr; er gilt nur fuer
-           den deutschen Preis. Deshalb haengt er am tatsaechlich angezeigten
-           Betrag, nicht an einer Annahme. */
-        const angezeigt = isNative ? (nativeOfferings?.[tier]?.[cycle]?.product?.priceString || selected.price) : selected.price;
-        const inEuro = /€|EUR/.test(String(angezeigt));
+        /* Der angezeigte Preis ist immer Euro - entweder der Store-Preis, wenn
+           er auf Euro lautet, oder der hinterlegte deutsche. Siehe storePreis().
+           Der Umsatzsteuerhinweis gilt damit durchgaengig. */
+        const angezeigt = storePreis(tier, cycle) || selected.price;
         return <>
           <div className="text-xl font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{angezeigt}</div>
-          <div className="text-[10px]" style={{ color: C.textDim }}>{cycle === "yearly" ? "jährlich im Voraus" : "pro Monat"}{inEuro && selected.equivalent ? ` · ${selected.equivalent}` : ""}</div>
+          <div className="text-[10px]" style={{ color: C.textDim }}>{cycle === "yearly" ? "jährlich im Voraus" : "pro Monat"}{selected.equivalent ? ` · ${selected.equivalent}` : ""}</div>
           {/* Hier stand zusaetzlich "Keine Probezeit - der Verein hatte bereits
               2 Wochen kostenlosen Testzeitraum ab Registrierung." Den
               Testzeitraum gibt es nicht mehr; der Satz behauptete also etwas
               Falsches, ausgerechnet im Kaufbereich. */}
-          {inEuro && <div className="text-[10px] mt-2" style={{ color: C.textDim }}>19 % Umsatzsteuer im Preis enthalten.</div>}
+          <div className="text-[10px] mt-2" style={{ color: C.textDim }}>19 % Umsatzsteuer im Preis enthalten.</div>
         </>;
       })()}
       <div className="text-[10px] mt-1.5" style={{ color: C.textDim }}>Mindestlaufzeit {cycle === "yearly" ? "12 Monate" : "1 Monat"}. Verlängert sich automatisch um {cycle === "yearly" ? "weitere 12 Monate" : "einen weiteren Monat"}, jederzeit zum Laufzeitende kündbar.</div>
