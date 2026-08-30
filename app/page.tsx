@@ -7230,6 +7230,12 @@ export default function ClubMemberOrganisationApp() {
   const [polls, setPolls] = useState(INITIAL_POLLS);
   const [adminStateLoaded, setAdminStateLoaded] = useState(false);
   const adminSaveTimer = useRef(null);
+  /* Der Stand, wie er beim Anmelden aus der Datenbank kam. Beim Speichern wird
+     er mit dem jetzigen verglichen: Geschrieben wird nur, was sich seither
+     wirklich geaendert hat. Ohne das schreibt jeder Administrator den ganzen
+     Block - und macht damit die Aenderungen aller anderen zunichte, die er beim
+     Anmelden noch nicht kannte. */
+  const geladenerZustand = useRef({});
 
   useEffect(() => {
     setFeePaid(Object.fromEntries(members.map((member) => {
@@ -7309,11 +7315,29 @@ export default function ClubMemberOrganisationApp() {
     clearTimeout(adminSaveTimer.current);
     adminSaveTimer.current = setTimeout(async () => {
       const { data: authData } = await supabase.auth.getUser();
+
+      /* Erst nachsehen, was inzwischen drinsteht, dann nur die eigenen
+         Aenderungen darauflegen. Vorher schrieb jeder Administrator den
+         kompletten Block aus seinem Arbeitsspeicher - wer sich um zehn
+         angemeldet und um elf etwas gespeichert hat, loeschte damit alles,
+         was ein anderer dazwischen geaendert hatte. */
+      const { data: aktuell } = await supabase.from("club_app_state").select("state").eq("club_id", selectedClubId).maybeSingle();
+      const basis = aktuell?.state || {};
+      const jetzt = {
+        dutyPlan, protocols, remindersSent, welcomeAutomation, billingAutomation,
+        polls, tippResults, maintenanceMode, seasonVotes, sponsorStats, sponsorBookings, dashboardTileOrder,
+      };
+      const meineAenderungen = {};
+      for (const [schluessel, wert] of Object.entries(jetzt)) {
+        if (JSON.stringify(wert) !== JSON.stringify(geladenerZustand.current?.[schluessel])) meineAenderungen[schluessel] = wert;
+      }
+      if (Object.keys(meineAenderungen).length === 0) return;
+
       await supabase.from("club_app_state").upsert({
         club_id: selectedClubId,
         state: {
-          dutyPlan, protocols, remindersSent, welcomeAutomation, billingAutomation,
-          polls, tippResults, maintenanceMode, seasonVotes, sponsorStats, sponsorBookings, dashboardTileOrder,
+          ...basis,
+          ...meineAenderungen,
           /* Termine stehen ebenfalls in einer eigenen Tabelle und werden hier
              nicht mehr mitgeschrieben. Sie standen doppelt: einmal in events,
              einmal in diesem Block - und waren bereits auseinandergelaufen. Beim
@@ -7329,6 +7353,9 @@ export default function ClubMemberOrganisationApp() {
         },
         updated_by: authData?.user?.id || null,
       });
+      /* Ab jetzt gilt der eigene Stand als bekannt - sonst gaelte dieselbe
+         Aenderung beim naechsten Speichern erneut als neu. */
+      geladenerZustand.current = { ...basis, ...meineAenderungen };
     }, 700);
     return () => clearTimeout(adminSaveTimer.current);
   }, [adminStateLoaded, selectedClubId, currentUserId, events, dutyPlan, protocols, remindersSent, welcomeAutomation, billingAutomation, polls, tippResults, maintenanceMode, seasonVotes, sponsorStats, sponsorBookings, dashboardTileOrder, channels]);
@@ -7435,6 +7462,7 @@ export default function ClubMemberOrganisationApp() {
     const { data: savedAppState, error: appStateError } = await supabase.from("club_app_state").select("state").eq("club_id", clubId).maybeSingle();
     if (appStateError) return { error: "Die Verwaltungsdaten konnten nicht geladen werden." };
     const saved = savedAppState?.state || {};
+    geladenerZustand.current = saved;
     /* Termine kommen aus der events-Tabelle, nicht von hier - sonst
        ueberschreibt ein alter Zustandsblock den echten Spielplan. */
     if (saved.dutyPlan) setDutyPlan(saved.dutyPlan);
