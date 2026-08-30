@@ -252,13 +252,51 @@ Fehler, den sie behebt.
 
 ---
 
+## Vierte Runde: die „widerlegten" Funde selbst nachgeprüft
+
+Die zweite Durchsicht hatte 16 Verdachtsfälle als widerlegt eingestuft. Ich habe
+alle 16 selbst nachgeprüft, statt den Überschriften zu vertrauen — **neun waren
+echt.**
+
+| Fund | Richtlinie | Ergebnis |
+|---|---|---|
+| Kein Datenschutz-Link im Kaufbereich | 3.1.2 | behoben |
+| „Käufe wiederherstellen" stellte nichts wieder her | 3.1.1 | behoben |
+| Zwei verschiedene Preise für dasselbe Abo möglich | 3.1.2 | behoben |
+| Gemeldete Nachrichten nicht entfernbar | 1.2 | eingebaut |
+| Registrierung bot Demo-Mannschaften an | 2.1 | behoben |
+| Rollenverwaltung ebenso | 2.1 | behoben |
+| Hook-Reihenfolge im Chat | 2.1 | behoben |
+| Rechtsseiten ohne sichere Bereiche | 4.0 | behoben |
+| Store-Datenschutzangaben widersprachen dem Code | 5.1.1 | korrigiert |
+
+Die restlichen sieben halten der Prüfung stand:
+
+- Die öffentliche Löschanleitung ist richtig: Sie beschreibt die Löschung in der
+  App und nennt einen E-Mail-Weg für alle, die sich nicht mehr anmelden können.
+- Melden per `mailto:` funktioniert — Capacitor öffnet fremde Schemata über
+  `UIApplication.shared.open` (WebViewDelegationHandler.swift:111).
+- Blockieren wirkt im Chat und bleibt erhalten. Dass es am Anzeigenamen hängt
+  und nur lokal gilt, ist eine Schwäche, aber kein Verstoß.
+- Eine Altersschranke bei der Registrierung würde legitime Jugendmitglieder
+  aussperren. Das ist eine Entscheidung des Betreibers, keine technische
+  Korrektur. Getragen wird die Lage dadurch, dass Minderjährige im Chat lesen,
+  aber nicht schreiben können — durchgesetzt per `write_roles` in der Datenbank.
+
+---
+
 ## Was der Prüfung noch fehlt
 
 **Die Sandbox-Zahlung.** Sie verlangt ein Gerät und ein Apple-Sandbox-Konto und
 ist von einer Kommandozeile aus nicht durchführbar. Jedes andere Glied der
 Kaufkette ist einzeln belegt (siehe oben).
 
-**Die Migration in der Produktionsdatenbank.** `20260829120000_news_author_loeschbar.sql`
-liegt bereit, muss aber im Supabase-SQL-Editor ausgeführt werden. Bis dahin
-scheitert die Kontolöschung weiterhin für jeden, der eine Neuigkeit verfasst
-hat — Richtlinie 5.1.1(v).
+**Zwei Migrationen in der Produktionsdatenbank.** Sie liegen bereit, müssen aber
+im Supabase-SQL-Editor ausgeführt werden — die Kommandozeile hier hat weder ein
+Zugangstoken noch ein verknüpftes Projekt.
+
+- `20260829120000_news_author_loeschbar.sql` — bis dahin scheitert die
+  Kontolöschung für jeden, der eine Neuigkeit verfasst hat (5.1.1(v)).
+- `20260829140000_nachrichten_loeschen.sql` — bis dahin lehnt die Datenbank
+  jedes Löschen einer Nachricht ab. Die Oberfläche zeigt dann eine Fehlermeldung,
+  statt stillschweigend nichts zu tun.
