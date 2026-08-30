@@ -2544,7 +2544,19 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
       </div>
     );
   }
-  const canPost = isAdmin(user) || (active.id === "news" && user.roles.includes("redakteur")) || (!active.adminOnly && (!active.writeRoles || active.writeRoles.some((r) => user.roles.includes(r))));
+  /* Wer schreiben darf, entscheiden die Schreibrollen des Kanals - sofern er
+     welche hat. Nur wenn keine hinterlegt sind, greift adminOnly.
+
+     Vorher stand hier "!active.adminOnly && ..." vor der Rollenpruefung. Beim
+     Laden aus der Datenbank wird adminOnly aber auf true gesetzt, sobald ein
+     Kanal ueberhaupt Schreibrollen hat (write_roles ist bei jedem
+     Mannschaftskanal gefuellt). Die Rollenpruefung wurde damit nie erreicht,
+     und uebrig blieb allein isAdmin. Trainer, Kapitaene und Teammanager standen
+     also in write_roles, durften in der Oberflaeche aber nicht schreiben -
+     obwohl die Datenbank es ihnen erlaubt haette. */
+  const canPost = isAdmin(user)
+    || (active.id === "news" && user.roles.includes("redakteur"))
+    || (active.writeRoles ? active.writeRoles.some((r) => user.roles.includes(r)) : !active.adminOnly);
 
   const persistBlocked = (next) => {
     setBlocked(next);
