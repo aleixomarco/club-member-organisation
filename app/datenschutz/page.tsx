@@ -11,7 +11,7 @@ export default function PrivacyPage() { return <LegalShell title="Datenschutzerk
     <li><strong>Konto- und Stammdaten</strong> (Name, E-Mail, Geburtsdatum, Adresse, Kontaktdaten, Mitgliedsnummer, Rollen, Mannschaftszugehörigkeit) — zur Erfüllung des Nutzungsvertrags und der Vereinsverwaltung, Art. 6 Abs. 1 lit. b DSGVO.</li>
     <li><strong>Familienverknüpfungen</strong> (Eltern-Kind-Zuordnungen) — zur Vereinsorganisation von Jugendmannschaften, Art. 6 Abs. 1 lit. b und f DSGVO.</li>
     <li><strong>Termine, Nachrichten, Chat- und News-Inhalte, Umfragen</strong> — zur internen Vereinskommunikation, Art. 6 Abs. 1 lit. b und f DSGVO.</li>
-    <li><strong>Beitrags-, Straf- und Abonnementdaten</strong> — zur Vertrags- und Zahlungsabwicklung sowie zur Erfüllung handels- und steuerrechtlicher Aufbewahrungspflichten, Art. 6 Abs. 1 lit. b und c DSGVO.</li>
+    <li><strong>Beitrags- und Strafdaten sowie der Freischaltstatus des Vereins</strong> — zur Vertragsabwicklung sowie zur Erfüllung handels- und steuerrechtlicher Aufbewahrungspflichten, Art. 6 Abs. 1 lit. b und c DSGVO.</li>
     <li><strong>Fahrgemeinschaften</strong> (Abfahrtsadresse, freie Plätze, Notiz, Mitfahrende) — zur Organisation gemeinsamer Fahrten zu Terminen, Art. 6 Abs. 1 lit. f DSGVO. Die Abfahrtsadresse gibst du selbst an und sie ist für die anderen Teilnehmenden des jeweiligen Termins sichtbar; sie wird mit der Fahrgemeinschaft gelöscht.</li>
     <li><strong>Push-Benachrichtigungs-Token</strong> — nur nach deiner ausdrücklichen Freigabe in den Benachrichtigungseinstellungen, Art. 6 Abs. 1 lit. a DSGVO.</li>
     <li><strong>Technische Nutzungsdaten</strong> (z. B. Anmeldezeitpunkt, Geräteinformationen bei Push) — zur sicheren Bereitstellung des Dienstes, Art. 6 Abs. 1 lit. f DSGVO.</li>
@@ -25,20 +25,19 @@ export default function PrivacyPage() { return <LegalShell title="Datenschutzerk
   <ul>
     <li><strong>Supabase</strong> — Authentifizierung, Datenbank und Dateispeicher.</li>
     <li><strong>Vercel</strong> — Hosting und Bereitstellung der Web-App.</li>
-    <li><strong>RevenueCat</strong> — Abwicklung und Statusverwaltung von In-App-Abonnements in der iOS- und Android-App. Übermittelt werden eine pseudonyme Vereins- bzw. Profilkennung sowie Kauf- und Abostatus.</li>
-    <li><strong>Apple</strong> — Zahlungsabwicklung für Abonnements in der iOS-App.</li>
+    <li><strong>Apple</strong> — Bereitstellung der App über den App Store.</li>
     <li><strong>Google Firebase Cloud Messaging</strong> — Zustellung von Push-Benachrichtigungen, sofern aktiviert.</li>
   </ul>
-  <p>Mit Supabase, Vercel und Google bestehen bzw. werden Auftragsverarbeitungsverträge nach Art. 28 DSGVO abgeschlossen. Apple und Google verarbeiten Zahlungsdaten als jeweils eigenständig Verantwortliche gemäß ihrer eigenen Datenschutzerklärungen; mit RevenueCat besteht ein Auftragsverarbeitungsvertrag nach Art. 28 DSGVO.</p>
+  <p>Mit Supabase, Vercel und Google bestehen bzw. werden Auftragsverarbeitungsverträge nach Art. 28 DSGVO abgeschlossen. Die Abrechnung mit den Vereinen erfolgt auf Rechnung ausserhalb der App; Zahlungsdaten werden in der App nicht verarbeitet.</p>
 
   <h2>5. Datenübermittlung in Drittländer</h2>
-  <p>Einzelne Dienstleister (u. a. Vercel, Google/Firebase, Apple, RevenueCat) können Daten auch in den USA oder anderen Ländern außerhalb der EU/des EWR verarbeiten. Soweit dies der Fall ist, stützen wir uns auf Angemessenheitsbeschlüsse der EU-Kommission (z. B. EU-US Data Privacy Framework) oder auf EU-Standardvertragsklauseln gemäß Art. 46 DSGVO als geeignete Garantien.</p>
+  <p>Einzelne Dienstleister (u. a. Vercel, Google/Firebase, Apple) können Daten auch in den USA oder anderen Ländern außerhalb der EU/des EWR verarbeiten. Soweit dies der Fall ist, stützen wir uns auf Angemessenheitsbeschlüsse der EU-Kommission (z. B. EU-US Data Privacy Framework) oder auf EU-Standardvertragsklauseln gemäß Art. 46 DSGVO als geeignete Garantien.</p>
 
   <h2>6. Cookies, lokaler Speicher und Push-Token</h2>
   <p>Die App verwendet technisch notwendige Sitzungs-Cookies bzw. gleichwertige Speicherverfahren (localStorage) für die Anmeldung sowie zur Speicherung von Anzeigeeinstellungen (z. B. bevorzugte Mannschaft, zuletzt gewählter Verein). Diese sind gemäß § 25 Abs. 2 TTDSG für den Betrieb der App erforderlich und bedürfen keiner gesonderten Einwilligung. Für Push-Benachrichtigungen wird nach deiner Zustimmung ein Geräte-Token bei Google Firebase Cloud Messaging registriert.</p>
 
   <h2>7. Speicherdauer</h2>
-  <p>Wir speichern personenbezogene Daten, solange dein Konto besteht und du Vereinsmitglied bist. Nach Löschung deines Kontos werden die Daten grundsätzlich unverzüglich gelöscht. Ausgenommen sind Daten, die wir aufgrund handels- und steuerrechtlicher Aufbewahrungspflichten (u. a. § 147 AO, § 257 HGB) für bis zu zehn Jahre weiter vorhalten müssen, etwa Zahlungs- und Rechnungsdaten zu Abonnements. Diese Daten werden nach Ablauf der Frist gelöscht und in der Zwischenzeit nur für die gesetzlich erforderlichen Zwecke verarbeitet.</p>
+  <p>Wir speichern personenbezogene Daten, solange dein Konto besteht und du Vereinsmitglied bist. Nach Löschung deines Kontos werden die Daten grundsätzlich unverzüglich gelöscht. Ausgenommen sind Daten, die wir aufgrund handels- und steuerrechtlicher Aufbewahrungspflichten (u. a. § 147 AO, § 257 HGB) für bis zu zehn Jahre weiter vorhalten müssen, etwa Rechnungsdaten des Vereins. Diese Daten werden nach Ablauf der Frist gelöscht und in der Zwischenzeit nur für die gesetzlich erforderlichen Zwecke verarbeitet.</p>
 
   <h2>8. Deine Rechte</h2>
   <p>Du hast das Recht auf Auskunft (Art. 15 DSGVO), Berichtigung (Art. 16), Löschung (Art. 17), Einschränkung der Verarbeitung (Art. 18), Datenübertragbarkeit (Art. 20) sowie Widerspruch gegen Verarbeitungen auf Grundlage berechtigten Interesses (Art. 21). Erteilte Einwilligungen (z. B. für Push-Benachrichtigungen) kannst du jederzeit mit Wirkung für die Zukunft widerrufen. Die vollständige Kontolöschung kannst du direkt im Profil oder über unser <a href="/konto-loeschen">Web-Formular zur Kontolöschung</a> beantragen.</p>

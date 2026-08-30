@@ -14,9 +14,11 @@ import {
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { enablePushNotifications, disablePushNotifications, listenForForegroundMessages } from "@/lib/firebase-push";
 import { Capacitor } from "@capacitor/core";
-import { nativePurchasesSupported, fetchTierOfferings, purchasePackageAs, restorePurchasesAs, logOutRevenueCat } from "@/lib/revenuecat";
 import { legal } from "./legal-shell";
-import { CLUB_TIER_PRICES, CLUB_TIER_INFO, KAUFBARE_TARIFE, UEBER_MAX_HINWEIS } from "@/lib/preise";
+/* Preise werden in der App nicht mehr angezeigt - siehe SubscriptionPanel.
+   Geblieben sind die Bezeichnungen der Stufen, die weiterhin gebraucht werden,
+   um einen laufenden Tarif zu benennen. */
+import { CLUB_TIER_INFO } from "@/lib/preise";
 
 /* ------------------------------------------------------------------ */
 /* Tokens                                                              */
@@ -974,15 +976,15 @@ function LockedFeature({ entitlement, feature = "Diese Funktion", goSubscribe, c
       </div>
       <div className="relative flex flex-col items-center justify-center text-center px-7">
         <div className="w-14 h-14 rounded-full flex items-center justify-center mb-4" style={{ background: C.glass, border: `1px solid ${C.edge}`, boxShadow: "0 10px 26px rgba(60,30,45,0.10)" }}><Lock size={22} style={{ color: C.red }} /></div>
-        <div className="text-base font-bold mb-1.5" style={{ fontFamily: "Oswald", color: C.ink }}>{feature} braucht ein Abo</div>
+        <div className="text-base font-bold mb-1.5" style={{ fontFamily: "Oswald", color: C.ink }}>{feature} braucht den Vollzugang</div>
         {/* Hier stand eine Fallunterscheidung auf "requires" - eine Variable, die
             es nirgends gibt und die diesen Bildschirm mit einem ReferenceError
             abgeraeumt hat, sobald ein Verein ohne Abo eine gesperrte Funktion
             oeffnete. Sie stammte aus dem alten Modell mit unterschiedlichem
             Funktionsumfang je Tarif. Seit der Groessenstaffel schaltet jeder
             Tarif alles frei, also gibt es nichts mehr zu unterscheiden. */}
-        <div className="text-xs mb-5 leading-snug" style={{ color: C.textDim }}>Mit jedem Vereinsabo freigeschaltet.</div>
-        <button onClick={goSubscribe} className="px-5 py-2.5 rounded-2xl text-xs font-bold" style={{ background: C.red, color: C.white, boxShadow: `0 8px 20px color-mix(in srgb, ${C.red} 34%, transparent)` }}>Abo ansehen</button>
+        <div className="text-xs mb-5 leading-snug" style={{ color: C.textDim }}>Diesen Bereich schaltet der Verein frei.</div>
+        <button onClick={goSubscribe} className="px-5 py-2.5 rounded-2xl text-xs font-bold" style={{ background: C.red, color: C.white, boxShadow: `0 8px 20px color-mix(in srgb, ${C.red} 34%, transparent)` }}>Mehr erfahren</button>
       </div>
     </div>
   );
@@ -4491,379 +4493,152 @@ function SubscriptionRecord({ subscription, accountLabel }) {
 }
 
 
+/* Zugang und Freischaltung.
+ *
+ * Hier stand bis zum 31.08.2026 der In-App-Kauf: Tarifauswahl, Preise,
+ * Kaufknopf, Wiederherstellen. Das ist ersatzlos entfallen, und zwar nicht der
+ * Provision wegen.
+ *
+ * Ein Apple-Abo gehoert einer Person, nicht einem Verein. Wechselt der
+ * Kassenwart, geht das Abo mit ihm. Wer zwei Vereine betreut, kann fuer den
+ * zweiten nicht zahlen - das ist beim Testen aufgefallen und kein Fehler,
+ * sondern Apples Modell. Und der Verein bekommt keine Rechnung, sondern eine
+ * Belastung auf einem privaten Konto; fuer einen eingetragenen Verein mit
+ * Kassenpruefung ist das kaum verbuchbar.
+ *
+ * Stattdessen fragt die Vereinsleitung den Vollzugang hier an, der Betreiber
+ * stellt eine Rechnung, und nach Zahlungseingang wird freigeschaltet. Die
+ * Freischaltung selbst ist unveraendert - ein Eintrag in club_subscriptions,
+ * den club_subscription_tier auswertet.
+ *
+ * Wichtig fuer Apple: In dieser Ansicht wird NICHTS verkauft. Keine Preise,
+ * kein Kaufknopf, kein Verweis auf eine Zahlungsseite. Richtlinie 3.1.3 laesst
+ * das fuer Dienste zu, die an Organisationen verkauft werden - aber nur, wenn
+ * in der App weder gekauft noch zum Kauf aufgefordert wird. */
 function SubscriptionPanel({ user }) {
-  const [tier, setTier] = useState("basic");
-  const [cycle, setCycle] = useState("monthly");
-  const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [subscriptions, setSubscriptions] = useState([]);
-  const [subscriptionsLoading, setSubscriptionsLoading] = useState(true);
-  const [withdrawalConsent, setWithdrawalConsent] = useState(false);
-  const [showWelcome, setShowWelcome] = useState(false);
   const [clubStatus, setClubStatus] = useState(null);
-  /* Bewusst gleich beim ersten Rendern ermittelt statt in einem Effekt: Sonst
-     ist isNative im ersten Durchlauf noch false, die Store-Angebote werden
-     angefragt und ihre Fehlermeldung landet im Kaufbereich der nativen App —
-     genau der Hinweis auf einen externen Zahlungsanbieter, den Apple nach
-     Richtlinie 3.1.1 beanstandet. Die Funktion prueft selbst auf window und
-     ist damit auch beim Rendern auf dem Server unbedenklich. */
-  const [isNative, setIsNative] = useState(() => nativePurchasesSupported());
-  const [nativeOfferings, setNativeOfferings] = useState(null);
-  const [nativeLoading, setNativeLoading] = useState(true);
-  const [purchasing, setPurchasing] = useState(false);
-  const canBuyClubPlan = user.roles.some((role) => ["vereinsadmin", "sysadmin", "vorstand", "geschaeftsfuehrung"].includes(role));
-  const databaseClub = isDbId(user.clubId);
-  /* authUserId stammt aus der Zeit, als es ein persoenliches Basis-Abo gab: Das
-     lief auf die Profil-ID, weil user.id die Mitgliedschafts-ID ist. Seit der
-     Groessenstaffel zahlt nur noch der Verein, verkauft wird ausschliesslich
-     club_basic_*.
-
-     Das Wiederherstellen lief trotzdem weiter ueber authUserId, und die ist bei
-     jedem angemeldeten Konto gesetzt - der Rueckfall auf user.clubId griff also
-     nie. RevenueCat haengte die Kaeufe damit an die Profil-ID, der Webhook sucht
-     bei einem club_*-Produkt aber in clubs, fand die Profil-ID dort nicht und
-     verwarf das Ereignis mit "owner_not_found". Die App meldete gleichwohl
-     "Kaeufe wiederhergestellt", ohne dass ein Abo zurueckkam.
-     Wiederhergestellt wird deshalb jetzt auf der Vereins-ID - derselben, auf die
-     auch gekauft wird. Damit war authUserId ueberall unbenutzt und ist samt dem
-     Effekt, der die Profil-ID einmalig aus der Anmelde-Sitzung holte, entfallen.
-     Solche Reste sind nicht harmlos: Drei der heute behobenen Abstuerze waren
-     genau das - eine Verwendung, deren Deklaration bei einem frueheren Umbau
-     verschwunden war. */
-  const databaseMember = isDbId(user.id);
-
-  useEffect(() => { setIsNative(nativePurchasesSupported()); }, []);
-
-  useEffect(() => {
-    if (!isNative || !databaseClub || !canBuyClubPlan) { setNativeLoading(false); return; }
-    setNativeLoading(true);
-    fetchTierOfferings(user.clubId)
-      .then((offerings) => setNativeOfferings(offerings))
-      .catch(() => setMessage("Angebote konnten nicht geladen werden."))
-      .finally(() => setNativeLoading(false));
-  }, [isNative, databaseClub, canBuyClubPlan, user.clubId]);
-
-  /* Frueher wurde hier das RevenueCat-Angebot fuer den persoenlichen
-     Basis-Zugang geladen. Seit der Groessenstaffel zahlt nur noch der Verein;
-     die beiden Mitglieds-Produkte gibt es im Store nicht mehr. Der Aufruf
-     wurde entfernt, weil er sonst bei jedem Start "Angebote konnten nicht
-     geladen werden" anzeigen wuerde. */
-
-  /* Zugangszaehler: zeigt dem Verein, wie viele der bezahlten Zugaenge belegt
-     sind. Gerechnet wird in der Datenbank (club_account_usage), damit Anzeige
-     und Sperre nie auseinanderlaufen koennen. */
   const [accountUsage, setAccountUsage] = useState(null);
-  useEffect(() => {
-    if (!supabase || !databaseClub) return;
-    supabase.rpc("club_account_usage", { target_club: user.clubId })
-      .then(({ data }) => setAccountUsage(data?.[0] || null))
-      /* Faengt den Uebergang ab: Solange die Migration in einer Umgebung noch
-         nicht gelaufen ist, gibt es die Funktion dort nicht. Dann bleibt der
-         Zaehler einfach aus, statt einen Fehler zu werfen. */
-      .catch(() => setAccountUsage(null));
-  }, [databaseClub, user.clubId, clubStatus]);
+  const [anfrage, setAnfrage] = useState(undefined); // undefined = laedt, null = keine
+  const [formularOffen, setFormularOffen] = useState(false);
+  const [form, setForm] = useState({ contact_name: user.name || "", contact_email: user.email || "", contact_phone: "", expected_accounts: "", note: "" });
+  const [sendet, setSendet] = useState(false);
+  const [message, setMessage] = useState("");
 
-  /* Faellt einer der beiden Aufrufe aus - kein Netz, Server nicht erreichbar -,
-     blieb clubStatus vorher auf null stehen. Die Kaufmaske zeigte dann dauerhaft
-     "wird geladen", ohne Hinweis und ohne Ende; der Verein sah nicht, welchen
-     Tarif er hat, und konnte auch keinen buchen.
-     Jetzt faellt sie auf "kein Abo" zurueck und sagt es. Das ist die sichere
-     Richtung: Es wird nichts freigeschaltet, was nicht bezahlt ist, und der
-     Nutzer weiss, woran er ist. */
-  const refreshClubStatus = useCallback(() => {
-    if (!supabase || !databaseClub) return;
-    /* Der Testzeitraum ist entfallen, club_trial_info wird nicht mehr gebraucht.
-       Das spart auch die verschachtelte zweite Abfrage. */
-    supabase.rpc("club_subscription_tier", { target_club: user.clubId })
-      .then(({ data }) => setClubStatus({ tier: data || "none" }))
-      .catch(() => setClubStatus({ tier: "none", nichtGeladen: true }));
+  const databaseClub = !!supabase && isDbId(user.clubId);
+  const darfAnfragen = user.roles.some((r) => ["sysadmin", "vereinsadmin", "geschaeftsfuehrung"].includes(r));
+
+  const laden = useCallback(async () => {
+    if (!databaseClub) { setAnfrage(null); return; }
+    const [{ data: tarif }, { data: nutzung }, { data: offen }] = await Promise.all([
+      supabase.rpc("club_subscription_tier", { target_club: user.clubId }),
+      supabase.rpc("club_account_usage", { target_club: user.clubId }),
+      supabase.from("club_access_requests").select("id,status,created_at,contact_name").eq("club_id", user.clubId).order("created_at", { ascending: false }).limit(1),
+    ]);
+    setClubStatus({ tier: tarif || "none" });
+    setAccountUsage(nutzung?.[0] || null);
+    setAnfrage(offen?.[0] || null);
   }, [databaseClub, user.clubId]);
+  useEffect(() => { laden(); }, [laden]);
 
-  /* Vereinsabo: läuft auf die Vereins-ID. Die Kennung steht hier ausdrücklich,
-     damit der Kauf nicht versehentlich auf der Profil-ID landet, falls zuvor
-     die Mitglieder-Angebote geladen wurden. */
-  /* Welcher Preis angezeigt wird.
-
-     Grundsatz: Was der Store nennt, gilt - der Nutzer wird schliesslich vom
-     Store abgebucht. Aber nur, wenn es auch Euro sind.
-
-     Beim Testen fiel auf, dass RevenueCat $22.99 lieferte, waehrend Apples
-     eigener Kaufdialog 24,99 EUR anzeigte: Der Store-Preis kam aus einer
-     anderen Waehrungsregion als die tatsaechliche Abrechnung. Diese App
-     verkauft an deutsche Vereine, alle Texte und Rechtsseiten sind deutsch,
-     und die hinterlegten Preise in lib/preise.ts sind Euro. Ein Dollarbetrag
-     daneben ist dann keine Genauigkeit, sondern ein Fehler.
-
-     Deshalb: Store-Preis nur uebernehmen, wenn er auf Euro lautet. Sonst der
-     hinterlegte deutsche Preis. */
-  const istEuro = (preis) => typeof preis === "string" && /€|EUR/.test(preis);
-  const storePreis = (schluessel, takt) => {
-    const p = isNative ? nativeOfferings?.[schluessel]?.[takt]?.product?.priceString : null;
-    return istEuro(p) ? p : null;
+  const absenden = async (e) => {
+    e.preventDefault();
+    if (!form.contact_name.trim() || !form.contact_email.trim()) { setMessage("Bitte Name und E-Mail angeben."); return; }
+    setSendet(true); setMessage("");
+    const { error } = await supabase.from("club_access_requests").insert({
+      club_id: user.clubId,
+      requested_by: isDbId(user.id) ? user.id : null,
+      contact_name: form.contact_name.trim(),
+      contact_email: form.contact_email.trim(),
+      contact_phone: form.contact_phone.trim() || null,
+      expected_accounts: form.expected_accounts ? Number(form.expected_accounts) : null,
+      note: form.note.trim() || null,
+    });
+    if (error) {
+      /* Der eindeutige Index laesst nur eine offene Anfrage je Verein zu -
+         sonst sammelt sich beim Betreiber derselbe Wunsch mehrfach, weil in der
+         App mehrere Berechtigte sitzen. */
+      setMessage(/duplicate|unique/i.test(error.message || "")
+        ? "Für euren Verein liegt bereits eine Anfrage vor. Wir melden uns."
+        : "Die Anfrage konnte nicht gesendet werden.");
+      setSendet(false); return;
+    }
+    setFormularOffen(false); setSendet(false);
+    await laden();
   };
 
-  const buyNativePackage = async () => {
-    const pkg = nativeOfferings?.[tier]?.[cycle];
-    if (!pkg) { setMessage("Dieses Paket ist im Store noch nicht verfügbar."); return; }
-    setPurchasing(true); setMessage("");
-    try {
-      const kundeninfo = await purchasePackageAs(user.clubId, pkg);
-
-      /* Ein Abo gehoert bei Apple der Apple-ID, nicht dem Verein. Wer dasselbe
-         Produkt schon einmal gekauft hat, bekommt beim zweiten Verein kein
-         neues Abo, sondern "Du hast diesen Artikel derzeit abonniert" - und
-         damit auch keinen neuen Kaufvorgang, den RevenueCat melden koennte.
-
-         Das ist keine Stoerung, sondern Apples Modell. Nur muss man es sagen,
-         sonst steht der Grunder eines zweiten Vereins vor einer Freischaltung,
-         die nie kommt, und sucht den Fehler bei sich. */
-      const schonAktiv = Object.keys(kundeninfo?.entitlements?.active || {}).length > 0
-        || (kundeninfo?.activeSubscriptions || []).length > 0;
-
-      /* Der Kauf bei Apple ist damit durch - die Freischaltung aber noch nicht.
-         Dazwischen liegt der Webhook von RevenueCat, der den Kauf in
-         club_subscriptions schreibt; erst daran haengt der Zugang.
-
-         Vorher meldete die App an dieser Stelle unbesehen "Willkommen an Bord!
-         Dein Abonnement ist aktiv". Faellt der Webhook aus - falsch
-         eingerichtet, falscher Schluessel -, behauptet sie damit etwas, das
-         nicht stimmt, und niemand merkt es. Genau dieser Fall ist am
-         30.08.2026 beim Sandbox-Test eingetreten: Der Kauf lief durch, in
-         payment_events stand danach kein einziges Ereignis.
-
-         Deshalb wird jetzt nachgesehen statt behauptet. Bis zu fuenf Versuche
-         ueber etwa fuenfzehn Sekunden - so lange darf ein Webhook brauchen. */
-      setMessage("Kauf bei Apple abgeschlossen. Freischaltung wird geprüft …");
-
-      /* Gesucht wird ein Abo AUS DEM STORE, das seit dem Kauf hinzugekommen ist -
-         nicht bloss "irgendein Tarif".
-
-         Der erste Versuch fragte club_subscription_tier ab. Das war zu grob:
-         Ein Verein mit einem von Hand eingetragenen Abo hat immer einen Tarif,
-         die Pruefung konnte dort also gar nicht fehlschlagen und meldete Erfolg,
-         obwohl vom Kauf nichts ankam. Genau so geschehen am 30.08.2026 bei
-         ERG Iserlohn, der ein manuelles Abo auf 'plus' traegt. */
-      const seit = new Date(Date.now() - 120000).toISOString();
-      let freigeschaltet = false;
-      for (let versuch = 0; versuch < 5 && !freigeschaltet; versuch++) {
-        await new Promise((r) => setTimeout(r, 3000));
-        const { count } = await supabase
-          .from("club_subscriptions")
-          .select("id", { count: "exact", head: true })
-          .eq("club_id", user.clubId)
-          .eq("status", "active")
-          .neq("provider", "manual")
-          .gte("updated_at", seit);
-        if ((count || 0) > 0) freigeschaltet = true;
-      }
-      refreshClubStatus();
-      loadSubscriptions();
-      if (freigeschaltet) {
-        setMessage("");
-        setShowWelcome(true);
-      } else {
-        /* Kein Grund zur Panik fuer den Kaeufer - bezahlt ist bezahlt, und ein
-           verspaeteter Webhook holt es nach. Aber es wird gesagt, statt einen
-           Erfolg vorzutaeuschen. */
-        setMessage(schonAktiv
-          ? "Dieses Abo läuft bereits über deine Apple-ID — vermutlich für einen anderen Verein. Ein Abo gehört bei Apple der Apple-ID, nicht dem Verein, deshalb lässt sich dasselbe Produkt kein zweites Mal kaufen. Für einen weiteren Verein braucht es eine andere Apple-ID; sprich uns sonst gerne an."
-          : "Der Kauf ist bei Apple angekommen, die Freischaltung steht aber noch aus. Das kann ein paar Minuten dauern. Bleibt es dabei, melde dich bitte beim Verein — der Kauf geht dabei nicht verloren.");
-      }
-    } catch (error) {
-      if (!error?.userCancelled) setMessage(error?.message || "Der Kauf konnte nicht abgeschlossen werden.");
-    } finally {
-      setPurchasing(false);
-    }
+  const zurueckziehen = async () => {
+    if (!anfrage || !window.confirm("Anfrage zurückziehen?")) return;
+    await supabase.from("club_access_requests").delete().eq("id", anfrage.id);
+    await laden();
   };
 
-
-  /* Persönliches Basis-Abo im nativen Store. Läuft auf die Profil-ID — dieselbe
-     Kennung, unter der der Store den Kauf fuehrt, damit alles im selben
-     Datensatz landen. */
-
-
-  /* Lädt beides in einem Zug: das eigene Basis-Abo (sieht jeder) und das Vereinsabo
-     (liefert die Route nur an berechtigte Rollen aus). Früher brach die Funktion ohne
-     Kaufrecht sofort ab — dann sah ein Mitglied sein eigenes Abo nie. */
-  const loadSubscriptions = useCallback(async () => {
-    if (!supabase || !databaseMember) { setSubscriptionsLoading(false); return; }
-    const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData.session?.access_token;
-    if (!token) { setSubscriptionsLoading(false); return; }
-    try {
-      const response = await fetch(`/api/subscriptions?clubId=${encodeURIComponent(user.clubId || "")}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || "Abonnements konnten nicht geladen werden.");
-      setSubscriptions(payload.club || []);
-    } catch (error) {
-      setMessage(error.message || "Abonnements konnten nicht geladen werden.");
-    } finally {
-      setSubscriptionsLoading(false);
-    }
-  }, [databaseMember, user.clubId]);
-
-  useEffect(() => { loadSubscriptions(); }, [loadSubscriptions]);
-
-  useEffect(() => { refreshClubStatus(); }, [refreshClubStatus]);
-
-
-  const selected = CLUB_TIER_PRICES[tier][cycle];
-  const customId = user.clubId;
-  const allowed = canBuyClubPlan && databaseClub;
-
-
-
-
-
-  /* Rückmeldungen betreffen beide Bereiche und stehen deshalb auf oberster Ebene —
-     früher lagen sie im Vereinsblock, sodass ein Mitglied ohne Kaufrecht Fehler beim
-     eigenen Abo nie zu sehen bekam. */
-  const messageTone = /gespeichert|gekündigt|erfolgreich|wiederhergestellt|freigeschaltet/.test(message)
-    ? { bg: "rgba(231,243,236,0.72)", fg: C.green }
-    : /wird/.test(message) ? { bg: "rgba(255,246,228,0.72)", fg: C.textDim }
-    : { bg: "rgba(253,236,236,0.72)", fg: C.red };
+  const vollzugang = clubStatus && clubStatus.tier !== "none";
 
   return <div>
-    {message && <div role="status" className="text-[11px] mb-4 rounded-xl px-3 py-2" style={{ background: messageTone.bg, color: messageTone.fg }}>{message}</div>}
+    {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: "rgba(253,236,238,0.72)", color: C.red }}>{message}</div>}
 
-    {/* Apple verlangt, dass Käufe jederzeit wiederherstellbar sind. Vorher hing der
-        Knopf am untersten Zweig der Kaufansicht und verschwand mit ihr — etwa bei
-        bereits aktivem Abo oder wenn kein Store-Paket geladen werden konnte, also
-        genau in den Fällen, in denen man ihn braucht. Deshalb steht er jetzt
-        unabhängig davon ganz oben, sobald die App nativ läuft. */}
-    {isNative && <button onClick={() => restorePurchasesAs(user.clubId).then(() => { setMessage("Käufe wiederhergestellt."); refreshClubStatus(); loadSubscriptions(); }).catch(() => setMessage("Käufe konnten nicht wiederhergestellt werden."))} className="w-full mb-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.glass, border: `1px solid ${C.edge}`, color: C.ink }}>Käufe wiederherstellen</button>}
-
-    {/* ---- Mein Zugang ----
-         Der persoenliche Zugang war frueher kostenpflichtig: Jedes Mitglied
-         zahlte zusaetzlich zum Vereinsabo. Mit der Groessenstaffel entfaellt
-         das - der Verein zahlt nach Zahl der Zugaenge, das Mitglied selbst
-         nichts mehr. ---- */}
     <SectionTitle eyebrow="Mein Zugang" title="Für dich kostenlos" />
-    <div className="rounded-2xl p-4 mb-6" style={{ background: "rgba(231,243,236,0.72)", border: "1px solid #CFE8D6" }}>
+    <div className="rounded-2xl p-4 mb-3" style={{ background: "rgba(231,243,236,0.55)", border: "1px solid #CFE8D6" }}>
       <div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Kein eigenes Abo nötig</div>
-      <div className="text-[11px] leading-snug" style={{ color: C.textDim }}>
-        Deinen Zugang bezahlt dein Verein. Welche Funktionen du nutzen kannst,
-        hängt allein von deinen Rollen im Verein ab.
-      </div>
+      <div className="text-[11px]" style={{ color: C.textDim }}>Dein Zugang wird vom Verein bezahlt. Welche Funktionen du nutzen kannst, hängt allein von deinen Rollen im Verein ab.</div>
     </div>
 
-    {/* ---- Ab hier das Vereinsabo: nur für Rollen, die den Verein wirtschaftlich
-         vertreten. Athlet/innen und Eltern sehen ausschließlich ihren eigenen
-         Zugang darüber. ---- */}
-    {canManageSubscription(user) && <>
-    {clubStatus && <div className="rounded-2xl p-4 mb-5" style={{ background: clubStatus.tier === "none" ? "rgba(253,236,236,0.72)" : "rgba(231,243,236,0.72)", border: `1px solid ${clubStatus.tier === "none" ? "#F3B9B9" : "#CFE8D6"}` }}>
-      <div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Aktueller Vereinstarif: {clubStatus.nichtGeladen ? "nicht abrufbar" : clubStatus.tier === "none" ? "Kein Abo" : CLUB_TIER_INFO[clubStatus.tier]?.label || clubStatus.tier}</div>
-      {clubStatus.nichtGeladen && <div className="text-[11px] mb-1" style={{ color: C.red }}>Der Tarif konnte nicht geladen werden. Prüfe deine Verbindung und öffne die Ansicht erneut — ein bestehendes Abo bleibt davon unberührt.</div>}
-      {clubStatus.tier === "none" && <div className="text-[11px]" style={{ color: C.textDim }}>Ohne Abo sind die Funktionen gesperrt und es lassen sich keine neuen Zugänge anlegen.</div>}
-      {accountUsage && <div className="text-[11px] mt-1.5" style={{ color: accountUsage.used >= accountUsage.allowed ? C.red : C.textDim }}>
-        {accountUsage.used} von {accountUsage.allowed} Zugängen belegt{accountUsage.used >= accountUsage.allowed ? " — für weitere Mitglieder braucht der Verein einen größeren Tarif." : "."}
-      </div>}
-
-      {clubStatus?.tier === "pro" && <div className="text-[10px] mt-1.5" style={{ color: C.textDim }}>{UEBER_MAX_HINWEIS}</div>}
-    </div>}
-
-    {/* Tarifübersicht — bewusst auch ohne Kaufrecht sichtbar. Wer den Verein
-        mitverantwortet (etwa Finanzmanager oder Organisator), soll sehen können,
-        welcher Tarif läuft und was die Alternative kostet, ohne ihn ändern zu dürfen. */}
-    <SectionTitle eyebrow="Tarife" title="Modelle im Überblick" />
-    <div className="space-y-2.5 mb-6">
-      {KAUFBARE_TARIFE.map((key) => {
-        const aktiv = clubStatus?.tier === key;
-        return (
-          <div key={key} className="rounded-2xl p-4" style={{ background: C.glass, border: `1px solid ${aktiv ? C.green : C.edge}`, boxShadow: aktiv ? `0 0 0 2px color-mix(in srgb, ${C.green} 28%, transparent)` : "0 10px 26px rgba(60,30,45,0.06)" }}>
-            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-              <div className="text-sm font-bold" style={{ color: C.ink }}>{CLUB_TIER_INFO[key].label}</div>
-              {aktiv && <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(231,243,236,0.9)", color: C.green }}>{"AKTUELLER TARIF"}</span>}
-            </div>
-            <div className="text-[11px] mb-2.5 leading-snug" style={{ color: C.textDim }}>{CLUB_TIER_INFO[key].desc}</div>
-            {/* Wenn der Store einen Preis liefert, gilt seiner. Die Kachel zeigte
-                bisher immer den Wert aus lib/preise.ts, waehrend der Kaufkasten
-                weiter unten laengst den Store-Preis nimmt. Solange beide gleich
-                sind, faellt das nicht auf - nach einer Preisaenderung in App
-                Store Connect stuenden zwei verschiedene Preise fuer dasselbe Abo
-                auf einem Bildschirm. */}
-            <div className="flex items-baseline gap-2 flex-wrap">
-              <span className="text-lg font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{storePreis(key, "monthly") || CLUB_TIER_PRICES[key].monthly.price}</span>
-              <span className="text-[10px]" style={{ color: C.textDim }}>pro Monat</span>
-              <span className="text-[10px]" style={{ color: C.textDim }}>· jährlich {storePreis(key, "yearly") || CLUB_TIER_PRICES[key].yearly.equivalent}</span>
-            </div>
-          </div>
-        );
-      })}
-      {clubStatus?.tier === "none" && <div className="text-[11px] px-1" style={{ color: C.textDim }}>Aktuell läuft keiner der beiden Tarife — nur Training und Spiele sind freigeschaltet.</div>}
-    </div>
-
-    <SectionTitle eyebrow="Verträge" title="Vereinsabo" />
-    {!canBuyClubPlan ? <div className="rounded-2xl p-4 mb-6" style={{ background: C.paperDim }}><div className="text-[11px]" style={{ color: C.textDim }}>Abschließen und kündigen können nur Vorstand, Vereinsadmin oder Geschäftsführung. Wende dich an eine dieser Rollen, wenn der Tarif geändert werden soll.</div></div> :
-    subscriptionsLoading ? <div className="rounded-2xl p-4 mb-5 text-xs text-center" style={{ background: C.glass, border: `1px solid ${C.line}`, color: C.textDim }}>Abonnements werden geladen …</div> :
-      subscriptions.length > 0 ? <div className="space-y-3 mb-6">
-        {subscriptions.map((subscription) => <SubscriptionRecord key={subscription.id} subscription={subscription} accountLabel="Vereinsabo" />)}
-      </div> : <div className="rounded-2xl p-4 mb-6" style={{ background: C.paperDim }}><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Noch kein gespeichertes Abonnement</div><div className="text-[11px]" style={{ color: C.textDim }}>Nach einem erfolgreichen Abschluss erscheinen hier Tarif, Status, Erwerbsdatum und die nächste Abrechnung.</div></div>}
-
-    {canBuyClubPlan && <>
-    <SectionTitle eyebrow="Tarif wählen" title="Abonnement abschließen" />
-    <div className="rounded-2xl p-4 mb-5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
-    <div className="flex items-center gap-2 mb-1"><Euro size={16} style={{ color: C.red }} /><div className="text-sm font-bold" style={{ color: C.ink }}>Abonnement</div></div>
-    <div className="text-[11px] mb-3" style={{ color: C.textDim }}>{`Sicher über ${Capacitor.getPlatform() === "android" ? "Google Play" : "den App Store"} bezahlen.`} Alle Abos verlängern sich automatisch bis zur Kündigung.</div>
-    <div className="grid grid-cols-2 gap-2 mb-2">
-      {KAUFBARE_TARIFE.map((value) => [value, CLUB_TIER_INFO[value].label]).map(([value, label]) => <button key={value} onClick={() => { setTier(value); setMessage(""); setWithdrawalConsent(false); }} className="py-2 rounded-xl text-xs font-bold" style={{ background: tier === value ? C.ink : C.paperDim, color: tier === value ? C.white : C.textDim }}>{label}</button>)}
-    </div>
-    <div className="text-[11px] mb-3" style={{ color: C.textDim }}>{CLUB_TIER_INFO[tier].desc}</div>
-    <div className="grid grid-cols-2 gap-2 mb-3">
-      {[['monthly', 'Monatlich'], ['yearly', 'Jährlich']].map(([value, label]) => <button key={value} onClick={() => { setCycle(value); setMessage(""); setWithdrawalConsent(false); }} className="py-2 rounded-xl text-xs font-bold" style={{ background: cycle === value ? "rgba(252,235,238,0.72)" : C.paperDim, color: cycle === value ? C.red : C.textDim, border: cycle === value ? `1px solid ${C.red}` : "1px solid transparent" }}>{label}</button>)}
-    </div>
-    <div className="rounded-xl p-3 mb-3" style={{ background: C.paperDim }}>
-      {(() => {
-        /* Der angezeigte Preis ist immer Euro - entweder der Store-Preis, wenn
-           er auf Euro lautet, oder der hinterlegte deutsche. Siehe storePreis().
-           Der Umsatzsteuerhinweis gilt damit durchgaengig. */
-        const angezeigt = storePreis(tier, cycle) || selected.price;
-        return <>
-          <div className="text-xl font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{angezeigt}</div>
-          <div className="text-[10px]" style={{ color: C.textDim }}>{cycle === "yearly" ? "jährlich im Voraus" : "pro Monat"}{selected.equivalent ? ` · ${selected.equivalent}` : ""}</div>
-          {/* Hier stand zusaetzlich "Keine Probezeit - der Verein hatte bereits
-              2 Wochen kostenlosen Testzeitraum ab Registrierung." Den
-              Testzeitraum gibt es nicht mehr; der Satz behauptete also etwas
-              Falsches, ausgerechnet im Kaufbereich. */}
-          <div className="text-[10px] mt-2" style={{ color: C.textDim }}>19 % Umsatzsteuer im Preis enthalten.</div>
-        </>;
-      })()}
-      <div className="text-[10px] mt-1.5" style={{ color: C.textDim }}>Mindestlaufzeit {cycle === "yearly" ? "12 Monate" : "1 Monat"}. Verlängert sich automatisch um {cycle === "yearly" ? "weitere 12 Monate" : "einen weiteren Monat"}, jederzeit zum Laufzeitende kündbar.</div>
-    </div>
-    {isNative ? (
-      nativeLoading ? <div className="text-xs py-2 text-center" style={{ color: C.textDim }}>Angebote werden geladen …</div> :
-      !allowed ? <div className="text-[11px] rounded-xl px-3 py-2" style={{ background: "rgba(255,246,228,0.72)", color: C.textDim }}>Nur für ein dauerhaft gespeichertes Vereinskonto verfügbar.</div> :
-      !nativeOfferings?.[tier]?.[cycle] ? <div className="text-[11px] rounded-xl px-3 py-2" style={{ background: "rgba(255,246,228,0.72)", color: C.textDim }}>Dieses Paket ist im Store noch nicht eingerichtet.</div> :
-      <>
-        <label className="flex items-start gap-2 mb-3 px-0.5"><input type="checkbox" checked={withdrawalConsent} onChange={(e) => setWithdrawalConsent(e.target.checked)} className="mt-0.5"/><span className="text-[10px]" style={{ color: C.textDim }}>Ich akzeptiere die <a href="/nutzungsbedingungen" target="_blank" rel="noreferrer" style={{ color: C.red }}>Nutzungsbedingungen</a> und die darin enthaltene Widerrufsbelehrung. Ich stimme ausdrücklich zu, dass die Nutzung sofort beginnt, und weiß, dass mein Widerrufsrecht erlischt, sobald der Vertrag vollständig erfüllt ist.</span></label>
-        {withdrawalConsent
-          ? <button onClick={buyNativePackage} disabled={purchasing} className="w-full py-3 rounded-xl text-sm font-bold" style={{ background: C.ink, color: C.white, opacity: purchasing ? .6 : 1 }}>{purchasing ? "Wird verarbeitet …" : `${CLUB_TIER_INFO[tier].label} abonnieren`}</button>
-          : <div className="text-[11px] rounded-xl px-3 py-2 text-center" style={{ background: C.paperDim, color: C.textDim }}>Bitte zuerst zustimmen, um fortzufahren.</div>}
-      </>
-    ) : (
-      /* Gekauft wird ausschliesslich im Store. Diesen Zweig sieht nur, wer die
-         Seite ausserhalb der App oeffnet - und dort steht ohnehin die
-         Hinweisseite. Er bleibt als Rueckfallebene stehen. */
-      <div className="text-[11px] rounded-xl px-3 py-2" style={{ background: "rgba(255,246,228,0.72)", color: C.textDim }}>Abonnements werden in der App gebucht.</div>
-    )}
-    {/* Richtlinie 3.1.2 verlangt im Kaufbereich BEIDE Verweise: Nutzungs-
-        bedingungen UND Datenschutzerklaerung. Hier stand nur der erste. Es gibt
-        die Datenschutzerklaerung zwar im Profil, aber genau unter 3.1.2 lief
-        bereits die erste Ablehnung - an dieser Stelle zu sparen waere die
-        teuerste Zeile der ganzen App. */}
-    <div className="text-[9px] mt-3 leading-relaxed" style={{ color: C.textDim }}>Mit dem Abschluss akzeptierst du die <a href="/nutzungsbedingungen" className="underline">Nutzungsbedingungen</a> und die <a href="/datenschutz" className="underline">Datenschutzerklärung</a>. Kündigung {Capacitor.getPlatform() === "android" ? "über Google Play" : "über die Apple-ID-Einstellungen"} zum Ende des Abrechnungszeitraums.</div>
-    </div>
-    </>}
-    </>}
-    {showWelcome && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-5" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setShowWelcome(false)}>
-        <div role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} className="w-full max-w-sm rounded-3xl p-6 text-center" style={{ background: C.glass }}>
-          <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: "rgba(231,243,236,0.72)" }}><CheckCircle2 size={28} style={{ color: C.green }} /></div>
-          <div className="text-lg font-bold mb-2" style={{ fontFamily: "Oswald", color: C.ink }}>Willkommen an Bord!</div>
-          <div className="text-sm mb-5" style={{ color: C.textDim }}>Dein Abonnement ist aktiv. Die Funktionen deines Tarifs sind ab sofort freigeschaltet.</div>
-          <button onClick={() => setShowWelcome(false)} className="w-full py-3 rounded-xl text-sm font-bold" style={{ background: C.ink, color: C.white }}>Los geht's</button>
+    {clubStatus && (
+      <div className="rounded-2xl p-4 mb-5" style={{ background: vollzugang ? "rgba(231,243,236,0.55)" : C.paperDim, border: `1px solid ${vollzugang ? "#CFE8D6" : C.line}` }}>
+        <div className="text-sm font-bold mb-1" style={{ color: C.ink }}>
+          {vollzugang ? `Vollzugang aktiv (${CLUB_TIER_INFO[clubStatus.tier]?.label || clubStatus.tier})` : "Kostenlose Stufe"}
         </div>
+        {accountUsage && <div className="text-[11px]" style={{ color: accountUsage.used >= accountUsage.allowed ? C.red : C.textDim }}>
+          {accountUsage.used} von {accountUsage.allowed} Zugängen belegt{accountUsage.used >= accountUsage.allowed ? " — für weitere Mitglieder braucht ihr den Vollzugang." : ""}
+        </div>}
+        {!vollzugang && <div className="text-[11px] mt-1.5" style={{ color: C.textDim }}>Trainings- und Spielpläne sind dauerhaft kostenlos. Mannschaften, Chat, Vereins-News, Helferplanung, Fahrzeugbuchung und das Kalender-Abo kommen mit dem Vollzugang dazu.</div>}
       </div>
+    )}
+
+    {!vollzugang && anfrage !== undefined && (
+      <>
+        <SectionTitle eyebrow="Vollzugang" title="Für den ganzen Verein freischalten" />
+
+        {anfrage ? (
+          <div className="rounded-2xl p-4 mb-5" style={{ background: "rgba(255,246,228,0.72)", border: `1px solid ${C.edge}` }}>
+            <div className="text-sm font-bold mb-1" style={{ color: C.ink }}>
+              {anfrage.status === "berechnet" ? "Rechnung ist unterwegs" : "Anfrage liegt vor"}
+            </div>
+            <div className="text-[11px]" style={{ color: C.textDim }}>
+              {anfrage.status === "berechnet"
+                ? "Wir haben euch die Rechnung geschickt. Nach dem Zahlungseingang schalten wir den Verein frei."
+                : `Eingegangen am ${new Date(anfrage.created_at).toLocaleDateString("de-DE")} durch ${anfrage.contact_name}. Wir melden uns mit einem Angebot.`}
+            </div>
+            {anfrage.status === "offen" && darfAnfragen && (
+              <button onClick={zurueckziehen} className="text-[11px] font-bold mt-2.5 underline" style={{ color: C.textDim }}>Anfrage zurückziehen</button>
+            )}
+          </div>
+        ) : darfAnfragen ? (
+          formularOffen ? (
+            <form onSubmit={absenden} className="rounded-2xl p-4 mb-5 space-y-2.5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
+              <div className="text-[11px] mb-1" style={{ color: C.textDim }}>Wir melden uns mit einem Angebot für euren Verein und stellen eine Rechnung. Nach dem Zahlungseingang ist der Verein freigeschaltet.</div>
+              <input value={form.contact_name} onChange={(e) => setForm({ ...form, contact_name: e.target.value })} placeholder="Ansprechpartner *" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }} />
+              <input type="email" value={form.contact_email} onChange={(e) => setForm({ ...form, contact_email: e.target.value })} placeholder="E-Mail für die Rechnung *" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }} />
+              <input type="tel" value={form.contact_phone} onChange={(e) => setForm({ ...form, contact_phone: e.target.value })} placeholder="Telefon (optional)" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }} />
+              <input type="number" min="1" value={form.expected_accounts} onChange={(e) => setForm({ ...form, expected_accounts: e.target.value })} placeholder="Wie viele Mitglieder bekommen einen Zugang?" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }} />
+              <textarea value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} rows={2} placeholder="Anmerkung (optional)" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none" style={{ background: C.paperDim }} />
+              <div className="flex gap-2">
+                <button type="submit" disabled={sendet} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white, opacity: sendet ? .6 : 1 }}>{sendet ? "Wird gesendet …" : "Anfrage senden"}</button>
+                <button type="button" onClick={() => setFormularOffen(false)} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.textDim }}>Abbrechen</button>
+              </div>
+            </form>
+          ) : (
+            <div className="rounded-2xl p-4 mb-5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
+              <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Der Vollzugang wird dem Verein in Rechnung gestellt, nicht dir persönlich. Sag uns Bescheid, dann melden wir uns mit einem Angebot.</div>
+              <button onClick={() => setFormularOffen(true)} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>Vollzugang anfragen</button>
+            </div>
+          )
+        ) : (
+          <div className="rounded-2xl p-4 mb-5 text-[11px]" style={{ background: C.paperDim, color: C.textDim }}>
+            Den Vollzugang kann die Vereinsleitung anfragen — Vorstand, Geschäftsführung oder Vereinsadmin.
+          </div>
+        )}
+      </>
     )}
   </div>;
 }
@@ -5523,7 +5298,7 @@ function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, 
         <ProfileSettingsCard icon={KeyRound} title="Konto & Sicherheit" description="Passwort, Sicherheit, Rechtliches, Account" color="#4A4E9E" onClick={() => setProfileFolder("security")}/>
         <ProfileSettingsCard icon={Trophy} title="Verein & Mitgliedschaft" description="Athleten-, Trainer- und Vereinsrollen" color="#2D6F8E" onClick={() => setProfileFolder("club")}/>
         <ProfileSettingsCard icon={Bell} title="Benachrichtigungen & Kalender" description="Push-Einstellungen und Kalendersync" color={C.amber} onClick={() => setProfileFolder("notify")}/>
-        <ProfileSettingsCard icon={Euro} title="Abo & Empfehlungen" description="Abonnement und Vereine werben Vereine" color={C.red} onClick={() => setProfileFolder("billing")}/>
+        <ProfileSettingsCard icon={Euro} title="Zugang & Empfehlungen" description="Freischaltung des Vereins und Vereine werben Vereine" color={C.red} onClick={() => setProfileFolder("billing")}/>
         <ProfileSettingsCard icon={Star} title="Support & Feedback" description="Bewertung abgeben, Fehler melden" color={C.textDim} onClick={() => setProfileFolder("support")}/>
         <ProfileSettingsCard icon={PlayCircle} title="App kennenlernen" description="Kurzvideos zu den Funktionen, die du nutzen kannst" color={C.green} onClick={() => setProfileFolder("howto")}/>
         {/* Direkter Weg zur Kontolöschung. Vorher lag sie drei Overlay-Ebenen tief
@@ -5571,9 +5346,9 @@ function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, 
         </div>
       </ProfileUnderlay>}
 
-      {profileFolder === "billing" && <ProfileUnderlay title="Abo & Empfehlungen" eyebrow="Einstellungen" onClose={() => setProfileFolder("")}>
+      {profileFolder === "billing" && <ProfileUnderlay title="Zugang & Empfehlungen" eyebrow="Einstellungen" onClose={() => setProfileFolder("")}>
         <div className="space-y-2">
-          <ProfileSettingsCard icon={Euro} title="Meine Abonnements" description="Tarif, Status, Erwerbsdatum und nächste Abrechnung ansehen" onClick={() => setProfileUnderlay("subscription")}/>
+          <ProfileSettingsCard icon={Euro} title="Zugang des Vereins" description="Was freigeschaltet ist und wie viele Zugänge belegt sind" onClick={() => setProfileUnderlay("subscription")}/>
           {(!referralAlreadyUsed || user.roles.includes("sysadmin")) && <ProfileSettingsCard icon={Building2} title="Vereine werben Vereine" description="Einen Verein werben und drei Gratismonate erhalten" color={C.red} onClick={() => setProfileUnderlay("referral")}/>}
         </div>
       </ProfileUnderlay>}
@@ -5651,7 +5426,7 @@ function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, 
         <LogOut size={15} /> Abmelden
       </button>
 
-      {profileUnderlay === "subscription" && <ProfileUnderlay title="Meine Abonnements" onClose={() => setProfileUnderlay("")}><SubscriptionPanel user={user}/></ProfileUnderlay>}
+      {profileUnderlay === "subscription" && <ProfileUnderlay title="Zugang des Vereins" onClose={() => setProfileUnderlay("")}><SubscriptionPanel user={user}/></ProfileUnderlay>}
       {profileUnderlay === "personal" && <ProfileUnderlay title="Persönliche Daten" onClose={() => setProfileUnderlay("")} onSave={()=>sectionSaveRef.current?.()}><ProfileDataSettings user={user} setMembers={setMembers} saveRef={sectionSaveRef}/></ProfileUnderlay>}
       {profileUnderlay === "notifications" && <ProfileUnderlay title="Benachrichtigungen" onClose={() => setProfileUnderlay("")} onSave={()=>sectionSaveRef.current?.()}><NotificationSettings user={user} setMembers={setMembers} saveRef={sectionSaveRef}/></ProfileUnderlay>}
       {profileUnderlay === "password" && <ProfileUnderlay title="Passwort ändern" onClose={() => setProfileUnderlay("")} onSave={()=>sectionSaveRef.current?.()}><PasswordSettings user={user} onLogout={onLogout} saveRef={sectionSaveRef}/></ProfileUnderlay>}
@@ -7846,7 +7621,6 @@ export default function ClubMemberOrganisationApp() {
   };
 
   const leavePendingAccount = async () => {
-    await logOutRevenueCat();
     if (supabase) await supabase.auth.signOut();
     setPendingAccount(null);
     setAuthScreen("club");
@@ -7932,10 +7706,9 @@ export default function ClubMemberOrganisationApp() {
     setTab("home");
     return { ok: true };
   };
-  /* logOutRevenueCat trennt die Store-Kennung mit. Ohne das erbt die nächste
-     Anmeldung auf demselben Gerät die Kennung — und damit die Käufe — der
-     vorherigen Person. */
-  const logout = async () => { await logOutRevenueCat(); if (supabase) await supabase.auth.signOut(); setCurrentUserId(null); setSelectedClubId(null); setAuthScreen("club"); setTab("home"); setTabHistory([]); setSubView(null); };
+  /* Seit dem Wegfall des In-App-Kaufs gibt es keine Store-Kennung mehr zu
+     trennen. */
+  const logout = async () => { if (supabase) await supabase.auth.signOut(); setCurrentUserId(null); setSelectedClubId(null); setAuthScreen("club"); setTab("home"); setTabHistory([]); setSubView(null); };
   useEffect(() => {
     if (!currentUser || !currentUser.autoLogoutDays) return;
     const timeoutMs = Number(currentUser.autoLogoutDays) * 24 * 60 * 60 * 1000;
@@ -7998,7 +7771,7 @@ export default function ClubMemberOrganisationApp() {
    * Die Vereins-Oberflaeche soll es ausschliesslich als App aus dem Store
    * geben, nicht im Browser. Der Server bleibt trotzdem noetig: Die native
    * Huelle laedt ihre Oberflaeche von hier, und die API-Routen (Abos,
-   * RevenueCat-Webhook, Kalender-Abo, Kontoloeschung) laufen ebenfalls hier.
+   * Kalender-Abo, Kontoloeschung) laufen ebenfalls hier.
    * Gesperrt wird also nur die Ansicht im Browser, nicht der Dienst.
    *
    * Rechtsseiten bleiben oeffentlich erreichbar - eigene Routen unter
