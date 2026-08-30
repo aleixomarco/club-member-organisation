@@ -6611,7 +6611,7 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
       setLoading(false); return;
     }
     const { data, error } = await supabase.from("club_memberships")
-      .select("id,display_name,email,member_since,requested_team,created_at,membership_roles(role)")
+      .select("id,display_name,email,member_since,requested_team,created_at,rejection_count,membership_roles(role)")
       .eq("club_id", club.id).eq("status", "pending").order("created_at", { ascending: true });
     if (error) setMessage("Die offenen Mitgliedsanträge konnten nicht geladen werden.");
     setRequests(data || []); setLoading(false);
@@ -6627,7 +6627,30 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
       setMessage(nextStatus === "active" ? "Mitgliedschaft wurde freigegeben." : "Mitgliedschaft wurde abgelehnt.");
       setWorkingId(null); return;
     }
-    const { error: statusError } = await supabase.from("club_memberships").update({ status: nextStatus }).eq("id", request.id).eq("club_id", club.id);
+    /* Ablehnen heisst "diesmal nicht" - nicht "nie wieder".
+    
+       Vorher setzte es den Status auf 'blocked'. register_for_club weist damit
+       jede weitere Anfrage dauerhaft ab: Wer einmal abgelehnt wurde, kam nie
+       wieder herein, auch nach Jahren nicht und ohne dass es jemandem auffiel.
+       
+       Stattdessen jetzt eine Frist. Die Mitgliedschaft geht auf 'inactive',
+       rejection_count zaehlt mit, und blocked_until sperrt eine Woche - genau
+       die beiden Spalten, die dafuer angelegt, aber nie beschrieben wurden.
+       Danach darf die Person erneut anfragen. Die Frist verhindert nur, dass
+       jemand im Minutentakt klopft.
+       
+       Wer wirklich draussen bleiben soll, laesst sich weiterhin auf 'blocked'
+       setzen - dann aber als bewusste Entscheidung, nicht als Nebenwirkung
+       eines Ablehnens. */
+    const abgelehnt = nextStatus !== "active";
+    const aenderung = abgelehnt
+      ? {
+          status: "inactive",
+          rejection_count: (request.rejection_count || 0) + 1,
+          blocked_until: new Date(Date.now() + 7 * 86400000).toISOString(),
+        }
+      : { status: nextStatus, blocked_until: null };
+    const { error: statusError } = await supabase.from("club_memberships").update(aenderung).eq("id", request.id).eq("club_id", club.id);
     /* Die Zugangsgrenze setzt ein Trigger in der Datenbank durch, damit sie auf
        jedem Weg greift. Er meldet sich mit "club_account_limit_reached" - ohne
        diese Uebersetzung stuende hier eine rohe Postgres-Meldung. */
@@ -6645,7 +6668,9 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
       if (team) await supabase.from("team_members").upsert({ team_id: team.id, membership_id: request.id, function: "spieler" }, { onConflict: "team_id,membership_id,function" });
     }
     setRequests((items) => items.filter((item) => item.id !== request.id));
-    setMessage(nextStatus === "active" ? "Mitgliedschaft wurde freigegeben." : "Mitgliedschaft wurde abgelehnt.");
+    setMessage(nextStatus === "active"
+      ? "Mitgliedschaft wurde freigegeben."
+      : "Mitgliedschaft wurde abgelehnt. Eine neue Anfrage ist in einer Woche wieder möglich.");
     setWorkingId(null);
   };
 
