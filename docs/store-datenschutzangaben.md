@@ -74,8 +74,28 @@ Google ausdrücklich nicht als „Teilen" wertet.
 - Verschlüsselte Übertragung: **Ja** (durchgängig HTTPS/TLS)
 - Löschung anfordern möglich: **Ja** (in der App unter Profil → Konto & Sicherheit)
 - Verpflichtung auf Play-Families-Richtlinie: prüfen, falls die App auch Kinder
-  adressiert — bei Kindermannschaften legt der Verein Platzhalterprofile an, die
-  Kinder selbst haben kein eigenes Konto.
+  adressiert.
+
+  **Achtung, hier stand bis zum 29.08.2026 etwas Falsches:** „bei
+  Kindermannschaften legt der Verein Platzhalterprofile an, die Kinder selbst
+  haben kein eigenes Konto." Das trifft nicht zu, und wer es so in die Stores
+  einträgt, gibt eine unzutreffende Datenschutzerklärung ab.
+
+  Richtig ist: Platzhalterprofile ohne Konto gibt es, aber sie sind nur **eine**
+  Möglichkeit. Die Registrierung kennt keine Altersschranke — ein Jugendlicher
+  kann sich ein eigenes Konto anlegen. Die Verwaltung sieht den Übergang sogar
+  ausdrücklich vor: „Wenn ein ohne Konto angelegter Spieler (z. B. aus einer
+  Kindermannschaft) später sein eigenes Konto registriert, hier das
+  Platzhalter-Profil mit dem neuen echten Konto verknüpfen."
+
+  Was stattdessen zutrifft und die Angabe trägt: Minderjährige können lesen,
+  aber im Chat **nicht schreiben**. Die Mannschaftskanäle erlauben das Schreiben
+  nur Trainern, Kapitänen, Teammanagern und der Vereinsleitung, durchgesetzt per
+  Datenbankregel (`write_roles`), nicht nur in der Oberfläche.
+
+  Zu entscheiden bleibt, ob die App als „auch für Kinder" eingestuft wird. Das
+  ist eine Entscheidung des Betreibers, keine technische — sie zieht bei Apple
+  die Kids-Kategorie und bei Google die Families-Richtlinie nach sich.
 
 ---
 
