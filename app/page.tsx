@@ -6554,6 +6554,49 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
   };
   useEffect(() => { loadActiveMembers(); }, [club?.id]);
 
+  /* Die Sperrliste ist eine Sicht auf dieselben Daten, kein zweiter Bestand.
+     Gesperrte stehen deshalb NICHT zusaetzlich in der Mitgliederliste darueber -
+     sonst stuende jede Person zweimal da, mit unterschiedlichen Knoepfen. */
+  const gesperrte = activeMembers.filter((m) => m.status === "blocked");
+  const nichtGesperrte = activeMembers.filter((m) => m.status !== "blocked");
+
+  /* Sperren und Entsperren.
+
+     Die Sperre ist der einzige Weg, jemanden dauerhaft draussen zu halten:
+     register_for_club weist eine Anfrage ab, solange die Mitgliedschaft auf
+     'blocked' steht. Ablehnen tut das bewusst NICHT mehr - wer abgelehnt wird,
+     darf sofort wieder anfragen. Nur diese Aktion hier hat Bestand.
+
+     Die Mitgliedschaftszeile bleibt erhalten; sie IST die Sperrliste. Wird sie
+     ueber "Entfernen" geloescht, faellt die Sperre mit ihr weg - dann darf die
+     Person sich neu bewerben. Das ist Absicht: Entfernen heisst weg, nicht
+     verbannt. */
+  const blockMember = async (member) => {
+    if (!window.confirm(`${member.display_name} für den Verein sperren?\n\nDie Person verliert den Zugang und kann keine neue Beitrittsanfrage stellen, bis du sie wieder entsperrst. Sie erscheint so lange in der Sperrliste.`)) return;
+    setWorkingId(member.id); setMessage("");
+    const { error } = await supabase.from("club_memberships").update({ status: "blocked" }).eq("id", member.id).eq("club_id", club.id);
+    if (error) { setMessage("Die Sperre konnte nicht gesetzt werden."); setWorkingId(null); return; }
+    setActiveMembers((items) => items.map((item) => item.id === member.id ? { ...item, status: "blocked" } : item));
+    setMembers((items) => items.map((item) => item.id === member.id ? { ...item, status: "blocked", accountPending: false } : item));
+    setMessage(`${member.display_name} ist jetzt gesperrt.`);
+    setWorkingId(null);
+    notifyClubAdmins(club.id, "membership", "Mitglied gesperrt", `${member.display_name} wurde für den Verein gesperrt.`, member.id);
+  };
+
+  const unblockMember = async (member) => {
+    setWorkingId(member.id); setMessage("");
+    /* Zurueck auf 'inactive', nicht auf 'active': Entsperren heisst "darf sich
+       wieder bewerben", nicht "ist wieder dabei". Ueber die Aufnahme entscheidet
+       die Vereinsleitung erneut. blocked_until wird mitgeleert, damit keine alte
+       Frist nachwirkt. */
+    const { error } = await supabase.from("club_memberships").update({ status: "inactive", blocked_until: null }).eq("id", member.id).eq("club_id", club.id);
+    if (error) { setMessage("Die Sperre konnte nicht aufgehoben werden."); setWorkingId(null); return; }
+    setActiveMembers((items) => items.map((item) => item.id === member.id ? { ...item, status: "inactive" } : item));
+    setMembers((items) => items.map((item) => item.id === member.id ? { ...item, status: "inactive" } : item));
+    setMessage(`${member.display_name} ist entsperrt und kann sich wieder bewerben.`);
+    setWorkingId(null);
+  };
+
   const toggleMemberActive = async (member) => {
     const nextStatus = member.status === "active" ? "inactive" : "active";
     if (nextStatus === "inactive" && !window.confirm(`Mitgliedschaft von ${member.display_name} wirklich beenden? Das Mitglied kann sich danach nicht mehr anmelden, bleibt aber in der Historie erhalten.`)) return;
@@ -6703,14 +6746,22 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
     </button>
     {showActive && (loadingActive ? <div className="text-xs py-4 text-center" style={{ color: C.textDim }}>Mitglieder werden geladen …</div> : (
       <div className="space-y-2">
-        {activeMembers.map((member) => (
-          <div key={member.id} className="flex items-center gap-3 rounded-xl px-3 py-2.5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
-            <div className="flex-1 min-w-0">
+        {nichtGesperrte.map((member) => (
+          <div key={member.id} className="flex items-center gap-2 flex-wrap rounded-xl px-3 py-2.5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
+            <div className="flex-1 min-w-0" style={{ minWidth: 140 }}>
               <div className="text-xs font-bold truncate" style={{ color: C.ink }}>{member.display_name}</div>
               <div className="text-[10px] truncate" style={{ color: C.textDim }}>{member.email || "Keine E-Mail hinterlegt"}</div>
             </div>
             <span className="text-[9px] font-bold px-2 py-1 rounded-full flex-shrink-0" style={{ background: member.status === "active" ? "rgba(231,243,236,0.72)" : "rgba(253,236,236,0.72)", color: member.status === "active" ? C.green : C.red }}>{member.status === "active" ? "Aktiv" : member.status === "blocked" ? "Gesperrt" : "Inaktiv"}</span>
-            <button disabled={workingId === member.id} onClick={() => toggleMemberActive(member)} className="px-3 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: member.status === "active" ? "rgba(253,236,236,0.72)" : "rgba(231,243,236,0.72)", color: member.status === "active" ? C.red : C.green, opacity: workingId === member.id ? .6 : 1 }}>{member.status === "active" ? "Beenden" : "Reaktivieren"}</button>
+            {/* Gesperrte bekommen nur den Weg zurueck. Fuer alle anderen steht
+                neben dem Beenden das Sperren - der einzige Weg, jemanden
+                dauerhaft draussen zu halten. */}
+            {member.status === "blocked"
+              ? <button disabled={workingId === member.id} onClick={() => unblockMember(member)} className="px-3 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: "rgba(231,243,236,0.72)", color: C.green, opacity: workingId === member.id ? .6 : 1 }}>Entsperren</button>
+              : <>
+                  <button disabled={workingId === member.id} onClick={() => toggleMemberActive(member)} className="px-3 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: member.status === "active" ? "rgba(253,236,236,0.72)" : "rgba(231,243,236,0.72)", color: member.status === "active" ? C.red : C.green, opacity: workingId === member.id ? .6 : 1 }}>{member.status === "active" ? "Beenden" : "Reaktivieren"}</button>
+                  <button disabled={workingId === member.id} onClick={() => blockMember(member)} title="Sperren — kann sich nicht mehr bewerben" className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: "rgba(253,236,236,0.72)", color: C.red, opacity: workingId === member.id ? .6 : 1 }}>Sperren</button>
+                </>}
             {/* Zwei getrennte Wege, bewusst unterschiedlich gewichtet:
                 "Beenden" legt die Mitgliedschaft still und laesst sie in der
                 Historie - das ist der Regelfall. "Entfernen" loescht sie
@@ -6718,9 +6769,40 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
             <button disabled={workingId === member.id} onClick={() => removeMember(member)} title="Endgültig aus dem Verein entfernen" className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: C.paperDim, color: C.textDim, opacity: workingId === member.id ? .6 : 1 }}>Entfernen</button>
           </div>
         ))}
-        {activeMembers.length === 0 && <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Keine Mitgliedschaften vorhanden.</div>}
+        {nichtGesperrte.length === 0 && <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Keine Mitgliedschaften vorhanden.</div>}
       </div>
     ))}
+
+    {/* Die Sperrliste des Vereins. Sie ist kein eigener Datenbestand, sondern
+        die Mitgliedschaften mit Status 'blocked' - genau die, an denen
+        register_for_club eine neue Beitrittsanfrage abweist.
+
+        Der Abschnitt erscheint nur, wenn wirklich jemand gesperrt ist. Eine
+        dauerhaft sichtbare leere Liste waere eine Uebersicht ueber nichts. */}
+    {gesperrte.length > 0 && (
+      <div className="mt-6">
+        <div className="flex items-center gap-2 mb-1">
+          <Lock size={14} style={{ color: C.red }} />
+          <div className="text-sm font-bold" style={{ color: C.ink }}>Sperrliste</div>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(253,236,238,0.72)", color: C.red }}>{gesperrte.length}</span>
+        </div>
+        <div className="text-[11px] mb-3" style={{ color: C.textDim }}>
+          Diese Personen haben keinen Zugang und können auch keine neue Beitrittsanfrage stellen. Beim Entsperren gilt die Mitgliedschaft wieder als beendet — über eine erneute Aufnahme entscheidet ihr neu.
+        </div>
+        <div className="space-y-2">
+          {gesperrte.map((member) => (
+            <div key={member.id} className="flex items-center gap-2 flex-wrap rounded-xl px-3 py-2.5" style={{ background: "rgba(253,236,238,0.45)", border: `1px solid ${C.line}` }}>
+              <div className="flex-1 min-w-0" style={{ minWidth: 140 }}>
+                <div className="text-xs font-bold truncate" style={{ color: C.ink }}>{member.display_name}</div>
+                <div className="text-[10px] truncate" style={{ color: C.textDim }}>{member.email || "Keine E-Mail hinterlegt"}</div>
+              </div>
+              <button disabled={workingId === member.id} onClick={() => unblockMember(member)} className="px-3 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: "rgba(231,243,236,0.72)", color: C.green, opacity: workingId === member.id ? .6 : 1 }}>Entsperren</button>
+              <button disabled={workingId === member.id} onClick={() => removeMember(member)} title="Endgültig aus dem Verein entfernen" className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: C.paperDim, color: C.textDim, opacity: workingId === member.id ? .6 : 1 }}>Entfernen</button>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
   </div>;
 }
 
