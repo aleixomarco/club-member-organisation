@@ -7190,9 +7190,16 @@ export default function ClubMemberOrganisationApp() {
       await supabase.from("club_app_state").upsert({
         club_id: selectedClubId,
         state: {
-          events, dutyPlan, protocols, remindersSent, welcomeAutomation, billingAutomation,
+          dutyPlan, protocols, remindersSent, welcomeAutomation, billingAutomation,
           polls, tippResults, maintenanceMode, seasonVotes, sponsorStats, sponsorBookings, dashboardTileOrder,
-          /* Kanaele stehen seit dem Umbau des Chats in einer eigenen Tabelle.
+          /* Termine stehen ebenfalls in einer eigenen Tabelle und werden hier
+             nicht mehr mitgeschrieben. Sie standen doppelt: einmal in events,
+             einmal in diesem Block - und waren bereits auseinandergelaufen. Beim
+             Demo-Verein lagen 63 Termine in der Tabelle und 31 im Block, weil
+             der Block seit dem 16.08. nicht mehr fortgeschrieben wurde. Welcher
+             gewann, entschied die Reihenfolge zweier Effekte.
+
+             Kanaele stehen seit dem Umbau des Chats in einer eigenen Tabelle.
              Wuerden sie hier weiter mitgeschrieben, ueberschriebe der
              Zustandsblock beim naechsten Laden die echten Kanaele mit den alten
              Demo-Eintraegen - deren Kennungen sind keine UUIDs, und das Senden
@@ -7306,7 +7313,8 @@ export default function ClubMemberOrganisationApp() {
     const { data: savedAppState, error: appStateError } = await supabase.from("club_app_state").select("state").eq("club_id", clubId).maybeSingle();
     if (appStateError) return { error: "Die Verwaltungsdaten konnten nicht geladen werden." };
     const saved = savedAppState?.state || {};
-    if (saved.events) setEvents(saved.events);
+    /* Termine kommen aus der events-Tabelle, nicht von hier - sonst
+       ueberschreibt ein alter Zustandsblock den echten Spielplan. */
     if (saved.dutyPlan) setDutyPlan(saved.dutyPlan);
     if (saved.protocols) setProtocols(saved.protocols);
     if (saved.remindersSent) setRemindersSent(saved.remindersSent);
