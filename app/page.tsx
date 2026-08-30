@@ -5390,7 +5390,7 @@ function CalendarSyncSettings({ user, saveRef }) {
   </div>;
 }
 
-function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, onSponsorImpression, onSponsorClick, onLogout, clubFeatures, onClubFeaturesChanged, entitlement, goSubscribe, dashboardTileOrder, setDashboardTileOrder }) {
+function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, onSponsorImpression, onSponsorClick, onLogout, clubFeatures, onClubFeaturesChanged, entitlement, goSubscribe, dashboardTileOrder, setDashboardTileOrder, ziel, onZielErreicht }) {
   const featureEnabled = (key) => clubFeatures[key] !== false;
   const goal = 1000;
   const eligible = isFormalMember(user) && age(user.birthdate) >= 16;
@@ -5401,6 +5401,16 @@ function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, 
   const [profileFolder, setProfileFolder] = useState("");
   const [referralAlreadyUsed, setReferralAlreadyUsed] = useState(false);
   const sectionSaveRef = useRef(null);
+
+  /* Kommt jemand ueber "Abo ansehen", steht das Ziel schon fest: Der
+     Kaufbereich soll offen sein, nicht die Uebersicht. Der Wunsch wird
+     eingeloest und sofort zurueckgesetzt - sonst spraenge das Profil bei jedem
+     spaeteren Besuch wieder dorthin. */
+  useEffect(() => {
+    if (!ziel) return;
+    setProfileFolder(ziel);
+    onZielErreicht?.();
+  }, [ziel]);
   useEffect(() => {
     if (!supabase || !currentClub?.id || !user.authProfileId) return;
     supabase.from("club_referral_codes").select("redeemed_at").eq("club_id", currentClub.id).eq("profile_id", user.authProfileId).maybeSingle()
@@ -7427,7 +7437,16 @@ export default function ClubMemberOrganisationApp() {
   const clubMembers = members.filter((m) => m.clubId === selectedClubId);
   const featureEnabled = (key) => clubFeatures[key] !== false;
   const entitlement = useClubEntitlement(currentUser);
-  const goSubscribe = () => { setTab("profile"); setSubView(null); };
+  /* "Abo ansehen" fuehrt direkt in den Kaufbereich, nicht nur auf den
+     Profil-Reiter. Vorher landete man dort und musste sich selbst durch
+     Einstellungen > Abo & Empfehlungen klicken - ausgerechnet an der Stelle,
+     an der jemand gerade kaufen will.
+
+     Der Wunsch wird als Zustand gesetzt und von ProfileView beim Aufbau
+     eingeloest; danach setzt sie ihn zurueck, damit ein spaeterer Besuch des
+     Profils wieder normal auf der Uebersicht beginnt. */
+  const [profilZiel, setProfilZiel] = useState("");
+  const goSubscribe = () => { setSubView(null); setProfilZiel("billing"); setTab("profile"); };
 
   const loadClubFeatures = useCallback(async () => {
     if (!supabase || !currentClub?.id) { setClubFeatures(DEFAULT_CLUB_FEATURES); return; }
@@ -7983,7 +8002,7 @@ export default function ClubMemberOrganisationApp() {
                   currentClub={currentClub} onClubLogoUpdated={updateCurrentClubLogo} onClubColorsUpdated={updateCurrentClubColors} clubFeatures={clubFeatures} onClubFeaturesChanged={loadClubFeatures} />
                 </LockedFeature>
               )}
-              {!subView && tab === "profile" && <ProfileView user={currentUser} members={clubMembers} setMembers={setMembers} currentClub={currentClub} sponsorBookings={sponsorBookings} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick} onLogout={logout} clubFeatures={clubFeatures} onClubFeaturesChanged={loadClubFeatures} entitlement={entitlement} goSubscribe={goSubscribe} dashboardTileOrder={dashboardTileOrder} setDashboardTileOrder={setDashboardTileOrder} />}
+              {!subView && tab === "profile" && <ProfileView ziel={profilZiel} onZielErreicht={() => setProfilZiel("")} user={currentUser} members={clubMembers} setMembers={setMembers} currentClub={currentClub} sponsorBookings={sponsorBookings} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick} onLogout={logout} clubFeatures={clubFeatures} onClubFeaturesChanged={loadClubFeatures} entitlement={entitlement} goSubscribe={goSubscribe} dashboardTileOrder={dashboardTileOrder} setDashboardTileOrder={setDashboardTileOrder} />}
             </div>
 
             {!subView && (
