@@ -4534,9 +4534,38 @@ function SubscriptionPanel({ user }) {
     setPurchasing(true); setMessage("");
     try {
       await purchasePackageAs(user.clubId, pkg);
-      setMessage("Kauf erfolgreich. Die Freischaltung kann kurz dauern.");
-      setShowWelcome(true);
-      setTimeout(refreshClubStatus, 2500);
+
+      /* Der Kauf bei Apple ist damit durch - die Freischaltung aber noch nicht.
+         Dazwischen liegt der Webhook von RevenueCat, der den Kauf in
+         club_subscriptions schreibt; erst daran haengt der Zugang.
+
+         Vorher meldete die App an dieser Stelle unbesehen "Willkommen an Bord!
+         Dein Abonnement ist aktiv". Faellt der Webhook aus - falsch
+         eingerichtet, falscher Schluessel -, behauptet sie damit etwas, das
+         nicht stimmt, und niemand merkt es. Genau dieser Fall ist am
+         30.08.2026 beim Sandbox-Test eingetreten: Der Kauf lief durch, in
+         payment_events stand danach kein einziges Ereignis.
+
+         Deshalb wird jetzt nachgesehen statt behauptet. Bis zu fuenf Versuche
+         ueber etwa fuenfzehn Sekunden - so lange darf ein Webhook brauchen. */
+      setMessage("Kauf bei Apple abgeschlossen. Freischaltung wird geprüft …");
+      let freigeschaltet = false;
+      for (let versuch = 0; versuch < 5 && !freigeschaltet; versuch++) {
+        await new Promise((r) => setTimeout(r, 3000));
+        const { data: tarif } = await supabase.rpc("club_subscription_tier", { target_club: user.clubId });
+        if (tarif && tarif !== "none") freigeschaltet = true;
+      }
+      refreshClubStatus();
+      loadSubscriptions();
+      if (freigeschaltet) {
+        setMessage("");
+        setShowWelcome(true);
+      } else {
+        /* Kein Grund zur Panik fuer den Kaeufer - bezahlt ist bezahlt, und ein
+           verspaeteter Webhook holt es nach. Aber es wird gesagt, statt einen
+           Erfolg vorzutaeuschen. */
+        setMessage("Der Kauf ist bei Apple angekommen, die Freischaltung steht aber noch aus. Das kann ein paar Minuten dauern. Bleibt es dabei, melde dich bitte beim Verein — der Kauf geht dabei nicht verloren.");
+      }
     } catch (error) {
       if (!error?.userCancelled) setMessage(error?.message || "Der Kauf konnte nicht abgeschlossen werden.");
     } finally {
