@@ -341,20 +341,28 @@ Die vier übrigen Abos (`member_monthly`, `member_yearly`, `club_premium_*`)
 stehen zwar auf READY_TO_SUBMIT, liegen der Einreichung aber nicht bei. Sie
 bewerben also nichts, was die App nicht verkauft.
 
-### Die Bildschirmfotos sind überholt
+### Die Bildschirmfotos — alle fünf einzeln angesehen
 
-Heruntergeladen und angesehen. Zwei Beispiele genügen:
+Heruntergeladen und geprüft. **Vier von fünf zeigen Inhalte, die es nicht mehr
+gibt**; eines ist in Ordnung.
 
-- **ios-1-home.png** zeigt „Heute Geburtstag: Lena K. (U15) · Timo B.
-  (Herren 1)" — die erfundenen Geburtstage aus der heute entfernten Konstante.
-  Diese Personen gibt es in keinem Verein. Darüber „Auswärtsspiel bei ERC
-  Wimbern", der Demo-Termin aus dem ebenfalls entfernten `getNextMatch()`.
-- **ios-4-chat.png** zeigt die Demo-Kanäle „Eltern U11" und „Vereins-News" samt
-  erfundener Nachrichten. Die echten Kanäle sind einer je Mannschaft.
+| Bild | Befund |
+|---|---|
+| ios-1-home | „Heute Geburtstag: **Lena K. (U15) · Timo B. (Herren 1)**" — die erfundenen Geburtstage aus der entfernten Konstante; diese Personen gibt es in keinem Verein. Dazu „Auswärtsspiel bei **ERC Wimbern**" aus dem gelöschten `getNextMatch()` |
+| ios-2-termine | Anzeige „**Stadtwerke Iserlohn** — Energie, die unsere Mannschaften bewegt" — die Werbung eines echten Unternehmens, heute aus der Datenbank entfernt |
+| ios-3-teams | **in Ordnung** — echte Mannschaften mit echten Zahlen, keine Demo-Daten |
+| ios-4-chat | Demo-Kanäle „Eltern U11" und „Vereins-News" mit erfundenen Nachrichten; die echten Kanäle sind einer je Mannschaft |
+| ios-5-verwaltung | „**144 Saison-Stimmen**" (genau die Summe der erfundenen Stimmen), „2 Offene Aufgaben aus Protokollen" aus dem gelöschten Demo-Protokoll, „17 Helfer-Lücken" aus Demo-Terminen, „Training Herren 1" als `EVENTS[0]` |
 
-Nach Richtlinie 2.3.3 müssen Bildschirmfotos die App im Gebrauch zeigen. Neu
-aufnehmen lassen sie sich von hier aus nicht: Dafür wäre eine Anmeldung nötig,
-und Passwörter tippe ich grundsätzlich nicht in Eingabefelder.
+Nach Richtlinie 2.3.3 müssen Bildschirmfotos die App im Gebrauch zeigen.
+
+**Warum ich sie nicht ersetzen kann:** Dafür wäre eine Anmeldung in der App
+nötig, und Passwörter tippe ich grundsätzlich nicht in Eingabefelder. Zwei
+Umwege wurden geprüft und scheiden aus: Ein Supabase-Anmeldelink würde greifen
+(`detectSessionInUrl` steht auf true), landete aber in Safari statt in der App —
+die Hülle registriert weder ein eigenes URL-Schema noch Universal Links. Und
+eine Sitzung von aussen in die Webansicht des Simulators zu schreiben, geht mit
+den vorhandenen Werkzeugen nicht.
 
 ---
 
