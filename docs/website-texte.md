@@ -1,0 +1,187 @@
+# Texte für die Website
+
+Für die Präsentationsseite der App. Alles hier ist am tatsächlichen
+Funktionsumfang geprüft — nichts versprochen, was die App nicht kann.
+
+Nicht erwähnt und bewusst weggelassen: Push-Benachrichtigungen (gibt es auf iOS
+noch nicht), Plus und Pro als kaufbare Tarife (derzeit nur Basic), ein
+kostenloser Testzeitraum (entfällt seit dem 30.08.2026).
+
+---
+
+## Titelbereich
+
+### Überschriften zur Auswahl
+
+**Der Verein in einer App.**
+Termine, Mannschaften, Kommunikation — an einem Ort, für alle.
+
+**Alles, was der Verein braucht. Nichts, was er nicht braucht.**
+
+**Schluss mit fünf Gruppenchats und einem Aushang.**
+
+### Untertitel
+
+Club Member Organisation bündelt, was sonst über WhatsApp, Aushänge und
+Excel-Listen verstreut liegt: Trainingszeiten, Spielpläne, Mannschaften,
+Helferdienste und die Kommunikation dazu. Jede und jeder sieht genau das, was
+zur eigenen Rolle im Verein gehört.
+
+### Kurzfassung in einem Satz
+
+Eine Mitglieder-App für Sportvereine, die Termine, Mannschaften und
+Kommunikation an einem Ort zusammenführt.
+
+---
+
+## Was die App kann
+
+### Termine
+
+Trainings, Spiele und Vereinsveranstaltungen in einem Kalender. Wer mehreren
+Mannschaften angehört, filtert nach der, die ihn gerade interessiert.
+Wiederkehrende Trainings legt man einmal an — für ein ganzes Jahr, wenn nötig.
+
+Und weil niemand eine weitere App öffnen will, um zu wissen wann Training ist:
+Der Kalender lässt sich im Telefon abonnieren. Neue Termine erscheinen dann von
+selbst, dort wo alle anderen Termine auch stehen.
+
+### Mannschaften
+
+Wer spielt wo, wer trainiert wen, wer ist Kapitän. Die Zuordnung entscheidet,
+was jemand in der App sieht — ein Elternteil sieht die Mannschaft seines Kindes,
+ein Trainer seine eigene.
+
+### Chat je Mannschaft
+
+Ein Kanal pro Mannschaft, mehr nicht. Geschrieben wird von Trainern, Kapitänen,
+Teammanagern und der Vereinsleitung; gelesen von allen, die dazugehören.
+
+Das ist Absicht: Ein Mannschaftskanal ist ein Aushang, kein Gruppenchat. Wer
+etwas zu sagen hat, sagt es — und die anderen finden es wieder.
+
+### Vereins-News
+
+Eine Redaktion für den ganzen Verein. Neuigkeiten mit Bild, sichtbar für alle
+Mitglieder.
+
+### Helferplanung
+
+Theke, Grill, Kuchenbuffet, Zeitnahme. Wer sich einträgt, steht drin; wer fehlt,
+fällt auf. Die Vereinsleitung sieht auf einen Blick, wo noch Lücken sind.
+
+### Fahrgemeinschaften
+
+Wer fährt, bietet Plätze an — mit Abfahrtsadresse. Wer mitfahren will, trägt
+sich ein. Kein Rundruf, keine Doppelfahrten.
+
+### Vereinsfahrzeuge
+
+Kalender und Buchung für den Vereinsbus, wenn es einen gibt.
+
+### Beiträge
+
+Wer hat gezahlt, wer nicht. Ohne Excel-Liste, die nur einer pflegt.
+
+### Und dazu
+
+Vorstandsprotokolle mit Aufgaben, Tippspiel auf die eigenen Spiele, die Wahl
+zur Athletin oder zum Athleten der Saison.
+
+---
+
+## Für wen
+
+**Für Mitglieder** — Trainingszeiten, Spielpläne, die eigene Mannschaft.
+Kostenlos, immer.
+
+**Für Trainer und Teammanager** — die eigene Mannschaft erreichen, ohne fünf
+Telefonnummern zu suchen.
+
+**Für die Vereinsleitung** — Mitglieder verwalten, Rollen vergeben, Termine
+anlegen, Helfer einteilen. Und sehen, was im Verein passiert.
+
+**Für Eltern** — die Mannschaft des eigenen Kindes, ohne selbst im Verein zu
+spielen.
+
+---
+
+## Preise
+
+### Der Grundsatz
+
+**Mitglieder zahlen nichts.** Nie. Der Zugang wird vom Verein bezahlt, und was
+jemand nutzen kann, ergibt sich aus seinen Rollen im Verein — nicht aus seinem
+Geldbeutel.
+
+### Kostenlos nutzbar
+
+Drei Zugänge je Verein, ohne zeitliche Begrenzung. Damit lassen sich Trainings-
+und Spielpläne führen und einsehen. Kein Testzeitraum, der abläuft.
+
+### Vereinsabo
+
+Ab **24,99 € im Monat** oder **239,99 € im Jahr** für bis zu 100 angemeldete
+Konten. Das schaltet alles Weitere frei: Mannschaftsverwaltung, Chat,
+Vereins-News, Helferplanung, Fahrzeugbuchung, Kalender-Abo und Vereinstermine.
+
+Größere Vereine sprechen uns an — für sie machen wir ein eigenes Angebot.
+
+Alle Preise inklusive 19 % Umsatzsteuer. Monatlich kündbar zum Ende der
+Laufzeit.
+
+---
+
+## Häufige Fragen
+
+**Was kostet es für einzelne Mitglieder?**
+Nichts. Es gibt kein Mitglieder-Abo und wird auch keines geben.
+
+**Zählt jedes Mitglied als Zugang?**
+Nein, nur selbst angemeldete Konten. Wer ohne eigenen Zugang eingetragen wird —
+ein Kind zum Beispiel, das ein Elternteil anlegt — zählt nicht mit.
+
+**Können mehrere Vereine dieselbe App nutzen?**
+Ja. Jeder Verein sieht ausschließlich seine eigenen Daten.
+
+**Was passiert mit unseren Daten?**
+Sie gehören dem Verein. Jedes Mitglied kann sein Konto jederzeit selbst
+löschen — direkt in der App, ohne Umweg über uns.
+
+**Wer darf im Mannschaftschat schreiben?**
+Trainer, Kapitäne, Teammanager sowie Vorstand und Vereinsverwaltung. Alle
+anderen lesen mit.
+
+---
+
+## Handlungsaufforderungen
+
+**Verein kostenlos anlegen** — drei Zugänge, keine Frist, keine Kreditkarte.
+
+**Im App Store laden**
+
+**Fragen? Sprich uns an.**
+
+---
+
+## Kurztexte für Kacheln
+
+- **Ein Kalender statt fünf Chatgruppen.**
+- **Jeder sieht, was ihn betrifft.** Rollen entscheiden, nicht Zufall.
+- **Der Verein zahlt, die Mitglieder nicht.**
+- **Trainingsplan im Telefonkalender.** Einmal abonnieren, nie wieder nachfragen.
+- **Helfer finden, ohne zu betteln.**
+
+---
+
+## Was noch nicht hineingehört
+
+Zum Nachlesen, damit es niemand versehentlich verspricht:
+
+- **Push-Benachrichtigungen** funktionieren auf iOS noch nicht. Mitteilungen
+  innerhalb der App gibt es.
+- **Plus und Pro** (350 bzw. 1000 Zugänge) sind vorbereitet, aber noch nicht
+  kaufbar. Bis dahin: „auf Anfrage".
+- **Android** gibt es noch nicht.
+- Einen **Testzeitraum** gibt es nicht mehr — dafür die dauerhaft kostenlose
+  Stufe.
