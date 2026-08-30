@@ -285,6 +285,36 @@ Die restlichen sieben halten der Prüfung stand:
 
 ---
 
+## Fünfte Runde: die App tatsächlich laufen lassen
+
+Alle bisherigen Prüfungen waren statisch — gelesener Code, HTTP-Abfragen. Ein
+Prüfer bei Apple startet die App. Das wurde am 29.08.2026 im iOS-Simulator
+nachgestellt (iPhone 17 Pro, Build aus dem aktuellen Stand).
+
+Am laufenden Programm bestätigt:
+
+| Beobachtung | Bezug |
+|---|---|
+| App startet, lädt die Oberfläche, kein weißer Bildschirm | 2.1 |
+| Statusleiste dunkel auf hellem Grund | 4.0, die Info.plist-Korrektur |
+| Keine sichtbaren Bereiche unter dem Dynamic Island | 4.0 |
+| Anmeldebildschirm **ohne** die Demo-Zugänge | 2.1, 5.1 |
+| Registrierung: „Mannschaft (optional)" als Textfeld statt Demo-Mannschaften | 2.1 |
+| Beide Rechts-Links bei der Registrierung | 3.1.2 |
+| Nutzungsbedingungen zeigen „Vertragspartner ist Marco Aleixo" | 2.1, kein Platzhalter mehr |
+| Die Rechtsseite öffnet in Safari, mit „◀ Club Member Org…" zurück | 4.0, keine Sackgasse |
+| Rückkehr in die App ohne Absturz, Zustand erhalten | 2.1 |
+
+Im gebauten Binary nachgesehen: `UIStatusBarStyleDarkContent` und
+`UIUserInterfaceStyle = Light` sind enthalten.
+
+**Wo die Prüfung endet:** Weiter als bis zum Anmeldebildschirm komme ich nicht,
+weil ich grundsätzlich keine Passwörter in Eingabefelder tippe. Der Bereich
+hinter der Anmeldung — Startseite, Chat, Abo — ist deshalb weiterhin nur am Code
+geprüft, nicht am laufenden Programm.
+
+---
+
 ## Was der Prüfung noch fehlt
 
 **Die Sandbox-Zahlung.** Sie verlangt ein Gerät und ein Apple-Sandbox-Konto und
