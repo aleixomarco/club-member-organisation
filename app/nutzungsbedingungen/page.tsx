@@ -4,8 +4,8 @@ export const metadata = { title: "Nutzungsbedingungen | Club Member Organisation
 export default function TermsPage() { return <LegalShell title="Nutzungsbedingungen">
   <p>Diese Bedingungen gelten für die Nutzung der Club Member Organisation durch registrierte Vereinsmitglieder. Vertragspartner ist {legal.name}{legal.representedBySelf ? "" : `, vertreten durch ${legal.representative}`}.</p>
 
-  <h2>Kostenloser Testzeitraum</h2>
-  <p>Neu angelegte Vereine können die App vierzehn Tage ab Registrierung kostenlos und in vollem Umfang nutzen. Danach ist ein Abonnement erforderlich. Der Testzeitraum endet automatisch und geht nicht in ein kostenpflichtiges Abonnement über.</p>
+  <h2>Kostenlos nutzbar</h2>
+  <p>Die App lässt sich ohne Abonnement und ohne zeitliche Begrenzung nutzen. Kostenlos sind {FREIE_ZUGAENGE} Zugänge je Verein sowie Trainings- und Spielpläne. Es gibt keinen befristeten Testzeitraum, der ablaufen könnte, und es entsteht daraus auch keine Zahlungspflicht.</p>
 
   <h2>Für Mitglieder kostenlos</h2>
   <p>Mitglieder zahlen nichts. Der Zugang wird vom Verein bezahlt; ein eigenes Abonnement ist nicht erforderlich und wird auch nicht angeboten. Welche Funktionen ein Mitglied nutzen kann, ergibt sich aus seinen Rollen im Verein.</p>
@@ -20,8 +20,9 @@ export default function TermsPage() { return <LegalShell title="Nutzungsbedingun
   <h2>Mehr Zugänge</h2>
   <p>Vereine, die mehr Zugänge benötigen, als der größte angebotene Tarif umfasst, erhalten auf Anfrage ein individuelles Angebot.</p>
 
-  <h2>Kostenlose Nutzung für kleine Vereine</h2>
-  <p>Ohne Abonnement stehen dauerhaft {FREIE_ZUGAENGE} Zugänge zur Verfügung. Vereine bis zu dieser Größe können die App kostenlos und mit vollem Funktionsumfang nutzen.</p>
+  <h2>Kostenlose Nutzung</h2>
+  <p>Ohne Abonnement stehen dauerhaft {FREIE_ZUGAENGE} Zugänge zur Verfügung. Kostenlos nutzbar sind damit die Termine des Vereins — Trainings und Spiele — jeweils passend zur Rolle des Mitglieds.</p>
+  <p>Ein Abonnement schaltet die übrigen Funktionen frei: Mannschaftsverwaltung, Chat, Vereins-News, Sponsoring, Fahrzeugbuchung, Helferdienst, Tippspiel, Wahl zur Athletin oder zum Athleten der Saison, Kalender-Abonnement und Vereins-Events.</p>
 
   <h2>Erreichen der Zugangsgrenze</h2>
   <p>Ist die Zahl der Zugänge des gebuchten Tarifs erreicht, lassen sich keine weiteren Konten anlegen oder freigeben. Bestehende Zugänge bleiben unverändert nutzbar. Der Verein kann jederzeit in einen größeren Tarif wechseln.</p>

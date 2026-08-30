@@ -36,9 +36,10 @@ Der Verein zahlt nach der Zahl der angemeldeten Zugänge.
 Basic – bis 100 Zugänge
 24,99 € pro Monat oder 239,99 € pro Jahr
 
-Ohne Abonnement stehen dauerhaft drei Zugänge kostenlos zur Verfügung. Neu
-angelegte Vereine können die App vierzehn Tage in vollem Umfang testen.
-Größere Vereine erhalten auf Anfrage ein individuelles Angebot.
+Ohne Abonnement stehen dauerhaft drei Zugänge kostenlos zur Verfügung; damit
+lassen sich Trainings und Spiele einsehen. Einen befristeten Testzeitraum gibt
+es nicht — der kostenlose Umfang läuft nicht ab. Größere Vereine erhalten auf
+Anfrage ein individuelles Angebot.
 
 HINWEISE ZUM ABONNEMENT
 Die Zahlung erfolgt über den iTunes-Account bei Bestätigung des Kaufs. Das

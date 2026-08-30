@@ -47,9 +47,9 @@ in der App-Beschreibung:
 https://club-member-organisation.vercel.app/nutzungsbedingungen
 https://club-member-organisation.vercel.app/datenschutz
 
-Kostenloser Testzeitraum
-Neu angelegte Vereine können die App vierzehn Tage in vollem Umfang nutzen.
-Das ist keine Funktion des Abonnements, sondern der App selbst.
+Kostenlos nutzbar
+Ohne Abonnement stehen dauerhaft drei Zugänge zur Verfügung, mit denen sich
+Trainings und Spiele einsehen lassen. Es gibt keinen befristeten Testzeitraum.
 ```
 
 ---

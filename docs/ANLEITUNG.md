@@ -46,7 +46,8 @@ hinzufügen → Deutsch**:
 
 Monats- und Jahresabo eines Tarifs bekommen denselben Anzeigenamen.
 
-**Keinen Testzeitraum** eintragen. Der läuft über die App.
+**Keinen Testzeitraum** eintragen. Die App kennt keinen befristeten Test;
+kostenlos ist dauerhaft die Stufe mit drei Zugängen.
 
 ## 1.4 Rangfolge festlegen
 

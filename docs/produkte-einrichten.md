@@ -55,9 +55,9 @@ anteiliger Verrechnung.
 **Rangfolge in der Gruppe** (Level): Pro am höchsten, dann Plus, dann Basic.
 Danach richtet sich, was als Upgrade und was als Downgrade gilt.
 
-**Sonstiges:** Kein kostenloser Testzeitraum in den Produkten — der Test läuft
-über die App selbst, vierzehn Tage ab Vereinsanlage. Als Steuerkategorie die
-für Apps übliche wählen.
+**Sonstiges:** Keinen kostenlosen Testzeitraum eintragen. Die App kennt seit dem
+30.08.2026 keinen befristeten Test mehr; kostenlos ist dauerhaft die Stufe mit
+drei Zugängen. Als Steuerkategorie die für Apps übliche wählen.
 
 ---
 

@@ -907,18 +907,19 @@ function StatCard({ icon: Icon, label, value, sub, accent, onClick }) {
 /* Nutzers läuft noch. Siehe member_entitlement_tier() in Supabase.      */
 /* ------------------------------------------------------------------ */
 function useClubEntitlement(user) {
-  const [state, setState] = useState({ loading: true, tier: "pro", trialing: false, trialEndsAt: null });
+  /* Der Testzeitraum ist entfallen. member_trial_info wird deshalb nicht mehr
+     abgefragt - die Funktion gewaehrte ohnehin nichts, sie verglich nur das
+     Anlagedatum der Mitgliedschaft mit trial_period(). Damit spart der Aufruf
+     eine Abfrage bei jedem Laden und es gibt keinen Zustand mehr, aus dem sich
+     eine falsche Ablauf-Ankuendigung bauen laesst. */
+  const [state, setState] = useState({ loading: true, tier: "pro" });
   useEffect(() => {
-    if (!supabase || !isDbId(user?.id)) { setState({ loading: false, tier: "pro", trialing: false, trialEndsAt: null }); return; }
+    if (!supabase || !isDbId(user?.id)) { setState({ loading: false, tier: "pro" }); return; }
     let cancelled = false;
     (async () => {
-      const [{ data: tier }, { data: trialRows }] = await Promise.all([
-        supabase.rpc("member_entitlement_tier", { target_membership: user.id }),
-        supabase.rpc("member_trial_info", { target_membership: user.id }),
-      ]);
+      const { data: tier } = await supabase.rpc("member_entitlement_tier", { target_membership: user.id });
       if (cancelled) return;
-      const trial = trialRows?.[0];
-      setState({ loading: false, tier: tier || "none", trialing: !!trial?.trialing, trialEndsAt: trial?.trial_ends_at || null });
+      setState({ loading: false, tier: tier || "none" });
       // Kein aktives Vereinsabo (mehr) -> Rollen jenseits "mitglied" zurücksetzen.
       // Bei erneutem Abo werden sie NICHT automatisch wiederhergestellt (siehe SQL-Funktion).
       if ((tier || "none") === "none" && isDbId(user?.clubId)) {
@@ -970,37 +971,17 @@ function LockedFeature({ entitlement, feature = "Diese Funktion", goSubscribe, c
   );
 }
 
-function TrialCountdownBanner({ entitlement, goSubscribe }) {
-  const [showInfo, setShowInfo] = useState(false);
-  if (entitlement.loading || !entitlement.trialing || !entitlement.trialEndsAt) return null;
-  const daysLeft = Math.max(0, Math.ceil((new Date(entitlement.trialEndsAt) - new Date()) / 86400000));
-  return (
-    <>
-      <button onClick={() => setShowInfo(true)} className="w-full flex items-center justify-between gap-2 rounded-2xl px-4 py-3 mb-5" style={{ background: "rgba(255,246,228,0.72)", border: `1px solid ${C.edge}` }}>
-        <div className="flex items-center gap-2 text-left"><Sparkles size={16} style={{ color: C.amber, flexShrink: 0 }} /><div><div className="text-xs font-bold" style={{ color: C.ink }}>Noch {daysLeft} {daysLeft === 1 ? "Tag" : "Tage"} voller Zugriff</div><div className="text-[10px]" style={{ color: C.textDim }}>Dein persönlicher Test-Zeitraum läuft bald ab</div></div></div>
-        <ChevronRight size={15} style={{ color: C.textDim, flexShrink: 0 }} />
-      </button>
-      {showInfo && (
-        <div className="fixed inset-0 z-50 flex items-end p-3" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setShowInfo(false)}>
-          <div role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} className="w-full rounded-3xl p-5" style={{ background: C.glass }}>
-            <div className="text-base font-bold mb-2" style={{ fontFamily: "Oswald", color: C.ink }}>Dein Test-Zeitraum</div>
-            <div className="text-xs mb-4" style={{ color: C.textDim }}>Noch {daysLeft} {daysLeft === 1 ? "Tag" : "Tage"} volle Funktionen. Danach:</div>
-            <div className="rounded-xl p-3 mb-3" style={{ background: C.paperDim }}>
-              <div className="text-xs font-bold mb-1" style={{ color: C.ink }}>Bleibt immer kostenlos</div>
-              <div className="text-[11px]" style={{ color: C.textDim }}>Training & Spiele ansehen, passend zu deiner Rolle.</div>
-            </div>
-            <div className="rounded-xl p-3 mb-4" style={{ background: "rgba(252,235,238,0.72)" }}>
-              <div className="text-xs font-bold mb-1" style={{ color: C.red }}>Braucht ein Vereinsabo</div>
-              <div className="text-[11px]" style={{ color: C.textDim }}>Teams, Chat, Redaktion, Sponsoring, Vereinsfahrzeuge, Helferdienst, Tippspiel, Athlet/in der Saison, Kalender-Abo, Vereins-Events und mehr.</div>
-            </div>
-            <button onClick={goSubscribe} className="w-full py-3 rounded-xl text-sm font-bold" style={{ background: C.red, color: C.white }}>Abo ansehen</button>
-            <button onClick={() => setShowInfo(false)} className="w-full py-2.5 mt-2 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.textDim }}>Schließen</button>
-          </div>
-        </div>
-      )}
-    </>
-  );
-}
+/* Hier stand TrialCountdownBanner: eine Kachel "Noch N Tage voller Zugriff"
+   samt Blatt "Dein Test-Zeitraum". Sie ist ersatzlos entfallen, denn sie hat
+   etwas angekuendigt, das es nicht gibt.
+
+   member_trial_info gewaehrt naemlich gar nichts - die Funktion vergleicht nur
+   das Anlagedatum der Mitgliedschaft mit trial_period(). Der Zugang eines
+   Mitglieds entspricht immer dem Tarif seines Vereins
+   (member_entitlement_tier). Die Kachel zaehlte also 14 Tage herunter, nach
+   deren Ablauf sich nichts aenderte. Sie las sich fuer jedes neu angelegte
+   Mitglied wie ein Countdown bis zur Sperre. */
+
 
 function ToggleCard({ title, desc, value, onChange }) {
   return (
@@ -1714,7 +1695,6 @@ function Dashboard({ user, members, events, feePaid, channels, dutyPlan, seasonV
         <ClubLogo club={currentClub} size={44} rounded={12} />
       </div>
 
-      <TrialCountdownBanner entitlement={entitlement} goSubscribe={goSubscribe} />
 
       <SponsorSlot slotKey="dashboard_top" bookings={sponsorBookings} onImpression={onSponsorImpression} onClick={onSponsorClick} visible={featureEnabled("sponsor_dashboard_top")} />
 
@@ -4516,9 +4496,10 @@ function SubscriptionPanel({ user }) {
      Nutzer weiss, woran er ist. */
   const refreshClubStatus = useCallback(() => {
     if (!supabase || !databaseClub) return;
+    /* Der Testzeitraum ist entfallen, club_trial_info wird nicht mehr gebraucht.
+       Das spart auch die verschachtelte zweite Abfrage. */
     supabase.rpc("club_subscription_tier", { target_club: user.clubId })
-      .then(({ data }) => supabase.rpc("club_trial_info", { target_club: user.clubId })
-        .then(({ data: trialRows }) => setClubStatus({ tier: data || "none", ...(trialRows?.[0] || {}) })))
+      .then(({ data }) => setClubStatus({ tier: data || "none" }))
       .catch(() => setClubStatus({ tier: "none", nichtGeladen: true }));
   }, [databaseClub, user.clubId]);
 
@@ -4619,8 +4600,7 @@ function SubscriptionPanel({ user }) {
     {clubStatus && <div className="rounded-2xl p-4 mb-5" style={{ background: clubStatus.tier === "none" ? "rgba(253,236,236,0.72)" : "rgba(231,243,236,0.72)", border: `1px solid ${clubStatus.tier === "none" ? "#F3B9B9" : "#CFE8D6"}` }}>
       <div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Aktueller Vereinstarif: {clubStatus.nichtGeladen ? "nicht abrufbar" : clubStatus.tier === "none" ? "Kein Abo" : CLUB_TIER_INFO[clubStatus.tier]?.label || clubStatus.tier}</div>
       {clubStatus.nichtGeladen && <div className="text-[11px] mb-1" style={{ color: C.red }}>Der Tarif konnte nicht geladen werden. Prüfe deine Verbindung und öffne die Ansicht erneut — ein bestehendes Abo bleibt davon unberührt.</div>}
-      {clubStatus.trialing && <div className="text-[11px]" style={{ color: C.textDim }}>Trial läuft bis {subscriptionDate(clubStatus.trial_ends_at)} — danach wird ein Abo benötigt.</div>}
-      {!clubStatus.trialing && clubStatus.tier === "none" && <div className="text-[11px]" style={{ color: C.textDim }}>Ohne Abo sind die Funktionen gesperrt und es lassen sich keine neuen Zugänge anlegen.</div>}
+      {clubStatus.tier === "none" && <div className="text-[11px]" style={{ color: C.textDim }}>Ohne Abo sind die Funktionen gesperrt und es lassen sich keine neuen Zugänge anlegen.</div>}
       {accountUsage && <div className="text-[11px] mt-1.5" style={{ color: accountUsage.used >= accountUsage.allowed ? C.red : C.textDim }}>
         {accountUsage.used} von {accountUsage.allowed} Zugängen belegt{accountUsage.used >= accountUsage.allowed ? " — für weitere Mitglieder braucht der Verein einen größeren Tarif." : "."}
       </div>}
@@ -4639,7 +4619,7 @@ function SubscriptionPanel({ user }) {
           <div key={key} className="rounded-2xl p-4" style={{ background: C.glass, border: `1px solid ${aktiv ? C.green : C.edge}`, boxShadow: aktiv ? `0 0 0 2px color-mix(in srgb, ${C.green} 28%, transparent)` : "0 10px 26px rgba(60,30,45,0.06)" }}>
             <div className="flex items-center gap-2 mb-1.5 flex-wrap">
               <div className="text-sm font-bold" style={{ color: C.ink }}>{CLUB_TIER_INFO[key].label}</div>
-              {aktiv && <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(231,243,236,0.9)", color: C.green }}>{clubStatus?.trialing ? "AKTUELL IM TEST" : "AKTUELLER TARIF"}</span>}
+              {aktiv && <span className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(231,243,236,0.9)", color: C.green }}>{"AKTUELLER TARIF"}</span>}
             </div>
             <div className="text-[11px] mb-2.5 leading-snug" style={{ color: C.textDim }}>{CLUB_TIER_INFO[key].desc}</div>
             {/* Wenn der Store einen Preis liefert, gilt seiner. Die Kachel zeigte

@@ -96,7 +96,7 @@ ueber einen.
 | Mitglieder je Verein | Wo liegt Gewicht |
 | Aktive Abos je Stufe | Umsatz |
 | Vereine ueber 80 % ihrer Zugaenge | Verkaufsgespraech faellig |
-| Testzeitraum abgelaufen, kein Abo | verlorene Kundschaft |
+| Vereine an der Grenze der freien Zugaenge | verlorene Kundschaft |
 | Werbeplaetze: belegt, Einblendungen, Klicks | Was einem Werbekunden berichtet wird |
 
 Der letzte Punkt betrifft das Geschaeft unmittelbar: Ohne belastbare Zahlen
