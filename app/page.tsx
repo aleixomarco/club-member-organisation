@@ -1640,7 +1640,14 @@ function Dashboard({ user, members, events, feePaid, channels, dutyPlan, seasonV
   const newsMsgs = (channels.find((c) => c.id === "news")?.messages || []).slice(-2).reverse();
 
   const seasonClosed = new Date() > new Date(SEASON_VOTE_DEADLINE);
-  const seasonSubtitle = seasonClosed ? `🏆 ${seasonResults(seasonVotes).sorted[0]?.name}` : "Bis 31.08. abstimmen";
+  /* Ohne Kandidaten bleibt sorted leer. Das ?. verhindert zwar den Absturz,
+     aber undefined landete in der Zeichenkette - auf der Kachel stand woertlich
+     "🏆 undefined", sobald die Frist verstrichen war. Die beiden anderen
+     Ansichten fangen den leeren Fall ab, diese hier war uebersehen. */
+  const seasonSieger = seasonResults(seasonVotes).sorted[0];
+  const seasonSubtitle = !seasonClosed
+    ? "Bis 31.08. abstimmen"
+    : seasonSieger ? `🏆 ${seasonSieger.name}` : "Keine Kandidat/innen hinterlegt";
 
   const leaderboard = [...members].sort((a, b) => b.tippPoints - a.tippPoints);
   const myRank = leaderboard.findIndex((m) => m.id === user.id) + 1;
@@ -1671,8 +1678,13 @@ function Dashboard({ user, members, events, feePaid, channels, dutyPlan, seasonV
     /* Der Termin kommt aus den echten Vereinsterminen. Vorher wurde er in der
        Demo-Konstante EVENTS gesucht - bei einem echten Verein fand sich dort
        nichts, und hinter der Station stand "Invalid Date". Die Kennung kann je
-       nach Herkunft Zahl oder Text sein, deshalb der Vergleich ueber String(). */
-    const zugehoeriger = (events || []).find((e) => String(e.id) === String(assigned.eid));
+       nach Herkunft Zahl oder Text sein, deshalb der Vergleich ueber String().
+
+       Die Suche MUSS hinter der Pruefung auf assigned stehen. Stand sie davor,
+       las der Callback assigned.eid fuer jeden Termin - und assigned ist null,
+       solange man in keinen Helferdienst eingeteilt ist, also im Normalfall.
+       Das warf beim Rendern der Startseite und liess sie weiss. */
+    const zugehoeriger = assigned ? (events || []).find((e) => String(e.id) === String(assigned.eid)) : null;
     dutySubtitle = assigned && zugehoeriger ? `${assigned.station} · ${formatDate(zugehoeriger.date)}` : assigned ? assigned.station : "Jetzt eintragen";
   }
 
@@ -2133,6 +2145,9 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
       : currentUser.roles.includes("trainer") ? (currentUser.trainerTeams?.length ? currentUser.trainerTeams : [currentUser.team]).filter((team) => waehlbareTeams.includes(team)) : currentUser.roles.includes("teammanager") ? [currentUser.managedTeam || currentUser.team].filter((team)=>waehlbareTeams.includes(team)) : [currentUser.team].filter((team) => waehlbareTeams.includes(team));
   const openCreate = () => {
     setEventDraft((draft) => ({ ...draft, type: canCreateSportEvent ? draft.type : "event", team: canCreateSportEvent ? (allowedEventTeams[0] || "") : "" }));
+    /* Alte Meldung verwerfen, sonst begruesst sie einen beim naechsten Oeffnen
+       des Formulars erneut, obwohl gar nichts mehr im Argen liegt. */
+    setEventFehler("");
     setShowCreate(true);
   };
   const resetEventDraft = () => setEventDraft({ type: "training", team: allowedEventTeams[0] || "", title: "", date: "", location: "", desc: "", recurring: false, weekdays: [], startTime: "18:00", endTime: "19:30", rangeStart: "", rangeEnd: "", isHome: true });
@@ -2142,9 +2157,14 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
     /* Diese beiden Pruefungen brachen frueher stumm ab: Der Speichern-Knopf tat
        schlicht nichts, ohne jeden Hinweis. */
     if (!isClubEvent && (!eventDraft.team || !allowedEventTeams.includes(eventDraft.team))) {
-      setEventFehler(allowedEventTeams.length === 0
-        ? "Für Training und Spiel wird eine Mannschaft gebraucht. Lege zuerst unter „Mannschaften“ eine an."
-        : "Bitte wähle eine Mannschaft aus.");
+      /* Der Hinweis richtet sich nach der Rolle: Mannschaften anlegen darf nur
+         die Vereinsverwaltung. Ein Trainer oder Kapitaen an dieselbe Stelle zu
+         schicken waere ins Leere geschickt - dort darf er nichts. */
+      setEventFehler(allowedEventTeams.length > 0
+        ? "Bitte wähle eine Mannschaft aus."
+        : isSysAdmin(currentUser) || isAdminUser
+          ? "Für Training und Spiel wird eine Mannschaft gebraucht. Lege zuerst unter „Mannschaften“ eine an."
+          : "Dir ist noch keine Mannschaft zugewiesen. Die Vereinsverwaltung kann das eintragen.");
       return;
     }
     if (!eventDraft.title.trim() || !eventDraft.location.trim()) {
@@ -2261,8 +2281,7 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
           <label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>Beginn *</span><input type="time" value={eventDraft.startTime} onChange={(e)=>setEventDraft({...eventDraft,startTime:e.target.value})} className="erg-datetime w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim,color:C.ink}}/></label>
           <label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>Ende *</span><input type="time" value={eventDraft.endTime} onChange={(e)=>setEventDraft({...eventDraft,endTime:e.target.value})} className="erg-datetime w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim,color:C.ink}}/></label>
         </div>
-        {eventFehler && <div className="text-[10px] rounded-xl px-3 py-2" style={{background:"rgba(253,236,236,0.72)",color:C.red}}>{eventFehler}</div>}
-      </div> : <div className="space-y-2"><div className="flex gap-1.5 flex-wrap">{[["1","Mo"],["2","Di"],["3","Mi"],["4","Do"],["5","Fr"],["6","Sa"],["7","So"]].map(([num,label])=>{const n=Number(num);const active=eventDraft.weekdays.includes(n);return <button type="button" key={num} onClick={()=>setEventDraft({...eventDraft,weekdays:active?eventDraft.weekdays.filter((w)=>w!==n):[...eventDraft.weekdays,n]})} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?C.red:C.paperDim,color:active?C.white:C.textDim}}>{label}</button>;})}</div><div className="grid grid-cols-2 gap-2"><input type="time" value={eventDraft.startTime} onChange={(e)=>setEventDraft({...eventDraft,startTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><input type="time" value={eventDraft.endTime} onChange={(e)=>setEventDraft({...eventDraft,endTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></div><div className="grid grid-cols-2 gap-2"><input type="date" value={eventDraft.rangeStart} onChange={(e)=>setEventDraft({...eventDraft,rangeStart:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><input type="date" value={eventDraft.rangeEnd} onChange={(e)=>setEventDraft({...eventDraft,rangeEnd:e.target.value})} className="erg-datetime px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim,color:C.ink}}/></div></div>}<input value={eventDraft.location} onChange={(e)=>setEventDraft({...eventDraft,location:e.target.value})} placeholder="Ort *" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><textarea value={eventDraft.desc} onChange={(e)=>setEventDraft({...eventDraft,desc:e.target.value})} placeholder="Beschreibung (optional)" rows={2} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none" style={{background:C.paperDim}}/><div className="flex gap-2"><button type="submit" className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{background:C.ink,color:C.white}}>Speichern</button><button type="button" onClick={()=>setShowCreate(false)} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{background:C.paperDim,color:C.textDim}}>Abbrechen</button></div></form>}
+      </div> : <div className="space-y-2"><div className="flex gap-1.5 flex-wrap">{[["1","Mo"],["2","Di"],["3","Mi"],["4","Do"],["5","Fr"],["6","Sa"],["7","So"]].map(([num,label])=>{const n=Number(num);const active=eventDraft.weekdays.includes(n);return <button type="button" key={num} onClick={()=>setEventDraft({...eventDraft,weekdays:active?eventDraft.weekdays.filter((w)=>w!==n):[...eventDraft.weekdays,n]})} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?C.red:C.paperDim,color:active?C.white:C.textDim}}>{label}</button>;})}</div><div className="grid grid-cols-2 gap-2"><input type="time" value={eventDraft.startTime} onChange={(e)=>setEventDraft({...eventDraft,startTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><input type="time" value={eventDraft.endTime} onChange={(e)=>setEventDraft({...eventDraft,endTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></div><div className="grid grid-cols-2 gap-2"><input type="date" value={eventDraft.rangeStart} onChange={(e)=>setEventDraft({...eventDraft,rangeStart:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><input type="date" value={eventDraft.rangeEnd} onChange={(e)=>setEventDraft({...eventDraft,rangeEnd:e.target.value})} className="erg-datetime px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim,color:C.ink}}/></div></div>}<input value={eventDraft.location} onChange={(e)=>setEventDraft({...eventDraft,location:e.target.value})} placeholder="Ort *" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><textarea value={eventDraft.desc} onChange={(e)=>setEventDraft({...eventDraft,desc:e.target.value})} placeholder="Beschreibung (optional)" rows={2} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none" style={{background:C.paperDim}}/>{/* Die Meldung stand vorher IM Zweig fuer Einzeltermine. Bei einer Serie erschien sie deshalb nie, und das Speichern blieb wieder stumm - genau der Fehler, den sie beheben sollte. Jetzt steht sie vor der Knopfzeile und gilt fuer beide Zweige. */}{eventFehler && <div className="text-[10px] rounded-xl px-3 py-2" style={{background:"rgba(253,236,236,0.72)",color:C.red}}>{eventFehler}</div>}<div className="flex gap-2"><button type="submit" className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{background:C.ink,color:C.white}}>Speichern</button><button type="button" onClick={()=>{setShowCreate(false);setEventFehler("");}} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{background:C.paperDim,color:C.textDim}}>Abbrechen</button></div></form>}
       <SponsorSlot slotKey="events_header" bookings={sponsorBookings} onImpression={onSponsorImpression} onClick={onSponsorClick} visible={featureEnabled("sponsor_events_header")} />
       <div className="flex items-center gap-2 mb-3">
         <div className="flex gap-2 overflow-x-auto pb-1 flex-1 min-w-0" style={{ scrollbarWidth: "none" }}>
@@ -2475,15 +2494,35 @@ function FeesView({ members, records, setRecords }) {
 /* Chat                                                                  */
 /* ------------------------------------------------------------------ */
 function ChatView({ user, channels, setChannels, activeId, setActiveId, members }) {
+  /* ALLE Hooks stehen vor dem ersten return - ohne Ausnahme.
+     Vorher lag der Ausstieg fuer "kein Kanal sichtbar" zwischen dem ersten und
+     dem zweiten useState. Beim leeren Durchlauf rief die Komponente damit einen
+     Hook auf, beim gefuellten drei. Sobald die Kanalliste zwischen leer und
+     gefuellt wechselt - und genau das kann sie jetzt, weil ein Verein ohne
+     Kanaele eine leere Liste bekommt statt der Demo-Kanaele -, wirft React
+     "Rendered more hooks than during the previous render" und der Chat bricht
+     ab. Die Regel gilt ausnahmslos: erst alle Hooks, dann jeder Ausstieg. */
   const [text, setText] = useState("");
+  const [sendeFehler, setSendeFehler] = useState("");
+
   const visibleChannels = channels.filter((c) => isAdmin(user) || ((!c.team || c.team === user.team) && (!c.visibleRoles || c.visibleRoles.some((r) => user.roles.includes(r)))));
   const active = visibleChannels.find((c) => c.id === activeId) || visibleChannels[0];
 
+  /* Apple-Richtlinie 1.2 verlangt bei nutzergenerierten Inhalten beides: melden
+     UND blockieren. Gemeldet werden konnte bisher, blockieren nicht.
+     Die Sperre gilt bewusst nur für die eigene Ansicht — sie ist kein
+     Vereinsausschluss, den dürfen weiterhin nur Administratoren aussprechen.
+     Deshalb liegt sie lokal auf dem Gerät und wird nicht in den Verein gespiegelt. */
+  const blockKey = `cmo-blocked-${user.id}`;
+  const [blocked, setBlocked] = useState(() => {
+    if (typeof window === "undefined") return [];
+    try { return JSON.parse(window.localStorage.getItem(blockKey) || "[]"); } catch { return []; }
+  });
+
   /* Kein einziger Kanal sichtbar - moeglich, seit die Sichtbarkeit an der
      Mannschaft haengt: ein Mitglied ohne Mannschaft, ein Elternteil ohne
-     Familienverknuepfung, ein frisch freigegebenes Konto.
-     Ohne diesen Zweig liefe die Ansicht in active.messages auf undefined und
-     der Chat bliebe weiss. */
+     Familienverknuepfung, ein frisch freigegebenes Konto. Und seit ein Verein
+     ohne eigene Kanaele auch wirklich keine bekommt. */
   if (!active) {
     return (
       <div className="px-4 pt-4 pb-10">
@@ -2501,16 +2540,6 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
   }
   const canPost = isAdmin(user) || (active.id === "news" && user.roles.includes("redakteur")) || (!active.adminOnly && (!active.writeRoles || active.writeRoles.some((r) => user.roles.includes(r))));
 
-  /* Apple-Richtlinie 1.2 verlangt bei nutzergenerierten Inhalten beides: melden
-     UND blockieren. Gemeldet werden konnte bisher, blockieren nicht.
-     Die Sperre gilt bewusst nur für die eigene Ansicht — sie ist kein
-     Vereinsausschluss, den dürfen weiterhin nur Administratoren aussprechen.
-     Deshalb liegt sie lokal auf dem Gerät und wird nicht in den Verein gespiegelt. */
-  const blockKey = `cmo-blocked-${user.id}`;
-  const [blocked, setBlocked] = useState(() => {
-    if (typeof window === "undefined") return [];
-    try { return JSON.parse(window.localStorage.getItem(blockKey) || "[]"); } catch { return []; }
-  });
   const persistBlocked = (next) => {
     setBlocked(next);
     try { window.localStorage.setItem(blockKey, JSON.stringify(next)); } catch {}
@@ -2518,8 +2547,6 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
   const blockAuthor = (who) => { if (who && !blocked.includes(who)) persistBlocked([...blocked, who]); };
   const unblockAuthor = (who) => persistBlocked(blocked.filter((name) => name !== who));
   const visibleMessages = active.messages.filter((m) => m.who === user.name || !blocked.includes(m.who));
-
-  const [sendeFehler, setSendeFehler] = useState("");
 
   const send = async () => {
     if (!text.trim() || !canPost) return;
@@ -6923,7 +6950,16 @@ export default function ClubMemberOrganisationApp() {
    * Datenbank - dort ist ein fluechtiger Chat richtig, weil nichts bleiben
    * soll. */
   useEffect(() => {
-    if (!supabase || !isDbId(selectedClubId)) return;
+    /* currentUserId gehoert zwingend in die Abhaengigkeiten. Der Verein wird
+       naemlich schon auf dem Auswahlbildschirm gesetzt, also VOR der Anmeldung -
+       und die Sicherheitsregel auf channels lautet
+       "using (public.is_club_member(club_id))". Ein nicht angemeldeter Zugriff
+       bekommt deshalb null Kanaele zurueck, ohne Fehler.
+       Ohne diese Abhaengigkeit lief der Ladevorgang genau einmal, naemlich
+       anonym, und danach nie wieder: Der Chat waere die ganze Sitzung leer
+       geblieben, obwohl der Verein Kanaele hat. Mit ihr laedt er direkt nach der
+       Anmeldung erneut - dann mit Leserecht. */
+    if (!supabase || !isDbId(selectedClubId) || !currentUserId) return;
     let abgemeldet = false;
 
     const laden = async () => {
@@ -6992,7 +7028,7 @@ export default function ClubMemberOrganisationApp() {
       .subscribe();
 
     return () => { abgemeldet = true; supabase.removeChannel(kanal); };
-  }, [selectedClubId]);
+  }, [selectedClubId, currentUserId]);
   const [chatChannelId, setChatChannelId] = useState("team");
   const [seasonVotes, setSeasonVotes] = useState({});
   const [tippPredictions, setTippPredictions] = useState({});
