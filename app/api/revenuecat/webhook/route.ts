@@ -72,6 +72,63 @@ export async function POST(request: Request) {
     processed_at: new Date().toISOString(),
   }, { onConflict: "provider,provider_event_id", ignoreDuplicates: true });
 
+  /* TRANSFER: Ein Abo wechselt den Besitzer.
+     
+     RevenueCat kennt immer nur EINE Kennung gleichzeitig. Kauft jemand, waehrend
+     die App noch auf eine andere Kennung angemeldet ist - etwa auf die anonyme
+     vor der Anmeldung -, und wird danach umgemeldet, schiebt RevenueCat das Abo
+     hinterher und meldet es als TRANSFER.
+     
+     Diese Ereignisse fielen bisher durch: Sie stehen in keiner der beiden
+     Zuordnungstabellen, und sie tragen kein app_user_id, sondern die beiden
+     Listen transferred_from und transferred_to. Beides zusammen hiess: als
+     "ignoriert" abgehakt, das Abo blieb beim alten Besitzer haengen.
+     
+     Ein TRANSFER traegt weder Produkt noch Laufzeit. Es laesst sich daraus also
+     kein Abo anlegen - wohl aber ein vorhandenes umhaengen, und genau das ist
+     gemeint. */
+  if (event.type === "TRANSFER") {
+    const von: string[] = Array.isArray(event.transferred_from) ? event.transferred_from : [];
+    const nach: string | undefined = Array.isArray(event.transferred_to) ? event.transferred_to[0] : undefined;
+    if (!nach || !UUID.test(nach) || von.length === 0) {
+      return NextResponse.json({ received: true, ignored: "transfer_unklar" });
+    }
+
+    const alteKennungen = von.filter((k) => UUID.test(k));
+    if (alteKennungen.length === 0) {
+      /* Die alte Kennung ist keine UUID - typischerweise die anonyme Kennung,
+         die RevenueCat vor der ersten Anmeldung vergibt. Dann gibt es bei uns
+         nichts umzuhaengen; das Abo kommt mit dem naechsten RENEWAL ordentlich
+         an. */
+      return NextResponse.json({ received: true, ignored: "transfer_ohne_alten_besitzer" });
+    }
+
+    const [{ data: verein }, { data: profil }] = await Promise.all([
+      admin.from("clubs").select("id").eq("id", nach).maybeSingle(),
+      admin.from("profiles").select("id").eq("id", nach).maybeSingle(),
+    ]);
+
+    if (verein) {
+      const { error } = await admin.from("club_subscriptions").update({ club_id: nach }).in("club_id", alteKennungen);
+      if (error) {
+        console.error(`RevenueCat: Abo-Uebertrag auf Verein ${nach} fehlgeschlagen (Event ${event.id})`, error);
+        return NextResponse.json({ error: "Could not transfer subscription" }, { status: 500 });
+      }
+      return NextResponse.json({ received: true, transferred: "club" });
+    }
+    if (profil) {
+      const { error } = await admin.from("user_subscriptions").update({ profile_id: nach }).in("profile_id", alteKennungen);
+      if (error) {
+        console.error(`RevenueCat: Abo-Uebertrag auf Profil ${nach} fehlgeschlagen (Event ${event.id})`, error);
+        return NextResponse.json({ error: "Could not transfer subscription" }, { status: 500 });
+      }
+      return NextResponse.json({ received: true, transferred: "member" });
+    }
+
+    console.error(`RevenueCat: Uebertrag auf unbekannte Kennung ${nach} (Event ${event.id})`);
+    return NextResponse.json({ received: true, ignored: "transfer_ziel_unbekannt" });
+  }
+
   if (!ownerId || !status) return NextResponse.json({ received: true, ignored: true });
 
   /* Sandbox-Käufe werden verbucht wie echte. Das klingt nach einer offenen Tür,
