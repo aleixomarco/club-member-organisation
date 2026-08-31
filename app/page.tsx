@@ -424,12 +424,33 @@ const NOTIFICATION_OPTIONS = [
 /* ------------------------------------------------------------------ */
 /* Badge library                                                       */
 /* ------------------------------------------------------------------ */
+/* Nur Auszeichnungen, die man auch bekommen kann.
+ *
+ * Vorher standen hier vier: Trainings-Streak, Fair-Play-Award und Werber
+ * konnte niemand erreichen - es gibt weder eine Anwesenheitserfassung noch
+ * eine Fair-Play-Wertung noch eine Zaehlung geworbener Freunde. Vergeben
+ * wurden sie ausschliesslich an die erfundenen Demo-Konten. Eine Auszeichnung,
+ * die unerreichbar ist, ist keine Auszeichnung, sondern eine Enttaeuschung mit
+ * Symbol.
+ *
+ * Geblieben sind zwei, die sich aus vorhandenen Daten ergeben. */
 const BADGE_LIBRARY = {
-  streak: { icon: Flame, label: "10x in Folge da", desc: "Trainings-Streak" },
   loyalty: { icon: Trophy, label: "Vereinstreue", descFor: (m) => `Mitglied seit ${m.since}` },
-  fairplay: { icon: Award, label: "Fair-Play Award", desc: "Saison 2025" },
-  referrer: { icon: Users, label: "Werber", desc: "2 Freunde eingeladen" },
+  helfer: { icon: Award, label: "Verlässliche Hilfe", desc: "Mindestens dreimal im Helferplan" },
 };
+
+/* Aus dem, was in der Datenbank steht - nicht aus einem Feld, das jemand von
+   Hand setzen muesste. */
+function verdienteBadges(mitglied, dutyPlan) {
+  const badges = [];
+  const jahre = new Date().getFullYear() - (mitglied.since || new Date().getFullYear());
+  if (jahre >= 3) badges.push("loyalty");
+  const dienste = Object.values(dutyPlan || {})
+    .flatMap((stationen) => Object.values(stationen || {}))
+    .filter((liste) => Array.isArray(liste) && liste.includes(mitglied.id)).length;
+  if (dienste >= 3) badges.push("helfer");
+  return badges;
+}
 
 function initialsOf(name) {
   return name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
@@ -1862,7 +1883,7 @@ function NextTrainingCard({ training }) {
     </div>
   );
 }
-function Dashboard({ user, members, events, feePaid, channels, news, dutyPlan, seasonVotes, polls, setPolls, onVote, werbeplaetze, onSponsorImpression, onSponsorClick, goEvents, goSeason, goTipp, goDuty, goNews, goTasks, goVehicles, currentClub, featureEnabled, dashboardTileOrder, entitlement, goSubscribe }) {
+function Dashboard({ user, members, events, feePaid, channels, news, dutyPlan, seasonVotes, tippPredictions, tippResults, polls, setPolls, onVote, werbeplaetze, onSponsorImpression, onSponsorClick, goEvents, goSeason, goTipp, goDuty, goNews, goTasks, goVehicles, currentClub, featureEnabled, dashboardTileOrder, entitlement, goSubscribe }) {
   const sport = currentClub?.sport || "rollhockey";
   /* Alle Kacheln in „Aktionen & Abstimmungen" hängen am Premium-Tarif
      (siehe die LockedFeature-Hüllen der jeweiligen Ansichten). Während der
@@ -1919,12 +1940,21 @@ function Dashboard({ user, members, events, feePaid, channels, news, dutyPlan, s
      Ansichten fangen den leeren Fall ab, diese hier war uebersehen. */
   const seasonSieger = seasonResults(seasonVotes, saisonKandidaten(members)).sorted[0];
   const seasonSubtitle = !seasonClosed
-    ? "Bis 31.08. abstimmen"
+    ? `Bis ${new Date(SEASON_VOTE_DEADLINE).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })} abstimmen`
     : seasonSieger ? `🏆 ${seasonSieger.name}` : "Keine Kandidat/innen hinterlegt";
 
-  const leaderboard = [...members].sort((a, b) => b.tippPoints - a.tippPoints);
+  /* Dieselbe Rechnung wie in der Tippansicht.
+     Vorher stand hier member.tippPoints - ein Feld, das aus der Datenbank
+     geladene Mitglieder immer mit 0 bekommen und das nur in der Sitzung dessen
+     neu berechnet wird, der gerade ein Ergebnis eintraegt. Nach jedem Neuladen
+     stand deshalb bei allen 0, und die Kachel zeigte "Platz 1 von 24" fuer
+     jeden, der zufaellig oben in der Liste stand. */
+  const tippBegegnungenJetzt = tippBegegnungen(events);
+  const leaderboard = [...members]
+    .map((m) => ({ ...m, punkte: totalTippPoints(m.id, tippPredictions, tippResults, tippBegegnungenJetzt) }))
+    .sort((a, b) => b.punkte - a.punkte);
   const myRank = leaderboard.findIndex((m) => m.id === user.id) + 1;
-  const tippSubtitle = `Platz ${myRank} von ${leaderboard.length} · Gewinn: CMO-Artikel`;
+  const tippSubtitle = `Platz ${myRank} von ${leaderboard.length}`;
   /* Der Anteil in Prozent, sobald der Hinweis faellig ist - sonst null. Vorher
      stand hier ein blosses true und im Text eine feste 70. Angezeigt wurde damit
      immer "Schon 70%", auch wenn sich laengst neunzig Prozent eingetragen
@@ -2067,7 +2097,11 @@ function toggleHelperSelf(setDutyPlan, eventId, station, userId, onSetzen) {
     let nextList;
     if (already) nextList = list.filter((id) => id !== userId);
     else { if (list.length >= STATION_CAP) return dp; nextList = [...list, userId]; }
-    onSetzen?.(eventId, station, userId, !already);
+    /* Schlaegt das Schreiben fehl, wird die Anzeige zurueckgenommen. Sonst
+       stuende dort ein Name, den die Datenbank nie angenommen hat. */
+    Promise.resolve(onSetzen?.(eventId, station, userId, !already)).then((r) => {
+      if (r?.error) setDutyPlan((jetzt) => ({ ...jetzt, [eventId]: { ...(jetzt[eventId] || {}), [station]: list } }));
+    });
     return { ...dp, [eventId]: { ...plan, [station]: nextList } };
   });
 }
@@ -2347,7 +2381,7 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
   const [eventFehler, setEventFehler] = useState("");
-  const [eventDraft, setEventDraft] = useState({ type: "training", team: "", title: "", day: "", location: "", desc: "", recurring: false, weekdays: [], startTime: "19:30", endTime: "22:00", rangeStart: "", rangeEnd: "" });
+  const [eventDraft, setEventDraft] = useState({ type: "training", team: "", title: "", day: "", location: "", desc: "", recurring: false, weekdays: [], startTime: "19:30", endTime: "22:00", rangeStart: "", rangeEnd: "", helferStationen: "" });
   /* Die Standardansicht haengt an der Mitgliedschaft, nicht am Geraet. Wer auf
      dem Telefon "U15" gespeichert hat, will das auf dem Tablet auch - vorher
      lag die Vorliebe im Geraetespeicher und war nach einer Neuinstallation
@@ -2502,13 +2536,17 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
     const ende = new Date(`${eventDraft.day}T${eventDraft.endTime}`);
     if (!(ende > beginn)) { setEventFehler("Das Ende muss nach dem Beginn liegen."); return; }
     setEventFehler("");
+    /* Die Helferstationen. Sie gehoeren an den Termin, nicht in eine feste
+       Liste im Code - vorher hatten nur die Demo-Termine welche, und die
+       Helferplanung blieb fuer jeden echten Verein leer. */
+    const stationen = eventDraft.helferStationen.split(",").map((x) => x.trim()).filter(Boolean).slice(0, 12);
     let eventId = Date.now();
     if (supabase && currentUser.authProfileId) {
       const { data: team } = eventDraft.team ? await supabase.from("teams").select("id").eq("club_id",currentUser.clubId).eq("name",eventDraft.team).maybeSingle() : { data: null };
-      const { data: saved } = await supabase.from("events").insert({club_id:currentUser.clubId,team_id:team?.id||null,type:eventDraft.type,status:"scheduled",title:eventDraft.title.trim(),description:eventDraft.desc.trim()||null,starts_at:beginn.toISOString(),ends_at:ende.toISOString(),location:eventDraft.location.trim(),created_by:currentUser.authProfileId,home_away:eventDraft.type==="spiel"?(eventDraft.isHome?"heim":"auswaerts"):null}).select("id").maybeSingle();
+      const { data: saved } = await supabase.from("events").insert({club_id:currentUser.clubId,team_id:team?.id||null,type:eventDraft.type,status:"scheduled",title:eventDraft.title.trim(),description:eventDraft.desc.trim()||null,starts_at:beginn.toISOString(),ends_at:ende.toISOString(),location:eventDraft.location.trim(),created_by:currentUser.authProfileId,home_away:eventDraft.type==="spiel"?(eventDraft.isHome?"heim":"auswaerts"):null,helper_slots:stationen}).select("id").maybeSingle();
       if (saved?.id) eventId=saved.id;
     }
-    const created = { id: eventId, type: eventDraft.type, team: eventDraft.team, title: eventDraft.title.trim(), date: beginn.toISOString(), location: eventDraft.location.trim(), desc: eventDraft.desc.trim(), carpool: false, home: eventDraft.type === "spiel" ? eventDraft.isHome : true, ...(eventDraft.type === "training" ? { youthClassIds: [TEAM_TO_YOUTHCLASS[eventDraft.team]] } : {}) };
+    const created = { helperSlots: stationen.length ? stationen : undefined, id: eventId, type: eventDraft.type, team: eventDraft.team, title: eventDraft.title.trim(), date: beginn.toISOString(), location: eventDraft.location.trim(), desc: eventDraft.desc.trim(), carpool: false, home: eventDraft.type === "spiel" ? eventDraft.isHome : true, ...(eventDraft.type === "training" ? { youthClassIds: [TEAM_TO_YOUTHCLASS[eventDraft.team]] } : {}) };
     setEvents((all) => [...all, created].sort((a, b) => new Date(a.date) - new Date(b.date)));
     setFilter(eventDraft.type);
     setTeamFilter(eventDraft.team);
@@ -2572,7 +2610,7 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
           <label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>Beginn *</span><input type="time" value={eventDraft.startTime} onChange={(e)=>setEventDraft({...eventDraft,startTime:e.target.value})} className="erg-datetime w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim,color:C.ink}}/></label>
           <label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>Ende *</span><input type="time" value={eventDraft.endTime} onChange={(e)=>setEventDraft({...eventDraft,endTime:e.target.value})} className="erg-datetime w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim,color:C.ink}}/></label>
         </div>
-      </div> : <div className="space-y-2"><div className="flex gap-1.5 flex-wrap">{[["1","Mo"],["2","Di"],["3","Mi"],["4","Do"],["5","Fr"],["6","Sa"],["7","So"]].map(([num,label])=>{const n=Number(num);const active=eventDraft.weekdays.includes(n);return <button type="button" key={num} onClick={()=>setEventDraft({...eventDraft,weekdays:active?eventDraft.weekdays.filter((w)=>w!==n):[...eventDraft.weekdays,n]})} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?C.red:C.paperDim,color:active?C.white:C.textDim}}>{label}</button>;})}</div><div className="grid grid-cols-2 gap-2"><input type="time" value={eventDraft.startTime} onChange={(e)=>setEventDraft({...eventDraft,startTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><input type="time" value={eventDraft.endTime} onChange={(e)=>setEventDraft({...eventDraft,endTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></div><div className="grid grid-cols-2 gap-2"><input type="date" value={eventDraft.rangeStart} onChange={(e)=>setEventDraft({...eventDraft,rangeStart:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><input type="date" value={eventDraft.rangeEnd} onChange={(e)=>setEventDraft({...eventDraft,rangeEnd:e.target.value})} className="erg-datetime px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim,color:C.ink}}/></div></div>}<input value={eventDraft.location} onChange={(e)=>setEventDraft({...eventDraft,location:e.target.value})} placeholder="Ort *" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><textarea value={eventDraft.desc} onChange={(e)=>setEventDraft({...eventDraft,desc:e.target.value})} placeholder="Beschreibung (optional)" rows={2} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none" style={{background:C.paperDim}}/>{/* Die Meldung stand vorher IM Zweig fuer Einzeltermine. Bei einer Serie erschien sie deshalb nie, und das Speichern blieb wieder stumm - genau der Fehler, den sie beheben sollte. Jetzt steht sie vor der Knopfzeile und gilt fuer beide Zweige. */}{eventFehler && <div className="text-[10px] rounded-xl px-3 py-2" style={{background:"rgba(253,236,236,0.72)",color:C.red}}>{eventFehler}</div>}<div className="flex gap-2"><button type="submit" className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{background:C.ink,color:C.white}}>Speichern</button><button type="button" onClick={()=>{setShowCreate(false);setEventFehler("");}} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{background:C.paperDim,color:C.textDim}}>Abbrechen</button></div></form>}
+      </div> : <div className="space-y-2"><div className="flex gap-1.5 flex-wrap">{[["1","Mo"],["2","Di"],["3","Mi"],["4","Do"],["5","Fr"],["6","Sa"],["7","So"]].map(([num,label])=>{const n=Number(num);const active=eventDraft.weekdays.includes(n);return <button type="button" key={num} onClick={()=>setEventDraft({...eventDraft,weekdays:active?eventDraft.weekdays.filter((w)=>w!==n):[...eventDraft.weekdays,n]})} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?C.red:C.paperDim,color:active?C.white:C.textDim}}>{label}</button>;})}</div><div className="grid grid-cols-2 gap-2"><input type="time" value={eventDraft.startTime} onChange={(e)=>setEventDraft({...eventDraft,startTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><input type="time" value={eventDraft.endTime} onChange={(e)=>setEventDraft({...eventDraft,endTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></div><div className="grid grid-cols-2 gap-2"><input type="date" value={eventDraft.rangeStart} onChange={(e)=>setEventDraft({...eventDraft,rangeStart:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><input type="date" value={eventDraft.rangeEnd} onChange={(e)=>setEventDraft({...eventDraft,rangeEnd:e.target.value})} className="erg-datetime px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim,color:C.ink}}/></div></div>}<input value={eventDraft.location} onChange={(e)=>setEventDraft({...eventDraft,location:e.target.value})} placeholder="Ort *" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><textarea value={eventDraft.desc} onChange={(e)=>setEventDraft({...eventDraft,desc:e.target.value})} placeholder="Beschreibung (optional)" rows={2} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none" style={{background:C.paperDim}}/><input value={eventDraft.helferStationen} onChange={(e)=>setEventDraft({...eventDraft,helferStationen:e.target.value})} placeholder={`Helferstationen, mit Komma getrennt (optional) — ${sportConfig(currentClub?.sport).dutyStationExamples}`} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/>{/* Die Meldung stand vorher IM Zweig fuer Einzeltermine. Bei einer Serie erschien sie deshalb nie, und das Speichern blieb wieder stumm - genau der Fehler, den sie beheben sollte. Jetzt steht sie vor der Knopfzeile und gilt fuer beide Zweige. */}{eventFehler && <div className="text-[10px] rounded-xl px-3 py-2" style={{background:"rgba(253,236,236,0.72)",color:C.red}}>{eventFehler}</div>}<div className="flex gap-2"><button type="submit" className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{background:C.ink,color:C.white}}>Speichern</button><button type="button" onClick={()=>{setShowCreate(false);setEventFehler("");}} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{background:C.paperDim,color:C.textDim}}>Abbrechen</button></div></form>}
       <SponsorSlot slotKey="events_header" bookings={werbeplaetze} onImpression={onSponsorImpression} onClick={onSponsorClick} visible={featureEnabled("sponsor_events_header")} />
       <div className="flex items-center gap-2 mb-3">
         <div className="flex gap-2 overflow-x-auto pb-1 flex-1 min-w-0" style={{ scrollbarWidth: "none" }}>
@@ -5472,9 +5510,14 @@ function CalendarSyncSettings({ user, saveRef }) {
   </div>;
 }
 
-function ProfileView({ user, members, setMembers, currentClub, werbeplaetze, onSponsorImpression, onSponsorClick, onLogout, clubFeatures, onClubFeaturesChanged, entitlement, goSubscribe, dashboardTileOrder, setDashboardTileOrder, ziel, onZielErreicht }) {
+function ProfileView({ user, members, setMembers, currentClub, dutyPlan, punkteZiel, punktePraemie, werbeplaetze, onSponsorImpression, onSponsorClick, onLogout, clubFeatures, onClubFeaturesChanged, entitlement, goSubscribe, dashboardTileOrder, setDashboardTileOrder, ziel, onZielErreicht }) {
   const featureEnabled = (key) => clubFeatures[key] !== false;
-  const goal = 1000;
+  /* Ziel und Praemie legt der VEREIN fest, nicht die App. Ohne Eintrag steht
+     kein Versprechen da - vorher verpflichtete die App jeden Verein zu einem
+     kostenlosen Hoodie, von dem dort niemand wusste. */
+  const goal = punkteZiel || 1000;
+  const meinePunkte = user.points || 0;
+  const meineBadges = verdienteBadges(user, dutyPlan);
   const eligible = isFormalMember(user) && age(user.birthdate) >= 16;
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleteError, setDeleteError] = useState("");
@@ -5607,23 +5650,28 @@ function ProfileView({ user, members, setMembers, currentClub, werbeplaetze, onS
       <div className="rounded-2xl p-4 mb-5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2 text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}><Sparkles size={15} style={{ color: C.amber }} /> Vereinspunkte</div>
-          <span className="text-xs" style={{ color: C.textDim, fontFamily: "JetBrains Mono" }}>{user.points} / {goal}</span>
+          <span className="text-xs" style={{ color: C.textDim, fontFamily: "JetBrains Mono" }}>{meinePunkte} / {goal}</span>
         </div>
         <div className="h-2.5 rounded-full overflow-hidden" style={{ background: C.paperDim }}>
-          <div className="h-full rounded-full" style={{ width: `${Math.min(100, (user.points / goal) * 100)}%`, background: C.amber, transition: "width .4s" }} />
+          <div className="h-full rounded-full" style={{ width: `${Math.min(100, (meinePunkte / goal) * 100)}%`, background: C.amber, transition: "width .4s" }} />
         </div>
         <div className="text-xs mt-2" style={{ color: C.textDim, fontFamily: "Inter" }}>
-          {user.points >= goal ? "Prämie freigeschaltet — sprich den Vorstand an! 🎉" : `Noch ${goal - user.points} Punkte bis zum kostenlosen Vereins-Hoodie 🧥`}
+          {punktePraemie
+            ? (meinePunkte >= goal ? `${punktePraemie} — sprich den Vorstand an! 🎉` : `Noch ${goal - meinePunkte} Punkte bis: ${punktePraemie}`)
+            : (meinePunkte >= goal ? "Ziel erreicht 🎉" : `Noch ${goal - meinePunkte} Punkte bis zum Ziel`)}
+          <div className="text-[10px] mt-1.5" style={{ color: C.textDim }}>
+            Punkte gibt es fürs Mitmachen: Helferdienste, übernommene Aufgaben, Umfragen, Tipps und Vereinstreue.
+          </div>
         </div>
       </div>
 
       {(user.roles.includes("spieler") || user.roles.includes("trainer")) && <>
       <SectionTitle eyebrow="Auszeichnungen" title="Deine Badges" />
-      {(user.badges || []).length === 0 ? (
+      {meineBadges.length === 0 ? (
         <div className="rounded-2xl p-4 mb-5 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>Noch keine Badges — sag bei Trainings zu, um deine erste Auszeichnung zu sammeln!</div>
       ) : (
         <div className="grid grid-cols-2 gap-3 mb-5">
-          {(user.badges || []).map((bid) => {
+          {meineBadges.map((bid) => {
             const b = BADGE_LIBRARY[bid];
             return (
               <div key={bid} className="rounded-2xl p-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
@@ -5917,7 +5965,9 @@ function AdminDutyPanel({ members, events, dutyPlan, setDutyPlan, onSetzen }) {
       const plan = dp[eventId] || {};
       const list = plan[station] || [];
       if (list.includes(memberId) || list.length >= STATION_CAP) return dp;
-      onSetzen?.(eventId, station, memberId, true);
+      Promise.resolve(onSetzen?.(eventId, station, memberId, true)).then((r) => {
+        if (r?.error) setDutyPlan((jetzt) => ({ ...jetzt, [eventId]: { ...(jetzt[eventId] || {}), [station]: list } }));
+      });
       return { ...dp, [eventId]: { ...plan, [station]: [...list, memberId] } };
     });
   };
@@ -7446,7 +7496,69 @@ function baseTabs(isAdminUser, canEditNews, canEditSponsors, canManageFees, canM
   if (isAdminUser || canEditSponsors || canManageDutyUser) tabs.splice(tabs.findIndex((tab) => tab.id === "profile"), 0, { id: "admin", label: canEditSponsors && !isAdminUser ? "Sponsoren" : "Verwaltung", icon: ShieldCheck });
   return tabs;
 }
-const SUBVIEW_TITLES = { season: "Athlet/in der Saison", tipp: "Tippspiel", duty: "Helferplanung" };
+const SUBVIEW_TITLES = { season: "Athlet/in der Saison", tipp: "Tippspiel", duty: "Helferplanung", postfach: "Benachrichtigungen" };
+
+/* Das Postfach.
+ *
+ * user_notifications fuellte sich seit Wochen - jeder angelegte oder geaenderte
+ * Termin, jede News, jedes Protokoll, jede Umfrage schreibt Zeilen fuer den
+ * betroffenen Kreis. Gelesen hat sie niemand: In der ganzen App gab es keine
+ * Stelle, die diese Tabelle abfragt. In den Einstellungen konnte man derweil
+ * auswaehlen, worueber man benachrichtigt werden moechte.
+ *
+ * Bewusst kein eigener Reiter unten: Das Postfach ist etwas, das man aufmacht,
+ * wenn die Glocke etwas anzeigt - keine Ansicht, in der man sich aufhaelt. */
+function PostfachView({ eintraege, laedt, onGelesen, onLoeschen }) {
+  const zeit = (wert) => {
+    const d = new Date(wert);
+    const minuten = Math.round((Date.now() - d.getTime()) / 60000);
+    if (minuten < 60) return `vor ${Math.max(1, minuten)} Min.`;
+    if (minuten < 1440) return `vor ${Math.round(minuten / 60)} Std.`;
+    return d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "2-digit" });
+  };
+  const ungelesen = eintraege.filter((e) => !e.read_at).length;
+
+  if (laedt) return <div className="px-4 pt-4 text-xs" style={{ color: C.textDim }}>Wird geladen …</div>;
+
+  return (
+    <div className="px-4 pt-4 pb-24">
+      {ungelesen > 0 && (
+        <button onClick={onGelesen} className="w-full py-2.5 rounded-xl text-xs font-bold mb-3"
+          style={{ background: C.paperDim, color: C.ink }}>
+          Alle {ungelesen} als gelesen markieren
+        </button>
+      )}
+      {eintraege.length === 0 ? (
+        <div className="rounded-2xl p-5 text-center" style={{ background: C.paperDim }}>
+          <Bell size={22} style={{ color: C.textDim, margin: "0 auto 10px" }} />
+          <div className="text-sm font-bold mb-1" style={{ color: C.ink, fontFamily: "Inter" }}>Noch nichts da</div>
+          <div className="text-[11px] leading-snug" style={{ color: C.textDim, fontFamily: "Inter" }}>
+            Hier landen neue Termine, News, Umfragen und alles, wofür du in den Einstellungen
+            Benachrichtigungen eingeschaltet hast.
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {eintraege.map((e) => (
+            <div key={e.id} className="rounded-2xl p-3.5 flex gap-3"
+                 style={{ background: e.read_at ? C.paperDim : C.glass, border: `1px solid ${e.read_at ? "transparent" : C.edge}` }}>
+              {!e.read_at && <span className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5" style={{ background: C.red }} />}
+              <div className="flex-1 min-w-0">
+                <div className="text-xs" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{e.title}</div>
+                {e.body && <div className="text-[11px] mt-0.5 leading-relaxed" style={{ color: C.textDim }}>{e.body}</div>}
+                <div className="text-[10px] mt-1" style={{ color: C.textDim }}>{zeit(e.created_at)}</div>
+              </div>
+              <button onClick={() => onLoeschen(e.id)} aria-label="Entfernen"
+                className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0" style={{ color: C.textDim }}>
+                <X size={13} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 /* Was der Browser zu sehen bekommt, wenn NEXT_PUBLIC_NUR_APP=1 gesetzt ist.
    Bewusst schlicht und ohne Anmeldung: Diese Seite ist kein Zugang, sondern
@@ -7692,6 +7804,22 @@ export default function ClubMemberOrganisationApp() {
   /* Welche Vereinsdaten sich beim Anmelden nicht laden liessen. Null heisst:
      alles da. */
   const [datenFehler, setDatenFehler] = useState(null);
+  /* Und was beim SCHREIBEN schiefging. Bisher scheiterten mehrere
+     Schreibvorgaenge stumm: Der Eintrag stand auf dem Bildschirm, die Datenbank
+     wies ihn ab (etwa weil die Sicherheitsregel die Rolle nicht zulaesst), und
+     beim naechsten Oeffnen war er weg. Niemand erfuhr, dass etwas nicht
+     angekommen ist - das ist die unangenehmste Art, Daten zu verlieren. */
+  const [schreibFehler, setSchreibFehler] = useState("");
+  /* Punkteziel und Praemie des Vereins. Beides steht in club_settings; ohne
+     Praemie verspricht die App nichts. */
+  const [punkteZiel, setPunkteZiel] = useState(1000);
+  const [punktePraemie, setPunktePraemie] = useState("");
+  /* Das Postfach. Geladen wird es beim Oeffnen, die Zahl der Ungelesenen
+     zusaetzlich beim Betreten des Vereins - sonst muesste die Kopfzeile bei
+     jedem Tastendruck fragen. */
+  const [postfach, setPostfach] = useState([]);
+  const [postfachLaedt, setPostfachLaedt] = useState(false);
+  const [ungelesen, setUngelesen] = useState(0);
 
   useEffect(() => {
     setFeePaid(Object.fromEntries(members.map((member) => {
@@ -7729,10 +7857,15 @@ export default function ClubMemberOrganisationApp() {
     if (!isRealAccount || !currentUser?.clubId) return;
     const loadEvents = async () => {
       const { data, error } = await supabase.from("events")
-        .select("id,type,status,title,description,starts_at,location,home_away,series_id,teams(name)")
+        .select("id,type,status,title,description,starts_at,location,home_away,series_id,helper_slots,teams(name)")
         .eq("club_id", currentUser.clubId)
         .order("starts_at", { ascending: true });
-      if (error || !data) return;
+      /* Vorher stand hier ein blosses return. Der Anfangszustand von events sind
+         aber die zehn erfundenen Demo-Termine - bei einem Ladefehler blieben sie
+         also stehen, und der Verein sah "Heimspiel vs. Herringen" in der
+         Hemberghalle Iserlohn als seinen eigenen Spielplan. */
+      if (error) { setDatenFehler((v) => [...new Set([...(v || []), "Termine"])]); setEvents([]); return; }
+      if (!data) { setEvents([]); return; }
       const mapped = data.map((row) => {
         const teamName = Array.isArray(row.teams) ? row.teams[0]?.name : row.teams?.name;
         return {
@@ -7747,6 +7880,7 @@ export default function ClubMemberOrganisationApp() {
           home: row.home_away === "heim" ? true : row.home_away === "auswaerts" ? false : undefined,
           cancelled: row.status === "cancelled",
           seriesId: row.series_id || null,
+          helperSlots: (row.helper_slots || []).length ? row.helper_slots : undefined,
           ...(row.type === "training" && teamName ? { youthClassIds: [TEAM_TO_YOUTHCLASS[teamName]] } : {}),
         };
       });
@@ -7793,6 +7927,7 @@ export default function ClubMemberOrganisationApp() {
     setWerbeplaetze(belegt);
   }, [currentClub?.id]);
   useEffect(() => { ladeWerbeplaetze(); }, [ladeWerbeplaetze]);
+  useEffect(() => { ungelesenZaehlen(); }, [ungelesenZaehlen]);
 
   /* ------------------------------------------------------------------ *
    * Vereinsdaten laden.
@@ -7817,7 +7952,7 @@ export default function ClubMemberOrganisationApp() {
       supabase.from("duty_assignments").select("event_id,station,membership_id"),
       supabase.from("protocols").select("id,title,meeting_date,raw_text,attendee_membership_ids,created_at").eq("club_id", clubId).order("meeting_date", { ascending: false }),
       supabase.from("protocol_tasks").select("id,protocol_id,text,assignee_membership_id,due_date,done"),
-      supabase.from("club_settings").select("maintenance_mode,welcome_automation,billing_automation").eq("club_id", clubId).maybeSingle(),
+      supabase.from("club_settings").select("maintenance_mode,welcome_automation,billing_automation,punkte_ziel,punkte_praemie").eq("club_id", clubId).maybeSingle(),
       supabase.from("fee_reminders").select("membership_id,gesendet_am").eq("club_id", clubId).eq("jahr", new Date().getFullYear()),
       profileId ? supabase.from("profiles").select("dashboard_tile_order").eq("id", profileId).maybeSingle() : Promise.resolve({ data: null }),
     ]);
@@ -7871,6 +8006,19 @@ export default function ClubMemberOrganisationApp() {
       rawText: p.raw_text || "", tasks: aufgabenJeProtokoll[p.id] || [],
     })));
 
+    setPunkteZiel(einstellungen.data?.punkte_ziel || 1000);
+    setPunktePraemie(einstellungen.data?.punkte_praemie || "");
+
+    /* Die Vereinspunkte werden in der Datenbank gerechnet, aus dem, was
+       ohnehin dasteht - Helferdienste, uebernommene Aufgaben, Umfragen, Tipps
+       und Vereinstreue. Vorher bekam jedes aus der Datenbank geladene Mitglied
+       fest 0, und im Profil stand bei allen dauerhaft "0 / 1000". */
+    const { data: punkte } = await supabase.rpc("punkte_je_mitglied", { target_club: clubId });
+    if (punkte?.length) {
+      const jeMitglied = Object.fromEntries(punkte.map((p) => [p.membership_id, p.punkte]));
+      setMembers((alle) => alle.map((m) => (jeMitglied[m.id] === undefined ? m : { ...m, points: jeMitglied[m.id] })));
+    }
+
     setMaintenanceMode(einstellungen.data?.maintenance_mode === true);
     setWelcomeAutomation(einstellungen.data?.welcome_automation !== false);
     setBillingAutomation(einstellungen.data?.billing_automation !== false);
@@ -7917,19 +8065,21 @@ export default function ClubMemberOrganisationApp() {
       await supabase.from("predictions").delete().eq("event_id", eventId).eq("profile_id", meinProfil());
       return;
     }
-    await supabase.from("predictions").upsert({
+    const { error } = await supabase.from("predictions").upsert({
       event_id: eventId, profile_id: meinProfil(),
       home_score: zahl(heim), away_score: zahl(auswaerts),
     }, { onConflict: "event_id,profile_id" });
+    if (error) setSchreibFehler("Dein Tipp konnte nicht gespeichert werden. Steht das Ergebnis schon fest?");
   };
 
   const ergebnisSpeichern = async (eventId, ergebnis) => {
     if (!supabase || !selectedClubId || typeof eventId !== "string") return;
-    await supabase.from("event_results").upsert({
+    const { error } = await supabase.from("event_results").upsert({
       club_id: selectedClubId, event_id: eventId,
       heim: Number(ergebnis.home), auswaerts: Number(ergebnis.away),
       erfasst_von: isDbId(meineMitgliedsId) ? meineMitgliedsId : null,
     }, { onConflict: "club_id,event_id" });
+    if (error) setSchreibFehler("Das Ergebnis konnte nicht gespeichert werden.");
   };
 
   const stimmeAbgeben = async (pollId, optionId) => {
@@ -7960,7 +8110,8 @@ export default function ClubMemberOrganisationApp() {
 
   const umfrageUmschalten = async (pollId, aktiv) => {
     if (!supabase || typeof pollId !== "string") return;
-    await supabase.from("polls").update({ active: aktiv }).eq("id", pollId);
+    const { error } = await supabase.from("polls").update({ active: aktiv }).eq("id", pollId);
+    if (error) setSchreibFehler("Die Umfrage konnte nicht umgeschaltet werden.");
   };
 
   const saisonStimmeAbgeben = async (kandidatMitgliedsId) => {
@@ -7974,12 +8125,21 @@ export default function ClubMemberOrganisationApp() {
 
   const dienstSetzen = async (eventId, station, mitgliedsId, eintragen) => {
     if (!supabase || typeof eventId !== "string" || !isDbId(mitgliedsId)) return;
-    if (eintragen) {
-      await supabase.from("duty_assignments").insert({ event_id: eventId, station, membership_id: mitgliedsId });
-    } else {
-      await supabase.from("duty_assignments").delete()
-        .eq("event_id", eventId).eq("station", station).eq("membership_id", mitgliedsId);
+    /* Genau hier ging bisher am meisten verloren: Ein Trainer, der jemand
+       anderen einteilt, darf das laut Sicherheitsregel nicht - die eigene Zeile
+       ja, fremde nur die Vereinsleitung. Die Ansicht zeigte den Namen trotzdem
+       an, und nach dem naechsten Start war er weg. */
+    const { error } = eintragen
+      ? await supabase.from("duty_assignments").insert({ event_id: eventId, station, membership_id: mitgliedsId })
+      : await supabase.from("duty_assignments").delete()
+          .eq("event_id", eventId).eq("station", station).eq("membership_id", mitgliedsId);
+    if (error) {
+      setSchreibFehler(eintragen
+        ? "Die Einteilung konnte nicht gespeichert werden. Fremde Personen darf nur die Vereinsleitung einteilen."
+        : "Die Einteilung konnte nicht entfernt werden.");
+      return { error: true };
     }
+    return {};
   };
 
   const protokollSpeichern = async (entwurf) => {
@@ -8003,29 +8163,70 @@ export default function ClubMemberOrganisationApp() {
 
   const aufgabeUmschalten = async (taskId, erledigt) => {
     if (!supabase || typeof taskId !== "string") return;
-    await supabase.from("protocol_tasks").update({ done: erledigt }).eq("id", taskId);
+    const { error } = await supabase.from("protocol_tasks").update({ done: erledigt }).eq("id", taskId);
+    if (error) setSchreibFehler("Der Haken an der Aufgabe konnte nicht gespeichert werden.");
   };
 
   const vereinseinstellungSetzen = async (feld, wert) => {
     if (!supabase || !selectedClubId) return;
-    await supabase.from("club_settings").upsert(
+    const { error } = await supabase.from("club_settings").upsert(
       { club_id: selectedClubId, [feld]: wert, updated_at: new Date().toISOString() },
       { onConflict: "club_id" },
     );
+    if (error) setSchreibFehler("Die Einstellung konnte nicht gespeichert werden.");
   };
 
   const erinnerungVermerken = async (mitgliedsId) => {
     if (!supabase || !selectedClubId || !isDbId(mitgliedsId)) return;
-    await supabase.from("fee_reminders").upsert({
+    const { error } = await supabase.from("fee_reminders").upsert({
       club_id: selectedClubId, membership_id: mitgliedsId, jahr: new Date().getFullYear(),
       gesendet_am: new Date().toISOString(),
       gesendet_von: isDbId(meineMitgliedsId) ? meineMitgliedsId : null,
     }, { onConflict: "membership_id,jahr" });
+    if (error) setSchreibFehler("Die Erinnerung wurde verschickt, aber nicht vermerkt — sie könnte doppelt kommen.");
+  };
+
+  const ungelesenZaehlen = useCallback(async () => {
+    if (!supabase || !selectedClubId || !meinProfil()) return;
+    const { data } = await supabase.rpc("ungelesene_benachrichtigungen", { target_club: selectedClubId });
+    setUngelesen(typeof data === "number" ? data : 0);
+  }, [selectedClubId, currentUserId]);
+
+  const postfachLaden = async () => {
+    if (!supabase || !selectedClubId) return;
+    setPostfachLaedt(true);
+    const { data, error } = await supabase.from("user_notifications")
+      .select("id,kind,title,body,read_at,created_at")
+      .eq("club_id", selectedClubId)
+      .order("created_at", { ascending: false })
+      .limit(100);
+    setPostfachLaedt(false);
+    if (error) { setSchreibFehler("Die Benachrichtigungen konnten nicht geladen werden."); return; }
+    setPostfach(data || []);
+    setUngelesen((data || []).filter((e) => !e.read_at).length);
+  };
+
+  const postfachGelesen = async () => {
+    if (!supabase || !selectedClubId) return;
+    const jetzt = new Date().toISOString();
+    setPostfach((alle) => alle.map((e) => (e.read_at ? e : { ...e, read_at: jetzt })));
+    setUngelesen(0);
+    const { error } = await supabase.rpc("benachrichtigungen_gelesen", { target_club: selectedClubId });
+    if (error) { setSchreibFehler("Konnte nicht als gelesen vermerkt werden."); postfachLaden(); }
+  };
+
+  const postfachLoeschen = async (id) => {
+    const vorher = postfach;
+    setPostfach((alle) => alle.filter((e) => e.id !== id));
+    setUngelesen((n) => Math.max(0, n - (vorher.find((e) => e.id === id)?.read_at ? 0 : 1)));
+    const { error } = await supabase.from("user_notifications").delete().eq("id", id);
+    if (error) { setSchreibFehler("Die Benachrichtigung konnte nicht entfernt werden."); setPostfach(vorher); }
   };
 
   const kachelreihenfolgeSpeichern = async (reihenfolge) => {
     if (!supabase || !meinProfil()) return;
-    await supabase.from("profiles").update({ dashboard_tile_order: reihenfolge }).eq("id", meinProfil());
+    const { error } = await supabase.from("profiles").update({ dashboard_tile_order: reihenfolge }).eq("id", meinProfil());
+    if (error) setSchreibFehler("Die Reihenfolge konnte nicht gespeichert werden.");
   };
 
   /* Wer schon angemeldet ist, soll sich nicht erneut anmelden muessen, nur weil
@@ -8838,7 +9039,19 @@ export default function ClubMemberOrganisationApp() {
                     <div className="text-xs leading-none" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink, letterSpacing: 0.5 }}>{currentClub?.shortName}</div>
                     <div className="text-[10px]" style={{ color: C.textDim }}>seit {currentClub?.foundedYear}</div>
                   </div>
-                  <button onClick={returnToClubOverview} className="ml-auto px-3 py-1.5 rounded-full text-[10px] font-bold whitespace-nowrap flex-shrink-0" style={{background:C.glass,border:`1px solid ${C.edge}`,color:C.textDim}}>Verein wechseln</button>
+                  {/* Die Glocke. Sie zeigt nur eine Zahl, wenn es etwas zu
+                      sehen gibt - eine dauerhaft leere Glocke waere ein Knopf,
+                      den niemand mehr ansieht. */}
+                  <button onClick={() => { setSubView("postfach"); postfachLaden(); }} aria-label={`Benachrichtigungen${ungelesen ? `, ${ungelesen} ungelesen` : ""}`}
+                    className="ml-auto w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 relative"
+                    style={{ background: C.glass, border: `1px solid ${C.edge}` }}>
+                    <Bell size={15} style={{ color: C.ink }} />
+                    {ungelesen > 0 && (
+                      <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center text-[9px] font-bold"
+                        style={{ background: C.red, color: C.white }}>{ungelesen > 99 ? "99+" : ungelesen}</span>
+                    )}
+                  </button>
+                  <button onClick={returnToClubOverview} className="ml-2 px-3 py-1.5 rounded-full text-[10px] font-bold whitespace-nowrap flex-shrink-0" style={{background:C.glass,border:`1px solid ${C.edge}`,color:C.textDim}}>Verein wechseln</button>
                 </div>
               </div>
             )}
@@ -8846,6 +9059,16 @@ export default function ClubMemberOrganisationApp() {
             {/* Nicht geladene Vereinsdaten sehen sonst aus wie nie eingetragene.
                 Der Unterschied entscheidet darueber, ob jemand seine Arbeit fuer
                 verloren haelt - er gehoert also gesagt. */}
+            {/* Ein misslungener Schreibvorgang muss gesagt werden. Er
+                verschwindet beim naechsten Antippen wieder - stehen bleiben
+                soll er nur, bis er gelesen ist. */}
+            {schreibFehler && (
+              <button onClick={() => setSchreibFehler("")} role="status"
+                className="px-4 py-2 text-xs text-center flex-shrink-0 w-full"
+                style={{ background: "rgba(253,236,236,0.95)", color: C.red, fontFamily: "Inter", fontWeight: 600, borderBottom: "1px solid #F3B9B9" }}>
+                {schreibFehler} <span style={{ opacity: .6 }}>(tippen zum Ausblenden)</span>
+              </button>
+            )}
             {datenFehler && (
               <div role="status" className="px-4 py-2 text-xs text-center flex-shrink-0" style={{ background: "rgba(255,246,228,0.9)", color: C.ink, fontFamily: "Inter", fontWeight: 600, borderBottom: `1px solid ${C.edge}` }}>
                 Diese Bereiche konnten nicht geladen werden: {datenFehler.join(", ")}. Sie sind nicht verloren — bitte später noch einmal öffnen.
@@ -8860,12 +9083,13 @@ export default function ClubMemberOrganisationApp() {
             <div key={`${tab}-${subView || ""}`} className="tabFade flex-1 overflow-y-auto" style={{ background: C.paper }}>
               {subView === "season" && featureEnabled("season_award") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Athlet/in der Saison"><SeasonVoteView currentUser={currentUser} members={clubMembers} seasonVotes={seasonVotes} setSeasonVotes={setSeasonVotes} onVote={saisonStimmeAbgeben} /></LockedFeature>}
               {subView === "tipp" && featureEnabled("tippspiel") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Tippspiel"><TippView members={clubMembers} currentUser={currentUser} events={events} tippPredictions={tippPredictions} setTippPredictions={setTippPredictions} tippResults={tippResults} onTippSpeichern={tippSpeichern} /></LockedFeature>}
+              {subView === "postfach" && <PostfachView eintraege={postfach} laedt={postfachLaedt} onGelesen={postfachGelesen} onLoeschen={postfachLoeschen} />}
               {subView === "duty" && featureEnabled("duty_roster") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Helferplanung"><DutyView members={clubMembers} currentUser={currentUser} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={dienstSetzen} /></LockedFeature>}
               {subView === "tasks" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Aufgaben"><TasksView currentUser={currentUser} members={clubMembers} /></LockedFeature>}
               {subView === "vehicles" && featureEnabled("vehicle_booking") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Vereinsfahrzeuge"><VehiclesView currentUser={currentUser} currentClub={currentClub} /></LockedFeature>}
 
               {!subView && tab === "home" && (
-                <Dashboard user={currentUser} members={clubMembers} events={events} feePaid={!!feePaid[currentUser.id]} channels={channels} news={vereinsNews} dutyPlan={dutyPlan} seasonVotes={seasonVotes} polls={polls} setPolls={setPolls} onVote={stimmeAbgeben}
+                <Dashboard user={currentUser} members={clubMembers} events={events} feePaid={!!feePaid[currentUser.id]} channels={channels} news={vereinsNews} dutyPlan={dutyPlan} seasonVotes={seasonVotes} tippPredictions={tippPredictions} tippResults={tippResults} polls={polls} setPolls={setPolls} onVote={stimmeAbgeben}
                   werbeplaetze={werbeplaetze} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick}
                   goEvents={goToMyNextMatch} goSeason={() => setSubView("season")} goTipp={() => setSubView("tipp")} goDuty={() => setSubView("duty")} goTasks={() => setSubView("tasks")} goVehicles={() => setSubView("vehicles")} goNews={goNews}
                   currentClub={currentClub} featureEnabled={featureEnabled} dashboardTileOrder={dashboardTileOrder} entitlement={entitlement} goSubscribe={goSubscribe} />
@@ -8896,7 +9120,7 @@ export default function ClubMemberOrganisationApp() {
                   currentClub={currentClub} onClubLogoUpdated={updateCurrentClubLogo} onClubColorsUpdated={updateCurrentClubColors} clubFeatures={clubFeatures} onClubFeaturesChanged={loadClubFeatures} />
                 </LockedFeature>
               )}
-              {!subView && tab === "profile" && <ProfileView ziel={profilZiel} onZielErreicht={() => setProfilZiel("")} user={currentUser} members={clubMembers} setMembers={setMembers} currentClub={currentClub} werbeplaetze={werbeplaetze} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick} onLogout={logout} clubFeatures={clubFeatures} onClubFeaturesChanged={loadClubFeatures} entitlement={entitlement} goSubscribe={goSubscribe} dashboardTileOrder={dashboardTileOrder} setDashboardTileOrder={setDashboardTileOrder} />}
+              {!subView && tab === "profile" && <ProfileView ziel={profilZiel} onZielErreicht={() => setProfilZiel("")} user={currentUser} members={clubMembers} setMembers={setMembers} currentClub={currentClub} dutyPlan={dutyPlan} punkteZiel={punkteZiel} punktePraemie={punktePraemie} werbeplaetze={werbeplaetze} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick} onLogout={logout} clubFeatures={clubFeatures} onClubFeaturesChanged={loadClubFeatures} entitlement={entitlement} goSubscribe={goSubscribe} dashboardTileOrder={dashboardTileOrder} setDashboardTileOrder={setDashboardTileOrder} />}
             </div>
 
             {!subView && (
