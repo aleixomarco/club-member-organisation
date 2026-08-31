@@ -186,7 +186,7 @@ gleichzeitig treffen soll, trifft keine. Der Zusatz kommt erst, wenn die Stufe
 schon gewählt ist.
 
 Überschrift: **Eure Sponsoren, in eurer App**
-Preis, groß: **+ 9,00 € im Monat** — darunter klein: *oder 80,00 € im Jahr, auf jede Stufe*
+Preis, groß: **+ 9,00 € im Monat** — darunter klein: *oder 85,00 € im Jahr, auf jede bezahlte Stufe*
 
 Text, in dieser Reihenfolge:
 
@@ -253,7 +253,7 @@ Felder:
 | E-Mail für die Rechnung | ja | |
 | Telefon | nein | „falls Rückfragen schneller gehen" |
 | Wie viele Mitglieder bekommen einen Zugang? | nein | Zahl, für das Angebot |
-| Eigene Sponsoren zeigen (+ 9,00 €/Monat) | nein | Ankreuzfeld, siehe unten |
+| Eigene Sponsoren zeigen (+ 9,00 €/Monat, 85,00 €/Jahr) | nein | Ankreuzfeld, siehe unten |
 | Wofür wollt ihr die App vor allem nutzen? | nein | mehrzeilig |
 | Einwilligung Datenschutz | ja | Ankreuzfeld mit Link zur Datenschutzerklärung |
 
@@ -393,3 +393,92 @@ schreibt, hat es eilig und bekommt dieselbe freundliche Bestätigung.
 Gibt es den Verein bereits in der App und passt der Name genau, wird die
 Anfrage ihm zugeordnet. Sonst kommt sie ohne Zuordnung an; der Name steht dann
 trotzdem dabei.
+
+---
+
+## Ergänzung vom 04.09.2026: Zweiter Umschalter für den Sponsorenzusatz
+
+Diese Ergänzung ersetzt nichts, sie kommt hinzu. Der Block *„Der Zusatz: eigene
+Sponsoren"* bleibt, wo er ist — er erklärt. Was fehlt, ist die Möglichkeit, den
+Zusatz **in den Preiskarten selbst** einzurechnen, damit niemand im Kopf addieren
+muss, um zu wissen, was er am Ende zahlt.
+
+### Was gebaut wird
+
+Ein **zweiter Umschalter**, direkt unter dem bestehenden **Monatlich / Jährlich**,
+im selben Kasten, aber sichtbar untergeordnet: der erste ist ein
+Segmentumschalter mit zwei gleichwertigen Hälften, der zweite ein einfacher
+Kippschalter mit Beschriftung daneben. Nicht noch einmal zwei Segmente — zwei
+gleich aussehende Umschalter übereinander lesen sich wie eine einzige Auswahl mit
+vier Möglichkeiten, und dann sucht man die vierte.
+
+Beschriftung links vom Schalter:
+**Eigene Sponsoren zeigen**
+darunter klein, und zwar abhängig vom ersten Umschalter:
+*+ 9,00 € im Monat* bzw. *+ 85,00 € im Jahr*
+
+**Ausgangszustand: aus.** Wer nur wissen will, was die App kostet, soll den
+Grundpreis sehen und nicht einen, der eine Zusatzentscheidung schon enthält.
+
+### Was der Schalter bewirkt
+
+Er verändert **nur die drei bezahlten Karten** — Basic, Plus, Pro. Die große
+Preiszahl zeigt dann die Summe aus Stufe und Zusatz:
+
+| | Grundpreis | mit Sponsoren |
+|---|---|---|
+| Basic, monatlich | 24,99 € | **33,99 €** |
+| Plus, monatlich | 49,99 € | **58,99 €** |
+| Pro, monatlich | 99,99 € | **108,99 €** |
+| Basic, jährlich | 239,99 € (19,99 € / Monat) | **324,99 €** (27,08 € / Monat) |
+| Plus, jährlich | 479,99 € (39,99 € / Monat) | **564,99 €** (47,08 € / Monat) |
+| Pro, jährlich | 959,99 € (79,99 € / Monat) | **1.044,99 €** (87,08 € / Monat) |
+
+Das Monatsäquivalent unter dem Jahrespreis wird **mitgerechnet**, nicht
+stehengelassen. Ein Jahrespreis, der springt, während die Zeile darunter gleich
+bleibt, sieht nach einem Fehler aus.
+
+Unter der Preiszahl erscheint zusätzlich eine leise Zeile, sobald der Schalter an
+ist: *darin 9,00 € für eigene Sponsoren* bzw. *darin 85,00 € für eigene
+Sponsoren*. Sie ist wichtiger, als sie aussieht: Ohne sie wirkt es, als wäre die
+Stufe teurer geworden. Mit ihr bleibt sichtbar, dass der Aufschlag der Zusatz ist
+und jederzeit wieder wegfallen kann.
+
+Das Abzeichen **„20 % günstiger"** bleibt in beiden Zuständen stehen und bleibt
+dabei wahr — auch mit Zusatz liegt der Jahrespreis in jeder Stufe gut ein Fünftel
+unter zwölf Monatsbeiträgen (Basic 407,88 € gegenüber 324,99 €, Plus 707,88 €
+gegenüber 564,99 €, Pro 1.307,88 € gegenüber 1.044,99 €).
+
+### Die beiden Karten, die der Schalter nicht anfasst
+
+**Kostenlos** behält 0 € und bekommt, solange der Schalter an ist, an Stelle einer
+Preisänderung eine ruhige Zeile: *Eigene Sponsoren gibt es ab Basic.* Der Grund
+ist kein preislicher, sondern ein technischer, und er darf ruhig so gesagt
+werden: Der Zusatz wird zusammen mit dem Vollzugang freigeschaltet, und den hat
+die kostenlose Stufe nicht. Die vier Werbeflächen sind dort das, was die
+kostenlose Stufe trägt.
+
+**Individuell** hat keinen Preis und bekommt auch keinen. Solange der Schalter an
+ist, steht dort: *Der Zusatz ist im Angebot enthalten.*
+
+### Wie er mit dem Rest der Seite zusammenhängt
+
+Steht der Schalter auf an, kommt das Ankreuzfeld **„Eigene Sponsoren zeigen"** im
+Anfrageformular weiter unten bereits angekreuzt an. Umgekehrt nicht: Wer im
+Formular ankreuzt, ändert die Preiskarten nicht mehr — an dieser Stelle ist die
+Entscheidung schon gefallen, und ein Umschalter, der von unten her zurückspringt,
+verwirrt mehr, als er hilft.
+
+Der Zustand darf in der Adresse stehen (`?sponsoren=1`), damit ein Verein den
+Preis, den er gerade sieht, an seinen Vorstand weiterschicken kann und dort
+dasselbe steht.
+
+### Barrierefreiheit
+
+Ein echter Schalter, kein umgefärbtes `div`: `role="switch"` mit
+`aria-checked`, mit der Tastatur erreichbar, mit Leertaste bedienbar. Die
+Beschriftung gehört über `<label>` mit dem Schalter verbunden — „Eigene Sponsoren
+zeigen" muss auch dann vorgelesen werden, wenn niemand sieht, wo der Schalter
+sitzt. Ändert sich der Zustand, sollen die Preiszahlen als
+`aria-live="polite"` einmal angesagt werden; sonst schaltet man um und erfährt
+nicht, dass sich etwas getan hat.

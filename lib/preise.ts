@@ -102,7 +102,7 @@ export const INDIVIDUELL = {
 export const SPONSOREN_ZUSATZ = {
   label: "Eigene Sponsoren",
   monatlich: "+ 9,00 €",
-  jaehrlich: "+ 80,00 €",
+  jaehrlich: "+ 85,00 €",
   desc: "Die Werbeplätze in der App mit euren eigenen Sponsoren belegen, inklusive Aktionen mit eigenem Zeitraum. Aufschlag auf jede Stufe.",
   werbeplaetze: 4,
 };
@@ -113,9 +113,10 @@ export function preisMitSponsoren(tarif: Vereinstarif, zeitraum: "monthly" | "ye
   const roh = CLUB_TIER_PRICES[tarif]?.[zeitraum]?.price;
   if (!roh) return "";
   const zahl = Number(roh.replace(/[^\d,]/g, "").replace(",", "."));
-  /* Jährlich ist günstiger als zwölf Monatsbeiträge (80 statt 108) — dieselbe
-     Logik wie bei den Stufen selbst. */
-  const aufschlag = zeitraum === "yearly" ? 80 : 9;
+  /* Jährlich ist günstiger als zwölf Monatsbeiträge (85 statt 108) — dieselbe
+     Logik wie bei den Stufen selbst. Der Jahrespreis lag bis zum 04.09.2026 bei
+     80 €; geändert auf Ansage des Betreibers. */
+  const aufschlag = zeitraum === "yearly" ? 85 : 9;
   /* Ueber Tausend braucht es den Punkt: "1019,99 €" liest sich wie ein
      Tippfehler, "1.019,99 €" wie ein Preis. */
   return `${new Intl.NumberFormat("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(zahl + aufschlag)} €`;

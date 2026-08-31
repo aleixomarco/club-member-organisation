@@ -75,10 +75,10 @@ const C = {
 
   /* --- Nur fuer Zustandsmeldungen, nie fuer Gestaltung --- */
   fehler: "#C0392B",
-  fehlerFlaeche: C.fehlerFlaeche,
+  fehlerFlaeche: "rgba(253,236,236,0.85)",
   fehlerRand: "#F0C0BB",
   erfolg: "#1E7A45",
-  erfolgFlaeche: C.erfolgFlaeche,
+  erfolgFlaeche: "rgba(231,243,236,0.85)",
   erfolgRand: "#BEDFC9",
 };
 
@@ -8095,7 +8095,6 @@ export default function ClubMemberOrganisationApp() {
     setWerbeplaetze(belegt);
   }, [currentClub?.id]);
   useEffect(() => { ladeWerbeplaetze(); }, [ladeWerbeplaetze]);
-  useEffect(() => { ungelesenZaehlen(); }, [ungelesenZaehlen]);
 
   /* ------------------------------------------------------------------ *
    * Vereinsdaten laden.
@@ -8359,6 +8358,12 @@ export default function ClubMemberOrganisationApp() {
     const { data } = await supabase.rpc("ungelesene_benachrichtigungen", { target_club: selectedClubId });
     setUngelesen(typeof data === "number" ? data : 0);
   }, [selectedClubId, currentUserId]);
+  /* Der Effekt stand vorher weiter oben, direkt bei den anderen Ladeeffekten -
+     und damit ueber dieser Definition. Die Abhaengigkeitsliste [ungelesenZaehlen]
+     wird beim Rendern ausgewertet, also bevor das useCallback ueberhaupt
+     zugewiesen ist: ReferenceError, die ganze App blieb schwarz. Ein Effekt
+     gehoert hinter die Funktion, die er aufruft. */
+  useEffect(() => { ungelesenZaehlen(); }, [ungelesenZaehlen]);
 
   const postfachLaden = async () => {
     if (!supabase || !selectedClubId) return;
