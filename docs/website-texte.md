@@ -125,17 +125,31 @@ und Spielpläne führen und einsehen. Kein Testzeitraum, der abläuft.
 
 ### Vollzugang
 
-Ab **24,99 € im Monat** für bis zu 100 angemeldete Konten. Das schaltet alles
-Weitere frei: Mannschaftsverwaltung, Chat, Vereins-News, Helferplanung,
-Fahrzeugbuchung, Kalender-Abo und Vereinstermine.
+Alle Stufen enthalten denselben Funktionsumfang: Mannschaftsverwaltung, Chat,
+Vereins-News, Helferplanung, Fahrzeugbuchung, Kalender-Abo und Vereinstermine.
+Ihr zahlt nur nach Größe.
 
-Größere Vereine sprechen uns an — für sie machen wir ein eigenes Angebot.
+| Stufe | Zugänge | Monatlich | Jährlich | entspricht |
+|---|---|---|---|---|
+| **Basic** | bis 100 | 24,99 € | 239,99 € | 19,99 € / Monat |
+| **Plus** | bis 350 | 49,99 € | 479,99 € | 39,99 € / Monat |
+| **Pro** | bis 1.000 | 99,99 € | 959,99 € | 79,99 € / Monat |
+| **Individuell** | mehr als 1.000 | auf Anfrage | | |
+
+**Basic** — Für kleine Vereine.
+**Plus** — Für mittlere Vereine.
+**Pro** — Für große Vereine.
+**Individuell** — Für große Vereine und Mehrspartenvereine. Alle Funktionen,
+die Zahl der Zugänge nach Absprache.
+
+Das Jahresmodell spart ein Fünftel. Alle Preise zuzüglich der gesetzlichen
+Umsatzsteuer.
 
 **Auf Rechnung an den Verein**, nicht über einen privaten App-Store-Zugang.
 Verbuchbar, prüfbar, unabhängig von einer Privatperson. Wechselt die
 Vereinsleitung, bleibt der Zugang beim Verein.
 
-Monatlich kündbar zum Ende der Laufzeit.
+Kündbar zum Ende der vereinbarten Laufzeit.
 
 ---
 
@@ -143,6 +157,10 @@ Monatlich kündbar zum Ende der Laufzeit.
 
 **Was kostet es für einzelne Mitglieder?**
 Nichts. Es gibt kein Mitglieder-Abo und wird auch keines geben.
+
+**Welche Stufe brauchen wir?**
+Die richtet sich allein nach der Zahl der Mitglieder, die einen eigenen Zugang
+bekommen sollen. Der Funktionsumfang ist bei allen Stufen derselbe.
 
 **Zählt jedes Mitglied als Zugang?**
 Nein, nur selbst angemeldete Konten. Wer ohne eigenen Zugang eingetragen wird —

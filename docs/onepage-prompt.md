@@ -117,23 +117,60 @@ Zuerst, groß und allein stehend:
 Darunter: Der Zugang wird vom Verein bezahlt. Was jemand nutzen kann, ergibt
 sich aus seinen Rollen im Verein — nicht aus seinem Geldbeutel.
 
-Dann zwei Karten:
+Dann ein Satz, der über allen Karten steht und dort auch hingehört:
+*Alle Stufen enthalten denselben Funktionsumfang. Ihr zahlt nur nach Größe.*
+
+**Umschalter** über den Karten: **Monatlich** / **Jährlich**. Bei „Jährlich"
+zeigt jede Karte den Jahrespreis groß und darunter klein das
+Monatsäquivalent, dazu ein kleines Abzeichen *„20 % günstiger"*.
+
+Dann die Karten. Auf breiten Bildschirmen vier nebeneinander, die fünfte als
+breite Karte darunter; auf dem Telefon untereinander.
 
 **Kostenlos**
 0 €
-Drei Zugänge je Verein, ohne zeitliche Begrenzung.
+3 Zugänge
 Trainings- und Spielpläne führen und einsehen.
 *Kein Testzeitraum, der abläuft.*
+Aktion: „Verein anlegen"
 
-**Vollzugang**
-ab 24,99 € im Monat
-Bis zu 100 angemeldete Konten. Größere Vereine auf Anfrage.
-Mannschaften, Chat, Vereins-News, Helferplanung, Fahrzeugbuchung,
-Kalender-Abo, Vereinstermine.
-*Auf Rechnung an den Verein. Kein Abo über einen privaten App-Store-Zugang.*
+**Basic**
+24,99 € im Monat · 239,99 € im Jahr (19,99 € / Monat)
+bis 100 Zugänge
+Für kleine Vereine. Alle Funktionen.
+Aktion: „Anfragen"
 
-Darunter ein hervorgehobener Absatz — das ist ein echtes Unterscheidungsmerkmal
-und gehört sichtbar auf die Seite:
+**Plus**
+49,99 € im Monat · 479,99 € im Jahr (39,99 € / Monat)
+bis 350 Zugänge
+Für mittlere Vereine. Alle Funktionen.
+Aktion: „Anfragen"
+
+**Pro**
+99,99 € im Monat · 959,99 € im Jahr (79,99 € / Monat)
+bis 1.000 Zugänge
+Für große Vereine. Alle Funktionen.
+Aktion: „Anfragen"
+
+**Individuell** — als breite Karte unter den vieren, ohne Preis
+auf Anfrage
+mehr als 1.000 Zugänge
+Für große Vereine und Mehrspartenvereine. Alle Funktionen, die Zahl der
+Zugänge nach Absprache.
+Aktion: „Anfragen"
+
+Keine der Karten wird als „beliebteste" hervorgehoben, und keine bekommt einen
+auffälligeren Rahmen als die anderen. Wer einen Verein mit 400 Mitgliedern
+führt, weiß selbst, welche Zeile ihn betrifft — eine Empfehlung wirkt hier wie
+ein Verkaufstrick.
+
+Alle „Anfragen"-Knöpfe springen zum Formular in Abschnitt 7.
+
+Unter den Karten: *Alle Preise zuzüglich der gesetzlichen Umsatzsteuer.
+Abrechnung auf Rechnung an den Verein.*
+
+Dann, hervorgehoben — das ist ein echtes Unterscheidungsmerkmal und gehört
+sichtbar auf die Seite:
 
 > **Der Verein zahlt, nicht der Kassenwart.**
 > Ihr bekommt eine Rechnung auf den Verein — verbuchbar, prüfbar, unabhängig von
