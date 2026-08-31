@@ -1,34 +1,32 @@
-/* Einzige Quelle für alle Preisangaben.
+/* Einzige Quelle für die Stufen und ihre Preise.
  *
- * Vorher standen die Preise doppelt: in app/page.tsx (Tarifübersicht und
- * Kaufmaske) und in app/nutzungsbedingungen/page.tsx (rechtsverbindlicher
- * Text). Beide waren auseinandergelaufen. Deshalb hier zentral: Ändert sich
- * ein Preis im App Store, wird er an genau einer Stelle nachgezogen.
+ * Seit dem 31.08.2026 wird in der App nichts mehr verkauft. Die Vereinsleitung
+ * fragt den Vollzugang an, der Betreiber macht ein Angebot und stellt eine
+ * Rechnung, und danach wird freigeschaltet.
  *
- * Die Werte müssen den deutschen App-Store-Preisen entsprechen. Die native
- * App zeigt in der Kaufmaske den echten Store-Preis (über RevenueCat), in der
- * Tarifübersicht und in den Nutzungsbedingungen dagegen diese Werte. Weichen
- * sie ab, widerspricht sich die App selbst.
+ * Die Preise hier sind deshalb keine Ladenpreise mehr, sondern die Grundlage
+ * für Angebote und für die Website. In der App erscheint keiner von ihnen —
+ * dort steht nur, was freigeschaltet ist und wie viele Zugänge belegt sind.
+ * Apple lässt einen Dienst, der an Organisationen verkauft wird, nur unter
+ * dieser Bedingung zu: in der App weder kaufen noch zum Kauf auffordern.
  *
- * Die Tarife unterscheiden sich ausschließlich in der Zahl der Zugänge, nicht
- * im Funktionsumfang: Jeder zahlende Verein bekommt alles.
+ * Die Stufen unterscheiden sich ausschließlich in der Zahl der Zugänge, nicht
+ * im Funktionsumfang: Jeder freigeschaltete Verein bekommt alles.
+ *
+ * Über 1.000 Zugängen gibt es keine Staffel mehr, sondern ein Angebot. Die
+ * vereinbarte Zahl steht dann am Verein selbst (clubs.vereinbarte_zugaenge)
+ * und geht der Staffel vor.
  */
 
 export type Vereinstarif = "basic" | "plus" | "pro";
 
-/* Welche Tarife sich gerade kaufen lassen.
+/* Welche Stufen im Angebot stehen.
  *
- * Die Datenbank kennt weiterhin alle drei Stufen - ein Verein mit einem
- * Plus-Abo behaelt seine 350 Zugaenge. Hier steht nur, was die App zum Kauf
- * anbietet, und das haengt daran, welche Produkte im App Store angelegt und
- * freigegeben sind.
- *
- * Sobald club_plus_* und club_pro_* dort stehen, hier auf
- * ["basic", "plus", "pro"] erweitern - Tarifuebersicht, Kaufmaske und
- * Nutzungsbedingungen ziehen automatisch nach. */
-export const KAUFBARE_TARIFE: Vereinstarif[] = ["basic"];
+ * Nicht mehr "was die App verkauft" - sie verkauft nichts -, sondern welche
+ * Stufen der Betreiber anbietet. Die Datenbank kennt sie ohnehin alle. */
+export const ANGEBOTENE_TARIFE: Vereinstarif[] = ["basic", "plus", "pro"];
 
-/* Als Record statt "as const": Die Oberflaeche greift mit einer Variablen zu
+/* Als Record statt "as const": Es wird mit einer Variablen zugegriffen
    (CLUB_TIER_PRICES[tier]), und ein Literal-Objekt laesst das nicht zu. */
 type Preisangabe = { monthly: { price: string }; yearly: { price: string; equivalent: string } };
 
@@ -78,9 +76,6 @@ export const CLUB_TIER_INFO: Record<string, Tarifangabe> = {
  * statt einer Mauer. */
 export const FREIE_ZUGAENGE = 3;
 
-/* Ueber 1000 Zugaenge hinaus gibt es kein Produkt im Store, sondern ein
-   Gespraech. Das darf in der App genannt, aber nicht mit Kaufknopf oder Link
-   beworben werden - Apple untersagt das Vorbeileiten am In-App-Kauf. */
 /* Ueber Pro hinaus gibt es keine Staffel, sondern ein Angebot. Die vereinbarte
    Zahl steht dann am Verein selbst (clubs.vereinbarte_zugaenge) und geht der
    Staffel vor. */

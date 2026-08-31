@@ -1302,7 +1302,7 @@ function PendingAccountScreen({ account, onLeave, onDelete }) {
   );
 }
 
-function LoginScreen({ onLogin, members, club, goRegister, goChangeClub, offeneSitzung, onSitzungNutzen }) {
+function LoginScreen({ onLogin, members, club, goRegister, goChangeClub, offeneSitzung, onSitzungNutzen, verdraengt, onVerdraengtGelesen }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -1334,6 +1334,7 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub, offeneS
   };
 
   const submit = async (e) => {
+    onVerdraengtGelesen?.();
     e && e.preventDefault();
     setBusy(true);
     const result = await onLogin(email.trim(), password);
@@ -1365,6 +1366,14 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub, offeneS
 
           Angezeigt wird ausschliesslich das eigene Konto dieser Sitzung - nicht
           die Mitglieder des Vereins. */}
+      {/* Wurde dieses Geraet verdraengt, gehoert der Grund hierher. Sonst steht
+          man vor dem Formular und weiss nicht, wieso man wieder hier ist. */}
+      {verdraengt && (
+        <div className="rounded-xl px-3.5 py-3 mb-5 text-[11px]" style={{ background: "rgba(255,246,228,0.72)", border: `1px solid ${C.edge}`, color: C.ink, fontFamily: "Inter" }}>
+          Dieses Gerät wurde abgemeldet, weil dein Konto inzwischen auf zwei anderen Geräten angemeldet ist. Pro Konto sind zwei Geräte möglich. Melde dich hier wieder an — dann fällt stattdessen das älteste heraus.
+        </div>
+      )}
+
       {eigeneMitgliedschaft && (
         <div className="mb-5">
           <div className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: C.textDim, fontFamily: "Inter" }}>Angemeldet bleiben</div>
@@ -7122,6 +7131,9 @@ export default function ClubMemberOrganisationApp() {
      angehoert, sieht meineVereine gar nicht; er landet direkt drin. */
   const [authScreen, setAuthScreen] = useState("login"); // login | meineVereine | club | newclub | register
   const [meineMitgliedschaften, setMeineMitgliedschaften] = useState([]);
+  /* Wurde dieses Geraet verdraengt, soll die Anmeldung sagen warum - sonst
+     steht man vor einem Formular und weiss nicht, wieso man wieder hier ist. */
+  const [verdraengt, setVerdraengt] = useState(false);
   const [vereinLaedt, setVereinLaedt] = useState(false);
   /* Angemeldet, aber (noch) ohne freigegebene Mitgliedschaft — siehe login(). */
   const [pendingAccount, setPendingAccount] = useState(null);
@@ -7565,6 +7577,21 @@ export default function ClubMemberOrganisationApp() {
         .eq("profile_id", konto.id)
         .in("status", ["active", "pending"]);
       if (abgebrochen) return;
+      /* Gilt dieses Geraet noch? Wurde die Person zwischenzeitlich auf zwei
+         anderen Geraeten angemeldet, ist dieses verdraengt worden. Dann meldet
+         sich die App ab, statt weiterzulaufen, als sei nichts gewesen. */
+      const kennung = geraeteKennung();
+      if (kennung) {
+        const { data: giltNoch } = await supabase.rpc("geraet_gilt_noch", { kennung });
+        if (giltNoch === false) {
+          await supabase.auth.signOut();
+          setVerdraengt(true);
+          setAuthScreen("login");
+          return;
+        }
+        await geraetAnmelden(konto.id);
+      }
+
       setOffeneSitzung({ profileId: konto.id, email: konto.email, mitgliedschaften: zugehoerig || [] });
       /* Wer angemeldet ist, soll das Anmeldeformular gar nicht erst sehen. */
       if ((zugehoerig || []).length > 0) await nachDerAnmeldung(konto.id);
@@ -7628,6 +7655,8 @@ export default function ClubMemberOrganisationApp() {
        zuerst geschaut, wo dieses Konto ueberhaupt dazugehoert. Nur wenn dabei
        gar nichts herauskommt, greifen die Sonderfaelle weiter unten (Verein aus
        der Registrierung, noch nicht bestaetigte Aufnahme). */
+    await geraetAnmelden(data.user.id);
+
     if (!selectedClubId) {
       const ergebnis = await nachDerAnmeldung(data.user.id);
       if (ergebnis?.code !== "membership_missing") return ergebnis;
@@ -7712,6 +7741,35 @@ export default function ClubMemberOrganisationApp() {
     }
     if (liste.length > 1) { setAuthScreen("meineVereine"); return {}; }
     return { code: "membership_missing" };
+  };
+
+  /* Geraetekennung: einmal erzeugt, im Geraet gespeichert.
+  
+     Bewusst eine Zufallszahl und keine Hardwarekennung - die gibt iOS gar nicht
+     heraus, und wir wollen sie auch nicht. Wird der Speicher geleert, gilt das
+     Geraet als neues; das verdraengt hoechstens das aelteste der beiden und ist
+     verschmerzbar. */
+  const geraeteKennung = () => {
+    if (typeof window === "undefined") return null;
+    try {
+      let k = window.localStorage.getItem("cmo-geraet");
+      if (!k) {
+        k = (crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+        window.localStorage.setItem("cmo-geraet", k);
+      }
+      return k;
+    } catch { return null; }
+  };
+
+  /* Meldet das Geraet an. Sind schon zwei andere im Einsatz, faellt das
+     aelteste heraus - nicht dieses hier. Wer sein Telefon wechselt, soll sich
+     einfach anmelden koennen, statt anzurufen. */
+  const geraetAnmelden = async (profileId) => {
+    if (!supabase || !profileId) return;
+    const kennung = geraeteKennung();
+    if (!kennung) return;
+    const bezeichnung = typeof navigator !== "undefined" ? (Capacitor.getPlatform() === "ios" ? "iPhone" : Capacitor.getPlatform() === "android" ? "Android" : "Browser") : null;
+    await supabase.rpc("geraet_anmelden", { kennung, bezeichnung });
   };
 
   const login = async (email, password) => {
@@ -7920,6 +7978,7 @@ export default function ClubMemberOrganisationApp() {
             <NewClubScreen onCreate={createClub} goBack={() => setAuthScreen("club")} />
           ) : authScreen === "login" ? (
             <LoginScreen onLogin={login} members={clubMembers} club={currentClub} goRegister={() => setAuthScreen("register")} goChangeClub={changeClub}
+              verdraengt={verdraengt} onVerdraengtGelesen={() => setVerdraengt(false)}
               offeneSitzung={offeneSitzung}
               onSitzungNutzen={async (mitgliedschaft) => {
                 /* Die Sitzung ist gueltig, die Mitgliedschaft gehoert diesem
