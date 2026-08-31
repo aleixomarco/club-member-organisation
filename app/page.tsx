@@ -1317,10 +1317,15 @@ function NewClubScreen({ onCreate, goBack }) {
   const [error, setError] = useState("");
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
-  const submit = (e) => {
+  /* Angemeldet wird der Verein sofort angelegt - und das kann fehlschlagen.
+     Vorher war onCreate reine Zustandsaenderung und konnte gar nicht scheitern;
+     ohne diese Auswertung bliebe ein Fehler unsichtbar. */
+  const [busy, setBusy] = useState(false);
+  const submit = async (e) => {
     e.preventDefault();
     if (!form.name.trim() || !form.shortName.trim() || !form.registerNumber.trim()) { setError("Bitte Vereinsname, Kurzname und Vereinsregisternummer angeben."); return; }
-    onCreate({
+    setBusy(true); setError("");
+    const ergebnis = await onCreate({
       id: form.name.trim().toLowerCase().replace(/[^a-z0-9äöüß]+/g, "-").replace(/^-+|-+$/g, "") + "-" + Date.now(),
       name: form.name.trim(),
       shortName: form.shortName.trim().toUpperCase(),
@@ -1330,6 +1335,8 @@ function NewClubScreen({ onCreate, goBack }) {
       logoDataUrl: form.logoDataUrl, pendingRegistration: true, sport: form.sport,
       primaryColor: form.primaryColor, secondaryColor: form.secondaryColor,
     });
+    setBusy(false);
+    if (ergebnis?.error) setError(ergebnis.error);
   };
 
   return (
@@ -1352,8 +1359,8 @@ function NewClubScreen({ onCreate, goBack }) {
         <ClubColorPicker primary={form.primaryColor} secondary={form.secondaryColor} onChange={(primaryColor, secondaryColor) => setForm((f) => ({ ...f, primaryColor, secondaryColor }))} />
         <label className="w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-xs mb-3 cursor-pointer" style={{background:C.paperDim,color:C.textDim}}><span>{form.logoDataUrl?"Vereinslogo ausgewählt":"Vereinslogo optional auswählen"}</span><ImageIcon size={16}/><input type="file" accept="image/*" className="hidden" onChange={(e)=>{const file=e.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>setForm((old)=>({...old,logoDataUrl:String(reader.result||"")}));reader.readAsDataURL(file);}}/></label>
         {error && <div className="flex items-center gap-1.5 text-xs mb-3" style={{ color: C.red, fontFamily: "Inter" }}><AlertCircle size={13} /> {error}</div>}
-        <button type="submit" className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm" style={{ background: C.red, color: "#fff", fontFamily: "Inter", fontWeight: 700 }}>
-          Verein anlegen <ArrowRight size={15} />
+        <button type="submit" disabled={busy} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm" style={{ background: C.red, color: "#fff", fontFamily: "Inter", fontWeight: 700, opacity: busy ? .65 : 1 }}>
+          {busy ? "Wird angelegt …" : <>Verein anlegen <ArrowRight size={15} /></>}
         </button>
       </form>
     </AuthShell>
@@ -7721,7 +7728,66 @@ export default function ClubMemberOrganisationApp() {
     setSelectedClubId(clubId);
     setAuthScreen(offeneSitzung ? "beitreten" : "login");
   };
-  const createClub = (club) => { setClubs((cs) => [...cs, club]); setSelectedClubId(club.id); setAuthScreen("register"); };
+  /* Einen Verein anlegen.
+   *
+   * Ohne Konto fuehrt der Weg ueber die Registrierung: Dort entstehen Konto und
+   * Verein zusammen. Mit Konto ginge das nicht - die Registrierung scheiterte
+   * an der schon vergebenen E-Mail, und der Weg endete genauso in einer
+   * Sackgasse wie frueher der Beitritt zu einem zweiten Verein. Wer angemeldet
+   * ist, legt den Verein deshalb direkt an. */
+  const createClub = async (club) => {
+    if (!offeneSitzung || !supabase) {
+      setClubs((cs) => [...cs, club]);
+      setSelectedClubId(club.id);
+      setAuthScreen("register");
+      return {};
+    }
+
+    const { data: sitzung } = await supabase.auth.getUser();
+    const profileId = sitzung?.user?.id;
+    if (!profileId) return { error: "Die Sitzung ist abgelaufen. Bitte melde dich erneut an." };
+
+    const { data: angelegt, error } = await supabase.rpc("register_new_club", {
+      club_name: club.name, club_short_name: club.shortName, club_city: club.city || "",
+      club_register_number: club.registerNumber, club_currency: club.currency || "EUR",
+      referral: club.referralCode || null,
+      member_name: meineMitgliedschaften[0]?.display_name || sitzung.user.email.split("@")[0],
+      member_birthdate: null,
+      club_sport: club.sport || "rollhockey",
+      club_primary_color: club.primaryColor || DEFAULT_CLUB_COLORS.primary,
+      club_secondary_color: club.secondaryColor || DEFAULT_CLUB_COLORS.secondary,
+    });
+    if (error) return { error: "Der Verein konnte nicht angelegt werden. Bitte pruefe die Angaben." };
+
+    const neueId = angelegt?.[0]?.club_id;
+    if (!neueId) return { error: "Der Verein konnte nicht angelegt werden." };
+
+    if (club.logoDataUrl) {
+      try {
+        const blob = await (await fetch(club.logoDataUrl)).blob();
+        const pfad = `${neueId}/logo-${Date.now()}.png`;
+        const upload = await supabase.storage.from("club-logos").upload(pfad, blob, { upsert: true });
+        if (!upload.error) {
+          const { data: oeffentlich } = supabase.storage.from("club-logos").getPublicUrl(pfad);
+          await supabase.from("clubs").update({ logo_url: oeffentlich.publicUrl }).eq("id", neueId);
+        }
+      } catch {}
+    }
+
+    setClubs((cs) => [...cs.filter((c) => c.id !== neueId), {
+      id: neueId, name: club.name, shortName: club.shortName, city: club.city || "—",
+      foundedYear: new Date().getFullYear(), logoUrl: club.logoDataUrl || null,
+      registerNumber: club.registerNumber || "", currency: club.currency || "EUR",
+      referralCode: club.referralCode || "", referralCreditMonths: 0, sport: club.sport || "rollhockey",
+      primaryColor: club.primaryColor || DEFAULT_CLUB_COLORS.primary,
+      secondaryColor: club.secondaryColor || DEFAULT_CLUB_COLORS.secondary,
+      sponsoringFrei: false,
+    }]);
+    setSelectedClubId(neueId);
+    setFeatureOnboardingClubId(neueId);
+    await mitgliedschaftenLaden(profileId);
+    return loadSupabaseMembership(profileId, neueId);
+  };
   /* "Verein wechseln" fuehrt zu den eigenen Vereinen, nicht in die Suche. Wer
      wechselt, will fast immer zu einem, in dem er schon ist. */
   const changeClub = () => { setSelectedClubId(null); setAuthScreen(meineMitgliedschaften.length > 0 ? "meineVereine" : "club"); };
