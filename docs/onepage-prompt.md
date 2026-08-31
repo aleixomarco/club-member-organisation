@@ -176,6 +176,65 @@ sichtbar auf die Seite:
 > Ihr bekommt eine Rechnung auf den Verein — verbuchbar, prüfbar, unabhängig von
 > einer Privatperson. Wechselt die Vereinsleitung, bleibt der Zugang beim Verein.
 
+#### Der Zusatz: eigene Sponsoren
+
+Ein eigener Block **unter** den Preiskarten, deutlich abgesetzt — nicht als
+fünfte und sechste Karte in derselben Reihe. Der Grund ist psychologischer
+Natur: Eine zweite Preisreihe neben der ersten zwingt zu einer zweiten
+Entscheidung, bevor die erste gefallen ist, und wer zwei Entscheidungen
+gleichzeitig treffen soll, trifft keine. Der Zusatz kommt erst, wenn die Stufe
+schon gewählt ist.
+
+Überschrift: **Eure Sponsoren, in eurer App**
+Preis, groß: **+ 5,00 € im Monat** — darunter klein: *auf jede Stufe*
+
+Text, in dieser Reihenfolge:
+
+An vier Stellen in der App steht eine Werbefläche. **Ohne diesen Zusatz füllen
+wir sie. Mit ihm füllt ihr sie.**
+
+Das ist der ganze Gedanke, und er sollte genau so dastehen: Der Verein nimmt
+sich zurück, was er ohnehin hat — die Aufmerksamkeit seiner eigenen Mitglieder.
+
+Dann drei kurze Punkte mit Symbol:
+
+- **Name, Bild, Text, Link.** Euer Sponsor, so wie er aussehen soll.
+- **Aktionen mit Zeitraum.** Zehn Prozent im Oktober, ein Gutschein zum
+  Saisonstart. Ihr tragt ein, bis wann sie läuft.
+- **Danach verschwindet sie von selbst.** Der Knopf ist weg, der Sponsor
+  bleibt. Niemand muss daran denken.
+
+Der letzte Punkt ist der wichtigste und darf nicht wegfallen. Wer schon einmal
+eine abgelaufene Aktion auf einer Vereinswebsite stehen sehen hat, versteht ihn
+sofort — und genau dieses Wiedererkennen macht den Zusatz greifbar.
+
+Dann, als kleiner Satz darunter, ohne Ausrufezeichen und ohne
+Versprechensformel:
+
+*Ein einziger Sponsor, der dafür sichtbar wird, zahlt in der Regel mehr als die
+60 € im Jahr.*
+
+Das ist der Punkt, an dem die Ausgabe aufhört, eine Ausgabe zu sein. Er gehört
+klein und beiläufig gesetzt, nicht als Reklame — die Rechnung macht der Leser
+selbst, und sie wirkt stärker, wenn sie ihm nicht abgenommen wird.
+
+Eine kleine Tabelle daneben oder darunter, schlicht:
+
+| | monatlich | jährlich |
+|---|---|---|
+| Basic mit Sponsoren | 29,99 € | 299,99 € |
+| Plus mit Sponsoren | 54,99 € | 539,99 € |
+| Pro mit Sponsoren | 104,99 € | 1.019,99 € |
+
+Und zum Schluss ein Satz zur Sauberkeit, der Vertrauen schafft:
+
+*Sponsoren des Vereins sind in der App als solche gekennzeichnet und von
+unserer eigenen Werbung getrennt. Wo ihr einen Platz belegt, tritt unsere
+Anzeige zurück.*
+
+Keine Aktionsschaltfläche in diesem Block. Der Zusatz wird im Formular
+angekreuzt, nicht hier gekauft.
+
 ### 7. Das Anfrageformular — der Kern der Seite
 
 Eigener Abschnitt mit Anker `#anfrage`, hervorgehoben durch einen abgesetzten
@@ -194,6 +253,7 @@ Felder:
 | E-Mail für die Rechnung | ja | |
 | Telefon | nein | „falls Rückfragen schneller gehen" |
 | Wie viele Mitglieder bekommen einen Zugang? | nein | Zahl, für das Angebot |
+| Eigene Sponsoren zeigen (+ 5,00 €/Monat) | nein | Ankreuzfeld, siehe unten |
 | Wofür wollt ihr die App vor allem nutzen? | nein | mehrzeilig |
 | Einwilligung Datenschutz | ja | Ankreuzfeld mit Link zur Datenschutzerklärung |
 
@@ -206,6 +266,13 @@ laden und deinen Verein anlegen; drei Zugänge sind dauerhaft kostenlos.
 
 Unter dem Formular klein: *Keine Zahlungsdaten nötig. Die Anfrage verpflichtet
 zu nichts.*
+
+Das Ankreuzfeld für die Sponsoren steht bewusst **im** Formular und nicht als
+Knopf im Preisblock: Es ist keine zweite Kaufentscheidung, sondern eine Angabe
+zum Angebot — auf derselben Ebene wie die Zahl der Zugänge. Beschriftung
+einzeilig, darunter klein: *Die Werbeflächen in der App mit euren eigenen
+Sponsoren belegen.* Nicht vorangekreuzt. Wer es übersieht, bekommt ein Angebot
+ohne den Zusatz, und das ist die richtige Voreinstellung.
 
 Wichtig: Das Formular soll **kein Kaufabschluss** sein und auch nicht so
 aussehen. Keine Preisauswahl, kein „Jetzt buchen", kein Warenkorb. Es ist eine
@@ -275,11 +342,54 @@ Erfinde nichts davon, auch nicht sinngemäß:
 
 ## Wohin das Formular geht
 
-OnePage verschickt Formulare in der Regel per E-Mail. Das reicht für den Anfang:
-Die Anfrage landet in deinem Postfach, du legst den Verein an und schreibst die
-Rechnung.
+Der Endpunkt steht. Die Anfrage von der Website landet in derselben Tabelle
+wie die Anfragen aus der App — du schaust an einer Stelle nach statt in zwei
+Postfächern.
 
-Wenn der Baukasten **Webhooks** unterstützt, kann ich einen Endpunkt in der App
-bauen, der die Anfrage direkt in `club_access_requests` schreibt — dieselbe
-Tabelle, in der auch die Anfragen aus der App landen. Dann siehst du beide an
-einer Stelle. Sag Bescheid, wenn du das willst.
+**Ziel:** `POST https://club-member-organisation.vercel.app/api/vereinsanfrage`
+
+**Kopfzeilen:**
+
+```
+Content-Type: application/json
+Authorization: Bearer <WEBSITE_ANFRAGE_SECRET>
+```
+
+Wenn OnePage keine eigene `Authorization`-Zeile zulässt, geht auch
+`X-Anfrage-Schluessel: <Schlüssel>`. Der Schlüssel steht in den
+Umgebungsvariablen des Projekts in Vercel; er darf nicht im Seitenquelltext
+stehen — das Formular muss serverseitig weitergeleitet werden.
+
+**Rumpf:**
+
+```json
+{
+  "club_name": "TSV Musterstadt",
+  "contact_name": "Vor- und Nachname",
+  "contact_email": "kasse@tsv-musterstadt.de",
+  "contact_phone": "0170 1234567",
+  "expected_accounts": 240,
+  "sponsoring": true,
+  "note": "Wir wollen vor allem die Helferplanung nutzen.",
+  "website": ""
+}
+```
+
+Deutsche Feldnamen gehen ebenso: `verein`, `name`, `email`, `telefon`,
+`zugaenge`, `sponsoring_gewuenscht`, `nachricht`.
+
+`website` ist der Honigtopf — ein im Formular unsichtbares Feld, das nur ein
+Automat ausfüllt. Es muss im Formular existieren, für Menschen unsichtbar sein
+und leer bleiben. Ist es belegt, wird die Anfrage still verworfen.
+
+`sponsoring` nimmt `true`, `"on"`, `"1"` oder `"ja"` — also das, was übliche
+Ankreuzfelder senden.
+
+**Antworten:** `200 {"ok": true}` bei Erfolg, `401` bei falschem Schlüssel,
+`422` wenn Vereinsname, Ansprechpartner oder E-Mail fehlen. Liegt für denselben
+Verein schon eine offene Anfrage vor, kommt ebenfalls `200` — wer zweimal
+schreibt, hat es eilig und bekommt dieselbe freundliche Bestätigung.
+
+Gibt es den Verein bereits in der App und passt der Name genau, wird die
+Anfrage ihm zugeordnet. Sonst kommt sie ohne Zuordnung an; der Name steht dann
+trotzdem dabei.

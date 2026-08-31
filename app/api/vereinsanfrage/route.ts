@@ -87,11 +87,20 @@ export async function POST(request: Request) {
      Betreiber sofort, wie groß er inzwischen ist. Die Zuordnung ist bewusst
      streng (exakter Name, ohne Rücksicht auf Groß- und Kleinschreibung): Lieber
      eine Anfrage ohne Verein als eine, die beim falschen landet. */
-  const { data: treffer } = await admin
-    .from("clubs")
-    .select("id")
-    .ilike("name", vereinsname)
-    .limit(2);
+  /* Die Eingabe geht als LIKE-Muster an PostgREST, und dort sind % und _
+     Platzhalter. Ohne Maskierung muesste der Absender den Vereinsnamen gar
+     nicht kennen: "FC Bayern%" traefe den echten Verein, die fremde Anfrage
+     bekaeme dessen club_id, erschiene in seiner Vereinsleitung mit fremden
+     Kontaktdaten und belegte den einen offenen Platz des eindeutigen Index. */
+  const alsMuster = vereinsname.replace(/[\\%_]/g, (z) => `\\${z}`);
+  /* PostgREST setzt zusaetzlich * an die Stelle von % - und das laesst sich
+     nicht maskieren. Ein Sternchen in einem Vereinsnamen gibt es praktisch
+     nicht; eine Anfrage mit einem darin wird deshalb keinem Verein
+     zugeordnet, statt womoeglich dem falschen. Der Name steht trotzdem dabei. */
+  const zuordenbar = !vereinsname.includes("*");
+  const { data: treffer } = zuordenbar
+    ? await admin.from("clubs").select("id").ilike("name", alsMuster).limit(2)
+    : { data: null };
   const clubId = treffer?.length === 1 ? treffer[0].id : null;
 
   const { error } = await admin.from("club_access_requests").insert({

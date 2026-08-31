@@ -1112,6 +1112,17 @@ function AuthShell({ children, footer, club }) {
  * einer, wird er ohne Umweg geoeffnet - dieser Bildschirm erscheint dann gar
  * nicht. */
 function MeineVereineScreen({ mitgliedschaften, onOeffnen, onWeitererVerein, onAbmelden, laedt }) {
+  /* Der Bildschirm listet ausdruecklich auch Mitgliedschaften auf, deren
+     Aufnahme noch nicht bestaetigt ist. Tippte man auf so einen Eintrag,
+     passierte sichtbar gar nichts: keine Meldung, kein Wechsel. Der
+     Rueckgabewert wurde verworfen. */
+  const [fehler, setFehler] = useState("");
+  const oeffnen = async (m) => {
+    setFehler("");
+    const ergebnis = await onOeffnen(m);
+    if (ergebnis?.code === "membership_pending") setFehler(`Deine Aufnahme bei ${m.clubName} ist noch nicht bestätigt. Sobald die Vereinsleitung sie freigibt, kommst du hinein.`);
+    else if (ergebnis?.error) setFehler(ergebnis.error);
+  };
   return (
     <div className="flex flex-col h-full px-6 pt-10 pb-6 overflow-y-auto" style={{ background: C.paper }}>
       <div className="flex flex-col items-center mb-8">
@@ -1124,9 +1135,11 @@ function MeineVereineScreen({ mitgliedschaften, onOeffnen, onWeitererVerein, onA
         </div>
       </div>
 
+      {fehler && <div role="status" className="rounded-2xl px-3.5 py-3 mb-4 text-xs leading-relaxed" style={{ background: "rgba(253,236,236,0.72)", color: C.red, fontFamily: "Inter" }}>{fehler}</div>}
+
       <div className="space-y-2 mb-6">
         {mitgliedschaften.map((m) => (
-          <button key={m.id} onClick={() => onOeffnen(m)} disabled={laedt}
+          <button key={m.id} onClick={() => oeffnen(m)} disabled={laedt}
             className="w-full flex items-center gap-3 rounded-2xl px-3.5 py-3.5 text-left"
             style={{ background: C.glass, border: `1px solid ${C.edge}`, opacity: laedt ? .6 : 1 }}>
             <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0" style={{ background: C.red, color: "#fff", fontFamily: "Inter" }}>
@@ -1149,6 +1162,68 @@ function MeineVereineScreen({ mitgliedschaften, onOeffnen, onWeitererVerein, onA
 
       <button onClick={onAbmelden} className="w-full py-2.5 text-xs font-bold" style={{ color: C.textDim, fontFamily: "Inter" }}>Abmelden</button>
     </div>
+  );
+}
+
+/* Einem weiteren Verein beitreten - mit dem Konto, das schon angemeldet ist.
+ *
+ * Vorher gab es diesen Weg nicht. "Weiterem Verein beitreten" fuehrte in die
+ * Vereinssuche, die Auswahl in das Anmeldeformular, und dort kostete die
+ * erneute Anmeldung die laufende Sitzung, ohne je zu einer Mitgliedschaft zu
+ * fuehren: Ueber die Registrierung ging es nicht, weil die E-Mail schon
+ * vergeben ist, und ueber die Anmeldung nicht, weil die Mitgliedschaft fehlt.
+ * Einem Konto liess sich also kein zweiter Verein hinzufuegen.
+ *
+ * Gefragt wird nur, was register_for_club braucht. Die E-Mail steht fest, das
+ * Passwort ist gesetzt, das Geburtsdatum steht im Profil - danach noch einmal
+ * zu fragen, waere Beschaeftigung. */
+function BeitrittsScreen({ club, vorschlagName, onBeitreten, goBack }) {
+  const [name, setName] = useState(vorschlagName || "");
+  const [art, setArt] = useState("mitglied");
+  const [team, setTeam] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [fehler, setFehler] = useState("");
+
+  const senden = async (e) => {
+    e.preventDefault();
+    if (!name.trim()) { setFehler("Bitte gib deinen Namen an."); return; }
+    setBusy(true); setFehler("");
+    const ergebnis = await onBeitreten({ name: name.trim(), art, team: team.trim() });
+    setBusy(false);
+    if (ergebnis?.error) setFehler(ergebnis.error);
+  };
+
+  return (
+    <AuthShell club={club} footer={<div className="text-center text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}><button onClick={goBack} className="font-bold" style={{ color: C.red }}>Zurück</button></div>}>
+      <div className="text-xl mb-1" style={{ fontFamily: "Oswald", fontWeight: 600, color: C.ink }}>Beitritt anfragen</div>
+      <div className="text-xs mb-5" style={{ color: C.textDim, fontFamily: "Inter" }}>
+        Du bist bereits angemeldet. Für {club?.name || "diesen Verein"} braucht es nur noch deinen Namen — die Vereinsleitung gibt den Beitritt dann frei.
+      </div>
+
+      <form onSubmit={senden}>
+        <Field icon={User} placeholder="Vor- und Nachname" value={name} onChange={(e) => setName(e.target.value)} />
+
+        <div className="text-xs font-semibold mb-2" style={{ color: C.ink, fontFamily: "Inter" }}>Ich trete bei als</div>
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          {[{ id: "mitglied", label: "Mitglied", icon: User }, { id: "spieler", label: "Athlet/in", icon: Trophy }, { id: "eltern", label: "Elternteil", icon: Users }].map((typ) => {
+            const Icon = typ.icon; const aktiv = art === typ.id;
+            return <button type="button" key={typ.id} onClick={() => setArt(typ.id)} className="rounded-xl py-3 px-1 flex flex-col items-center gap-1.5"
+              style={{ background: aktiv ? "rgba(252,235,238,0.72)" : C.paperDim, border: aktiv ? `1px solid ${C.red}` : "1px solid transparent", color: aktiv ? C.red : C.textDim }}><Icon size={17}/><span className="text-[11px] font-bold">{typ.label}</span></button>;
+          })}
+        </div>
+
+        {/* Die Mannschaften lassen sich hier nicht laden - wer noch kein
+            Mitglied ist, darf sie nicht sehen. Also ein Wunsch als Text, den
+            die Vereinsleitung beim Freigeben zuordnet. */}
+        <Field icon={Users} placeholder="Gewünschte Mannschaft (optional)" value={team} onChange={(e) => setTeam(e.target.value)} />
+
+        {fehler && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-3" style={{ background: "rgba(253,236,236,0.72)", color: C.red }}>{fehler}</div>}
+
+        <button type="submit" disabled={busy} className="w-full py-3 rounded-xl text-sm font-bold" style={{ background: C.ink, color: C.white, fontFamily: "Inter", opacity: busy ? .6 : 1 }}>
+          {busy ? "Wird gesendet …" : "Beitritt anfragen"}
+        </button>
+      </form>
+    </AuthShell>
   );
 }
 
@@ -1325,7 +1400,7 @@ function PendingAccountScreen({ account, onLeave, onDelete }) {
           <div className="rounded-2xl p-4" style={{ background: "rgba(253,236,236,0.72)", border: "1px solid #F3B9B9" }}>
             <div className="text-xs font-bold mb-1.5" style={{ color: C.ink }}>Konto endgültig löschen?</div>
             <div className="text-[11px] leading-snug mb-3" style={{ color: C.textDim }}>
-              Dein Konto und alle personenbezogenen Daten werden unwiderruflich entfernt. Ein über den App Store oder Google Play abgeschlossenes Abonnement endet dadurch <b>nicht</b> — das kündigst du in den Einstellungen deines Store-Kontos.
+              Dein Konto und alle personenbezogenen Daten werden unwiderruflich entfernt. Kosten entstehen dir dadurch keine: Ein persönliches Abonnement gibt es nicht.
             </div>
             <div className="flex gap-2">
               <button onClick={() => setConfirming(false)} disabled={busy} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>Abbrechen</button>
@@ -1494,9 +1569,14 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
     form.accountType === "eltern" ? m.roles.includes("spieler") : form.accountType === "spieler" ? m.roles.includes("eltern") : false
   )).filter((m) => m.name.toLowerCase().includes(relativeSearch.toLowerCase()));
   const isFirstAccount = members.length === 0;
+  /* Ohne Verein hat dieser Bildschirm keinen Sinn - und ohne diese Absicherung
+     auch keinen Bestand: club.name im Untertitel warf einen TypeError, und weil
+     es im Projekt keine ErrorBoundary gibt, blieb der ganze Bildschirm weiss. */
+  const vereinsName = club?.name || "deinem Verein";
 
   const submit = async (e) => {
     e.preventDefault();
+    if (!club?.id) { setError("Bitte wähle zuerst deinen Verein aus."); return; }
     if (!form.name.trim() || !form.email.trim() || !form.password || !form.birthdate) { setError("Bitte fülle alle Pflichtfelder aus."); return; }
     if (form.password !== form.password2) { setError("Die Passwörter stimmen nicht überein."); return; }
     if (members.some((m) => m.email.toLowerCase() === form.email.trim().toLowerCase())) { setError("Für diese E-Mail existiert bei diesem Verein bereits ein Konto."); return; }
@@ -1506,7 +1586,7 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
     setBusy(true);
     const result = await onRegister({
       id: "m" + Date.now(),
-      clubId: club.id,
+      clubId: club?.id,
       name: form.name.trim(),
       email: form.email.trim(),
       password: form.password,
@@ -1532,7 +1612,7 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
     >
       <div className="text-xl mb-1" style={{ fontFamily: "Oswald", fontWeight: 600, color: C.ink }}>Konto erstellen</div>
       <div className="text-xs mb-5" style={{ color: C.textDim, fontFamily: "Inter" }}>
-        {isFirstAccount ? `Du bist das erste Konto bei ${club.name} — automatisch Vereins-Administrator.` : `Für aktive Mitglieder von ${club.name}`}
+        {isFirstAccount ? `Du bist das erste Konto bei ${vereinsName} — automatisch Vereins-Administrator.` : `Für aktive Mitglieder von ${vereinsName}`}
       </div>
 
       <form onSubmit={submit}>
@@ -4544,55 +4624,6 @@ function PlayerDataCard({ user, setMembers }) {
   );
 }
 
-const SUBSCRIPTION_STATUS = {
-  pending: { label: "Wird bestätigt", color: C.amber, background: "rgba(255,246,228,0.72)" },
-  active: { label: "Aktiv", color: C.green, background: "rgba(231,243,236,0.72)" },
-  past_due: { label: "Zahlung offen", color: C.red, background: "rgba(253,236,236,0.72)" },
-  suspended: { label: "Ausgesetzt", color: C.red, background: "rgba(253,236,236,0.72)" },
-  cancelled: { label: "Gekündigt", color: C.textDim, background: C.paperDim },
-  expired: { label: "Abgelaufen", color: C.textDim, background: C.paperDim },
-  refunded: { label: "Erstattet", color: C.textDim, background: C.paperDim },
-};
-
-function subscriptionDate(value) {
-  if (!value) return "Noch nicht übermittelt";
-  return new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
-}
-
-function SubscriptionRecord({ subscription, accountLabel }) {
-  const plan = Array.isArray(subscription.subscription_plans) ? subscription.subscription_plans[0] : subscription.subscription_plans;
-  const status = SUBSCRIPTION_STATUS[subscription.status] || SUBSCRIPTION_STATUS.pending;
-  /* Kein Kuendigen-Knopf: Abonnements laufen ausschliesslich ueber die Stores,
-     und die lassen sich nur in den Konto-Einstellungen von Apple bzw. Google
-     beenden. Ein Knopf hier waere ins Leere gelaufen.
-     Die beiden Werte tragen stattdessen den Hinweis weiter unten - er sagt dem
-     Nutzer, wo er kuendigen kann. */
-  const storeManaged = subscription.provider === "apple" || subscription.provider === "google_play";
-  const stillRunning = !subscription.cancel_at_period_end && !["cancelled", "expired", "refunded"].includes(subscription.status);
-  const interval = plan?.interval === "year" ? "Jährlich" : "Monatlich";
-  const amount = typeof plan?.price_cents === "number" ? new Intl.NumberFormat("de-DE", { style: "currency", currency: plan.currency || "EUR" }).format(plan.price_cents / 100) : "—";
-  return <div className="rounded-2xl p-3.5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
-    <div className="flex items-start justify-between gap-2 mb-3">
-      <div><div className="text-[9px] uppercase tracking-widest font-bold" style={{ color: C.red }}>{accountLabel}</div><div className="text-sm font-bold" style={{ color: C.ink }}>{plan?.name || `${interval}es Abonnement`}</div></div>
-      <span className="text-[9px] font-bold px-2 py-1 rounded-full whitespace-nowrap" style={{ color: status.color, background: status.background }}>{status.label}</span>
-    </div>
-    <div className="grid grid-cols-2 gap-2 mb-3">
-      <div className="rounded-xl p-2.5" style={{ background: C.paperDim }}><div className="text-[9px]" style={{ color: C.textDim }}>Tarif</div><div className="text-xs font-bold" style={{ color: C.ink }}>{interval} · {amount}</div></div>
-      <div className="rounded-xl p-2.5" style={{ background: C.paperDim }}><div className="text-[9px]" style={{ color: C.textDim }}>Zahlungsanbieter</div><div className="text-xs font-bold capitalize" style={{ color: C.ink }}>{subscription.provider}</div></div>
-    </div>
-    <div className="space-y-2 text-[10px]">
-      <div className="flex justify-between gap-3"><span style={{ color: C.textDim }}>Erworben am</span><b className="text-right" style={{ color: C.ink }}>{subscriptionDate(subscription.created_at)}</b></div>
-      <div className="flex justify-between gap-3"><span style={{ color: C.textDim }}>Aktueller Zeitraum seit</span><b className="text-right" style={{ color: C.ink }}>{subscriptionDate(subscription.current_period_start)}</b></div>
-      <div className="flex justify-between gap-3"><span style={{ color: C.textDim }}>{subscription.cancel_at_period_end || subscription.status === "cancelled" ? "Nutzbar bis" : "Nächste Abrechnung"}</span><b className="text-right" style={{ color: C.ink }}>{subscriptionDate(subscription.current_period_end)}</b></div>
-      <div className="flex justify-between gap-3"><span style={{ color: C.textDim }}>Letzte Zahlung</span><b className="text-right" style={{ color: C.ink }}>{subscriptionDate(subscription.last_payment_at)}</b></div>
-      <div className="flex justify-between gap-3"><span style={{ color: C.textDim }}>Abonnement-ID</span><b className="text-right break-all" style={{ color: C.ink, fontFamily: "JetBrains Mono" }}>{subscription.provider_subscription_id}</b></div>
-    </div>
-    {(subscription.cancel_at_period_end || subscription.status === "cancelled") && <div className="mt-3 rounded-xl px-3 py-2 text-[10px]" style={{ background: C.paperDim, color: C.textDim }}>Dieses Abonnement wurde gekündigt und verlängert sich nicht erneut.</div>}
-    {storeManaged && stillRunning && <div className="mt-3 rounded-xl px-3 py-2 text-[10px] leading-snug" style={{ background: C.paperDim, color: C.textDim }}>Dieses Abonnement wurde über {subscription.provider === "apple" ? "den App Store" : "Google Play"} abgeschlossen. Kündigen kannst du es nur dort — {subscription.provider === "apple" ? "in den Einstellungen unter „Apple-ID“ › „Abonnements“" : "in der Play-Store-App unter „Zahlungen und Abos“"}.</div>}
-  </div>;
-}
-
-
 /* Zugang und Freischaltung.
  *
  * Hier stand bis zum 31.08.2026 der In-App-Kauf: Tarifauswahl, Preise,
@@ -4625,14 +4656,23 @@ function SubscriptionPanel({ user }) {
   const [message, setMessage] = useState("");
 
   const databaseClub = !!supabase && isDbId(user.clubId);
-  const darfAnfragen = user.roles.some((r) => ["sysadmin", "vereinsadmin", "geschaeftsfuehrung"].includes(r));
+  /* Der Text weiter unten nennt ausdruecklich "Vorstand, Geschaeftsfuehrung
+     oder Vereinsadmin". Ein Vorstand bekam bisher genau diesen Satz zu lesen -
+     und keinen Knopf. */
+  const darfAnfragen = user.roles.some((r) => ["sysadmin", "vereinsadmin", "geschaeftsfuehrung", "vorstand"].includes(r));
 
   const laden = useCallback(async () => {
     if (!databaseClub) { setAnfrage(null); return; }
     const [{ data: tarif }, { data: nutzung }, { data: offen }] = await Promise.all([
       supabase.rpc("club_subscription_tier", { target_club: user.clubId }),
       supabase.rpc("club_account_usage", { target_club: user.clubId }),
-      supabase.from("club_access_requests").select("id,status,created_at,contact_name").eq("club_id", user.clubId).order("created_at", { ascending: false }).limit(1),
+      /* Nur laufende Vorgaenge. Ohne den Filter blieb die zuletzt auf
+         "freigeschaltet" oder "abgelehnt" gesetzte Zeile stehen, und der Verein
+         sah bis in alle Ewigkeit "Anfrage liegt vor - wir melden uns" - ohne
+         Formular und ohne Knopf zum Zuruecknehmen. Damit konnte weder ein
+         abgelehnter Verein es erneut versuchen noch ein zahlender seine
+         Verlaengerung anfragen. Die Datenbank haette beides erlaubt. */
+      supabase.from("club_access_requests").select("id,status,created_at,contact_name").eq("club_id", user.clubId).in("status", ["offen", "berechnet"]).order("created_at", { ascending: false }).limit(1),
     ]);
     setClubStatus({ tier: tarif || "none" });
     setAccountUsage(nutzung?.[0] || null);
@@ -4696,7 +4736,10 @@ function SubscriptionPanel({ user }) {
       </div>
     )}
 
-    {!vollzugang && anfrage !== undefined && (
+    {/* Ohne Datenbank gibt es nichts abzuschicken: supabase ist dann null, und
+        der Knopf fuehrte in einen TypeError, nach dem er auf "Wird gesendet ..."
+        stehen blieb. */}
+    {!vollzugang && databaseClub && anfrage !== undefined && (
       <>
         <SectionTitle eyebrow="Vollzugang" title="Für den ganzen Verein freischalten" />
 
@@ -5569,7 +5612,7 @@ function ProfileView({ user, members, setMembers, currentClub, werbeplaetze, onS
         <SectionTitle eyebrow="Gefahrenbereich" title="Account-Löschung"/>
         <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Die Löschung entfernt dein Konto und alle personenbezogenen Daten dauerhaft.</div>
         {!deleteConfirm ? <button onClick={() => setDeleteConfirm(true)} className="w-full py-2.5 rounded-2xl text-xs" style={{ background: C.glass, border: "1px solid #F3B9B9", color: C.red, fontWeight: 700 }}>Konto und persönliche Daten löschen</button> :
-          <div className="rounded-2xl p-3" style={{ background: "rgba(253,236,236,0.72)", border: "1px solid #F3B9B9" }}><div className="flex items-center gap-2 text-xs font-bold mb-2" style={{ color: C.red }}><AlertCircle size={15}/> Endgültige Löschung bestätigen</div><div className="text-xs mb-3" style={{ color: C.ink }}>Das Konto, Vereinsprofile und persönliche Inhalte werden dauerhaft gelöscht. Ein über den App Store oder Google Play abgeschlossenes Abonnement läuft <b>weiter und wird weiter abgerechnet</b> — kündige es vorher in den Einstellungen deines Store-Kontos. Dieser Schritt kann nicht rückgängig gemacht werden.</div>{deleteError && <div className="text-xs mb-2" style={{ color: C.red }}>{deleteError}</div>}<div className="flex gap-2"><button disabled={deleting} onClick={deleteAccount} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: C.red, color: C.white }}>{deleting ? "Wird gelöscht …" : "Endgültig löschen"}</button><button onClick={() => { setDeleteConfirm(false); setDeleteError(""); }} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>Abbrechen</button></div></div>}
+          <div className="rounded-2xl p-3" style={{ background: "rgba(253,236,236,0.72)", border: "1px solid #F3B9B9" }}><div className="flex items-center gap-2 text-xs font-bold mb-2" style={{ color: C.red }}><AlertCircle size={15}/> Endgültige Löschung bestätigen</div><div className="text-xs mb-3" style={{ color: C.ink }}>Das Konto, Vereinsprofile und persönliche Inhalte werden dauerhaft gelöscht. Dieser Schritt kann nicht rückgängig gemacht werden.</div>{deleteError && <div className="text-xs mb-2" style={{ color: C.red }}>{deleteError}</div>}<div className="flex gap-2"><button disabled={deleting} onClick={deleteAccount} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: C.red, color: C.white }}>{deleting ? "Wird gelöscht …" : "Endgültig löschen"}</button><button onClick={() => { setDeleteConfirm(false); setDeleteError(""); }} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>Abbrechen</button></div></div>}
       </ProfileUnderlay>}
     </div>
   );
@@ -7671,7 +7714,13 @@ export default function ClubMemberOrganisationApp() {
     return () => clearTimeout(adminSaveTimer.current);
   }, [adminStateLoaded, selectedClubId, currentUserId, events, dutyPlan, protocols, remindersSent, welcomeAutomation, billingAutomation, polls, tippResults, maintenanceMode, seasonVotes, dashboardTileOrder, channels]);
 
-  const selectClub = (clubId) => { setSelectedClubId(clubId); setAuthScreen("login"); };
+  /* Wer schon angemeldet ist, soll sich nicht erneut anmelden muessen, nur weil
+     er einen weiteren Verein sucht - genau daran ist der Weg vorher
+     gescheitert. */
+  const selectClub = (clubId) => {
+    setSelectedClubId(clubId);
+    setAuthScreen(offeneSitzung ? "beitreten" : "login");
+  };
   const createClub = (club) => { setClubs((cs) => [...cs, club]); setSelectedClubId(club.id); setAuthScreen("register"); };
   /* "Verein wechseln" fuehrt zu den eigenen Vereinen, nicht in die Suche. Wer
      wechselt, will fast immer zu einem, in dem er schon ist. */
@@ -7688,6 +7737,12 @@ export default function ClubMemberOrganisationApp() {
     setTab("home"); setTabHistory([]); setSubView(null);
   };
   const loadSupabaseMembership = async (profileId, clubId) => {
+    /* Ohne Verein gibt es nichts zu laden. Ohne diese Zeile ging die Abfrage
+       mit club_id=eq.null an eine uuid-Spalte, PostgREST antwortete mit 400,
+       und der Nutzer bekam "Das Vereinsprofil konnte nicht geladen werden" zu
+       lesen - eine Meldung, aus der niemand schliessen kann, dass er schlicht
+       noch keinem Verein angehoert. */
+    if (!clubId) return { error: "Für dieses Konto besteht noch keine Mitgliedschaft in einem Verein.", code: "membership_missing" };
     setAdminStateLoaded(false);
     const { data, error } = await supabase.from("club_memberships")
       .select("id,club_id,display_name,email,member_since,membership_number,status,is_managed_profile,membership_roles(role),team_members(function,teams(name)),profiles!club_memberships_profile_id_fkey(birthdate,academic_title,first_name,last_name,contact_emails,contact_phones,gender,nationality,street,postal_code,city,country_code,notification_master,notification_preferences,auto_logout_days,calendar_sync_interval,show_birthday)")
@@ -7825,23 +7880,66 @@ export default function ClubMemberOrganisationApp() {
       /* Gilt dieses Geraet noch? Wurde die Person zwischenzeitlich auf zwei
          anderen Geraeten angemeldet, ist dieses verdraengt worden. Dann meldet
          sich die App ab, statt weiterzulaufen, als sei nichts gewesen. */
-      const kennung = geraeteKennung();
-      if (kennung) {
-        const { data: giltNoch } = await supabase.rpc("geraet_gilt_noch", { kennung });
+      /* Nur eine SCHON gespeicherte Kennung kann verdraengt worden sein. Ist
+         keine da, ist das ein neues Geraet - es wird angemeldet, nicht
+         abgewiesen. Das betrifft jede Sitzung, die nicht ueber das
+         Anmeldeformular entstanden ist: frische Registrierung, Rueckkehr ueber
+         den Bestaetigungslink, neues Passwort. */
+      const bekannt = gespeicherteGeraeteKennung();
+      if (bekannt) {
+        const { data: giltNoch } = await supabase.rpc("geraet_gilt_noch", { kennung: bekannt });
         if (giltNoch === false) {
           await supabase.auth.signOut();
           setVerdraengt(true);
           setAuthScreen("login");
           return;
         }
-        await geraetAnmelden(konto.id);
       }
+      await geraetAnmelden(konto.id);
 
       setOffeneSitzung({ profileId: konto.id, email: konto.email, mitgliedschaften: zugehoerig || [] });
       /* Wer angemeldet ist, soll das Anmeldeformular gar nicht erst sehen. */
       if ((zugehoerig || []).length > 0) await nachDerAnmeldung(konto.id);
     })();
     return () => { abgebrochen = true; };
+  }, []);
+
+  /* Wiederaufnahme.
+   *
+   * geraet_gilt_noch und geraet_anmelden liefen bisher nur beim Kaltstart. Auf
+   * iOS wird eine App aber selten beendet, sondern nur schlafen gelegt - ein
+   * verdraengtes Geraet lief deshalb wochenlang mit vollem Zugriff weiter, und
+   * last_seen mass den letzten App-START statt der letzten Nutzung. Das
+   * taeglich benutzte Tablet sah damit aelter aus als ein Telefon, das einmal
+   * im Monat neu gestartet wird - und wurde als erstes verdraengt.
+   *
+   * Hoechstens einmal je Stunde: Die Zahl muss nicht auf die Minute stimmen,
+   * sie muss nur die richtige Reihenfolge ergeben. */
+  const letzteGeraetePruefung = useRef(0);
+  useEffect(() => {
+    if (!supabase || typeof document === "undefined") return;
+    const pruefen = async () => {
+      if (document.visibilityState !== "visible") return;
+      const jetzt = Date.now();
+      if (jetzt - letzteGeraetePruefung.current < 3600000) return;
+      letzteGeraetePruefung.current = jetzt;
+      const { data } = await supabase.auth.getSession();
+      const konto = data.session?.user;
+      if (!konto) return;
+      const bekannt = gespeicherteGeraeteKennung();
+      if (!bekannt) return;
+      const { data: giltNoch } = await supabase.rpc("geraet_gilt_noch", { kennung: bekannt });
+      if (giltNoch === false) {
+        await supabase.auth.signOut();
+        setCurrentUserId(null); setSelectedClubId(null);
+        setMeineMitgliedschaften([]); setOffeneSitzung(null);
+        setVerdraengt(true); setAuthScreen("login");
+        return;
+      }
+      await geraetAnmelden(konto.id);
+    };
+    document.addEventListener("visibilitychange", pruefen);
+    return () => document.removeEventListener("visibilitychange", pruefen);
   }, []);
 
   useEffect(() => {
@@ -7852,6 +7950,7 @@ export default function ClubMemberOrganisationApp() {
       const account = sessionData.session?.user;
       const pending = account?.user_metadata?.pending_new_club;
       if (!account || !pending || cancelled) return;
+      await geraetAnmelden(account.id);
       const { data: registration, error } = await supabase.rpc("register_new_club", {
         club_name: pending.name,
         club_short_name: pending.short_name,
@@ -7895,6 +7994,9 @@ export default function ClubMemberOrganisationApp() {
     }
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error || !data.user) return { error: "E-Mail oder Passwort ist falsch." };
+    /* Ab hier gibt es eine Sitzung. Sie muss bekannt sein, damit der Beitritt
+       zu einem weiteren Verein ohne erneute Anmeldung funktioniert. */
+    setOffeneSitzung({ profileId: data.user.id, email: data.user.email, mitgliedschaften: [] });
 
     /* Ohne vorgewaehlten Verein - der Regelfall seit der Umstellung - wird
        zuerst geschaut, wo dieses Konto ueberhaupt dazugehoert. Nur wenn dabei
@@ -7907,9 +8009,14 @@ export default function ClubMemberOrganisationApp() {
       if (ergebnis?.code !== "membership_missing") return ergebnis;
     }
 
-    const loaded = await loadSupabaseMembership(data.user.id, selectedClubId);
-    if (loaded?.code !== "membership_missing") return loaded;
+    /* Wer sich bei der Registrierung fuer einen Verein entschieden hat, hat ihn
+       in seinen Kontodaten stehen. Ohne diesen Rueckgriff ginge die Anmeldung
+       nach dem Bestaetigungslink ins Leere: vorgewaehlt ist dann nichts, und
+       der Verein aus der Registrierung wuerde uebersehen. */
     const metadata = data.user.user_metadata || {};
+    const zielClub = selectedClubId || metadata.pending_club_id || null;
+    const loaded = await loadSupabaseMembership(data.user.id, zielClub);
+    if (loaded?.code !== "membership_missing") { if (zielClub) setSelectedClubId(zielClub); return loaded; }
     if (metadata.pending_new_club) {
       const pending = metadata.pending_new_club;
       const { data: registration, error: newClubError } = await supabase.rpc("register_new_club", {
@@ -7946,16 +8053,17 @@ export default function ClubMemberOrganisationApp() {
       setFeatureOnboardingClubId(newClubId);
       return loadSupabaseMembership(data.user.id, newClubId);
     }
-    if (metadata.pending_club_id !== selectedClubId) return loaded;
+    if (!zielClub || metadata.pending_club_id !== zielClub) return loaded;
     const { error: registrationError } = await supabase.rpc("register_for_club", {
-      target_club: selectedClubId,
+      target_club: zielClub,
       member_name: metadata.full_name || email.split("@")[0],
       account_role: metadata.account_role || "mitglied",
       member_birthdate: metadata.birthdate || null,
       member_team: metadata.requested_team || null,
     });
     if (registrationError) return { error: "Das Vereinsprofil konnte nicht fertiggestellt werden." };
-    return loadSupabaseMembership(data.user.id, selectedClubId);
+    setSelectedClubId(zielClub);
+    return loadSupabaseMembership(data.user.id, zielClub);
   };
 
   /* Apple-Richtlinie 5.1.1(v): Ein Konto, das sich anlegen lässt, muss sich auch
@@ -7967,7 +8075,7 @@ export default function ClubMemberOrganisationApp() {
   /* Traegt die Mitgliedschaften dieses Kontos zusammen und entscheidet, wohin
      es weitergeht: bei genau einem Verein direkt hinein, bei mehreren zur
      Auswahl, bei keinem auf die Vereinssuche. */
-  const nachDerAnmeldung = async (profileId) => {
+  const mitgliedschaftenLaden = async (profileId) => {
     const { data } = await supabase.from("club_memberships")
       .select("id,club_id,display_name,status,clubs(name,short_name)")
       .eq("profile_id", profileId)
@@ -7979,13 +8087,46 @@ export default function ClubMemberOrganisationApp() {
     }).sort((a, b) => a.clubName.localeCompare(b.clubName, "de"));
 
     setMeineMitgliedschaften(liste);
+    setOffeneSitzung((s) => (s ? { ...s, mitgliedschaften: liste } : s));
+    return liste;
+  };
+
+  const nachDerAnmeldung = async (profileId) => {
+    const liste = await mitgliedschaftenLaden(profileId);
 
     if (liste.length === 1) {
       setSelectedClubId(liste[0].club_id);
       return loadSupabaseMembership(profileId, liste[0].club_id);
     }
     if (liste.length > 1) { setAuthScreen("meineVereine"); return {}; }
+    /* Bei keinem Verein geht es zur Suche - genau das versprach der Kommentar
+       ueber dieser Funktion schon, getan hat es niemand. Ohne diese Zeile fiel
+       der Aufrufer weiter durch bis zu einer Abfrage mit leerem Verein. */
+    setAuthScreen("club");
     return { code: "membership_missing" };
+  };
+
+  /* Beitritt mit einem Konto, das es schon gibt. */
+  const vereinBeitreten = async ({ name, art, team }) => {
+    if (!supabase || !selectedClubId) return { error: "Bitte wähle zuerst einen Verein aus." };
+    const { data: sitzung } = await supabase.auth.getUser();
+    const profileId = sitzung?.user?.id;
+    if (!profileId) return { error: "Die Sitzung ist abgelaufen. Bitte melde dich erneut an." };
+
+    const { data, error } = await supabase.rpc("register_for_club", {
+      target_club: selectedClubId, member_name: name,
+      account_role: art, member_birthdate: null, member_team: team || null,
+    });
+    if (error) {
+      return { error: /blocked/i.test(error.message || "")
+        ? "Dieser Verein hat dich gesperrt. Ein Beitritt ist nicht möglich."
+        : "Die Anfrage konnte nicht gesendet werden. Bitte versuche es später noch einmal." };
+    }
+    if (data?.[0]?.membership_status === "active") return loadSupabaseMembership(profileId, selectedClubId);
+    await mitgliedschaftenLaden(profileId);
+    setSelectedClubId(null);
+    setAuthScreen("meineVereine");
+    return {};
   };
 
   /* Geraetekennung: einmal erzeugt, im Geraet gespeichert.
@@ -7994,6 +8135,20 @@ export default function ClubMemberOrganisationApp() {
      heraus, und wir wollen sie auch nicht. Wird der Speicher geleert, gilt das
      Geraet als neues; das verdraengt hoechstens das aelteste der beiden und ist
      verschmerzbar. */
+  /* Lesen und Erzeugen sind zwei verschiedene Dinge, und die Unterscheidung
+     entscheidet ueber die Startpruefung: Eine gespeicherte Kennung, zu der es
+     keinen Eintrag mehr gibt, ist verdraengt worden. Eine gerade erst erzeugte
+     Kennung ist ein neues Geraet und gehoert angemeldet.
+
+     Vorher wurde beides in einem Aufruf erledigt. Die Kennung entstand also
+     unmittelbar vor der Frage "gilt dieses Geraet noch?", die Antwort war
+     zwangslaeufig nein, und die App meldete beim ersten Start nach dem Update
+     jede gueltige Sitzung ab - mit der Begruendung, das Konto sei auf zwei
+     anderen Geraeten angemeldet. */
+  const gespeicherteGeraeteKennung = () => {
+    if (typeof window === "undefined") return null;
+    try { return window.localStorage.getItem("cmo-geraet"); } catch { return null; }
+  };
   const geraeteKennung = () => {
     if (typeof window === "undefined") return null;
     try {
@@ -8017,10 +8172,31 @@ export default function ClubMemberOrganisationApp() {
     await supabase.rpc("geraet_anmelden", { kennung, bezeichnung });
   };
 
+  /* Beim Abmelden den Platz wieder freigeben.
+     Ohne das belegt ein aufgegebenes Geraet weiter einen der beiden Plaetze -
+     und weil last_seen aus dem Moment seines letzten Starts stammt, gilt es
+     sogar als juenger als ein taeglich benutztes Tablet, das nur nie neu
+     gestartet wird. Verdraengt wuerde dann das falsche Geraet. */
+  const geraetAbmelden = async () => {
+    if (!supabase) return;
+    const kennung = gespeicherteGeraeteKennung();
+    if (!kennung) return;
+    try { await supabase.from("user_devices").delete().eq("device_id", kennung); } catch {}
+  };
+
   const login = async (email, password) => {
     const result = await attemptLogin(email, password);
-    if (result?.code === "membership_pending" || result?.code === "membership_missing") {
+    /* Wer auf die Freigabe wartet, sieht die Wartesansicht - dort laesst sich
+       das Konto auch wieder loeschen (Apple 5.1.1(v)).
+       Wer dagegen ueberhaupt keinem Verein angehoert, hat nichts, worauf er
+       warten koennte: Er gehoert zur Vereinssuche, nicht in eine Ansicht, aus
+       der nur Abmelden und Loeschen herausfuehren. */
+    if (result?.code === "membership_pending") {
       setPendingAccount({ email, reason: result.code });
+      return {};
+    }
+    if (result?.code === "membership_missing") {
+      setAuthScreen(selectedClubId ? "beitreten" : "club");
       return {};
     }
     return result;
@@ -8036,9 +8212,11 @@ export default function ClubMemberOrganisationApp() {
   };
 
   const leavePendingAccount = async () => {
+    await geraetAbmelden();
     if (supabase) await supabase.auth.signOut();
     setPendingAccount(null);
-    setAuthScreen("club");
+    setMeineMitgliedschaften([]); setOffeneSitzung(null);
+    setAuthScreen("login");
   };
 
   const deletePendingAccount = async () => {
@@ -8070,6 +8248,11 @@ export default function ClubMemberOrganisationApp() {
       if (!data.session || !data.user) {
         return { ok: true, message: "Bitte bestätige jetzt die E-Mail. Danach kannst du dich anmelden und die Vereinsregistrierung abschließen." };
       }
+      /* Wer sich hier anmeldet, ist angemeldet - und muss deshalb als Geraet
+         eingetragen sein. Ohne das haette das neue Konto null Eintraege, und
+         der naechste Kaltstart haette es mit der Begruendung abgemeldet, es sei
+         auf zwei anderen Geraeten in Benutzung. */
+      await geraetAnmelden(data.user.id);
       let registration; let registrationError;
       if (pendingClub) {
         const result = await supabase.rpc("register_new_club", { club_name:pendingClub.name, club_short_name:pendingClub.shortName, club_city:pendingClub.city, club_register_number:pendingClub.registerNumber, club_currency:pendingClub.currency||"EUR", referral:pendingClub.referralCode||null, member_name:draft.name, member_birthdate:draft.birthdate||null, club_sport:pendingClub.sport||"rollhockey", club_primary_color:pendingClub.primaryColor||DEFAULT_CLUB_COLORS.primary, club_secondary_color:pendingClub.secondaryColor||DEFAULT_CLUB_COLORS.secondary });
@@ -8123,7 +8306,19 @@ export default function ClubMemberOrganisationApp() {
   };
   /* Seit dem Wegfall des In-App-Kaufs gibt es keine Store-Kennung mehr zu
      trennen. */
-  const logout = async () => { if (supabase) await supabase.auth.signOut(); setCurrentUserId(null); setSelectedClubId(null); setAuthScreen("club"); setTab("home"); setTabHistory([]); setSubView(null); };
+  /* Abmelden heisst: nichts vom alten Konto bleibt stehen.
+     Vorher landete man auf der Vereinssuche, deren "Zurueck" wegen der noch
+     gefuellten Mitgliedschaftsliste auf "Deine Vereine" des GERADE
+     abgemeldeten Kontos fuehrte - und im Anmeldeformular bot die Karte
+     "Angemeldet bleiben" Name und E-Mail des Vorgaengers an. Auf einem
+     geteilten Vereinsgeraet ist das keine Kleinigkeit. */
+  const logout = async () => {
+    await geraetAbmelden();
+    if (supabase) await supabase.auth.signOut();
+    setCurrentUserId(null); setSelectedClubId(null);
+    setMeineMitgliedschaften([]); setOffeneSitzung(null); setPendingAccount(null);
+    setAuthScreen("login"); setTab("home"); setTabHistory([]); setSubView(null);
+  };
   useEffect(() => {
     if (!currentUser || !currentUser.autoLogoutDays) return;
     const timeoutMs = Number(currentUser.autoLogoutDays) * 24 * 60 * 60 * 1000;
@@ -8149,7 +8344,14 @@ export default function ClubMemberOrganisationApp() {
       eventsToWatch.forEach((eventName) => window.removeEventListener(eventName, recordActivity));
     };
   }, [currentUser?.id, currentUser?.autoLogoutDays]);
-  const returnToClubOverview = () => { setCurrentUserId(null); setSelectedClubId(null); setAuthScreen("club"); setTab("home"); setTabHistory([]); setSubView(null); setEventFocusRequest(null); };
+  /* "Verein wechseln" fuehrt zu den eigenen Vereinen, nicht in die Suche nach
+     fremden. Die Sitzung bleibt bestehen; wer wirklich einen weiteren Verein
+     sucht, kommt von dort aus mit einem Tipp weiter. */
+  const returnToClubOverview = () => {
+    setCurrentUserId(null); setSelectedClubId(null);
+    setAuthScreen(meineMitgliedschaften.length > 0 ? "meineVereine" : "club");
+    setTab("home"); setTabHistory([]); setSubView(null); setEventFocusRequest(null);
+  };
   const goNews = () => { setChatChannelId("news"); navigateTab("chat"); };
   const goToMyNextMatch = () => { setEventFocusRequest({ team: currentUser?.team || "alle", requestedAt: Date.now() }); navigateTab("events"); };
   /* Gezaehlt wird an der Anzeige selbst, damit die Zahl auch die Mitglieder
@@ -8223,15 +8425,20 @@ export default function ClubMemberOrganisationApp() {
               laedt={vereinLaedt}
               onOeffnen={vereinOeffnen}
               onWeitererVerein={() => setAuthScreen("club")}
-              onAbmelden={async () => { if (supabase) await supabase.auth.signOut(); setMeineMitgliedschaften([]); setOffeneSitzung(null); setAuthScreen("login"); }}
+              onAbmelden={async () => { await geraetAbmelden(); if (supabase) await supabase.auth.signOut(); setMeineMitgliedschaften([]); setOffeneSitzung(null); setSelectedClubId(null); setAuthScreen("login"); }}
             />
           ) : authScreen === "club" ? (
             <ClubSelectScreen clubs={clubs} onSelect={selectClub} goNewClub={() => setAuthScreen("newclub")}
               goBack={meineMitgliedschaften.length > 0 ? () => setAuthScreen("meineVereine") : () => setAuthScreen("login")} />
+          ) : authScreen === "beitreten" ? (
+            <BeitrittsScreen club={currentClub}
+              vorschlagName={meineMitgliedschaften[0]?.display_name || ""}
+              onBeitreten={vereinBeitreten}
+              goBack={() => { setSelectedClubId(null); setAuthScreen(meineMitgliedschaften.length > 0 ? "meineVereine" : "club"); }} />
           ) : authScreen === "newclub" ? (
             <NewClubScreen onCreate={createClub} goBack={() => setAuthScreen("club")} />
           ) : authScreen === "login" ? (
-            <LoginScreen onLogin={login} members={clubMembers} club={currentClub} goRegister={() => setAuthScreen("register")} goChangeClub={changeClub}
+            <LoginScreen onLogin={login} members={clubMembers} club={currentClub} goRegister={() => setAuthScreen(currentClub ? "register" : "club")} goChangeClub={changeClub}
               verdraengt={verdraengt} onVerdraengtGelesen={() => setVerdraengt(false)}
               offeneSitzung={offeneSitzung}
               onSitzungNutzen={async (mitgliedschaft) => {
