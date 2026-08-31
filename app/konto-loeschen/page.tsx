@@ -5,8 +5,9 @@ export default function DeleteAccountPage() { return <LegalShell title="Konto l�
 
   <h2>So löschst du dein Konto</h2>
   <ol>
-    <li>Öffne <a href="/">club-member-organisation.vercel.app</a> im Browser oder in der App und melde dich mit deinem Konto an.</li>
+    <li>Öffne die App auf deinem Telefon und melde dich mit deinem Konto an.</li>
     <li>Gehe zu <strong>Profil → Einstellungen → Konto löschen</strong>.</li>
+    <li>Gehörst du noch zu keinem Verein, steht dieselbe Schaltfläche direkt auf dem Bildschirm, auf dem du nach der Anmeldung landest — auf dem Hinweisbildschirm, in der Vereinssuche oder unter „Meine Vereine“.</li>
     <li>Bestätige die endgültige Löschung. Dein Konto, deine Vereinsprofile und persönlichen Inhalte werden unwiderruflich gelöscht.</li>
   </ol>
   <p>Wartet deine Aufnahme noch auf die Freigabe durch den Verein, findest du die Löschfunktion direkt nach der Anmeldung auf dem Hinweisbildschirm.</p>

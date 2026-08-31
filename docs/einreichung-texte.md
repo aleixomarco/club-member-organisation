@@ -60,10 +60,11 @@ Ohne Freischaltung stehen dauerhaft drei Zugänge zur Verfügung. Es gibt keinen
 befristeten Testzeitraum, der abläuft.
 
 Konto löschen
-Profil → Einstellungen → Konto und Sicherheit → Konto löschen. Die Löschung ist
-sofort wirksam und vollständig. Wer noch auf die Aufnahme in einen Verein
-wartet, findet dieselbe Funktion direkt nach der Anmeldung auf dem
-Hinweisbildschirm.
+Profil → Einstellungen → Konto löschen. Die Löschung ist sofort wirksam und
+vollständig. Wer noch zu keinem Verein gehört, kommt gar nicht erst so weit —
+für ihn steht dieselbe Funktion auf jedem Bildschirm, den er in diesem Zustand
+sieht: auf dem Hinweisbildschirm nach der Anmeldung, in der Vereinssuche und
+unter „Meine Vereine".
 
 Nutzergenerierte Inhalte
 Im Chat lässt sich jede Nachricht melden und jede Person für die eigene Ansicht
