@@ -122,6 +122,45 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, ergebnis: data?.[0] || null });
   }
 
+  /* Eigene Werbung des Betreibers. club_id bleibt null - solche Anzeigen
+     gelten in jedem Verein und treten zurueck, sobald ein Verein einen eigenen
+     Sponsor auf denselben Platz setzt. */
+  if (daten.art === "anzeige") {
+    const PLAETZE = ["dashboard_top", "dashboard_bottom", "events_header", "profile_bottom"];
+    if (daten.entfernen) {
+      if (!istUuid(daten.anzeige)) return NextResponse.json({ error: "Keine Anzeige gewählt." }, { status: 400 });
+      const { error } = await admin.from("anzeigen").delete().eq("id", daten.anzeige).is("club_id", null);
+      if (error) return NextResponse.json({ error: "Die Anzeige konnte nicht entfernt werden." }, { status: 500 });
+      await protokollieren("anzeige:entfernt", null, { anzeige: daten.anzeige });
+      return NextResponse.json({ ok: true });
+    }
+
+    const platz = typeof daten.platz === "string" && PLAETZE.includes(daten.platz) ? daten.platz : null;
+    const titel = typeof daten.titel === "string" ? daten.titel.trim().slice(0, 120) : "";
+    if (!platz) return NextResponse.json({ error: "Unbekannter Werbeplatz." }, { status: 400 });
+    if (!titel) return NextResponse.json({ error: "Ohne Titel geht es nicht." }, { status: 400 });
+
+    const text = (w: unknown, max: number) => (typeof w === "string" && w.trim() ? w.trim().slice(0, max) : null);
+    const satz = {
+      club_id: null,
+      platz,
+      titel,
+      text: text(daten.text, 400),
+      ziel_url: text(daten.ziel_url, 500),
+      aktiv: daten.aktiv !== false,
+      laeuft_bis: text(daten.laeuft_bis, 40) ? new Date(`${daten.laeuft_bis}T23:59:59`).toISOString() : null,
+    };
+    const { error } = istUuid(daten.anzeige)
+      ? await admin.from("anzeigen").update(satz).eq("id", daten.anzeige).is("club_id", null)
+      : await admin.from("anzeigen").insert(satz);
+    if (error) {
+      console.error("Anzeige konnte nicht gespeichert werden", error);
+      return NextResponse.json({ error: error.message || "Die Anzeige konnte nicht gespeichert werden." }, { status: 500 });
+    }
+    await protokollieren("anzeige", null, satz);
+    return NextResponse.json({ ok: true });
+  }
+
   if (daten.art === "guthaben") {
     if (!istUuid(daten.verein)) return NextResponse.json({ error: "Kein Verein gewählt." }, { status: 400 });
     const { data, error } = await admin.rpc("guthaben_einloesen", {

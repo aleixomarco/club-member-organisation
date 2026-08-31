@@ -24,15 +24,23 @@ export async function GET() {
     return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
   }
 
-  const [vereine, anfragen] = await Promise.all([
+  const [vereine, anfragen, anzeigen] = await Promise.all([
     admin.from("betreiber_uebersicht").select("*").order("name"),
     admin.from("offene_freischaltungen").select("*"),
+    /* Die eigenen Werbeplaetze: club_id null heisst "gilt in jedem Verein".
+       Sie liessen sich bisher nur von Hand im SQL-Editor anlegen. */
+    admin.from("anzeigen").select("id,platz,titel,text,ziel_url,aktion_titel,aktion_bis,laeuft_bis,aktiv,impressionen,klicks")
+      .is("club_id", null).order("platz"),
   ]);
 
-  if (vereine.error || anfragen.error) {
-    console.error("Betreiberübersicht konnte nicht geladen werden", vereine.error || anfragen.error);
+  if (vereine.error || anfragen.error || anzeigen.error) {
+    console.error("Betreiberübersicht konnte nicht geladen werden", vereine.error || anfragen.error || anzeigen.error);
     return NextResponse.json({ error: "Die Übersicht konnte nicht geladen werden." }, { status: 500 });
   }
 
-  return NextResponse.json({ vereine: vereine.data || [], anfragen: anfragen.data || [] });
+  return NextResponse.json({
+    vereine: vereine.data || [],
+    anfragen: anfragen.data || [],
+    anzeigen: anzeigen.data || [],
+  });
 }

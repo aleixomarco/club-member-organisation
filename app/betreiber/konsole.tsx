@@ -18,11 +18,22 @@ type Verein = {
   mitglieder: number; offene_aufnahmen: number; eigene_sponsoren: number; ansprechpartner: string | null;
 };
 
+type Anzeige = {
+  id: string; platz: string; titel: string; text: string | null; ziel_url: string | null;
+  aktion_titel: string | null; laeuft_bis: string | null; aktiv: boolean;
+  impressionen: number; klicks: number;
+};
+
 type Anfrage = {
   id: string; created_at: string; quelle: string | null; verein: string | null; club_id: string | null;
   contact_name: string; contact_email: string; contact_phone: string | null;
   expected_accounts: number | null; sponsoring_gewuenscht: boolean; note: string | null; status: string;
   konten_jetzt: number | null; tarif_jetzt: string | null; sponsoren_jetzt: boolean | null;
+};
+
+const PLATZ_NAMEN: Record<string, string> = {
+  dashboard_top: "Start – oben", dashboard_bottom: "Start – unter den News",
+  events_header: "Termine – Kopfbereich", profile_bottom: "Profil – unten",
 };
 
 const TARIF_NAMEN: Record<string, string> = {
@@ -39,6 +50,8 @@ export default function BetreiberKonsole() {
   const [laeuft, setLaeuft] = useState(false);
   const [vereine, setVereine] = useState<Verein[]>([]);
   const [anfragen, setAnfragen] = useState<Anfrage[]>([]);
+  const [anzeigen, setAnzeigen] = useState<Anzeige[]>([]);
+  const [anzeigeOffen, setAnzeigeOffen] = useState<Partial<Anzeige> | null>(null);
   const [suche, setSuche] = useState("");
   const [offen, setOffen] = useState<Verein | null>(null);
   const [meldung, setMeldung] = useState("");
@@ -53,7 +66,7 @@ export default function BetreiberKonsole() {
     setAngemeldet(true);
     const inhalt = await antwort.json().catch(() => ({}));
     if (!antwort.ok) { setFehler(inhalt.error || "Die Übersicht konnte nicht geladen werden."); return; }
-    setVereine(inhalt.vereine || []); setAnfragen(inhalt.anfragen || []); setFehler("");
+    setVereine(inhalt.vereine || []); setAnfragen(inhalt.anfragen || []); setAnzeigen(inhalt.anzeigen || []); setFehler("");
   }, []);
 
   useEffect(() => { laden(); }, [laden]);
@@ -73,7 +86,7 @@ export default function BetreiberKonsole() {
 
   const abmelden = async () => {
     await fetch("/api/betreiber/abmelden", { method: "POST" });
-    setAngemeldet(false); setVereine([]); setAnfragen([]);
+    setAngemeldet(false); setVereine([]); setAnfragen([]); setAnzeigen([]);
   };
 
   const aktion = async (rumpf: Record<string, unknown>) => {
@@ -257,6 +270,52 @@ export default function BetreiberKonsole() {
         </div>
       </section>
 
+      {/* Die eigene Werbung. Sie gilt in jedem Verein und tritt zurueck, sobald
+          ein Verein einen eigenen Sponsor auf denselben Platz setzt. Bisher
+          liess sie sich nur von Hand im SQL-Editor anlegen. */}
+      <section style={{ marginTop: 28 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10, flexWrap: "wrap" }}>
+          <h2 style={{ ...ueberschrift, marginBottom: 0 }}>Eigene Werbeplätze</h2>
+          <button style={knopfLeise} disabled={laeuft} onClick={() => setAnzeigeOffen({ platz: "dashboard_top", aktiv: true })}>Neue Anzeige</button>
+        </div>
+        <p style={{ ...hinweis, marginTop: -4 }}>
+          Gilt in jedem Verein. Wo ein Verein einen eigenen, laufenden Sponsor auf demselben Platz hat, tritt Ihre Anzeige zurück.
+        </p>
+        {anzeigen.length === 0 ? (
+          <p style={{ ...karte, color: "#8A7F85", fontSize: 13 }}>Noch keine eigene Anzeige — die Plätze bleiben leer, solange kein Verein sie belegt.</p>
+        ) : (
+          <div style={{ display: "grid", gap: 8 }}>
+            {anzeigen.map((a) => (
+              <div key={a.id} style={{ ...karte, display: "flex", gap: 12, alignItems: "baseline", flexWrap: "wrap" }}>
+                <span style={abzeichen}>{PLATZ_NAMEN[a.platz] || a.platz}</span>
+                <b style={{ fontSize: 14 }}>{a.titel}</b>
+                {!a.aktiv && <span style={{ ...abzeichen, background: "#F0EBEE" }}>ausgeschaltet</span>}
+                {a.laeuft_bis && <span style={{ fontSize: 12, color: "#8A7F85" }}>bis {datum(a.laeuft_bis)}</span>}
+                <span style={{ fontSize: 12, color: "#8A7F85", marginLeft: "auto" }}>{a.impressionen} Einblendungen · {a.klicks} Klicks</span>
+                <button style={knopfLeise} disabled={laeuft} onClick={() => setAnzeigeOffen(a)}>Bearbeiten</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {anzeigeOffen && (
+        <AnzeigeDialog
+          anzeige={anzeigeOffen}
+          laeuft={laeuft}
+          onAbbrechen={() => setAnzeigeOffen(null)}
+          onSpeichern={async (werte) => {
+            const ok = await aktion({ art: "anzeige", anzeige: anzeigeOffen.id, ...werte });
+            if (ok) { setAnzeigeOffen(null); setMeldung("Anzeige gespeichert."); }
+          }}
+          onEntfernen={async () => {
+            if (!anzeigeOffen.id || !window.confirm(`Anzeige \u201e${anzeigeOffen.titel}\u201c entfernen?`)) return;
+            const ok = await aktion({ art: "anzeige", anzeige: anzeigeOffen.id, entfernen: true });
+            if (ok) { setAnzeigeOffen(null); setMeldung("Anzeige entfernt."); }
+          }}
+        />
+      )}
+
       {offen && (
         <FreischaltDialog
           verein={offen}
@@ -275,6 +334,70 @@ export default function BetreiberKonsole() {
         />
       )}
     </main>
+  );
+}
+
+function AnzeigeDialog({ anzeige, laeuft, onAbbrechen, onSpeichern, onEntfernen }: {
+  anzeige: Partial<Anzeige>; laeuft: boolean;
+  onAbbrechen: () => void;
+  onSpeichern: (werte: Record<string, unknown>) => void;
+  onEntfernen: () => void;
+}) {
+  const [platz, setPlatz] = useState(anzeige.platz || "dashboard_top");
+  const [titel, setTitel] = useState(anzeige.titel || "");
+  const [text, setText] = useState(anzeige.text || "");
+  const [zielUrl, setZielUrl] = useState(anzeige.ziel_url || "");
+  const [bis, setBis] = useState(anzeige.laeuft_bis ? anzeige.laeuft_bis.slice(0, 10) : "");
+  const [aktiv, setAktiv] = useState(anzeige.aktiv !== false);
+  const [fehler, setFehler] = useState("");
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(20,21,26,.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+         onClick={onAbbrechen}>
+      <div role="dialog" aria-modal="true" aria-label="Anzeige bearbeiten" onClick={(e) => e.stopPropagation()}
+           style={{ ...karte, width: "100%", maxWidth: 460, maxHeight: "90vh", overflowY: "auto" }}>
+        <h2 style={{ fontSize: 17, fontWeight: 700, margin: "0 0 14px" }}>{anzeige.id ? "Anzeige bearbeiten" : "Neue Anzeige"}</h2>
+
+        <label style={beschriftung}>Werbeplatz</label>
+        <select value={platz} onChange={(e) => setPlatz(e.target.value)} style={feld}>
+          {Object.entries(PLATZ_NAMEN).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        </select>
+
+        <label style={beschriftung}>Titel</label>
+        <input value={titel} onChange={(e) => setTitel(e.target.value)} maxLength={120} style={feld} />
+
+        <label style={beschriftung}>Text (optional)</label>
+        <textarea value={text} onChange={(e) => setText(e.target.value)} maxLength={400} rows={3}
+          style={{ ...feld, resize: "vertical" as const }} />
+
+        <label style={beschriftung}>Ziel-Adresse (optional)</label>
+        <input type="url" value={zielUrl} onChange={(e) => setZielUrl(e.target.value)} placeholder="https://…" style={feld} />
+
+        <label style={beschriftung}>Läuft bis (optional)</label>
+        <input type="date" value={bis} onChange={(e) => setBis(e.target.value)} style={feld} />
+        <p style={hinweis}>Ohne Datum bleibt die Anzeige stehen, bis Sie sie entfernen.</p>
+
+        <button type="button" onClick={() => setAktiv(!aktiv)}
+          style={{ ...knopfLeise, width: "100%", marginRight: 0, marginBottom: 4, textAlign: "left" as const }}>
+          {aktiv ? "Eingeschaltet" : "Ausgeschaltet"}
+        </button>
+
+        {fehler && <p role="status" style={fehlerText}>{fehler}</p>}
+
+        <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+          <button style={{ ...knopfLeise, flex: 1 }} onClick={onAbbrechen}>Abbrechen</button>
+          <button style={{ ...knopf, flex: 1, opacity: laeuft ? 0.6 : 1 }} disabled={laeuft}
+            onClick={() => {
+              if (!titel.trim()) { setFehler("Ohne Titel geht es nicht."); return; }
+              onSpeichern({ platz, titel, text, ziel_url: zielUrl, laeuft_bis: bis, aktiv });
+            }}>{laeuft ? "…" : "Speichern"}</button>
+        </div>
+        {anzeige.id && (
+          <button onClick={onEntfernen} disabled={laeuft}
+            style={{ ...knopfLeise, width: "100%", marginTop: 8, marginRight: 0, color: "#B3261E" }}>Anzeige entfernen</button>
+        )}
+      </div>
+    </div>
   );
 }
 
