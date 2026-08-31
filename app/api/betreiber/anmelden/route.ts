@@ -1,16 +1,24 @@
 import { NextResponse } from "next/server";
 import {
-  SITZUNGS_COOKIE, SITZUNGSDAUER_SEKUNDEN, betreiberKonfiguriert, cookieOptionen,
+  SITZUNGS_COOKIE, SITZUNGSDAUER_SEKUNDEN, cookieOptionen, konfigurationsFehler,
   passwortStimmt, sitzungErzeugen, versuchVermerken, zuVieleVersuche,
 } from "@/lib/betreiber";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
-  if (!betreiberKonfiguriert()) {
+  const fehlt = konfigurationsFehler();
+  if (fehlt) {
     /* Ohne gesetztes Passwort gibt es keinen Zugang - und zwar keinen mit
-       irgendeinem Passwort, nicht bloss keinen mit dem falschen. */
-    return NextResponse.json({ error: "Der Betreiberzugang ist nicht eingerichtet." }, { status: 503 });
+       irgendeinem Passwort, nicht bloss keinen mit dem falschen.
+
+       Der genaue Grund steht mit dabei. "Nicht eingerichtet" waere zwar
+       wortkarger, aber wer die Variablen gerade gesetzt hat und trotzdem diese
+       Meldung liest, sucht sonst an der falschen Stelle - naemlich beim Deploy,
+       obwohl in Wahrheit das Passwort zwei Zeichen zu kurz ist. Verraten wird
+       damit nichts, was hilft: Ohne das Passwort kommt hier ohnehin niemand
+       hinein, und dass die Konsole existiert, sieht man an der Seite selbst. */
+    return NextResponse.json({ error: `Der Betreiberzugang ist nicht eingerichtet. ${fehlt}` }, { status: 503 });
   }
 
   const kennung = request.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unbekannt";

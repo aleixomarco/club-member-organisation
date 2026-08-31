@@ -58,6 +58,24 @@ export function passwortStimmt(eingabe: unknown): boolean {
   return gleich(eingabe, process.env.BETREIBER_PASSWORT as string);
 }
 
+/* Der Schlüssel, mit dem Sitzungen unterschrieben werden.
+ *
+ * Er wird aus BEIDEN Angaben abgeleitet, aus dem Sitzungsgeheimnis und aus dem
+ * Passwort. Das hat einen konkreten Grund: Bei einem unterschriebenen Cookie
+ * ist der Unterschriftsschlüssel selbst ein Zugang — wer ihn hat, kann sich ein
+ * gültiges Cookie ausstellen, ohne das Passwort je zu kennen. Solange der
+ * Schlüssel ausschließlich auf dem Server liegt, ist das kein Problem. Sobald
+ * er einmal woanders auftaucht — in einer Notiz, einem Chatverlauf, einem
+ * geteilten Bildschirm —, wäre er es sehr wohl.
+ *
+ * Aus beidem abgeleitet ist das Geheimnis allein wertlos. Ein Nebeneffekt, den
+ * man ohnehin will: Ein geändertes Passwort beendet alle offenen Sitzungen. */
+function signierSchluessel(): Buffer {
+  return createHmac("sha256", process.env.BETREIBER_SESSION_SECRET as string)
+    .update(`sitzung|${process.env.BETREIBER_PASSWORT}`)
+    .digest();
+}
+
 /* Der Sitzungswert: Ablaufzeitpunkt und Zufall, dazu eine Signatur.
  *
  * Der Zufall sorgt dafür, dass zwei Anmeldungen in derselben Millisekunde nicht
@@ -68,8 +86,7 @@ export function sitzungErzeugen(): string {
   const ablauf = Date.now() + SITZUNGSDAUER_MS;
   const zufall = randomBytes(12).toString("hex");
   const nutzlast = `${ablauf}.${zufall}`;
-  const signatur = createHmac("sha256", process.env.BETREIBER_SESSION_SECRET as string)
-    .update(nutzlast).digest("hex");
+  const signatur = createHmac("sha256", signierSchluessel()).update(nutzlast).digest("hex");
   return `${nutzlast}.${signatur}`;
 }
 
@@ -78,7 +95,7 @@ export function sitzungGueltig(wert: unknown): boolean {
   const teile = wert.split(".");
   if (teile.length !== 3) return false;
   const [ablauf, zufall, signatur] = teile;
-  const erwartet = createHmac("sha256", process.env.BETREIBER_SESSION_SECRET as string)
+  const erwartet = createHmac("sha256", signierSchluessel())
     .update(`${ablauf}.${zufall}`).digest("hex");
   if (signatur.length !== erwartet.length) return false;
   if (!timingSafeEqual(Buffer.from(signatur), Buffer.from(erwartet))) return false;
