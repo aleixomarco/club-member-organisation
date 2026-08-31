@@ -19,6 +19,11 @@ danach einmal neu deployen:
 | `BETREIBER_PASSWORT` | Das Passwort. **Mindestens 16 Zeichen**, selbst gewählt, nirgendwo sonst verwendet. |
 | `BETREIBER_SESSION_SECRET` | Eine lange Zufallszeichenkette, mindestens 32 Zeichen. Signiert nur das Sitzungs-Cookie; sie wird nie getippt. |
 
+**Passwort vergessen oder wechseln?** Kein Problem und kein Support nötig — es
+gibt hier nichts wiederherzustellen. Neuen Wert in Vercel eintragen, neu
+deployen, fertig. Der Ablauf und alles zum sicheren Aufbewahren steht in
+[betreiber-zugaenge.md](betreiber-zugaenge.md).
+
 Einen Zufallswert für das zweite Feld erzeugt man am schnellsten im Terminal:
 
 ```bash
