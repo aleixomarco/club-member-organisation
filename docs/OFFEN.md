@@ -102,13 +102,11 @@ Umfrage-Antwort nur eine **Stimmensumme**, nicht wer wie gestimmt hat. Diese
 Summen stehen jetzt als `poll_options.legacy_votes` daneben und werden
 mitgezählt. Sie in einzelne Stimmen zu zerlegen hieße, sie zu erfinden.
 
-### Strafen: bezahlt-Vermerk und Saisonarchiv
+### Nichts mehr offen an dieser Stelle
 
-`team_penalty_assignments` hat die Spalten `paid_at`, `paid_by`,
-`archived_season` und `archived_at`, und es gibt die Funktionen
-`mark_penalty_paid()` und `run_season_reset()` dafür. Die App liest die Spalten,
-ruft die Funktionen aber nirgends auf — der Vermerk „bezahlt" lässt sich also
-nicht setzen.
+Alles, was sich ändert und bleiben soll, hat jetzt eine Tabelle. Im
+Gerätespeicher liegen nur noch zwei Dinge, die dorthin gehören: die
+Gerätekennung und der Zeitstempel der letzten Nutzung.
 
 ### „Drei Gratismonate"
 
