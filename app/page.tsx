@@ -490,7 +490,7 @@ const canWriteNews = (m) => isAdmin(m) || (!!m && m.roles.includes("redakteur"))
  *
  * Der Code bleibt vollstaendig stehen. Wird daraus spaeter ein Angebot fuer
  * Vereine - "verwalte deine eigenen Sponsoren" -, genuegt hier true. */
-const SPONSOREN_VERWALTUNG_SICHTBAR = false;
+const SPONSOREN_VERWALTUNG_SICHTBAR = true;
 
 const canManageSponsors = (m) => SPONSOREN_VERWALTUNG_SICHTBAR && (isAdmin(m) || (!!m && m.roles.includes("sponsorenmanager")));
 const canManageDuty = (m) => isAdmin(m) || (!!m && m.roles.includes("organisator"));
@@ -677,8 +677,8 @@ const TRAINERS = [
 
 /* Sponsor-Slots: reservierte, buchbare Werbeflächen zwischen den Layout-Bereichen */
 const SPONSOR_SLOT_DEFS = [
-  { key: "dashboard_top", label: "Sponsor 1 · Anzeige oben" },
-  { key: "dashboard_bottom", label: "Sponsor 2 · Anzeige nach Vereins-News" },
+  { key: "dashboard_top", label: "Start – oben" },
+  { key: "dashboard_bottom", label: "Start – unter den News" },
   { key: "events_header", label: "Termine – Kopfbereich" },
   { key: "profile_bottom", label: "Profil unten" },
 ];
@@ -692,7 +692,6 @@ const SPONSOR_SLOT_DEFS = [
    Werbung schaltet ohnehin nur der Betreiber ueber die Sponsor-Slots, die
    Geburtstage kommen jetzt aus den echten Mitgliedern, und Abstimmungen legt
    der Verein selbst an. */
-const INITIAL_SPONSOR_BOOKINGS = {};
 const INITIAL_POLLS = [];
 
 /* Eine Zeile aus messages in die Form bringen, die ChatView erwartet.
@@ -1015,34 +1014,72 @@ function ToggleCard({ title, desc, value, onChange }) {
     </div>
   );
 }
+/* Ein Werbeplatz.
+ *
+ * Was hier steht, entscheidet die Datenbank (anzeige_fuer_platz): Hat der
+ * Verein einen eigenen, laufenden Sponsor und ist Sponsoring freigeschaltet,
+ * gewinnt der; sonst die Werbung des Betreibers; sonst bleibt der Platz frei.
+ *
+ * Sichtbar unterschieden wird beides trotzdem. "Anzeige" ist Werbung, die mit
+ * dem Verein nichts zu tun hat; "Sponsor" ist jemand, den der Verein selbst
+ * eingetragen hat. Wer beides gleich aussehen laesst, macht den Verein zum
+ * Werbetraeger fuer Fremde.
+ *
+ * Die Aktion erscheint nur, solange sie laeuft. Danach bleibt der Sponsor
+ * stehen, der Aktionsknopf verschwindet - genau das war die Anforderung. */
 function SponsorSlot({ slotKey, bookings, onImpression, onClick, visible = true }) {
-  const sponsor = bookings[slotKey];
+  const anzeige = bookings?.[slotKey];
   const [showDetails, setShowDetails] = useState(false);
-  useEffect(() => { if (sponsor && visible) onImpression(slotKey); }, [sponsor, slotKey, visible]);
-  if (!sponsor || !visible) return null;
-  const data = typeof sponsor === "string" ? { title: sponsor, text: "", imageUrl: "", landingUrl: "" } : sponsor;
-  const open = () => { onClick(slotKey); setShowDetails(true); };
+  useEffect(() => { if (anzeige && visible) onImpression?.(slotKey); }, [anzeige, slotKey, visible]);
+  if (!anzeige || !visible) return null;
+
+  const vomVerein = anzeige.herkunft === "verein";
+  /* Ob die Aktion laeuft, hat die Datenbank schon entschieden: Ausserhalb
+     ihres Zeitraums kommen die Aktionsfelder leer zurueck. Hier steht deshalb
+     keine zweite, moeglicherweise abweichende Rechnung. */
+  const laeuft = !!anzeige.aktion_titel;
+  const open = () => { onClick?.(slotKey); setShowDetails(true); };
+
   return (
     <>
-    <button onClick={open} className="w-full rounded-2xl px-4 py-3 mb-5 flex items-center gap-3 text-left overflow-hidden" style={{ background: C.paperDim, border: `1px dashed ${C.line}` }}>
-      <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
-        {data.imageUrl ? <img src={data.imageUrl} alt="" className="w-full h-full object-cover rounded-lg"/> : <Sparkles size={14} style={{ color: C.amber }} />}
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: C.textDim, fontFamily: "Inter" }}>Anzeige</div>
-        <div className="text-xs truncate" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{data.title}</div>
-        {data.text&&<div className="text-[10px] truncate mt-0.5" style={{color:C.textDim}}>{data.text}</div>}
-      </div>
-      <ChevronRight size={14} style={{ color: C.textDim, flexShrink: 0 }} />
-    </button>
-    {showDetails&&<div className="absolute inset-0 z-50 flex items-end p-3" style={{background:"rgba(20,21,26,.72)"}} onClick={()=>setShowDetails(false)}>
-      <div role="dialog" aria-modal="true" aria-label={`Sponsor ${data.title}`} onClick={(e)=>e.stopPropagation()} className="w-full rounded-3xl overflow-hidden" style={{background:C.glass,maxHeight:"88%"}}>
-        <div className="p-4 flex items-start justify-between"><div><div className="text-[9px] uppercase tracking-widest font-bold mb-1" style={{color:C.amber}}>Sponsor der ERG</div><h2 className="text-xl m-0" style={{fontFamily:"Oswald",color:C.ink}}>{data.title}</h2></div><button onClick={()=>setShowDetails(false)} aria-label="Overlay schließen" className="w-8 h-8 rounded-full flex items-center justify-center" style={{background:C.paperDim}}><X size={15}/></button></div>
-        {data.text&&<p className="px-4 pb-3 text-sm leading-relaxed" style={{color:C.textDim}}>{data.text}</p>}
-        {data.landingUrl&&<div className="px-4 pb-4"><a href={data.landingUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between rounded-xl px-3 py-2.5 text-xs font-bold" style={{background:"rgba(252,235,238,0.72)",color:C.red}}>Zur Landingpage des Sponsors <ArrowRight size={14}/></a></div>}
-        {data.imageUrl?<img src={data.imageUrl} alt={`Anzeige von ${data.title}`} className="w-full block" style={{maxHeight:280,objectFit:"cover"}}/>:<div className="h-36 flex flex-col items-center justify-center" style={{background:C.paperDim,color:C.textDim}}><ImageIcon size={28}/><span className="text-xs mt-2">Kein Anzeigenbild hinterlegt</span></div>}
-      </div>
-    </div>}
+      <button onClick={open} className="w-full rounded-2xl px-4 py-3 mb-5 flex items-center gap-3 text-left overflow-hidden" style={{ background: C.paperDim, border: `1px dashed ${C.line}` }}>
+        <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
+          {anzeige.bild_url ? <img src={anzeige.bild_url} alt="" className="w-full h-full object-cover rounded-lg"/> : <Sparkles size={14} style={{ color: C.amber }} />}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: C.textDim, fontFamily: "Inter" }}>{vomVerein ? "Sponsor" : "Anzeige"}</div>
+          <div className="text-xs truncate" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{anzeige.titel}</div>
+          {laeuft
+            ? <div className="text-[10px] truncate mt-0.5" style={{ color: C.red, fontWeight: 700 }}>{anzeige.aktion_titel}</div>
+            : anzeige.text && <div className="text-[10px] truncate mt-0.5" style={{ color: C.textDim }}>{anzeige.text}</div>}
+        </div>
+        <ChevronRight size={14} style={{ color: C.textDim, flexShrink: 0 }} />
+      </button>
+
+      {showDetails && <div className="absolute inset-0 z-50 flex items-end p-3" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setShowDetails(false)}>
+        <div role="dialog" aria-modal="true" aria-label={anzeige.titel} onClick={(e) => e.stopPropagation()} className="w-full rounded-3xl overflow-hidden" style={{ background: C.glass, maxHeight: "80%", overflowY: "auto" }}>
+          <div className="p-4">
+            <div className="text-[9px] uppercase tracking-widest font-bold mb-1" style={{ color: vomVerein ? C.amber : C.textDim }}>{vomVerein ? "Sponsor unseres Vereins" : "Anzeige"}</div>
+            <h2 className="text-lg font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{anzeige.titel}</h2>
+            {anzeige.text && <p className="text-sm leading-relaxed mt-2" style={{ color: C.textDim }}>{anzeige.text}</p>}
+
+            {/* Die Aktion steht abgesetzt, damit sie nicht mit der
+                Sponsorenbeschreibung verschwimmt - und mit ihrem Ende, damit
+                niemand hinterher enttaeuscht ist. */}
+            {laeuft && (
+              <div className="rounded-2xl p-3.5 mt-3" style={{ background: "rgba(252,235,238,0.72)", border: `1px solid ${C.edge}` }}>
+                <div className="text-sm font-bold mb-1" style={{ color: C.red }}>{anzeige.aktion_titel}</div>
+                {anzeige.aktion_text && <div className="text-[11px] leading-relaxed" style={{ color: C.ink }}>{anzeige.aktion_text}</div>}
+                {anzeige.aktion_bis && <div className="text-[10px] mt-2" style={{ color: C.textDim }}>Läuft noch bis {new Date(anzeige.aktion_bis).toLocaleDateString("de-DE")}</div>}
+                {anzeige.aktion_url && <a href={anzeige.aktion_url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between rounded-xl px-3 py-2.5 text-xs font-bold mt-2.5" style={{ background: C.red, color: C.white }}>Zur Aktion <ExternalLink size={14}/></a>}
+              </div>
+            )}
+
+            {anzeige.ziel_url && <a href={anzeige.ziel_url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between rounded-xl px-3 py-2.5 text-xs font-bold mt-3" style={{ background: C.paperDim, color: C.ink }}>Website ansehen <ExternalLink size={14}/></a>}
+          </div>
+          {anzeige.bild_url && <img src={anzeige.bild_url} alt={anzeige.titel} className="w-full block" style={{ maxHeight: 280, objectFit: "cover" }}/>}
+        </div>
+      </div>}
     </>
   );
 }
@@ -1705,7 +1742,7 @@ function NextTrainingCard({ training }) {
     </div>
   );
 }
-function Dashboard({ user, members, events, feePaid, channels, dutyPlan, seasonVotes, polls, setPolls, sponsorBookings, onSponsorImpression, onSponsorClick, goEvents, goSeason, goTipp, goDuty, goNews, goTasks, goVehicles, currentClub, featureEnabled, dashboardTileOrder, entitlement, goSubscribe }) {
+function Dashboard({ user, members, events, feePaid, channels, dutyPlan, seasonVotes, polls, setPolls, werbeplaetze, onSponsorImpression, onSponsorClick, goEvents, goSeason, goTipp, goDuty, goNews, goTasks, goVehicles, currentClub, featureEnabled, dashboardTileOrder, entitlement, goSubscribe }) {
   const sport = currentClub?.sport || "rollhockey";
   /* Alle Kacheln in „Aktionen & Abstimmungen" hängen am Premium-Tarif
      (siehe die LockedFeature-Hüllen der jeweiligen Ansichten). Während der
@@ -1815,7 +1852,7 @@ function Dashboard({ user, members, events, feePaid, channels, dutyPlan, seasonV
       </div>
 
 
-      <SponsorSlot slotKey="dashboard_top" bookings={sponsorBookings} onImpression={onSponsorImpression} onClick={onSponsorClick} visible={featureEnabled("sponsor_dashboard_top")} />
+      <SponsorSlot slotKey="dashboard_top" bookings={werbeplaetze} onImpression={onSponsorImpression} onClick={onSponsorClick} visible={featureEnabled("sponsor_dashboard_top")} />
 
       <Scoreboard nextEvent={nextEvent} goTo={goEvents} mannschaften={spielMannschaften} gewaehlt={gewaehlteMannschaft} onWechsel={setSpielTeam} />
       <NextTrainingCard training={naechstesTraining} />
@@ -1871,7 +1908,7 @@ function Dashboard({ user, members, events, feePaid, channels, dutyPlan, seasonV
         </div>
       </DashboardSection>
 
-      <SponsorSlot slotKey="dashboard_bottom" bookings={sponsorBookings} onImpression={onSponsorImpression} onClick={onSponsorClick} visible={featureEnabled("sponsor_dashboard_bottom")} />
+      <SponsorSlot slotKey="dashboard_bottom" bookings={werbeplaetze} onImpression={onSponsorImpression} onClick={onSponsorClick} visible={featureEnabled("sponsor_dashboard_bottom")} />
 
       {/* Die Abstimmungen erscheinen nur, wenn es welche gibt. Vorher stand die
           Ueberschrift auch dann da, wenn der Verein keine einzige angelegt hat. */}
@@ -2177,7 +2214,7 @@ function EventMonthCalendar({ events, onSelect }) {
   );
 }
 
-function EventsView({ currentUser, members, events, setEvents, carpools, setCarpools, dutyPlan, setDutyPlan, sponsorBookings, onSponsorImpression, onSponsorClick, focusRequest, onFocusApplied, currentClub, featureEnabled, entitlement, goSubscribe }) {
+function EventsView({ currentUser, members, events, setEvents, carpools, setCarpools, dutyPlan, setDutyPlan, werbeplaetze, onSponsorImpression, onSponsorClick, focusRequest, onFocusApplied, currentClub, featureEnabled, entitlement, goSubscribe }) {
   const [filter, setFilter] = useState("alle");
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -2407,7 +2444,7 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
           <label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>Ende *</span><input type="time" value={eventDraft.endTime} onChange={(e)=>setEventDraft({...eventDraft,endTime:e.target.value})} className="erg-datetime w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim,color:C.ink}}/></label>
         </div>
       </div> : <div className="space-y-2"><div className="flex gap-1.5 flex-wrap">{[["1","Mo"],["2","Di"],["3","Mi"],["4","Do"],["5","Fr"],["6","Sa"],["7","So"]].map(([num,label])=>{const n=Number(num);const active=eventDraft.weekdays.includes(n);return <button type="button" key={num} onClick={()=>setEventDraft({...eventDraft,weekdays:active?eventDraft.weekdays.filter((w)=>w!==n):[...eventDraft.weekdays,n]})} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?C.red:C.paperDim,color:active?C.white:C.textDim}}>{label}</button>;})}</div><div className="grid grid-cols-2 gap-2"><input type="time" value={eventDraft.startTime} onChange={(e)=>setEventDraft({...eventDraft,startTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><input type="time" value={eventDraft.endTime} onChange={(e)=>setEventDraft({...eventDraft,endTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></div><div className="grid grid-cols-2 gap-2"><input type="date" value={eventDraft.rangeStart} onChange={(e)=>setEventDraft({...eventDraft,rangeStart:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><input type="date" value={eventDraft.rangeEnd} onChange={(e)=>setEventDraft({...eventDraft,rangeEnd:e.target.value})} className="erg-datetime px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim,color:C.ink}}/></div></div>}<input value={eventDraft.location} onChange={(e)=>setEventDraft({...eventDraft,location:e.target.value})} placeholder="Ort *" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><textarea value={eventDraft.desc} onChange={(e)=>setEventDraft({...eventDraft,desc:e.target.value})} placeholder="Beschreibung (optional)" rows={2} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none" style={{background:C.paperDim}}/>{/* Die Meldung stand vorher IM Zweig fuer Einzeltermine. Bei einer Serie erschien sie deshalb nie, und das Speichern blieb wieder stumm - genau der Fehler, den sie beheben sollte. Jetzt steht sie vor der Knopfzeile und gilt fuer beide Zweige. */}{eventFehler && <div className="text-[10px] rounded-xl px-3 py-2" style={{background:"rgba(253,236,236,0.72)",color:C.red}}>{eventFehler}</div>}<div className="flex gap-2"><button type="submit" className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{background:C.ink,color:C.white}}>Speichern</button><button type="button" onClick={()=>{setShowCreate(false);setEventFehler("");}} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{background:C.paperDim,color:C.textDim}}>Abbrechen</button></div></form>}
-      <SponsorSlot slotKey="events_header" bookings={sponsorBookings} onImpression={onSponsorImpression} onClick={onSponsorClick} visible={featureEnabled("sponsor_events_header")} />
+      <SponsorSlot slotKey="events_header" bookings={werbeplaetze} onImpression={onSponsorImpression} onClick={onSponsorClick} visible={featureEnabled("sponsor_events_header")} />
       <div className="flex items-center gap-2 mb-3">
         <div className="flex gap-2 overflow-x-auto pb-1 flex-1 min-w-0" style={{ scrollbarWidth: "none" }}>
           {[["alle", "Alle"], ["training", "Training"], ["spiel", "Spiele"], ["event", "Events"]].map(([k, l]) => (
@@ -4583,7 +4620,7 @@ function SubscriptionPanel({ user }) {
   const [accountUsage, setAccountUsage] = useState(null);
   const [anfrage, setAnfrage] = useState(undefined); // undefined = laedt, null = keine
   const [formularOffen, setFormularOffen] = useState(false);
-  const [form, setForm] = useState({ contact_name: user.name || "", contact_email: user.email || "", contact_phone: "", expected_accounts: "", note: "" });
+  const [form, setForm] = useState({ contact_name: user.name || "", contact_email: user.email || "", contact_phone: "", expected_accounts: "", note: "", sponsoring: false });
   const [sendet, setSendet] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -4614,6 +4651,7 @@ function SubscriptionPanel({ user }) {
       contact_email: form.contact_email.trim(),
       contact_phone: form.contact_phone.trim() || null,
       expected_accounts: form.expected_accounts ? Number(form.expected_accounts) : null,
+      sponsoring_gewuenscht: form.sponsoring,
       note: form.note.trim() || null,
     });
     if (error) {
@@ -4684,6 +4722,16 @@ function SubscriptionPanel({ user }) {
               <input type="email" value={form.contact_email} onChange={(e) => setForm({ ...form, contact_email: e.target.value })} placeholder="E-Mail für die Rechnung *" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }} />
               <input type="tel" value={form.contact_phone} onChange={(e) => setForm({ ...form, contact_phone: e.target.value })} placeholder="Telefon (optional)" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }} />
               <input type="number" min="1" value={form.expected_accounts} onChange={(e) => setForm({ ...form, expected_accounts: e.target.value })} placeholder="Wie viele Mitglieder bekommen einen Zugang?" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }} />
+              {/* Der Zusatz steht im Formular und nicht in einer Preisliste
+                  daneben: Wer ihn hier nicht ankreuzt, bekommt eine Rechnung
+                  ohne ihn - und das ist dann auch so gewollt. */}
+              <button type="button" onClick={() => setForm({ ...form, sponsoring: !form.sponsoring })} className="w-full flex items-start gap-2.5 px-3 py-2.5 rounded-xl text-left" style={{ background: C.paperDim }}>
+                <span className="w-4 h-4 rounded flex-shrink-0 flex items-center justify-center mt-0.5" style={{ background: form.sponsoring ? C.ink : "transparent", border: `1.5px solid ${form.sponsoring ? C.ink : C.line}` }}>{form.sponsoring && <Check size={11} style={{ color: C.white }} />}</span>
+                <span className="flex-1">
+                  <span className="text-xs block" style={{ color: C.ink, fontWeight: 600 }}>Eigene Sponsoren zeigen · +5 €/Monat</span>
+                  <span className="text-[10px] block mt-0.5" style={{ color: C.textDim }}>Die Werbeplätze in der App mit euren eigenen Sponsoren belegen, inklusive zeitlich begrenzter Aktionen.</span>
+                </span>
+              </button>
               <textarea value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} rows={2} placeholder="Anmerkung (optional)" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none" style={{ background: C.paperDim }} />
               <div className="flex gap-2">
                 <button type="submit" disabled={sendet} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white, opacity: sendet ? .6 : 1 }}>{sendet ? "Wird gesendet …" : "Anfrage senden"}</button>
@@ -5295,7 +5343,7 @@ function CalendarSyncSettings({ user, saveRef }) {
   </div>;
 }
 
-function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, onSponsorImpression, onSponsorClick, onLogout, clubFeatures, onClubFeaturesChanged, entitlement, goSubscribe, dashboardTileOrder, setDashboardTileOrder, ziel, onZielErreicht }) {
+function ProfileView({ user, members, setMembers, currentClub, werbeplaetze, onSponsorImpression, onSponsorClick, onLogout, clubFeatures, onClubFeaturesChanged, entitlement, goSubscribe, dashboardTileOrder, setDashboardTileOrder, ziel, onZielErreicht }) {
   const featureEnabled = (key) => clubFeatures[key] !== false;
   const goal = 1000;
   const eligible = isFormalMember(user) && age(user.birthdate) >= 16;
@@ -5477,7 +5525,7 @@ function ProfileView({ user, members, setMembers, currentClub, sponsorBookings, 
           Demo-Verein. Eine Fotogalerie gibt es nicht, eine Anwesenheitsstatistik
           auch nicht - deshalb beides entfernt statt verlinkt. */}
 
-      <SponsorSlot slotKey="profile_bottom" bookings={sponsorBookings} onImpression={onSponsorImpression} onClick={onSponsorClick} visible={featureEnabled("sponsor_profile_bottom")} />
+      <SponsorSlot slotKey="profile_bottom" bookings={werbeplaetze} onImpression={onSponsorImpression} onClick={onSponsorClick} visible={featureEnabled("sponsor_profile_bottom")} />
 
       <div className="grid grid-cols-3 gap-2 mb-4 text-center">
         <a href="/datenschutz" className="py-2 rounded-xl text-[10px] font-bold" style={{ background: C.glass, border: `1px solid ${C.line}`, color: C.textDim }}>Datenschutz</a>
@@ -6028,55 +6076,232 @@ function OverviewPanel({ members, events, feePaid, protocols, dutyPlan, seasonVo
 /* ------------------------------------------------------------------ */
 /* Sponsoring                                                            */
 /* ------------------------------------------------------------------ */
-function SponsoringPanel({ bookings, setBookings, stats, currentClub, clubFeatures, onFeaturesChanged }) {
+/* Der Arbeitsplatz des Sponsorenmanagers.
+ *
+ * Vier Plaetze, je einer pro Ort in der App. Auf jedem steht entweder ein
+ * eigener Sponsor des Vereins oder - wenn keiner da ist - die Werbung des
+ * Betreibers. Was gerade zu sehen ist, sagt die Liste oben an jedem Platz;
+ * darunter wird der eigene Sponsor gepflegt.
+ *
+ * Die Aktion ist der Grund fuer die Laufzeit: Ein Sponsorenlogo darf stehen
+ * bleiben, eine Rabattaktion nicht. Wer eine Aktion eintraegt, muss deshalb
+ * sagen, bis wann sie laeuft - die Datenbank besteht darauf, und dieses
+ * Formular fragt vorher danach, statt den Fehler durchzureichen. */
+function SponsoringPanel({ bookings, stats, currentClub, clubFeatures, onFeaturesChanged, onChanged }) {
+  const [eigene, setEigene] = useState([]);
+  const [laden, setLaden] = useState(true);
+  const [offen, setOffen] = useState("");
+  const [entwurf, setEntwurf] = useState(null);
+  const [speichert, setSpeichert] = useState(false);
+  const [fehler, setFehler] = useState("");
   const [savingSlot, setSavingSlot] = useState("");
-  const [toggleError, setToggleError] = useState("");
-  const update = (key, field, value) => setBookings((all) => ({ ...all, [key]: { ...(typeof all[key] === "object" ? all[key] : { title: all[key] || "" }), [field]: value } }));
-  const uploadImage = (key, file) => {
-    if (!file) return;
-    if (!file.type.startsWith("image/")) return;
-    const reader = new FileReader();
-    reader.onload = () => update(key, "imageUrl", reader.result);
-    reader.readAsDataURL(file);
+  const frei = currentClub?.sponsoringFrei === true;
+
+  const ladeEigene = useCallback(async () => {
+    if (!supabase || !currentClub?.id) { setEigene([]); setLaden(false); return; }
+    const { data } = await supabase.from("anzeigen").select("*").eq("club_id", currentClub.id).order("created_at", { ascending: false });
+    setEigene(data || []);
+    setLaden(false);
+  }, [currentClub?.id]);
+  useEffect(() => { ladeEigene(); }, [ladeEigene]);
+
+  const tag = (wert) => (wert ? new Date(wert).toISOString().slice(0, 10) : "");
+  const leer = (platz) => ({
+    id: null, platz, titel: "", text: "", bild_pfad: "", ziel_url: "",
+    aktion_titel: "", aktion_text: "", aktion_url: "",
+    laeuft_von: tag(new Date().toISOString()), laeuft_bis: "",
+    aktion_von: tag(new Date().toISOString()), aktion_bis: "", aktiv: true,
+  });
+  const bearbeiten = (platz) => {
+    const vorhanden = eigene.find((a) => a.platz === platz);
+    setOffen(platz);
+    setFehler("");
+    setEntwurf(vorhanden
+      ? { ...vorhanden, text: vorhanden.text || "", bild_pfad: vorhanden.bild_pfad || "", ziel_url: vorhanden.ziel_url || "",
+          aktion_titel: vorhanden.aktion_titel || "", aktion_text: vorhanden.aktion_text || "", aktion_url: vorhanden.aktion_url || "",
+          laeuft_von: tag(vorhanden.laeuft_von), laeuft_bis: tag(vorhanden.laeuft_bis),
+          aktion_von: tag(vorhanden.aktion_von) || tag(new Date().toISOString()), aktion_bis: tag(vorhanden.aktion_bis) }
+      : leer(platz));
   };
+  const setzen = (feld, wert) => setEntwurf((e) => ({ ...e, [feld]: wert }));
+
+  const bildHochladen = async (datei) => {
+    if (!datei || !supabase || !currentClub?.id) return;
+    if (!datei.type.startsWith("image/")) { setFehler("Bitte ein Bild auswählen."); return; }
+    if (datei.size > 2 * 1024 * 1024) { setFehler("Das Bild darf höchstens 2 MB groß sein."); return; }
+    setFehler("");
+    const pfad = `${currentClub.id}/${entwurf.platz}-${Date.now()}.${(datei.name.split(".").pop() || "jpg").toLowerCase()}`;
+    const { error } = await supabase.storage.from("sponsor-bilder").upload(pfad, datei, { contentType: datei.type, upsert: false });
+    if (error) { setFehler("Das Bild konnte nicht hochgeladen werden."); return; }
+    setzen("bild_pfad", pfad);
+  };
+
+  const speichern = async () => {
+    if (!supabase || !currentClub?.id || !entwurf) return;
+    if (!entwurf.titel.trim()) { setFehler("Ohne Namen des Sponsors geht es nicht."); return; }
+    /* Vor dem Speichern pruefen, was die Datenbank ohnehin verlangt - der
+       Hinweis hier ist verstaendlich, die Fehlermeldung von dort nicht. */
+    if (entwurf.aktion_titel.trim() && !entwurf.aktion_bis) { setFehler("Eine Aktion braucht ein Enddatum. Bis wann läuft sie?"); return; }
+    if (entwurf.laeuft_bis && entwurf.laeuft_von && new Date(entwurf.laeuft_bis) <= new Date(entwurf.laeuft_von)) { setFehler("Der Sponsor kann nicht enden, bevor er beginnt."); return; }
+    if (entwurf.aktion_bis && entwurf.aktion_von && new Date(entwurf.aktion_bis) <= new Date(entwurf.aktion_von)) { setFehler("Die Aktion kann nicht enden, bevor sie beginnt."); return; }
+    setSpeichert(true); setFehler("");
+    const satz = {
+      club_id: currentClub.id, platz: entwurf.platz,
+      titel: entwurf.titel.trim(), text: entwurf.text.trim() || null,
+      bild_pfad: entwurf.bild_pfad || null, ziel_url: entwurf.ziel_url.trim() || null,
+      aktion_titel: entwurf.aktion_titel.trim() || null,
+      aktion_text: entwurf.aktion_text.trim() || null,
+      aktion_url: entwurf.aktion_url.trim() || null,
+      laeuft_von: entwurf.laeuft_von ? new Date(entwurf.laeuft_von).toISOString() : new Date().toISOString(),
+      /* Bis zum Ende des gewaehlten Tages, nicht bis zu seinem Beginn: Wer
+         "bis 30.09." eintraegt, meint den 30. mit. */
+      laeuft_bis: entwurf.laeuft_bis ? new Date(`${entwurf.laeuft_bis}T23:59:59`).toISOString() : null,
+      aktion_von: entwurf.aktion_titel.trim() && entwurf.aktion_von ? new Date(entwurf.aktion_von).toISOString() : null,
+      aktion_bis: entwurf.aktion_titel.trim() && entwurf.aktion_bis ? new Date(`${entwurf.aktion_bis}T23:59:59`).toISOString() : null,
+      aktiv: entwurf.aktiv !== false,
+    };
+    const { error } = entwurf.id
+      ? await supabase.from("anzeigen").update(satz).eq("id", entwurf.id)
+      : await supabase.from("anzeigen").insert(satz);
+    setSpeichert(false);
+    if (error) { setFehler("Konnte nicht gespeichert werden."); return; }
+    setOffen(""); setEntwurf(null);
+    await ladeEigene(); onChanged?.();
+  };
+
+  const entfernen = async (id) => {
+    if (!supabase || !id) return;
+    setSpeichert(true);
+    const { error } = await supabase.from("anzeigen").delete().eq("id", id);
+    setSpeichert(false);
+    if (error) { setFehler("Konnte nicht entfernt werden."); return; }
+    setOffen(""); setEntwurf(null);
+    await ladeEigene(); onChanged?.();
+  };
+
   const toggleVisible = async (slotKey, value) => {
     if (!supabase || !currentClub?.id) return;
-    const featureKey = `sponsor_${slotKey}`;
-    setSavingSlot(slotKey); setToggleError("");
-    const { error } = await supabase.from("club_feature_toggles").upsert({ club_id: currentClub.id, feature_key: featureKey, enabled: value });
+    setSavingSlot(slotKey); setFehler("");
+    const { error } = await supabase.from("club_feature_toggles").upsert({ club_id: currentClub.id, feature_key: `sponsor_${slotKey}`, enabled: value });
     setSavingSlot("");
-    if (error) { setToggleError("Konnte nicht gespeichert werden."); return; }
+    if (error) { setFehler("Konnte nicht gespeichert werden."); return; }
     onFeaturesChanged?.();
   };
+
+  if (laden) return <div className="text-xs py-6 text-center" style={{ color: C.textDim }}>Wird geladen …</div>;
+
   return (
     <div className="space-y-3">
-      <div className="text-xs mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>Sponsor 1 und Sponsor 2 sind zwei unabhängige Anzeigen im gleichen Design. Für beide können Titel, Text, Bild und eine optionale Landingpage separat hinterlegt werden. Leere Anzeigen bleiben für Mitglieder unsichtbar. Über den Schalter lässt sich jede Anzeigenfläche unabhängig davon komplett aus- oder einblenden.</div>
-      {toggleError && <div role="status" className="text-[11px] rounded-xl px-3 py-2" style={{ background: "rgba(253,236,236,0.72)", color: C.red }}>{toggleError}</div>}
+      <div className="text-xs leading-relaxed" style={{ color: C.textDim, fontFamily: "Inter" }}>
+        Vier Werbeplätze in der App. Wo Ihr Verein einen eigenen Sponsor einträgt, tritt die Werbung des Betreibers zurück. Eine Aktion — Rabatt, Gutschein, Sonderangebot — erscheint nur, solange sie läuft; danach bleibt der Sponsor stehen und der Aktionsknopf verschwindet von selbst.
+      </div>
+
+      {/* Ohne Freischaltung laesst sich alles eintragen, aber nichts wird
+          gezeigt. Das gehoert an den Anfang und nicht in eine Fussnote. */}
+      {!frei && (
+        <div className="rounded-2xl p-3.5" style={{ background: "rgba(255,247,230,0.8)", border: `1px solid ${C.edge}` }}>
+          <div className="text-xs font-bold mb-1" style={{ color: C.ink }}>Eigene Sponsoren sind noch nicht freigeschaltet</div>
+          <div className="text-[11px] leading-relaxed" style={{ color: C.textDim }}>
+            Der Zusatz kostet 5 € im Monat über Ihrem Tarif. Sie können hier alles vorbereiten — angezeigt wird es erst nach der Freischaltung. Schreiben Sie uns an <a href="mailto:kontakt@idbranding.de?subject=Sponsorenfunktion%20freischalten" style={{ color: C.red, fontWeight: 700 }}>kontakt@idbranding.de</a>.
+          </div>
+        </div>
+      )}
+
+      {fehler && <div role="status" className="text-[11px] rounded-xl px-3 py-2" style={{ background: "rgba(253,236,236,0.72)", color: C.red }}>{fehler}</div>}
+
       {SPONSOR_SLOT_DEFS.map((slot) => {
-        const s = stats[slot.key] || { impressions: 0, clicks: 0 };
-        const ctr = s.impressions ? ((s.clicks / s.impressions) * 100).toFixed(1) : "0.0";
-        const raw = bookings[slot.key];
-        const ad = typeof raw === "object" && raw ? raw : { title: raw || "", text: "", imageUrl: "", landingUrl: "" };
+        const sichtbar = bookings?.[slot.key];
+        const meiner = eigene.find((a) => a.platz === slot.key);
         const on = (clubFeatures?.[`sponsor_${slot.key}`]) !== false;
+        const laeuftAktion = meiner?.aktion_titel && meiner?.aktion_bis && new Date(meiner.aktion_bis) > new Date();
+        const abgelaufen = meiner?.laeuft_bis && new Date(meiner.laeuft_bis) <= new Date();
+        const imBearbeiten = offen === slot.key && entwurf;
+
         return (
           <div key={slot.key} className="rounded-2xl p-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
             <div className="flex items-center justify-between mb-2">
               <div className="text-xs" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{slot.label}</div>
-              <span className="text-[10px]" style={{ fontFamily: "JetBrains Mono", color: C.textDim }}>{slot.key}</span>
+              {sichtbar && <span className="text-[9px] uppercase tracking-widest font-bold px-2 py-0.5 rounded-full" style={{ background: sichtbar.herkunft === "verein" ? "rgba(177,121,18,.15)" : C.paperDim, color: sichtbar.herkunft === "verein" ? C.amber : C.textDim }}>{sichtbar.herkunft === "verein" ? "Ihr Sponsor" : "Betreiber"}</span>}
             </div>
+
+            <div className="text-[11px] mb-2.5" style={{ color: C.textDim }}>
+              {!on ? "Der Platz ist ausgeblendet — hier sieht niemand etwas."
+                : sichtbar ? <>Zu sehen: <span style={{ color: C.ink, fontWeight: 600 }}>{sichtbar.titel}</span></>
+                : "Der Platz ist gerade leer."}
+            </div>
+
             <button onClick={() => savingSlot !== slot.key && toggleVisible(slot.key, !on)} className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl mb-2.5" style={{ background: C.paperDim, border: `1px solid ${C.line}`, opacity: savingSlot === slot.key ? .6 : 1 }}>
-              <span className="text-xs text-left" style={{ fontFamily: "Inter", fontWeight: 600, color: C.ink }}>{on ? "Anzeigenfläche eingeblendet" : "Anzeigenfläche ausgeblendet"}</span>
+              <span className="text-xs text-left" style={{ fontFamily: "Inter", fontWeight: 600, color: C.ink }}>{on ? "Werbefläche eingeblendet" : "Werbefläche ausgeblendet"}</span>
               <span className="w-10 h-6 rounded-full relative flex-shrink-0" style={{ background: on ? C.green : C.line }}>
                 <span className="absolute top-0.5 w-5 h-5 rounded-full" style={{ background: "#fff", left: on ? 18 : 2, transition: "left .2s" }} />
               </span>
             </button>
-            <input value={ad.title} onChange={(e)=>update(slot.key,"title",e.target.value)} placeholder="Titel des Sponsors" className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2" style={{background:C.paperDim,border:`1px solid ${C.line}`}}/>
-            <textarea value={ad.text||""} onChange={(e)=>update(slot.key,"text",e.target.value)} placeholder="Beschreibung / Anzeigentext" rows={3} className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2 resize-none" style={{background:C.paperDim,border:`1px solid ${C.line}`}}/>
-            <input type="url" value={ad.landingUrl||""} onChange={(e)=>update(slot.key,"landingUrl",e.target.value)} placeholder="https://landingpage.de" className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2" style={{background:C.paperDim,border:`1px solid ${C.line}`}}/>
-            <label className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs cursor-pointer mb-2" style={{background:C.paperDim,color:C.ink,border:`1px solid ${C.line}`}}><ImageIcon size={14}/><span className="flex-1">{ad.imageUrl?"Bild ersetzen":"Anzeigenbild hochladen"}</span><input type="file" accept="image/*" className="hidden" onChange={(e)=>uploadImage(slot.key,e.target.files?.[0])}/></label>
-            {ad.imageUrl&&<div className="relative mb-2"><img src={ad.imageUrl} alt="Vorschau" className="w-full h-24 object-cover rounded-lg"/><button onClick={()=>update(slot.key,"imageUrl","")} className="absolute top-1 right-1 w-7 h-7 rounded-full flex items-center justify-center" style={{background:"rgba(20,21,26,.8)",color:"white"}}><X size={13}/></button></div>}
-            <button onClick={()=>setBookings((b)=>({...b,[slot.key]:undefined}))} className="text-[10px] mb-2" style={{color:C.red}}>Slot leeren</button>
-            <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{s.impressions} Impressionen · {s.clicks} Klicks · {ctr}% CTR</div>
+
+            {meiner && !imBearbeiten && (
+              <div className="rounded-xl p-2.5 mb-2" style={{ background: C.paperDim, border: `1px solid ${C.line}` }}>
+                <div className="text-xs" style={{ fontWeight: 700, color: C.ink }}>{meiner.titel}</div>
+                {meiner.aktion_titel && <div className="text-[11px] mt-0.5" style={{ color: laeuftAktion ? C.red : C.textDim, fontWeight: 600 }}>
+                  {meiner.aktion_titel} · {laeuftAktion ? `läuft bis ${new Date(meiner.aktion_bis).toLocaleDateString("de-DE")}` : "beendet"}
+                </div>}
+                {abgelaufen && <div className="text-[11px] mt-0.5" style={{ color: C.textDim }}>Der Sponsor wird nicht mehr angezeigt — die Laufzeit ist beendet.</div>}
+                <div className="text-[10px] mt-1.5" style={{ color: C.textDim, fontFamily: "JetBrains Mono" }}>{meiner.impressionen ?? 0} Einblendungen · {meiner.klicks ?? 0} Klicks</div>
+              </div>
+            )}
+
+            {!imBearbeiten && (
+              <button onClick={() => bearbeiten(slot.key)} className="w-full px-3 py-2.5 rounded-xl text-xs" style={{ background: meiner ? C.paperDim : C.ink, color: meiner ? C.ink : C.white, fontWeight: 700, border: `1px solid ${C.line}` }}>
+                {meiner ? "Sponsor bearbeiten" : "Eigenen Sponsor eintragen"}
+              </button>
+            )}
+
+            {imBearbeiten && (
+              <div className="space-y-2 pt-1">
+                <div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.textDim }}>Der Sponsor</div>
+                <input value={entwurf.titel} onChange={(e) => setzen("titel", e.target.value)} placeholder="Name des Sponsors" maxLength={120} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} />
+                <textarea value={entwurf.text} onChange={(e) => setzen("text", e.target.value)} placeholder="Kurzer Text (optional)" rows={2} maxLength={400} className="w-full px-3 py-2 rounded-lg text-xs outline-none resize-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} />
+                <input type="url" inputMode="url" value={entwurf.ziel_url} onChange={(e) => setzen("ziel_url", e.target.value)} placeholder="https://website-des-sponsors.de" className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} />
+                <label className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs cursor-pointer" style={{ background: C.paperDim, color: C.ink, border: `1px solid ${C.line}` }}>
+                  <ImageIcon size={14} /><span className="flex-1">{entwurf.bild_pfad ? "Bild ersetzen" : "Bild hochladen (max. 2 MB)"}</span>
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => bildHochladen(e.target.files?.[0])} />
+                </label>
+                {entwurf.bild_pfad && <div className="relative">
+                  <img src={supabase?.storage.from("sponsor-bilder").getPublicUrl(entwurf.bild_pfad).data.publicUrl} alt="Vorschau" className="w-full h-24 object-cover rounded-lg" />
+                  <button onClick={() => setzen("bild_pfad", "")} aria-label="Bild entfernen" className="absolute top-1 right-1 w-7 h-7 rounded-full flex items-center justify-center" style={{ background: "rgba(20,21,26,.8)", color: "white" }}><X size={13} /></button>
+                </div>}
+
+                <div className="text-[10px] uppercase tracking-widest font-bold pt-1" style={{ color: C.textDim }}>Die Aktion (optional)</div>
+                <input value={entwurf.aktion_titel} onChange={(e) => setzen("aktion_titel", e.target.value)} placeholder="z. B. 10 % für alle Mitglieder" maxLength={120} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} />
+                <textarea value={entwurf.aktion_text} onChange={(e) => setzen("aktion_text", e.target.value)} placeholder="Was genau bekommt man, und wie?" rows={3} maxLength={600} className="w-full px-3 py-2 rounded-lg text-xs outline-none resize-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} />
+                <input type="url" inputMode="url" value={entwurf.aktion_url} onChange={(e) => setzen("aktion_url", e.target.value)} placeholder="https://link-zur-aktion.de (optional)" className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} />
+
+                {/* Der Aktionszeitraum erscheint erst, wenn es eine Aktion
+                    gibt - vier Datumsfelder auf einmal fragt niemand gern aus. */}
+                {entwurf.aktion_titel.trim() ? <>
+                  <div className="flex gap-2">
+                    <label className="flex-1"><span className="text-[10px] block mb-1" style={{ color: C.textDim }}>Aktion von</span>
+                      <input type="date" value={entwurf.aktion_von} onChange={(e) => setzen("aktion_von", e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} /></label>
+                    <label className="flex-1"><span className="text-[10px] block mb-1" style={{ color: C.textDim }}>Aktion bis *</span>
+                      <input type="date" value={entwurf.aktion_bis} onChange={(e) => setzen("aktion_bis", e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} /></label>
+                  </div>
+                  <div className="text-[10px]" style={{ color: C.textDim }}>Der Aktionsknopf erscheint nur in diesem Zeitraum. Danach bleibt der Sponsor stehen, die Aktion verschwindet von selbst.</div>
+                </> : null}
+
+                <div className="text-[10px] uppercase tracking-widest font-bold pt-1" style={{ color: C.textDim }}>Der Sponsor steht auf dem Platz</div>
+                <div className="flex gap-2">
+                  <label className="flex-1"><span className="text-[10px] block mb-1" style={{ color: C.textDim }}>Von</span>
+                    <input type="date" value={entwurf.laeuft_von} onChange={(e) => setzen("laeuft_von", e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} /></label>
+                  <label className="flex-1"><span className="text-[10px] block mb-1" style={{ color: C.textDim }}>Bis (optional)</span>
+                    <input type="date" value={entwurf.laeuft_bis} onChange={(e) => setzen("laeuft_bis", e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} /></label>
+                </div>
+                <div className="text-[10px]" style={{ color: C.textDim }}>Ohne Enddatum bleibt der Sponsor stehen, bis Sie ihn entfernen.</div>
+
+                <div className="flex gap-2 pt-1">
+                  <button onClick={() => { setOffen(""); setEntwurf(null); setFehler(""); }} className="flex-1 px-3 py-2.5 rounded-xl text-xs" style={{ background: C.paperDim, color: C.ink, fontWeight: 600, border: `1px solid ${C.line}` }}>Abbrechen</button>
+                  <button onClick={speichern} disabled={speichert} className="flex-1 px-3 py-2.5 rounded-xl text-xs" style={{ background: C.ink, color: C.white, fontWeight: 700, opacity: speichert ? .6 : 1 }}>{speichert ? "…" : "Speichern"}</button>
+                </div>
+                {entwurf.id && <button onClick={() => entfernen(entwurf.id)} disabled={speichert} className="w-full text-[11px] pt-1" style={{ color: C.red, fontWeight: 600 }}>Sponsor von diesem Platz entfernen</button>}
+              </div>
+            )}
           </div>
         );
       })}
@@ -6939,7 +7164,7 @@ function AdminView({
   channels, setChannels, maintenanceMode, setMaintenanceMode, onResetDemo,
   protocols, setProtocols, remindersSent, setRemindersSent,
   welcomeAutomation, setWelcomeAutomation, billingAutomation, setBillingAutomation,
-  sponsorBookings, setSponsorBookings, sponsorStats, polls, setPolls, tippResults, onSaveTippResult,
+  werbeplaetze, onWerbeplaetzeGeaendert, polls, setPolls, tippResults, onSaveTippResult,
   dashboardTileOrder, setDashboardTileOrder,
   currentClub, onClubLogoUpdated, onClubColorsUpdated, clubFeatures, onClubFeaturesChanged,
 }) {
@@ -6998,7 +7223,7 @@ function AdminView({
       {panel === "duty-templates" && <DutyTemplatesPanel currentUser={currentUser} sport={currentClub?.sport} />}
       {panel === "functions" && canManageClubFeatures && <ClubFeatureSettingsPanel currentClub={currentClub} clubFeatures={clubFeatures} onFeaturesChanged={onClubFeaturesChanged} dashboardTileOrder={dashboardTileOrder} setDashboardTileOrder={setDashboardTileOrder} />}
       {panel === "protokolle" && <ProtokollePanel members={members} protocols={protocols} setProtocols={setProtocols} clubId={currentUser.clubId} />}
-      {panel === "sponsoring" && <SponsoringPanel bookings={sponsorBookings} setBookings={setSponsorBookings} stats={sponsorStats} currentClub={currentClub} clubFeatures={clubFeatures} onFeaturesChanged={onClubFeaturesChanged} />}
+      {panel === "sponsoring" && <SponsoringPanel bookings={werbeplaetze} currentClub={currentClub} clubFeatures={clubFeatures} onFeaturesChanged={onClubFeaturesChanged} onChanged={onWerbeplaetzeGeaendert} />}
       {panel === "polls" && <PollManagerPanel polls={polls} setPolls={setPolls} clubId={currentUser.clubId} />}
       {panel === "roles" && <><RolesPanel members={members} setMembers={setMembers} /><ClaimManagedPlayerPanel members={members} setMembers={setMembers} currentUser={currentUser} /></>}
       {panel === "results" && currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role)) && <MatchResultsPanel results={tippResults} onSave={onSaveTippResult} events={events} />}
@@ -7279,8 +7504,11 @@ export default function ClubMemberOrganisationApp() {
   const [remindersSent, setRemindersSent] = useState({});
   const [welcomeAutomation, setWelcomeAutomation] = useState(true);
   const [billingAutomation, setBillingAutomation] = useState(true);
-  const [sponsorBookings, setSponsorBookings] = useState(INITIAL_SPONSOR_BOOKINGS);
-  const [sponsorStats, setSponsorStats] = useState({});
+  /* Die Werbeplaetze kommen aus der Datenbank, nicht aus dem gemeinsamen
+     Zustandsblock der Administratoren: Was auf einem Platz steht, entscheidet
+     anzeige_fuer_platz() - eigener Sponsor des Vereins vor Werbung des
+     Betreibers, und beides nur, solange es laeuft. */
+  const [werbeplaetze, setWerbeplaetze] = useState({});
   const [dashboardTileOrder, setDashboardTileOrder] = useState(DEFAULT_DASHBOARD_TILE_ORDER);
   const [polls, setPolls] = useState(INITIAL_POLLS);
   const [adminStateLoaded, setAdminStateLoaded] = useState(false);
@@ -7301,7 +7529,7 @@ export default function ClubMemberOrganisationApp() {
 
   useEffect(() => {
     if (!supabase) return;
-    supabase.from("clubs").select("id,name,short_name,city,founded_year,logo_url,register_number,currency,referral_code,referral_credit_months,sport,primary_color,secondary_color").order("name").then(({ data }) => {
+    supabase.from("clubs").select("id,name,short_name,city,founded_year,logo_url,register_number,currency,referral_code,referral_credit_months,sport,primary_color,secondary_color,sponsoring_freigeschaltet").order("name").then(({ data }) => {
       if (data?.length) setClubs(data.map((club) => ({
         id: club.id,
         name: club.name,
@@ -7313,6 +7541,7 @@ export default function ClubMemberOrganisationApp() {
         sport: club.sport || "rollhockey",
         primaryColor: club.primary_color || DEFAULT_CLUB_COLORS.primary,
         secondaryColor: club.secondary_color || DEFAULT_CLUB_COLORS.secondary,
+        sponsoringFrei: club.sponsoring_freigeschaltet === true,
       })));
     });
   }, []);
@@ -7374,6 +7603,24 @@ export default function ClubMemberOrganisationApp() {
   }, [currentClub?.id]);
   useEffect(() => { loadClubFeatures(); }, [loadClubFeatures]);
 
+  /* Was auf den vier Werbeplaetzen steht. Eine Abfrage fuer alle vier; die
+     Rangfolge und die Laufzeit entscheidet die Datenbank. Neu geladen wird
+     beim Vereinswechsel und wenn der Sponsorenmanager etwas geaendert hat. */
+  const ladeWerbeplaetze = useCallback(async () => {
+    if (!supabase || !currentClub?.id) { setWerbeplaetze({}); return; }
+    const { data, error } = await supabase.rpc("anzeigen_fuer_verein", { target_club: currentClub.id });
+    if (error) { setWerbeplaetze({}); return; }
+    const belegt = {};
+    for (const a of data || []) {
+      belegt[a.platz] = {
+        ...a,
+        bild_url: a.bild_pfad ? supabase.storage.from("sponsor-bilder").getPublicUrl(a.bild_pfad).data.publicUrl : "",
+      };
+    }
+    setWerbeplaetze(belegt);
+  }, [currentClub?.id]);
+  useEffect(() => { ladeWerbeplaetze(); }, [ladeWerbeplaetze]);
+
   useEffect(() => {
     if (!supabase || !adminStateLoaded || !selectedClubId || !currentUser || (!isAdmin(currentUser) && !canManageSponsors(currentUser))) return;
     clearTimeout(adminSaveTimer.current);
@@ -7389,7 +7636,7 @@ export default function ClubMemberOrganisationApp() {
       const basis = aktuell?.state || {};
       const jetzt = {
         dutyPlan, protocols, remindersSent, welcomeAutomation, billingAutomation,
-        polls, tippResults, maintenanceMode, seasonVotes, sponsorStats, sponsorBookings, dashboardTileOrder,
+        polls, tippResults, maintenanceMode, seasonVotes, dashboardTileOrder,
       };
       const meineAenderungen = {};
       for (const [schluessel, wert] of Object.entries(jetzt)) {
@@ -7422,7 +7669,7 @@ export default function ClubMemberOrganisationApp() {
       geladenerZustand.current = { ...basis, ...meineAenderungen };
     }, 700);
     return () => clearTimeout(adminSaveTimer.current);
-  }, [adminStateLoaded, selectedClubId, currentUserId, events, dutyPlan, protocols, remindersSent, welcomeAutomation, billingAutomation, polls, tippResults, maintenanceMode, seasonVotes, sponsorStats, sponsorBookings, dashboardTileOrder, channels]);
+  }, [adminStateLoaded, selectedClubId, currentUserId, events, dutyPlan, protocols, remindersSent, welcomeAutomation, billingAutomation, polls, tippResults, maintenanceMode, seasonVotes, dashboardTileOrder, channels]);
 
   const selectClub = (clubId) => { setSelectedClubId(clubId); setAuthScreen("login"); };
   const createClub = (club) => { setClubs((cs) => [...cs, club]); setSelectedClubId(club.id); setAuthScreen("register"); };
@@ -7540,8 +7787,6 @@ export default function ClubMemberOrganisationApp() {
     if (saved.tippResults) setTippResults(saved.tippResults);
     if (typeof saved.maintenanceMode === "boolean") setMaintenanceMode(saved.maintenanceMode);
     if (saved.seasonVotes) setSeasonVotes(saved.seasonVotes);
-    if (saved.sponsorStats) setSponsorStats(saved.sponsorStats);
-    if (saved.sponsorBookings) setSponsorBookings(saved.sponsorBookings);
     if (Array.isArray(saved.dashboardTileOrder)) setDashboardTileOrder(saved.dashboardTileOrder);
     /* Kanaele werden hier bewusst nicht mehr gesetzt: Sie kommen aus der
        Tabelle channels. Der Zustandsblock traegt sie nur noch als Altbestand
@@ -7907,8 +8152,17 @@ export default function ClubMemberOrganisationApp() {
   const returnToClubOverview = () => { setCurrentUserId(null); setSelectedClubId(null); setAuthScreen("club"); setTab("home"); setTabHistory([]); setSubView(null); setEventFocusRequest(null); };
   const goNews = () => { setChatChannelId("news"); navigateTab("chat"); };
   const goToMyNextMatch = () => { setEventFocusRequest({ team: currentUser?.team || "alle", requestedAt: Date.now() }); navigateTab("events"); };
-  const onSponsorImpression = (slotKey) => setSponsorStats((s) => ({ ...s, [slotKey]: { impressions: (s[slotKey]?.impressions || 0) + 1, clicks: s[slotKey]?.clicks || 0 } }));
-  const onSponsorClick = (slotKey) => setSponsorStats((s) => ({ ...s, [slotKey]: { impressions: s[slotKey]?.impressions || 0, clicks: (s[slotKey]?.clicks || 0) + 1 } }));
+  /* Gezaehlt wird an der Anzeige selbst, damit die Zahl auch die Mitglieder
+     erfasst - und nicht nur die Administratoren, die als einzige den
+     Zustandsblock speichern durften. Fehler bleiben still: Eine nicht
+     gezaehlte Einblendung ist kein Grund, dem Mitglied etwas anzuzeigen. */
+  const zaehle = (slotKey, art) => {
+    const id = werbeplaetze?.[slotKey]?.id;
+    if (!supabase || !id) return;
+    supabase.rpc("anzeige_zaehlen", { ziel: id, art }).then(() => {}, () => {});
+  };
+  const onSponsorImpression = (slotKey) => zaehle(slotKey, "impression");
+  const onSponsorClick = (slotKey) => zaehle(slotKey, "klick");
   const resetDemoData = () => {
     setCarpools({}); setSeasonVotes({}); setTippPredictions({}); setTippResults({});
     setRemindersSent({});
@@ -8035,14 +8289,14 @@ export default function ClubMemberOrganisationApp() {
 
               {!subView && tab === "home" && (
                 <Dashboard user={currentUser} members={clubMembers} events={events} feePaid={!!feePaid[currentUser.id]} channels={channels} dutyPlan={dutyPlan} seasonVotes={seasonVotes} polls={polls} setPolls={setPolls}
-                  sponsorBookings={sponsorBookings} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick}
+                  werbeplaetze={werbeplaetze} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick}
                   goEvents={goToMyNextMatch} goSeason={() => setSubView("season")} goTipp={() => setSubView("tipp")} goDuty={() => setSubView("duty")} goTasks={() => setSubView("tasks")} goVehicles={() => setSubView("vehicles")} goNews={goNews}
                   currentClub={currentClub} featureEnabled={featureEnabled} dashboardTileOrder={dashboardTileOrder} entitlement={entitlement} goSubscribe={goSubscribe} />
               )}
               {!subView && tab === "events" && (
                 <EventsView currentUser={currentUser} members={clubMembers} events={events} setEvents={setEvents} carpools={carpools} setCarpools={setCarpools}
                   dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} entitlement={entitlement} goSubscribe={goSubscribe}
-                  sponsorBookings={sponsorBookings} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick}
+                  werbeplaetze={werbeplaetze} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick}
                   focusRequest={eventFocusRequest} onFocusApplied={()=>setEventFocusRequest(null)}
                   currentClub={currentClub} featureEnabled={featureEnabled} />
               )}
@@ -8056,13 +8310,13 @@ export default function ClubMemberOrganisationApp() {
                   currentUser={currentUser} channels={channels} setChannels={setChannels} maintenanceMode={maintenanceMode} setMaintenanceMode={setMaintenanceMode} onResetDemo={resetDemoData}
                   protocols={protocols} setProtocols={setProtocols} remindersSent={remindersSent} setRemindersSent={setRemindersSent}
                   welcomeAutomation={welcomeAutomation} setWelcomeAutomation={setWelcomeAutomation} billingAutomation={billingAutomation} setBillingAutomation={setBillingAutomation}
-                  sponsorBookings={sponsorBookings} setSponsorBookings={setSponsorBookings} sponsorStats={sponsorStats} polls={polls} setPolls={setPolls}
+                  werbeplaetze={werbeplaetze} onWerbeplaetzeGeaendert={ladeWerbeplaetze} polls={polls} setPolls={setPolls}
                   tippResults={tippResults} onSaveTippResult={saveTippResult}
                   dashboardTileOrder={dashboardTileOrder} setDashboardTileOrder={setDashboardTileOrder}
                   currentClub={currentClub} onClubLogoUpdated={updateCurrentClubLogo} onClubColorsUpdated={updateCurrentClubColors} clubFeatures={clubFeatures} onClubFeaturesChanged={loadClubFeatures} />
                 </LockedFeature>
               )}
-              {!subView && tab === "profile" && <ProfileView ziel={profilZiel} onZielErreicht={() => setProfilZiel("")} user={currentUser} members={clubMembers} setMembers={setMembers} currentClub={currentClub} sponsorBookings={sponsorBookings} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick} onLogout={logout} clubFeatures={clubFeatures} onClubFeaturesChanged={loadClubFeatures} entitlement={entitlement} goSubscribe={goSubscribe} dashboardTileOrder={dashboardTileOrder} setDashboardTileOrder={setDashboardTileOrder} />}
+              {!subView && tab === "profile" && <ProfileView ziel={profilZiel} onZielErreicht={() => setProfilZiel("")} user={currentUser} members={clubMembers} setMembers={setMembers} currentClub={currentClub} werbeplaetze={werbeplaetze} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick} onLogout={logout} clubFeatures={clubFeatures} onClubFeaturesChanged={loadClubFeatures} entitlement={entitlement} goSubscribe={goSubscribe} dashboardTileOrder={dashboardTileOrder} setDashboardTileOrder={setDashboardTileOrder} />}
             </div>
 
             {!subView && (

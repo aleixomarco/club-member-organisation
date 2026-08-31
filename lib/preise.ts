@@ -87,3 +87,34 @@ export const INDIVIDUELL = {
   desc: "Für große Vereine und Mehrspartenvereine. Alle Funktionen, die Zahl der Zugänge nach Absprache.",
   preis: "auf Anfrage",
 };
+
+/* Der Sponsorenzusatz.
+ *
+ * Fünf Euro im Monat auf jede Stufe. Damit darf der Verein die vier
+ * Werbeplätze in der App mit eigenen Sponsoren belegen — dort, wo sonst die
+ * Werbung des Betreibers steht — und dazu Aktionen mit eigenem Zeitraum
+ * schalten.
+ *
+ * Bewusst ein Aufschlag und keine eigene Stufenreihe: Er hängt nicht an der
+ * Vereinsgröße, sondern daran, ob der Verein Sponsoren hat. Ein Verein mit 80
+ * Mitgliedern und drei Sponsoren zahlt dafür dasselbe wie einer mit 800.
+ */
+export const SPONSOREN_ZUSATZ = {
+  label: "Eigene Sponsoren",
+  monatlich: "+ 5,00 €",
+  jaehrlich: "+ 60,00 €",
+  desc: "Die Werbeplätze in der App mit euren eigenen Sponsoren belegen, inklusive Aktionen mit eigenem Zeitraum. Aufschlag auf jede Stufe.",
+  werbeplaetze: 4,
+};
+
+/* Was eine Stufe mit dem Zusatz kostet - ausgerechnet statt abgeschrieben,
+   damit die beiden Preisreihen nicht auseinanderlaufen koennen. */
+export function preisMitSponsoren(tarif: Vereinstarif, zeitraum: "monthly" | "yearly" = "monthly"): string {
+  const roh = CLUB_TIER_PRICES[tarif]?.[zeitraum]?.price;
+  if (!roh) return "";
+  const zahl = Number(roh.replace(/[^\d,]/g, "").replace(",", "."));
+  const aufschlag = zeitraum === "yearly" ? 60 : 5;
+  /* Ueber Tausend braucht es den Punkt: "1019,99 €" liest sich wie ein
+     Tippfehler, "1.019,99 €" wie ein Preis. */
+  return `${new Intl.NumberFormat("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(zahl + aufschlag)} €`;
+}

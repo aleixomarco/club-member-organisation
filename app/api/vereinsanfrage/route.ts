@@ -61,6 +61,11 @@ export async function POST(request: Request) {
   const telefon = text(d.contact_phone ?? d.telefon, MAX.telefon);
   const notiz = text(d.note ?? d.nachricht, MAX.notiz);
 
+  /* Der Sponsorenzusatz. Ein Formular schickt "on", "true", "1" oder gar
+     nichts - alles davon meint dasselbe, und nichts davon ist ein Boolean. */
+  const sponsoringRoh = d.sponsoring ?? d.sponsoring_gewuenscht ?? d.sponsors;
+  const sponsoring = sponsoringRoh === true || ["on", "true", "1", "ja", "yes"].includes(String(sponsoringRoh).toLowerCase());
+
   const roh = d.expected_accounts ?? d.zugaenge;
   const zugaenge = Number.isFinite(Number(roh)) && Number(roh) > 0 ? Math.min(Math.trunc(Number(roh)), 100000) : null;
 
@@ -97,6 +102,7 @@ export async function POST(request: Request) {
     contact_email: email,
     contact_phone: telefon,
     expected_accounts: zugaenge,
+    sponsoring_gewuenscht: sponsoring,
     note: notiz,
   });
 
