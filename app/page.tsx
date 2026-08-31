@@ -7660,6 +7660,9 @@ export default function ClubMemberOrganisationApp() {
     setDashboardTileOrderIntern(wert);
   };
   const [polls, setPolls] = useState(INITIAL_POLLS);
+  /* Welche Vereinsdaten sich beim Anmelden nicht laden liessen. Null heisst:
+     alles da. */
+  const [datenFehler, setDatenFehler] = useState(null);
 
   useEffect(() => {
     setFeePaid(Object.fromEntries(members.map((member) => {
@@ -7846,6 +7849,19 @@ export default function ClubMemberOrganisationApp() {
     if (Array.isArray(eigenesProfil?.data?.dashboard_tile_order) && eigenesProfil.data.dashboard_tile_order.length) {
       setDashboardTileOrderIntern(eigenesProfil.data.dashboard_tile_order);
     }
+
+    /* Eine fehlgeschlagene Abfrage sieht aus wie eine leere Liste - und eine
+       leere Liste sieht aus, als haette der Verein nichts eingetragen. Genau
+       dieser Unterschied entscheidet aber darueber, ob jemand seine Arbeit fuer
+       verloren haelt. Also wird gesagt, was nicht geladen werden konnte. */
+    const fehlgeschlagen = [
+      [tipps.error, "Tipps"], [ergebnisse.error, "Spielergebnisse"],
+      [umfragen.error, "Umfragen"], [antworten.error, "Umfrage-Antworten"], [stimmen.error, "Umfrage-Stimmen"],
+      [wahl.error, "Athletenwahl"], [dienste.error, "Helferplan"],
+      [protokolle.error, "Protokolle"], [aufgaben.error, "Protokoll-Aufgaben"],
+      [einstellungen.error, "Vereinseinstellungen"], [erinnerungen.error, "Zahlungserinnerungen"],
+    ].filter(([fehler]) => !!fehler).map(([, name]) => name);
+    setDatenFehler(fehlgeschlagen.length ? fehlgeschlagen : null);
   };
 
   /* ------------------------------------------------------------------ *
@@ -8796,6 +8812,14 @@ export default function ClubMemberOrganisationApp() {
               </div>
             )}
 
+            {/* Nicht geladene Vereinsdaten sehen sonst aus wie nie eingetragene.
+                Der Unterschied entscheidet darueber, ob jemand seine Arbeit fuer
+                verloren haelt - er gehoert also gesagt. */}
+            {datenFehler && (
+              <div role="status" className="px-4 py-2 text-xs text-center flex-shrink-0" style={{ background: "rgba(255,246,228,0.9)", color: C.ink, fontFamily: "Inter", fontWeight: 600, borderBottom: `1px solid ${C.edge}` }}>
+                Diese Bereiche konnten nicht geladen werden: {datenFehler.join(", ")}. Sie sind nicht verloren — bitte später noch einmal öffnen.
+              </div>
+            )}
             {maintenanceMode && (
               <div className="px-4 py-2 text-xs text-center flex-shrink-0" style={{ background: "rgba(253,236,236,0.72)", color: C.red, fontFamily: "Inter", fontWeight: 600, borderBottom: "1px solid #F3B9B9" }}>
                 🔧 Wartungsmodus aktiv — einige Inhalte können sich kurzfristig ändern.
