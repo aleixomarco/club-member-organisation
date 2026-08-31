@@ -745,11 +745,27 @@ const INITIAL_CHANNELS = [
 /* ------------------------------------------------------------------ */
 /* Athlet/in der Saison                                                  */
 /* ------------------------------------------------------------------ */
-const SEASON_VOTE_DEADLINE = "2026-08-31T23:59:59";
+/* Die Saison und ihr Wahlende rollen mit dem Kalender weiter.
+ *
+ * Vorher stand hier ein festes Datum - der 31.08.2026. Ab dem Tag danach haette
+ * JEDER Verein eine dauerhaft geschlossene Wahl gesehen, fuer immer, ohne dass
+ * jemand etwas falsch gemacht haette. Ein fest verdrahtetes Datum in einer App,
+ * die Jahre laufen soll, ist eine Zeitbombe mit Ansage.
+ *
+ * Die Sportsaison laeuft von Juli bis Juni. Gewaehlt wird ueber die LAUFENDE
+ * Saison, und zwar bis zum 31.08. nach ihrem Ende - nach dem letzten Spieltag
+ * bleiben so noch zwei Monate Zeit. Am 1. September rueckt die naechste Saison
+ * nach, und es gibt keinen Zeitraum, in dem gar nichts zur Wahl steht. */
+function laufendeSaison(heute = new Date()) {
+  const jahr = heute.getFullYear();
+  const beginn = heute.getMonth() >= 8 ? jahr : jahr - 1;   // ab September naechste Saison
+  return { kennung: `${beginn}/${String(beginn + 1).slice(-2)}`, ende: new Date(`${beginn + 1}-08-31T23:59:59`) };
+}
+const SEASON_VOTE_DEADLINE = laufendeSaison().ende.toISOString();
 /* Die Saison, um die es geht. Die Wahl liegt je Saison in der Datenbank -
    ohne diese Kennung wuerde die Wahl des naechsten Jahres die des letzten
    ueberschreiben, und es gaebe nie ein Archiv. */
-const SAISON_KENNUNG = "2025/26";
+const SAISON_KENNUNG = laufendeSaison().kennung;
 /* Zur Wahl stehen die Athletinnen und Athleten des Vereins. Frueher war das eine
    feste Liste mit fuenf erfundenen Namen und zusammen 144 erfundenen Stimmen,
    die jedem Verein als seine eigene Wahl angezeigt wurde.
@@ -1846,7 +1862,7 @@ function NextTrainingCard({ training }) {
     </div>
   );
 }
-function Dashboard({ user, members, events, feePaid, channels, dutyPlan, seasonVotes, polls, setPolls, onVote, werbeplaetze, onSponsorImpression, onSponsorClick, goEvents, goSeason, goTipp, goDuty, goNews, goTasks, goVehicles, currentClub, featureEnabled, dashboardTileOrder, entitlement, goSubscribe }) {
+function Dashboard({ user, members, events, feePaid, channels, news, dutyPlan, seasonVotes, polls, setPolls, onVote, werbeplaetze, onSponsorImpression, onSponsorClick, goEvents, goSeason, goTipp, goDuty, goNews, goTasks, goVehicles, currentClub, featureEnabled, dashboardTileOrder, entitlement, goSubscribe }) {
   const sport = currentClub?.sport || "rollhockey";
   /* Alle Kacheln in „Aktionen & Abstimmungen" hängen am Premium-Tarif
      (siehe die LockedFeature-Hüllen der jeweiligen Ansichten). Während der
@@ -1894,7 +1910,7 @@ function Dashboard({ user, members, events, feePaid, channels, dutyPlan, seasonV
   /* Das Training bleibt bewusst bei der eigenen Mannschaft: Es beantwortet die
      Frage "wann muss ich hin", nicht "was laeuft im Verein". */
   const naechstesTraining = kommende.find((e) => e.type === "training" && e.team === user.team);
-  const newsMsgs = (channels.find((c) => c.id === "news")?.messages || []).slice(-2).reverse();
+  const newsMsgs = (news || []).slice(-2).reverse();
 
   const seasonClosed = new Date() > new Date(SEASON_VOTE_DEADLINE);
   /* Ohne Kandidaten bleibt sorted leer. Das ?. verhindert zwar den Absturz,
@@ -2998,7 +3014,16 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
 /* ------------------------------------------------------------------ */
 /* Redaktion (News schreiben)                                           */
 /* ------------------------------------------------------------------ */
-function RedaktionView({ user, channels, setChannels }) {
+/* Die Vereins-News kommen aus der Tabelle news_posts.
+ *
+ * Vorher suchte diese Ansicht einen Chat-Kanal mit der Kennung "news". Den gab
+ * es, solange die Kanaele fest im Code standen; seit sie aus der Tabelle
+ * channels kommen, haben sie echte UUIDs - und die Suche ging fuer JEDEN
+ * echten Verein ins Leere. Geschrieben wurde weiterhin nach news_posts,
+ * gelesen wurde nichts: Die Vereins-News waren angelegt, aber unsichtbar.
+ * Beim Anmelden wurden sie sogar geladen (samt signierter Bild-Adressen) und
+ * das Ergebnis anschliessend weggeworfen. */
+function RedaktionView({ user, news, setNews }) {
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState("");
   const [text, setText] = useState("");
@@ -3007,8 +3032,7 @@ function RedaktionView({ user, channels, setChannels }) {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [editingPost, setEditingPost] = useState(null);
-  const news = channels.find((c) => c.id === "news");
-  const items = (news?.messages || []).map((m, idx) => ({ ...m, idx })).reverse();
+  const items = (news || []).map((m, idx) => ({ ...m, idx })).reverse();
 
   const openEdit = (item) => {
     setEditingPost(item);
@@ -3032,7 +3056,7 @@ function RedaktionView({ user, channels, setChannels }) {
       if (error) { setMessage("Die News konnte nicht gelöscht werden."); return; }
       if (imagePath) await supabase.storage.from("news-images").remove([imagePath]);
     }
-    setChannels((cs) => cs.map((c) => (c.id === "news" ? { ...c, messages: c.messages.filter((m, i) => item.id ? m.id !== item.id : i !== item.idx) } : c)));
+    setNews((alle) => alle.filter((m, i) => (item.id ? m.id !== item.id : i !== item.idx)));
   };
 
   const onFile = (e) => {
@@ -3086,15 +3110,17 @@ function RedaktionView({ user, channels, setChannels }) {
       }
     }
     if (editingPost) {
-      setChannels((cs) => cs.map((c) => (c.id === "news"
-        ? { ...c, messages: c.messages.map((m) => m.id === editingPost.id ? { ...m, title: title.trim(), text: text.trim(), imageUrl: finalImageUrl, imagePath: imagePath || m.imagePath } : m) }
-        : c)));
+      setNews((alle) => alle.map((m) => (m.id === editingPost.id
+        ? { ...m, title: title.trim(), text: text.trim(), imageUrl: finalImageUrl, imagePath: imagePath || m.imagePath }
+        : m)));
       cancelForm(); setSaving(false);
       return;
     }
-    setChannels((cs) => cs.map((c) => (c.id === "news"
-      ? { ...c, messages: [...c.messages, { id, who: user.name, init: initialsOf(user.name), color: user.color, title: title.trim(), text: text.trim(), imageUrl: finalImageUrl, imagePath, time: "jetzt" }].slice(-100) }
-      : c)));
+    setNews((alle) => [...alle, {
+      id, who: user.name, init: initialsOf(user.name), color: user.color,
+      title: title.trim(), text: text.trim(), imageUrl: finalImageUrl, imagePath,
+      time: new Date().toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "2-digit" }),
+    }].slice(-100));
     setTitle(""); setText(""); setImageUrl(""); setImageFile(null); setShowForm(false); setSaving(false);
   };
 
@@ -4702,7 +4728,7 @@ function PlayerDataCard({ user, setMembers }) {
  * Freischaltung selbst ist unveraendert - ein Eintrag in club_subscriptions,
  * den club_subscription_tier auswertet.
  *
- * Wichtig fuer Apple: In dieser Ansicht wird NICHTS verkauft. Keine Preise,
+ * Wichtig fuer Apple: In der ganzen App wird NICHTS verkauft. Keine Preise,
  * kein Kaufknopf, kein Verweis auf eine Zahlungsseite. Richtlinie 3.1.3 laesst
  * das fuer Dienste zu, die an Organisationen verkauft werden - aber nur, wenn
  * in der App weder gekauft noch zum Kauf aufgefordert wird. */
@@ -4831,7 +4857,7 @@ function SubscriptionPanel({ user }) {
               <button type="button" onClick={() => setForm({ ...form, sponsoring: !form.sponsoring })} className="w-full flex items-start gap-2.5 px-3 py-2.5 rounded-xl text-left" style={{ background: C.paperDim }}>
                 <span className="w-4 h-4 rounded flex-shrink-0 flex items-center justify-center mt-0.5" style={{ background: form.sponsoring ? C.ink : "transparent", border: `1.5px solid ${form.sponsoring ? C.ink : C.line}` }}>{form.sponsoring && <Check size={11} style={{ color: C.white }} />}</span>
                 <span className="flex-1">
-                  <span className="text-xs block" style={{ color: C.ink, fontWeight: 600 }}>Eigene Sponsoren zeigen · +5 €/Monat</span>
+                  <span className="text-xs block" style={{ color: C.ink, fontWeight: 600 }}>Eigene Sponsoren zeigen</span>
                   <span className="text-[10px] block mt-0.5" style={{ color: C.textDim }}>Die Werbeplätze in der App mit euren eigenen Sponsoren belegen, inklusive zeitlich begrenzter Aktionen.</span>
                 </span>
               </button>
@@ -4880,7 +4906,7 @@ function HowToVideoLibrary({ user }) {
   const videos = howToVideosFor(user);
   return (
     <div className="space-y-2">
-      <div className="text-[11px] mb-1" style={{ color: C.textDim }}>Kurze Videos, passend zu dem, was du in ERGI tun kannst — nur Aktionen, die deine Rolle auch wirklich ausführen darf.</div>
+      <div className="text-[11px] mb-1" style={{ color: C.textDim }}>Kurze Videos, passend zu dem, was du in deinem Verein tun kannst — nur Aktionen, die deine Rolle auch wirklich ausführen darf.</div>
       {videos.map((video) => {
         const open = openId === video.id;
         return (
@@ -5704,7 +5730,7 @@ function SeasonVoteView({ currentUser, members, seasonVotes, setSeasonVotes, onV
   return (
     <div className="px-4 pt-4 pb-10">
       <div className="rounded-2xl p-4 mb-5" style={{ background: `linear-gradient(160deg, ${C.ink}, ${C.asphalt})` }}>
-        <div className="flex items-center gap-2 mb-2"><Trophy size={16} style={{ color: C.amber }} /><span className="text-white text-sm" style={{ fontFamily: "Inter", fontWeight: 700 }}>Athlet/in der Saison 2025/26</span></div>
+        <div className="flex items-center gap-2 mb-2"><Trophy size={16} style={{ color: C.amber }} /><span className="text-white text-sm" style={{ fontFamily: "Inter", fontWeight: 700 }}>Athlet/in der Saison {SAISON_KENNUNG}</span></div>
         {!closed ? (
           <div className="text-xs" style={{ color: "#B7B6BC", fontFamily: "Inter" }}>Abstimmung endet am 31.08.2026 · noch {d}T {h}Std {m}Min</div>
         ) : (
@@ -6334,7 +6360,7 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
         <div className="rounded-2xl p-3.5" style={{ background: "rgba(255,247,230,0.8)", border: `1px solid ${C.edge}` }}>
           <div className="text-xs font-bold mb-1" style={{ color: C.ink }}>Eigene Sponsoren sind noch nicht freigeschaltet</div>
           <div className="text-[11px] leading-relaxed" style={{ color: C.textDim }}>
-            Der Zusatz kostet 5 € im Monat über Ihrem Tarif. Sie können hier alles vorbereiten — angezeigt wird es erst nach der Freischaltung. Schreiben Sie uns an <a href="mailto:kontakt@idbranding.de?subject=Sponsorenfunktion%20freischalten" style={{ color: C.red, fontWeight: 700 }}>kontakt@idbranding.de</a>.
+            Sie können hier alles vorbereiten — angezeigt wird es erst, wenn der Verein dafür freigeschaltet ist. Die Vereinsleitung kann den Zusatz zusammen mit dem Vollzugang anfragen.
           </div>
         </div>
       )}
@@ -7636,6 +7662,9 @@ export default function ClubMemberOrganisationApp() {
     return () => { abgemeldet = true; supabase.removeChannel(kanal); };
   }, [selectedClubId, currentUserId]);
   const [chatChannelId, setChatChannelId] = useState("team");
+  /* Die Vereins-News. Sie kommen aus news_posts, nicht aus den Chatkanaelen -
+     siehe RedaktionView. */
+  const [vereinsNews, setVereinsNews] = useState([]);
   const [seasonVotes, setSeasonVotes] = useState({});
   const [tippPredictions, setTippPredictions] = useState({});
   const [tippResults, setTippResults] = useState({});
@@ -8170,6 +8199,8 @@ export default function ClubMemberOrganisationApp() {
         time: new Date(post.created_at).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "2-digit" }),
       };
     }));
+    setVereinsNews(loadedNews);
+
     /* Alles, was sich aendert und bleiben soll, kommt aus eigenen Tabellen.
        Vorher lag es als ein JSON-Klumpen in club_app_state - geschrieben
        ausschliesslich von Administratoren. Wer als Mitglied abstimmte, tippte
@@ -8625,11 +8656,11 @@ export default function ClubMemberOrganisationApp() {
       return next;
     });
     setFeePaid((f) => ({ ...f, [draft.id]: false }));
-    if (welcomeAutomation) {
-      setChannels((cs) => cs.map((c) => (c.id === "news"
-        ? { ...c, messages: [...c.messages, { who: "System", init: "🤖", color: C.green, text: `Herzlich willkommen im Verein, ${draft.name.split(" ")[0]}! 👋`, time: "jetzt" }].slice(-10) }
-        : c)));
-    }
+    /* Der Willkommensgruss stand hier als Nachricht in einem Kanal mit der
+       Kennung "news" - den es fuer echte Vereine nicht gibt. Er landete also im
+       Arbeitsspeicher des Anlegenden und war beim naechsten Oeffnen weg.
+       Geschrieben wird er jetzt in der Datenbank (Trigger willkommens_news),
+       damit ihn auch der Begruesste sieht. */
     setCurrentUserId(draft.id);
     setTab("home");
     return { ok: true };
@@ -8834,7 +8865,7 @@ export default function ClubMemberOrganisationApp() {
               {subView === "vehicles" && featureEnabled("vehicle_booking") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Vereinsfahrzeuge"><VehiclesView currentUser={currentUser} currentClub={currentClub} /></LockedFeature>}
 
               {!subView && tab === "home" && (
-                <Dashboard user={currentUser} members={clubMembers} events={events} feePaid={!!feePaid[currentUser.id]} channels={channels} dutyPlan={dutyPlan} seasonVotes={seasonVotes} polls={polls} setPolls={setPolls} onVote={stimmeAbgeben}
+                <Dashboard user={currentUser} members={clubMembers} events={events} feePaid={!!feePaid[currentUser.id]} channels={channels} news={vereinsNews} dutyPlan={dutyPlan} seasonVotes={seasonVotes} polls={polls} setPolls={setPolls} onVote={stimmeAbgeben}
                   werbeplaetze={werbeplaetze} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick}
                   goEvents={goToMyNextMatch} goSeason={() => setSubView("season")} goTipp={() => setSubView("tipp")} goDuty={() => setSubView("duty")} goTasks={() => setSubView("tasks")} goVehicles={() => setSubView("vehicles")} goNews={goNews}
                   currentClub={currentClub} featureEnabled={featureEnabled} dashboardTileOrder={dashboardTileOrder} entitlement={entitlement} goSubscribe={goSubscribe} />
@@ -8849,7 +8880,7 @@ export default function ClubMemberOrganisationApp() {
               {!subView && tab === "teams" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Teams-Verwaltung"><TeamsView currentUser={currentUser} members={clubMembers} setMembers={setMembers} currentClub={currentClub} /></LockedFeature>}
               {!subView && tab === "fees" && currentUserCanManageFees && <FeesView members={clubMembers} records={feeRecords} setRecords={setFeeRecords} />}
               {!subView && tab === "chat" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Chat"><ChatView user={currentUser} channels={channels} setChannels={setChannels} activeId={chatChannelId} setActiveId={setChatChannelId} members={clubMembers} /></LockedFeature>}
-              {!subView && tab === "redaktion" && currentUserCanEditNews && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Redaktion"><RedaktionView user={currentUser} channels={channels} setChannels={setChannels} /></LockedFeature>}
+              {!subView && tab === "redaktion" && currentUserCanEditNews && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Redaktion"><RedaktionView user={currentUser} news={vereinsNews} setNews={setVereinsNews} /></LockedFeature>}
               {!subView && tab === "admin" && (currentUserIsAdmin || currentUserCanEditSponsors) && (
                 <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Verwaltung">
                 <AdminView members={clubMembers} setMembers={setMembers} events={events} feePaid={feePaid} setFeePaid={setFeePaid} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} seasonVotes={seasonVotes}
