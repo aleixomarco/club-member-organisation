@@ -81,4 +81,14 @@ export const FREIE_ZUGAENGE = 3;
 /* Ueber 1000 Zugaenge hinaus gibt es kein Produkt im Store, sondern ein
    Gespraech. Das darf in der App genannt, aber nicht mit Kaufknopf oder Link
    beworben werden - Apple untersagt das Vorbeileiten am In-App-Kauf. */
+/* Ueber Pro hinaus gibt es keine Staffel, sondern ein Angebot. Die vereinbarte
+   Zahl steht dann am Verein selbst (clubs.vereinbarte_zugaenge) und geht der
+   Staffel vor. */
 export const UEBER_MAX_HINWEIS = "Mehr als 1.000 Zugänge? Sprich uns an.";
+
+export const INDIVIDUELL = {
+  label: "Individuell",
+  accountLabel: "mehr als 1.000 Zugänge",
+  desc: "Für große Vereine und Mehrspartenvereine. Alle Funktionen, die Zahl der Zugänge nach Absprache.",
+  preis: "auf Anfrage",
+};
