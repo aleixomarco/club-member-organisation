@@ -40,47 +40,53 @@ Training, Spiele, Helferdienste und Vereinschat — alles an einem Ort.
 
 **Google (max. 4000 Zeichen) und Apple (max. 4000 Zeichen) — identisch verwendbar:**
 
+Wortlaut wie am 04.09.2026 in App Store Connect eingereicht. Hier steht er, damit
+Repo und Store nicht auseinanderlaufen: Bis heute stand an dieser Stelle noch ein
+Text aus der Zeit der In-App-Kaeufe, der die Tarife "Basic oder Premium", ein
+Mitglieder-Abo und zwei kostenlose Wochen versprach — nichts davon gibt es noch.
+Wer ihn uebernommen haette, haette die Einreichung selbst widerlegt.
+
 ```
-Club Member Organisation bringt das Vereinsleben in eine App: Trainingszeiten,
-Spieltermine, Helferdienste, Mannschaften und die Kommunikation im Verein.
+Club Member Organisation ist die Vereinsverwaltung für Sportvereine: Termine,
+Mannschaften, Mitglieder, Helferdienste, Vereinsnachrichten und Chat an einem
+Ort.
 
-TERMINE, DIE ANKOMMEN
-Training und Spiele stehen an einem Ort. Jedes Mitglied sieht genau die Termine
-seiner Mannschaften und sagt direkt zu oder ab. Wiederkehrende Trainings legst du
-einmal an, statt jede Woche neu.
+FÜR MITGLIEDER KOSTENLOS
+Mitglieder zahlen nichts — nie. Es gibt keine Käufe in der App. Den Zugang
+bezahlt der Verein.
 
-MANNSCHAFTEN VERWALTEN
-Athletinnen und Athleten den Teams zuordnen, Trainer und Kapitäne festlegen.
-Auch für Kindermannschaften: Spieler ohne eigenes Smartphone lassen sich anlegen
-und mit dem Konto der Eltern verknüpfen — so sehen Eltern die Termine ihrer Kinder.
+FUNKTIONEN
+• Termine für Training, Spiele und Vereinsveranstaltungen
+• Mannschaften mit Trainern, Spielern und Betreuern
+• Mitgliederverwaltung mit Rollen und Rechten
+• Helferdienste planen und Lücken sichtbar machen
+• Vereinsnachrichten und Chat je Mannschaft
+• Fahrgemeinschaften zu Auswärtsspielen
+• Kalender-Abo für die Kalender-App des Geräts
+• Tippspiel und Wahl zur Athletin oder zum Athleten der Saison
 
-HELFERDIENSTE OHNE LISTEN AM SCHWARZEN BRETT
-Theke, Grill, Kasse oder Zeitnahme: Stationen für Heimspiele anlegen, Mitglieder
-tragen sich selbst ein. Wer noch fehlt, ist auf einen Blick sichtbar.
+WIE DER VEREIN AN DEN VOLLZUGANG KOMMT
+Ohne Freischaltung stehen dauerhaft drei Zugänge kostenlos zur Verfügung; damit
+lassen sich Trainings- und Spielpläne führen und einsehen. Einen befristeten
+Testzeitraum gibt es nicht — der kostenlose Umfang läuft nicht ab.
 
-MITEINANDER REDEN
-Chat-Kanäle je Mannschaft oder für den ganzen Verein, dazu Vereins-News mit Bild.
-Push-Benachrichtigungen sind je Ereignis einzeln einstellbar.
+Braucht der Verein mehr Zugänge, fragt die Vereinsleitung den Vollzugang in der
+App an. Wir melden uns mit einem Angebot und stellen dem Verein eine Rechnung.
+Abgerechnet wird also mit dem Verein als Organisation, außerhalb der App — nicht
+mit den einzelnen Mitgliedern.
 
-MEHR ALS PFLICHTPROGRAMM
-Tippspiel für Spielergebnisse, Abstimmung zur Athletin oder zum Athleten der
-Saison, Umfragen, Aufgabenverteilung, Buchungskalender für Vereinsfahrzeuge und
-eine Beitragsverwaltung.
+DATENSCHUTZ
+Alle Daten liegen bei einem Anbieter in der EU. Ein Mitglied sieht ausschließlich
+den Verein, dem es angehört. Das eigene Konto lässt sich jederzeit in der App
+vollständig löschen.
 
-IM VEREINSDESIGN
-Jeder Verein wählt seine eigenen Farben. Die App übernimmt sie durchgängig.
+Nutzungsbedingungen:
+https://club-member-organisation.vercel.app/nutzungsbedingungen
 
-TERMINE IM EIGENEN KALENDER
-Trainings und Spiele lassen sich als Kalender abonnieren und erscheinen dann
-automatisch im Kalender des Telefons — Änderungen inklusive.
-
-ABO
-Der Verein bucht Basic oder Premium und legt damit fest, welche Funktionen zur
-Verfügung stehen. Jedes Mitglied schließt zusätzlich seinen persönlichen
-Basis-Zugang ab. Nach der Registrierung sind zwei Wochen kostenlos. Training und
-Spiele bleiben auch danach ohne Abo sichtbar.
+Datenschutzerklärung:
+https://club-member-organisation.vercel.app/datenschutz
 ```
-(rund 1750 Zeichen)
+(1588 Zeichen)
 
 ---
 

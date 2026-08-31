@@ -671,6 +671,37 @@ const HOWTO_VIDEOS = [
 ];
 const howToVideosFor = (user) => HOWTO_VIDEOS.filter((video) => video.can(user));
 const howToVideoUrl = (file) => supabase?.storage.from(HOWTO_VIDEO_BUCKET).getPublicUrl(file).data.publicUrl || "";
+
+/* Welche der vier Dateien wirklich im Speicher liegen.
+ *
+ * Die Liste oben ist fest verdrahtet, getPublicUrl rechnet die Adresse nur aus
+ * und fragt nichts nach. Solange keine Datei hochgeladen ist - und im
+ * Produktionsprojekt gibt es den Eimer "howto-videos" ueberhaupt nicht -,
+ * endet jeder aufgeklappte Eintrag in "Dieses Video ist gerade nicht
+ * abrufbar.". Vier Eintraege, vier Fehlermeldungen: eine Funktion, die im
+ * Pruefbetrieb nichts tut, und genau darauf zielt Richtlinie 2.1.
+ *
+ * Deshalb wird einmal nachgesehen. Faellt die Abfrage aus - fehlender Eimer,
+ * fehlende Leserechte, kein Netz -, bleibt die Liste leer und die Kachel
+ * verschwindet. Fehlschlag heisst hier also "nicht anbieten", nicht "trotzdem
+ * anbieten": Eine Kachel, die nicht da ist, faellt niemandem auf; eine, die
+ * nur Fehlermeldungen zeigt, schon.
+ *
+ * Sobald die Dateien liegen, erscheint die Kachel von selbst wieder. */
+function useVorhandeneHowToVideos() {
+  const [dateien, setDateien] = useState([]);
+  useEffect(() => {
+    let abgemeldet = false;
+    (async () => {
+      if (!supabase) return;
+      const { data, error } = await supabase.storage.from(HOWTO_VIDEO_BUCKET).list();
+      if (abgemeldet || error || !data) return;
+      setDateien(data.map((eintrag) => eintrag.name));
+    })();
+    return () => { abgemeldet = true; };
+  }, []);
+  return dateien;
+}
 function linkFamilyRecords(list, firstId, secondId, firstRelation, linkId = null) {
   const first = list.find((m) => m.id === firstId);
   const second = list.find((m) => m.id === secondId);
@@ -1265,7 +1296,7 @@ function AuthShell({ children, footer, club }) {
  * Jetzt meldet man sich an und sieht danach, wo man dazugehoert. Ist es nur
  * einer, wird er ohne Umweg geoeffnet - dieser Bildschirm erscheint dann gar
  * nicht. */
-function MeineVereineScreen({ mitgliedschaften, onOeffnen, onWeitererVerein, onAbmelden, laedt }) {
+function MeineVereineScreen({ mitgliedschaften, onOeffnen, onWeitererVerein, onAbmelden, onKontoLoeschen, laedt }) {
   /* Der Bildschirm listet ausdruecklich auch Mitgliedschaften auf, deren
      Aufnahme noch nicht bestaetigt ist. Tippte man auf so einen Eintrag,
      passierte sichtbar gar nichts: keine Meldung, kein Wechsel. Der
@@ -1314,7 +1345,9 @@ function MeineVereineScreen({ mitgliedschaften, onOeffnen, onWeitererVerein, onA
         {mitgliedschaften.length === 0 ? "Verein suchen oder anlegen" : "Weiterem Verein beitreten"}
       </button>
 
-      <button onClick={onAbmelden} className="w-full py-2.5 text-xs font-bold" style={{ color: C.textDim, fontFamily: "Inter" }}>Abmelden</button>
+      <button onClick={onAbmelden} className="w-full py-2.5 text-xs font-bold mb-2" style={{ color: C.textDim, fontFamily: "Inter" }}>Abmelden</button>
+
+      {onKontoLoeschen && <KontoLoeschenBlock onDelete={onKontoLoeschen} />}
     </div>
   );
 }
@@ -1381,7 +1414,7 @@ function BeitrittsScreen({ club, vorschlagName, onBeitreten, goBack }) {
   );
 }
 
-function ClubSelectScreen({ clubs, onSelect, goNewClub, goBack }) {
+function ClubSelectScreen({ clubs, onSelect, goNewClub, goBack, onAbmelden, onKontoLoeschen }) {
   const [query, setQuery] = useState("");
   const filtered = query.trim()
     ? clubs.filter((c) => c.name.toLowerCase().includes(query.trim().toLowerCase()) || c.shortName.toLowerCase().includes(query.trim().toLowerCase()))
@@ -1427,6 +1460,15 @@ function ClubSelectScreen({ clubs, onSelect, goNewClub, goBack }) {
       <button onClick={goNewClub} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm mb-6" style={{ background: C.ink, color: "#fff", fontFamily: "Inter", fontWeight: 700 }}>
         <UserPlus size={15} /> Neuen Verein registrieren
       </button>
+
+      {/* Nur fuer eine offene Sitzung: Wer hier ohne Anmeldung einen Verein
+          sucht, hat kein Konto, das sich abmelden oder loeschen liesse. */}
+      {onKontoLoeschen && (
+        <div className="mb-4">
+          {onAbmelden && <button onClick={onAbmelden} className="w-full py-2.5 text-xs font-bold mb-2" style={{ color: C.textDim, fontFamily: "Inter" }}>Abmelden</button>}
+          <KontoLoeschenBlock onDelete={onKontoLoeschen} />
+        </div>
+      )}
 
       <div className="mt-auto pt-2 text-center">
         {goBack && <button onClick={goBack} className="text-xs font-bold" style={{ color: C.textDim, fontFamily: "Inter" }}>Zurück</button>}
@@ -1525,17 +1567,59 @@ function NewClubScreen({ onCreate, goBack }) {
    vor allem wegen Apple-Richtlinie 5.1.1(v): Bisher blieb ein solches Konto auf
    dem Anmeldebildschirm hängen — es war angelegt, aber aus der App heraus nie
    wieder löschbar. Deshalb steht hier neben dem Abmelden auch die Löschung. */
-function PendingAccountScreen({ account, onLeave, onDelete }) {
+/* Kontoloeschung, ueberall gleich.
+ *
+ * Bis heute gab es sie nur im PendingAccountScreen. Ein angemeldetes Konto ohne
+ * aktive Mitgliedschaft landet aber gar nicht dort, sondern auf der
+ * Vereinssuche oder in "Meine Vereine" - und beide hatten keinen Loeschweg:
+ *
+ *   - "Jetzt registrieren" ohne Verein legt nur das Konto an und fuehrt auf die
+ *     Vereinssuche.
+ *   - Schon die erste offene Beitrittsanfrage fuehrt auf "Meine Vereine".
+ *   - Wird die einzige Mitgliedschaft von einem Vereinsadmin auf inaktiv
+ *     gesetzt, faellt das Konto ebenfalls in diesen Zustand.
+ *
+ * Richtlinie 5.1.1(v) verlangt fuer ein in der App angelegtes Konto einen in
+ * der App auffindbaren Loeschweg - und genau der Pruefer, der die Loeschung
+ * testet, legt sich vorher ein eigenes Konto an. Er lief also zuverlaessig in
+ * die Sackgasse, waehrend die Pruefhinweise ihm das Gegenteil versprachen.
+ *
+ * Deshalb einmal als Baustein und an allen drei Stellen eingehaengt, statt
+ * dreimal abgeschrieben. */
+function KontoLoeschenBlock({ onDelete }) {
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const waiting = account.reason === "membership_pending";
 
   const remove = async () => {
     setBusy(true); setError("");
     const result = await onDelete();
     if (result?.error) { setError(result.error); setBusy(false); }
   };
+
+  return (
+    <>
+      {!confirming ? (
+        <button onClick={() => setConfirming(true)} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.red }}>Konto und persönliche Daten löschen</button>
+      ) : (
+        <div className="rounded-2xl p-4" style={{ background: C.fehlerFlaeche, border: `1px solid ${C.fehlerRand}` }}>
+          <div className="text-xs font-bold mb-1.5" style={{ color: C.ink }}>Konto endgültig löschen?</div>
+          <div className="text-[11px] leading-snug mb-3" style={{ color: C.textDim }}>
+            Dein Konto und alle personenbezogenen Daten werden unwiderruflich entfernt. Kosten entstehen dir dadurch keine: Ein persönliches Abonnement gibt es nicht.
+          </div>
+          <div className="flex gap-2">
+            <button onClick={() => setConfirming(false)} disabled={busy} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>Abbrechen</button>
+            <button onClick={remove} disabled={busy} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.red, color: C.white, opacity: busy ? .6 : 1 }}>{busy ? "Wird gelöscht …" : "Endgültig löschen"}</button>
+          </div>
+        </div>
+      )}
+      {error && <div role="status" className="text-[11px] mt-3 rounded-xl px-3 py-2" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{error}</div>}
+    </>
+  );
+}
+
+function PendingAccountScreen({ account, onLeave, onDelete }) {
+  const waiting = account.reason === "membership_pending";
 
   return (
     <div className="flex-1 overflow-y-auto px-6 pt-10 pb-12 flex flex-col justify-center">
@@ -1555,21 +1639,7 @@ function PendingAccountScreen({ account, onLeave, onDelete }) {
 
         <button onClick={onLeave} className="w-full py-3 rounded-xl text-sm font-bold mb-2.5" style={{ background: C.ink, color: C.white }}>Abmelden</button>
 
-        {!confirming ? (
-          <button onClick={() => setConfirming(true)} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.red }}>Konto und persönliche Daten löschen</button>
-        ) : (
-          <div className="rounded-2xl p-4" style={{ background: C.fehlerFlaeche, border: `1px solid ${C.fehlerRand}` }}>
-            <div className="text-xs font-bold mb-1.5" style={{ color: C.ink }}>Konto endgültig löschen?</div>
-            <div className="text-[11px] leading-snug mb-3" style={{ color: C.textDim }}>
-              Dein Konto und alle personenbezogenen Daten werden unwiderruflich entfernt. Kosten entstehen dir dadurch keine: Ein persönliches Abonnement gibt es nicht.
-            </div>
-            <div className="flex gap-2">
-              <button onClick={() => setConfirming(false)} disabled={busy} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>Abbrechen</button>
-              <button onClick={remove} disabled={busy} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.red, color: C.white, opacity: busy ? .6 : 1 }}>{busy ? "Wird gelöscht …" : "Endgültig löschen"}</button>
-            </div>
-          </div>
-        )}
-        {error && <div role="status" className="text-[11px] mt-3 rounded-xl px-3 py-2" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{error}</div>}
+        <KontoLoeschenBlock onDelete={onDelete} />
       </div>
     </div>
   );
@@ -2292,8 +2362,13 @@ function CarpoolSection({ ev, currentUser }) {
   const createCarpool = async () => {
     const seatCount = Number(seats);
     if (!Number.isFinite(seatCount) || seatCount < 1) { setMessage("Bitte eine gültige Anzahl freier Plätze angeben."); return; }
-    setSaving(true); setMessage("");
+    /* Beide Pflichtfeldpruefungen stehen VOR setSaving(true). Die zweite stand
+       vorher darunter und stieg mit return aus, ohne saving zurueckzusetzen:
+       Der Knopf blieb deaktiviert und zeigte "…" - ausgerechnet nachdem die
+       App per roter Meldung genau die Eingabe verlangt hatte, die sie danach
+       nicht mehr annehmen konnte. */
     if (!abfahrt.trim()) { setMessage("Bitte gib an, von wo du losfährst."); return; }
+    setSaving(true); setMessage("");
     const { error } = await supabase.from("carpools").insert({ event_id: ev.id, driver_membership_id: currentUser.id, seats_available: seatCount, departure: abfahrt.trim(), note: note.trim() || null });
     if (error) { setMessage("Fahrgemeinschaft konnte nicht angelegt werden."); setSaving(false); return; }
     setSeats(""); setNote(""); setAbfahrt(""); setShowCreate(false); setSaving(false);
@@ -5064,14 +5139,16 @@ function ProfileSettingsCard({ icon: Icon, title, description, onClick, color = 
   return <button onClick={onClick} className="w-full flex items-center gap-3.5 rounded-2xl px-4 py-3.5 text-left" style={{ background: C.glass, border: `1px solid ${C.edge}`, boxShadow: "0 10px 26px rgba(60,30,45,0.07)" }}><div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `linear-gradient(155deg, color-mix(in srgb, ${color} 72%, #fff), ${color})`, boxShadow: `0 6px 14px color-mix(in srgb, ${color} 34%, transparent), inset 0 1px 0 rgba(255,255,255,0.45)`, color: "#fff" }}><Icon size={18}/></div><div className="flex-1 min-w-0"><div className="text-sm font-bold" style={{ color: C.ink }}>{title}</div><div className="text-[10px] leading-snug" style={{ color: C.textDim }}>{description}</div></div><ChevronRight size={15} style={{ color: C.textDim }}/></button>;
 }
 
-function HowToVideoLibrary({ user }) {
+function HowToVideoLibrary({ user, vorhanden = null }) {
   const [openId, setOpenId] = useState("");
   /* Welche Videos sich nicht laden liessen.
      Vorher zeigte der Player in dem Fall eine schwarze Flaeche - ohne jede
      Meldung, ohne Hinweis, dass die Datei fehlt. Genau diese Klasse ("wirkt
      unfertig") faellt bei einer App-Pruefung auf. */
   const [fehlend, setFehlend] = useState([]);
-  const videos = howToVideosFor(user);
+  /* Nur Eintraege, zu denen auch eine Datei im Speicher liegt. Liegen zwei von
+     vier, stehen zwei da - und nicht zwei plus zwei Fehlermeldungen. */
+  const videos = howToVideosFor(user).filter((video) => !vorhanden || vorhanden.includes(video.file));
   return (
     <div className="space-y-2">
       <div className="text-[11px] mb-1" style={{ color: C.textDim }}>Kurze Videos, passend zu dem, was du in deinem Verein tun kannst — nur Aktionen, die deine Rolle auch wirklich ausführen darf.</div>
@@ -5657,6 +5734,7 @@ function ProfileView({ user, members, setMembers, currentClub, dutyPlan, punkteZ
   const meinePunkte = user.points || 0;
   const meineBadges = verdienteBadges(user, dutyPlan);
   const eligible = isFormalMember(user) && age(user.birthdate) >= 16;
+  const vorhandeneVideos = useVorhandeneHowToVideos();
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const [deleting, setDeleting] = useState(false);
@@ -5721,7 +5799,7 @@ function ProfileView({ user, members, setMembers, currentClub, dutyPlan, punkteZ
         <ProfileSettingsCard icon={Bell} title="Benachrichtigungen & Kalender" description="Push-Einstellungen und Kalendersync" color={C.secondary} onClick={() => setProfileFolder("notify")}/>
         <ProfileSettingsCard icon={Euro} title="Zugang & Empfehlungen" description="Freischaltung des Vereins und Vereine werben Vereine" color={C.red} onClick={() => setProfileFolder("billing")}/>
         <ProfileSettingsCard icon={Star} title="Support & Feedback" description="Bewertung abgeben, Fehler melden" color={C.textDim} onClick={() => setProfileFolder("support")}/>
-        <ProfileSettingsCard icon={PlayCircle} title="App kennenlernen" description="Kurzvideos zu den Funktionen, die du nutzen kannst" color={C.secondary} onClick={() => setProfileFolder("howto")}/>
+        {vorhandeneVideos.length > 0 && <ProfileSettingsCard icon={PlayCircle} title="App kennenlernen" description="Kurzvideos zu den Funktionen, die du nutzen kannst" color={C.secondary} onClick={() => setProfileFolder("howto")}/>}
         {/* Direkter Weg zur Kontolöschung. Vorher lag sie drei Overlay-Ebenen tief
             und keine der Zwischenkacheln trug das Wort „löschen" — ein Prüfer, der
             unserer eigenen Anleitung („Profil → Verwalten → Konto löschen") folgt,
@@ -5782,7 +5860,7 @@ function ProfileView({ user, members, setMembers, currentClub, dutyPlan, punkteZ
       </ProfileUnderlay>}
 
       {profileFolder === "howto" && <ProfileUnderlay title="App kennenlernen" eyebrow="Einstellungen" onClose={() => setProfileFolder("")}>
-        <HowToVideoLibrary user={user}/>
+        <HowToVideoLibrary user={user} vorhanden={vorhandeneVideos}/>
       </ProfileUnderlay>}
 
       <div className="rounded-2xl p-4 mb-5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
@@ -5823,13 +5901,19 @@ function ProfileView({ user, members, setMembers, currentClub, dutyPlan, punkteZ
       )}
       </>}
 
-      <div className="rounded-2xl p-4 mb-5 flex items-center gap-3" style={{ background: C.sekundaerWeich, border: `1px solid ${C.edge}` }}>
-        <Gift size={22} style={{ color: C.secondary, flexShrink: 0 }} />
-        <div>
-          <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Mitglied wirbt Mitglied</div>
-          <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>Lade Freunde ein — für jede Anmeldung gibt's 100 Vereinspunkte. Code: <b>CMO-{initialsOf(user.name)}</b></div>
-        </div>
-      </div>
+      {/* Hier stand "Mitglied wirbt Mitglied": "Lade Freunde ein - fuer jede
+          Anmeldung gibt's 100 Vereinspunkte. Code: CMO-XY". Nichts davon gab
+          es. Der Code war aus den Initialen gerechnet, wurde nirgends
+          gespeichert und nirgends gelesen; die Registrierung hat kein Feld
+          dafuer (das einzige Empfehlungscode-Feld gehoert zum Anlegen eines
+          VEREINS und bringt dem Verein drei Gratismonate). punkte_je_mitglied
+          zaehlt Helferdienste, Aufgaben, Umfragen, Saisonwahl, Tipps und
+          Vereinstreue - keine Werbung. Zwei Bloecke darueber stand genau diese
+          Liste als Erklaerung der Punkte, ohne Werbung: Die App widersprach
+          sich selbst.
+
+          Dasselbe Urteil ist hier schon zweimal gefallen - der Vereins-Hoodie
+          und das Badge "Werber" sind aus demselben Grund verschwunden. */}
 
       {/* Hier standen zwei Zeilen, die wie Knoepfe aussahen und mit einem Pfeil
           nach rechts weiterzufuehren versprachen: "Fotogalerie · Sommerfest 2025"
@@ -8980,6 +9064,17 @@ export default function ClubMemberOrganisationApp() {
     setAuthScreen("login");
   };
 
+  /* Abmelden aus einem Zustand ohne aktive Mitgliedschaft. Stand vorher als
+     Einzeiler direkt im Aufruf von MeineVereineScreen; seit die Vereinssuche
+     dasselbe anbietet, braucht es einen Namen statt zweier Kopien. */
+  const sitzungBeenden = async () => {
+    await geraetAbmelden();
+    if (supabase) await supabase.auth.signOut();
+    setMeineMitgliedschaften([]);
+    setOffeneSitzung(null);
+    setSelectedClubId(null);
+    setAuthScreen("login");
+  };
   const deletePendingAccount = async () => {
     if (!supabase) return { error: "Löschen ist nur mit einem echten Konto möglich." };
     const { data } = await supabase.auth.getSession();
@@ -8988,6 +9083,11 @@ export default function ClubMemberOrganisationApp() {
     const response = await fetch("/api/account/delete", { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
     if (!response.ok) return { error: "Das Konto konnte nicht vollständig gelöscht werden. Bitte wende dich an den Support." };
     await leavePendingAccount();
+    /* Beim blossen Abmelden bleibt der gewaehlte Verein absichtlich stehen -
+       wer auf die Freigabe wartet, findet ihn beim naechsten Anmelden wieder.
+       Nach dem Loeschen gibt es aber kein Konto mehr, zu dem er gehoeren
+       koennte. */
+    setSelectedClubId(null);
     return {};
   };
   const register = async (draft, familySetup) => {
@@ -9240,10 +9340,13 @@ export default function ClubMemberOrganisationApp() {
               laedt={vereinLaedt}
               onOeffnen={vereinOeffnen}
               onWeitererVerein={() => setAuthScreen("club")}
-              onAbmelden={async () => { await geraetAbmelden(); if (supabase) await supabase.auth.signOut(); setMeineMitgliedschaften([]); setOffeneSitzung(null); setSelectedClubId(null); setAuthScreen("login"); }}
+              onAbmelden={sitzungBeenden}
+              onKontoLoeschen={offeneSitzung ? deletePendingAccount : null}
             />
           ) : authScreen === "club" ? (
             <ClubSelectScreen clubs={clubs} onSelect={selectClub} goNewClub={() => setAuthScreen("newclub")}
+              onAbmelden={offeneSitzung ? sitzungBeenden : null}
+              onKontoLoeschen={offeneSitzung ? deletePendingAccount : null}
               goBack={meineMitgliedschaften.length > 0 ? () => setAuthScreen("meineVereine") : () => setAuthScreen("login")} />
           ) : authScreen === "beitreten" ? (
             <BeitrittsScreen club={currentClub}
