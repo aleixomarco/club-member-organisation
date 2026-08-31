@@ -95,10 +95,19 @@ export function sitzungGueltig(wert: unknown): boolean {
   const teile = wert.split(".");
   if (teile.length !== 3) return false;
   const [ablauf, zufall, signatur] = teile;
+
+  /* Erst die Form, dann der Vergleich.
+     Vorher stand hier nur signatur.length === erwartet.length - und .length
+     zaehlt UTF-16-Einheiten, nicht Bytes. Ein Cookie mit 64 Umlauten kam durch
+     diese Pruefung und liess timingSafeEqual mit einer Ausnahme abbrechen
+     ("Input buffers must have the same byte length"), die niemand faengt: aus
+     einem "nicht angemeldet" wurde ein Serverfehler. Kein Zugang, aber die
+     falsche Antwort auf die falsche Frage. */
+  if (!/^[0-9a-f]{64}$/.test(signatur)) return false;
+
   const erwartet = createHmac("sha256", signierSchluessel())
     .update(`${ablauf}.${zufall}`).digest("hex");
-  if (signatur.length !== erwartet.length) return false;
-  if (!timingSafeEqual(Buffer.from(signatur), Buffer.from(erwartet))) return false;
+  if (!timingSafeEqual(Buffer.from(signatur, "hex"), Buffer.from(erwartet, "hex"))) return false;
   const zeit = Number(ablauf);
   return Number.isFinite(zeit) && zeit > Date.now();
 }
@@ -137,10 +146,41 @@ export function zuVieleVersuche(kennung: string): boolean {
 
 export function versuchVermerken(kennung: string, erfolgreich: boolean): void {
   if (erfolgreich) { versuche.delete(kennung); return; }
+
+  /* Abgelaufene Eintraege wegraeumen, bevor ein neuer dazukommt. Entfernt wurde
+     ein Eintrag vorher nur, wenn genau dieselbe Kennung noch einmal auftauchte
+     - die Map konnte also unbegrenzt wachsen. Die Obergrenze ist der zweite
+     Boden: Wer es doch schafft, genug verschiedene Kennungen zu erzeugen,
+     leert damit die Liste, statt den Speicher zu fuellen. */
+  const jetzt = Date.now();
+  if (versuche.size > 0) {
+    for (const [k, e] of versuche) if (jetzt > e.bis) versuche.delete(k);
+  }
+  if (versuche.size >= 5000) versuche.clear();
+
   const eintrag = versuche.get(kennung);
-  if (!eintrag || Date.now() > eintrag.bis) {
-    versuche.set(kennung, { anzahl: 1, bis: Date.now() + SPERRE_MS });
+  if (!eintrag || jetzt > eintrag.bis) {
+    versuche.set(kennung, { anzahl: 1, bis: jetzt + SPERRE_MS });
     return;
   }
   eintrag.anzahl += 1;
+}
+
+/* Kommt die Anfrage von unserer eigenen Seite?
+ *
+ * Zusaetzlich zu sameSite=lax, nicht statt dessen. Fehlt der Kopf ganz - bei
+ * curl, bei einem Aufruf vom Server -, wird nicht abgewiesen: Sonst waere jede
+ * Pruefung von aussen unmoeglich, und gegen fremde Websites schuetzt bereits
+ * das Cookie. Abgewiesen wird nur, was sich ausdruecklich als fremde Herkunft
+ * ausweist. */
+export function fremdeHerkunft(request: Request): boolean {
+  const herkunft = request.headers.get("origin");
+  if (!herkunft) return false;
+  const host = request.headers.get("host");
+  if (!host) return false;
+  try {
+    return new URL(herkunft).host !== host;
+  } catch {
+    return true;
+  }
 }

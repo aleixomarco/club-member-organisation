@@ -77,9 +77,14 @@ export default function BetreiberKonsole() {
 
   const aktion = async (rumpf: Record<string, unknown>) => {
     setLaeuft(true); setMeldung(""); setFehler("");
+    /* Ohne dieses catch bliebe laeuft bei einem Netzwerkfehler fuer immer true:
+       Jeder Knopf waere ausgegraut, und nur ein Neuladen der Seite brachte die
+       Konsole zurueck. */
     const antwort = await fetch("/api/betreiber/aktion", {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(rumpf),
-    });
+    }).catch(() => null);
+    if (!antwort) { setLaeuft(false); setFehler("Keine Verbindung zum Server. Die Aktion wurde nicht ausgeführt."); return null; }
+    if (antwort.status === 401) { setLaeuft(false); setAngemeldet(false); return null; }
     const inhalt = await antwort.json().catch(() => ({}));
     setLaeuft(false);
     if (!antwort.ok) { setFehler(inhalt.error || "Die Aktion ist fehlgeschlagen."); return null; }
@@ -164,15 +169,18 @@ export default function BetreiberKonsole() {
               )}
               {a.status !== "berechnet" && (
                 <button style={knopfLeise} disabled={laeuft}
-                  onClick={async () => { await aktion({ art: "anfrage", anfrage: a.id, status: "berechnet" }); setMeldung("Als \u201eRechnung gestellt\u201c vermerkt."); }}>
+                  onClick={async () => {
+                    const ok = await aktion({ art: "anfrage", anfrage: a.id, status: "berechnet" });
+                    if (ok) setMeldung("Als \u201eRechnung gestellt\u201c vermerkt.");
+                  }}>
                   Rechnung gestellt
                 </button>
               )}
               <button style={{ ...knopfLeise, color: "#B3261E" }} disabled={laeuft}
                 onClick={async () => {
                   if (!window.confirm(`Anfrage von ${a.contact_name} ablehnen?`)) return;
-                  await aktion({ art: "anfrage", anfrage: a.id, status: "abgelehnt" });
-                  setMeldung("Anfrage abgelehnt. Der Verein kann jederzeit eine neue stellen.");
+                  const ok = await aktion({ art: "anfrage", anfrage: a.id, status: "abgelehnt" });
+                  if (ok) setMeldung("Anfrage abgelehnt. Der Verein kann jederzeit eine neue stellen.");
                 }}>Ablehnen</button>
             </div>
           </div>
@@ -218,9 +226,9 @@ export default function BetreiberKonsole() {
                       {v.tarif !== "none" && (
                         <button style={{ ...knopfLeise, color: "#B3261E" }} disabled={laeuft}
                           onClick={async () => {
-                            if (!window.confirm(`\u201e${v.name}\u201c sperren? Der Verein fällt auf die kostenlose Stufe zurück: drei Zugänge, nur Trainings- und Spielpläne. Bestehende Konten bleiben bestehen.`)) return;
-                            await aktion({ art: "sperren", verein: v.id });
-                            setMeldung(`${v.name} ist gesperrt.`);
+                            if (!window.confirm(`\u201e${v.name}\u201c sperren?\n\nDer Verein fällt auf die kostenlose Stufe zurück: drei Zugänge, nur Trainings- und Spielpläne. Bestehende Konten bleiben bestehen, neue lassen sich nicht mehr anlegen.\n\nAusserdem wird zurückgesetzt:\n· die vereinbarte Zugangszahl${v.vereinbarte_zugaenge != null ? ` (derzeit ${v.vereinbarte_zugaenge})` : ""}\n· der Sponsorenzusatz${v.sponsoring_freigeschaltet ? " (derzeit freigeschaltet)" : ""}\n\nBeides muss beim erneuten Freischalten neu eingetragen werden.`)) return;
+                            const ok = await aktion({ art: "sperren", verein: v.id });
+                            if (ok) setMeldung(`${v.name} ist gesperrt.`);
                           }}>Sperren</button>
                       )}
                     </td>
@@ -258,7 +266,14 @@ function FreischaltDialog({ verein, laeuft, onAbbrechen, onFreischalten }: {
   onAbbrechen: () => void;
   onFreischalten: (werte: Record<string, unknown>) => void;
 }) {
-  const [stufe, setStufe] = useState("basic");
+  /* Vorbelegt mit dem Tarif, den der Verein HAT - nicht mit dem billigsten.
+     Vorher stand hier immer "basic": Wer die Jahresrechnung eines Pro-Vereins
+     verlaengern wollte und die Auswahl nicht bemerkte, stufte ihn dabei von
+     1.000 auf 100 Zugaenge herab. Bei 600 Mitgliedern heisst das: ab sofort
+     kein einziges neues Konto mehr, und niemand weiss, warum. */
+  const RANG: Record<string, number> = { none: 0, basic: 1, plus: 2, pro: 3 };
+  const [stufe, setStufe] = useState(RANG[verein.tarif] ? verein.tarif : "basic");
+  const stuftHerab = RANG[verein.tarif] > 0 && RANG[stufe] < RANG[verein.tarif];
   const [laufzeit, setLaufzeit] = useState("jahr");
   const [zugaenge, setZugaenge] = useState("");
   const [belegnummer, setBelegnummer] = useState("");
@@ -282,6 +297,14 @@ function FreischaltDialog({ verein, laeuft, onAbbrechen, onFreischalten }: {
           <option value="plus">Plus — bis 350 Zugänge</option>
           <option value="pro">Pro — bis 1.000 Zugänge</option>
         </select>
+        {stuftHerab && (
+          <p role="status" style={{ ...hinweis, color: "#B3261E", fontWeight: 600, marginTop: -6 }}>
+            Achtung: Das ist eine Herabstufung von {TARIF_NAMEN[verein.tarif]} auf {TARIF_NAMEN[stufe]}.
+            {verein.konten > (stufe === "basic" ? 100 : stufe === "plus" ? 350 : 1000) && !zugaenge && (
+              <> Der Verein hat {verein.konten} Konten und läge damit über der Grenze — neue Mitglieder ließen sich nicht mehr aufnehmen.</>
+            )}
+          </p>
+        )}
 
         <label style={beschriftung}>Laufzeit</label>
         <select value={laufzeit} onChange={(e) => setLaufzeit(e.target.value)} style={feld}>
