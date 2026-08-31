@@ -29,7 +29,43 @@ type Anfrage = {
   contact_name: string; contact_email: string; contact_phone: string | null;
   expected_accounts: number | null; sponsoring_gewuenscht: boolean; note: string | null; status: string;
   konten_jetzt: number | null; tarif_jetzt: string | null; sponsoren_jetzt: boolean | null;
+  rechnungsnummer: string | null; betrag: number | null; zahlweise: string | null;
+  rechnung_erstellt_am: string | null; rechnung_versendet_am: string | null; bezahlt_am: string | null;
+  freigeschaltet_am: string | null; bestaetigung_versendet_am: string | null; ablehnungsgrund: string | null;
 };
+
+type Mitglied = {
+  id: string; name: string; email: string | null; status: string; mitglied_seit: number | null;
+  mitgliedsnummer: string | null; geburtsdatum: string | null; alter_jahre: number | null;
+  geschlecht: string | null; ort: string | null; rollen: string[]; mannschaften: string[];
+  letzte_aenderung: string | null; geraete: number; punkte: number;
+};
+
+type Zielgruppe = {
+  mitglieder: number; aktive: number;
+  alter_unter_18: number; alter_18_29: number; alter_30_49: number; alter_50_plus: number;
+  alter_unbekannt: number; durchschnittsalter: number | null;
+  weiblich: number | null; maennlich: number | null; divers_oder_offen: number | null;
+  mannschaften: number; groesste_mannschaft: string | null; groesste_mannschaft_groesse: number | null;
+  aktiv_letzte_30_tage: number;
+};
+
+type Sponsor = {
+  id: string; platz: string; titel: string; text: string | null; bild_url: string | null;
+  ziel_url: string | null; aktion_titel: string | null; aktion_text: string | null; aktion_url: string | null;
+  laeuft_bis: string | null; aktion_bis: string | null; aktiv: boolean;
+  impressionen: number; klicks: number; laeuft_gerade: boolean;
+};
+
+/* Der Weg einer Anfrage. Die Reihenfolge steht so auch in der Datenbank
+   (anfrage_weiter) - hier ist sie nur die Beschriftung dazu. */
+const ABLAUF = [
+  { status: "offen", label: "Angefragt", knopf: null as string | null },
+  { status: "rechnung_erstellt", label: "Rechnung erstellt", knopf: "Rechnung erstellt" },
+  { status: "rechnung_versendet", label: "Rechnung versendet", knopf: "Rechnung versendet" },
+  { status: "rechnung_bezahlt", label: "Bezahlt", knopf: "Rechnung gezahlt" },
+  { status: "freigeschaltet", label: "Freigeschaltet", knopf: null },
+];
 
 const PLATZ_NAMEN: Record<string, string> = {
   dashboard_top: "Start – oben", dashboard_bottom: "Start – unter den News",
@@ -52,6 +88,7 @@ export default function BetreiberKonsole() {
   const [anfragen, setAnfragen] = useState<Anfrage[]>([]);
   const [anzeigen, setAnzeigen] = useState<Anzeige[]>([]);
   const [anzeigeOffen, setAnzeigeOffen] = useState<Partial<Anzeige> | null>(null);
+  const [detail, setDetail] = useState<{ verein: Verein; mitglieder: Mitglied[]; zielgruppe: Zielgruppe | null; sponsoren: Sponsor[] } | null>(null);
   const [suche, setSuche] = useState("");
   const [offen, setOffen] = useState<Verein | null>(null);
   const [meldung, setMeldung] = useState("");
@@ -87,6 +124,20 @@ export default function BetreiberKonsole() {
   const abmelden = async () => {
     await fetch("/api/betreiber/abmelden", { method: "POST" });
     setAngemeldet(false); setVereine([]); setAnfragen([]); setAnzeigen([]);
+  };
+
+  const vereinOeffnen = async (v: Verein) => {
+    setLaeuft(true); setFehler("");
+    const antwort = await fetch("/api/betreiber/aktion", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ art: "verein", verein: v.id }),
+    }).catch(() => null);
+    setLaeuft(false);
+    if (!antwort) { setFehler("Keine Verbindung zum Server."); return; }
+    if (antwort.status === 401) { setAngemeldet(false); return; }
+    const inhalt = await antwort.json().catch(() => ({}));
+    if (!antwort.ok) { setFehler(inhalt.error || "Die Vereinsansicht konnte nicht geladen werden."); return; }
+    setDetail({ verein: v, mitglieder: inhalt.mitglieder || [], zielgruppe: inhalt.zielgruppe, sponsoren: inhalt.sponsoren || [] });
   };
 
   const aktion = async (rumpf: Record<string, unknown>) => {
@@ -173,30 +224,8 @@ export default function BetreiberKonsole() {
               {!a.club_id && <> · <i>Verein noch nicht in der App</i></>}
             </div>
             {a.note && <p style={{ fontSize: 13, color: "#4A424A", background: "#F5F2F4", borderRadius: 8, padding: "8px 10px", margin: "8px 0 0" }}>{a.note}</p>}
-            <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-              {a.club_id && (
-                <button style={knopf} disabled={laeuft}
-                  onClick={() => {
-                    const verein = vereine.find((v) => v.id === a.club_id);
-                    if (verein) setOffen(verein);
-                  }}>Freischalten …</button>
-              )}
-              {a.status !== "berechnet" && (
-                <button style={knopfLeise} disabled={laeuft}
-                  onClick={async () => {
-                    const ok = await aktion({ art: "anfrage", anfrage: a.id, status: "berechnet" });
-                    if (ok) setMeldung("Als \u201eRechnung gestellt\u201c vermerkt.");
-                  }}>
-                  Rechnung gestellt
-                </button>
-              )}
-              <button style={{ ...knopfLeise, color: "#B3261E" }} disabled={laeuft}
-                onClick={async () => {
-                  if (!window.confirm(`Anfrage von ${a.contact_name} ablehnen?`)) return;
-                  const ok = await aktion({ art: "anfrage", anfrage: a.id, status: "abgelehnt" });
-                  if (ok) setMeldung("Anfrage abgelehnt. Der Verein kann jederzeit eine neue stellen.");
-                }}>Ablehnen</button>
-            </div>
+            <AnfrageAblauf anfrage={a} laeuft={laeuft} vereine={vereine}
+              onSchritt={aktion} onFreischalten={setOffen} onMeldung={setMeldung} />
           </div>
         ))}
       </section>
@@ -222,7 +251,10 @@ export default function BetreiberKonsole() {
                 return (
                   <tr key={v.id} style={{ borderTop: "1px solid #E9E4E7" }}>
                     <td style={zelle}>
-                      <b>{v.name}</b>
+                      <button onClick={() => vereinOeffnen(v)} disabled={laeuft}
+                        style={{ background: "none", border: "none", padding: 0, cursor: "pointer", font: "inherit", textAlign: "left" as const }}>
+                        <b style={{ borderBottom: "1px dotted #B3261E" }}>{v.name}</b>
+                      </button>
                       <div style={{ color: "#8A7F85", fontSize: 12 }}>
                         {v.city || "—"}{v.offene_aufnahmen > 0 && <> · <b style={{ color: "#8A5A00" }}>{v.offene_aufnahmen} Aufnahme(n) offen</b></>}
                       </div>
@@ -299,6 +331,8 @@ export default function BetreiberKonsole() {
         )}
       </section>
 
+      {detail && <VereinsDetail daten={detail} onSchliessen={() => setDetail(null)} />}
+
       {anzeigeOffen && (
         <AnzeigeDialog
           anzeige={anzeigeOffen}
@@ -334,6 +368,317 @@ export default function BetreiberKonsole() {
         />
       )}
     </main>
+  );
+}
+
+/* Der Rechnungsablauf einer Anfrage.
+ *
+ * Bewusst als sichtbare Kette und nicht als Auswahlfeld: Der Betreiber soll auf
+ * einen Blick sehen, wo dieser Vorgang steht und was als Naechstes dran ist.
+ * Was moeglich ist, entscheidet die Datenbank - hier steht nur, was sie sagt. */
+/* Alles über einen Verein.
+ *
+ * Zwei Teile, und die Trennung ist Absicht: Oben das Zielgruppenprofil — Zahlen
+ * ohne Namen, das ist das, was man einem Werbepartner zeigen kann. Unten die
+ * Mitgliederliste für den Betrieb. Die Mitglieder haben ihre Daten dem VEREIN
+ * gegeben, nicht dessen Sponsoren; wer beides vermischt, gibt irgendwann eine
+ * Liste weiter, die niemand weitergeben darf. */
+function VereinsDetail({ daten, onSchliessen }: {
+  daten: { verein: Verein; mitglieder: Mitglied[]; zielgruppe: Zielgruppe | null; sponsoren: Sponsor[] };
+  onSchliessen: () => void;
+}) {
+  const { verein, mitglieder, zielgruppe, sponsoren } = daten;
+  const [suche, setSuche] = useState("");
+  const [rolle, setRolle] = useState("");
+  const [team, setTeam] = useState("");
+
+  const rollen = [...new Set(mitglieder.flatMap((m) => m.rollen))].sort();
+  const teams = [...new Set(mitglieder.flatMap((m) => m.mannschaften))].sort();
+  const gefiltert = mitglieder.filter((m) =>
+    (!suche.trim() || `${m.name} ${m.email || ""} ${m.ort || ""}`.toLowerCase().includes(suche.trim().toLowerCase()))
+    && (!rolle || m.rollen.includes(rolle))
+    && (!team || m.mannschaften.includes(team)));
+
+  const Zahl = ({ wert, label }: { wert: React.ReactNode; label: string }) => (
+    <div style={{ ...karte, padding: 12, minWidth: 116, flex: "1 1 116px" }}>
+      <div style={{ fontSize: 20, fontWeight: 700 }}>{wert}</div>
+      <div style={{ fontSize: 11, color: "#8A7F85", marginTop: 2 }}>{label}</div>
+    </div>
+  );
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(20,21,26,.5)", display: "flex", alignItems: "flex-start", justifyContent: "center", padding: 16, overflowY: "auto" }}
+         onClick={onSchliessen}>
+      <div role="dialog" aria-modal="true" aria-label={verein.name} onClick={(e) => e.stopPropagation()}
+           style={{ ...karte, width: "100%", maxWidth: 900, marginTop: 24, marginBottom: 24 }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap", marginBottom: 4 }}>
+          <h2 style={{ fontSize: 19, fontWeight: 700, margin: 0 }}>{verein.name}</h2>
+          <span style={{ fontSize: 13, color: "#8A7F85" }}>
+            {verein.city || "—"} · {TARIF_NAMEN[verein.tarif] || verein.tarif} · {verein.konten} von {verein.grenze} Zugängen
+          </span>
+          <button onClick={onSchliessen} style={{ ...knopfLeise, marginLeft: "auto", marginRight: 0 }}>Schließen</button>
+        </div>
+
+        {/* --- Zielgruppe: Zahlen ohne Namen --- */}
+        <h3 style={{ ...ueberschrift, marginTop: 18 }}>Zielgruppe</h3>
+        <p style={{ ...hinweis, marginTop: -6 }}>
+          Diese Zahlen können Sie einem Werbepartner zeigen. Gruppen unter fünf Personen werden
+          nicht ausgewiesen — bei zwei Frauen in einem Verein ist „zwei Frauen" keine Statistik mehr,
+          sondern ein Hinweis auf zwei bestimmte Personen.
+        </p>
+        {zielgruppe ? (
+          <>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+              <Zahl wert={zielgruppe.mitglieder} label="Mitglieder" />
+              <Zahl wert={zielgruppe.aktive} label="davon aktiv" />
+              <Zahl wert={zielgruppe.durchschnittsalter ?? "—"} label="Durchschnittsalter" />
+              <Zahl wert={zielgruppe.mannschaften} label="Mannschaften" />
+              <Zahl wert={zielgruppe.aktiv_letzte_30_tage} label="App-Nutzung, 30 Tage" />
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+              <Zahl wert={zielgruppe.alter_unter_18} label="unter 18" />
+              <Zahl wert={zielgruppe.alter_18_29} label="18 – 29" />
+              <Zahl wert={zielgruppe.alter_30_49} label="30 – 49" />
+              <Zahl wert={zielgruppe.alter_50_plus} label="50 und älter" />
+              <Zahl wert={zielgruppe.alter_unbekannt} label="ohne Angabe" />
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <Zahl wert={zielgruppe.weiblich ?? "—"} label="weiblich" />
+              <Zahl wert={zielgruppe.maennlich ?? "—"} label="männlich" />
+              <Zahl wert={zielgruppe.groesste_mannschaft || "—"} label={`größte Mannschaft (${zielgruppe.groesste_mannschaft_groesse ?? 0})`} />
+            </div>
+          </>
+        ) : <p style={{ ...karte, fontSize: 13, color: "#8A7F85" }}>Keine Angaben.</p>}
+
+        {/* --- Sponsoren, nur mit freigeschaltetem Zusatz --- */}
+        <h3 style={{ ...ueberschrift, marginTop: 22 }}>Gebuchte Sponsoren</h3>
+        {!verein.sponsoring_freigeschaltet ? (
+          <p style={{ ...karte, fontSize: 13, color: "#8A7F85" }}>
+            Der Sponsorenzusatz ist für diesen Verein nicht freigeschaltet (9 € im Monat oder 80 € im Jahr).
+            Er kann zwar Sponsoren vorbereiten, angezeigt wird davon nichts.
+          </p>
+        ) : sponsoren.length === 0 ? (
+          <p style={{ ...karte, fontSize: 13, color: "#8A7F85" }}>Freigeschaltet, aber noch kein Sponsor eingetragen.</p>
+        ) : (
+          <div style={{ display: "grid", gap: 8 }}>
+            {sponsoren.map((sp) => (
+              <div key={sp.id} style={{ ...karte, display: "flex", gap: 12 }}>
+                {sp.bild_url && <img src={sp.bild_url} alt="" style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 10, flexShrink: 0 }} />}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", gap: 8, alignItems: "baseline", flexWrap: "wrap" }}>
+                    <span style={abzeichen}>{PLATZ_NAMEN[sp.platz] || sp.platz}</span>
+                    <b style={{ fontSize: 14 }}>{sp.titel}</b>
+                    <span style={{ ...abzeichen, background: sp.laeuft_gerade ? "rgba(231,243,236,0.9)" : "#F0EBEE", color: sp.laeuft_gerade ? "#1E6B3A" : "#8A7F85" }}>
+                      {sp.laeuft_gerade ? "läuft" : "läuft nicht"}
+                    </span>
+                    <span style={{ fontSize: 12, color: "#8A7F85", marginLeft: "auto" }}>{sp.impressionen} Einblendungen · {sp.klicks} Klicks</span>
+                  </div>
+                  {sp.text && <p style={{ fontSize: 13, color: "#4A424A", margin: "6px 0 0" }}>{sp.text}</p>}
+                  {sp.ziel_url && <p style={{ fontSize: 12, margin: "4px 0 0" }}><a href={sp.ziel_url} target="_blank" rel="noopener noreferrer" style={{ color: "#B3261E" }}>{sp.ziel_url}</a></p>}
+                  {sp.aktion_titel && (
+                    <p style={{ fontSize: 12, margin: "6px 0 0", color: "#8A5A00" }}>
+                      <b>Aktion:</b> {sp.aktion_titel}
+                      {sp.aktion_text && <> — {sp.aktion_text}</>}
+                      {sp.aktion_bis && <> (bis {datum(sp.aktion_bis)})</>}
+                    </p>
+                  )}
+                  {sp.laeuft_bis && <p style={{ ...hinweis, margin: "4px 0 0" }}>Sponsor steht bis {datum(sp.laeuft_bis)}</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* --- Mitglieder: fuer den Betrieb, nicht fuer Werbepartner --- */}
+        <h3 style={{ ...ueberschrift, marginTop: 22 }}>Mitglieder ({mitglieder.length})</h3>
+        <p style={{ ...hinweis, marginTop: -6 }}>
+          Personenbezogene Daten. Für Rückfragen und Betrieb — nicht dafür gedacht, sie nach außen zu geben.
+        </p>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+          <input value={suche} onChange={(e) => setSuche(e.target.value)} placeholder="Suchen …"
+            style={{ ...feld, width: 180, marginBottom: 0, padding: "8px 10px" }} />
+          <select value={rolle} onChange={(e) => setRolle(e.target.value)} style={{ ...feld, width: 160, marginBottom: 0, padding: "8px 10px" }}>
+            <option value="">alle Rollen</option>
+            {rollen.map((r) => <option key={r} value={r}>{r}</option>)}
+          </select>
+          <select value={team} onChange={(e) => setTeam(e.target.value)} style={{ ...feld, width: 170, marginBottom: 0, padding: "8px 10px" }}>
+            <option value="">alle Mannschaften</option>
+            {teams.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+          <span style={{ ...hinweis, alignSelf: "center", margin: 0 }}>{gefiltert.length} von {mitglieder.length}</span>
+        </div>
+
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 760 }}>
+            <thead>
+              <tr style={{ textAlign: "left" as const, color: "#8A7F85", fontSize: 11, textTransform: "uppercase" as const, letterSpacing: ".06em" }}>
+                <th style={zelle}>Name</th><th style={zelle}>Status</th><th style={zelle}>Seit</th>
+                <th style={zelle}>Alter</th><th style={zelle}>Rollen</th><th style={zelle}>Mannschaft</th>
+                <th style={zelle}>Punkte</th><th style={zelle}>Geräte</th>
+              </tr>
+            </thead>
+            <tbody>
+              {gefiltert.map((m) => (
+                <tr key={m.id} style={{ borderTop: "1px solid #E9E4E7" }}>
+                  <td style={zelle}>
+                    <b>{m.name}</b>
+                    <div style={{ fontSize: 12, color: "#8A7F85" }}>{m.email || "—"}{m.ort ? ` · ${m.ort}` : ""}</div>
+                  </td>
+                  <td style={zelle}>{m.status}</td>
+                  <td style={zelle}>{m.mitglied_seit ?? "—"}</td>
+                  <td style={zelle}>{m.alter_jahre ?? "—"}</td>
+                  <td style={{ ...zelle, fontSize: 12 }}>{m.rollen.join(", ") || "—"}</td>
+                  <td style={{ ...zelle, fontSize: 12 }}>{m.mannschaften.join(", ") || "—"}</td>
+                  <td style={zelle}>{m.punkte}</td>
+                  <td style={zelle}>{m.geraete}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AnfrageAblauf({ anfrage, laeuft, vereine, onSchritt, onFreischalten, onMeldung }: {
+  anfrage: Anfrage; laeuft: boolean; vereine: Verein[];
+  onSchritt: (r: Record<string, unknown>) => Promise<Record<string, unknown> | null>;
+  onFreischalten: (v: Verein) => void;
+  onMeldung: (t: string) => void;
+}) {
+  const [nummer, setNummer] = useState(anfrage.rechnungsnummer || "");
+  const [betrag, setBetrag] = useState(anfrage.betrag != null ? String(anfrage.betrag) : "");
+  const [zahlweise, setZahlweise] = useState(anfrage.zahlweise || "jaehrlich");
+  const [grund, setGrund] = useState("");
+  const [ablehnen, setAblehnen] = useState(false);
+
+  const jetzt = ABLAUF.findIndex((x) => x.status === anfrage.status);
+  const naechster = jetzt >= 0 && jetzt < ABLAUF.length - 1 ? ABLAUF[jetzt + 1] : null;
+  const abgelehnt = anfrage.status === "abgelehnt";
+  const bezahlt = anfrage.status === "rechnung_bezahlt";
+  const frei = anfrage.status === "freigeschaltet";
+  const zeit = (w: string | null) => (w ? new Date(w).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" }) : null);
+
+  return (
+    <div style={{ marginTop: 12 }}>
+      {/* Die Kette. Erledigte Schritte tragen ihr Datum. */}
+      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+        {ABLAUF.map((schritt, i) => {
+          const erledigt = !abgelehnt && jetzt >= i;
+          const wann = zeit(
+            schritt.status === "rechnung_erstellt" ? anfrage.rechnung_erstellt_am :
+            schritt.status === "rechnung_versendet" ? anfrage.rechnung_versendet_am :
+            schritt.status === "rechnung_bezahlt" ? anfrage.bezahlt_am :
+            schritt.status === "freigeschaltet" ? anfrage.freigeschaltet_am :
+            anfrage.created_at
+          );
+          return (
+            <span key={schritt.status} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              {i > 0 && <span style={{ color: "#DDD6DA" }}>›</span>}
+              <span style={{
+                fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999,
+                background: erledigt ? "rgba(231,243,236,0.9)" : "#F2EEF0",
+                color: erledigt ? "#1E6B3A" : "#8A7F85",
+              }}>
+                {schritt.label}{erledigt && wann ? ` · ${wann}` : ""}
+              </span>
+            </span>
+          );
+        })}
+        {abgelehnt && (
+          <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 999, background: "rgba(253,236,236,0.9)", color: "#B3261E" }}>
+            Abgelehnt{zeit(anfrage.created_at) ? "" : ""}
+          </span>
+        )}
+      </div>
+
+      {abgelehnt && anfrage.ablehnungsgrund && (
+        <p style={{ ...hinweis, marginTop: -4 }}>Grund: {anfrage.ablehnungsgrund}</p>
+      )}
+
+      {/* Beim Erstellen der Rechnung werden Nummer und Betrag mitgegeben -
+          spaeter muss niemand mehr danach suchen. */}
+      {anfrage.status === "offen" && (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+          <input value={nummer} onChange={(e) => setNummer(e.target.value)} placeholder="Rechnungsnummer"
+            style={{ ...feld, width: 170, marginBottom: 0, padding: "8px 10px" }} />
+          <input value={betrag} onChange={(e) => setBetrag(e.target.value)} placeholder="Betrag €" inputMode="decimal"
+            style={{ ...feld, width: 110, marginBottom: 0, padding: "8px 10px" }} />
+          <select value={zahlweise} onChange={(e) => setZahlweise(e.target.value)}
+            style={{ ...feld, width: 130, marginBottom: 0, padding: "8px 10px" }}>
+            <option value="jaehrlich">jährlich</option>
+            <option value="monatlich">monatlich</option>
+          </select>
+        </div>
+      )}
+
+      {(anfrage.rechnungsnummer || anfrage.betrag != null) && anfrage.status !== "offen" && (
+        <p style={{ ...hinweis, marginTop: -2 }}>
+          Rechnung {anfrage.rechnungsnummer || "ohne Nummer"}
+          {anfrage.betrag != null && <> · {anfrage.betrag.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</>}
+          {anfrage.zahlweise && <> · {anfrage.zahlweise}</>}
+        </p>
+      )}
+
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {naechster?.knopf && !abgelehnt && (
+          <button style={knopf} disabled={laeuft}
+            onClick={async () => {
+              const ok = await onSchritt({
+                art: "anfrage", anfrage: anfrage.id, verein: anfrage.club_id, status: naechster.status,
+                rechnungsnummer: nummer, betrag, zahlweise,
+              });
+              if (ok) onMeldung(`${naechster.label}.`);
+            }}>{naechster.knopf}</button>
+        )}
+
+        {/* Freischalten wird erst hier angeboten - vorher weist die Datenbank
+            es ohnehin ab, und ein Knopf, der nicht darf, ist ein Aergernis. */}
+        {bezahlt && anfrage.club_id && (
+          <button style={knopf} disabled={laeuft}
+            onClick={() => {
+              const v = vereine.find((x) => x.id === anfrage.club_id);
+              if (v) onFreischalten(v);
+            }}>Verein freischalten …</button>
+        )}
+        {bezahlt && !anfrage.club_id && (
+          <span style={{ ...hinweis, alignSelf: "center" }}>
+            Der Verein ist noch nicht in der App. Sobald er angelegt ist, lässt er sich hier freischalten.
+          </span>
+        )}
+
+        {frei && !anfrage.bestaetigung_versendet_am && (
+          <button style={knopf} disabled={laeuft}
+            onClick={async () => {
+              const ok = await onSchritt({ art: "bestaetigung", anfrage: anfrage.id });
+              if (ok) onMeldung("Bestätigungsmail vermerkt.");
+            }}>Bestätigungsmail versendet</button>
+        )}
+        {frei && anfrage.bestaetigung_versendet_am && (
+          <span style={{ ...hinweis, alignSelf: "center", color: "#1E6B3A" }}>
+            Bestätigung versendet am {new Date(anfrage.bestaetigung_versendet_am).toLocaleDateString("de-DE")} — erledigt.
+          </span>
+        )}
+
+        {!abgelehnt && !frei && (
+          ablehnen ? (
+            <span style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              <input value={grund} onChange={(e) => setGrund(e.target.value)} placeholder="Grund (bleibt hinterlegt)"
+                style={{ ...feld, width: 220, marginBottom: 0, padding: "8px 10px" }} />
+              <button style={{ ...knopf, background: "#B3261E" }} disabled={laeuft}
+                onClick={async () => {
+                  const ok = await onSchritt({ art: "anfrage", anfrage: anfrage.id, verein: anfrage.club_id, status: "abgelehnt", grund });
+                  if (ok) { setAblehnen(false); onMeldung("Abgelehnt. Der Verein kann jederzeit neu anfragen."); }
+                }}>Ablehnen</button>
+              <button style={knopfLeise} onClick={() => setAblehnen(false)}>Zurück</button>
+            </span>
+          ) : (
+            <button style={{ ...knopfLeise, color: "#B3261E" }} disabled={laeuft} onClick={() => setAblehnen(true)}>Ablehnen …</button>
+          )
+        )}
+      </div>
+    </div>
   );
 }
 

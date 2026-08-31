@@ -136,7 +136,7 @@ Ihr zahlt nur nach Größe.
 | **Pro** | bis 1.000 | 99,99 € | 959,99 € | 79,99 € / Monat |
 | **Individuell** | mehr als 1.000 | auf Anfrage | | |
 
-Dazu buchbar: **eigene Sponsoren für + 5,00 € im Monat** (siehe unten).
+Dazu buchbar: **eigene Sponsoren für + 9,00 € im Monat** oder **+ 80,00 € im Jahr** (siehe unten).
 
 **Basic** — Für kleine Vereine.
 **Plus** — Für mittlere Vereine.
@@ -147,16 +147,16 @@ die Zahl der Zugänge nach Absprache.
 Das Jahresmodell spart ein Fünftel. Alle Preise zuzüglich der gesetzlichen
 Umsatzsteuer.
 
-### Eigene Sponsoren · + 5,00 € im Monat
+### Eigene Sponsoren · + 9,00 € im Monat oder + 80,00 € im Jahr
 
 An vier Stellen in der App steht eine Werbefläche. Ohne diesen Zusatz füllen
 wir sie. Mit ihm füllt ihr sie — mit euren eigenen Sponsoren.
 
 | Stufe | mit eigenen Sponsoren, monatlich | jährlich |
 |---|---|---|
-| **Basic** | 29,99 € | 299,99 € |
-| **Plus** | 54,99 € | 539,99 € |
-| **Pro** | 104,99 € | 1.019,99 € |
+| **Basic** | 33,99 € | 319,99 € |
+| **Plus** | 58,99 € | 559,99 € |
+| **Pro** | 108,99 € | 1.039,99 € |
 | **Individuell** | auf Anfrage | |
 
 Wer den Zusatz bucht, bekommt in der App eine eigene Verwaltung: Name des
@@ -169,7 +169,7 @@ weg, der Sponsor bleibt stehen. Niemand muss daran denken, und keinem Mitglied
 wird ein Rabatt angezeigt, den es nicht mehr gibt.
 
 Für viele Vereine trägt sich der Zusatz von selbst: Ein einziger Sponsor, der
-dafür sichtbar wird, zahlt in der Regel mehr als 60 € im Jahr.
+dafür sichtbar wird, zahlt in der Regel mehr als 80 € im Jahr.
 
 Sponsoren des Vereins sind in der App als solche gekennzeichnet und von unserer
 eigenen Werbung sichtbar getrennt. Wo ihr einen Platz belegt, tritt unsere

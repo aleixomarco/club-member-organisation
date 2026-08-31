@@ -60,7 +60,7 @@ haben keine `club_id`, wenn es den Verein zum Zeitpunkt der Anfrage noch nicht
 gab — der Name steht trotzdem dabei.
 
 Die Spalte `sponsoring_gewuenscht` sagt, ob der Verein eigene Sponsoren zeigen
-will. Das sind **5 € im Monat über dem Tarif** und gehört auf die Rechnung.
+will. Das sind **9 € im Monat** oder **80 € im Jahr** über dem Tarif und gehört auf die Rechnung.
 
 ## 2. Rechnung stellen
 
@@ -84,7 +84,7 @@ select * from public.verein_freischalten(
   zugaenge    => null,                -- null = Zahl des Tarifs behalten
   laufzeit    => '1 year',
   belegnummer => 'RE-2026-0042',
-  sponsoring  => true                 -- eigene Sponsoren, +5 €/Monat
+  sponsoring  => true                 -- eigene Sponsoren, +9 €/Monat bzw. +80 €/Jahr
 );
 ```
 

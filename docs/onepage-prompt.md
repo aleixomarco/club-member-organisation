@@ -186,7 +186,7 @@ gleichzeitig treffen soll, trifft keine. Der Zusatz kommt erst, wenn die Stufe
 schon gewählt ist.
 
 Überschrift: **Eure Sponsoren, in eurer App**
-Preis, groß: **+ 5,00 € im Monat** — darunter klein: *auf jede Stufe*
+Preis, groß: **+ 9,00 € im Monat** — darunter klein: *oder 80,00 € im Jahr, auf jede Stufe*
 
 Text, in dieser Reihenfolge:
 
@@ -212,7 +212,7 @@ Dann, als kleiner Satz darunter, ohne Ausrufezeichen und ohne
 Versprechensformel:
 
 *Ein einziger Sponsor, der dafür sichtbar wird, zahlt in der Regel mehr als die
-60 € im Jahr.*
+80 € im Jahr.*
 
 Das ist der Punkt, an dem die Ausgabe aufhört, eine Ausgabe zu sein. Er gehört
 klein und beiläufig gesetzt, nicht als Reklame — die Rechnung macht der Leser
@@ -222,9 +222,9 @@ Eine kleine Tabelle daneben oder darunter, schlicht:
 
 | | monatlich | jährlich |
 |---|---|---|
-| Basic mit Sponsoren | 29,99 € | 299,99 € |
-| Plus mit Sponsoren | 54,99 € | 539,99 € |
-| Pro mit Sponsoren | 104,99 € | 1.019,99 € |
+| Basic mit Sponsoren | 33,99 € | 319,99 € |
+| Plus mit Sponsoren | 58,99 € | 559,99 € |
+| Pro mit Sponsoren | 108,99 € | 1.039,99 € |
 
 Und zum Schluss ein Satz zur Sauberkeit, der Vertrauen schafft:
 
@@ -253,7 +253,7 @@ Felder:
 | E-Mail für die Rechnung | ja | |
 | Telefon | nein | „falls Rückfragen schneller gehen" |
 | Wie viele Mitglieder bekommen einen Zugang? | nein | Zahl, für das Angebot |
-| Eigene Sponsoren zeigen (+ 5,00 €/Monat) | nein | Ankreuzfeld, siehe unten |
+| Eigene Sponsoren zeigen (+ 9,00 €/Monat) | nein | Ankreuzfeld, siehe unten |
 | Wofür wollt ihr die App vor allem nutzen? | nein | mehrzeilig |
 | Einwilligung Datenschutz | ja | Ankreuzfeld mit Link zur Datenschutzerklärung |
 

@@ -175,23 +175,73 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, ergebnis: data?.[0] || null });
   }
 
+  /* Ein Schritt im Rechnungsablauf.
+     Welcher Schritt von wo aus moeglich ist, entscheidet die Datenbank
+     (anfrage_weiter) - nicht diese Route und schon gar nicht der Browser. */
+  const SCHRITTE = ["offen", "rechnung_erstellt", "rechnung_versendet", "rechnung_bezahlt", "abgelehnt"];
   if (daten.art === "anfrage") {
     if (!istUuid(daten.anfrage)) return NextResponse.json({ error: "Keine Anfrage gewählt." }, { status: 400 });
-    const status = daten.status === "berechnet" || daten.status === "abgelehnt" ? daten.status : null;
-    if (!status) return NextResponse.json({ error: "Unbekannter Status." }, { status: 400 });
-    const { error } = await admin.from("club_access_requests")
-      .update({
-        status,
-        handled_at: new Date().toISOString(),
-        handled_note: typeof daten.notiz === "string" ? daten.notiz.trim().slice(0, 500) || null : null,
-      })
-      .eq("id", daten.anfrage);
-    if (error) {
-      console.error("Anfrage konnte nicht geändert werden", error);
-      return NextResponse.json({ error: "Die Anfrage konnte nicht geändert werden." }, { status: 500 });
+    const status = typeof daten.status === "string" && SCHRITTE.includes(daten.status) ? daten.status : null;
+    if (!status) return NextResponse.json({ error: "Unbekannter Schritt." }, { status: 400 });
+
+    const summe = daten.betrag === "" || daten.betrag === null || daten.betrag === undefined
+      ? null : Number(daten.betrag);
+    if (summe !== null && (!Number.isFinite(summe) || summe < 0)) {
+      return NextResponse.json({ error: "Der Betrag ist ungültig." }, { status: 400 });
     }
-    await protokollieren(`anfrage:${status}`, null, { anfrage: daten.anfrage });
+
+    const { data, error } = await admin.rpc("anfrage_weiter", {
+      ziel_anfrage: daten.anfrage,
+      neuer_status: status,
+      nummer: typeof daten.rechnungsnummer === "string" ? daten.rechnungsnummer.trim().slice(0, 120) || null : null,
+      summe,
+      art: daten.zahlweise === "monatlich" || daten.zahlweise === "jaehrlich" ? daten.zahlweise : null,
+      grund: typeof daten.grund === "string" ? daten.grund.trim().slice(0, 500) || null : null,
+    });
+    if (error) {
+      console.error("Schritt nicht möglich", error);
+      return NextResponse.json({ error: error.message || "Der Schritt war nicht möglich." }, { status: 400 });
+    }
+    await protokollieren(`anfrage:${status}`, istUuid(daten.verein) ? daten.verein : null,
+      { anfrage: daten.anfrage, rechnungsnummer: daten.rechnungsnummer ?? null, betrag: summe });
+    return NextResponse.json({ ok: true, ergebnis: data?.[0] || null });
+  }
+
+  /* Die Bestaetigungsmail ist raus. Eigener Schritt, weil sie nach dem
+     Freischalten kommt und von einem Menschen geschrieben wird. */
+  if (daten.art === "bestaetigung") {
+    if (!istUuid(daten.anfrage)) return NextResponse.json({ error: "Keine Anfrage gewählt." }, { status: 400 });
+    const { data, error } = await admin.rpc("bestaetigung_vermerken", { ziel_anfrage: daten.anfrage });
+    if (error) return NextResponse.json({ error: "Konnte nicht vermerkt werden." }, { status: 500 });
+    if (!data) return NextResponse.json({ error: "Das geht erst, wenn der Verein freigeschaltet ist." }, { status: 400 });
+    await protokollieren("anfrage:bestaetigung", null, { anfrage: daten.anfrage });
     return NextResponse.json({ ok: true });
+  }
+
+  /* Alles ueber einen Verein: Mitglieder, Zielgruppe, Sponsoren. */
+  if (daten.art === "verein") {
+    if (!istUuid(daten.verein)) return NextResponse.json({ error: "Kein Verein gewählt." }, { status: 400 });
+    const [mitglieder, zielgruppe, sponsoren] = await Promise.all([
+      admin.rpc("mitglieder_eines_vereins", { target_club: daten.verein }),
+      admin.rpc("zielgruppe_eines_vereins", { target_club: daten.verein }),
+      admin.rpc("sponsoren_eines_vereins", { target_club: daten.verein }),
+    ]);
+    if (mitglieder.error || zielgruppe.error || sponsoren.error) {
+      console.error("Vereinsansicht", mitglieder.error || zielgruppe.error || sponsoren.error);
+      return NextResponse.json({ error: "Die Vereinsansicht konnte nicht geladen werden." }, { status: 500 });
+    }
+    /* Bilder liegen im Speicher unter einem Pfad; die Konsole braucht eine
+       abrufbare Adresse. Der Eimer ist oeffentlich lesbar. */
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+    const sponsorenMitBild = (sponsoren.data || []).map((a: Record<string, unknown>) => ({
+      ...a,
+      bild_url: a.bild_pfad ? `${url}/storage/v1/object/public/sponsor-bilder/${a.bild_pfad}` : null,
+    }));
+    return NextResponse.json({
+      mitglieder: mitglieder.data || [],
+      zielgruppe: zielgruppe.data?.[0] || null,
+      sponsoren: sponsorenMitBild,
+    });
   }
 
   return NextResponse.json({ error: "Unbekannte Aktion." }, { status: 400 });
