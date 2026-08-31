@@ -6130,7 +6130,7 @@ function OverviewPanel({ members, events, feePaid, protocols, dutyPlan, seasonVo
  * bleiben, eine Rabattaktion nicht. Wer eine Aktion eintraegt, muss deshalb
  * sagen, bis wann sie laeuft - die Datenbank besteht darauf, und dieses
  * Formular fragt vorher danach, statt den Fehler durchzureichen. */
-function SponsoringPanel({ bookings, stats, currentClub, clubFeatures, onFeaturesChanged, onChanged }) {
+function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChanged, onChanged }) {
   const [eigene, setEigene] = useState([]);
   const [laden, setLaden] = useState(true);
   const [offen, setOffen] = useState("");
