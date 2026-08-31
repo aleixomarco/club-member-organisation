@@ -4,13 +4,13 @@
     {
       "name": "cmo-dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": ["--prefix", "/Users/marcoaleixo/Projekte/club-member-organisation", "run", "dev"],
       "port": 3000
     },
     {
       "name": "cmo-demo",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--", "--port", "3100"],
+      "runtimeArgs": ["--prefix", "/Users/marcoaleixo/Projekte/club-member-organisation", "run", "dev", "--", "--port", "3100"],
       "port": 3100
     }
   ]

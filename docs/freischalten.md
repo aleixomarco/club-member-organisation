@@ -1,9 +1,46 @@
 # Einen Verein freischalten
 
-Alles, was der Betreiber nach einer Anfrage tut. Auszuführen im SQL-Editor von
-Supabase (dort gilt die Rolle `postgres`) — nicht aus der App heraus: Die
-Funktionen sind für `authenticated` ausdrücklich gesperrt, sonst könnte sich
-jeder Vereinsadmin selbst freischalten.
+## Der normale Weg: die Betreiber-Oberfläche
+
+**<https://club-member-organisation.vercel.app/betreiber>**
+
+Eigener Zugang mit eigenem Passwort, unabhängig von jedem Vereinskonto. Dort
+stehen die offenen Anfragen oben und darunter alle Vereine mit Tarif, belegten
+Zugängen, Sponsorenzusatz, Laufzeit und Ansprechpartner. Freischalten,
+verlängern, sperren und Anfragen abhaken geht mit einem Knopf.
+
+### Einrichten
+
+Zwei Umgebungsvariablen in Vercel (Project → Settings → Environment Variables),
+danach einmal neu deployen:
+
+| Variable | Inhalt |
+|---|---|
+| `BETREIBER_PASSWORT` | Das Passwort. **Mindestens 16 Zeichen**, selbst gewählt, nirgendwo sonst verwendet. |
+| `BETREIBER_SESSION_SECRET` | Eine lange Zufallszeichenkette, mindestens 32 Zeichen. Signiert nur das Sitzungs-Cookie; sie wird nie getippt. |
+
+Einen Zufallswert für das zweite Feld erzeugt man am schnellsten im Terminal:
+
+```bash
+openssl rand -base64 48
+```
+
+Solange beide fehlen, antwortet die Seite mit „Der Betreiberzugang ist nicht
+eingerichtet." — sie geht also nicht versehentlich ungeschützt online.
+
+Die Oberfläche spricht nie selbst mit der Datenbank. Sie fragt den eigenen
+Server, und nur der hat den Dienstschlüssel. Deshalb steht in keinem
+Browser-Tab ein Schlüssel, mit dem sich mehr anfangen ließe als das, was die
+Seite ohnehin anzeigt.
+
+---
+
+## Der Weg von Hand
+
+Falls die Oberfläche einmal nicht erreichbar ist oder etwas gebraucht wird, was
+sie nicht kann. Auszuführen im SQL-Editor von Supabase (dort gilt die Rolle
+`postgres`) — nicht aus der App heraus: Die Funktionen sind für `authenticated`
+ausdrücklich gesperrt, sonst könnte sich jeder Vereinsadmin selbst freischalten.
 
 ---
 

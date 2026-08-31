@@ -43,6 +43,16 @@ for f in sorted(glob.glob("supabase/migrations/*.sql")):
         r = re.search(r"rename to (\w+)", rest)
         if r and tab in schema: schema[r.group(1)] = schema.pop(tab)
 
+# Views: Ihre Spalten stammen aus einer beliebigen Abfrage und lassen sich hier
+# nicht zuverlaessig ableiten. Geprueft wird deshalb nur, dass es die View gibt.
+views = set()
+for f in sorted(glob.glob("supabase/migrations/*.sql")):
+    t = ohne_kommentare(open(f, encoding="utf-8").read())
+    for m in re.finditer(r"create (?:or replace )?view public\.(\w+)", t):
+        views.add(m.group(1))
+    for m in re.finditer(r"drop view if exists public\.(\w+)\s*;\s*$", t, re.M):
+        pass  # ein drop vor dem create ist der Normalfall, keine Entfernung
+
 app = open("app/page.tsx", encoding="utf-8").read()
 for f in glob.glob("app/api/**/*.ts", recursive=True) + glob.glob("lib/*.ts"):
     app += open(f, encoding="utf-8").read()
@@ -65,6 +75,7 @@ for name, muster in [("Lesend", r'\.from\("(\w+)"\)\s*\n?\s*\.select\(\s*"([^"]+
     probleme, n = [], 0
     for m in re.finditer(muster, app):
         tab, inhalt = m.group(1), m.group(2)
+        if tab in views: continue   # View: nur die Existenz zaehlt
         if tab not in schema: probleme.append(f"{tab}: Tabelle in keiner Migration"); continue
         felder = ([c.strip() for c in re.sub(r"\w+(?:!\w+)?\([^)]*\)", "", inhalt).split(",") if c.strip() not in ("","*",")")]
                   if name == "Lesend" else [x.group(1) for x in re.finditer(r"(?:^|,)\s*(\w+)\s*:", inhalt)])

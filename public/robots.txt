@@ -1,0 +1,5 @@
+# Die App selbst ist nur als installierte App nutzbar; im Browser steht dort nur
+# der Weg in den Store. Die Betreiber-Oberflaeche gehoert in keinen Index.
+User-agent: *
+Disallow: /betreiber
+Disallow: /api/
