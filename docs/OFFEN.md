@@ -61,9 +61,8 @@ Hand geschehen:
 | Auf einem dritten Gerät anmelden | das älteste Gerät fliegt heraus, dieses bleibt |
 | Sperren und Entsperren eines Mitglieds | Gesperrte kommen nicht wieder herein, Abgelehnte schon |
 | Sponsor eintragen mit Aktion | Aktionsknopf erscheint, nach dem Enddatum bleibt nur der Sponsor |
-| **Eigenes Konto anlegen, E-Mail bestätigen, anmelden** | landet in der Vereinssuche — und dort steht jetzt „Abmelden" **und** „Konto und persönliche Daten löschen" |
-| **Beitritt anfragen und die Anfrage offen lassen** | „Meine Vereine" zeigt denselben Löschknopf |
-| **Diesen Löschknopf tatsächlich drücken** | Konto ist weg, App steht wieder auf dem Anmeldebildschirm |
+| ~~Eigenes Konto anlegen, anmelden, löschen~~ | **am 04.09. im Simulator durchlaufen** — siehe unten |
+| **Beitritt anfragen und die Anfrage offen lassen** | „Meine Vereine" zeigt denselben Löschknopf (gleicher Baustein wie in der Vereinssuche, dort geprüft) |
 
 Seit dem Umzug in die Datenbank (02.09.) zusätzlich — jeweils **eintragen, App
 schließen, neu öffnen**; alles muss noch da sein:
@@ -80,6 +79,26 @@ schließen, neu öffnen**; alles muss noch da sein:
 | Mannschaftsansicht als Standard speichern | gilt auch auf dem zweiten Gerät |
 | Kachelreihenfolge ändern | ändert sie **nur für einen selbst** |
 | News bearbeiten, Mannschaft umbenennen und archivieren | funktioniert jetzt überhaupt erst |
+
+---
+
+### Der 5.1.1(v)-Weg ist durchlaufen
+
+Am 04.09.2026 im iOS-Simulator, auf dem Livestand, mit einem eigens angelegten
+Konto ohne Verein: Anmelden führt in die Vereinssuche, dort stehen „Abmelden"
+und „Konto und persönliche Daten löschen", die Rückfrage erscheint, und nach
+„Endgültig löschen" steht die App wieder auf dem Anmeldebildschirm. Gegenprobe
+über die Auth-Schnittstelle: Anmeldung mit denselben Daten ergibt „Invalid login
+credentials" — das Konto ist wirklich weg, nicht nur abgemeldet.
+
+### Nebenbefund: Die E-Mail-Bestätigung ist ausgeschaltet
+
+Eine Registrierung liefert sofort eine Sitzung; niemand muss eine Adresse
+bestätigen. Für die Prüfung ist das eher günstig — der Prüfer kommt ohne
+Postfach sofort in die App. Es heißt aber auch, dass sich jeder mit einer
+fremden Adresse anmelden kann. **Vor der Umstellung sollte der Löschweg
+feststehen**, sonst sitzt ein Konto, dessen Bestätigungsmail nicht ankommt,
+wieder fest. Apple verlangt die Bestätigung nicht.
 
 ---
 
