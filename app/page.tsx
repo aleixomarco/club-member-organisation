@@ -1064,7 +1064,58 @@ function AuthShell({ children, footer, club }) {
   );
 }
 
-function ClubSelectScreen({ clubs, onSelect, goNewClub }) {
+/* Nach der Anmeldung: die Vereine dieses Kontos.
+ *
+ * Die Reihenfolge war frueher umgekehrt - erst Verein waehlen, dann anmelden.
+ * Das passte nicht: Ein Konto gehoert zu einem Menschen, nicht zu einem Verein,
+ * und wer in zwei Vereinen ist, musste sich zweimal ueberlegen, wo er hin will,
+ * bevor er ueberhaupt wusste, ob seine Anmeldung stimmt.
+ *
+ * Jetzt meldet man sich an und sieht danach, wo man dazugehoert. Ist es nur
+ * einer, wird er ohne Umweg geoeffnet - dieser Bildschirm erscheint dann gar
+ * nicht. */
+function MeineVereineScreen({ mitgliedschaften, onOeffnen, onWeitererVerein, onAbmelden, laedt }) {
+  return (
+    <div className="flex flex-col h-full px-6 pt-10 pb-6 overflow-y-auto" style={{ background: C.paper }}>
+      <div className="flex flex-col items-center mb-8">
+        <div className="flex items-center justify-center mb-4" style={{ width: 76, height: 76, borderRadius: 24, background: "rgba(255,255,255,0.72)", border: "1px solid rgba(255,255,255,0.9)" }}>
+          <AppBrandMark size={46} />
+        </div>
+        <div className="text-xl text-center" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>Deine Vereine</div>
+        <div className="text-xs text-center mt-1" style={{ color: C.textDim, fontFamily: "Inter" }}>
+          {mitgliedschaften.length === 0 ? "Du gehörst noch keinem Verein an." : "Wähle den Verein, in den du möchtest."}
+        </div>
+      </div>
+
+      <div className="space-y-2 mb-6">
+        {mitgliedschaften.map((m) => (
+          <button key={m.id} onClick={() => onOeffnen(m)} disabled={laedt}
+            className="w-full flex items-center gap-3 rounded-2xl px-3.5 py-3.5 text-left"
+            style={{ background: C.glass, border: `1px solid ${C.edge}`, opacity: laedt ? .6 : 1 }}>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0" style={{ background: C.red, color: "#fff", fontFamily: "Inter" }}>
+              {(m.clubShortName || m.clubName || "?").slice(0, 2).toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-bold truncate" style={{ color: C.ink, fontFamily: "Inter" }}>{m.clubName}</div>
+              <div className="text-[11px] truncate" style={{ color: C.textDim, fontFamily: "Inter" }}>
+                {m.status === "pending" ? "Aufnahme noch nicht bestätigt" : m.display_name}
+              </div>
+            </div>
+            <ChevronRight size={16} style={{ color: C.textDim, flexShrink: 0 }} />
+          </button>
+        ))}
+      </div>
+
+      <button onClick={onWeitererVerein} className="w-full py-3 rounded-xl text-sm font-bold mb-3" style={{ background: C.ink, color: C.white, fontFamily: "Inter" }}>
+        {mitgliedschaften.length === 0 ? "Verein suchen oder anlegen" : "Weiterem Verein beitreten"}
+      </button>
+
+      <button onClick={onAbmelden} className="w-full py-2.5 text-xs font-bold" style={{ color: C.textDim, fontFamily: "Inter" }}>Abmelden</button>
+    </div>
+  );
+}
+
+function ClubSelectScreen({ clubs, onSelect, goNewClub, goBack }) {
   const [query, setQuery] = useState("");
   const filtered = query.trim()
     ? clubs.filter((c) => c.name.toLowerCase().includes(query.trim().toLowerCase()) || c.shortName.toLowerCase().includes(query.trim().toLowerCase()))
@@ -1078,8 +1129,8 @@ function ClubSelectScreen({ clubs, onSelect, goNewClub }) {
         <div className="flex items-center justify-center mb-4" style={{ width: 76, height: 76, borderRadius: 24, background: "rgba(255,255,255,0.72)", border: "1px solid rgba(255,255,255,0.85)", boxShadow: "0 14px 30px rgba(60,30,45,0.14), inset 0 1px 0 rgba(255,255,255,0.9)" }}>
           <AppBrandMark size={46} />
         </div>
-        <div className="text-xl text-center" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>Willkommen</div>
-        <div className="text-xs text-center mt-1" style={{ color: C.textDim, fontFamily: "Inter" }}>Wähle deinen Verein, um dich anzumelden oder zu registrieren.</div>
+        <div className="text-xl text-center" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>Verein finden</div>
+        <div className="text-xs text-center mt-1" style={{ color: C.textDim, fontFamily: "Inter" }}>Suche den Verein, dem du beitreten möchtest.</div>
       </div>
 
       <div className="flex items-center gap-2 rounded-xl px-3.5 py-3 mb-4" style={{ background: C.paperDim }}>
@@ -1111,8 +1162,8 @@ function ClubSelectScreen({ clubs, onSelect, goNewClub }) {
         <UserPlus size={15} /> Neuen Verein registrieren
       </button>
 
-      <div className="mt-auto pt-2 text-center text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>
-        Bereits registrierter Verein? Einfach oben auswählen.
+      <div className="mt-auto pt-2 text-center">
+        {goBack && <button onClick={goBack} className="text-xs font-bold" style={{ color: C.textDim, fontFamily: "Inter" }}>Zurück</button>}
       </div>
     </div>
   );
@@ -1296,14 +1347,17 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub, offeneS
       club={club}
       footer={
         <div className="text-center text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>
-          Neu bei {club.shortName}?{" "}
+          {club ? `Neu bei ${club.shortName}?` : "Noch kein Konto?"}{" "}
           <button onClick={goRegister} className="font-bold" style={{ color: C.red }}>Jetzt registrieren</button>
         </div>
       }
     >
       <div className="flex items-center justify-between mb-5">
         <div className="text-xl" style={{ fontFamily: "Oswald", fontWeight: 600, color: C.ink }}>Willkommen zurück</div>
-        <button onClick={goChangeClub} className="text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>Verein wechseln</button>
+        {/* "Verein wechseln" gibt es nur, wenn ueberhaupt einer gewaehlt ist.
+            Seit die Anmeldung vorn steht, ist das der Ausnahmefall - man kommt
+            nur noch ueber die Vereinssuche hierher. */}
+        {club && <button onClick={goChangeClub} className="text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>Verein wechseln</button>}
       </div>
       {/* Besteht schon eine Sitzung und gehoert dieses Konto zu dem Verein, den
           man gerade gewaehlt hat, braucht es keine erneute Anmeldung: ein Tipp,
@@ -7057,7 +7111,18 @@ export default function ClubMemberOrganisationApp() {
   const [featureOnboardingClubId, setFeatureOnboardingClubId] = useState(null);
   const [members, setMembers] = useState(INITIAL_MEMBERS);
   const [currentUserId, setCurrentUserId] = useState(null);
-  const [authScreen, setAuthScreen] = useState("club"); // club | newclub | login | register
+  /* Angemeldet wird zuerst, der Verein danach gewaehlt.
+  
+     Frueher stand die Vereinsauswahl vorn. Das passte nicht: Ein Konto gehoert
+     zu einem Menschen, nicht zu einem Verein. Wer in zwei Vereinen ist, musste
+     sich zweimal ueberlegen wohin, bevor er ueberhaupt wusste, ob seine
+     Anmeldung stimmt - und wer sich vertippt hatte, fing von vorn an.
+  
+     Reihenfolge jetzt: login -> meineVereine -> hinein. Wer nur einem Verein
+     angehoert, sieht meineVereine gar nicht; er landet direkt drin. */
+  const [authScreen, setAuthScreen] = useState("login"); // login | meineVereine | club | newclub | register
+  const [meineMitgliedschaften, setMeineMitgliedschaften] = useState([]);
+  const [vereinLaedt, setVereinLaedt] = useState(false);
   /* Angemeldet, aber (noch) ohne freigegebene Mitgliedschaft — siehe login(). */
   const [pendingAccount, setPendingAccount] = useState(null);
   const [tab, setTab] = useState("home");
@@ -7349,7 +7414,9 @@ export default function ClubMemberOrganisationApp() {
 
   const selectClub = (clubId) => { setSelectedClubId(clubId); setAuthScreen("login"); };
   const createClub = (club) => { setClubs((cs) => [...cs, club]); setSelectedClubId(club.id); setAuthScreen("register"); };
-  const changeClub = () => { setSelectedClubId(null); setAuthScreen("club"); };
+  /* "Verein wechseln" fuehrt zu den eigenen Vereinen, nicht in die Suche. Wer
+     wechselt, will fast immer zu einem, in dem er schon ist. */
+  const changeClub = () => { setSelectedClubId(null); setAuthScreen(meineMitgliedschaften.length > 0 ? "meineVereine" : "club"); };
   const updateCurrentClubLogo = (logoUrl) => setClubs((items) => items.map((club) => club.id === currentClub?.id ? { ...club, logoUrl } : club));
   const updateCurrentClubColors = (primaryColor, secondaryColor) => setClubs((items) => items.map((club) => club.id === currentClub?.id ? { ...club, primaryColor, secondaryColor } : club));
 
@@ -7499,6 +7566,8 @@ export default function ClubMemberOrganisationApp() {
         .in("status", ["active", "pending"]);
       if (abgebrochen) return;
       setOffeneSitzung({ profileId: konto.id, email: konto.email, mitgliedschaften: zugehoerig || [] });
+      /* Wer angemeldet ist, soll das Anmeldeformular gar nicht erst sehen. */
+      if ((zugehoerig || []).length > 0) await nachDerAnmeldung(konto.id);
     })();
     return () => { abgebrochen = true; };
   }, []);
@@ -7554,6 +7623,16 @@ export default function ClubMemberOrganisationApp() {
     }
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error || !data.user) return { error: "E-Mail oder Passwort ist falsch." };
+
+    /* Ohne vorgewaehlten Verein - der Regelfall seit der Umstellung - wird
+       zuerst geschaut, wo dieses Konto ueberhaupt dazugehoert. Nur wenn dabei
+       gar nichts herauskommt, greifen die Sonderfaelle weiter unten (Verein aus
+       der Registrierung, noch nicht bestaetigte Aufnahme). */
+    if (!selectedClubId) {
+      const ergebnis = await nachDerAnmeldung(data.user.id);
+      if (ergebnis?.code !== "membership_missing") return ergebnis;
+    }
+
     const loaded = await loadSupabaseMembership(data.user.id, selectedClubId);
     if (loaded?.code !== "membership_missing") return loaded;
     const metadata = data.user.user_metadata || {};
@@ -7611,6 +7690,30 @@ export default function ClubMemberOrganisationApp() {
      hinaus. Das Konto existierte in auth.users, war aus der App heraus aber
      nicht mehr erreichbar und damit auch nicht löschbar. Diese Zustände landen
      jetzt auf einer eigenen Ansicht, von der aus beides geht. */
+  /* Traegt die Mitgliedschaften dieses Kontos zusammen und entscheidet, wohin
+     es weitergeht: bei genau einem Verein direkt hinein, bei mehreren zur
+     Auswahl, bei keinem auf die Vereinssuche. */
+  const nachDerAnmeldung = async (profileId) => {
+    const { data } = await supabase.from("club_memberships")
+      .select("id,club_id,display_name,status,clubs(name,short_name)")
+      .eq("profile_id", profileId)
+      .in("status", ["active", "pending"]);
+
+    const liste = (data || []).map((m) => {
+      const verein = Array.isArray(m.clubs) ? m.clubs[0] : m.clubs;
+      return { ...m, clubName: verein?.name || "Verein", clubShortName: verein?.short_name || "" };
+    }).sort((a, b) => a.clubName.localeCompare(b.clubName, "de"));
+
+    setMeineMitgliedschaften(liste);
+
+    if (liste.length === 1) {
+      setSelectedClubId(liste[0].club_id);
+      return loadSupabaseMembership(profileId, liste[0].club_id);
+    }
+    if (liste.length > 1) { setAuthScreen("meineVereine"); return {}; }
+    return { code: "membership_missing" };
+  };
+
   const login = async (email, password) => {
     const result = await attemptLogin(email, password);
     if (result?.code === "membership_pending" || result?.code === "membership_missing") {
@@ -7618,6 +7721,15 @@ export default function ClubMemberOrganisationApp() {
       return {};
     }
     return result;
+  };
+
+  const vereinOeffnen = async (mitgliedschaft) => {
+    setVereinLaedt(true);
+    setSelectedClubId(mitgliedschaft.club_id);
+    const profileId = offeneSitzung?.profileId || (await supabase.auth.getUser()).data.user?.id;
+    const ergebnis = await loadSupabaseMembership(profileId, mitgliedschaft.club_id);
+    setVereinLaedt(false);
+    return ergebnis;
   };
 
   const leavePendingAccount = async () => {
@@ -7793,8 +7905,17 @@ export default function ClubMemberOrganisationApp() {
         {!currentUser ? (
           pendingAccount ? (
             <PendingAccountScreen account={pendingAccount} onLeave={leavePendingAccount} onDelete={deletePendingAccount} />
+          ) : authScreen === "meineVereine" ? (
+            <MeineVereineScreen
+              mitgliedschaften={meineMitgliedschaften}
+              laedt={vereinLaedt}
+              onOeffnen={vereinOeffnen}
+              onWeitererVerein={() => setAuthScreen("club")}
+              onAbmelden={async () => { if (supabase) await supabase.auth.signOut(); setMeineMitgliedschaften([]); setOffeneSitzung(null); setAuthScreen("login"); }}
+            />
           ) : authScreen === "club" ? (
-            <ClubSelectScreen clubs={clubs} onSelect={selectClub} goNewClub={() => setAuthScreen("newclub")} />
+            <ClubSelectScreen clubs={clubs} onSelect={selectClub} goNewClub={() => setAuthScreen("newclub")}
+              goBack={meineMitgliedschaften.length > 0 ? () => setAuthScreen("meineVereine") : () => setAuthScreen("login")} />
           ) : authScreen === "newclub" ? (
             <NewClubScreen onCreate={createClub} goBack={() => setAuthScreen("club")} />
           ) : authScreen === "login" ? (
