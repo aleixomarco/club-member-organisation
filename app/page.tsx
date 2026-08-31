@@ -746,6 +746,10 @@ const INITIAL_CHANNELS = [
 /* Athlet/in der Saison                                                  */
 /* ------------------------------------------------------------------ */
 const SEASON_VOTE_DEADLINE = "2026-08-31T23:59:59";
+/* Die Saison, um die es geht. Die Wahl liegt je Saison in der Datenbank -
+   ohne diese Kennung wuerde die Wahl des naechsten Jahres die des letzten
+   ueberschreiben, und es gaebe nie ein Archiv. */
+const SAISON_KENNUNG = "2025/26";
 /* Zur Wahl stehen die Athletinnen und Athleten des Vereins. Frueher war das eine
    feste Liste mit fuenf erfundenen Namen und zusammen 144 erfundenen Stimmen,
    die jedem Verein als seine eigene Wahl angezeigt wurde.
@@ -1768,11 +1772,24 @@ function Scoreboard({ nextEvent, goTo, mannschaften = [], gewaehlt, onWechsel })
     </div>
   );
 }
-function PollWidget({ poll, userId, setPolls }) {
+function PollWidget({ poll, userId, setPolls, onVote }) {
   const options = poll.options;
   const voted = poll.voterIds?.includes(userId);
   const total = options.reduce((a, o) => a + o.votes, 0);
-  const vote = (i) => { if (voted) return; setPolls((ps)=>ps.map((p)=>p.id===poll.id?{...p,options:p.options.map((x,idx)=>idx===i?{...x,votes:x.votes+1}:x),voterIds:[...(p.voterIds||[]),userId]}:p)); };
+  const [fehler, setFehler] = useState("");
+  /* Erst schreiben, dann anzeigen - und bei einem Fehler zuruecknehmen.
+     Vorher landete die Stimme im Arbeitsspeicher, den nur Administratoren
+     speicherten: Das Mitglied sah seinen Haken, die Umfrage bekam ihn nie. */
+  const vote = async (i) => {
+    if (voted) return;
+    const option = options[i];
+    setPolls((ps)=>ps.map((p)=>p.id===poll.id?{...p,options:p.options.map((x,idx)=>idx===i?{...x,votes:x.votes+1}:x),voterIds:[...(p.voterIds||[]),userId],meineAntwortId:option?.id||null}:p));
+    const ergebnis = await onVote?.(poll.id, option?.id);
+    if (ergebnis?.error) {
+      setFehler(ergebnis.error);
+      setPolls((ps)=>ps.map((p)=>p.id===poll.id?{...p,options:p.options.map((x,idx)=>idx===i?{...x,votes:Math.max(0,x.votes-1)}:x),voterIds:(p.voterIds||[]).filter((v)=>v!==userId),meineAntwortId:null}:p));
+    }
+  };
   return (
     <div className="rounded-2xl p-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
       <div className="flex items-center gap-2 mb-3">
@@ -1829,7 +1846,7 @@ function NextTrainingCard({ training }) {
     </div>
   );
 }
-function Dashboard({ user, members, events, feePaid, channels, dutyPlan, seasonVotes, polls, setPolls, werbeplaetze, onSponsorImpression, onSponsorClick, goEvents, goSeason, goTipp, goDuty, goNews, goTasks, goVehicles, currentClub, featureEnabled, dashboardTileOrder, entitlement, goSubscribe }) {
+function Dashboard({ user, members, events, feePaid, channels, dutyPlan, seasonVotes, polls, setPolls, onVote, werbeplaetze, onSponsorImpression, onSponsorClick, goEvents, goSeason, goTipp, goDuty, goNews, goTasks, goVehicles, currentClub, featureEnabled, dashboardTileOrder, entitlement, goSubscribe }) {
   const sport = currentClub?.sport || "rollhockey";
   /* Alle Kacheln in „Aktionen & Abstimmungen" hängen am Premium-Tarif
      (siehe die LockedFeature-Hüllen der jeweiligen Ansichten). Während der
@@ -2002,7 +2019,7 @@ function Dashboard({ user, members, events, feePaid, channels, dutyPlan, seasonV
       {polls.some((p) => p.active) && (
         <DashboardSection accent={C.amber} background="#FFF7E7">
           <SectionTitle eyebrow="Mitmachen" title="Deine Stimme zählt" />
-          <div className="space-y-3">{polls.filter((p)=>p.active).map((poll)=><PollWidget key={poll.id} poll={poll} userId={user.id} setPolls={setPolls}/>)}</div>
+          <div className="space-y-3">{polls.filter((p)=>p.active).map((poll)=><PollWidget key={poll.id} poll={poll} userId={user.id} setPolls={setPolls} onVote={onVote}/>)}</div>
         </DashboardSection>
       )}
 
@@ -2020,7 +2037,13 @@ function Dashboard({ user, members, events, feePaid, channels, dutyPlan, seasonV
 /* ------------------------------------------------------------------ */
 /* Helferplanung (wiederverwendbar: Event-Karte, Helferplanung-Tab, Admin) */
 /* ------------------------------------------------------------------ */
-function toggleHelperSelf(setDutyPlan, eventId, station, userId) {
+/* Ein- und Austragen in einen Helferdienst.
+ *
+ * Der Eintrag geht in die Tabelle duty_assignments. Vorher lag der ganze
+ * Helferplan im gemeinsamen Zustandsblock, den nur Administratoren schreiben -
+ * wer sich als Mitglied eintrug, sah seinen Namen und war beim naechsten
+ * Oeffnen wieder draussen. */
+function toggleHelperSelf(setDutyPlan, eventId, station, userId, onSetzen) {
   setDutyPlan((dp) => {
     const plan = dp[eventId] || {};
     const list = plan[station] || [];
@@ -2028,10 +2051,11 @@ function toggleHelperSelf(setDutyPlan, eventId, station, userId) {
     let nextList;
     if (already) nextList = list.filter((id) => id !== userId);
     else { if (list.length >= STATION_CAP) return dp; nextList = [...list, userId]; }
+    onSetzen?.(eventId, station, userId, !already);
     return { ...dp, [eventId]: { ...plan, [station]: nextList } };
   });
 }
-function HelperSlots({ ev, members, currentUser, dutyPlan, setDutyPlan, eligible }) {
+function HelperSlots({ ev, members, currentUser, dutyPlan, setDutyPlan, eligible, onSetzen }) {
   const plan = dutyPlan[ev.id] || {};
   return (
     <div className="space-y-2">
@@ -2047,7 +2071,7 @@ function HelperSlots({ ev, members, currentUser, dutyPlan, setDutyPlan, eligible
               <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{names.length ? names.join(", ") : "Noch niemand eingetragen"} · {list.length}/{STATION_CAP}</div>
             </div>
             {eligible && (
-              <button onClick={() => toggleHelperSelf(setDutyPlan, ev.id, station, currentUser.id)} disabled={!imIn && full}
+              <button onClick={() => toggleHelperSelf(setDutyPlan, ev.id, station, currentUser.id, onSetzen)} disabled={!imIn && full}
                 className="px-2.5 py-1 rounded-full text-[11px] flex-shrink-0"
                 style={{ fontFamily: "Inter", fontWeight: 700, background: imIn ? C.green : full ? C.paperDim : C.ink, color: imIn ? "#fff" : full ? C.textDim : "#fff" }}>
                 {imIn ? "Eingetragen ✓" : full ? "Voll" : "Übernehmen"}
@@ -2168,7 +2192,7 @@ function CarpoolSection({ ev, currentUser }) {
 
 /* initialOpen: Im Kalender-Overlay ist bereits klar, welcher Termin gemeint ist —
    dort wird die Karte aufgeklappt gezeigt, statt noch einmal tippen zu lassen. */
-function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser, dutyPlan, setDutyPlan, canCancelTraining, onCancelTraining, onDeleteTraining, currentClub, featureEnabled, initialOpen = false }) {
+function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser, dutyPlan, setDutyPlan, onDienstSetzen, canCancelTraining, onCancelTraining, onDeleteTraining, currentClub, featureEnabled, initialOpen = false }) {
   const [open, setOpen] = useState(initialOpen);
   const meta = typeMeta[ev.type];
 
@@ -2222,7 +2246,7 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
           {ev.helperSlots && featureEnabled("duty_roster") && (
             <div className="mt-3">
               <div className="text-xs font-semibold mb-2" style={{ fontFamily: "Inter", color: C.ink }}>Helfer:innen gesucht</div>
-              <HelperSlots ev={ev} members={members} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} eligible={helperEligible} />
+              <HelperSlots ev={ev} members={members} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} eligible={helperEligible} onSetzen={onDienstSetzen} />
             </div>
           )}
           {eventIsReal && ev.type === "spiel" && ev.home === true && featureEnabled("duty_roster") && <DutyTasksSection ev={ev} currentUser={currentUser} sport={currentClub?.sport} />}
@@ -2301,19 +2325,19 @@ function EventMonthCalendar({ events, onSelect }) {
   );
 }
 
-function EventsView({ currentUser, members, events, setEvents, carpools, setCarpools, dutyPlan, setDutyPlan, werbeplaetze, onSponsorImpression, onSponsorClick, focusRequest, onFocusApplied, currentClub, featureEnabled, entitlement, goSubscribe }) {
+function EventsView({ currentUser, members, events, setEvents, carpools, setCarpools, dutyPlan, setDutyPlan, onDienstSetzen, werbeplaetze, onSponsorImpression, onSponsorClick, focusRequest, onFocusApplied, currentClub, featureEnabled, entitlement, goSubscribe }) {
   const [filter, setFilter] = useState("alle");
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
   const [eventFehler, setEventFehler] = useState("");
   const [eventDraft, setEventDraft] = useState({ type: "training", team: "", title: "", day: "", location: "", desc: "", recurring: false, weekdays: [], startTime: "19:30", endTime: "22:00", rangeStart: "", rangeEnd: "" });
-  const preferenceKey = `cmo-match-team-${currentUser.id}`;
-  const [teamFilter, setTeamFilter] = useState(() => {
-    if (typeof window === "undefined") return "alle";
-    try { return window.localStorage.getItem(preferenceKey) || "alle"; } catch { return "alle"; }
-  });
-  const [savedTeam, setSavedTeam] = useState(teamFilter);
+  /* Die Standardansicht haengt an der Mitgliedschaft, nicht am Geraet. Wer auf
+     dem Telefon "U15" gespeichert hat, will das auf dem Tablet auch - vorher
+     lag die Vorliebe im Geraetespeicher und war nach einer Neuinstallation
+     weg. */
+  const [teamFilter, setTeamFilter] = useState(currentUser.teamFilter || "alle");
+  const [savedTeam, setSavedTeam] = useState(currentUser.teamFilter || "alle");
   useEffect(() => {
     if (!focusRequest) return;
     setFilter("spiel");
@@ -2500,9 +2524,11 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
     setEvents((all) => all.filter((item) => item.seriesId !== seriesId));
     setDeleteRequest(null);
   };
-  const saveDefaultTeam = () => {
-    try { window.localStorage.setItem(preferenceKey, teamFilter); } catch {}
+  const saveDefaultTeam = async () => {
     setSavedTeam(teamFilter);
+    if (!supabase || !isDbId(currentUser.id)) return;
+    const { error } = await supabase.from("club_memberships").update({ team_filter: teamFilter }).eq("id", currentUser.id);
+    if (error) setSavedTeam(currentUser.teamFilter || "alle");
   };
 
   const handleCarpool = (id) => setCarpools((c) => ({ ...c, [userId]: { ...(c[userId] || {}), [id]: !myCarpools[id] } }));
@@ -2554,7 +2580,7 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
           carpoolOn={!!myCarpools[ev.id]} onCarpool={handleCarpool}
           currentUser={currentUser} members={members} isAdminUser={isAdminUser}
           currentClub={currentClub} featureEnabled={featureEnabled}
-          dutyPlan={dutyPlan} setDutyPlan={setDutyPlan}
+          dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={onDienstSetzen}
           canCancelTraining={canCancelFor(ev)} onCancelTraining={cancelTraining} onDeleteTraining={deleteTraining}
         />
       ))}
@@ -2574,7 +2600,7 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
               carpoolOn={!!myCarpools[openEvent.id]} onCarpool={handleCarpool}
               currentUser={currentUser} members={members} isAdminUser={isAdminUser}
               currentClub={currentClub} featureEnabled={featureEnabled}
-              dutyPlan={dutyPlan} setDutyPlan={setDutyPlan}
+              dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={onDienstSetzen}
               canCancelTraining={canCancelFor(openEvent)} onCancelTraining={(id) => { cancelTraining(id); setSelectedEvent(null); }} onDeleteTraining={(...args) => { deleteTraining(...args); setSelectedEvent(null); }}
             />
           </div>
@@ -2762,11 +2788,22 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
      Die Sperre gilt bewusst nur für die eigene Ansicht — sie ist kein
      Vereinsausschluss, den dürfen weiterhin nur Administratoren aussprechen.
      Deshalb liegt sie lokal auf dem Gerät und wird nicht in den Verein gespiegelt. */
-  const blockKey = `cmo-blocked-${user.id}`;
-  const [blocked, setBlocked] = useState(() => {
-    if (typeof window === "undefined") return [];
-    try { return JSON.parse(window.localStorage.getItem(blockKey) || "[]"); } catch { return []; }
-  });
+  /* Die Sperrliste liegt in der Datenbank, nicht im Geraetespeicher.
+     Vorher galt sie nur auf einem Geraet, war nach einer Neuinstallation weg
+     und traf ueber den ANGEZEIGTEN NAMEN - zwei Mitglieder mit demselben Namen
+     liessen sich nicht trennen, eine Umbenennung hob die Sperre auf. Jetzt
+     trifft sie das Profil, und sie bleibt.
+     Es bleibt dabei, dass sie nur die eigene Ansicht betrifft; ein
+     Vereinsausschluss ist etwas anderes und bleibt der Vereinsleitung. */
+  const [blocked, setBlocked] = useState([]);
+  useEffect(() => {
+    if (!supabase || !user.authProfileId || !isDbId(user.clubId)) return;
+    let weg = false;
+    supabase.from("blocked_authors").select("blocked_profile_id")
+      .eq("profile_id", user.authProfileId).eq("club_id", user.clubId)
+      .then(({ data }) => { if (!weg) setBlocked((data || []).map((z) => z.blocked_profile_id)); });
+    return () => { weg = true; };
+  }, [user.authProfileId, user.clubId]);
 
   /* Kein einziger Kanal sichtbar - moeglich, seit die Sichtbarkeit an der
      Mannschaft haengt: ein Mitglied ohne Mannschaft, ein Elternteil ohne
@@ -2801,12 +2838,28 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
     || (active.id === "news" && user.roles.includes("redakteur"))
     || (active.writeRoles ? active.writeRoles.some((r) => user.roles.includes(r)) : !active.adminOnly);
 
-  const persistBlocked = (next) => {
-    setBlocked(next);
-    try { window.localStorage.setItem(blockKey, JSON.stringify(next)); } catch {}
+  const blockAuthor = async (autorId) => {
+    if (!autorId || autorId === user.authProfileId || blocked.includes(autorId)) return;
+    setBlocked((b) => [...b, autorId]);
+    if (!supabase || !user.authProfileId || !isDbId(user.clubId)) return;
+    const { error } = await supabase.from("blocked_authors").insert({
+      profile_id: user.authProfileId, club_id: user.clubId, blocked_profile_id: autorId,
+    });
+    if (error) setBlocked((b) => b.filter((id) => id !== autorId));
   };
-  const blockAuthor = (who) => { if (who && !blocked.includes(who)) persistBlocked([...blocked, who]); };
-  const unblockAuthor = (who) => persistBlocked(blocked.filter((name) => name !== who));
+  const unblockAuthor = async (autorId) => {
+    setBlocked((b) => b.filter((id) => id !== autorId));
+    if (!supabase || !user.authProfileId || !isDbId(user.clubId)) return;
+    const { error } = await supabase.from("blocked_authors").delete()
+      .eq("profile_id", user.authProfileId).eq("club_id", user.clubId).eq("blocked_profile_id", autorId);
+    if (error) setBlocked((b) => (b.includes(autorId) ? b : [...b, autorId]));
+  };
+  /* Fuer die Anzeige der Sperrliste braucht es Namen, gespeichert sind
+     Kennungen. Wer nicht mehr im Verein ist, steht mit seiner alten Nachricht
+     trotzdem da - deshalb der Rueckfall auf den Namen aus der Nachricht. */
+  const nameZuProfil = (autorId) => (members || []).find((m) => m.authProfileId === autorId)?.name
+    || (active?.messages || []).find((m) => m.authorId === autorId)?.who
+    || "Unbekannt";
 
   /* Auf eine Meldung muss man auch reagieren koennen. Bisher gab es den
      Meldeknopf, aber niemand konnte eine Nachricht entfernen - auch der Vorstand
@@ -2825,7 +2878,7 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
     setSendeFehler("");
     setChannels((cs) => cs.map((c) => (c.id !== active.id ? c : { ...c, messages: c.messages.filter((x) => x.id !== m.id) })));
   };
-  const visibleMessages = active.messages.filter((m) => m.who === user.name || !blocked.includes(m.who));
+  const visibleMessages = active.messages.filter((m) => m.authorId === user.authProfileId || !blocked.includes(m.authorId));
 
   const send = async () => {
     if (!text.trim() || !canPost) return;
@@ -2885,9 +2938,9 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
         <div className="mx-4 mb-3 rounded-xl px-3 py-2" style={{ background: C.paperDim }}>
           <div className="text-[10px] font-bold mb-1.5" style={{ color: C.textDim }}>Für dich ausgeblendet</div>
           <div className="flex flex-wrap gap-1.5">
-            {blocked.map((name) => (
-              <button key={name} onClick={() => unblockAuthor(name)} className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold" style={{ background: C.glass, border: `1px solid ${C.edge}`, color: C.ink }}>
-                {name} <X size={10} style={{ color: C.textDim }} />
+            {blocked.map((autorId) => (
+              <button key={autorId} onClick={() => unblockAuthor(autorId)} className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold" style={{ background: C.glass, border: `1px solid ${C.edge}`, color: C.ink }}>
+                {nameZuProfil(autorId)} <X size={10} style={{ color: C.textDim }} />
               </button>
             ))}
           </div>
@@ -2918,7 +2971,7 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
                 <div className="flex items-center gap-2 mt-0.5">
                   <div className="text-[10px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{m.time}</div>
                   {!mine && <a href={`mailto:${legal.email}?subject=${encodeURIComponent("Nachricht melden - " + (active.name || "Chat"))}&body=${encodeURIComponent(`Ich möchte folgende Nachricht melden:\n\nVerfasser: ${m.who}\nInhalt: ${m.text || ""}\n\nGrund:\n`)}`} className="text-[10px]" style={{ color: C.textDim, fontFamily: "Inter", textDecoration: "underline" }}>Melden</a>}
-                  {!mine && <button onClick={() => blockAuthor(m.who)} className="text-[10px]" style={{ color: C.textDim, fontFamily: "Inter", textDecoration: "underline" }}>Blockieren</button>}
+                  {!mine && <button onClick={() => blockAuthor(m.authorId)} className="text-[10px]" style={{ color: C.textDim, fontFamily: "Inter", textDecoration: "underline" }}>Blockieren</button>}
                   {(mine || darfModerieren) && <button onClick={() => nachrichtLoeschen(m)} className="text-[10px]" style={{ color: C.textDim, fontFamily: "Inter", textDecoration: "underline" }}>Löschen</button>}
                 </div>
               </div>
@@ -5628,12 +5681,25 @@ function ProfileView({ user, members, setMembers, currentClub, werbeplaetze, onS
 /* ------------------------------------------------------------------ */
 /* Athlet/in der Saison — Wahl                                            */
 /* ------------------------------------------------------------------ */
-function SeasonVoteView({ currentUser, members, seasonVotes, setSeasonVotes }) {
+function SeasonVoteView({ currentUser, members, seasonVotes, setSeasonVotes, onVote }) {
   const closed = new Date() > new Date(SEASON_VOTE_DEADLINE);
   const { d, h, m } = useCountdown(SEASON_VOTE_DEADLINE);
   const myVote = seasonVotes[currentUser.id];
   const { counts, total, sorted } = seasonResults(seasonVotes, saisonKandidaten(members));
-  const vote = (id) => !closed && setSeasonVotes((v) => ({ ...v, [currentUser.id]: id }));
+  const [fehler, setFehler] = useState("");
+  /* Die Stimme geht in die Datenbank. Vorher lag sie im Zustandsblock, den nur
+     Administratoren speichern - die Wahl zaehlte also nur die Stimmen der
+     Vereinsleitung, und auch die nur bis zum naechsten Neuladen. */
+  const vote = async (id) => {
+    if (closed) return;
+    const vorher = seasonVotes[currentUser.id];
+    setSeasonVotes((v) => ({ ...v, [currentUser.id]: id }));
+    const ergebnis = await onVote?.(id);
+    if (ergebnis?.error) {
+      setFehler(ergebnis.error);
+      setSeasonVotes((v) => ({ ...v, [currentUser.id]: vorher }));
+    } else setFehler("");
+  };
 
   return (
     <div className="px-4 pt-4 pb-10">
@@ -5693,14 +5759,19 @@ function SeasonVoteView({ currentUser, members, seasonVotes, setSeasonVotes }) {
 /* ------------------------------------------------------------------ */
 /* Tippspiel                                                            */
 /* ------------------------------------------------------------------ */
-function TippView({ members, currentUser, events, tippPredictions, setTippPredictions, tippResults }) {
+function TippView({ members, currentUser, events, tippPredictions, setTippPredictions, tippResults, onTippSpeichern }) {
   const begegnungen = tippBegegnungen(events);
   const mine = tippPredictions[currentUser.id] || {};
+  /* Der Tipp geht in die Datenbank, sobald beide Zahlen dastehen. Vorher lag er
+     ausschliesslich im Arbeitsspeicher und war beim naechsten Oeffnen weg -
+     samt der Punkte, die die Rangliste daraus rechnet. */
   const setPred = (matchId, side, val) => {
     setTippPredictions((tp) => {
       const userPreds = tp[currentUser.id] || {};
       const cur = userPreds[matchId] || { home: "", away: "" };
-      return { ...tp, [currentUser.id]: { ...userPreds, [matchId]: { ...cur, [side]: val } } };
+      const neu = { ...cur, [side]: val };
+      onTippSpeichern?.(matchId, neu.home, neu.away);
+      return { ...tp, [currentUser.id]: { ...userPreds, [matchId]: neu } };
     });
   };
   const leaderboard = members.map((member) => ({ ...member, calculatedTippPoints: totalTippPoints(member.id, tippPredictions, tippResults, begegnungen) }))
@@ -5766,7 +5837,7 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
 /* ------------------------------------------------------------------ */
 /* Helferplanung — eigene Ansicht                                       */
 /* ------------------------------------------------------------------ */
-function DutyView({ members, currentUser, events, dutyPlan, setDutyPlan }) {
+function DutyView({ members, currentUser, events, dutyPlan, setDutyPlan, onDienstSetzen }) {
   const helperEvents = (events || []).filter((e) => e.helperSlots && e.helperSlots.length);
   const formalMember = isFormalMember(currentUser);
   const oldEnough = age(currentUser.birthdate) >= 16;
@@ -5804,14 +5875,14 @@ function DutyView({ members, currentUser, events, dutyPlan, setDutyPlan }) {
               </div>
               <Pill bg={ev.home ? C.red : typeMeta[ev.type].color}>{ev.home ? "Heimspiel" : typeMeta[ev.type].label}</Pill>
             </div>
-            <HelperSlots ev={ev} members={members} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} eligible={eligible} />
+            <HelperSlots ev={ev} members={members} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} eligible={eligible} onSetzen={onDienstSetzen} />
           </div>
         );
       })}
     </div>
   );
 }
-function AdminDutyPanel({ members, events, dutyPlan, setDutyPlan }) {
+function AdminDutyPanel({ members, events, dutyPlan, setDutyPlan, onSetzen }) {
   const helperEvents = (events || []).filter((e) => e.helperSlots && e.helperSlots.length);
   const formalMembers = members.filter((m) => isFormalMember(m));
   const add = (eventId, station, memberId) => {
@@ -5820,12 +5891,14 @@ function AdminDutyPanel({ members, events, dutyPlan, setDutyPlan }) {
       const plan = dp[eventId] || {};
       const list = plan[station] || [];
       if (list.includes(memberId) || list.length >= STATION_CAP) return dp;
+      onSetzen?.(eventId, station, memberId, true);
       return { ...dp, [eventId]: { ...plan, [station]: [...list, memberId] } };
     });
   };
   const remove = (eventId, station, memberId) => {
     setDutyPlan((dp) => {
       const plan = dp[eventId] || {};
+      onSetzen?.(eventId, station, memberId, false);
       return { ...dp, [eventId]: { ...plan, [station]: (plan[station] || []).filter((id) => id !== memberId) } };
     });
   };
@@ -5914,7 +5987,7 @@ function ProtocolCard({ protocol, members, onToggleTask }) {
     </div>
   );
 }
-function ProtokollePanel({ members, protocols, setProtocols, clubId }) {
+function ProtokollePanel({ members, protocols, setProtocols, clubId, onSpeichern, onAufgabe }) {
   const [title, setTitle] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [attendees, setAttendees] = useState([]);
@@ -5928,6 +6001,8 @@ function ProtokollePanel({ members, protocols, setProtocols, clubId }) {
   const openTasks = protocols.flatMap((p) => p.tasks.filter((t) => !t.done).map((t) => ({ ...t, protocolTitle: p.title, protocolId: p.id })));
 
   const toggleTaskDone = (protocolId, taskId) => {
+    const jetztErledigt = !(protocols.find((p) => p.id === protocolId)?.tasks || []).find((t) => t.id === taskId)?.done;
+    onAufgabe?.(taskId, jetztErledigt);
     setProtocols((ps) => ps.map((p) => (p.id !== protocolId ? p : { ...p, tasks: p.tasks.map((t) => (t.id === taskId ? { ...t, done: !t.done } : t)) })));
   };
 
@@ -5939,12 +6014,16 @@ function ProtokollePanel({ members, protocols, setProtocols, clubId }) {
   const updateDraftTask = (id, patch) => setDraftTasks((ts) => ts.map((t) => (t.id === id ? { ...t, ...patch } : t)));
   const removeDraftTask = (id) => setDraftTasks((ts) => ts.filter((t) => t.id !== id));
 
-  const saveProtocol = () => {
+  const [speicherFehler, setSpeicherFehler] = useState("");
+  const saveProtocol = async () => {
     if (!title.trim() || !rawText.trim()) return;
-    setProtocols((ps) => [
-      { id: "p" + Date.now(), title: title.trim(), date, attendees, rawText, tasks: draftTasks.filter((t) => t.text.trim()) },
-      ...ps,
-    ]);
+    const entwurf = { title: title.trim(), date, attendees, rawText, tasks: draftTasks.filter((t) => t.text.trim()) };
+    /* Erst schreiben, dann anzeigen - die Kennungen der Aufgaben kommen aus der
+       Datenbank, und ohne sie liesse sich hinterher kein Haken setzen. */
+    const ergebnis = await onSpeichern?.(entwurf);
+    if (ergebnis?.error) { setSpeicherFehler(ergebnis.error); return; }
+    setSpeicherFehler("");
+    setProtocols((ps) => [{ ...entwurf, id: ergebnis?.id || "p" + Date.now() }, ...ps]);
     if (supabase && clubId) supabase.rpc("notify_club", { target_club: clubId, p_notif_type: "protocols", p_title: "Neues Vorstandsprotokoll", p_body: title.trim() });
     setTitle(""); setAttendees([]); setRawText(""); setDraftTasks([]);
   };
@@ -6051,9 +6130,12 @@ function ProtokollePanel({ members, protocols, setProtocols, clubId }) {
 /* ------------------------------------------------------------------ */
 /* Automatisierungen                                                    */
 /* ------------------------------------------------------------------ */
-function AutomationsPanel({ members, feePaid, remindersSent, setRemindersSent, welcomeAutomation, setWelcomeAutomation, billingAutomation, setBillingAutomation }) {
+function AutomationsPanel({ members, feePaid, remindersSent, setRemindersSent, welcomeAutomation, setWelcomeAutomation, billingAutomation, setBillingAutomation, onEinstellung, onErinnerung }) {
   const openMembers = members.filter((m) => isFormalMember(m) && !feePaid[m.id]);
-  const sendReminder = (id) => setRemindersSent((r) => ({ ...r, [id]: true }));
+  /* Der Vermerk gehoert in die Datenbank: Vorher stand er im Zustandsblock und
+     ging verloren, sobald ein anderer Administrator speicherte - dann wurde
+     dieselbe Person ein zweites Mal erinnert. */
+  const sendReminder = (id) => { onErinnerung?.(id); setRemindersSent((r) => ({ ...r, [id]: new Date().toISOString() })); };
 
   return (
     <div className="space-y-6">
@@ -6084,8 +6166,8 @@ function AutomationsPanel({ members, feePaid, remindersSent, setRemindersSent, w
         )}
       </div>
 
-      <ToggleCard title="Automatische Beitragsperioden" desc="Am 1. jedes Monats werden neue Beitragsposten für alle aktiven Mitglieder erzeugt. Nächster Lauf: 01.09.2026." value={billingAutomation} onChange={setBillingAutomation} />
-      <ToggleCard title="Willkommens-Automatik" desc="Neue Mitglieder erhalten automatisch eine Begrüßung im Kanal „Vereins-News“." value={welcomeAutomation} onChange={setWelcomeAutomation} />
+      <ToggleCard title="Automatische Beitragsperioden" desc="Am 1. jedes Monats werden neue Beitragsposten für alle aktiven Mitglieder erzeugt. Nächster Lauf: 01.09.2026." value={billingAutomation} onChange={(w)=>{onEinstellung?.("billing_automation",w);setBillingAutomation(w);}} />
+      <ToggleCard title="Willkommens-Automatik" desc="Neue Mitglieder erhalten automatisch eine Begrüßung im Kanal „Vereins-News“." value={welcomeAutomation} onChange={(w)=>{onEinstellung?.("welcome_automation",w);setWelcomeAutomation(w);}} />
     </div>
   );
 }
@@ -6359,17 +6441,23 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
   );
 }
 
-function PollManagerPanel({ polls, setPolls, clubId }) {
+function PollManagerPanel({ polls, setPolls, clubId, onAnlegen, onUmschalten }) {
   const [title, setTitle] = useState("");
   const [options, setOptions] = useState(["", ""]);
-  const create = () => {
+  const [fehler, setFehler] = useState("");
+  const create = async () => {
     const clean = options.map((o)=>o.trim()).filter(Boolean);
     if (!title.trim() || clean.length < 2) return;
-    setPolls((ps)=>[{ id:`poll-${Date.now()}`, title:title.trim(), active:true, options:clean.map((label)=>({label,votes:0})), voterIds:[] },...ps]);
+    /* Erst anlegen lassen, dann anzeigen: Die Kennung kommt aus der Datenbank,
+       und ohne sie liesse sich fuer die Umfrage gar nicht abstimmen. */
+    const ergebnis = await onAnlegen?.(title.trim(), clean);
+    if (ergebnis?.error) { setFehler(ergebnis.error); return; }
+    setFehler("");
+    setPolls((ps)=>[{ id: ergebnis?.id || `poll-${Date.now()}`, title:title.trim(), active:true, options:clean.map((label)=>({label,votes:0})), voterIds:[], meineAntwortId:null },...ps]);
     if (supabase && clubId) supabase.rpc("notify_club", { target_club: clubId, p_notif_type: "polls", p_title: "Neue Umfrage", p_body: title.trim() });
     setTitle(""); setOptions(["",""]);
   };
-  return <div className="space-y-4"><div className="rounded-2xl p-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">Neue Mitmach-Umfrage</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>Mindestens zwei Antwortmöglichkeiten eintragen.</div><input value={title} onChange={(e)=>setTitle(e.target.value)} placeholder="Frage oder Titel" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim}}/>{options.map((o,i)=><input key={i} value={o} onChange={(e)=>setOptions((all)=>all.map((x,idx)=>idx===i?e.target.value:x))} placeholder={`Antwort ${i+1}`} className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2" style={{background:C.paperDim}}/>)}<div className="flex gap-2"><button onClick={()=>setOptions((o)=>[...o,""])} className="px-3 py-2 rounded-lg text-xs font-bold" style={{background:C.paperDim,color:C.ink}}>＋ Antwort</button><button onClick={create} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{background:C.red,color:C.white}}>Veröffentlichen</button></div></div><div className="space-y-2">{polls.map((poll)=><div key={poll.id} className="rounded-xl p-3 flex items-center gap-3" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="flex-1"><div className="text-xs font-bold">{poll.title}</div><div className="text-[10px] mt-1" style={{color:C.textDim}}>{poll.options.length} Antworten · {poll.options.reduce((n,o)=>n+o.votes,0)} Stimmen</div></div><button onClick={()=>setPolls((ps)=>ps.map((p)=>p.id===poll.id?{...p,active:!p.active}:p))} className="px-2.5 py-1.5 rounded-full text-[10px] font-bold" style={{background:poll.active?"rgba(231,243,236,0.72)":C.paperDim,color:poll.active?C.green:C.textDim}}>{poll.active?"Aktiv":"Inaktiv"}</button></div>)}</div></div>;
+  return <div className="space-y-4"><div className="rounded-2xl p-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">Neue Mitmach-Umfrage</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>Mindestens zwei Antwortmöglichkeiten eintragen.</div><input value={title} onChange={(e)=>setTitle(e.target.value)} placeholder="Frage oder Titel" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim}}/>{options.map((o,i)=><input key={i} value={o} onChange={(e)=>setOptions((all)=>all.map((x,idx)=>idx===i?e.target.value:x))} placeholder={`Antwort ${i+1}`} className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2" style={{background:C.paperDim}}/>)}<div className="flex gap-2"><button onClick={()=>setOptions((o)=>[...o,""])} className="px-3 py-2 rounded-lg text-xs font-bold" style={{background:C.paperDim,color:C.ink}}>＋ Antwort</button><button onClick={create} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{background:C.red,color:C.white}}>Veröffentlichen</button></div>{fehler&&<div role="status" className="text-[11px] rounded-xl px-3 py-2 mt-2" style={{background:"rgba(253,236,236,0.72)",color:C.red}}>{fehler}</div>}</div><div className="space-y-2">{polls.map((poll)=><div key={poll.id} className="rounded-xl p-3 flex items-center gap-3" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="flex-1"><div className="text-xs font-bold">{poll.title}</div><div className="text-[10px] mt-1" style={{color:C.textDim}}>{poll.options.length} Antworten · {poll.options.reduce((n,o)=>n+o.votes,0)} Stimmen</div></div><button onClick={()=>{onUmschalten?.(poll.id,!poll.active);setPolls((ps)=>ps.map((p)=>p.id===poll.id?{...p,active:!p.active}:p));}} className="px-2.5 py-1.5 rounded-full text-[10px] font-bold" style={{background:poll.active?"rgba(231,243,236,0.72)":C.paperDim,color:poll.active?C.green:C.textDim}}>{poll.active?"Aktiv":"Inaktiv"}</button></div>)}</div></div>;
 }
 
 function MatchResultsPanel({ results, onSave, events }) {
@@ -6587,7 +6675,7 @@ function RolesPanel({ members, setMembers }) {
 /* ------------------------------------------------------------------ */
 /* System (Sys-Admin)                                                   */
 /* ------------------------------------------------------------------ */
-function SystemPanel({ members, channels, setChannels, maintenanceMode, setMaintenanceMode, onResetDemo }) {
+function SystemPanel({ members, channels, setChannels, maintenanceMode, setMaintenanceMode, onResetDemo, onEinstellung }) {
   /* Die Sicherheitsabfrage vor dem Zuruecksetzen. Der Zustand war beim Umbau der
      Kanalverwaltung verschwunden, die beiden Verwendungen weiter unten blieben
      stehen - damit riss Verwaltung > System mit einem ReferenceError ab, sobald
@@ -6596,7 +6684,7 @@ function SystemPanel({ members, channels, setChannels, maintenanceMode, setMaint
 
   return (
     <div className="space-y-6">
-      <ToggleCard title="Wartungsmodus" desc="Hinweis-Banner für alle Nutzer:innen einblenden." value={maintenanceMode} onChange={setMaintenanceMode} />
+      <ToggleCard title="Wartungsmodus" desc="Hinweis-Banner für alle Nutzer:innen einblenden." value={maintenanceMode} onChange={(w)=>{onEinstellung?.("maintenance_mode",w);setMaintenanceMode(w);}} />
 
         <div className="rounded-2xl p-3 mb-3" style={{ background: C.paperDim }}>
           <div className="text-sm mb-1" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Chat-Kanäle</div>
@@ -7216,6 +7304,8 @@ function AdminView({
   welcomeAutomation, setWelcomeAutomation, billingAutomation, setBillingAutomation,
   werbeplaetze, onWerbeplaetzeGeaendert, polls, setPolls, tippResults, onSaveTippResult,
   dashboardTileOrder, setDashboardTileOrder,
+  onUmfrageAnlegen, onUmfrageUmschalten, onDienstSetzen, onProtokollSpeichern, onAufgabeUmschalten,
+  onEinstellung, onErinnerung,
   currentClub, onClubLogoUpdated, onClubColorsUpdated, clubFeatures, onClubFeaturesChanged,
 }) {
   const canManageClubFeatures = currentUser.roles.some((role) => ["vereinsadmin", "vorstand", "sysadmin"].includes(role));
@@ -7266,20 +7356,21 @@ function AdminView({
       {panel === "automation" && (
         <AutomationsPanel members={members} feePaid={feePaid} remindersSent={remindersSent} setRemindersSent={setRemindersSent}
           welcomeAutomation={welcomeAutomation} setWelcomeAutomation={setWelcomeAutomation}
-          billingAutomation={billingAutomation} setBillingAutomation={setBillingAutomation} />
+          billingAutomation={billingAutomation} setBillingAutomation={setBillingAutomation}
+          onEinstellung={onEinstellung} onErinnerung={onErinnerung} />
       )}
 
-      {panel === "duty" && dutyFeatureOn && <AdminDutyPanel members={members} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} />}
+      {panel === "duty" && dutyFeatureOn && <AdminDutyPanel members={members} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onSetzen={onDienstSetzen} />}
       {panel === "duty-templates" && <DutyTemplatesPanel currentUser={currentUser} sport={currentClub?.sport} />}
       {panel === "functions" && canManageClubFeatures && <ClubFeatureSettingsPanel currentClub={currentClub} clubFeatures={clubFeatures} onFeaturesChanged={onClubFeaturesChanged} dashboardTileOrder={dashboardTileOrder} setDashboardTileOrder={setDashboardTileOrder} />}
-      {panel === "protokolle" && <ProtokollePanel members={members} protocols={protocols} setProtocols={setProtocols} clubId={currentUser.clubId} />}
+      {panel === "protokolle" && <ProtokollePanel members={members} protocols={protocols} setProtocols={setProtocols} clubId={currentUser.clubId} onSpeichern={onProtokollSpeichern} onAufgabe={onAufgabeUmschalten} />}
       {panel === "sponsoring" && <SponsoringPanel bookings={werbeplaetze} currentClub={currentClub} clubFeatures={clubFeatures} onFeaturesChanged={onClubFeaturesChanged} onChanged={onWerbeplaetzeGeaendert} />}
-      {panel === "polls" && <PollManagerPanel polls={polls} setPolls={setPolls} clubId={currentUser.clubId} />}
+      {panel === "polls" && <PollManagerPanel polls={polls} setPolls={setPolls} clubId={currentUser.clubId} onAnlegen={onUmfrageAnlegen} onUmschalten={onUmfrageUmschalten} />}
       {panel === "roles" && <><RolesPanel members={members} setMembers={setMembers} /><ClaimManagedPlayerPanel members={members} setMembers={setMembers} currentUser={currentUser} /></>}
       {panel === "results" && currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role)) && <MatchResultsPanel results={tippResults} onSave={onSaveTippResult} events={events} />}
       {panel === "families" && isSysAdmin(currentUser) && <AdminFamilyPanel members={members} setMembers={setMembers} />}
       {panel === "system" && isSysAdmin(currentUser) && (
-        <SystemPanel members={members} channels={channels} setChannels={setChannels} maintenanceMode={maintenanceMode} setMaintenanceMode={setMaintenanceMode} onResetDemo={onResetDemo} />
+        <SystemPanel members={members} channels={channels} setChannels={setChannels} maintenanceMode={maintenanceMode} setMaintenanceMode={setMaintenanceMode} onResetDemo={onResetDemo} onEinstellung={onEinstellung} />
       )}
 
       {panel === "season" && (() => {
@@ -7559,16 +7650,16 @@ export default function ClubMemberOrganisationApp() {
      anzeige_fuer_platz() - eigener Sponsor des Vereins vor Werbung des
      Betreibers, und beides nur, solange es laeuft. */
   const [werbeplaetze, setWerbeplaetze] = useState({});
-  const [dashboardTileOrder, setDashboardTileOrder] = useState(DEFAULT_DASHBOARD_TILE_ORDER);
+  /* Die Kachelreihenfolge ist eine persoenliche Vorliebe und lag trotzdem im
+     Zustandsblock des Vereins - jeder Administrator hat sie damit fuer alle
+     anderen mitgeaendert. Sie steht jetzt am Profil. Der Setzer schreibt gleich
+     mit, damit keine Aufrufstelle daran denken muss. */
+  const [dashboardTileOrder, setDashboardTileOrderIntern] = useState(DEFAULT_DASHBOARD_TILE_ORDER);
+  const setDashboardTileOrder = (wert) => {
+    if (Array.isArray(wert)) kachelreihenfolgeSpeichern(wert);
+    setDashboardTileOrderIntern(wert);
+  };
   const [polls, setPolls] = useState(INITIAL_POLLS);
-  const [adminStateLoaded, setAdminStateLoaded] = useState(false);
-  const adminSaveTimer = useRef(null);
-  /* Der Stand, wie er beim Anmelden aus der Datenbank kam. Beim Speichern wird
-     er mit dem jetzigen verglichen: Geschrieben wird nur, was sich seither
-     wirklich geaendert hat. Ohne das schreibt jeder Administrator den ganzen
-     Block - und macht damit die Aenderungen aller anderen zunichte, die er beim
-     Anmelden noch nicht kannte. */
-  const geladenerZustand = useRef({});
 
   useEffect(() => {
     setFeePaid(Object.fromEntries(members.map((member) => {
@@ -7671,55 +7762,226 @@ export default function ClubMemberOrganisationApp() {
   }, [currentClub?.id]);
   useEffect(() => { ladeWerbeplaetze(); }, [ladeWerbeplaetze]);
 
-  useEffect(() => {
-    if (!supabase || !adminStateLoaded || !selectedClubId || !currentUser || (!isAdmin(currentUser) && !canManageSponsors(currentUser))) return;
-    clearTimeout(adminSaveTimer.current);
-    adminSaveTimer.current = setTimeout(async () => {
-      const { data: authData } = await supabase.auth.getUser();
+  /* ------------------------------------------------------------------ *
+   * Vereinsdaten laden.
+   *
+   * Bis zum 01.09.2026 lag all das als ein JSON-Klumpen in club_app_state.
+   * Der wurde nur von Administratoren geschrieben - Umfrage-Stimmen,
+   * Tipps, Helferdienste und Wahlen der Mitglieder gingen also verloren,
+   * sobald jemand die App schloss. Die Tabellen dafuer gibt es seit dem
+   * Ursprungsschema; die App hat sie nie angefasst.
+   * ------------------------------------------------------------------ */
+  const ladeVereinsdaten = async (clubId, profileId, roster) => {
+    if (!supabase || !clubId) return;
+    const profilZuMitglied = Object.fromEntries((roster || []).filter((m) => m.authProfileId).map((m) => [m.authProfileId, m.id]));
 
-      /* Erst nachsehen, was inzwischen drinsteht, dann nur die eigenen
-         Aenderungen darauflegen. Vorher schrieb jeder Administrator den
-         kompletten Block aus seinem Arbeitsspeicher - wer sich um zehn
-         angemeldet und um elf etwas gespeichert hat, loeschte damit alles,
-         was ein anderer dazwischen geaendert hatte. */
-      const { data: aktuell } = await supabase.from("club_app_state").select("state").eq("club_id", selectedClubId).maybeSingle();
-      const basis = aktuell?.state || {};
-      const jetzt = {
-        dutyPlan, protocols, remindersSent, welcomeAutomation, billingAutomation,
-        polls, tippResults, maintenanceMode, seasonVotes, dashboardTileOrder,
+    const [tipps, ergebnisse, umfragen, antworten, stimmen, wahl, dienste, protokolle, aufgaben, einstellungen, erinnerungen, eigenesProfil] = await Promise.all([
+      supabase.from("predictions").select("event_id,profile_id,home_score,away_score"),
+      supabase.from("event_results").select("event_id,heim,auswaerts").eq("club_id", clubId),
+      supabase.from("polls").select("id,title,active,created_at").eq("club_id", clubId).order("created_at", { ascending: false }),
+      supabase.from("poll_options").select("id,poll_id,label,position,legacy_votes"),
+      supabase.from("poll_votes").select("poll_id,option_id,profile_id"),
+      supabase.from("season_votes").select("voter_profile_id,candidate_membership_id").eq("club_id", clubId).eq("season", SAISON_KENNUNG),
+      supabase.from("duty_assignments").select("event_id,station,membership_id"),
+      supabase.from("protocols").select("id,title,meeting_date,raw_text,attendee_membership_ids,created_at").eq("club_id", clubId).order("meeting_date", { ascending: false }),
+      supabase.from("protocol_tasks").select("id,protocol_id,text,assignee_membership_id,due_date,done"),
+      supabase.from("club_settings").select("maintenance_mode,welcome_automation,billing_automation").eq("club_id", clubId).maybeSingle(),
+      supabase.from("fee_reminders").select("membership_id,gesendet_am").eq("club_id", clubId).eq("jahr", new Date().getFullYear()),
+      profileId ? supabase.from("profiles").select("dashboard_tile_order").eq("id", profileId).maybeSingle() : Promise.resolve({ data: null }),
+    ]);
+
+    /* Tipps: In der Datenbank haengen sie am Profil, in der Oberflaeche an der
+       Mitgliedschaft. Fremde Tipps liefert die Regel erst, wenn das Ergebnis
+       feststeht - vorher koennte man sonst abschreiben. */
+    const tippBlock = {};
+    for (const t of tipps.data || []) {
+      const mid = profilZuMitglied[t.profile_id];
+      if (!mid) continue;
+      (tippBlock[mid] ||= {})[t.event_id] = { home: String(t.home_score ?? ""), away: String(t.away_score ?? "") };
+    }
+    setTippPredictions(tippBlock);
+    setTippResults(Object.fromEntries((ergebnisse.data || []).map((r) => [r.event_id, { home: String(r.heim), away: String(r.auswaerts) }])));
+
+    const antwortenJeUmfrage = {};
+    for (const o of (antworten.data || []).sort((a, b) => a.position - b.position)) (antwortenJeUmfrage[o.poll_id] ||= []).push(o);
+    const stimmenJeUmfrage = {};
+    for (const v of stimmen.data || []) (stimmenJeUmfrage[v.poll_id] ||= []).push(v);
+    setPolls((umfragen.data || []).map((p) => {
+      const meine = (stimmenJeUmfrage[p.id] || []).filter((v) => v.profile_id === profileId)[0];
+      return {
+        id: p.id, title: p.title, active: p.active,
+        options: (antwortenJeUmfrage[p.id] || []).map((o) => ({
+          id: o.id, label: o.label,
+          /* Die alten Summen aus dem Zustandsblock zaehlen mit. Dort stand nur,
+             wie viele gestimmt haben, nicht wer wie - zerlegen liesse sich das
+             nur durch Erfinden. */
+          votes: (stimmenJeUmfrage[p.id] || []).filter((v) => v.option_id === o.id).length + (o.legacy_votes || 0),
+        })),
+        voterIds: (stimmenJeUmfrage[p.id] || []).map((v) => profilZuMitglied[v.profile_id]).filter(Boolean),
+        meineAntwortId: meine?.option_id || null,
       };
-      const meineAenderungen = {};
-      for (const [schluessel, wert] of Object.entries(jetzt)) {
-        if (JSON.stringify(wert) !== JSON.stringify(geladenerZustand.current?.[schluessel])) meineAenderungen[schluessel] = wert;
-      }
-      if (Object.keys(meineAenderungen).length === 0) return;
+    }));
 
-      await supabase.from("club_app_state").upsert({
-        club_id: selectedClubId,
-        state: {
-          ...basis,
-          ...meineAenderungen,
-          /* Termine stehen ebenfalls in einer eigenen Tabelle und werden hier
-             nicht mehr mitgeschrieben. Sie standen doppelt: einmal in events,
-             einmal in diesem Block - und waren bereits auseinandergelaufen. Beim
-             Demo-Verein lagen 63 Termine in der Tabelle und 31 im Block, weil
-             der Block seit dem 16.08. nicht mehr fortgeschrieben wurde. Welcher
-             gewann, entschied die Reihenfolge zweier Effekte.
+    setSeasonVotes(Object.fromEntries((wahl.data || [])
+      .map((v) => [profilZuMitglied[v.voter_profile_id], v.candidate_membership_id])
+      .filter(([waehler]) => !!waehler)));
 
-             Kanaele stehen seit dem Umbau des Chats in einer eigenen Tabelle.
-             Wuerden sie hier weiter mitgeschrieben, ueberschriebe der
-             Zustandsblock beim naechsten Laden die echten Kanaele mit den alten
-             Demo-Eintraegen - deren Kennungen sind keine UUIDs, und das Senden
-             fiele zurueck in den fluechtigen Modus. */
-        },
-        updated_by: authData?.user?.id || null,
-      });
-      /* Ab jetzt gilt der eigene Stand als bekannt - sonst gaelte dieselbe
-         Aenderung beim naechsten Speichern erneut als neu. */
-      geladenerZustand.current = { ...basis, ...meineAenderungen };
-    }, 700);
-    return () => clearTimeout(adminSaveTimer.current);
-  }, [adminStateLoaded, selectedClubId, currentUserId, events, dutyPlan, protocols, remindersSent, welcomeAutomation, billingAutomation, polls, tippResults, maintenanceMode, seasonVotes, dashboardTileOrder, channels]);
+    const dienstBlock = {};
+    for (const d of dienste.data || []) ((dienstBlock[d.event_id] ||= {})[d.station] ||= []).push(d.membership_id);
+    setDutyPlan(dienstBlock);
+
+    const aufgabenJeProtokoll = {};
+    for (const a of aufgaben.data || []) (aufgabenJeProtokoll[a.protocol_id] ||= []).push({
+      id: a.id, text: a.text, assignee: a.assignee_membership_id || "", due: a.due_date || "", done: a.done,
+    });
+    setProtocols((protokolle.data || []).map((p) => ({
+      id: p.id, title: p.title, date: p.meeting_date, attendees: p.attendee_membership_ids || [],
+      rawText: p.raw_text || "", tasks: aufgabenJeProtokoll[p.id] || [],
+    })));
+
+    setMaintenanceMode(einstellungen.data?.maintenance_mode === true);
+    setWelcomeAutomation(einstellungen.data?.welcome_automation !== false);
+    setBillingAutomation(einstellungen.data?.billing_automation !== false);
+    setRemindersSent(Object.fromEntries((erinnerungen.data || []).map((r) => [r.membership_id, r.gesendet_am])));
+    if (Array.isArray(eigenesProfil?.data?.dashboard_tile_order) && eigenesProfil.data.dashboard_tile_order.length) {
+      setDashboardTileOrderIntern(eigenesProfil.data.dashboard_tile_order);
+    }
+  };
+
+  /* ------------------------------------------------------------------ *
+   * Schreiben.
+   *
+   * Jede Aenderung geht dorthin, wo sie hingehoert - und zwar sofort, nicht
+   * ueber einen gesammelten Block. Das ist nicht nur sauberer, es ist die
+   * einzige Fassung, die mit den Sicherheitsregeln zusammenpasst: Ein Mitglied
+   * darf seine eigene Zeile schreiben, die Vereinsleitung die des Vereins. Ein
+   * Block, der alles auf einmal schreibt, kann das nicht abbilden.
+   *
+   * Der Zustand im Arbeitsspeicher wird sofort gesetzt, damit die Oberflaeche
+   * nicht auf das Netz wartet. Geht das Schreiben schief, wird er
+   * zurueckgenommen - eine Anzeige, die etwas behauptet, was nicht in der
+   * Datenbank steht, waere schlimmer als eine kurze Zuckung.
+   * ------------------------------------------------------------------ */
+  const meineMitgliedsId = currentUserId;
+  const meinProfil = () => currentUser?.authProfileId || offeneSitzung?.profileId || null;
+
+  const tippSpeichern = async (eventId, heim, auswaerts) => {
+    if (!supabase || !meinProfil() || typeof eventId !== "string") return;
+    const zahl = (w) => (w === "" || w === null || w === undefined ? null : Number(w));
+    if (zahl(heim) === null || zahl(auswaerts) === null) {
+      await supabase.from("predictions").delete().eq("event_id", eventId).eq("profile_id", meinProfil());
+      return;
+    }
+    await supabase.from("predictions").upsert({
+      event_id: eventId, profile_id: meinProfil(),
+      home_score: zahl(heim), away_score: zahl(auswaerts),
+    }, { onConflict: "event_id,profile_id" });
+  };
+
+  const ergebnisSpeichern = async (eventId, ergebnis) => {
+    if (!supabase || !selectedClubId || typeof eventId !== "string") return;
+    await supabase.from("event_results").upsert({
+      club_id: selectedClubId, event_id: eventId,
+      heim: Number(ergebnis.home), auswaerts: Number(ergebnis.away),
+      erfasst_von: isDbId(meineMitgliedsId) ? meineMitgliedsId : null,
+    }, { onConflict: "club_id,event_id" });
+  };
+
+  const stimmeAbgeben = async (pollId, optionId) => {
+    if (!supabase || !meinProfil() || typeof pollId !== "string") return { error: "Nicht moeglich." };
+    const { error } = await supabase.from("poll_votes").upsert(
+      { poll_id: pollId, option_id: optionId, profile_id: meinProfil() },
+      { onConflict: "poll_id,profile_id" },
+    );
+    return error ? { error: "Deine Stimme konnte nicht gespeichert werden." } : {};
+  };
+
+  const umfrageAnlegen = async (titel, antworten) => {
+    if (!supabase || !selectedClubId) return { error: "Nicht moeglich." };
+    const { data: umfrage, error } = await supabase.from("polls")
+      .insert({ club_id: selectedClubId, title: titel, active: true, created_by: meinProfil() })
+      .select("id").single();
+    if (error || !umfrage) return { error: "Die Umfrage konnte nicht angelegt werden." };
+    const { error: antwortFehler } = await supabase.from("poll_options")
+      .insert(antworten.map((label, i) => ({ poll_id: umfrage.id, label, position: i })));
+    if (antwortFehler) {
+      /* Eine Umfrage ohne Antworten waere unbenutzbar und liesse sich in der
+         Oberflaeche nicht mehr loswerden. Also zurueck. */
+      await supabase.from("polls").delete().eq("id", umfrage.id);
+      return { error: "Die Antworten konnten nicht gespeichert werden." };
+    }
+    return { id: umfrage.id };
+  };
+
+  const umfrageUmschalten = async (pollId, aktiv) => {
+    if (!supabase || typeof pollId !== "string") return;
+    await supabase.from("polls").update({ active: aktiv }).eq("id", pollId);
+  };
+
+  const saisonStimmeAbgeben = async (kandidatMitgliedsId) => {
+    if (!supabase || !selectedClubId || !meinProfil()) return { error: "Nicht moeglich." };
+    const { error } = await supabase.from("season_votes").upsert({
+      club_id: selectedClubId, season: SAISON_KENNUNG,
+      voter_profile_id: meinProfil(), candidate_membership_id: kandidatMitgliedsId,
+    }, { onConflict: "club_id,season,voter_profile_id" });
+    return error ? { error: "Deine Stimme konnte nicht gespeichert werden." } : {};
+  };
+
+  const dienstSetzen = async (eventId, station, mitgliedsId, eintragen) => {
+    if (!supabase || typeof eventId !== "string" || !isDbId(mitgliedsId)) return;
+    if (eintragen) {
+      await supabase.from("duty_assignments").insert({ event_id: eventId, station, membership_id: mitgliedsId });
+    } else {
+      await supabase.from("duty_assignments").delete()
+        .eq("event_id", eventId).eq("station", station).eq("membership_id", mitgliedsId);
+    }
+  };
+
+  const protokollSpeichern = async (entwurf) => {
+    if (!supabase || !selectedClubId) return { error: "Nicht moeglich." };
+    const { data: protokoll, error } = await supabase.from("protocols").insert({
+      club_id: selectedClubId, title: entwurf.title, meeting_date: entwurf.date,
+      raw_text: entwurf.rawText, attendee_membership_ids: (entwurf.attendees || []).filter(isDbId),
+      created_by: meinProfil(),
+    }).select("id").single();
+    if (error || !protokoll) return { error: "Das Protokoll konnte nicht gespeichert werden." };
+    const aufgaben = (entwurf.tasks || []).filter((t) => t.text.trim());
+    if (aufgaben.length) {
+      await supabase.from("protocol_tasks").insert(aufgaben.map((t) => ({
+        protocol_id: protokoll.id, text: t.text.trim(),
+        assignee_membership_id: isDbId(t.assignee) ? t.assignee : null,
+        due_date: t.due || null, done: false,
+      })));
+    }
+    return { id: protokoll.id };
+  };
+
+  const aufgabeUmschalten = async (taskId, erledigt) => {
+    if (!supabase || typeof taskId !== "string") return;
+    await supabase.from("protocol_tasks").update({ done: erledigt }).eq("id", taskId);
+  };
+
+  const vereinseinstellungSetzen = async (feld, wert) => {
+    if (!supabase || !selectedClubId) return;
+    await supabase.from("club_settings").upsert(
+      { club_id: selectedClubId, [feld]: wert, updated_at: new Date().toISOString() },
+      { onConflict: "club_id" },
+    );
+  };
+
+  const erinnerungVermerken = async (mitgliedsId) => {
+    if (!supabase || !selectedClubId || !isDbId(mitgliedsId)) return;
+    await supabase.from("fee_reminders").upsert({
+      club_id: selectedClubId, membership_id: mitgliedsId, jahr: new Date().getFullYear(),
+      gesendet_am: new Date().toISOString(),
+      gesendet_von: isDbId(meineMitgliedsId) ? meineMitgliedsId : null,
+    }, { onConflict: "membership_id,jahr" });
+  };
+
+  const kachelreihenfolgeSpeichern = async (reihenfolge) => {
+    if (!supabase || !meinProfil()) return;
+    await supabase.from("profiles").update({ dashboard_tile_order: reihenfolge }).eq("id", meinProfil());
+  };
 
   /* Wer schon angemeldet ist, soll sich nicht erneut anmelden muessen, nur weil
      er einen weiteren Verein sucht - genau daran ist der Weg vorher
@@ -7809,16 +8071,15 @@ export default function ClubMemberOrganisationApp() {
        lesen - eine Meldung, aus der niemand schliessen kann, dass er schlicht
        noch keinem Verein angehoert. */
     if (!clubId) return { error: "Für dieses Konto besteht noch keine Mitgliedschaft in einem Verein.", code: "membership_missing" };
-    setAdminStateLoaded(false);
     const { data, error } = await supabase.from("club_memberships")
-      .select("id,club_id,display_name,email,member_since,membership_number,status,is_managed_profile,membership_roles(role),team_members(function,teams(name)),profiles!club_memberships_profile_id_fkey(birthdate,academic_title,first_name,last_name,contact_emails,contact_phones,gender,nationality,street,postal_code,city,country_code,notification_master,notification_preferences,auto_logout_days,calendar_sync_interval,show_birthday)")
+      .select("id,club_id,display_name,email,member_since,membership_number,status,team_filter,is_managed_profile,membership_roles(role),team_members(function,teams(name)),profiles!club_memberships_profile_id_fkey(birthdate,academic_title,first_name,last_name,contact_emails,contact_phones,gender,nationality,street,postal_code,city,country_code,notification_master,notification_preferences,auto_logout_days,calendar_sync_interval,show_birthday)")
       .eq("profile_id", profileId).eq("club_id", clubId).maybeSingle();
     if (error) return { error: "Das Vereinsprofil konnte nicht geladen werden." };
     if (!data) return { error: "Für dieses Konto besteht noch keine Mitgliedschaft in diesem Verein.", code: "membership_missing" };
     if (data.status === "pending") return { error: "Deine Registrierung wartet noch auf die Freigabe durch den Vereins-Administrator.", code: "membership_pending" };
     if (data.status !== "active") return { error: "Dieses Vereinsprofil ist derzeit nicht aktiv." };
     const { data: rosterData, error: rosterError } = await supabase.from("club_memberships")
-      .select("id,profile_id,club_id,display_name,email,member_since,membership_number,status,is_managed_profile,membership_roles(role),team_members(function,teams(name)),profiles!club_memberships_profile_id_fkey(birthdate,academic_title,first_name,last_name,contact_emails,contact_phones,gender,nationality,street,postal_code,city,country_code,notification_master,notification_preferences,auto_logout_days,calendar_sync_interval,show_birthday)")
+      .select("id,profile_id,club_id,display_name,email,member_since,membership_number,status,team_filter,is_managed_profile,membership_roles(role),team_members(function,teams(name)),profiles!club_memberships_profile_id_fkey(birthdate,academic_title,first_name,last_name,contact_emails,contact_phones,gender,nationality,street,postal_code,city,country_code,notification_master,notification_preferences,auto_logout_days,calendar_sync_interval,show_birthday)")
       .eq("club_id", clubId).in("status", ["active", "pending"]);
     if (rosterError) return { error: "Die Mitgliederliste konnte nicht geladen werden." };
     const { data: familyData, error: familyError } = await supabase.from("family_links")
@@ -7830,7 +8091,7 @@ export default function ClubMemberOrganisationApp() {
       const teamNames = [...new Set(assignments.map((entry) => entry.teams?.name).filter(Boolean))];
       const playerTeamNames = [...new Set(assignments.filter((entry) => entry.function === "spieler").map((entry) => entry.teams?.name).filter(Boolean))];
       return {
-        id: record.id, authProfileId: record.profile_id, clubId: record.club_id,
+        id: record.id, authProfileId: record.profile_id, clubId: record.club_id, teamFilter: record.team_filter || "alle",
         name: record.display_name, email: record.email || "", password: "",
         team: playerTeamNames[0] || teamNames[0] || "Mitglied", teams: teamNames, playerTeams: playerTeamNames, number: null,
         trainerTeams: [...new Set(assignments.filter((entry) => entry.function === "trainer").map((entry) => entry.teams?.name).filter(Boolean))],
@@ -7893,27 +8154,14 @@ export default function ClubMemberOrganisationApp() {
         time: new Date(post.created_at).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "2-digit" }),
       };
     }));
-    const { data: savedAppState, error: appStateError } = await supabase.from("club_app_state").select("state").eq("club_id", clubId).maybeSingle();
-    if (appStateError) return { error: "Die Verwaltungsdaten konnten nicht geladen werden." };
-    const saved = savedAppState?.state || {};
-    geladenerZustand.current = saved;
-    /* Termine kommen aus der events-Tabelle, nicht von hier - sonst
-       ueberschreibt ein alter Zustandsblock den echten Spielplan. */
-    if (saved.dutyPlan) setDutyPlan(saved.dutyPlan);
-    if (saved.protocols) setProtocols(saved.protocols);
-    if (saved.remindersSent) setRemindersSent(saved.remindersSent);
-    if (typeof saved.welcomeAutomation === "boolean") setWelcomeAutomation(saved.welcomeAutomation);
-    if (typeof saved.billingAutomation === "boolean") setBillingAutomation(saved.billingAutomation);
-    if (saved.polls) setPolls(saved.polls);
-    if (saved.tippResults) setTippResults(saved.tippResults);
-    if (typeof saved.maintenanceMode === "boolean") setMaintenanceMode(saved.maintenanceMode);
-    if (saved.seasonVotes) setSeasonVotes(saved.seasonVotes);
-    if (Array.isArray(saved.dashboardTileOrder)) setDashboardTileOrder(saved.dashboardTileOrder);
-    /* Kanaele werden hier bewusst nicht mehr gesetzt: Sie kommen aus der
-       Tabelle channels. Der Zustandsblock traegt sie nur noch als Altbestand
-       und wuerde die echten Kanaele ueberschreiben. */
+    /* Alles, was sich aendert und bleiben soll, kommt aus eigenen Tabellen.
+       Vorher lag es als ein JSON-Klumpen in club_app_state - geschrieben
+       ausschliesslich von Administratoren. Wer als Mitglied abstimmte, tippte
+       oder sich in einen Helferdienst eintrug, legte das in den Arbeitsspeicher
+       und verlor es beim naechsten Oeffnen. Die Tabellen dafuer gab es seit dem
+       ersten Tag; benutzt hat sie nur niemand. */
+    await ladeVereinsdaten(clubId, profileId, hydratedRoster);
     enterApp(member, hydratedRoster);
-    setAdminStateLoaded(true);
     return { ok: true };
   };
   /* Wer angemeldet ist, soll das auch merken.
@@ -8437,6 +8685,7 @@ export default function ClubMemberOrganisationApp() {
     setFeePaid(INITIAL_FEE_PAID); setFeeRecords(INITIAL_FEE_RECORDS); setEvents(EVENTS); setDutyPlan(INITIAL_DUTY_PLAN); setChannels(INITIAL_CHANNELS);
   };
   const saveTippResult = (matchId, result) => {
+    ergebnisSpeichern(matchId, result);
     setTippResults((currentResults) => {
       const nextResults = { ...currentResults, [matchId]: result };
       setMembers((currentMembers) => currentMembers.map((member) => ({
@@ -8554,21 +8803,21 @@ export default function ClubMemberOrganisationApp() {
             )}
 
             <div key={`${tab}-${subView || ""}`} className="tabFade flex-1 overflow-y-auto" style={{ background: C.paper }}>
-              {subView === "season" && featureEnabled("season_award") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Athlet/in der Saison"><SeasonVoteView currentUser={currentUser} members={clubMembers} seasonVotes={seasonVotes} setSeasonVotes={setSeasonVotes} /></LockedFeature>}
-              {subView === "tipp" && featureEnabled("tippspiel") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Tippspiel"><TippView members={clubMembers} currentUser={currentUser} events={events} tippPredictions={tippPredictions} setTippPredictions={setTippPredictions} tippResults={tippResults} /></LockedFeature>}
-              {subView === "duty" && featureEnabled("duty_roster") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Helferplanung"><DutyView members={clubMembers} currentUser={currentUser} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} /></LockedFeature>}
+              {subView === "season" && featureEnabled("season_award") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Athlet/in der Saison"><SeasonVoteView currentUser={currentUser} members={clubMembers} seasonVotes={seasonVotes} setSeasonVotes={setSeasonVotes} onVote={saisonStimmeAbgeben} /></LockedFeature>}
+              {subView === "tipp" && featureEnabled("tippspiel") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Tippspiel"><TippView members={clubMembers} currentUser={currentUser} events={events} tippPredictions={tippPredictions} setTippPredictions={setTippPredictions} tippResults={tippResults} onTippSpeichern={tippSpeichern} /></LockedFeature>}
+              {subView === "duty" && featureEnabled("duty_roster") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Helferplanung"><DutyView members={clubMembers} currentUser={currentUser} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={dienstSetzen} /></LockedFeature>}
               {subView === "tasks" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Aufgaben"><TasksView currentUser={currentUser} members={clubMembers} /></LockedFeature>}
               {subView === "vehicles" && featureEnabled("vehicle_booking") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Vereinsfahrzeuge"><VehiclesView currentUser={currentUser} currentClub={currentClub} /></LockedFeature>}
 
               {!subView && tab === "home" && (
-                <Dashboard user={currentUser} members={clubMembers} events={events} feePaid={!!feePaid[currentUser.id]} channels={channels} dutyPlan={dutyPlan} seasonVotes={seasonVotes} polls={polls} setPolls={setPolls}
+                <Dashboard user={currentUser} members={clubMembers} events={events} feePaid={!!feePaid[currentUser.id]} channels={channels} dutyPlan={dutyPlan} seasonVotes={seasonVotes} polls={polls} setPolls={setPolls} onVote={stimmeAbgeben}
                   werbeplaetze={werbeplaetze} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick}
                   goEvents={goToMyNextMatch} goSeason={() => setSubView("season")} goTipp={() => setSubView("tipp")} goDuty={() => setSubView("duty")} goTasks={() => setSubView("tasks")} goVehicles={() => setSubView("vehicles")} goNews={goNews}
                   currentClub={currentClub} featureEnabled={featureEnabled} dashboardTileOrder={dashboardTileOrder} entitlement={entitlement} goSubscribe={goSubscribe} />
               )}
               {!subView && tab === "events" && (
                 <EventsView currentUser={currentUser} members={clubMembers} events={events} setEvents={setEvents} carpools={carpools} setCarpools={setCarpools}
-                  dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} entitlement={entitlement} goSubscribe={goSubscribe}
+                  dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={dienstSetzen} entitlement={entitlement} goSubscribe={goSubscribe}
                   werbeplaetze={werbeplaetze} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick}
                   focusRequest={eventFocusRequest} onFocusApplied={()=>setEventFocusRequest(null)}
                   currentClub={currentClub} featureEnabled={featureEnabled} />
@@ -8584,6 +8833,9 @@ export default function ClubMemberOrganisationApp() {
                   protocols={protocols} setProtocols={setProtocols} remindersSent={remindersSent} setRemindersSent={setRemindersSent}
                   welcomeAutomation={welcomeAutomation} setWelcomeAutomation={setWelcomeAutomation} billingAutomation={billingAutomation} setBillingAutomation={setBillingAutomation}
                   werbeplaetze={werbeplaetze} onWerbeplaetzeGeaendert={ladeWerbeplaetze} polls={polls} setPolls={setPolls}
+                  onUmfrageAnlegen={umfrageAnlegen} onUmfrageUmschalten={umfrageUmschalten} onDienstSetzen={dienstSetzen}
+                  onProtokollSpeichern={protokollSpeichern} onAufgabeUmschalten={aufgabeUmschalten}
+                  onEinstellung={vereinseinstellungSetzen} onErinnerung={erinnerungVermerken}
                   tippResults={tippResults} onSaveTippResult={saveTippResult}
                   dashboardTileOrder={dashboardTileOrder} setDashboardTileOrder={setDashboardTileOrder}
                   currentClub={currentClub} onClubLogoUpdated={updateCurrentClubLogo} onClubColorsUpdated={updateCurrentClubColors} clubFeatures={clubFeatures} onClubFeaturesChanged={loadClubFeatures} />
