@@ -51,6 +51,22 @@ Hand geschehen:
 | Sperren und Entsperren eines Mitglieds | Gesperrte kommen nicht wieder herein, Abgelehnte schon |
 | Sponsor eintragen mit Aktion | Aktionsknopf erscheint, nach dem Enddatum bleibt nur der Sponsor |
 
+Seit dem Umzug in die Datenbank (02.09.) zusätzlich — jeweils **eintragen, App
+schließen, neu öffnen**; alles muss noch da sein:
+
+| Weg | Worauf zu achten ist |
+|---|---|
+| Als einfaches Mitglied in einer Umfrage abstimmen | die Stimme zählt und bleibt |
+| Als einfaches Mitglied ein Spiel tippen | der Tipp bleibt, Punkte erscheinen nach dem Ergebnis |
+| Fremde Tipps vor dem Ergebnis | dürfen **nicht** sichtbar sein |
+| In der Athletenwahl wählen und umwählen | beides möglich, bleibt erhalten |
+| Sich in einen Helferdienst eintragen und wieder austragen | bleibt erhalten |
+| Protokoll anlegen, Aufgabe abhaken | bleibt erhalten |
+| Jemanden im Chat blockieren | auch nach Neustart und auf dem zweiten Gerät blockiert |
+| Mannschaftsansicht als Standard speichern | gilt auch auf dem zweiten Gerät |
+| Kachelreihenfolge ändern | ändert sie **nur für einen selbst** |
+| News bearbeiten, Mannschaft umbenennen und archivieren | funktioniert jetzt überhaupt erst |
+
 ---
 
 ## Was fehlt, aber nicht blockiert
@@ -74,12 +90,25 @@ ein Zugang durch einen halben Verein gereicht wird, nicht jeden Trick abfangen.
 Im privaten Fenster eines Browsers greift sie gar nicht; in der App gibt es
 kein privates Fenster.
 
-### Der gemeinsame Zustandsblock
+### Der gemeinsame Zustandsblock — erledigt
 
-`club_app_state` hält weiterhin Helferplan, Protokolle und Umfragen. Der
-lautlose Datenverlust bei zwei gleichzeitigen Administratoren ist behoben,
-Termine, Kanäle und Anzeigen sind ausgezogen. Für den Rest wären eigene
-Tabellen der sauberere Weg.
+`club_app_state` wird seit dem 02.09. weder gelesen noch geschrieben. Alles
+darin ist in eigene Tabellen umgezogen; die Tabelle bleibt als Sicherung
+stehen. Wer sie in ein paar Monaten leer vorfindet und niemanden vermisst, kann
+sie löschen.
+
+Eine Einschränkung ist geblieben und lässt sich nicht beheben: Im Block stand je
+Umfrage-Antwort nur eine **Stimmensumme**, nicht wer wie gestimmt hat. Diese
+Summen stehen jetzt als `poll_options.legacy_votes` daneben und werden
+mitgezählt. Sie in einzelne Stimmen zu zerlegen hieße, sie zu erfinden.
+
+### Strafen: bezahlt-Vermerk und Saisonarchiv
+
+`team_penalty_assignments` hat die Spalten `paid_at`, `paid_by`,
+`archived_season` und `archived_at`, und es gibt die Funktionen
+`mark_penalty_paid()` und `run_season_reset()` dafür. Die App liest die Spalten,
+ruft die Funktionen aber nirgends auf — der Vermerk „bezahlt" lässt sich also
+nicht setzen.
 
 ### „Drei Gratismonate"
 
