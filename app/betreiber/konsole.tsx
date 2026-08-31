@@ -14,6 +14,7 @@ type Verein = {
   id: string; name: string; short_name: string | null; city: string | null; sport: string | null;
   created_at: string; vereinbarte_zugaenge: number | null; sponsoring_freigeschaltet: boolean;
   tarif: string; grenze: number; konten: number; laeuft_bis: string | null; beleg: string | null;
+  referral_credit_months: number;
   mitglieder: number; offene_aufnahmen: number; eigene_sponsoren: number; ansprechpartner: string | null;
 };
 
@@ -199,7 +200,7 @@ export default function BetreiberKonsole() {
             <thead>
               <tr style={{ textAlign: "left", color: "#8A7F85", fontSize: 11, textTransform: "uppercase", letterSpacing: ".06em" }}>
                 <th style={zelle}>Verein</th><th style={zelle}>Tarif</th><th style={zelle}>Zugänge</th>
-                <th style={zelle}>Sponsoren</th><th style={zelle}>Läuft bis</th><th style={zelle}>Ansprechpartner</th><th style={zelle} />
+                <th style={zelle}>Sponsoren</th><th style={zelle}>Läuft bis</th><th style={zelle}>Guthaben</th><th style={zelle}>Ansprechpartner</th><th style={zelle} />
               </tr>
             </thead>
             <tbody>
@@ -220,6 +221,22 @@ export default function BetreiberKonsole() {
                     </td>
                     <td style={zelle}>{v.sponsoring_freigeschaltet ? `ja (${v.eigene_sponsoren})` : "—"}</td>
                     <td style={zelle}>{datum(v.laeuft_bis)}</td>
+                    {/* Offenes Empfehlungsguthaben. Es stand bisher in keiner
+                        Uebersicht - die App sagt dem Werber aber zu, es werde
+                        "automatisch beruecksichtigt". Wer die Rechnung
+                        schreibt, muss es sehen. */}
+                    <td style={zelle}>
+                      {v.referral_credit_months > 0 ? (
+                        <button style={{ ...knopfLeise, marginRight: 0, color: "#8A5A00" }} disabled={laeuft}
+                          onClick={async () => {
+                            if (!window.confirm(`${v.referral_credit_months} Gutschriftsmonate für „${v.name}" jetzt an die Laufzeit anhängen?`)) return;
+                            const e = await aktion({ art: "guthaben", verein: v.id });
+                            if (e) setMeldung(`${e.ergebnis?.eingeloest ?? 0} Monate angehängt, ${e.ergebnis?.rest ?? 0} übrig.`);
+                          }}>
+                          {v.referral_credit_months} Mon. einlösen
+                        </button>
+                      ) : "—"}
+                    </td>
                     <td style={{ ...zelle, color: "#8A7F85", fontSize: 12 }}>{v.ansprechpartner || "—"}</td>
                     <td style={{ ...zelle, whiteSpace: "nowrap" }}>
                       <button style={knopfLeise} disabled={laeuft} onClick={() => setOffen(v)}>Freischalten …</button>

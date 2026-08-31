@@ -122,6 +122,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, ergebnis: data?.[0] || null });
   }
 
+  if (daten.art === "guthaben") {
+    if (!istUuid(daten.verein)) return NextResponse.json({ error: "Kein Verein gewählt." }, { status: 400 });
+    const { data, error } = await admin.rpc("guthaben_einloesen", {
+      target_club: daten.verein,
+      monate: typeof daten.monate === "number" && daten.monate > 0 ? Math.trunc(daten.monate) : null,
+    });
+    if (error) {
+      console.error("Guthaben konnte nicht eingeloest werden", error);
+      return NextResponse.json({ error: "Das Guthaben konnte nicht eingelöst werden." }, { status: 500 });
+    }
+    await protokollieren("guthaben", daten.verein, { ergebnis: data?.[0] || null });
+    return NextResponse.json({ ok: true, ergebnis: data?.[0] || null });
+  }
+
   if (daten.art === "anfrage") {
     if (!istUuid(daten.anfrage)) return NextResponse.json({ error: "Keine Anfrage gewählt." }, { status: 400 });
     const status = daten.status === "berechnet" || daten.status === "abgelehnt" ? daten.status : null;

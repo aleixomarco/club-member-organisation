@@ -499,18 +499,23 @@ const notifyClubAdmins = async (clubId, notifType, title, body, excludeMembershi
   if (recipients.length) await supabase.rpc("notify_many", { target_memberships: recipients, p_notif_type: notifType, p_title: title, p_body: body });
 };
 const isAdmin = (m) => !!m && m.roles.some((r) => ROLE_META[r]?.admin);
-const canManageFees = (m) => !!m && m.roles.some((r) => ["geschaeftsfuehrung", "finanzmanager"].includes(r));
+/* Wer die Beitraege verwaltet.
+ *
+ * Vorher nur Geschaeftsfuehrung und Finanzmanager. Ein kleiner Verein, der
+ * genau einen Vereinsadmin anlegt - der Normalfall bei der Gruendung -, fand
+ * die Beitragsverwaltung deshalb nie. Sie war da, nur unsichtbar, und niemand
+ * konnte erraten, dass es dafuer eine eigene Rolle braucht. */
+const canManageFees = (m) => !!m && m.roles.some((r) => ["geschaeftsfuehrung", "finanzmanager", "vereinsadmin", "sysadmin", "vorstand"].includes(r));
 const isFormalMember = (m) => !!m && m.roles.some((r) => ROLE_META[r]?.formalMember);
 const isSysAdmin = (m) => !!m && m.roles.includes("sysadmin");
 const canWriteNews = (m) => isAdmin(m) || (!!m && m.roles.includes("redakteur"));
-/* Sponsoring wird von Vereinen nicht selbst verwaltet.
+/* Die eigene Sponsorenverwaltung des Vereins.
  *
- * Werbeflaechen vermarktet der Betreiber der App, nicht der einzelne Verein -
- * er bucht sie, und die Anzeige wird zentral platziert. Der Reiter bleibt
- * deshalb ausgeblendet; die Anzeigen selbst erscheinen weiterhin.
- *
- * Der Code bleibt vollstaendig stehen. Wird daraus spaeter ein Angebot fuer
- * Vereine - "verwalte deine eigenen Sponsoren" -, genuegt hier true. */
+ * Sie war lange ausgeblendet, weil es dafuer kein Angebot gab. Seit dem
+ * 31.08.2026 gibt es eines: fuenf Euro im Monat ueber dem Tarif, freigeschaltet
+ * ueber clubs.sponsoring_freigeschaltet. Der Kommentar hier sagte noch das
+ * Gegenteil ("Der Reiter bleibt deshalb ausgeblendet") - wer ihn las, hielt die
+ * Funktion fuer abgeschaltet. */
 const SPONSOREN_VERWALTUNG_SICHTBAR = true;
 
 const canManageSponsors = (m) => SPONSOREN_VERWALTUNG_SICHTBAR && (isAdmin(m) || (!!m && m.roles.includes("sponsorenmanager")));
@@ -519,8 +524,18 @@ const canManageDuty = (m) => isAdmin(m) || (!!m && m.roles.includes("organisator
    wirtschaftlich vertreten. Athlet/innen, Eltern, Trainer/innen, Kapitän/innen und
    einfache Mitglieder sehen davon nichts — weder die Karte im Profil noch die
    Aufforderung, ein Abo abzuschließen. */
-const SUBSCRIPTION_ROLES = ["vereinsadmin", "vorstand", "geschaeftsfuehrung", "finanzmanager", "organisator"];
-const canManageSubscription = (m) => !!m && (m.roles.includes("sysadmin") || m.roles.some((r) => SUBSCRIPTION_ROLES.includes(r)));
+/* Wer den Vollzugang anfragen darf.
+ *
+ * Es gab hier zwei Listen fuer dieselbe Frage: diese und eine zweite direkt im
+ * Anfrageformular. Aufgerufen wurde ausschliesslich die zweite - diese hier war
+ * tot, nannte aber zusaetzlich Finanzmanager und Organisator. Wer den Code las,
+ * bekam die falsche Antwort.
+ *
+ * Massgeblich ist, was die Sicherheitsregel in der Datenbank zulaesst
+ * (20260901070000_vorstand_darf_anfragen.sql): Vereinsleitung, nicht
+ * Finanzmanager. Beide Stellen benutzen jetzt diese eine Liste. */
+const SUBSCRIPTION_ROLES = ["sysadmin", "vereinsadmin", "geschaeftsfuehrung", "vorstand"];
+const canManageSubscription = (m) => !!m && m.roles.some((r) => SUBSCRIPTION_ROLES.includes(r));
 
 // "App kennenlernen": Kurzvideos, gefiltert nach den Aktionen, die die Rolle
 // des jeweiligen Nutzers tatsächlich ausführen kann (gleiche Berechtigungslogik
@@ -4783,7 +4798,7 @@ function SubscriptionPanel({ user }) {
   /* Der Text weiter unten nennt ausdruecklich "Vorstand, Geschaeftsfuehrung
      oder Vereinsadmin". Ein Vorstand bekam bisher genau diesen Satz zu lesen -
      und keinen Knopf. */
-  const darfAnfragen = user.roles.some((r) => ["sysadmin", "vereinsadmin", "geschaeftsfuehrung", "vorstand"].includes(r));
+  const darfAnfragen = canManageSubscription(user);
 
   const laden = useCallback(async () => {
     if (!databaseClub) { setAnfrage(null); return; }
@@ -4941,6 +4956,11 @@ function ProfileSettingsCard({ icon: Icon, title, description, onClick, color = 
 
 function HowToVideoLibrary({ user }) {
   const [openId, setOpenId] = useState("");
+  /* Welche Videos sich nicht laden liessen.
+     Vorher zeigte der Player in dem Fall eine schwarze Flaeche - ohne jede
+     Meldung, ohne Hinweis, dass die Datei fehlt. Genau diese Klasse ("wirkt
+     unfertig") faellt bei einer App-Pruefung auf. */
+  const [fehlend, setFehlend] = useState([]);
   const videos = howToVideosFor(user);
   return (
     <div className="space-y-2">
@@ -4956,14 +4976,22 @@ function HowToVideoLibrary({ user }) {
             </button>
             {open && (
               <div className="px-3.5 pb-3.5">
-                <video
-                  key={video.id}
-                  src={howToVideoUrl(video.file)}
-                  controls
-                  playsInline
-                  className="w-full rounded-xl"
-                  style={{ background: C.ink, aspectRatio: "9 / 16", maxHeight: 420 }}
-                />
+                {fehlend.includes(video.id) ? (
+                  <div className="rounded-xl px-3.5 py-4 text-[11px] leading-relaxed" style={{ background: C.paperDim, color: C.textDim }}>
+                    Dieses Video ist gerade nicht abrufbar. Die Beschreibung oben sagt dir trotzdem,
+                    wo die Funktion zu finden ist.
+                  </div>
+                ) : (
+                  <video
+                    key={video.id}
+                    src={howToVideoUrl(video.file)}
+                    controls
+                    playsInline
+                    onError={() => setFehlend((alle) => (alle.includes(video.id) ? alle : [...alle, video.id]))}
+                    className="w-full rounded-xl"
+                    style={{ background: C.ink, aspectRatio: "9 / 16", maxHeight: 420 }}
+                  />
+                )}
               </div>
             )}
           </div>
@@ -6787,7 +6815,13 @@ function SystemPanel({ members, channels, setChannels, maintenanceMode, setMaint
         </div>
       </div>
 
-      <div>
+      {/* Nur ohne Datenbank. Fuer einen echten Verein war dieser Knopf eine
+          Falle: Er versprach ein Zuruecksetzen und schob stattdessen die
+          Demo-Inhalte eines fremden Vereins unter - zehn erfundene Spiele in
+          der Hemberghalle Iserlohn, vier Kanaele mit erfundenen Nachrichten.
+          Geschrieben wurde dabei nichts; nach dem Neuladen war alles wieder
+          da. */}
+      {!supabase && <div>
         <div className="text-sm mb-2" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Demo-Daten</div>
         {!confirmReset ? (
           <button onClick={() => setConfirmReset(true)} className="w-full py-3 rounded-2xl text-sm" style={{ background: C.paperDim, color: C.red, fontFamily: "Inter", fontWeight: 700 }}>
@@ -6802,7 +6836,7 @@ function SystemPanel({ members, channels, setChannels, maintenanceMode, setMaint
             </div>
           </div>
         )}
-      </div>
+      </div>}
     </div>
   );
 }
@@ -7057,7 +7091,13 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
     if (statusError) {
       const grenzeErreicht = `${statusError.message}${statusError.details || ""}`.includes("club_account_limit_reached");
       setMessage(grenzeErreicht
-        ? "Der Tarif deines Vereins ist ausgeschöpft. Unter Profil, Einstellungen, Abo &amp; Empfehlungen findest du die verfügbaren Tarife — reicht keiner aus, sprich uns an."
+        /* Dieser Satz erscheint genau dann, wenn ein Verein an seine
+           Zugangsgrenze stoesst - also im wichtigsten Moment. Er schickte den
+           Vereinsadmin bisher zu "Abo & Empfehlungen", einem Bereich, den es
+           seit dem Umbau nicht mehr gibt, und versprach dort eine Tarifliste,
+           die dort bewusst nicht steht. Das kaufmaennische Und stand
+           ausserdem als "&amp;" im Klartext auf dem Bildschirm. */
+        ? "Die Zahl der Zugänge deines Vereins ist ausgeschöpft. Unter Profil → Einstellungen → Zugang & Empfehlungen kann die Vereinsleitung mehr Zugänge anfragen."
         : "Die Entscheidung konnte nicht gespeichert werden.");
       setWorkingId(null); return;
     }
@@ -7563,6 +7603,24 @@ function PostfachView({ eintraege, laedt, onGelesen, onLoeschen }) {
 /* Was der Browser zu sehen bekommt, wenn NEXT_PUBLIC_NUR_APP=1 gesetzt ist.
    Bewusst schlicht und ohne Anmeldung: Diese Seite ist kein Zugang, sondern
    ein Wegweiser in den Store. */
+/* Was zu sehen ist, wenn die Datenbank nicht eingerichtet ist.
+   Bewusst nuechtern und ohne Anmeldung: Hier ist nichts zu bedienen, hier ist
+   etwas zu reparieren. */
+function KonfigurationFehlt() {
+  return (
+    <div className="min-h-screen w-full flex items-center justify-center px-6" style={{ background: C.paper, fontFamily: "Inter" }}>
+      <div className="w-full max-w-sm text-center">
+        <AppBrandMark size={56} />
+        <div className="text-lg mt-5 mb-2" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>Die App ist nicht einsatzbereit</div>
+        <p className="text-sm leading-relaxed" style={{ color: C.textDim }}>
+          Die Verbindung zur Vereinsdatenbank fehlt. Es werden keine Daten angezeigt und keine
+          gespeichert. Bitte später noch einmal versuchen — wir sind informiert.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function NurAlsAppHinweis() {
   const appStore = process.env.NEXT_PUBLIC_APP_STORE_URL;
   const playStore = process.env.NEXT_PUBLIC_PLAY_STORE_URL;
@@ -8530,6 +8588,21 @@ export default function ClubMemberOrganisationApp() {
       const newClubId = registration?.[0]?.club_id;
       await supabase.auth.updateUser({ data: { ...account.user_metadata, pending_new_club: null } });
       if (!newClubId || cancelled) return;
+
+      /* Das Logo, das der Gruender vor der Bestaetigung hochgeladen hat. Es
+         liegt als Datenzeile in den Kontodaten und wird jetzt erst in den
+         Speicher gelegt - vorher ging es auf diesem Weg still verloren. */
+      if (pending.logo) {
+        try {
+          const blob = await (await fetch(pending.logo)).blob();
+          const pfad = `${newClubId}/logo-${Date.now()}.png`;
+          const upload = await supabase.storage.from("club-logos").upload(pfad, blob, { upsert: true });
+          if (!upload.error) {
+            const { data: oeffentlich } = supabase.storage.from("club-logos").getPublicUrl(pfad);
+            await supabase.from("clubs").update({ logo_url: oeffentlich.publicUrl }).eq("id", newClubId);
+          }
+        } catch {}
+      }
       const { data: createdClub } = await supabase.from("clubs")
         .select("id,name,short_name,city,founded_year,logo_url,register_number,currency,referral_code,referral_credit_months,sport,primary_color,secondary_color")
         .eq("id", newClubId).single();
@@ -8598,6 +8671,17 @@ export default function ClubMemberOrganisationApp() {
       const newClubId = registration?.[0]?.club_id;
       await supabase.auth.updateUser({ data: { ...metadata, pending_new_club: null } });
       if (!newClubId) return { error: "Der neue Verein konnte nicht geladen werden." };
+      if (pending.logo) {
+        try {
+          const blob = await (await fetch(pending.logo)).blob();
+          const pfad = `${newClubId}/logo-${Date.now()}.png`;
+          const upload = await supabase.storage.from("club-logos").upload(pfad, blob, { upsert: true });
+          if (!upload.error) {
+            const { data: oeffentlich } = supabase.storage.from("club-logos").getPublicUrl(pfad);
+            await supabase.from("clubs").update({ logo_url: oeffentlich.publicUrl }).eq("id", newClubId);
+          }
+        } catch {}
+      }
       const { data: createdClub } = await supabase.from("clubs")
         .select("id,name,short_name,city,founded_year,logo_url,register_number,currency,referral_code,referral_credit_months,sport,primary_color,secondary_color")
         .eq("id", newClubId).single();
@@ -8800,7 +8884,11 @@ export default function ClubMemberOrganisationApp() {
         options: { data: {
           full_name: draft.name,
           pending_club_id: pendingClub ? null : draft.clubId,
-          pending_new_club: pendingClub ? { name:pendingClub.name, short_name:pendingClub.shortName, city:pendingClub.city, register_number:pendingClub.registerNumber, currency:pendingClub.currency, referral_code:pendingClub.referralCode, sport:pendingClub.sport, primary_color:pendingClub.primaryColor, secondary_color:pendingClub.secondaryColor } : null,
+          /* Das Logo gehoert mit in die Kontodaten. Ohne das ging es beim Weg ueber
+             den Bestaetigungslink still verloren: Der Verein entstand, das Logo
+             fehlte kommentarlos, und der Gruender lud es nicht noch einmal
+             hoch - er glaubte ja, er haette es schon. */
+          pending_new_club: pendingClub ? { name:pendingClub.name, short_name:pendingClub.shortName, city:pendingClub.city, register_number:pendingClub.registerNumber, currency:pendingClub.currency, referral_code:pendingClub.referralCode, sport:pendingClub.sport, primary_color:pendingClub.primaryColor, secondary_color:pendingClub.secondaryColor, logo:pendingClub.logoDataUrl || null } : null,
           account_role: familySetup?.accountType || "mitglied",
           birthdate: draft.birthdate || null,
           requested_team: draft.team || null,
@@ -8927,10 +9015,20 @@ export default function ClubMemberOrganisationApp() {
   };
   const onSponsorImpression = (slotKey) => zaehle(slotKey, "impression");
   const onSponsorClick = (slotKey) => zaehle(slotKey, "klick");
+  /* Der Knopf hiess "Alle Aktivitaetsdaten zuruecksetzen" und versprach genau
+     das. Getan hat er etwas anderes: Er schrieb nichts in die Datenbank,
+     sondern ersetzte den Bildschirminhalt durch die Demo-Daten des ERG
+     Iserlohn - zehn erfundene Spiele in der Hemberghalle, vier Chatkanaele mit
+     erfundenen Nachrichten. Nach dem Neuladen war alles wieder da.
+     Fuer einen echten Verein war das kein Zuruecksetzen, sondern das
+     Unterschieben fremder Inhalte. Deshalb tut er das nur noch da, wo es
+     stimmt: im Demo-Betrieb ohne Datenbank. */
   const resetDemoData = () => {
+    if (supabase) return { error: "Im laufenden Betrieb gibt es nichts zurückzusetzen. Einzelne Termine, News und Umfragen lassen sich dort löschen, wo sie stehen." };
     setCarpools({}); setSeasonVotes({}); setTippPredictions({}); setTippResults({});
     setRemindersSent({});
     setFeePaid(INITIAL_FEE_PAID); setFeeRecords(INITIAL_FEE_RECORDS); setEvents(EVENTS); setDutyPlan(INITIAL_DUTY_PLAN); setChannels(INITIAL_CHANNELS);
+    return {};
   };
   const saveTippResult = (matchId, result) => {
     ergebnisSpeichern(matchId, result);
@@ -8973,6 +9071,15 @@ export default function ClubMemberOrganisationApp() {
    * Weg in den Store gezeigt - keine Anmeldung, kein Zugang. */
   if (imGeraet === null) return <div style={{ minHeight: "100vh", background: C.paper }} />;
   if (!imGeraet) return <NurAlsAppHinweis />;
+
+  /* Ohne Datenbank faellt die App in den Demo-Betrieb: achtzehn erfundene
+     Konten mit echten Namen und dem Passwort "demo", zehn erfundene Termine in
+     der Hemberghalle Iserlohn. Fuer die Entwicklung ist das praktisch.
+     Im Betrieb waere es eine Katastrophe mit Ansage - eine falsch gesetzte
+     Variable in Vercel macht aus der Produktions-App eine Demo, ohne dass
+     irgendwo ein Fehler sichtbar wuerde, und Aenderungen an app/ gehen ohne
+     Apple-Pruefung live. Also lieber laut scheitern. */
+  if (!supabase && process.env.NODE_ENV === "production") return <KonfigurationFehlt />;
 
   return (
     <div className="erg-app erg-shell w-full flex items-center justify-center" style={{ fontFamily: "Inter", ...themeVars }}>
