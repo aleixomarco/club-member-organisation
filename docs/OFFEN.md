@@ -1,8 +1,9 @@
 # Was noch offen ist
 
-Stand: 31.08.2026 — nach dem Umbau auf das Rechnungsmodell, dem Umkehren des
-Anmeldewegs, der Sponsorenfunktion und einer adversarialen Prüfung, die 22
-Fehler bestätigt hat.
+Stand: 04.09.2026 — nach dem Umbau auf das Rechnungsmodell, dem Umkehren des
+Anmeldewegs, der Sponsorenfunktion und zwei adversarialen Prüfungen: die erste
+hat 22 Fehler bestätigt, die zweite lief gegen die Einreichung selbst und hat
+von 14 Funden vier bestätigt (alle behoben, siehe unten).
 
 ---
 
@@ -19,9 +20,19 @@ zu einem Verein. Wer in zwei Vereinen ist, sieht nach der Anmeldung beide.
 **Höchstens zwei Geräte je Konto.** Durchgesetzt durch Verdrängen des ältesten,
 nicht durch Abweisen: Wer sein Telefon wechselt, meldet sich einfach an.
 
-**Eigene Sponsoren, 5 € im Monat über dem Tarif.** Vier Werbeplätze, die der
-Verein selbst belegen kann, mit Aktionen, die nach ihrem Ende von selbst
-verschwinden.
+**Eigene Sponsoren, 9 € im Monat oder 85 € im Jahr über dem Tarif.** Vier
+Werbeplätze, die der Verein selbst belegen kann, mit Aktionen, die nach ihrem
+Ende von selbst verschwinden. (Der Preis stand hier lange bei 5 €, dann bei
+80 € im Jahr — maßgeblich ist `lib/preise.ts`.)
+
+**Die App startete tagelang nicht — und niemand merkte es.** Ein
+`useEffect(() => { f(); }, [f])` stand über dem `const f = useCallback(...)`.
+Die Abhängigkeitsliste wird beim Rendern ausgewertet, also vor der Zuweisung:
+`Cannot access 'f' before initialization`, bei jedem Rendern, ohne Fehlertext.
+Vercel rendert `/` beim Bauen vor, brach dort ab und lieferte weiter den letzten
+funktionierenden Stand aus — die Vereinsfarben, der korrigierte Registrierweg
+und das CMO-Logo waren committet, gepusht und trotzdem nie live.
+`scripts/pruefe-hooks.mjs` fängt genau das jetzt ab.
 
 ---
 
@@ -50,6 +61,9 @@ Hand geschehen:
 | Auf einem dritten Gerät anmelden | das älteste Gerät fliegt heraus, dieses bleibt |
 | Sperren und Entsperren eines Mitglieds | Gesperrte kommen nicht wieder herein, Abgelehnte schon |
 | Sponsor eintragen mit Aktion | Aktionsknopf erscheint, nach dem Enddatum bleibt nur der Sponsor |
+| **Eigenes Konto anlegen, E-Mail bestätigen, anmelden** | landet in der Vereinssuche — und dort steht jetzt „Abmelden" **und** „Konto und persönliche Daten löschen" |
+| **Beitritt anfragen und die Anfrage offen lassen** | „Meine Vereine" zeigt denselben Löschknopf |
+| **Diesen Löschknopf tatsächlich drücken** | Konto ist weg, App steht wieder auf dem Anmeldebildschirm |
 
 Seit dem Umzug in die Datenbank (02.09.) zusätzlich — jeweils **eintragen, App
 schließen, neu öffnen**; alles muss noch da sein:
