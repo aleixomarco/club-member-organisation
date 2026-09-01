@@ -36,6 +36,40 @@ und das CMO-Logo waren committet, gepusht und trotzdem nie live.
 
 ---
 
+## Datenbestand vor der Einreichung (04.09.2026)
+
+Die Vereinssuche zeigte sieben Vereine, davon fünf Testvereine — darunter
+zweimal „Borussia Dortmund", einer mit dem Wappen der ERG Iserlohn, und ein
+„ERGI TEST". Das ist der zweite Bildschirm, den ein Prüfer sieht. Alle fünf
+sind entfernt (Migration `20260904070000`), zusammen mit ihren verwaisten
+Zugängen.
+
+**Nicht entfernt, und zwar geprüft statt vermutet:**
+
+| Verein | Mitgliedschaften | eigenständige Profile | Termine | Urteil |
+|---|---|---|---|---|
+| SV Musterstadt | 22 | 2 | 63 | Verein des Prüfzugangs |
+| ERG Iserlohn | 25 | 25 | 114 | echter Verein, wird benutzt |
+
+Bei SV Musterstadt sind 20 der 22 Mitglieder betreute Datensätze ohne eigenen
+Zugang — genau das, was ein Demo-Verein sein soll. Bei ERG Iserlohn hat jedes
+Mitglied ein eigenes Profil. Der Verein wird nicht auf eine pauschale Anweisung
+hin gelöscht; das wäre unwiderruflich und beträfe die Daten von 25 Personen.
+
+**Der Demo-Verein ist aufgefüllt** (Migration `20260904110000`). Leer waren
+Vereinsnachrichten, Umfragen und Aufgaben — alle drei stehen ausdrücklich in
+der eingereichten Store-Beschreibung, und „beschriebene Funktion tut nichts"
+ist die Schublade von Richtlinie 2.1. Jetzt: 3 News, 2 Umfragen mit 5 Optionen,
+3 Aufgaben, 1 Protokoll, dazu ein Vereinswappen. Zeitangaben relativ zu `now()`,
+damit nichts veraltet.
+
+Bewusst nicht erzeugt: Chat-Nachrichten. `messages.author_id` ist Pflicht und
+verweist auf `profiles`; der Verein hat nur zwei echte Profile. Ein
+vorgetäuschtes Gespräch bräuchte erfundene Konten. Die vier Kanäle stehen, der
+Prüfer kann selbst schreiben.
+
+---
+
 ## Was der Betreiber noch tun muss
 
 ### In Vercel löschen
