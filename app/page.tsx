@@ -2238,7 +2238,7 @@ function Dashboard({ user, members, events, feePaid, channels, news, dutyPlan, s
       </DashboardSection>
 
       <DashboardSection accent={C.red} background={C.primaerWeich}>
-        <SectionTitle eyebrow="Vereins-News" title="Neueste Nachrichten" right={<button onClick={goNews} className="text-xs font-bold" style={{ color: C.red, fontFamily: "Inter" }}>Alle ansehen</button>} />
+        <SectionTitle eyebrow="Vereins-News" title="Neueste Nachrichten" right={goNews ? <button onClick={goNews} className="text-xs font-bold" style={{ color: C.red, fontFamily: "Inter" }}>Alle ansehen</button> : null} />
         <div className="rounded-2xl px-3" style={{ background: "rgba(255,255,255,0.82)", border: `1px solid ${C.white}` }}>
         {newsMsgs.length === 0 ? (
           <div className="text-xs py-3" style={{ color: C.textDim, fontFamily: "Inter" }}>Noch keine News.</div>
@@ -9231,7 +9231,15 @@ export default function ClubMemberOrganisationApp() {
     setAuthScreen(meineMitgliedschaften.length > 0 ? "meineVereine" : "club");
     setTab("home"); setTabHistory([]); setSubView(null); setEventFocusRequest(null);
   };
-  const goNews = () => { setChatChannelId("news"); navigateTab("chat"); };
+  /* "Alle ansehen" unter den Vereins-News.
+     Stand vorher auf setChatChannelId("news") + Chat-Reiter - ein Rest aus der
+     Zeit, als die News ein Chat-Kanal mit der Kennung "news" waren (der steht
+     noch in den Ruecckfalldaten, INITIAL_CHANNELS). Seit die News eine eigene
+     Tabelle haben, gibt es diesen Kanal nicht mehr: Der Chat oeffnete
+     stattdessen den erstbesten Mannschaftskanal, und wer auf "Alle ansehen"
+     tippte, landete in einem leeren Chat. Die vollstaendige Liste steht heute
+     im Reiter Redaktion. */
+  const goNews = () => navigateTab("redaktion");
   const goToMyNextMatch = () => { setEventFocusRequest({ team: currentUser?.team || "alle", requestedAt: Date.now() }); navigateTab("events"); };
   /* Gezaehlt wird an der Anzeige selbst, damit die Zahl auch die Mitglieder
      erfasst - und nicht nur die Administratoren, die als einzige den
@@ -9446,7 +9454,7 @@ export default function ClubMemberOrganisationApp() {
               {!subView && tab === "home" && (
                 <Dashboard user={currentUser} members={clubMembers} events={events} feePaid={!!feePaid[currentUser.id]} channels={channels} news={vereinsNews} dutyPlan={dutyPlan} seasonVotes={seasonVotes} tippPredictions={tippPredictions} tippResults={tippResults} polls={polls} setPolls={setPolls} onVote={stimmeAbgeben}
                   werbeplaetze={werbeplaetze} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick}
-                  goEvents={goToMyNextMatch} goSeason={() => setSubView("season")} goTipp={() => setSubView("tipp")} goDuty={() => setSubView("duty")} goTasks={() => setSubView("tasks")} goVehicles={() => setSubView("vehicles")} goNews={goNews}
+                  goEvents={goToMyNextMatch} goSeason={() => setSubView("season")} goTipp={() => setSubView("tipp")} goDuty={() => setSubView("duty")} goTasks={() => setSubView("tasks")} goVehicles={() => setSubView("vehicles")} goNews={currentUserCanEditNews ? goNews : null}
                   currentClub={currentClub} featureEnabled={featureEnabled} dashboardTileOrder={dashboardTileOrder} entitlement={entitlement} goSubscribe={goSubscribe} />
               )}
               {!subView && tab === "events" && (
