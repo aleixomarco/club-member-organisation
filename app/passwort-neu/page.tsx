@@ -39,7 +39,33 @@ export default function PasswordResetPage() {
     setBusy(true);
     const { error } = await supabase!.auth.updateUser({ password: next });
     setBusy(false);
-    if (error) { setMessage("Das Passwort konnte nicht geändert werden. Fordere den Link neu an."); return; }
+    if (error) {
+      /* Vorher hiess jeder Fehler "Fordere den Link neu an". Wer bis hierher
+         kommt, HATTE aber eine gueltige Sitzung - sonst waere oben schon
+         setFailed(true) gefallen. Der Satz war also im Regelfall schlicht
+         falsch, und bei einer Bremse wegen zu vieler Versuche loeste er noch
+         mehr Mails aus.
+         Achtung beim Ablauf der Sitzung: Die Bibliothek macht daraus einen
+         AuthSessionMissingError mit Status 400 und ohne Code - auf 401/403 zu
+         pruefen wuerde genau diesen Fall verfehlen. */
+      const code = String((error as { code?: string }).code || "");
+      const status = Number(error.status || 0);
+      const text = String(error.message || "").toLowerCase();
+      if (error.name === "AuthSessionMissingError" || code === "bad_jwt" || status === 401 || status === 403) {
+        setMessage("Der Link ist abgelaufen oder wurde schon verwendet. Fordere auf dem Anmeldebildschirm über „Passwort vergessen?“ einen neuen an.");
+      } else if (code === "weak_password" || (/password/i.test(String(error.message || "")) && /short|weak|least|pwned/i.test(text))) {
+        setMessage("Das neue Passwort ist zu schwach. Nimm ein längeres oder ungewöhnlicheres.");
+      } else if (code === "same_password") {
+        setMessage("Das ist dein bisheriges Passwort. Wähle ein anderes.");
+      } else if (status === 429 || code === "over_request_rate_limit" || text.includes("rate limit")) {
+        setMessage("Zu viele Versuche. Warte einen Moment und versuche es dann noch einmal.");
+      } else if (status === 0 || text.includes("failed to fetch") || text.includes("network") || text.includes("load failed")) {
+        setMessage("Keine Verbindung. Prüfe dein Internet und versuche es noch einmal.");
+      } else {
+        setMessage("Das Passwort konnte nicht geändert werden. Bitte versuche es in ein paar Minuten noch einmal.");
+      }
+      return;
+    }
     setDone(true);
   };
 

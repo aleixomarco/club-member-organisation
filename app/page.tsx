@@ -584,6 +584,59 @@ const ROLE_OVERVIEW_KEYS = ["vereinsadmin", "vorstand", "geschaeftsfuehrung", "f
 /* Sys-Admin ist eine plattformweite Rolle für den Produkt-Owner, keine Vereinsrolle — daher in der
    Rollenvergabe der Vereine nicht wähl-/sichtbar. Technisch höchste vergebbare Rolle ist Vereins-Administrator. */
 const ASSIGNABLE_ROLES = Object.keys(ROLE_META).filter((r) => r !== "sysadmin");
+/* Aus einem Anmeldefehler eine Meldung machen, die stimmt.
+ *
+ * Vorher wurde JEDER Fehlschlag zu "E-Mail oder Passwort ist falsch" - auch
+ * ein fehlendes Netz, eine Bremse wegen zu vieler Versuche und eine nicht
+ * eingerichtete Datenbank. Wer daraufhin sein Passwort sucht, sucht an der
+ * falschen Stelle; genau das ist am 01.09. passiert.
+ *
+ * Bewusst NICHT unterschieden wird, ob die Adresse unbekannt oder das Passwort
+ * falsch ist. Supabase liefert fuer beides denselben Fehler, und das ist
+ * richtig so: Wer die beiden Faelle auseinanderhalten kann, kann durchprobieren,
+ * zu welchen Adressen es ein Konto gibt. Diese eine Ungenauigkeit bleibt also
+ * mit Absicht stehen.
+ *
+ * Geprueft wird Code UND Text: Der Fehlercode ist erst in neueren Fassungen der
+ * Bibliothek gesetzt, der englische Text ist der Rueckfall. */
+function anmeldeFehlerText(error) {
+  if (!error) return "Die Anmeldung hat nicht geklappt. Bitte versuche es noch einmal.";
+  const code = String(error.code || "");
+  const status = Number(error.status || 0);
+  const text = String(error.message || "").toLowerCase();
+
+  /* Gesperrte Konten bekommen ABSICHTLICH denselben Satz wie falsche
+     Zugangsdaten - das ist keine Schlamperei, sondern der Grund aus dem
+     Kommentar oben.
+     GoTrue entscheidet die Sperre, BEVOR es das Passwort prueft. Eine eigene
+     Meldung waere damit ein Auskunftsdienst: Wer irgendein Passwort eintippt,
+     erfuehre an der abweichenden Antwort, dass es zu dieser Adresse ein Konto
+     gibt. Sie nur zu streichen reicht nicht - dann fiele der Fall auf den
+     Auffangsatz durch und das Orakel bliebe, nur mit anderem Wortlaut. */
+  if (code === "invalid_credentials" || text.includes("invalid login credentials")
+      || code === "user_banned" || text.includes("user is banned")) {
+    return "E-Mail oder Passwort ist falsch.";
+  }
+  /* Anders als die Sperre ist das hier kein Orakel: Die Bestaetigung prueft
+     GoTrue erst NACH dem Passwort. Diesen Satz sieht also nur, wer das
+     richtige Passwort kennt. */
+  if (code === "email_not_confirmed" || text.includes("email not confirmed")) {
+    return "Diese E-Mail-Adresse ist noch nicht bestätigt. Sieh in deinem Postfach nach.";
+  }
+  if (status === 429 || code === "over_request_rate_limit" || text.includes("rate limit")) {
+    return "Zu viele Versuche. Warte einen Moment und versuche es dann noch einmal.";
+  }
+  /* Ohne Netz kommt die Anfrage gar nicht erst beim Server an - dann gibt es
+     keinen Status, nur einen abgebrochenen fetch. */
+  if (status === 0 || text.includes("failed to fetch") || text.includes("network") || text.includes("load failed")) {
+    return "Keine Verbindung. Prüfe dein Internet und versuche es noch einmal.";
+  }
+  if (status >= 500) {
+    return "Die Anmeldung ist gerade nicht möglich. Bitte versuche es in ein paar Minuten noch einmal.";
+  }
+  return "Die Anmeldung hat nicht geklappt. Bitte versuche es noch einmal.";
+}
+
 const isDbId = (id) => /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(id));
 const CLUB_ADMIN_ROLES = ["vereinsadmin", "sysadmin", "vorstand", "geschaeftsfuehrung"];
 const notifyClubAdmins = async (clubId, notifType, title, body, excludeMembershipId) => {
@@ -1664,15 +1717,38 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub, offeneS
      nicht: Sonst ließe sich über diesen Weg herausfinden, wer bei euch
      Mitglied ist. */
   const requestReset = async () => {
-    setError("");
+    setError(""); setResetNote("");
     const address = email.trim();
-    if (!address) { setResetNote("Bitte zuerst deine E-Mail-Adresse eintragen."); return; }
-    if (!supabase) { setResetNote("Zurücksetzen ist nur mit einem echten Konto möglich."); return; }
+    /* Beides sind Fehler und gehoerten trotzdem in die gruene Box - die App
+       meldete also Erfolg, wo keiner war. */
+    if (!address) { setError("Bitte zuerst deine E-Mail-Adresse eintragen."); return; }
+    if (!supabase) { setError("Zurücksetzen ist nur mit einem echten Konto möglich."); return; }
     setBusy(true);
-    await supabase.auth.resetPasswordForEmail(address, {
+    const { error: resetFehler } = await supabase.auth.resetPasswordForEmail(address, {
       redirectTo: `${window.location.origin}/passwort-neu`,
     });
     setBusy(false);
+    if (resetFehler) {
+      /* Der Rueckgabewert wurde vorher weggeworfen: Kein Netz, eine Bremse
+         wegen zu vieler Versuche und ein Serverfehler liefern kein
+         geworfenes Ausnahmeobjekt, sondern { error } - die App meldete also
+         "Mail ist unterwegs", obwohl nie eine losging. Genau daran hat sich
+         am 01.09. jemand eine Stunde lang aufgehalten.
+
+         Verraten wird damit nichts: Ein Transportfehler sagt nichts darueber,
+         ob es zu dieser Adresse ein Konto gibt. Deshalb rein technischer
+         Wortlaut, und der unscharfe Erfolgssatz bleibt unveraendert. */
+      const st = Number(resetFehler.status || 0);
+      const tx = String(resetFehler.message || "").toLowerCase();
+      setError(
+        st === 429 || resetFehler.code === "over_request_rate_limit" || tx.includes("rate limit")
+          ? "Zu viele Versuche. Warte einen Moment und versuche es dann noch einmal."
+          : st === 0 || tx.includes("failed to fetch") || tx.includes("network") || tx.includes("load failed")
+            ? "Keine Verbindung. Prüfe dein Internet und versuche es noch einmal."
+            : "Das Zurücksetzen ist gerade nicht möglich. Bitte versuche es in ein paar Minuten noch einmal."
+      );
+      return;
+    }
     setResetNote("Falls ein Konto mit dieser Adresse besteht, ist eine E-Mail mit einem Link unterwegs. Prüfe auch den Spam-Ordner.");
   };
 
@@ -5569,7 +5645,7 @@ function NotificationSettings({ user, setMembers, saveRef }) {
 
 function PasswordSettings({ user, onLogout, saveRef }) {
   const [form,setForm]=useState({old:"",next:"",repeat:"",logoutAll:false}); const [message,setMessage]=useState("");
-  const save=async()=>{if(!supabase){setMessage("Passwortänderung ist nur mit einem echten Konto möglich.");return;}if(form.next.length<8||form.next!==form.repeat){setMessage("Das neue Passwort muss mindestens 8 Zeichen haben und übereinstimmen.");return;}const {error:loginError}=await supabase.auth.signInWithPassword({email:user.email,password:form.old});if(loginError){setMessage("Das bisherige Passwort ist nicht korrekt.");return;}const {error}=await supabase.auth.updateUser({password:form.next});if(error){setMessage("Das Passwort konnte nicht geändert werden.");return;}if(form.logoutAll){await supabase.auth.signOut({scope:"global"});await onLogout();return;}setForm({old:"",next:"",repeat:"",logoutAll:false});setMessage("Passwort erfolgreich geändert.");}; saveRef.current=save;
+  const save=async()=>{if(!supabase){setMessage("Passwortänderung ist nur mit einem echten Konto möglich.");return;}if(form.next.length<8||form.next!==form.repeat){setMessage("Das neue Passwort muss mindestens 8 Zeichen haben und übereinstimmen.");return;}const {error:loginError}=await supabase.auth.signInWithPassword({email:user.email,password:form.old});if(loginError){/* Nur der Fall "Passwort stimmt nicht" darf so heissen. Ein Netzfehler oder eine Bremse wegen zu vieler Versuche haben nichts mit dem alten Passwort zu tun; hier ist die Verwechslung besonders aergerlich, weil man dann das eine Passwort sucht, das man sicher kennt. Eine Preisgabe ist das nicht: Wer hier steht, ist bereits angemeldet und kennt seine eigene Adresse. */const falschesPasswort=loginError.code==="invalid_credentials"||/invalid login credentials/i.test(String(loginError.message||""));/* Hier darf die Sperre beim Namen genannt werden: Wer bis hierher kommt, ist angemeldet und kennt seine eigene Adresse - es gibt nichts zu verraten. */const gesperrt=loginError.code==="user_banned"||/user is banned/i.test(String(loginError.message||""));setMessage(gesperrt?"Dieses Konto ist gesperrt. Bitte wende dich an die Vereinsleitung.":falschesPasswort?"Das bisherige Passwort ist nicht korrekt.":anmeldeFehlerText(loginError));return;}const {error}=await supabase.auth.updateUser({password:form.next});if(error){const zuSchwach=error.code==="weak_password"||/password/i.test(String(error.message||""))&&/short|weak|least/i.test(String(error.message||""));setMessage(zuSchwach?"Das neue Passwort ist zu schwach. Nimm ein längeres oder ungewöhnlicheres.":"Das Passwort konnte nicht geändert werden. "+anmeldeFehlerText(error));return;}if(form.logoutAll){await supabase.auth.signOut({scope:"global"});await onLogout();return;}setForm({old:"",next:"",repeat:"",logoutAll:false});setMessage("Passwort erfolgreich geändert.");}; saveRef.current=save;
   return <div className="rounded-2xl p-4 space-y-3" style={{background:C.glass,border:`1px solid ${C.line}`}}><input type="password" value={form.old} onChange={(e)=>setForm({...form,old:e.target.value})} placeholder="Altes Passwort" className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><input type="password" value={form.next} onChange={(e)=>setForm({...form,next:e.target.value})} placeholder="Neues Passwort" className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><input type="password" value={form.repeat} onChange={(e)=>setForm({...form,repeat:e.target.value})} placeholder="Neues Passwort wiederholen" className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><ToggleCard title="Von allen Geräten ausloggen" desc="Nach der Änderung werden alle bestehenden Sitzungen beendet." value={form.logoutAll} onChange={(v)=>setForm((old)=>({...old,logoutAll:typeof v==="function"?v(old.logoutAll):v}))}/>{message&&<div className="text-[11px]" style={{color:message.includes("erfolgreich")?C.erfolg:C.fehler}}>{message}</div>}</div>;
 }
 
@@ -8824,10 +8900,15 @@ export default function ClubMemberOrganisationApp() {
   }, []);
   const attemptLogin = async (email, password) => {
     if (!supabase) {
-      return { error: "E-Mail oder Passwort ist falsch." };
+      /* Hiess frueher ebenfalls "E-Mail oder Passwort ist falsch". Das war
+         gleich doppelt irrefuehrend: Es ist kein Anmeldefehler, sondern eine
+         fehlende Einrichtung, und niemand findet den Grund, indem er sein
+         Passwort noch einmal tippt. */
+      return { error: "Die App ist nicht mit der Datenbank verbunden. Bitte melde das dem Verein." };
     }
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error || !data.user) return { error: "E-Mail oder Passwort ist falsch." };
+    if (error) return { error: anmeldeFehlerText(error) };
+    if (!data.user) return { error: "Die Anmeldung hat nicht geklappt. Bitte versuche es noch einmal." };
     /* Ab hier gibt es eine Sitzung. Sie muss bekannt sein, damit der Beitritt
        zu einem weiteren Verein ohne erneute Anmeldung funktioniert. */
     setOffeneSitzung({ profileId: data.user.id, email: data.user.email, mitgliedschaften: [] });
