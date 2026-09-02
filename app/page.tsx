@@ -3286,11 +3286,24 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
              der eigenen Nachricht. Der Namensvergleich bleibt als Rueckfall
              fuer den Demo-Betrieb ohne Datenbank. */
           const mine = m.authorId ? m.authorId === user.authProfileId : m.who === user.name;
+          /* Den Namen aus der Mitgliederliste holen, nicht aus der Nachricht.
+             In der Nachricht steht er naemlich fast nie: Er kommt dort ueber
+             die Verknuepfung zu profiles, und die Leseregel gibt jedem nur das
+             EIGENE Profil (initial_schema.sql:395). Bei fremden Nachrichten
+             kam die Verknuepfung deshalb immer leer zurueck, und
+             zeileZuNachricht fiel auf "Mitglied" zurueck - in jedem Verein, bei
+             jeder fremden Nachricht.
+             Die Mitgliederliste darf dagegen jedes Vereinsmitglied lesen
+             (initial_schema.sql:398), sie liegt hier ohnehin vor, und der
+             Anzeigename darin ist genau der, der auch in der Mitgliederansicht
+             steht. Deshalb von dort - und nicht etwa die Leserechte an den
+             Profilen aufweichen. */
+          const verfasser = (m.authorId && (members || []).find((x) => x.authProfileId === m.authorId)?.name) || m.who;
           return (
             <div key={i} className={`flex gap-2 ${mine ? "flex-row-reverse" : ""}`}>
-              <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0" style={{ background: m.color, color: C.white, fontFamily: "Inter" }}>{m.init}</div>
+              <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0" style={{ background: m.color, color: C.white, fontFamily: "Inter" }}>{initialsOf(verfasser) || m.init}</div>
               <div className={`max-w-[75%] ${mine ? "items-end" : "items-start"} flex flex-col`}>
-                {!mine && <div className="text-[11px] mb-0.5" style={{ color: C.textDim, fontFamily: "Inter" }}>{m.who}</div>}
+                {!mine && <div className="text-[11px] mb-0.5" style={{ color: C.textDim, fontFamily: "Inter" }}>{verfasser}</div>}
                 <div className="rounded-2xl text-sm overflow-hidden" style={{ fontFamily: "Inter", background: mine ? C.red : C.white, color: mine ? C.white : C.ink, border: mine ? "none" : `1px solid ${C.line}`, borderBottomRightRadius: mine ? 4 : 16, borderBottomLeftRadius: mine ? 16 : 4 }}>
                   {m.imageUrl && <img src={m.imageUrl} alt="" className="w-full block" style={{ maxHeight: 180, objectFit: "cover" }} />}
                   <div className="px-3 py-2">
