@@ -22,6 +22,13 @@ die Nutzer sofort, ohne erneute Apple-Prüfung.
    (nur Einfügungen mit Existenzprüfung).
    Weg: `supabase db push` (vorher `--dry-run`) oder SQL-Editor.
 
+   Es sind inzwischen ZWEI Migrationen offen:
+   `20260904150000_vereins_news_kanal.sql` und
+   `20260904170000_termine_loeschen_erlauben.sql`. Die zweite zieht eine
+   fehlende DELETE-Regel auf `public.events` nach — ohne sie liess sich ein
+   einzelner Termin nie loeschen, und mit dem neuen Code sagt die App das
+   jetzt auch offen. Erst die Migration macht die Funktion wieder heil.
+
 2. **`weiterbauen` nach main mergen.** Der Branch ist auf GitHub, zwei
    Commits vor main. Danach baut Vercel automatisch und die Änderungen sind
    live. Reihenfolge egal — der alte Produktionscode blendet den News-Kanal
