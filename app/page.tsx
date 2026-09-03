@@ -2865,10 +2865,27 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
     let eventId = Date.now();
     if (supabase && currentUser.authProfileId) {
       const { data: team } = eventDraft.team ? await supabase.from("teams").select("id").eq("club_id",currentUser.clubId).eq("name",eventDraft.team).maybeSingle() : { data: null };
-      const { data: saved } = await supabase.from("events").insert({club_id:currentUser.clubId,team_id:team?.id||null,type:eventDraft.type,status:"scheduled",title:eventDraft.title.trim(),description:eventDraft.desc.trim()||null,starts_at:beginn.toISOString(),ends_at:ende.toISOString(),location:eventDraft.location.trim(),created_by:currentUser.authProfileId,home_away:eventDraft.type==="spiel"?(eventDraft.isHome?"heim":"auswaerts"):null,helper_slots:stationen}).select("id").maybeSingle();
-      if (saved?.id) eventId=saved.id;
+      const { data: saved, error: anlegeFehler } = await supabase.from("events").insert({club_id:currentUser.clubId,team_id:team?.id||null,type:eventDraft.type,status:"scheduled",title:eventDraft.title.trim(),description:eventDraft.desc.trim()||null,starts_at:beginn.toISOString(),ends_at:ende.toISOString(),location:eventDraft.location.trim(),created_by:currentUser.authProfileId,home_away:eventDraft.type==="spiel"?(eventDraft.isHome?"heim":"auswaerts"):null,helper_slots:stationen}).select("id").maybeSingle();
+      /* Das Ergebnis MUSS ausgewertet werden. Vorher stand hier nur
+         "if (saved?.id) eventId = saved.id" - schlug das Anlegen fehl, blieb
+         eventId die Zahl aus Date.now(), und der Termin landete allein in der
+         Liste dieses Geraets. Der Nutzer sah ihn dort stehen und glaubte, das
+         Training sei eingetragen; die Mannschaft erfuhr nie davon, und beim
+         naechsten Laden war er weg. Obendrein umgingen Absage und Loeschung
+         danach die Datenbank, weil beide auf eine Zeichenkette als Kennung
+         pruefen - der stille Fehlschlag setzte sich also fort. */
+      if (anlegeFehler) {
+        setTerminFehler("Der Termin konnte nicht gespeichert werden. Prüfe deine Verbindung und versuche es noch einmal.");
+        return;
+      }
+      if (!saved?.id) {
+        setTerminFehler("Der Termin wurde nicht gespeichert — dir fehlt das Recht, für diese Mannschaft einzutragen.");
+        return;
+      }
+      eventId = saved.id;
     }
     const created = { helperSlots: stationen.length ? stationen : undefined, id: eventId, type: eventDraft.type, team: eventDraft.team, title: eventDraft.title.trim(), date: beginn.toISOString(), location: eventDraft.location.trim(), desc: eventDraft.desc.trim(), carpool: false, home: eventDraft.type === "spiel" ? eventDraft.isHome : true, ...(eventDraft.type === "training" ? { youthClassIds: [TEAM_TO_YOUTHCLASS[eventDraft.team]] } : {}) };
+    setTerminFehler("");
     setEvents((all) => [...all, created].sort((a, b) => new Date(a.date) - new Date(b.date)));
     setFilter(eventDraft.type);
     setTeamFilter(eventDraft.team);
@@ -2887,8 +2904,17 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
       const { data, error } = await supabase.from("events")
         .update({ status: "cancelled", cancelled_at: new Date().toISOString(), cancelled_by: currentUser.authProfileId || null })
         .eq("id", eventId).select("id");
-      if (error || !data?.length) {
-        setTerminFehler("Die Absage konnte nicht gespeichert werden — dir fehlt das Recht für diese Mannschaft.");
+      /* Zwei verschiedene Ursachen, zwei verschiedene Meldungen. error deckt
+         auch Verbindungsabbruch, Zeitueberschreitung und abgelaufene Anmeldung
+         ab - in einer App auf dem Telefon ist das der haeufigere Fall. Wer
+         dann "dir fehlt das Recht" liest, schliesst daraus, man habe ihm die
+         Mannschaft entzogen. */
+      if (error) {
+        setTerminFehler("Die Absage konnte nicht gespeichert werden. Prüfe deine Verbindung und versuche es noch einmal.");
+        return;
+      }
+      if (!data?.length) {
+        setTerminFehler("Die Absage wurde nicht gespeichert. Entweder fehlt dir das Recht für diese Mannschaft, oder der Termin gibt es nicht mehr.");
         return;
       }
     }
@@ -2899,21 +2925,30 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
   const deleteTraining = (eventId, teamName, seriesId) => {
     setDeleteRequest({ id: eventId, team: teamName, seriesId: seriesId || null });
   };
-  /* Dieselbe Falle wie beim Absagen, hier gleich zweimal: Ein Loeschen, das die
-     Sicherheitsregel verweigert, meldet KEINEN Fehler - es loescht nur null
-     Zeilen. Der bisherige Code pruefte allein auf error, fiel also durch und
-     entfernte den Termin aus der Ansicht. Er blieb in der Datenbank, die
-     Mannschaft sah ihn weiter, und beim naechsten Laden war er auch beim
-     Loeschenden wieder da. Deshalb .select("id") und die Pruefung auf ein
-     leeres Ergebnis. Und ein stiller Abbruch war es vorher auch: Das Fenster
+  /* Dieselbe Falle wie beim Absagen, auf zwei Wegen mit zwei verschiedenen
+     Antworten:
+       Einzeltermin - .delete() meldet keinen Fehler, sondern loescht null
+         Zeilen. Erkennbar nur am leeren Ergebnis von .select("id").
+       Serie       - delete_event_series ist SECURITY DEFINER und gibt die
+         Trefferzahl zurueck. 0 heisst "nichts geloescht", auch hier ohne
+         Fehler.
+     Der bisherige Code prueft beide Male allein auf error, faellt also durch
+     und entfernt den Termin aus der Ansicht. In der Datenbank bleibt er, die
+     Mannschaft sieht ihn weiter, und beim naechsten Laden ist er auch beim
+     Loeschenden wieder da. Und still war der Abbruch obendrein: Das Fenster
      schloss sich, ohne zu sagen, dass nichts passiert ist. */
   const performSingleDelete = async () => {
     if (!deleteRequest) return;
     const id = deleteRequest.id;
     if (supabase && typeof id === "string") {
       const { data, error } = await supabase.from("events").delete().eq("id", id).select("id");
-      if (error || !data?.length) {
-        setTerminFehler("Der Termin konnte nicht gelöscht werden — dir fehlt das Recht für diese Mannschaft.");
+      if (error) {
+        setTerminFehler("Der Termin konnte nicht gelöscht werden. Prüfe deine Verbindung und versuche es noch einmal.");
+        setDeleteRequest(null);
+        return;
+      }
+      if (!data?.length) {
+        setTerminFehler("Der Termin wurde nicht gelöscht. Entweder fehlt dir das Recht für diese Mannschaft, oder er ist bereits entfernt.");
         setDeleteRequest(null);
         return;
       }
@@ -2926,9 +2961,19 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
     if (!deleteRequest || !deleteRequest.seriesId) return;
     const seriesId = deleteRequest.seriesId;
     if (supabase) {
-      const { error } = await supabase.rpc("delete_event_series", { target_series: seriesId });
+      /* delete_event_series ist SECURITY DEFINER und prueft die Rechte in
+         ihrem eigenen WHERE. Wer keines hat, loescht dort null Zeilen - und
+         bekommt KEINEN Fehler, sondern die Zahl 0 zurueck. Der Rueckgabewert
+         muss deshalb ausgewertet werden; nur auf error zu pruefen liess genau
+         den stillen Fehlschlag stehen, den dieser Block verhindern soll. */
+      const { data: geloescht, error } = await supabase.rpc("delete_event_series", { target_series: seriesId });
       if (error) {
-        setTerminFehler("Die Terminreihe konnte nicht gelöscht werden — dir fehlt das Recht für diese Mannschaft.");
+        setTerminFehler("Die Terminreihe konnte nicht gelöscht werden. Prüfe deine Verbindung und versuche es noch einmal.");
+        setDeleteRequest(null);
+        return;
+      }
+      if (!geloescht) {
+        setTerminFehler("Die Terminreihe wurde nicht gelöscht. Entweder fehlt dir das Recht für diese Mannschaft, oder sie ist bereits entfernt.");
         setDeleteRequest(null);
         return;
       }
@@ -3034,7 +3079,7 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
           </div>
         </div>
       )}
-      {deleteRequest && <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setDeleteRequest(null)}><div role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()} className="w-full max-w-sm rounded-2xl p-5" style={{ background: C.glass }}>{deleteRequest.seriesId ? <><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Wiederkehrendes Training</div><div className="text-xs mb-4" style={{ color: C.textDim }}>Sollen alle geplanten Sessions dieser Serie gelöscht werden, oder nur diese eine?</div><button onClick={performSeriesDelete} className="w-full py-2.5 rounded-xl text-xs font-bold mb-2" style={{ background: C.red, color: C.white }}>Alle Sessions</button><button onClick={performSingleDelete} className="w-full py-2.5 rounded-xl text-xs font-bold mb-2" style={{ background: C.paperDim, color: C.ink }}>Nur eine Session</button><button onClick={() => setDeleteRequest(null)} className="w-full py-2 text-xs font-bold" style={{ color: C.textDim }}>Abbrechen</button></> : <><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Wollen Sie die Trainingseinheit wirklich löschen?</div><div className="flex gap-2 mt-4"><button onClick={() => setDeleteRequest(null)} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>Nein</button><button onClick={performSingleDelete} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.red, color: C.white }}>Ja</button></div></>}</div></div>}
+      {deleteRequest && <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => { setDeleteRequest(null); setTerminFehler(""); }}><div role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()} className="w-full max-w-sm rounded-2xl p-5" style={{ background: C.glass }}>{deleteRequest.seriesId ? <><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Wiederkehrendes Training</div><div className="text-xs mb-4" style={{ color: C.textDim }}>Sollen alle geplanten Sessions dieser Serie gelöscht werden, oder nur diese eine?</div><button onClick={performSeriesDelete} className="w-full py-2.5 rounded-xl text-xs font-bold mb-2" style={{ background: C.red, color: C.white }}>Alle Sessions</button><button onClick={performSingleDelete} className="w-full py-2.5 rounded-xl text-xs font-bold mb-2" style={{ background: C.paperDim, color: C.ink }}>Nur eine Session</button><button onClick={() => { setDeleteRequest(null); setTerminFehler(""); }} className="w-full py-2 text-xs font-bold" style={{ color: C.textDim }}>Abbrechen</button></> : <><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Wollen Sie die Trainingseinheit wirklich löschen?</div><div className="flex gap-2 mt-4"><button onClick={() => { setDeleteRequest(null); setTerminFehler(""); }} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>Nein</button><button onClick={performSingleDelete} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.red, color: C.white }}>Ja</button></div></>}</div></div>}
     </div>
   );
 }
@@ -6017,6 +6062,21 @@ function ProfileView({ user, members, setMembers, currentClub, dutyPlan, punkteZ
   const [profileFolder, setProfileFolder] = useState("");
   const [referralAlreadyUsed, setReferralAlreadyUsed] = useState(false);
   const sectionSaveRef = useRef(null);
+  /* Beim Wechsel des Bereichs wird die Referenz geleert.
+     Sie zeigt auf die Speichern-Funktion des GERADE offenen Bereichs. Jeder
+     Bereich setzt sie beim Einhaengen - aber niemand raeumte sie beim
+     Verlassen auf. Wer also "Persoenliche Daten" oeffnete und dann
+     "Kalender synchronisieren", konnte in dem kurzen Moment, bevor der neue
+     Bereich stand, mit Speichern die Funktion des alten ausloesen: Ein Klick
+     auf "Kalender speichern" schrieb die persoenlichen Daten.
+     null heisst "noch keine Funktion da" - der Aufruf ist mit ?.() gesichert
+     und tut dann schlicht nichts, statt das Falsche zu tun.
+     Geraeumt wird in der AUFRAEUMFUNKTION, nicht im Effektkoerper: React
+     fuehrt Effekte von innen nach aussen aus. Stuende die Zuweisung im
+     Koerper, setzte der Bereich die Referenz und dieser Effekt loeschte sie
+     unmittelbar danach wieder - sie waere dauerhaft leer. Aufraeumfunktionen
+     laufen dagegen VOR den neuen Effekten. */
+  useEffect(() => () => { sectionSaveRef.current = null; }, [profileUnderlay]);
 
   /* Kommt jemand ueber "Abo ansehen", steht das Ziel schon fest: Der
      Kaufbereich soll offen sein, nicht die Uebersicht. Der Wunsch wird
