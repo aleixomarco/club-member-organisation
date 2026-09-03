@@ -34,6 +34,17 @@ Absagerechte, Kader), Vereins-News als Kanal für alle, Beitragsverwaltung
 abgeschaltet (`BEITRAGSVERWALTUNG_SICHTBAR`), Chat schließt unten bündig ab.
 45 Tests grün, `npm test` Exitcode 0.
 
+**Lint:** `npm run lint`, `npm test` und `npm run build` laufen alle mit
+Exitcode 0. Die vier Compiler-Regeln aus `eslint-plugin-react-hooks` 7
+(`set-state-in-effect`, `purity`, `immutability`,
+`preserve-manual-memoization`) stehen bewusst auf „warn" — sie kamen mit
+einem Versions-Upgrade ins Haus, nicht durch eine Entscheidung, und treffen
+gewachsene Muster wie `useEffect(() => { laden(); }, [laden])`. Begründung
+steht ausführlich in `eslint.config.mjs`. Wird der React Compiler eingeführt,
+gehören sie zurück auf „error". Behoben statt abgestuft wurden `refs`
+(Zuweisung während des Renderns, 6 Stellen) und `static-components`
+(Komponente in einer Komponente, 13 Stellen) — dort war die Regel im Recht.
+
 **Noch offen, unabhängig davon:** Der Mailversand läuft über den eingebauten
 Supabase-Dienst mit engem Limit. Für ein paar Testvereine reicht das; vor
 echtem Zulauf gehört ein eigener Postausgang hinterlegt.
