@@ -6659,7 +6659,10 @@ function ProtokollePanel({ members, protocols, setProtocols, clubId, onSpeichern
        Datenbank, und ohne sie liesse sich hinterher kein Haken setzen. */
     const ergebnis = await onSpeichern?.(entwurf);
     if (ergebnis?.error) { setSpeicherFehler(ergebnis.error); return; }
-    setSpeicherFehler("");
+    /* Teilerfolg: Das Protokoll steht, die Aufgaben fehlen. Die Meldung bleibt
+       stehen, das Protokoll wird trotzdem aufgenommen - sonst legt jemand aus
+       Versehen ein zweites an. */
+    setSpeicherFehler(ergebnis?.warnung || "");
     setProtocols((ps) => [{ ...entwurf, id: ergebnis?.id || "p" + Date.now() }, ...ps]);
     if (supabase && clubId) supabase.rpc("notify_club", { target_club: clubId, p_notif_type: "protocols", p_title: "Neues Vorstandsprotokoll", p_body: title.trim() });
     setTitle(""); setAttendees([]); setRawText(""); setDraftTasks([]);
@@ -6751,6 +6754,11 @@ function ProtokollePanel({ members, protocols, setProtocols, clubId, onSpeichern
         )}
 
         <button onClick={saveProtocol} disabled={!title.trim() || !rawText.trim()} className="w-full py-2.5 rounded-lg text-xs" style={{ background: C.red, color: "#fff", fontFamily: "Inter", fontWeight: 700, opacity: (!title.trim() || !rawText.trim()) ? 0.5 : 1 }}>Protokoll & Aufgaben speichern</button>
+        {/* Diese Meldung wurde gesetzt und nirgends angezeigt: Scheiterte das
+            Speichern, passierte fuer den Nutzer sichtbar gar nichts - das
+            Formular blieb stehen, das Protokoll fehlte, und niemand sagte
+            warum. */}
+        {speicherFehler && <div role="alert" className="text-[11px] mt-2 rounded-xl px-3 py-2" style={{ background: C.fehlerFlaeche, color: C.fehler, fontFamily: "Inter" }}>{speicherFehler}</div>}
         {(!title.trim() || !rawText.trim()) && <div className="text-[11px] mt-1.5 text-center" style={{ color: C.textDim, fontFamily: "Inter" }}>Bitte Titel und Protokolltext ausfüllen.</div>}
       </div>
 
@@ -7736,16 +7744,26 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
 function ClubFeatureOnboarding({ club, onDone }) {
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [fehler, setFehler] = useState("");
   const sport = club?.sport || "rollhockey";
   const cfg = sportConfig(sport);
   const feature = CLUB_FEATURES[step];
   const answersRef = useRef({});
   const finish = async (finalAnswers) => {
-    setSaving(true);
+    setSaving(true); setFehler("");
     if (supabase && club?.id) {
-      await supabase.from("club_feature_toggles").upsert(
+      /* Das Ergebnis wurde verworfen und onDone() lief in jedem Fall. Schlug
+         das Speichern fehl, war der Assistent durch, der Verein glaubte seine
+         Auswahl sei hinterlegt - und beim naechsten Oeffnen stand wieder
+         alles auf Vorgabe. Hier bleibt das Fenster jetzt offen. */
+      const { error } = await supabase.from("club_feature_toggles").upsert(
         CLUB_FEATURES.map((f) => ({ club_id: club.id, feature_key: f.key, enabled: finalAnswers[f.key] !== false }))
       );
+      if (error) {
+        setSaving(false);
+        setFehler("Die Auswahl konnte nicht gespeichert werden. Prüfe deine Verbindung und versuche es noch einmal.");
+        return;
+      }
     }
     setSaving(false);
     onDone();
@@ -7760,6 +7778,7 @@ function ClubFeatureOnboarding({ club, onDone }) {
       <div className="w-full max-w-sm">
         <div className="text-[10px] uppercase tracking-widest font-bold mb-1" style={{ color: C.red, fontFamily: "Inter" }}>Verein einrichten · {cfg.label}</div>
         <div className="text-xl mb-1" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>Welche Funktionen braucht ihr?</div>
+        {fehler && <div role="alert" className="text-[11px] rounded-xl px-3 py-2 mb-3" style={{ background: C.fehlerFlaeche, color: C.fehler, fontFamily: "Inter" }}>{fehler}</div>}
         <div className="text-xs mb-6" style={{ color: C.textDim, fontFamily: "Inter" }}>Frage {step + 1} von {CLUB_FEATURES.length} — lässt sich jederzeit in den Vereinseinstellungen unter „Funktionen“ ändern.</div>
         <div className="rounded-2xl p-5 mb-5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
           <div className="text-sm font-bold mb-2" style={{ color: C.ink, fontFamily: "Inter" }}>{feature.label(sport)}</div>
@@ -8783,11 +8802,19 @@ export default function ClubMemberOrganisationApp() {
     if (error || !protokoll) return { error: "Das Protokoll konnte nicht gespeichert werden." };
     const aufgaben = (entwurf.tasks || []).filter((t) => t.text.trim());
     if (aufgaben.length) {
-      await supabase.from("protocol_tasks").insert(aufgaben.map((t) => ({
+      /* Auch hier wurde das Ergebnis verworfen. Das Protokoll selbst war dann
+         gespeichert, die Aufgaben nicht - und die Ansicht meldete Erfolg.
+         Jemand bekam eine Aufgabe zugeteilt, von der er nie erfuhr. Weil das
+         Protokoll steht, ist das kein voller Fehlschlag: Die Meldung sagt
+         genau das, damit niemand aus Versehen ein zweites anlegt. */
+      const { error: aufgabenFehler } = await supabase.from("protocol_tasks").insert(aufgaben.map((t) => ({
         protocol_id: protokoll.id, text: t.text.trim(),
         assignee_membership_id: isDbId(t.assignee) ? t.assignee : null,
         due_date: t.due || null, done: false,
       })));
+      if (aufgabenFehler) {
+        return { id: protokoll.id, warnung: "Das Protokoll ist gespeichert, die Aufgaben darin konnten aber nicht angelegt werden. Bitte trage sie noch einmal ein." };
+      }
     }
     return { id: protokoll.id };
   };
