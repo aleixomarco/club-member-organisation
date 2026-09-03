@@ -29,10 +29,17 @@ die Nutzer sofort, ohne erneute Apple-Prüfung.
    einzelner Termin nie loeschen, und mit dem neuen Code sagt die App das
    jetzt auch offen. Erst die Migration macht die Funktion wieder heil.
 
-2. **`weiterbauen` nach main mergen.** Der Branch ist auf GitHub, zwei
-   Commits vor main. Danach baut Vercel automatisch und die Änderungen sind
-   live. Reihenfolge egal — der alte Produktionscode blendet den News-Kanal
-   ohnehin aus, es gibt keine Falle.
+2. **`weiterbauen` nach main mergen.** Der Branch ist auf GitHub, zehn
+   Commits vor main, konfliktfrei (reines Vorspulen, mit `git merge-tree`
+   geprüft). Danach baut Vercel automatisch und die Änderungen sind live.
+
+**Die Reihenfolge ist NICHT egal: erst die Migrationen, dann der Merge.**
+Für den News-Kanal wäre sie gleichgültig — der alte Code blendet ihn ohnehin
+aus. Für die DELETE-Regel ist sie es nicht: Der neue Code prüft, ob das
+Löschen wirklich Zeilen getroffen hat, und sagt es offen, wenn nicht. Läuft
+er ohne die Regel, bekommt beim Löschen eines einzelnen Termins **jeder** die
+Meldung, ihm fehle das Recht. Die Funktion war vorher genauso kaputt, sah
+aber heil aus. Mit der Migration zuerst gibt es diesen Zwischenzustand nicht.
 
 **Was auf `weiterbauen` liegt:** Mannschaftsfilter der Startseite (steuert
 Spiel und Training, vorbelegt mit der höchsten eigenen Mannschaft),
