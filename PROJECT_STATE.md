@@ -1,6 +1,42 @@
 # CMO App — Projektstatus
 
-_Letzte Aktualisierung: 2026-08-07 — via Claude Code, direkt im Terminal_
+_Letzte Aktualisierung: 2026-09-04 — via Claude Code, direkt im Terminal_
+
+## STAND 04.09.2026 — zwei Handgriffe fehlen noch
+
+Die App ist von Apple **freigegeben** und steht auf
+`PENDING_DEVELOPER_RELEASE`: Sie wartet nur auf den Knopf „Diese Version
+veröffentlichen" in App Store Connect. Danach dauert es bis zu 24 Stunden,
+bis sie überall auffindbar ist.
+
+Weil die native Hülle die gehostete Web-App lädt (`capacitor.config.ts` →
+`server.url`), zeigt der Store immer den Stand von **main**. Store-Klick und
+neue Funktionen sind damit unabhängig: Jeder spätere Push auf main erreicht
+die Nutzer sofort, ohne erneute Apple-Prüfung.
+
+**Offen — beides muss ein Mensch tun:**
+
+1. **Migration einspielen.** `supabase/migrations/20260904150000_vereins_news_kanal.sql`
+   ist noch nicht in der Produktion. Ohne sie fehlt der Kanal
+   „Vereins-News"; alles andere funktioniert. Gefahrlos wiederholbar
+   (nur Einfügungen mit Existenzprüfung).
+   Weg: `supabase db push` (vorher `--dry-run`) oder SQL-Editor.
+
+2. **`weiterbauen` nach main mergen.** Der Branch ist auf GitHub, zwei
+   Commits vor main. Danach baut Vercel automatisch und die Änderungen sind
+   live. Reihenfolge egal — der alte Produktionscode blendet den News-Kanal
+   ohnehin aus, es gibt keine Falle.
+
+**Was auf `weiterbauen` liegt:** Mannschaftsfilter der Startseite (steuert
+Spiel und Training, vorbelegt mit der höchsten eigenen Mannschaft),
+Mehrfach-Mitgliedschaften an rund 30 Stellen (Chat-Sichtbarkeit,
+Absagerechte, Kader), Vereins-News als Kanal für alle, Beitragsverwaltung
+abgeschaltet (`BEITRAGSVERWALTUNG_SICHTBAR`), Chat schließt unten bündig ab.
+45 Tests grün, `npm test` Exitcode 0.
+
+**Noch offen, unabhängig davon:** Der Mailversand läuft über den eingebauten
+Supabase-Dienst mit engem Limit. Für ein paar Testvereine reicht das; vor
+echtem Zulauf gehört ein eigener Postausgang hinterlegt.
 
 ## NATIVE APP (CAPACITOR) — Grundgerüst aufgesetzt (2026-08-07)
 
@@ -118,13 +154,13 @@ Preisangabenverordnung) sowie gegen Apple-/Google-Store-Richtlinien.
 
 ## Kontext
 - **Repo**: aleixomarco/club-member-organisation
-- **Branches**: main (PRODUKTION), paypal-sandbox-test (Preview/Test) — neue Änderungen immer zuerst in paypal-sandbox-test, nach Test manuell via GitHub Desktop nach main mergen. Stand heute: paypal-sandbox-test liegt mehrere Commits vor main, noch nicht gemerged.
+- **Branches**: main (PRODUKTION), paypal-sandbox-test (Preview/Test) — neue Änderungen immer zuerst in paypal-sandbox-test, nach Test manuell via GitHub Desktop nach main mergen. Stand 04.09.2026: paypal-sandbox-test und tarifmodell sind vollständig in main (0 Commits Vorsprung); der Arbeitsbranch heißt weiterbauen.
 - **Stack**: Next.js 16, React 19, TypeScript, Tailwind, Supabase, Vercel, PayPal Sandbox, Firebase Cloud Messaging (Push)
 - **Supabase-Projekt-Ref**: kymokcqebfruhlvcyqnw
 - **Firebase-Projekt**: club-member-organisation-acbf3 (privates Google-Konto, NICHT das Geschäftskonto — Workspace-Policy blockierte Service-Account-Schlüssel)
 - **Hauptdatei**: app/page.tsx (monolithisch, mehrere tausend Zeilen)
-- **Lokaler Pfad**: /Users/marcoaleixo/Documents/Codex/2026-08-01/er/club-member-organisation
-- **SQL-Migrationen**: werden manuell im Supabase SQL-Editor eingespielt (kein supabase db push)
+- **Lokaler Pfad**: /Users/marcoaleixo/Projekte/club-member-organisation (der frühere Pfad unter Documents/Codex existiert nicht mehr)
+- **SQL-Migrationen**: `supabase db push` funktioniert und ist der kürzere Weg — am 04.09.2026 geprüft: Die CLI ist angemeldet, das Projekt verknüpft, und `supabase migration list` zeigt local==remote für JEDE Migration. Die Buchführung stimmt also, `db push` spielt nur die tatsächlich fehlenden ein (vorher mit `--dry-run` ansehen). Der Weg über den SQL-Editor bleibt möglich, ist aber nicht mehr nötig.
 - **Node-Version-Hinweis**: Node v24.16.0 lokal. Falls npm run build ohne jede Ausgabe "erfolgreich" durchläuft (stiller Fehler, .next-Ordner fehlt) → rm -rf node_modules package-lock.json && npm install (defektes semver-Paket war die Ursache, kann bei Neuinstallationen wieder auftreten)
 
 ## Demo-Accounts (Passwort: demo)
