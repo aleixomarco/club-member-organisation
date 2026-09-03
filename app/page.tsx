@@ -2865,31 +2865,44 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
      trotzdem auf "abgesagt". Die Mannschaft sah ihn unveraendert, und beim
      naechsten Laden war er auch beim Absagenden wieder da. Ein stummer
      Fehlschlag ist schlimmer als eine Fehlermeldung. */
-  const [absageFehler, setAbsageFehler] = useState("");
+  const [terminFehler, setTerminFehler] = useState("");
   const cancelTraining = async (eventId) => {
     if (supabase && typeof eventId === "string") {
       const { data, error } = await supabase.from("events")
         .update({ status: "cancelled", cancelled_at: new Date().toISOString(), cancelled_by: currentUser.authProfileId || null })
         .eq("id", eventId).select("id");
       if (error || !data?.length) {
-        setAbsageFehler("Die Absage konnte nicht gespeichert werden — dir fehlt das Recht für diese Mannschaft.");
+        setTerminFehler("Die Absage konnte nicht gespeichert werden — dir fehlt das Recht für diese Mannschaft.");
         return;
       }
     }
-    setAbsageFehler("");
+    setTerminFehler("");
     setEvents((all) => all.map((item) => item.id === eventId ? { ...item, cancelled: true, cancelledBy: currentUser.id } : item));
   };
   const [deleteRequest, setDeleteRequest] = useState(null);
   const deleteTraining = (eventId, teamName, seriesId) => {
     setDeleteRequest({ id: eventId, team: teamName, seriesId: seriesId || null });
   };
+  /* Dieselbe Falle wie beim Absagen, hier gleich zweimal: Ein Loeschen, das die
+     Sicherheitsregel verweigert, meldet KEINEN Fehler - es loescht nur null
+     Zeilen. Der bisherige Code pruefte allein auf error, fiel also durch und
+     entfernte den Termin aus der Ansicht. Er blieb in der Datenbank, die
+     Mannschaft sah ihn weiter, und beim naechsten Laden war er auch beim
+     Loeschenden wieder da. Deshalb .select("id") und die Pruefung auf ein
+     leeres Ergebnis. Und ein stiller Abbruch war es vorher auch: Das Fenster
+     schloss sich, ohne zu sagen, dass nichts passiert ist. */
   const performSingleDelete = async () => {
     if (!deleteRequest) return;
     const id = deleteRequest.id;
     if (supabase && typeof id === "string") {
-      const { error } = await supabase.from("events").delete().eq("id", id);
-      if (error) { setDeleteRequest(null); return; }
+      const { data, error } = await supabase.from("events").delete().eq("id", id).select("id");
+      if (error || !data?.length) {
+        setTerminFehler("Der Termin konnte nicht gelöscht werden — dir fehlt das Recht für diese Mannschaft.");
+        setDeleteRequest(null);
+        return;
+      }
     }
+    setTerminFehler("");
     setEvents((all) => all.filter((item) => item.id !== id));
     setDeleteRequest(null);
   };
@@ -2898,8 +2911,13 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
     const seriesId = deleteRequest.seriesId;
     if (supabase) {
       const { error } = await supabase.rpc("delete_event_series", { target_series: seriesId });
-      if (error) { setDeleteRequest(null); return; }
+      if (error) {
+        setTerminFehler("Die Terminreihe konnte nicht gelöscht werden — dir fehlt das Recht für diese Mannschaft.");
+        setDeleteRequest(null);
+        return;
+      }
     }
+    setTerminFehler("");
     setEvents((all) => all.filter((item) => item.seriesId !== seriesId));
     setDeleteRequest(null);
   };
@@ -2963,9 +2981,9 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
         </select>
         <button aria-label="Als Standardansicht speichern" title="Als Standard speichern" onClick={saveDefaultTeam} disabled={savedTeam===teamFilter} className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{background:savedTeam===teamFilter?C.erfolgFlaeche:C.paperDim,color:savedTeam===teamFilter?C.secondary:C.textDim}}><Star size={13} fill={savedTeam===teamFilter?C.secondary:"none"}/></button>
       </div>}
-      {absageFehler && (
+      {terminFehler && (
         <div role="alert" className="flex items-center gap-1.5 text-xs mb-3 rounded-xl px-3 py-2.5" style={{ background: C.fehlerFlaeche, color: C.fehler, fontFamily: "Inter" }}>
-          <AlertCircle size={13} /> {absageFehler}
+          <AlertCircle size={13} /> {terminFehler}
         </div>
       )}
       {calendarOpen && <EventMonthCalendar events={filtered} onSelect={(ev) => setSelectedEvent(ev.id)} />}
