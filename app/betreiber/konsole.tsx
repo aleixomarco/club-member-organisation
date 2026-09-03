@@ -383,6 +383,18 @@ export default function BetreiberKonsole() {
  * Mitgliederliste für den Betrieb. Die Mitglieder haben ihre Daten dem VEREIN
  * gegeben, nicht dessen Sponsoren; wer beides vermischt, gibt irgendwann eine
  * Liste weiter, die niemand weitergeben darf. */
+/* Eine Kennzahl mit Beschriftung. Stand vorher INNERHALB von VereinsDetail:
+   Damit war es bei jedem Rendern eine neue Komponente, und React baute alle
+   Kacheln jedes Mal neu auf statt sie zu aktualisieren. Hier schadet das
+   nichts - die Kacheln haben weder Zustand noch Eingabefelder -, aber auf
+   Modulebene ist es schlicht richtig. */
+const Zahl = ({ wert, label }: { wert: React.ReactNode; label: string }) => (
+  <div style={{ ...karte, padding: 12, minWidth: 116, flex: "1 1 116px" }}>
+    <div style={{ fontSize: 20, fontWeight: 700 }}>{wert}</div>
+    <div style={{ fontSize: 11, color: "#8A7F85", marginTop: 2 }}>{label}</div>
+  </div>
+);
+
 function VereinsDetail({ daten, onSchliessen }: {
   daten: { verein: Verein; mitglieder: Mitglied[]; zielgruppe: Zielgruppe | null; sponsoren: Sponsor[] };
   onSchliessen: () => void;
@@ -398,13 +410,6 @@ function VereinsDetail({ daten, onSchliessen }: {
     (!suche.trim() || `${m.name} ${m.email || ""} ${m.ort || ""}`.toLowerCase().includes(suche.trim().toLowerCase()))
     && (!rolle || m.rollen.includes(rolle))
     && (!team || m.mannschaften.includes(team)));
-
-  const Zahl = ({ wert, label }: { wert: React.ReactNode; label: string }) => (
-    <div style={{ ...karte, padding: 12, minWidth: 116, flex: "1 1 116px" }}>
-      <div style={{ fontSize: 20, fontWeight: 700 }}>{wert}</div>
-      <div style={{ fontSize: 11, color: "#8A7F85", marginTop: 2 }}>{label}</div>
-    </div>
-  );
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(20,21,26,.5)", display: "flex", alignItems: "flex-start", justifyContent: "center", padding: 16, overflowY: "auto" }}
