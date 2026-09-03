@@ -9,12 +9,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "npm run build && node --test tests/*.test.mjs",
+    "test": "npm run build && npm run build:worker && node --test tests/*.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
     "cap:sync": "cap sync",
     "ios:open": "cap sync ios && cap open ios",
-    "android:open": "cap sync android && cap open android"
+    "android:open": "cap sync android && cap open android",
+    "build:worker": "vite build"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.0",

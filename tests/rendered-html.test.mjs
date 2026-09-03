@@ -11,15 +11,27 @@ async function render() {
   }, { waitUntil() {}, passThroughOnException() {} });
 }
 
-test("renders the Club Member Organisation entry screen", async () => {
+/* Der Test hing lange auf einem alten Stand: Er verlangte den Titel
+   "ERG Iserlohn Vereins-App" und Texte wie "Verein auswählen" im
+   ausgelieferten HTML. Beides trifft nicht mehr zu - die App heisst
+   "Club Member Organisation", und die Oberflaeche baut sich im Browser auf;
+   serverseitig kommt nur die Huelle. Ausserdem lief er nie: Er laedt
+   dist/server/index.js, und dieser Build fehlte im Testskript.
+   Geprueft wird jetzt, was tatsaechlich gilt - dass die Startseite
+   serverseitig ohne Absturz rendert und die Huelle stimmt. */
+test("liefert die Huelle der Startseite serverseitig aus", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
   const html = await response.text();
-  assert.match(html, /<title>ERG Iserlohn Vereins-App<\/title>/i);
-  assert.match(html, /Willkommen/);
-  assert.match(html, /ERG Iserlohn/);
-  assert.match(html, /Verein auswählen/);
+  assert.match(html, /<title>Club Member Organisation<\/title>/i);
+  assert.match(html, /<html lang="de"/i);
+  /* Die Kennzeichen der App-Huelle - ohne sie startet die native App nicht
+     richtig (Manifest, Statusleistenfarbe, Kurzname auf dem Homescreen). */
+  assert.match(html, /rel="manifest"/i);
+  assert.match(html, /name="theme-color"/i);
+  assert.match(html, /apple-mobile-web-app-title"\s+content="CMO"/i);
+  /* Und keine Reste der Projektvorlage. */
   assert.doesNotMatch(html, /Your site is taking shape|codex-preview/);
 });
 

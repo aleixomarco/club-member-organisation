@@ -7661,7 +7661,7 @@ function ClubFeatureOnboarding({ club, onDone }) {
       <div className="w-full max-w-sm">
         <div className="text-[10px] uppercase tracking-widest font-bold mb-1" style={{ color: C.red, fontFamily: "Inter" }}>Verein einrichten · {cfg.label}</div>
         <div className="text-xl mb-1" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>Welche Funktionen braucht ihr?</div>
-        <div className="text-xs mb-6" style={{ color: C.textDim, fontFamily: "Inter" }}>Frage {step + 1} von {CLUB_FEATURES.length} — lässt sich jederzeit in den Vereinseinstellungen unter „Funktionen" ändern.</div>
+        <div className="text-xs mb-6" style={{ color: C.textDim, fontFamily: "Inter" }}>Frage {step + 1} von {CLUB_FEATURES.length} — lässt sich jederzeit in den Vereinseinstellungen unter „Funktionen“ ändern.</div>
         <div className="rounded-2xl p-5 mb-5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
           <div className="text-sm font-bold mb-2" style={{ color: C.ink, fontFamily: "Inter" }}>{feature.label(sport)}</div>
           <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{feature.question(sport)}</div>
@@ -7753,7 +7753,7 @@ function ClubFeatureSettingsPanel({ currentClub, clubFeatures, onFeaturesChanged
   return (
     <div>
       <SectionTitle eyebrow={sportConfig(sport).label} title="Funktionen & Reihenfolge" />
-      <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>Lege je Funktion fest, ob ihr sie nutzt und an welcher Stelle sie unter „Aktionen &amp; Abstimmungen" auf dem Dashboard erscheint. Abgeschaltete Funktionen sind für alle Mitglieder ausgeblendet.</div>
+      <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>Lege je Funktion fest, ob ihr sie nutzt und an welcher Stelle sie unter „Aktionen &amp; Abstimmungen“ auf dem Dashboard erscheint. Abgeschaltete Funktionen sind für alle Mitglieder ausgeblendet.</div>
       {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{message}</div>}
 
       <div className="space-y-2.5">

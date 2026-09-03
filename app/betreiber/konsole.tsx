@@ -423,7 +423,7 @@ function VereinsDetail({ daten, onSchliessen }: {
         <h3 style={{ ...ueberschrift, marginTop: 18 }}>Zielgruppe</h3>
         <p style={{ ...hinweis, marginTop: -6 }}>
           Diese Zahlen können Sie einem Werbepartner zeigen. Gruppen unter fünf Personen werden
-          nicht ausgewiesen — bei zwei Frauen in einem Verein ist „zwei Frauen" keine Statistik mehr,
+          nicht ausgewiesen — bei zwei Frauen in einem Verein ist „zwei Frauen“ keine Statistik mehr,
           sondern ein Hinweis auf zwei bestimmte Personen.
         </p>
         {zielgruppe ? (

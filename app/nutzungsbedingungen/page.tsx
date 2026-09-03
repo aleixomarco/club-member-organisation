@@ -48,7 +48,7 @@ export default function TermsPage() { return <LegalShell title="Nutzungsbedingun
   <p>Maßgeblich ist der Betrag aus dem Angebot, das wir dem Verein auf seine Anfrage hin unterbreiten. Preise verstehen sich in Euro. Eine Einrichtungsgebühr oder sonstige einmalige Gebühr wird nicht erhoben.</p>
 
   <h2>Verhaltensregeln</h2>
-  <p>Rechtswidrige, beleidigende oder fremde Rechte verletzende Inhalte sind untersagt. Nutzer:innen können unangemessene Inhalte oder Verhalten über die Funktion „Fehler melden" im Profil an uns melden. Vereinsadministratoren dürfen entsprechende Inhalte entfernen und Konten sperren.</p>
+  <p>Rechtswidrige, beleidigende oder fremde Rechte verletzende Inhalte sind untersagt. Nutzer:innen können unangemessene Inhalte oder Verhalten über die Funktion „Fehler melden“ im Profil an uns melden. Vereinsadministratoren dürfen entsprechende Inhalte entfernen und Konten sperren.</p>
 
   <h2>Haftung</h2>
   <p>Wir haften unbeschränkt für Vorsatz und grobe Fahrlässigkeit sowie nach den Vorschriften des Produkthaftungsgesetzes. Für leichte Fahrlässigkeit haften wir nur bei Verletzung einer wesentlichen Vertragspflicht (Kardinalpflicht), begrenzt auf den vertragstypisch vorhersehbaren Schaden.</p>

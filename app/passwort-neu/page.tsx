@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 
 /* Zielseite des Links aus der Passwort-vergessen-E-Mail.
@@ -92,15 +93,15 @@ export default function PasswordResetPage() {
           <p style={{ fontSize: 14, color: "#2F9E58", marginBottom: 20 }}>
             Dein Passwort wurde geändert. Du kannst dich jetzt damit anmelden.
           </p>
-          <a href="/" style={{ display: "block", textAlign: "center", padding: "12px 0", borderRadius: 14, background: "#2A2028", color: "#fff", fontWeight: 700, fontSize: 14, textDecoration: "none" }}>Zur Anmeldung</a>
+          <Link href="/" style={{ display: "block", textAlign: "center", padding: "12px 0", borderRadius: 14, background: "#2A2028", color: "#fff", fontWeight: 700, fontSize: 14, textDecoration: "none" }}>Zur Anmeldung</Link>
         </>
       ) : failed ? (
         <>
           <p style={{ fontSize: 14, color: "#8A7F85", marginBottom: 20 }}>
             Dieser Link ist abgelaufen oder wurde bereits verwendet. Fordere auf
-            dem Anmeldebildschirm über „Passwort vergessen?" einen neuen an.
+            dem Anmeldebildschirm über „Passwort vergessen?“ einen neuen an.
           </p>
-          <a href="/" style={{ display: "block", textAlign: "center", padding: "12px 0", borderRadius: 14, background: "#2A2028", color: "#fff", fontWeight: 700, fontSize: 14, textDecoration: "none" }}>Zur Anmeldung</a>
+          <Link href="/" style={{ display: "block", textAlign: "center", padding: "12px 0", borderRadius: 14, background: "#2A2028", color: "#fff", fontWeight: 700, fontSize: 14, textDecoration: "none" }}>Zur Anmeldung</Link>
         </>
       ) : !ready ? (
         <p style={{ fontSize: 14, color: "#8A7F85" }}>Link wird geprüft …</p>
