@@ -1916,7 +1916,7 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub, offeneS
 
 
 function RegisterScreen({ onRegister, members, club, goLogin }) {
-  const [form, setForm] = useState({ name: "", email: "", team: supabase ? "" : TEAMS[0], birthdate: "", password: "", password2: "", accountType: "mitglied", relativeId: "", childName: "", childBirthdate: "", childTeam: "U11" });
+  const [form, setForm] = useState({ firstName: "", lastName: "", name: "", email: "", team: supabase ? "" : TEAMS[0], birthdate: "", password: "", password2: "", accountType: "mitglied", relativeId: "", childName: "", childBirthdate: "", childTeam: "U11" });
   const [legalAccepted, setLegalAccepted] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -1951,7 +1951,13 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
     const result = await onRegister({
       id: "m" + Date.now(),
       clubId: club?.id,
-      name: form.name.trim(),
+      /* name bleibt als zusammengesetzter Wert erhalten - die
+         Registrierungsfunktionen der Datenbank nehmen einen member_name
+         entgegen, und die Mitgliederlisten zeigen ihn. Vor- und Nachname
+         kommen zusaetzlich mit, damit sie einzeln im Profil landen. */
+      firstName: form.firstName.trim(),
+      lastName: form.lastName.trim(),
+      name: `${form.firstName.trim()} ${form.lastName.trim()}`.trim(),
       email: form.email.trim(),
       password: form.password,
       team: form.team,
@@ -1982,7 +1988,14 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
       </div>
 
       <form onSubmit={submit}>
-        <Field icon={User} placeholder="Vor- und Nachname" value={form.name} onChange={set("name")} />
+        {/* Getrennte Felder statt eines einzigen "Vor- und Nachname".
+            Mit einem Feld schrieben Leute alles Moegliche hinein oder liessen
+            es leer - dann fiel der Code auf den Teil der E-Mail vor dem @
+            zurueck, und auf der Startseite stand "Hallo marcoaleixo004".
+            Getrennt ist auch klar, welcher Teil der Vorname ist: Den zeigt
+            die App an jeder Stelle, an der sie jemanden anspricht. */}
+        <Field icon={User} placeholder="Vorname" value={form.firstName} onChange={set("firstName")} />
+        <Field icon={User} placeholder="Nachname" value={form.lastName} onChange={set("lastName")} />
         <Field icon={Mail} type="email" placeholder="E-Mail-Adresse" value={form.email} onChange={set("email")} />
         <Field icon={Cake} type="date" value={form.birthdate} onChange={set("birthdate")} />
 
@@ -2314,7 +2327,11 @@ function Dashboard({ user, members, events, feePaid, channels, news, dutyPlan, s
       <div className="flex items-start justify-between mb-4">
         <div>
           <div className="mb-1" style={{ fontFamily: "Inter", color: C.textDim, fontSize: 13 }}>Willkommen zurück,</div>
-          <div style={{ fontFamily: "Oswald", fontWeight: 700, fontSize: 24, color: C.ink }}>{user.name.split(" ")[0]} 👋</div>
+          {/* Der hinterlegte Vorname, nicht das erste Wort des vollen Namens.
+              Geraten wurde er frueher aus name.split(" ")[0] - und wenn bei der
+              Registrierung kein Name stand, kam dort der Teil der E-Mail vor
+              dem @ heraus: "Hallo marcoaleixo004". */}
+          <div style={{ fontFamily: "Oswald", fontWeight: 700, fontSize: 24, color: C.ink }}>{user.firstName?.trim() || user.name.split(" ")[0]} 👋</div>
         </div>
         <ClubLogo club={currentClub} size={44} rounded={12} />
       </div>
@@ -6628,7 +6645,7 @@ function ProtocolCard({ protocol, members, onToggleTask }) {
                     {t.done && <Check size={10} color="#fff" />}
                   </button>
                   <div className="flex-1 text-[11px]" style={{ fontFamily: "Inter", color: t.done ? C.textDim : C.ink, textDecoration: t.done ? "line-through" : "none" }}>{t.text}</div>
-                  <span className="text-[10px] flex-shrink-0" style={{ color: C.textDim, fontFamily: "Inter" }}>{person ? person.name.split(" ")[0] : "–"}{t.due ? ` · ${t.due}` : ""}</span>
+                  <span className="text-[10px] flex-shrink-0" style={{ color: C.textDim, fontFamily: "Inter" }}>{person ? (person.firstName?.trim() || person.name.split(" ")[0]) : "–"}{t.due ? ` · ${t.due}` : ""}</span>
                 </div>
               );
             })}
@@ -9534,6 +9551,11 @@ export default function ClubMemberOrganisationApp() {
         password: draft.password,
         options: { data: {
           full_name: draft.name,
+          /* Getrennt mitgeben, damit handle_new_user() sie direkt in
+             profiles.first_name/last_name schreibt. Ohne das musste der
+             Vorname aus dem vollen Namen geraten werden. */
+          first_name: draft.firstName || null,
+          last_name: draft.lastName || null,
           pending_club_id: pendingClub || nurKonto ? null : draft.clubId,
           /* Das Logo gehoert mit in die Kontodaten. Ohne das ging es beim Weg ueber
              den Bestaetigungslink still verloren: Der Verein entstand, das Logo
