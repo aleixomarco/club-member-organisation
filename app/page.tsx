@@ -1111,6 +1111,17 @@ function useCountdown(target) {
     s: Math.floor((diff % 60000) / 1000),
   };
 }
+/* Ein Datum als YYYY-MM-DD, in ORTSZEIT.
+   Hier stand ueberall toISOString().slice(0, 10). Das rechnet auf UTC um, und
+   oestlich von Greenwich rutscht Mitternacht damit auf den Vortag: Aus einem
+   Dienstag um 00:00 wurde "Montag". Bei wiederkehrenden Trainings war das
+   direkt sichtbar - wer Dienstag und Donnerstag ankreuzte, bekam Montag und
+   Mittwoch in die Liste. */
+const alsDatum = (d) => {
+  const zwei = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${zwei(d.getMonth() + 1)}-${zwei(d.getDate())}`;
+};
+
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" });
 }
@@ -2854,7 +2865,7 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
       for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
         const isoDay = d.getDay() === 0 ? 7 : d.getDay();
         if (!eventDraft.weekdays.includes(isoDay)) continue;
-        const dateStr = d.toISOString().slice(0, 10);
+        const dateStr = alsDatum(d);
         created.push({ id: `${dateStr}-${created.length}-${eventDraft.team}`, type: eventDraft.type, team: eventDraft.team, title: eventDraft.title.trim(), date: `${dateStr}T${eventDraft.startTime}`, location: eventDraft.location.trim(), desc: eventDraft.desc.trim(), carpool: false, home: true, ...(eventDraft.type === "training" ? { youthClassIds: [TEAM_TO_YOUTHCLASS[eventDraft.team]] } : {}) });
       }
       setEvents((all) => [...all, ...created].sort((a, b) => new Date(a.date) - new Date(b.date)));
@@ -4790,7 +4801,7 @@ function VehiclesView({ currentUser, currentClub }) {
   const openBooking = (vehicle) => {
     setSelectedVehicle(vehicle);
     setEditingBookingId(null);
-    const today = new Date().toISOString().slice(0, 10);
+    const today = alsDatum(new Date());
     setBookingForm({ startDate: today, startHour: "8", endDate: today, endHour: "18", teamId: "", isPrivate: false, privateLabel: "" });
     setMessage("");
   };
@@ -4800,8 +4811,8 @@ function VehiclesView({ currentUser, currentClub }) {
     setSelectedVehicle(vehicle);
     setEditingBookingId(booking.id);
     setBookingForm({
-      startDate: booking.startsAt.toISOString().slice(0, 10), startHour: String(booking.startsAt.getHours()),
-      endDate: booking.endsAt.toISOString().slice(0, 10), endHour: String(booking.endsAt.getHours()),
+      startDate: alsDatum(booking.startsAt), startHour: String(booking.startsAt.getHours()),
+      endDate: alsDatum(booking.endsAt), endHour: String(booking.endsAt.getHours()),
       teamId: booking.teamId || "", isPrivate: !booking.teamId, privateLabel: booking.privateLabel || "",
     });
     setMessage("");
@@ -6640,7 +6651,7 @@ function ProtocolCard({ protocol, members, onToggleTask }) {
 }
 function ProtokollePanel({ members, protocols, setProtocols, clubId, onSpeichern, onAufgabe }) {
   const [title, setTitle] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(alsDatum(new Date()));
   const [attendees, setAttendees] = useState([]);
   const [rawText, setRawText] = useState("");
   const [draftTasks, setDraftTasks] = useState([]);
@@ -6896,7 +6907,7 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
   }, [currentClub?.id]);
   useEffect(() => { ladeEigene(); }, [ladeEigene]);
 
-  const tag = (wert) => (wert ? new Date(wert).toISOString().slice(0, 10) : "");
+  const tag = (wert) => (wert ? alsDatum(new Date(wert)) : "");
   const leer = (platz) => ({
     id: null, platz, titel: "", text: "", bild_pfad: "", ziel_url: "",
     aktion_titel: "", aktion_text: "", aktion_url: "",
