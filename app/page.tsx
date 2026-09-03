@@ -19,6 +19,8 @@ import { legal } from "./legal-shell";
    Geblieben sind die Bezeichnungen der Stufen, die weiterhin gebraucht werden,
    um einen laufenden Tarif zu benennen. */
 import { CLUB_TIER_INFO } from "@/lib/preise";
+import { standardMannschaft, auswahlReihenfolge, hoechsteMannschaft, nachRangSortiert } from "@/lib/mannschaftsrang";
+import { memberPlayerTeams, memberTrainerTeams, memberCaptainTeams, memberManagedTeams, memberAllTeams, memberInTeam, hoechstesTeam } from "@/lib/mannschaften";
 
 /* ------------------------------------------------------------------ */
 /* Tokens                                                              */
@@ -210,6 +212,8 @@ button:active { transform: scale(0.96); }
      eine Zeile tiefer als das, was man sah.
      position: fixed mit inset: 0 fuellt genau die Flaeche der App-Huelle. Die
      bleibt konstant, egal was das System einblendet. */
+  /* Startwert, bis die Leiste einmal gemessen wurde. */
+  :root { --erg-nav-h: 96px; }
   html, body { height: 100%; overflow: hidden; overscroll-behavior: none; background: #F7F4F5; }
   .erg-shell { position: fixed; inset: 0; padding: 0; background: transparent; min-height: 0; }
   .erg-frame { max-width: none; height: 100%; border-radius: 0; box-shadow: none; }
@@ -656,10 +660,22 @@ const isAdmin = (m) => !!m && m.roles.some((r) => ROLE_META[r]?.admin);
  * genau einen Vereinsadmin anlegt - der Normalfall bei der Gruendung -, fand
  * die Beitragsverwaltung deshalb nie. Sie war da, nur unsichtbar, und niemand
  * konnte erraten, dass es dafuer eine eigene Rolle braucht. */
-const canManageFees = (m) => !!m && m.roles.some((r) => ["geschaeftsfuehrung", "finanzmanager", "vereinsadmin", "sysadmin", "vorstand"].includes(r));
+/* Beitragsverwaltung vorerst abgeschaltet.
+   Ein Schalter statt geloeschtem Code: Die Ansichten, Tabellen und
+   Sicherheitsregeln bleiben unangetastet, nur erreichbar ist nichts davon.
+   Zum Wiedereinschalten diese eine Zeile auf true setzen - und dabei den
+   Abschnitt "Beitraege" in docs/website-texte.md wieder aufnehmen, der
+   zusammen mit dieser Abschaltung herausgenommen wurde.
+   Haengt daran: der Reiter "Beitraege", die Beitragsansicht selbst, das Laden
+   der fee_records, die Kennzahl "Beitragsquote" in der Uebersicht, die Zeile
+   "X Beitraege noch offen" im Kopf der Verwaltung sowie die beiden
+   Beitrags-Automatiken (Zahlungserinnerungen, Beitragsperioden). */
+const BEITRAGSVERWALTUNG_SICHTBAR = false;
+const canManageFees = (m) => BEITRAGSVERWALTUNG_SICHTBAR && !!m && m.roles.some((r) => ["geschaeftsfuehrung", "finanzmanager", "vereinsadmin", "sysadmin", "vorstand"].includes(r));
 const isFormalMember = (m) => !!m && m.roles.some((r) => ROLE_META[r]?.formalMember);
 const isSysAdmin = (m) => !!m && m.roles.includes("sysadmin");
-const canWriteNews = (m) => isAdmin(m) || (!!m && m.roles.includes("redakteur"));
+
+/* Mannschaftszugehoerigkeit: siehe lib/mannschaften.mjs */const canWriteNews = (m) => isAdmin(m) || (!!m && m.roles.includes("redakteur"));
 /* Die eigene Sponsorenverwaltung des Vereins.
  *
  * Sie war lange ausgeblendet, weil es dafuer kein Angebot gab. Seit dem
@@ -2003,37 +2019,43 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
 /* ------------------------------------------------------------------ */
 /* Dashboard                                                            */
 /* ------------------------------------------------------------------ */
-function Scoreboard({ nextEvent, goTo, mannschaften = [], gewaehlt, onWechsel }) {
+/* Gemeinsames Auswahlfeld fuer die Startseite.
+   Es stand vorher zweimal im Markup der Spielkachel - einmal im Normalfall,
+   einmal im Zweig "kein Spiel geplant". Damit steuerte es auch nur diese eine
+   Kachel. Jetzt liegt es einmal ueber beiden Kacheln und gilt fuer Spiel und
+   Training zugleich. */
+function MannschaftsWahl({ mannschaften, gewaehlt, onWechsel }) {
+  if (!mannschaften || mannschaften.length <= 1) return null;
+  return (
+    <label className="inline-flex items-center gap-1.5 rounded-full pl-3 pr-2 py-1.5 mb-3 cursor-pointer"
+      style={{ background: C.glass, border: `1px solid ${C.line}` }}>
+      <ListFilter size={13} style={{ color: C.red, flexShrink: 0 }} />
+      <select aria-label="Mannschaft filtern" value={gewaehlt} onChange={(e) => onWechsel?.(e.target.value)}
+        className="text-[11px] font-bold outline-none appearance-none bg-transparent cursor-pointer pr-4"
+        style={{ color: C.ink, fontFamily: "Inter" }}>
+        {mannschaften.map((m) => <option key={m} value={m} style={{ color: C.ink }}>{m}</option>)}
+      </select>
+      <ChevronDown size={13} style={{ color: C.textDim, marginLeft: -14, pointerEvents: "none" }} />
+    </label>
+  );
+}
+function Scoreboard({ nextEvent, goTo, auswahlVorhanden = false }) {
   const { d, h, m } = useCountdown(nextEvent ? nextEvent.date : "2099-01-01T00:00:00");
   const digit = (n) => String(n).padStart(2, "0");
-  /* Ohne Mannschaftsauswahl verschwindet die Kachel, wenn kein Spiel ansteht -
-     ein Hinweis "keine Termine geplant" waere falsch, denn Training und anderes
-     stecken in eigenen Kacheln.
-     Mit Auswahl bleibt sie stehen: Verschwaende sie beim Wechsel auf eine
-     Mannschaft ohne Spiel, waere die Auswahl selbst mit weg und man kaeme nicht
-     zurueck. */
-  if (!nextEvent && mannschaften.length <= 1) return null;
+  /* Ohne Auswahl verschwindet die Kachel, wenn kein Spiel ansteht - ein Hinweis
+     "keine Termine geplant" waere falsch, denn Training und anderes stecken in
+     eigenen Kacheln.
+     Steht eine Auswahl zur Verfuegung, bleibt die Kachel dagegen stehen und
+     sagt, dass fuer diese Mannschaft nichts geplant ist. Sonst wirkte ein
+     Wechsel auf eine spielfreie Mannschaft wie ein Fehler. */
+  if (!nextEvent && !auswahlVorhanden) return null;
 
-  /* Mannschaft ohne geplantes Spiel: eigene, schlichte Fassung der Kachel.
-     Der Rest des Aufbaus greift auf nextEvent.date und .title zu - ohne diesen
-     Zweig faende er dort nichts und die Startseite bliebe weiss. */
   if (!nextEvent) {
     return (
       <div className="rounded-3xl p-5 mb-6 relative overflow-hidden" style={{ background: `linear-gradient(160deg, color-mix(in srgb, ${C.red} 82%, #fff) 0%, ${C.red} 100%)` }}>
         <div className="relative flex items-center justify-between mb-4">
           <span className="text-[10px] font-extrabold uppercase px-3.5 py-1.5 rounded-full" style={{ fontFamily: "Inter", letterSpacing: "0.14em", color: "#fff", background: "rgba(255,255,255,0.18)" }}>Nächstes Spiel</span>
         </div>
-        <label className="relative mb-3 inline-flex items-center gap-1.5 rounded-full pl-3 pr-2 py-1.5 cursor-pointer"
-          style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.28)" }}
-          onClick={(e) => e.stopPropagation()}>
-          <ListFilter size={13} style={{ color: "#fff", flexShrink: 0 }} />
-          <select aria-label="Mannschaft filtern" value={gewaehlt} onChange={(e) => onWechsel(e.target.value)}
-            className="text-[11px] font-bold outline-none appearance-none bg-transparent cursor-pointer pr-4"
-            style={{ color: "#fff", fontFamily: "Inter" }}>
-            {mannschaften.map((m) => <option key={m} value={m} style={{ color: C.ink }}>{m}</option>)}
-          </select>
-          <ChevronDown size={13} style={{ color: "rgba(255,255,255,0.8)", marginLeft: -14, pointerEvents: "none" }} />
-        </label>
         <div className="relative text-white text-sm" style={{ fontFamily: "Inter" }}>Für diese Mannschaft ist derzeit kein Spiel geplant.</div>
       </div>
     );
@@ -2046,24 +2068,6 @@ function Scoreboard({ nextEvent, goTo, mannschaften = [], gewaehlt, onWechsel })
         <span className="text-[10px] font-extrabold uppercase px-3.5 py-1.5 rounded-full" style={{ fontFamily: "Inter", letterSpacing: "0.14em", color: "#fff", background: "rgba(255,255,255,0.22)", border: "1px solid rgba(255,255,255,0.3)" }}>Nächstes Spiel</span>
         <span className="text-xs" style={{ color: "rgba(255,255,255,0.85)", fontFamily: "Inter" }}>{formatDate(nextEvent.date)} · {formatTime(nextEvent.date)}</span>
       </div>
-      {mannschaften.length > 1 && (
-        /* Die Auswahl liegt in der Kachel, nicht darueber: Sie gehoert zum
-           Spielblock und soll nicht wie ein Filter fuer die ganze Startseite
-           wirken. Ein Klick darauf darf die Kachel nicht oeffnen.
-           Das Symbol macht erkennbar, dass hier gefiltert wird - ein blosses
-           Auswahlfeld sieht auf dunklem Grund wie eine Beschriftung aus. */
-        <label className="relative mb-3 inline-flex items-center gap-1.5 rounded-full pl-3 pr-2 py-1.5 cursor-pointer"
-          style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.28)" }}
-          onClick={(e) => e.stopPropagation()}>
-          <ListFilter size={13} style={{ color: "#fff", flexShrink: 0 }} />
-          <select aria-label="Mannschaft filtern" value={gewaehlt} onChange={(e) => onWechsel(e.target.value)}
-            className="text-[11px] font-bold outline-none appearance-none bg-transparent cursor-pointer pr-4"
-            style={{ color: "#fff", fontFamily: "Inter" }}>
-            {mannschaften.map((m) => <option key={m} value={m} style={{ color: C.ink }}>{m}</option>)}
-          </select>
-          <ChevronDown size={13} style={{ color: "rgba(255,255,255,0.8)", marginLeft: -14, pointerEvents: "none" }} />
-        </label>
-      )}
       <div className="relative text-white text-xl mb-1.5" style={{ fontFamily: "Oswald", fontWeight: 700, letterSpacing: "-0.01em" }}>{nextEvent.title}</div>
       <div className="relative flex items-center gap-1.5 mb-5 text-xs" style={{ color: "rgba(255,255,255,0.8)", fontFamily: "Inter" }}><MapPin size={12} /> {nextEvent.location}</div>
       <div className="relative flex items-center gap-2">
@@ -2122,24 +2126,37 @@ function PollWidget({ poll, userId, setPolls, onVote }) {
     </div>
   );
 }
-/* Naechstes Training der eigenen Mannschaft.
+/* Naechstes Training der gewaehlten Mannschaft.
    Frueher hing die Kachel an zwei Bedingungen, die sie fast immer verhinderten:
    der Rolle "spieler" und einer hinterlegten Jugendklasse. Fuer Herren 1 gibt
    es keine Jugendklasse - die Kachel blieb dort immer aus. Und gerechnet wurde
    mit dem Demo-Feld, nicht mit den echten Terminen.
-   Jetzt gilt die Regel, die gemeint war: Wer einer Mannschaft angehoert, sieht
-   deren naechstes Training. Wer keiner angehoert, sieht die Kachel nicht. */
-function NextTrainingCard({ training }) {
+   Danach hing sie an user.team, also an einer einzigen Mannschaft, die mit der
+   Auswahl oben nichts zu tun hatte. Jetzt folgt sie derselben Auswahl wie das
+   Spiel. */
+function NextTrainingCard({ training, team, auswahlVorhanden = false }) {
   const { d, h, m } = useCountdown(training ? training.date : "2099-01-01T00:00:00");
-  if (!training) return null;
-  const info = { event: training };
   const digit = (n) => String(n).padStart(2, "0");
+  /* Wie bei der Spielkachel: ohne Auswahl still verschwinden, mit Auswahl
+     sagen, dass fuer diese Mannschaft nichts eingetragen ist. */
+  if (!training && !auswahlVorhanden) return null;
+  if (!training) {
+    return (
+      <div className="rounded-3xl p-5 mb-6 relative overflow-hidden" style={{ background: `linear-gradient(160deg, var(--club-secondary-light) 0%, var(--club-secondary) 100%)` }}>
+        <div className="relative text-[10px] uppercase font-bold mb-2.5" style={{ color: "rgba(255,255,255,0.82)", fontFamily: "Inter", letterSpacing: "0.14em" }}>Nächstes Training{team ? ` · ${team}` : ""}</div>
+        <div className="relative text-white text-sm" style={{ fontFamily: "Inter" }}>Für diese Mannschaft ist derzeit kein Training geplant.</div>
+      </div>
+    );
+  }
   return (
     <div className="rounded-3xl p-5 mb-6 relative overflow-hidden" style={{ background: `linear-gradient(160deg, var(--club-secondary-light) 0%, var(--club-secondary) 55%, var(--club-secondary-dark) 100%)`, boxShadow: "0 22px 46px rgba(20,21,26,0.22), inset 0 1px 0 rgba(255,255,255,0.3)" }}>
       <div className="absolute pointer-events-none" style={{ top: "-40%", left: "-10%", width: "80%", height: "100%", background: "radial-gradient(circle, rgba(255,255,255,0.24), transparent 65%)" }} />
-      <div className="relative text-[10px] uppercase font-bold mb-2.5" style={{ color: "rgba(255,255,255,0.82)", fontFamily: "Inter", letterSpacing: "0.14em" }}>Nächstes Training · {info.youthClass?.name}</div>
-      <div className="relative text-white text-xl mb-1.5" style={{ fontFamily: "Oswald", fontWeight: 700, letterSpacing: "-0.01em" }}>{formatDate(info.event.date)} · {formatTime(info.event.date)}</div>
-      <div className="relative flex items-center gap-1.5 text-xs mb-5" style={{ color: "rgba(255,255,255,0.8)", fontFamily: "Inter" }}><MapPin size={12} /> {info.event.location}</div>
+      {/* Hier stand `info.youthClass?.name` - ein Feld, das es auf dem Objekt nie
+          gab. Angezeigt wurde deshalb dauerhaft "Nächstes Training · " mit
+          haengendem Trennzeichen. Gemeint war die Mannschaft. */}
+      <div className="relative text-[10px] uppercase font-bold mb-2.5" style={{ color: "rgba(255,255,255,0.82)", fontFamily: "Inter", letterSpacing: "0.14em" }}>Nächstes Training{team ? ` · ${team}` : ""}</div>
+      <div className="relative text-white text-xl mb-1.5" style={{ fontFamily: "Oswald", fontWeight: 700, letterSpacing: "-0.01em" }}>{formatDate(training.date)} · {formatTime(training.date)}</div>
+      <div className="relative flex items-center gap-1.5 text-xs mb-5" style={{ color: "rgba(255,255,255,0.8)", fontFamily: "Inter" }}><MapPin size={12} /> {training.location}</div>
       <div className="relative flex items-center gap-2">
         {[["TAGE", d], ["STD", h], ["MIN", m]].map(([label, val], i) => (
           <React.Fragment key={label}>
@@ -2154,7 +2171,7 @@ function NextTrainingCard({ training }) {
     </div>
   );
 }
-function Dashboard({ user, members, events, feePaid, channels, news, dutyPlan, seasonVotes, tippPredictions, tippResults, polls, setPolls, onVote, werbeplaetze, onSponsorImpression, onSponsorClick, goEvents, goSeason, goTipp, goDuty, goNews, goTasks, goVehicles, currentClub, featureEnabled, dashboardTileOrder, entitlement, goSubscribe }) {
+function Dashboard({ user, members, events, feePaid, channels, news, dutyPlan, seasonVotes, tippPredictions, tippResults, polls, setPolls, onVote, werbeplaetze, onSponsorImpression, onSponsorClick, goEvents, goSeason, goTipp, goDuty, goNews, goTasks, goVehicles, currentClub, featureEnabled, dashboardTileOrder, entitlement, goSubscribe, mannschaften = [], gewaehlteMannschaft = "", onMannschaftWechsel }) {
   const sport = currentClub?.sport || "rollhockey";
   /* Alle Kacheln in „Aktionen & Abstimmungen" hängen am Premium-Tarif
      (siehe die LockedFeature-Hüllen der jeweiligen Ansichten). Während der
@@ -2167,17 +2184,9 @@ function Dashboard({ user, members, events, feePaid, channels, news, dutyPlan, s
   const kommende = (events || []).filter((e) => !e.cancelled && e.team && new Date(e.date) > new Date())
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-  /* Fuer den Spielblock laesst sich die Mannschaft waehlen - ein Vorstand
-     moechte auch sehen, wann die U15 spielt, nicht nur die eigene Mannschaft.
-     Vorbelegt ist die eigene; wer keine hat, bekommt die erste mit Spielen. */
-  /* Zur Wahl stehen alle Mannschaften mit Terminen - nicht nur die mit
-     anstehenden Spielen. Sonst verschwindet die Auswahl genau dann, wenn nur
-     eine Mannschaft gerade spielt, und man kann nicht nachsehen, ob eine
-     andere etwas geplant hat. */
-  const spielMannschaften = [...new Set((events || []).map((e) => e.team).filter(Boolean))]
-    .sort((a, b) => a.localeCompare(b, "de"));
-  const [spielTeam, setSpielTeam] = useState(user.team || "");
-  const gewaehlteMannschaft = spielMannschaften.includes(spielTeam) ? spielTeam : spielMannschaften[0] || "";
+  /* Die Mannschaftswahl kommt als Prop von oben. Sie steuert beide Kacheln -
+     Spiel und Training - und ueberlebt den Reiterwechsel, was sie als
+     Zustand dieser Komponente nicht tut (siehe key= am Container). */
 
   /* Kein Rueckfall mehr auf getNextMatch(): Das las die Demo-Konstante EVENTS und
      zeigte einem echten Verein damit ein Spiel, das es bei ihm nie gab. Findet
@@ -2199,9 +2208,12 @@ function Dashboard({ user, members, events, feePaid, channels, news, dutyPlan, s
       return tag.getDate() === heute.getDate() && tag.getMonth() === heute.getMonth();
     })
     .map((m) => (m.team && m.team !== "Mitglied" ? `${m.name} (${m.team})` : m.name));
-  /* Das Training bleibt bewusst bei der eigenen Mannschaft: Es beantwortet die
-     Frage "wann muss ich hin", nicht "was laeuft im Verein". */
-  const naechstesTraining = kommende.find((e) => e.type === "training" && e.team === user.team);
+  /* Training und Spiel folgen derselben Auswahl. Vorher hing das Training an
+     user.team - also an einer einzigen, willkuerlich gewaehlten Mannschaft:
+     Wer die Auswahl oben auf die U17 stellte, sah weiter das Training der
+     Herren 2. Und wer gar keine Zuordnung hat, bei dem ist user.team
+     "Mitglied" - dann fand die Zeile nie etwas und die Kachel blieb immer aus. */
+  const naechstesTraining = kommende.find((e) => e.type === "training" && e.team === gewaehlteMannschaft);
   const newsMsgs = (news || []).slice(-2).reverse();
 
   const seasonClosed = new Date() > new Date(SEASON_VOTE_DEADLINE);
@@ -2275,8 +2287,11 @@ function Dashboard({ user, members, events, feePaid, channels, news, dutyPlan, s
 
       <SponsorSlot slotKey="dashboard_top" bookings={werbeplaetze} onImpression={onSponsorImpression} onClick={onSponsorClick} visible={featureEnabled("sponsor_dashboard_top")} />
 
-      <Scoreboard nextEvent={nextEvent} goTo={goEvents} mannschaften={spielMannschaften} gewaehlt={gewaehlteMannschaft} onWechsel={setSpielTeam} />
-      <NextTrainingCard training={naechstesTraining} />
+      {/* Ein Auswahlfeld fuer beide Kacheln - vorher steckte es in der
+          Spielkachel und liess das Training unberuehrt. */}
+      <MannschaftsWahl mannschaften={mannschaften} gewaehlt={gewaehlteMannschaft} onWechsel={onMannschaftWechsel} />
+      <Scoreboard nextEvent={nextEvent} goTo={goEvents} auswahlVorhanden={mannschaften.length > 1} />
+      <NextTrainingCard training={naechstesTraining} team={gewaehlteMannschaft} auswahlVorhanden={mannschaften.length > 1} />
 
       {taskReminder !== null && (
         <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 mb-5" style={{ background: C.primaerWeich, border: `1px solid ${C.edge}` }}>
@@ -2741,7 +2756,17 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
     ? waehlbareTeams
     : manageableTeams !== null
       ? manageableTeams.filter((team) => waehlbareTeams.includes(team))
-      : currentUser.roles.includes("trainer") ? (currentUser.trainerTeams?.length ? currentUser.trainerTeams : [currentUser.team]).filter((team) => waehlbareTeams.includes(team)) : currentUser.roles.includes("teammanager") ? [currentUser.managedTeam || currentUser.team].filter((team)=>waehlbareTeams.includes(team)) : [currentUser.team].filter((team) => waehlbareTeams.includes(team));
+      /* Rueckfall ohne Datenbank: alle Mannschaften, in denen die Person eine
+         leitende Funktion hat. Vorher endete jeder Zweig bei genau einer -
+         beim Trainer notfalls bei seiner Spielmannschaft, sonst schlicht bei
+         currentUser.team. Wer in zwei Mannschaften Kapitaen ist, konnte fuer
+         die zweite keinen Termin eintragen; createSportEvent brach dann an
+         genau dieser Liste ab. */
+      : [...new Set([
+          ...memberTrainerTeams(currentUser),
+          ...memberCaptainTeams(currentUser),
+          ...memberManagedTeams(currentUser),
+        ])].filter((team) => waehlbareTeams.includes(team));
   const openCreate = () => {
     setEventDraft((draft) => ({ ...draft, type: canCreateSportEvent ? draft.type : "event", team: canCreateSportEvent ? (allowedEventTeams[0] || "") : "" }));
     /* Alte Meldung verwerfen, sonst begruesst sie einen beim naechsten Oeffnen
@@ -2829,7 +2854,26 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
     resetEventDraft();
     setShowCreate(false);
   };
-  const cancelTraining = async (eventId) => { if(supabase&&typeof eventId==="string") await supabase.from("events").update({status:"cancelled",cancelled_at:new Date().toISOString(),cancelled_by:currentUser.authProfileId||null}).eq("id",eventId); setEvents((all) => all.map((item) => item.id === eventId ? { ...item, cancelled: true, cancelledBy: currentUser.id } : item)); };
+  /* Die Antwort der Datenbank wird ausgewertet. Vorher lief die Absage immer
+     durch: Verweigert die Sicherheitsregel das Update, meldet Supabase keinen
+     Fehler, sondern null betroffene Zeilen - die Ansicht setzte den Termin
+     trotzdem auf "abgesagt". Die Mannschaft sah ihn unveraendert, und beim
+     naechsten Laden war er auch beim Absagenden wieder da. Ein stummer
+     Fehlschlag ist schlimmer als eine Fehlermeldung. */
+  const [absageFehler, setAbsageFehler] = useState("");
+  const cancelTraining = async (eventId) => {
+    if (supabase && typeof eventId === "string") {
+      const { data, error } = await supabase.from("events")
+        .update({ status: "cancelled", cancelled_at: new Date().toISOString(), cancelled_by: currentUser.authProfileId || null })
+        .eq("id", eventId).select("id");
+      if (error || !data?.length) {
+        setAbsageFehler("Die Absage konnte nicht gespeichert werden — dir fehlt das Recht für diese Mannschaft.");
+        return;
+      }
+    }
+    setAbsageFehler("");
+    setEvents((all) => all.map((item) => item.id === eventId ? { ...item, cancelled: true, cancelledBy: currentUser.id } : item));
+  };
   const [deleteRequest, setDeleteRequest] = useState(null);
   const deleteTraining = (eventId, teamName, seriesId) => {
     setDeleteRequest({ id: eventId, team: teamName, seriesId: seriesId || null });
@@ -2865,11 +2909,21 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
 
   /* Einmal berechnet statt an zwei Stellen abgeschrieben: Liste und Kalender-
      Overlay müssen zwingend dieselben Schreibrechte anwenden. */
+  /* Wer darf ein Training oder Spiel absagen oder loeschen?
+     Vorher wurde die Kapitaensfrage als "currentUser.team === ev.team"
+     gestellt. Ein Kapitaen zweier Mannschaften konnte damit nur in einer von
+     beiden absagen - in der anderen fehlte ihm das Recht, obwohl er dort
+     ebenso Kapitaen ist. Beim Trainer stand als Rueckfall [currentUser.team]:
+     Fehlten die Trainer-Mannschaften, galt ersatzweise die eigene
+     Spielmannschaft - ein Recht an der falschen Stelle.
+     Jetzt zaehlt je Funktion die passende Liste. */
   const canCancelFor = (ev) => {
-    const trainerTeams = currentUser.trainerTeams?.length ? currentUser.trainerTeams : [currentUser.team];
-    return ev.type === "event"
-      ? isAdminUser
-      : (ev.type === "training" || ev.type === "spiel") && (isSysAdmin(currentUser) || (currentUser.roles.includes("trainer") && trainerTeams.includes(ev.team)) || (currentUser.roles.includes("kapitaen") && currentUser.team === ev.team) || (currentUser.roles.includes("teammanager") && currentUser.managedTeam === ev.team));
+    if (ev.type === "event") return isAdminUser;
+    if (ev.type !== "training" && ev.type !== "spiel") return false;
+    return isSysAdmin(currentUser)
+      || memberTrainerTeams(currentUser).includes(ev.team)
+      || memberCaptainTeams(currentUser).includes(ev.team)
+      || memberManagedTeams(currentUser).includes(ev.team);
   };
 
   /* Der ausgewählte Termin wird bei jedem Rendern frisch aus events geholt.
@@ -2904,6 +2958,11 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
         </select>
         <button aria-label="Als Standardansicht speichern" title="Als Standard speichern" onClick={saveDefaultTeam} disabled={savedTeam===teamFilter} className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{background:savedTeam===teamFilter?C.erfolgFlaeche:C.paperDim,color:savedTeam===teamFilter?C.secondary:C.textDim}}><Star size={13} fill={savedTeam===teamFilter?C.secondary:"none"}/></button>
       </div>}
+      {absageFehler && (
+        <div role="alert" className="flex items-center gap-1.5 text-xs mb-3 rounded-xl px-3 py-2.5" style={{ background: C.fehlerFlaeche, color: C.fehler, fontFamily: "Inter" }}>
+          <AlertCircle size={13} /> {absageFehler}
+        </div>
+      )}
       {calendarOpen && <EventMonthCalendar events={filtered} onSelect={(ev) => setSelectedEvent(ev.id)} />}
       {filtered.map((ev) => (
         <EventCard key={ev.id} ev={ev}
@@ -3110,7 +3169,52 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
   const [text, setText] = useState("");
   const [sendeFehler, setSendeFehler] = useState("");
 
-  const visibleChannels = channels.filter((c) => isAdmin(user) || ((!c.team || c.team === user.team) && (!c.visibleRoles || c.visibleRoles.some((r) => user.roles.includes(r)))));
+  /* Sichtbare Kanaele.
+     Die Mannschaftspruefung lautete "c.team === user.team" - also gegen die
+     EINE Abkuerzung am Mitglied. Wer in Herren 1 und Herren 2 spielt, sah
+     damit nur einen der beiden Kanaele; der andere fehlte ganz, obwohl er
+     dort Mitglied ist. Ebenso fehlte dem Trainer der Kanal seiner
+     Trainer-Mannschaft, sobald das nicht zufaellig auch seine Spielmannschaft
+     war. Jetzt zaehlen alle Mannschaften der Person.
+     Ein Kanal ohne Mannschaft (c.team leer) ist vereinsweit - etwa die
+     Vereins-News. Er bleibt fuer alle sichtbar, sofern keine Rollen
+     eingetragen sind; eine leere Rollenliste heisst ausdruecklich "alle",
+     genau wie in der Datenbankregel.
+     Aus der Datenbank kommen ohnehin nur erlaubte Kanaele - die Regel
+     "members read channels" filtert bereits. Diese Pruefung hier traegt den
+     Demo-Betrieb ohne Datenbank und darf ihr nur nicht widersprechen. */
+  /* Kinder des Mitglieds. Auf dem Datensatz des Elternteils steht der Verweis
+     mit relation "kind" - so legt es linkFamilyRecords an. */
+  const kinderVon = (mitglied) => (mitglied?.familyLinks || [])
+    .filter((verweis) => verweis.relation === "kind")
+    .map((verweis) => (members || []).find((x) => x.id === verweis.memberId))
+    .filter(Boolean);
+  /* Nachbau der Datenbankregel "members read channels", Zeile fuer Zeile:
+       (team_id is not null and gehoert_zu_mannschaft(team_id))
+       or (team_id is null and (cardinality(visible_roles) = 0 or has_club_role(...)))
+     Beim Mannschaftskanal entscheidet also NUR die Mannschaft, nicht die
+     Rolle - und gehoert_zu_mannschaft zaehlt ausdruecklich auch Eltern, deren
+     Kind in der Mannschaft steht. Ohne diesen Zweig waere die Ansicht
+     strenger als die Datenbank: Sie bekaeme den Kanal geliefert und blendete
+     ihn wieder aus, sodass Eltern den Mannschaftskanal ihres Kindes nirgends
+     saehen. */
+  /* Kein Admin-Kurzschluss. Die Datenbankregel kennt fuer Mannschaftskanaele
+     ausdruecklich KEINE Ausnahme fuer Vorstand oder Geschaeftsfuehrung - wer
+     nicht in der Mannschaft steht, liest dort nicht mit; das haelt
+     20260904130000_demoverein_chat.sql als bewusste Datenschutzentscheidung
+     fest. Fuer die Kanalliste war der Kurzschluss ohnehin wirkungslos, weil
+     die Kanaele bereits gefiltert ankommen. Seit dieselbe Pruefung die
+     EMPFAENGER bestimmt, wirkte er aber schreibend: notify_many trug jedem
+     Admin den vollen Nachrichtentext ins Postfach - aus Kanaelen, die ihm die
+     Datenbank verweigert. */
+  const sichtbarFuer = (mitglied, kanal) => {
+    if (kanal.team) {
+      return memberInTeam(mitglied, kanal.team)
+        || kinderVon(mitglied).some((kind) => memberInTeam(kind, kanal.team));
+    }
+    return !kanal.visibleRoles?.length || kanal.visibleRoles.some((r) => mitglied.roles?.includes(r));
+  };
+  const visibleChannels = channels.filter((c) => sichtbarFuer(user, c));
   const active = visibleChannels.find((c) => c.id === activeId) || visibleChannels[0];
 
   /* Apple-Richtlinie 1.2 verlangt bei nutzergenerierten Inhalten beides: melden
@@ -3243,7 +3347,16 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
     }
     if (supabase && Array.isArray(members)) {
       const recipients = members
-        .filter((m) => m.id !== user.id && (isAdmin(m) || ((!active.team || active.team === m.team) && (!active.visibleRoles || active.visibleRoles.some((r) => m.roles.includes(r))))))
+        /* Spiegelbild der Sichtbarkeit: Benachrichtigt wird, wer den Kanal
+           auch sehen darf. Vorher stand hier dieselbe Verkuerzung auf die
+           eine Mannschaft - wer den Kanal sehen konnte, dessen Abkuerzung
+           aber eine andere Mannschaft nannte, bekam nie eine Mitteilung und
+           las die Nachricht erst zufaellig. */
+        /* Wer noch nicht freigegeben ist, bekommt nichts. Die Mitgliederliste
+           enthaelt auch Konten im Status "pending" - beim vereinsweiten
+           News-Kanal, den jeder sehen darf, waeren das sonst Mitteilungen an
+           Leute, die der Verein noch gar nicht aufgenommen hat. */
+        .filter((m) => m.id !== user.id && !m.accountPending && sichtbarFuer(m, active))
         .map((m) => m.id)
         .filter((id) => isDbId(id));
       if (recipients.length > 0) {
@@ -3254,7 +3367,12 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
   };
 
   return (
-    <div className="pt-4 pb-24 flex flex-col" style={{ height: "calc(100% - 16px)" }}>
+    /* Der Chat ist kein Scrollbereich mit Auslauf, sondern eine feste Saeule:
+       Nachrichtenliste dehnbar, Schreibfeld unten buendig. Darum hier nicht
+       pb-24 (das rechnet fuer Listen grosszuegig safe-area + 124px und liess
+       genau die Luecke unter dem Schreibfeld), sondern die gemessene Hoehe der
+       Navigationsleiste plus etwas Luft. */
+    <div className="pt-4 flex flex-col" style={{ height: "100%", paddingBottom: "calc(var(--erg-nav-h, 96px) + 10px)" }}>
       <div className="px-4"><SectionTitle title="Chat" /></div>
       <div className="flex gap-2 px-4 mb-3 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
         {visibleChannels.map((c) => (
@@ -3326,11 +3444,16 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
         {!canPost ? (
           <div className="text-xs text-center py-2 rounded-lg" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>{active.writeRoles ? "In dieser Gruppe schreiben Trainer, Kapitäne und freigegebene Teammitglieder." : "Nur berechtigte Rollen können hier schreiben."}</div>
         ) : (
-          <div className="flex items-center gap-2">
+          /* Der Fehler stand als Flex-Geschwister NEBEN dem Eingabefeld und
+             quetschte es zusammen, sobald das Senden scheiterte. Er gehoert
+             darueber. */
+          <div>
             {sendeFehler && <div className="text-[10px] mb-1.5 rounded-xl px-3 py-2" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{sendeFehler}</div>}
+            <div className="flex items-center gap-2">
             <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder="Nachricht schreiben…"
               className="flex-1 px-3 py-2.5 rounded-full text-sm outline-none" style={{ background: C.paperDim, fontFamily: "Inter", color: C.ink }} />
             <button onClick={send} aria-label="Nachricht senden" className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: C.red }}><Send size={16} color="#fff" /></button>
+            </div>
           </div>
         )}
       </div>
@@ -3634,16 +3757,19 @@ function TrainerTeamSettings({ user, members, setMembers }) {
     const loadTrainerTeams = async () => {
       setLoading(true); setMessage("");
       if (!databaseMembership) {
-        const assignedNames = user.trainerTeams?.length ? user.trainerTeams : [user.team].filter(Boolean);
+        /* Kein Rueckfall auf user.team: Das ist die Spielmannschaft und macht
+           aus einem Spieler keinen Trainer. Wer keine Trainer-Zuordnung hat,
+           bekommt hier auch keine Mannschaft. */
+        const assignedNames = memberTrainerTeams(user);
         const allNames = [...new Set([...TEAMS.filter((name) => name !== "Eltern / Angehörige"), ...members.flatMap((member) => memberPlayerTeams(member))])];
         const allLocalTeams = allNames.map((name) => ({ id: name, name }));
         const localTeams = allLocalTeams.filter((team) => assignedNames.includes(team.name));
-        setTeams(localTeams); setSelectedTeamId((current) => current || localTeams[0]?.id || ""); setLoading(false); return;
+        setTeams(localTeams); setSelectedTeamId((current) => current || hoechstesTeam(localTeams)?.id || ""); setLoading(false); return;
       }
       const { data, error } = await supabase.from("team_members").select("team_id,teams(id,name)").eq("membership_id", user.id).eq("function", "trainer");
       if (error) { setMessage("Die Trainer-Mannschaften konnten nicht geladen werden."); setLoading(false); return; }
       const assigned = (data || []).map((entry) => Array.isArray(entry.teams) ? entry.teams[0] : entry.teams).filter(Boolean);
-      setTeams(assigned); setSelectedTeamId((current) => current || assigned[0]?.id || ""); setLoading(false);
+      setTeams(assigned); setSelectedTeamId((current) => current || hoechstesTeam(assigned)?.id || ""); setLoading(false);
     };
     loadTrainerTeams();
   }, [user.id]);
@@ -3654,7 +3780,12 @@ function TrainerTeamSettings({ user, members, setMembers }) {
       setMessage("");
       if (!databaseMembership) {
         const selectedTeam = teams.find((team) => team.id === selectedTeamId)?.name;
-        const roster = members.filter((member) => member.team === selectedTeam && member.roles.includes("spieler")).map((member) => ({ id: member.id, name: member.name }));
+        /* Verglichen wurde member.team - also die eine Abkuerzung. Im Kader der
+           U15 fehlten damit alle, deren Abkuerzung "Herren 2" lautet, obwohl
+           sie in beiden spielen: Der Trainer konnte sie nicht zum Kapitaen
+           machen. Der Datenbankpfad darunter macht es laengst richtig, er
+           liest team_members. */
+        const roster = members.filter((member) => memberPlayerTeams(member).includes(selectedTeam)).map((member) => ({ id: member.id, name: member.name }));
         const captain = roster.find((player) => members.find((member) => member.id === player.id)?.roles.includes("kapitaen"))?.id || "";
         setPlayers(roster); setCaptainId(captain); setSavedCaptainId(captain); return;
       }
@@ -3680,10 +3811,22 @@ function TrainerTeamSettings({ user, members, setMembers }) {
     setSaving(true); setMessage("");
     if (!databaseMembership) {
       const selectedTeam = teams.find((team) => team.id === selectedTeamId)?.name;
+      /* Die Datenbank laesst genau einen Kapitaen je Mannschaft zu (Index
+         one_captain_per_team) - die Ansicht muss dasselbe tun. Entscheidend
+         ist dabei, die Kapitaenswuerde MANNSCHAFTSWEISE zu fuehren: Die Rolle
+         "kapitaen" steht global am Mitglied, und wer sie pauschal entzieht,
+         nimmt sie auch dem Kapitaen einer ANDEREN Mannschaft, der hier bloss
+         mitspielt. Deshalb wird captainTeams gepflegt und die Rolle erst
+         entzogen, wenn dort nichts mehr uebrig ist. */
       setMembers((items) => items.map((member) => {
-        if (member.team !== selectedTeam) return member;
-        const roles = member.roles.filter((role) => role !== "kapitaen");
-        return { ...member, roles: member.id === captainId ? [...roles, "kapitaen"] : roles };
+        if (member.id === captainId) {
+          const roles = member.roles.includes("kapitaen") ? member.roles : [...member.roles, "kapitaen"];
+          return { ...member, roles, captainTeams: [...new Set([...memberCaptainTeams(member), selectedTeam])] };
+        }
+        if (!memberCaptainTeams(member).includes(selectedTeam)) return member;
+        const captainTeams = memberCaptainTeams(member).filter((name) => name !== selectedTeam);
+        const roles = captainTeams.length ? member.roles : member.roles.filter((role) => role !== "kapitaen");
+        return { ...member, roles, captainTeams };
       }));
       setSavedCaptainId(captainId); setMessage("Kapitän wurde für diese Mannschaft gespeichert."); setSaving(false); return;
     }
@@ -3713,13 +3856,6 @@ function TrainerTeamSettings({ user, members, setMembers }) {
   </div>;
 }
 
-const memberPlayerTeams = (member) => {
-  if (member.playerTeams?.length) return member.playerTeams;
-  if (!member.roles?.includes("spieler")) return [];
-  if (member.teams?.length) return member.teams;
-  return member.team && member.team !== "Mitglied" ? [member.team] : [];
-};
-
 function PlayerTeamSettings({ user, setMembers }) {
   const [teams, setTeams] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -3741,8 +3877,9 @@ function PlayerTeamSettings({ user, setMembers }) {
       /* Hier standen zwei Aufrufe von setMyTeamIds - einer Funktion, die es
          nirgends gibt. Sie warfen mitten im Laden, noch vor setLoading(false),
          sodass "Meine Mannschaften" dauerhaft auf "Wird geladen ..." stand.
-         Gelesen wurde der Wert nie: Die Mannschaftszugehoerigkeit fuer die
-         Chat-Sichtbarkeit kommt aus user.team. */
+         Gelesen wurde der Wert nie: Die Kanaele filtert die Datenbankregel
+         "members read channels" ueber team_members, und in der Ansicht
+         entscheidet memberInTeam ueber alle Mannschaften der Person. */
       const myIds = (assignmentData || []).map((entry) => entry.team_id);
       setTeams((teamData || []).filter((team) => myIds.includes(team.id)));
       setLoading(false);
@@ -3920,7 +4057,7 @@ function TeamsView({ currentUser, members, setMembers, currentClub }) {
     setMembers((items) => items.map((member) => member.id === selectedPlayer.id ? {
       ...member,
       playerTeams: assignedNames,
-      team: assignedNames[0] || "Mitglied",
+      team: hoechsteMannschaft(assignedNames) || "Mitglied",
       teams: [...new Set([...assignedNames, ...(member.trainerTeams || []), member.managedTeam].filter(Boolean))],
     } : member));
     setSavedPlayerTeamIds(playerTeamIds);
@@ -4013,20 +4150,22 @@ function TeamPenaltyCatalog({ user }) {
     const loadTeams = async () => {
       setLoading(true); setMessage("");
       if (!databaseMembership) {
-        const names = [...new Set([
-          ...(user.trainerTeams || []),
-          user.managedTeam,
-          user.team,
-        ].filter(Boolean))];
+        /* Gemeint waren immer ALLE eigenen Mannschaften. Fuer den Spieleranteil
+           stand hier aber nur user.team - wer in Herren 1 und Herren 2 spielt,
+           fand die zweite im Auswahlfeld nicht. Und der Rueckfall
+           (user.trainerTeams || [user.team]) erklaerte die Spielmannschaft zur
+           Trainer-Mannschaft und gab dort Schreibrechte, die es nicht gibt. */
+        const names = memberAllTeams(user);
         const localTeams = names.map((name) => ({
           id: name,
           name,
-          canManage: (user.roles.includes("trainer") && (user.trainerTeams || [user.team]).includes(name))
-            || (user.roles.includes("teammanager") && user.managedTeam === name)
-            || (user.roles.includes("kapitaen") && user.team === name),
+          canManage: memberTrainerTeams(user).includes(name)
+            || memberManagedTeams(user).includes(name)
+            || memberCaptainTeams(user).includes(name),
         }));
         setTeams(localTeams);
-        setSelectedTeamId((current) => current || localTeams[0]?.id || "");
+        /* Vorbelegt die hoechste Mannschaft, nicht die zufaellig erste. */
+        setSelectedTeamId((current) => current || hoechsteMannschaft(names) || "");
         setLoading(false);
         return;
       }
@@ -4042,7 +4181,7 @@ function TeamPenaltyCatalog({ user }) {
       });
       const assigned = [...byId.values()].sort((a, b) => a.name.localeCompare(b.name, "de"));
       setTeams(assigned);
-      setSelectedTeamId((current) => current || assigned[0]?.id || "");
+      setSelectedTeamId((current) => current || hoechstesTeam(assigned)?.id || "");
       setLoading(false);
     };
     loadTeams();
@@ -5292,13 +5431,21 @@ function BoardMemberOverview({ members, currentUser }) {
         .select("id,display_name,email,member_since,status,membership_roles(role),team_members(function,teams(name))")
         .eq("club_id", currentUser.clubId).eq("status", "active");
       if (error) { setMessage("Die Mitgliederliste konnte nicht geladen werden."); setLoading(false); return; }
+      /* team ist das eine Feld, wenn nur EINE Mannschaft gemeint sein kann.
+         Vorher stand dort playerTeamNames[0] - also die Zeile, die Supabase
+         zufaellig zuerst zurueckgab. Wer in Herren 1 und Herren 2 spielt,
+         bekam mal die eine, mal die andere als Hauptmannschaft. Jetzt gilt
+         immer die hoechste. */
       const roster = (data || []).map((record, index) => {
         const assignments = record.team_members || [];
         const teamNames = [...new Set(assignments.map((entry) => entry.teams?.name).filter(Boolean))];
-        const playerTeamNames = [...new Set(assignments.filter((entry) => entry.function === "spieler").map((entry) => entry.teams?.name).filter(Boolean))];
+        const funktionsTeams = (funktion) => [...new Set(assignments.filter((entry) => entry.function === funktion).map((entry) => entry.teams?.name).filter(Boolean))];
+        const playerTeamNames = funktionsTeams("spieler");
         return {
           id: record.id, name: record.display_name, email: record.email || "",
-          team: playerTeamNames[0] || teamNames[0] || "Mitglied", teams: teamNames, playerTeams: playerTeamNames,
+          trainerTeams: funktionsTeams("trainer"), captainTeams: funktionsTeams("kapitaen"),
+          managedTeams: funktionsTeams("teammanager"), managedTeam: funktionsTeams("teammanager")[0] || null,
+          team: hoechsteMannschaft(playerTeamNames) || hoechsteMannschaft(teamNames) || "Mitglied", teams: teamNames, playerTeams: playerTeamNames,
           roles: (record.membership_roles || []).map((entry) => entry.role),
           color: AVATAR_FARBEN[index % 5],
         };
@@ -5554,7 +5701,7 @@ function SysAdminUserManager({ members, setMembers }) {
       if (error) { setMessage("Die Athleten-Mannschaften konnten nicht gespeichert werden."); setSaving(false); return; }
     }
     const names = teams.filter((team) => playerTeamIds.includes(team.id)).map((team) => team.name);
-    setMembers((items) => items.map((member) => member.id === selected.id ? { ...member, playerTeams: names, team: names[0] || "Mitglied", teams: [...new Set([...names, ...(member.trainerTeams || []), member.managedTeam].filter(Boolean))] } : member));
+    setMembers((items) => items.map((member) => member.id === selected.id ? { ...member, playerTeams: names, team: hoechsteMannschaft(names) || "Mitglied", teams: [...new Set([...names, ...(member.trainerTeams || []), member.managedTeam].filter(Boolean))] } : member));
     setSavedPlayerTeamIds(playerTeamIds); setMessage("Athleten-Mannschaften gespeichert."); setSaving(false);
   };
 
@@ -5653,7 +5800,7 @@ function NotificationSettings({ user, setMembers, saveRef }) {
       also auf eine Installation ausserhalb des App Store - mitten in der
       App-Store-App. Benachrichtigungen innerhalb der App sind davon unberuehrt,
       die laufen ueber die Datenbank. */}
-    {databaseMembership && !Capacitor.isNativePlatform() && <div className="rounded-2xl p-4 mb-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1" style={{color:C.ink}}>Push-Benachrichtigungen auf diesem Gerät</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>Aktiviere Push, um Benachrichtigungen auch außerhalb der App zu erhalten.</div><button onClick={pushStatus==="active"?deactivatePush:activatePush} disabled={pushStatus==="working"} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{background:pushStatus==="active"?C.fehlerFlaeche:C.ink,color:pushStatus==="active"?C.red:C.white}}>{pushStatus==="working"?"Wird bearbeitet …":pushStatus==="active"?"Push deaktivieren":"Push aktivieren"}</button></div>}<ToggleCard title="Benachrichtigungen auf diesem Gerät" desc="Master-Schalter für alle App-Benachrichtigungen" value={master} onChange={setMaster}/><div className="mt-4 rounded-2xl p-4space-y-3" style={{background:C.glass,border:`1px solid ${C.line}`}}>{NOTIFICATION_OPTIONS.map(([key,label])=><label key={key} className="flex items-center justify-between gap-3"><span className="text-xsfont-bold">{label}</span><select disabled={!master} value={prefs[key]?"ja":"nein"} onChange={(e)=>setPrefs({...prefs,[key]:e.target.value==="ja"})} className="px-3 py-2 rounded-xl text-xs" style={{background:C.paperDim,opacity:master?1:.45}}><option value="ja">Ja</option><option value="nein">Nein</option></select></label>)}</div></div>;
+    {databaseMembership && !Capacitor.isNativePlatform() && <div className="rounded-2xl p-4 mb-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1" style={{color:C.ink}}>Push-Benachrichtigungen auf diesem Gerät</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>Aktiviere Push, um Benachrichtigungen auch außerhalb der App zu erhalten.</div><button onClick={pushStatus==="active"?deactivatePush:activatePush} disabled={pushStatus==="working"} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{background:pushStatus==="active"?C.fehlerFlaeche:C.ink,color:pushStatus==="active"?C.red:C.white}}>{pushStatus==="working"?"Wird bearbeitet …":pushStatus==="active"?"Push deaktivieren":"Push aktivieren"}</button></div>}<ToggleCard title="Benachrichtigungen auf diesem Gerät" desc="Master-Schalter für alle App-Benachrichtigungen" value={master} onChange={setMaster}/><div className="mt-4 rounded-2xl p-4space-y-3" style={{background:C.glass,border:`1px solid ${C.line}`}}>{NOTIFICATION_OPTIONS.filter(([key])=>BEITRAGSVERWALTUNG_SICHTBAR||key!=="payments").map(([key,label])=><label key={key} className="flex items-center justify-between gap-3"><span className="text-xsfont-bold">{label}</span><select disabled={!master} value={prefs[key]?"ja":"nein"} onChange={(e)=>setPrefs({...prefs,[key]:e.target.value==="ja"})} className="px-3 py-2 rounded-xl text-xs" style={{background:C.paperDim,opacity:master?1:.45}}><option value="ja">Ja</option><option value="nein">Nein</option></select></label>)}</div></div>;
 }
 
 function PasswordSettings({ user, onLogout, saveRef }) {
@@ -5863,7 +6010,11 @@ function ProfileView({ user, members, setMembers, currentClub, dutyPlan, punkteZ
         <div className="w-16 h-16 rounded-full flex items-center justify-center text-xl flex-shrink-0" style={{ background: user.color, color: "#fff", fontFamily: "Oswald", fontWeight: 700 }}>{initialsOf(user.name)}</div>
         <div>
           <div className="text-white text-lg" style={{ fontFamily: "Oswald", fontWeight: 700 }}>{user.name}</div>
-          <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{user.team}{user.number ? ` · Rückennummer ${user.number}` : ""}</div>
+          {/* Im eigenen Profil stand nur user.team - also eine von womoeglich
+              mehreren Mannschaften. Wer in Herren 1 und Herren 2 spielt, sah
+              seine zweite Mannschaft nirgends. Hier gehoeren alle hin, nach
+              Rang geordnet. */}
+          <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{nachRangSortiert(memberAllTeams(user)).join(" · ") || user.team}{user.number ? ` · Rückennummer ${user.number}` : ""}</div>
           <div className="text-xs mt-0.5 mb-2" style={{ color: C.textDim, fontFamily: "Inter" }}>Dabei seit {user.since} · {age(user.birthdate)} Jahre</div>
           <div className="flex flex-wrap gap-1.5">
             {user.roles.map((r) => <Pill key={r} bg={ROLE_META[r].color}>{ROLE_META[r].label}</Pill>)}
@@ -6526,7 +6677,7 @@ function AutomationsPanel({ members, feePaid, remindersSent, setRemindersSent, w
 
   return (
     <div className="space-y-6">
-      <div>
+      {BEITRAGSVERWALTUNG_SICHTBAR && <div>
         <div className="text-sm mb-2" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Automatische Zahlungserinnerungen</div>
         <div className="text-[11px] mb-2" style={{ color: C.textDim, fontFamily: "Inter" }}>Stufe 1 ab 3 Tagen · Stufe 2 (Mahnung) ab 10 Tagen · Stufe 3 (Vorstand informiert) ab 20 Tagen überfällig.</div>
         {openMembers.length === 0 ? (
@@ -6551,9 +6702,9 @@ function AutomationsPanel({ members, feePaid, remindersSent, setRemindersSent, w
             })}
           </div>
         )}
-      </div>
+      </div>}
 
-      <ToggleCard title="Automatische Beitragsperioden" desc="Am 1. jedes Monats werden neue Beitragsposten für alle aktiven Mitglieder erzeugt. Nächster Lauf: 01.09.2026." value={billingAutomation} onChange={(w)=>{onEinstellung?.("billing_automation",w);setBillingAutomation(w);}} />
+      {BEITRAGSVERWALTUNG_SICHTBAR && <ToggleCard title="Automatische Beitragsperioden" desc="Am 1. jedes Monats werden neue Beitragsposten für alle aktiven Mitglieder erzeugt. Nächster Lauf: 01.09.2026." value={billingAutomation} onChange={(w)=>{onEinstellung?.("billing_automation",w);setBillingAutomation(w);}} />}
       <ToggleCard title="Willkommens-Automatik" desc="Neue Mitglieder erhalten automatisch eine Begrüßung im Kanal „Vereins-News“." value={welcomeAutomation} onChange={(w)=>{onEinstellung?.("welcome_automation",w);setWelcomeAutomation(w);}} />
     </div>
   );
@@ -8000,6 +8151,47 @@ export default function ClubMemberOrganisationApp() {
     });
   };
   const [subView, setSubView] = useState(null);
+  /* Die Mannschaftswahl der Startseite steht hier oben bei den uebrigen
+     Zustaenden - abmelden und Vereinswechsel setzen sie zurueck, und diese
+     Funktionen stehen weiter oben in der Datei. */
+  const [startseiteTeam, setStartseiteTeam] = useState(null);
+  /* Die Navigationsleiste liegt UEBER dem Inhalt (absolute, bottom-0). Wie hoch
+     sie ist, entscheidet das Geraet: Auf Geraeten mit Home-Leiste kommt
+     safe-area-inset-bottom dazu, und die Beschriftungen brechen je nach
+     Schriftgroesse anders um. Ein fester Abstand im Inhalt ist deshalb auf dem
+     einen Geraet zu klein und auf dem anderen zu gross - im Chat blieb unter
+     dem Schreibfeld eine sichtbare Luecke.
+     Gemessen statt geraten: Die tatsaechliche Hoehe steht als --erg-nav-h
+     bereit. Bei offener Tastatur ist die Leiste display:none - der Beobachter
+     meldet dann 0, und das Schreibfeld rueckt bis nach unten. Verschwindet sie
+     ganz, etwa in einer Unteransicht, wird der gemessene Wert entfernt und es
+     gilt wieder der Vorgabewert aus dem Stylesheet. */
+  const navBeobachter = useRef(null);
+  /* Bewusst ein Rueckruf-Ref und kein useEffect: Die Leiste entsteht erst,
+     wenn Huelle, Verein und Anmeldung stehen. Ein Effekt mit geratenen
+     Abhaengigkeiten lief genau einmal - naemlich bevor es die Leiste gab -
+     und danach nie wieder. Ein Rueckruf-Ref feuert dagegen exakt dann, wenn
+     der Knoten kommt oder geht. */
+  const navRef = useCallback((knoten) => {
+    const setzen = (hoehe) => document.documentElement.style.setProperty("--erg-nav-h", `${Math.round(hoehe)}px`);
+    /* Zuruecksetzen heisst: den gemessenen Wert entfernen, nicht ihn auf 0
+       stellen. Sonst uebersteuerte eine 0 den Vorgabewert aus dem Stylesheet,
+       und ohne Messung saesse das Schreibfeld unter der Leiste. */
+    const zuruecksetzen = () => document.documentElement.style.removeProperty("--erg-nav-h");
+    navBeobachter.current?.disconnect();
+    navBeobachter.current = null;
+    if (!knoten) { zuruecksetzen(); return; }
+    /* Sofort messen - der Beobachter meldet sich erst nach dem naechsten
+       Zeichnen, und bis dahin soll der Abstand schon stimmen. */
+    setzen(knoten.getBoundingClientRect().height);
+    if (typeof ResizeObserver === "undefined") return;
+    const beobachter = new ResizeObserver((eintraege) => {
+      const eintrag = eintraege[0];
+      setzen(eintrag?.borderBoxSize?.[0]?.blockSize ?? eintrag?.contentRect?.height ?? 0);
+    });
+    beobachter.observe(knoten);
+    navBeobachter.current = beobachter;
+  }, []);
 
   const [feePaid, setFeePaid] = useState(INITIAL_FEE_PAID);
   const [feeRecords, setFeeRecords] = useState(INITIAL_FEE_RECORDS);
@@ -8685,8 +8877,13 @@ export default function ClubMemberOrganisationApp() {
       return {
         id: record.id, authProfileId: record.profile_id, clubId: record.club_id, teamFilter: record.team_filter || "alle",
         name: record.display_name, email: record.email || "", password: "",
-        team: playerTeamNames[0] || teamNames[0] || "Mitglied", teams: teamNames, playerTeams: playerTeamNames, number: null,
+        team: hoechsteMannschaft(playerTeamNames) || hoechsteMannschaft(teamNames) || "Mitglied", teams: teamNames, playerTeams: playerTeamNames, number: null,
         trainerTeams: [...new Set(assignments.filter((entry) => entry.function === "trainer").map((entry) => entry.teams?.name).filter(Boolean))],
+        /* Kapitaen und Teammanager kann jemand in MEHREREN Mannschaften sein.
+           managedTeam blieb als Einzelwert stehen, weil aelterer Code ihn
+           liest; massgeblich sind die Listen. */
+        captainTeams: [...new Set(assignments.filter((entry) => entry.function === "kapitaen").map((entry) => entry.teams?.name).filter(Boolean))],
+        managedTeams: [...new Set(assignments.filter((entry) => entry.function === "teammanager").map((entry) => entry.teams?.name).filter(Boolean))],
         managedTeam: assignments.find((entry) => entry.function === "teammanager")?.teams?.name || null,
         since: record.member_since || new Date().getFullYear(),
         roles: (record.membership_roles || []).map((entry) => entry.role),
@@ -9290,7 +9487,7 @@ export default function ClubMemberOrganisationApp() {
     if (supabase) await supabase.auth.signOut();
     setCurrentUserId(null); setSelectedClubId(null);
     setMeineMitgliedschaften([]); setOffeneSitzung(null); setPendingAccount(null);
-    setAuthScreen("login"); setTab("home"); setTabHistory([]); setSubView(null);
+    setAuthScreen("login"); setTab("home"); setTabHistory([]); setSubView(null); setStartseiteTeam(null);
   };
   useEffect(() => {
     if (!currentUser || !currentUser.autoLogoutDays) return;
@@ -9323,7 +9520,7 @@ export default function ClubMemberOrganisationApp() {
   const returnToClubOverview = () => {
     setCurrentUserId(null); setSelectedClubId(null);
     setAuthScreen(meineMitgliedschaften.length > 0 ? "meineVereine" : "club");
-    setTab("home"); setTabHistory([]); setSubView(null); setEventFocusRequest(null);
+    setTab("home"); setTabHistory([]); setSubView(null); setEventFocusRequest(null); setStartseiteTeam(null);
   };
   /* "Alle ansehen" unter den Vereins-News.
      Stand vorher auf setChatChannelId("news") + Chat-Reiter - ein Rest aus der
@@ -9334,7 +9531,37 @@ export default function ClubMemberOrganisationApp() {
      tippte, landete in einem leeren Chat. Die vollstaendige Liste steht heute
      im Reiter Redaktion. */
   const goNews = () => navigateTab("redaktion");
-  const goToMyNextMatch = () => { setEventFocusRequest({ team: currentUser?.team || "alle", requestedAt: Date.now() }); navigateTab("events"); };
+  /* Die Mannschaftswahl der Startseite liegt hier oben und nicht im Dashboard:
+     Der Container weiter unten traegt key={`${tab}-${subView}`} und montiert
+     bei jedem Reiterwechsel neu. Im Dashboard waere die Wahl also schon weg,
+     sobald jemand kurz auf Termine und zurueck tippt.
+     null heisst "noch nichts ausgewaehlt" - dann gilt die berechnete
+     Voreinstellung. Ein fester Startwert waere hier falsch: Beim ersten
+     Rendern stehen in events noch die Demo-Termine und currentUser hat unter
+     Umstaenden noch keine Mannschaften. Die Ableitung unten zieht automatisch
+     nach, sobald die echten Daten da sind. */
+  /* Zur Wahl stehen alle Mannschaften mit Terminen - auch vergangenen, damit
+     die Auswahl nicht verschwindet, nur weil gerade nichts ansteht. */
+  const startseiteMannschaften = [...new Set((events || []).map((e) => e.team).filter(Boolean))];
+  const eigeneMannschaften = currentUser
+    ? [...new Set([...memberPlayerTeams(currentUser), ...(currentUser.teams || []), currentUser.managedTeam].filter(Boolean))]
+    : [];
+  /* Die eigenen Mannschaften zuerst, nach Rang - der Vorstand kann weiter jede
+     andere nachsehen, muss die eigene aber nicht suchen. */
+  const startseiteAuswahl = auswahlReihenfolge(startseiteMannschaften, eigeneMannschaften);
+  /* Eine getroffene Wahl gilt, solange es die Mannschaft noch gibt. Sonst die
+     Voreinstellung: die hoechste Mannschaft, in der man selbst spielt. */
+  const startseiteWahl = startseiteTeam && startseiteMannschaften.includes(startseiteTeam)
+    ? startseiteTeam
+    : standardMannschaft({
+        gespeichert: currentUser?.teamFilter,
+        spielt: memberPlayerTeams(currentUser || {}),
+        zugeordnet: eigeneMannschaften,
+        vorhanden: startseiteMannschaften,
+      });
+  /* Der Sprung von der Spielkachel in die Terminliste nimmt dieselbe
+     Mannschaft mit - sonst zeigt die Liste eine andere als die Kachel. */
+  const goToMyNextMatch = () => { setEventFocusRequest({ team: startseiteWahl || "alle", requestedAt: Date.now() }); navigateTab("events"); };
   /* Gezaehlt wird an der Anzeige selbst, damit die Zahl auch die Mitglieder
      erfasst - und nicht nur die Administratoren, die als einzige den
      Zustandsblock speichern durften. Fehler bleiben still: Eine nicht
@@ -9549,7 +9776,8 @@ export default function ClubMemberOrganisationApp() {
                 <Dashboard user={currentUser} members={clubMembers} events={events} feePaid={!!feePaid[currentUser.id]} channels={channels} news={vereinsNews} dutyPlan={dutyPlan} seasonVotes={seasonVotes} tippPredictions={tippPredictions} tippResults={tippResults} polls={polls} setPolls={setPolls} onVote={stimmeAbgeben}
                   werbeplaetze={werbeplaetze} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick}
                   goEvents={goToMyNextMatch} goSeason={() => setSubView("season")} goTipp={() => setSubView("tipp")} goDuty={() => setSubView("duty")} goTasks={() => setSubView("tasks")} goVehicles={() => setSubView("vehicles")} goNews={currentUserCanEditNews ? goNews : null}
-                  currentClub={currentClub} featureEnabled={featureEnabled} dashboardTileOrder={dashboardTileOrder} entitlement={entitlement} goSubscribe={goSubscribe} />
+                  currentClub={currentClub} featureEnabled={featureEnabled} dashboardTileOrder={dashboardTileOrder} entitlement={entitlement} goSubscribe={goSubscribe}
+                  mannschaften={startseiteAuswahl} gewaehlteMannschaft={startseiteWahl} onMannschaftWechsel={setStartseiteTeam} />
               )}
               {!subView && tab === "events" && (
                 <EventsView currentUser={currentUser} members={clubMembers} events={events} setEvents={setEvents} carpools={carpools} setCarpools={setCarpools}
@@ -9581,7 +9809,7 @@ export default function ClubMemberOrganisationApp() {
             </div>
 
             {!subView && (
-              <div className="erg-navwrap absolute bottom-0 left-0 right-0 px-3 pt-2 pointer-events-none" style={{ display: tastaturOffen ? "none" : undefined }}>
+              <div ref={navRef} className="erg-navwrap absolute bottom-0 left-0 right-0 px-3 pt-2 pointer-events-none" style={{ display: tastaturOffen ? "none" : undefined }}>
                 <div className="flex items-center justify-around rounded-3xl p-1.5 pointer-events-auto" style={{ background: "rgba(255,255,255,0.62)", border: `1px solid ${C.edge}`, boxShadow: "0 14px 34px rgba(60,30,45,0.14)" }}>
                   {TABS.map((t) => {
                     const activeTab = tab === t.id;

@@ -5,7 +5,8 @@ Funktionsumfang geprüft — nichts versprochen, was die App nicht kann.
 
 Nicht erwähnt und bewusst weggelassen: Push-Benachrichtigungen (gibt es auf iOS
 noch nicht), Plus und Pro als kaufbare Tarife (derzeit nur Basic), ein
-kostenloser Testzeitraum (entfällt seit dem 30.08.2026).
+kostenloser Testzeitraum (entfällt seit dem 30.08.2026), die Beitragsverwaltung
+(vorerst abgeschaltet — siehe BEITRAGSVERWALTUNG_SICHTBAR in app/page.tsx).
 
 ---
 
@@ -78,10 +79,6 @@ sich ein. Kein Rundruf, keine Doppelfahrten.
 ### Vereinsfahrzeuge
 
 Kalender und Buchung für den Vereinsbus, wenn es einen gibt.
-
-### Beiträge
-
-Wer hat gezahlt, wer nicht. Ohne Excel-Liste, die nur einer pflegt.
 
 ### Und dazu
 
