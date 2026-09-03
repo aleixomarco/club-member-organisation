@@ -828,11 +828,18 @@ function age(birthdate) {
 /* ------------------------------------------------------------------ */
 /* Vereine (mandantenfähig)                                            */
 /* ------------------------------------------------------------------ */
-const INITIAL_CLUBS = [
-  { id: DEMO_CLUB_ID, name: "ERG Iserlohn", shortName: "ERGI", city: "Iserlohn", foundedYear: 1965, logoUrl: null },
-  { id: "tsv-musterstadt", name: "TSV Musterstadt", shortName: "TSVM", city: "Musterstadt", foundedYear: 1902 },
-  { id: "sv-beispiel", name: "SV Beispiel 04", shortName: "SVB", city: "Beispielhausen", foundedYear: 1904 },
-];
+/* Bewusst leer.
+   Hier standen drei erfundene Vereine - ERG Iserlohn, TSV Musterstadt und
+   SV Beispiel 04. Sie waren als Anschauungsmaterial gedacht, landeten aber in
+   der Vereinssuche der ausgelieferten App: Der Zustand startet mit dieser
+   Liste, und bis die Datenbank antwortet, sieht ein neuer Nutzer drei Vereine,
+   die es nirgends gibt. Wer schnell tippt, tritt einem davon bei - und landet
+   im Nichts.
+   Besonders irrefuehrend war "TSV Musterstadt": Der echte Demo-Verein heisst
+   "SV Musterstadt" und ist laengst ausgeblendet. Wer die Attrappe sah, hielt
+   die Ausblendung fuer kaputt.
+   Leer ist richtig: Bis die echten Vereine geladen sind, gibt es eben keine. */
+const INITIAL_CLUBS = [];
 
 /* ------------------------------------------------------------------ */
 /* Mock accounts                                                       */
