@@ -884,17 +884,33 @@ const INITIAL_DUTY_PLAN = {
 /* ------------------------------------------------------------------ */
 /* Mock content data                                                   */
 /* ------------------------------------------------------------------ */
+/* Die Demo-Termine liegen relativ zu HEUTE, nicht auf festen Kalendertagen.
+   Vorher standen dort Daten im August 2026; ab September war jeder davon
+   vergangen, und der Demo-Betrieb zeigte auf der Startseite fuer jede
+   Mannschaft "kein Spiel geplant". Das sah nach einem Fehler aus, war aber
+   nur abgelaufenes Beiwerk - und musste jedes Jahr von Hand nachgezogen
+   werden. tageAb() rechnet den Abstand einmal beim Laden aus; die Demo bleibt
+   damit von selbst aktuell.
+   Betrifft ausschliesslich den Betrieb OHNE Datenbank. Sobald Supabase
+   eingerichtet ist, kommen die Termine aus der Tabelle events. */
+const tageAb = (tage, stunde, minute = 0) => {
+  const d = new Date();
+  d.setDate(d.getDate() + tage);
+  d.setHours(stunde, minute, 0, 0);
+  const zwei = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${zwei(d.getMonth() + 1)}-${zwei(d.getDate())}T${zwei(d.getHours())}:${zwei(d.getMinutes())}:00`;
+};
 const EVENTS = [
-  { id: 1, type: "training", team: "Herren 1", title: "Training Herren 1", date: "2026-08-04T18:30:00", location: "Hemberghalle, Iserlohn", desc: "Reguläres Mannschaftstraining. Schienbeinschoner nicht vergessen!", carpool: false, youthClassIds: ["herren1"] },
-  { id: 2, type: "spiel", team: "Herren 1", title: "Heimspiel vs. Herringen", date: "2026-08-09T19:00:00", location: "Hemberghalle, Iserlohn", desc: "Bundesliga, Spieltag 3. Support von den Rängen ist gewünscht!", carpool: false, home: true, helperSlots: ["Theke", "Zeitnahme", "Grill", "Kasse"] },
-  { id: 3, type: "spiel", team: "Herren 1", title: "Auswärtsspiel bei ERC Wimbern", date: "2026-08-16T20:00:00", location: "Wimbern · 85 km", desc: "Gemeinsame Abfahrt ab Hemberghalle. Fahrgemeinschaft bitte eintragen.", carpool: true, home: false },
-  { id: 4, type: "event", title: "Sommerfest & Saisonabschluss", date: "2026-08-23T15:00:00", location: "Vereinsheim am Hemberg", desc: "Grillen, Siegerehrung U11–U15, abends DJ. Familien sind herzlich willkommen.", carpool: false, helperSlots: ["Aufbau", "Kuchenbuffet", "Abbau"] },
-  { id: 5, type: "training", team: "Herren 1", title: "Torwarttraining Spezial", date: "2026-08-11T19:00:00", location: "Hemberghalle", desc: "Extra-Einheit mit Torwarttrainer Miguel Costa.", carpool: false, youthClassIds: ["herren1", "damen1"] },
-  { id: 6, type: "spiel", team: "Herren 1", title: "Heimspiel vs. Cronenberg", date: "2026-08-30T19:00:00", location: "Hemberghalle, Iserlohn", desc: "Bundesliga, Spieltag 5.", carpool: false, home: true, helperSlots: ["Theke", "Zeitnahme", "Grill", "Kasse"] },
-  { id: 7, type: "spiel", team: "U11", title: "U11 Heimspiel vs. Hüls", date: "2026-08-15T11:00:00", location: "Hemberghalle, Iserlohn", desc: "Jugendspieltag der U11.", carpool: false, home: true },
-  { id: 8, type: "spiel", team: "U15", title: "U15 bei RSC Cronenberg", date: "2026-08-22T13:30:00", location: "Wuppertal", desc: "Auswärtsspiel der U15.", carpool: true, home: false },
-  { id: 9, type: "spiel", team: "Herren 2", title: "Herren 2 vs. SC Bison Calenberg", date: "2026-08-23T18:00:00", location: "Hemberghalle, Iserlohn", desc: "Heimspiel der zweiten Mannschaft.", carpool: false, home: true },
-  { id: 10, type: "spiel", team: "Damen 1", title: "Damen 1 vs. RSC Gera", date: "2026-08-29T16:00:00", location: "Hemberghalle, Iserlohn", desc: "Heimspiel der Damenmannschaft.", carpool: false, home: true },
+  { id: 1, type: "training", team: "Herren 1", title: "Training Herren 1", date: tageAb(2, 18, 30), location: "Hemberghalle, Iserlohn", desc: "Reguläres Mannschaftstraining. Schienbeinschoner nicht vergessen!", carpool: false, youthClassIds: ["herren1"] },
+  { id: 2, type: "spiel", team: "Herren 1", title: "Heimspiel vs. Herringen", date: tageAb(7, 19, 0), location: "Hemberghalle, Iserlohn", desc: "Bundesliga, Spieltag 3. Support von den Rängen ist gewünscht!", carpool: false, home: true, helperSlots: ["Theke", "Zeitnahme", "Grill", "Kasse"] },
+  { id: 3, type: "spiel", team: "Herren 1", title: "Auswärtsspiel bei ERC Wimbern", date: tageAb(14, 20, 0), location: "Wimbern · 85 km", desc: "Gemeinsame Abfahrt ab Hemberghalle. Fahrgemeinschaft bitte eintragen.", carpool: true, home: false },
+  { id: 4, type: "event", title: "Sommerfest & Saisonabschluss", date: tageAb(21, 15, 0), location: "Vereinsheim am Hemberg", desc: "Grillen, Siegerehrung U11–U15, abends DJ. Familien sind herzlich willkommen.", carpool: false, helperSlots: ["Aufbau", "Kuchenbuffet", "Abbau"] },
+  { id: 5, type: "training", team: "Herren 1", title: "Torwarttraining Spezial", date: tageAb(9, 19, 0), location: "Hemberghalle", desc: "Extra-Einheit mit Torwarttrainer Miguel Costa.", carpool: false, youthClassIds: ["herren1", "damen1"] },
+  { id: 6, type: "spiel", team: "Herren 1", title: "Heimspiel vs. Cronenberg", date: tageAb(28, 19, 0), location: "Hemberghalle, Iserlohn", desc: "Bundesliga, Spieltag 5.", carpool: false, home: true, helperSlots: ["Theke", "Zeitnahme", "Grill", "Kasse"] },
+  { id: 7, type: "spiel", team: "U11", title: "U11 Heimspiel vs. Hüls", date: tageAb(13, 11, 0), location: "Hemberghalle, Iserlohn", desc: "Jugendspieltag der U11.", carpool: false, home: true },
+  { id: 8, type: "spiel", team: "U15", title: "U15 bei RSC Cronenberg", date: tageAb(20, 13, 30), location: "Wuppertal", desc: "Auswärtsspiel der U15.", carpool: true, home: false },
+  { id: 9, type: "spiel", team: "Herren 2", title: "Herren 2 vs. SC Bison Calenberg", date: tageAb(21, 18, 0), location: "Hemberghalle, Iserlohn", desc: "Heimspiel der zweiten Mannschaft.", carpool: false, home: true },
+  { id: 10, type: "spiel", team: "Damen 1", title: "Damen 1 vs. RSC Gera", date: tageAb(27, 16, 0), location: "Hemberghalle, Iserlohn", desc: "Heimspiel der Damenmannschaft.", carpool: false, home: true },
 ];
 
 const YOUTH_CLASSES = [
