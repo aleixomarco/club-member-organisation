@@ -1506,9 +1506,16 @@ function BeitrittsScreen({ club, vorschlagName, onBeitreten, goBack }) {
 
 function ClubSelectScreen({ clubs, onSelect, goNewClub, goBack, onAbmelden, onKontoLoeschen }) {
   const [query, setQuery] = useState("");
+  /* Gekennzeichnete Vereine erscheinen hier nicht - das ist derzeit der
+     Demo-Verein fuer die Pruefung durch Apple. Gefiltert wird NUR diese
+     Suchansicht, nicht die Liste clubs selbst: Aus ihr loest sich weiter
+     unten currentClub auf (clubs.find(c => c.id === selectedClubId)). Wuerde
+     der Verein dort fehlen, kaeme der Pruefer nach der Anmeldung in keinen
+     Verein mehr - er muss nicht suchen, er ist Mitglied. */
+  const auswaehlbar = clubs.filter((c) => !c.hidden);
   const filtered = query.trim()
-    ? clubs.filter((c) => c.name.toLowerCase().includes(query.trim().toLowerCase()) || c.shortName.toLowerCase().includes(query.trim().toLowerCase()))
-    : clubs;
+    ? auswaehlbar.filter((c) => c.name.toLowerCase().includes(query.trim().toLowerCase()) || c.shortName.toLowerCase().includes(query.trim().toLowerCase()))
+    : auswaehlbar;
 
   return (
     <div className="flex flex-col h-full px-6 pt-10 pb-6 overflow-y-auto" style={{ background: C.paper }}>
@@ -8481,7 +8488,7 @@ export default function ClubMemberOrganisationApp() {
 
   useEffect(() => {
     if (!supabase) return;
-    supabase.from("clubs").select("id,name,short_name,city,founded_year,logo_url,register_number,currency,referral_code,referral_credit_months,sport,primary_color,secondary_color,sponsoring_freigeschaltet").order("name").then(({ data }) => {
+    supabase.from("clubs").select("id,name,short_name,city,founded_year,logo_url,register_number,currency,referral_code,referral_credit_months,sport,primary_color,secondary_color,sponsoring_freigeschaltet,hidden").order("name").then(({ data }) => {
       if (data?.length) setClubs(data.map((club) => ({
         id: club.id,
         name: club.name,
@@ -8489,6 +8496,7 @@ export default function ClubMemberOrganisationApp() {
         city: club.city || "—",
         foundedYear: club.founded_year || new Date().getFullYear(),
         logoUrl: club.logo_url || null,
+        hidden: club.hidden === true,
         registerNumber: club.register_number || "", currency: club.currency || "EUR", referralCode: club.referral_code || "", referralCreditMonths: club.referral_credit_months || 0,
         sport: club.sport || "rollhockey",
         primaryColor: club.primary_color || DEFAULT_CLUB_COLORS.primary,
