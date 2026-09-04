@@ -153,24 +153,55 @@ async function supabaseAbfrage(pfad: string, methode = "GET", rumpf?: unknown) {
   return methode === "DELETE" ? null : await antwort.json();
 }
 
+/* Das vereinbarte Geheimnis.
+
+   Es liegt in intern.push_zustellung und wurde dort von der Datenbank selbst
+   erzeugt (32 Zufallsbytes). Weder diese Datei noch eine Umgebungsvariable
+   noch ein Protokoll kennt es - der Versender holt es sich einmal ab und
+   behaelt es, solange die Instanz laeuft.
+
+   Warum nicht der Dienstschluessel als Nachweis? Der Ausloeser sitzt IN der
+   Datenbank; ihm den Dienstschluessel mitzugeben hiesse, ihn irgendwo zu
+   hinterlegen - in einer Migration, also im Git. Das Geheimnis dagegen
+   entsteht in der Datenbank und verlaesst sie nur auf diesem einen Weg. */
+let geheimnisZwischenspeicher: string | null = null;
+
+async function erwartetesGeheimnis(): Promise<string> {
+  if (geheimnisZwischenspeicher) return geheimnisZwischenspeicher;
+  const url = Deno.env.get("SUPABASE_URL");
+  const schluessel = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!url || !schluessel) throw new Error("Supabase-Zugang fehlt in der Umgebung.");
+  const antwort = await fetch(`${url}/rest/v1/rpc/push_geheimnis`, {
+    method: "POST",
+    headers: {
+      apikey: schluessel,
+      Authorization: `Bearer ${schluessel}`,
+      "Content-Type": "application/json",
+    },
+    body: "{}",
+  });
+  if (!antwort.ok) throw new Error(`Geheimnis nicht lesbar: ${antwort.status} ${await antwort.text()}`);
+  const wert = await antwort.json();
+  if (typeof wert !== "string" || wert.length < 32) throw new Error("Geheimnis fehlt oder ist zu kurz.");
+  geheimnisZwischenspeicher = wert;
+  return wert;
+}
+
 Deno.serve(async (anfrage) => {
-  /* Zutritt nur fuer den Dienstschluessel.
-     Supabase prueft die Signatur des Tokens bereits selbst (die Funktion laeuft
-     MIT JWT-Pruefung). Was Supabase nicht prueft, ist die ROLLE - mit dem
-     oeffentlichen anon-Schluessel, der in jeder App steckt, kaeme man sonst
-     ebenfalls durch und koennte beliebige Mitteilungen an alle Geraete des
-     Vereins ausloesen. Deshalb hier zusaetzlich die Rolle lesen.
-     Kein eigenes Geheimnis: Der Datenbank-Webhook schickt den Dienstschluessel
-     ohnehin mit, und ein zweites Geheimnis waere nur eine weitere Stelle, an
-     der etwas auslaufen kann. */
-  const kopf = anfrage.headers.get("Authorization") ?? "";
-  let rolle = "";
+  /* Die Funktion laeuft OHNE JWT-Pruefung, damit der Ausloeser in der Datenbank
+     sie ohne Nutzer-Sitzung erreicht. Dieser Vergleich ist deshalb das einzige
+     Tor: Ohne das Geheimnis passiert nichts. Sonst koennte jeder, der die
+     Adresse kennt, beliebige Mitteilungen an alle Geraete des Vereins
+     ausloesen. */
+  let erwartet: string;
   try {
-    const teil = kopf.replace(/^Bearer\s+/i, "").split(".")[1] ?? "";
-    const roh = atob(teil.replace(/-/g, "+").replace(/_/g, "/"));
-    rolle = JSON.parse(roh)?.role ?? "";
-  } catch { /* kaputtes Token = keine Rolle = kein Zutritt */ }
-  if (rolle !== "service_role") {
+    erwartet = await erwartetesGeheimnis();
+  } catch (fehler) {
+    console.error("Geheimnis nicht verfuegbar", fehler);
+    return new Response("Nicht bereit", { status: 503 });
+  }
+  const mitgeschickt = anfrage.headers.get("x-cmo-signatur") ?? "";
+  if (mitgeschickt.length !== erwartet.length || mitgeschickt !== erwartet) {
     return new Response("Nicht berechtigt", { status: 401 });
   }
 
