@@ -655,6 +655,54 @@ function anmeldeFehlerText(error) {
   return "Die Anmeldung hat nicht geklappt. Bitte versuche es noch einmal.";
 }
 
+/* Dasselbe fuer die REGISTRIERUNG. Bisher wurde dort genau ein Fall
+ * uebersetzt ("User already registered"); jeder andere Fehler ging woertlich
+ * so an den Nutzer, wie GoTrue ihn liefert. Ein Vereinsmitglied las dann
+ * "Error sending confirmation email" oder "Email rate limit exceeded" - auf
+ * Englisch, und inhaltlich irrefuehrend: Bei erschoepftem Mail-Kontingent
+ * liegt der Fehler NICHT bei ihm, er kann nichts korrigieren, und niemand
+ * sagt ihm, dass er es spaeter noch einmal versuchen soll. Er probiert es
+ * mehrfach, verschaerft damit die Bremse und meldet sich nie an.
+ * Getrennt von anmeldeFehlerText, weil die Faelle andere sind: Beim
+ * Registrieren gibt es kein "Passwort falsch", dafuer zu kurze Passwoerter,
+ * unbrauchbare Adressen und den Mailversand. Es gibt hier auch nichts zu
+ * verraten - dass eine Adresse schon vergeben ist, muss man sagen, sonst
+ * kaeme man nie weiter. */
+function registrierFehlerText(error) {
+  if (!error) return "Die Registrierung hat nicht geklappt. Bitte versuche es noch einmal.";
+  const code = String(error.code || "");
+  const status = Number(error.status || 0);
+  const text = String(error.message || "").toLowerCase();
+
+  if (code === "user_already_exists" || text.includes("already registered") || text.includes("already been registered")) {
+    return "Für diese E-Mail existiert bereits ein Konto. Melde dich an oder setze dein Passwort zurück.";
+  }
+  /* Der Fall, den das enge Kontingent des eingebauten Mail-Dienstes taeglich
+     ausloesen kann. Ob das Konto dabei schon angelegt wurde, sagt GoTrue
+     nicht zuverlaessig - deshalb keine Behauptung darueber, sondern der
+     einzige Rat, der in jedem Fall stimmt. */
+  if (text.includes("sending confirmation") || text.includes("error sending") || text.includes("smtp")) {
+    return "Die Bestätigungsmail konnte gerade nicht verschickt werden. Bitte versuche es in ein paar Minuten noch einmal — dein Konto ist noch nicht fertig eingerichtet.";
+  }
+  if (status === 429 || code === "over_email_send_rate_limit" || code === "over_request_rate_limit"
+      || text.includes("rate limit") || text.includes("you can only request this after")) {
+    return "Zu viele Anmeldeversuche in kurzer Zeit. Bitte warte ein paar Minuten und versuche es dann noch einmal.";
+  }
+  if (code === "weak_password" || (text.includes("password") && (text.includes("at least") || text.includes("short") || text.includes("weak")))) {
+    return "Das Passwort ist zu kurz. Nimm mindestens 8 Zeichen.";
+  }
+  if (code === "email_address_invalid" || text.includes("validate email") || text.includes("invalid format")) {
+    return "Diese E-Mail-Adresse sieht nicht richtig aus. Bitte prüfe sie auf Tippfehler.";
+  }
+  if (status === 0 || text.includes("failed to fetch") || text.includes("network") || text.includes("load failed")) {
+    return "Keine Verbindung. Prüfe dein Internet und versuche es noch einmal.";
+  }
+  if (status >= 500) {
+    return "Die Registrierung ist gerade nicht möglich. Bitte versuche es in ein paar Minuten noch einmal.";
+  }
+  return "Die Registrierung hat nicht geklappt. Bitte versuche es noch einmal.";
+}
+
 const isDbId = (id) => /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(id));
 const CLUB_ADMIN_ROLES = ["vereinsadmin", "sysadmin", "vorstand", "geschaeftsfuehrung"];
 const notifyClubAdmins = async (clubId, notifType, title, body, excludeMembershipId) => {
@@ -1531,7 +1579,7 @@ function BeitrittsScreen({ club, vorschlagName, onBeitreten, goBack }) {
   );
 }
 
-function ClubSelectScreen({ clubs, onSelect, goNewClub, goBack, onAbmelden, onKontoLoeschen }) {
+function ClubSelectScreen({ clubs, onSelect, goNewClub, goBack, onAbmelden, onKontoLoeschen, geladen = true, onErneutVersuchen }) {
   const [query, setQuery] = useState("");
   /* Gekennzeichnete Vereine erscheinen hier nicht - das ist derzeit der
      Demo-Verein fuer die Pruefung durch Apple. Gefiltert wird NUR diese
@@ -1567,8 +1615,20 @@ function ClubSelectScreen({ clubs, onSelect, goNewClub, goBack, onAbmelden, onKo
       </div>
 
       <div className="space-y-2 mb-6">
-        {filtered.length === 0 ? (
-          <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>Kein Verein gefunden.</div>
+        {/* Drei Zustaende, die frueher alle denselben Satz bekamen. "Kein
+            Verein gefunden." darf nur stehen, wenn wirklich geladen wurde und
+            wirklich nichts da ist - sonst schickt der Satz den Nutzer zum
+            Knopf darunter und er legt seinen Verein ein zweites Mal an. */}
+        {geladen === null ? (
+          <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>Vereine werden geladen …</div>
+        ) : geladen === false ? (
+          <div className="rounded-xl px-3 py-3" style={{ background: C.fehlerFlaeche, border: `1px solid ${C.fehlerRand}` }}>
+            <div className="text-xs mb-2" style={{ color: C.fehler, fontFamily: "Inter", fontWeight: 700 }}>Die Vereinsliste konnte nicht geladen werden.</div>
+            <div className="text-[11px] mb-2.5" style={{ color: C.textDim, fontFamily: "Inter" }}>Das liegt meist am Internet. Dein Verein ist nicht verschwunden — lege ihn bitte nicht neu an.</div>
+            {onErneutVersuchen && <button onClick={onErneutVersuchen} className="w-full py-2 rounded-lg text-xs font-bold" style={{ background: C.ink, color: "#fff", fontFamily: "Inter" }}>Erneut versuchen</button>}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{query.trim() ? "Kein Verein gefunden." : "Es ist noch kein Verein eingetragen."}</div>
         ) : filtered.map((c) => (
           <button key={c.id} onClick={() => onSelect(c.id)} className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
             <ClubLogo club={c} size={36} rounded={9} />
@@ -1983,6 +2043,11 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
         : `Es fehlen noch: ${fehlt.slice(0, -1).join(", ")} und ${fehlt[fehlt.length - 1]}.`);
       return;
     }
+    /* Die Mindestlaenge steht hier, nicht erst in der Datenbank. Sonst
+       antwortet GoTrue mit "Password should be at least 6 characters." -
+       englisch, und mit einer anderen Zahl als der Passwort-aendern-Dialog
+       dieser App verlangt (8). */
+    if (form.password.length < 8) { setError("Das Passwort muss mindestens 8 Zeichen haben."); return; }
     if (form.password !== form.password2) { setError("Die Passwörter stimmen nicht überein."); return; }
     if (!ohneVerein && members.some((m) => m.email.toLowerCase() === form.email.trim().toLowerCase())) { setError("Für diese E-Mail existiert bei diesem Verein bereits ein Konto."); return; }
     if (!legalAccepted) { setError("Bitte akzeptiere die Nutzungsbedingungen und die Datenschutzerklärung."); return; }
@@ -8391,6 +8456,13 @@ function NurAlsAppHinweis() {
 
 export default function ClubMemberOrganisationApp() {
   const [clubs, setClubs] = useState(INITIAL_CLUBS);
+  /* null = laeuft noch, true = geladen, false = fehlgeschlagen.
+     Ohne diese Unterscheidung sah ein fehlgeschlagener Ladevorgang genauso
+     aus wie "es gibt keinen Verein": In beiden Faellen blieb clubs leer, und
+     der Suchbildschirm schrieb "Kein Verein gefunden." - direkt ueber dem
+     Knopf "Neuen Verein registrieren". Wer bei einem Netzhaenger dort landet,
+     legt seinen Verein ein zweites Mal an. */
+  const [vereineGeladen, setVereineGeladen] = useState(null);
   /* Erst nach dem ersten Rendern bekannt: Auf dem Server gibt es kein
      Capacitor. Bis dahin gilt "noch unbekannt" - so blitzt weder die
      Hinweisseite in der App auf noch die App im Browser. */
@@ -8702,10 +8774,18 @@ export default function ClubMemberOrganisationApp() {
     })));
   }, [feeRecords, members]);
 
-  useEffect(() => {
+  /* Als benannte Funktion, damit der Bildschirm sie ueber "Erneut versuchen"
+     noch einmal aufrufen kann. Vorher lief die Abfrage genau einmal beim
+     Start; schlug sie fehl, blieb die App fuer den Rest ihrer Laufzeit ohne
+     Vereine, ohne dass irgendetwas es noch einmal versucht haette. */
+  const vereineHolen = useCallback(async () => {
     if (!supabase) return;
-    supabase.from("clubs").select("id,name,short_name,city,founded_year,logo_url,register_number,currency,referral_code,referral_credit_months,sport,primary_color,secondary_color,sponsoring_freigeschaltet,hidden").order("name").then(({ data }) => {
-      if (data?.length) setClubs(data.map((club) => ({
+    const { data, error } = await supabase.from("clubs").select("id,name,short_name,city,founded_year,logo_url,register_number,currency,referral_code,referral_credit_months,sport,primary_color,secondary_color,sponsoring_freigeschaltet,hidden").order("name");
+    if (error) { setVereineGeladen(false); return; }
+    /* Bewusst "data" statt "data?.length": Eine erfolgreiche, aber leere
+       Antwort ist eine Aussage - dann gibt es wirklich keinen Verein - und
+       darf nicht wie ein Fehlschlag behandelt werden. */
+    if (data) setClubs(data.map((club) => ({
         id: club.id,
         name: club.name,
         shortName: club.short_name,
@@ -8719,8 +8799,13 @@ export default function ClubMemberOrganisationApp() {
         secondaryColor: club.secondary_color || DEFAULT_CLUB_COLORS.secondary,
         sponsoringFrei: club.sponsoring_freigeschaltet === true,
       })));
-    });
+    setVereineGeladen(true);
   }, []);
+  useEffect(() => { vereineHolen(); }, [vereineHolen]);
+  /* Getrennt vom Holen: Nur der Knopf setzt den Zustand auf "laeuft" zurueck.
+     Beim Start ist er ohnehin schon null - ihn dort noch einmal zu setzen
+     waere ein ueberfluessiger Renderdurchlauf im Effekt. */
+  const vereineLaden = useCallback(() => { setVereineGeladen(null); vereineHolen(); }, [vereineHolen]);
 
   const currentUser = members.find((m) => m.id === currentUserId);
   useEffect(() => {
@@ -9759,7 +9844,7 @@ export default function ClubMemberOrganisationApp() {
           requested_team: draft.team || null,
         } },
       });
-      if (error) return { error: error.message === "User already registered" ? "Für diese E-Mail existiert bereits ein Konto." : error.message };
+      if (error) return { error: registrierFehlerText(error) };
       if (!data.session || !data.user) {
         return { ok: true, message: nurKonto
           ? "Dein Konto ist angelegt. Bitte bestätige jetzt die E-Mail — danach meldest du dich an und suchst deinen Verein."
@@ -10029,6 +10114,7 @@ export default function ClubMemberOrganisationApp() {
             />
           ) : authScreen === "club" ? (
             <ClubSelectScreen clubs={clubs} onSelect={selectClub} goNewClub={() => setAuthScreen("newclub")}
+              geladen={supabase ? vereineGeladen : true} onErneutVersuchen={vereineLaden}
               onAbmelden={offeneSitzung ? sitzungBeenden : null}
               onKontoLoeschen={offeneSitzung ? deletePendingAccount : null}
               goBack={meineMitgliedschaften.length > 0 ? () => setAuthScreen("meineVereine") : () => setAuthScreen("login")} />
