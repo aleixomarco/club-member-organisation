@@ -227,7 +227,26 @@ Deno.serve(async (anfrage) => {
     const geraete = await supabaseAbfrage(
       `push_subscriptions?select=fcm_token&membership_id=in.(${ids})`,
     );
-    if (!geraete.length) return Response.json({ uebersprungen: "kein angemeldetes Geraet" });
+    if (!geraete.length) {
+      /* Kein Geraet - also nichts zu senden. Trotzdem wird hier der Schluessel
+         geprueft und das Ergebnis mitgeteilt.
+         Grund: Solange die native Registrierung nicht ausgeliefert ist, meldet
+         sich kein iPhone an, und der Versand wird nie erreicht. Ohne diesen
+         Zweig bliebe bis dahin unbekannt, ob das Firebase-Dienstkonto
+         ueberhaupt taugt - und der Fehler faende sich erst, wenn die ersten
+         echten Mitteilungen ausbleiben. So steht die Antwort schon jetzt in der
+         Rueckgabe, ohne dass jemand etwas verschicken muss.
+         Sobald Geraete da sind, laeuft dieser Zweig nicht mehr. */
+      let schluessel: string;
+      try {
+        const konto = dienstkontoLesen();
+        await zugangstoken(konto);
+        schluessel = `in Ordnung (Projekt ${konto.project_id}, Konto ${konto.client_email})`;
+      } catch (fehler) {
+        schluessel = `UNBRAUCHBAR: ${String(fehler)}`;
+      }
+      return Response.json({ uebersprungen: "kein angemeldetes Geraet", schluessel });
+    }
 
     const konto = dienstkontoLesen();
     const token = await zugangstoken(konto);
