@@ -108,8 +108,21 @@ async function zugangstoken(konto: Dienstkonto): Promise<string> {
 /* ------------------------------------------------------------------------ */
 
 function dienstkontoLesen(): Dienstkonto {
-  const roh = Deno.env.get("FCM_DIENSTKONTO");
-  if (!roh) throw new Error("FCM_DIENSTKONTO ist nicht gesetzt.");
+  /* Zwei moegliche Ablagen, in dieser Reihenfolge:
+     FCM_DIENSTKONTO ist die neue, bewusst aus dem richtigen Firebase-Projekt
+     erzeugte. FIREBASE_SERVICE_ACCOUNT liegt seit dem 05.08.2026 im Projekt und
+     stammt aus einer frueheren Einrichtung - zu welchem der beiden
+     gleichnamigen Firebase-Projekte, ist von aussen nicht feststellbar.
+     Der Rueckfall ist trotzdem richtig: Passt der alte Schluessel, laeuft Push
+     sofort und der Betreiber spart sich einen Schritt. Passt er nicht, meldet
+     Google beim Eintausch einen Fehler, und der landet lesbar im Protokoll -
+     das ist eine ehrliche Fehlermeldung statt stiller Untaetigkeit.
+     Ein leer gesetztes Geheimnis zaehlt dabei als nicht gesetzt: "supabase
+     secrets set" speichert eine leere Zeichenkette klaglos, wenn der
+     Dateipfad im Befehl nicht stimmte. Genau das ist hier passiert. */
+  const roh = Deno.env.get("FCM_DIENSTKONTO")?.trim() ||
+              Deno.env.get("FIREBASE_SERVICE_ACCOUNT")?.trim();
+  if (!roh) throw new Error("Weder FCM_DIENSTKONTO noch FIREBASE_SERVICE_ACCOUNT ist gesetzt (oder beide sind leer).");
   /* Base64 oder blankes JSON - beides wird angenommen. Base64 ist der Weg ueber
      "supabase secrets set", weil ein mehrzeiliger privater Schluessel sonst an
      den Zeilenumbruechen zerbricht. */
