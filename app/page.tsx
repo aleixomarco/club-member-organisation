@@ -1936,7 +1936,7 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub, offeneS
 
 
 function RegisterScreen({ onRegister, members, club, goLogin }) {
-  const [form, setForm] = useState({ firstName: "", lastName: "", name: "", email: "", team: supabase ? "" : TEAMS[0], birthdate: "", password: "", password2: "", accountType: "mitglied", relativeId: "", childName: "", childBirthdate: "", childTeam: "U11" });
+  const [form, setForm] = useState({ firstName: "", lastName: "", email: "", team: supabase ? "" : TEAMS[0], birthdate: "", password: "", password2: "", accountType: "mitglied", relativeId: "", childName: "", childBirthdate: "", childTeam: "U11" });
   const [legalAccepted, setLegalAccepted] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -1961,7 +1961,28 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!form.name.trim() || !form.email.trim() || !form.password || !form.birthdate) { setError("Bitte fülle alle Pflichtfelder aus."); return; }
+    /* Geprueft werden Vor- und Nachname EINZELN. Vorher stand hier
+       form.name - ein Feld, das seit der Trennung in Vorname und Nachname
+       niemand mehr beschreibt. Es blieb dauerhaft leer, und damit scheiterte
+       jede Registrierung an dieser Zeile, egal wie vollstaendig das Formular
+       ausgefuellt war. Der zusammengesetzte Name entsteht erst unten beim
+       Absenden.
+       Die Meldung nennt jetzt ausserdem das fehlende Feld. "Bitte fuelle alle
+       Pflichtfelder aus" vor einem sichtbar vollstaendigen Formular ist kein
+       Hinweis, sondern ein Raetsel. */
+    const fehlt = [
+      [!form.firstName.trim(), "Vorname"],
+      [!form.lastName.trim(), "Nachname"],
+      [!form.email.trim(), "E-Mail-Adresse"],
+      [!form.birthdate, "Geburtsdatum"],
+      [!form.password, "Passwort"],
+    ].filter(([leer]) => leer).map(([, bezeichnung]) => bezeichnung);
+    if (fehlt.length) {
+      setError(fehlt.length === 1
+        ? `Es fehlt noch: ${fehlt[0]}.`
+        : `Es fehlen noch: ${fehlt.slice(0, -1).join(", ")} und ${fehlt[fehlt.length - 1]}.`);
+      return;
+    }
     if (form.password !== form.password2) { setError("Die Passwörter stimmen nicht überein."); return; }
     if (!ohneVerein && members.some((m) => m.email.toLowerCase() === form.email.trim().toLowerCase())) { setError("Für diese E-Mail existiert bei diesem Verein bereits ein Konto."); return; }
     if (!legalAccepted) { setError("Bitte akzeptiere die Nutzungsbedingungen und die Datenschutzerklärung."); return; }
