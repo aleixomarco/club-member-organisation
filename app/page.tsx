@@ -2729,7 +2729,7 @@ function EventMonthCalendar({ events, onSelect }) {
   );
 }
 
-function EventsView({ currentUser, members, events, setEvents, carpools, setCarpools, dutyPlan, setDutyPlan, onDienstSetzen, werbeplaetze, onSponsorImpression, onSponsorClick, focusRequest, onFocusApplied, currentClub, featureEnabled, entitlement, goSubscribe }) {
+function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpools, setCarpools, dutyPlan, setDutyPlan, onDienstSetzen, werbeplaetze, onSponsorImpression, onSponsorClick, focusRequest, onFocusApplied, currentClub, featureEnabled, entitlement, goSubscribe }) {
   const [filter, setFilter] = useState("alle");
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -2876,16 +2876,12 @@ function EventsView({ currentUser, members, events, setEvents, carpools, setCarp
         range_end: eventDraft.rangeEnd,
       });
       if (error) return;
-      const created = [];
-      const start = new Date(eventDraft.rangeStart + "T00:00:00");
-      const end = new Date(eventDraft.rangeEnd + "T00:00:00");
-      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-        const isoDay = d.getDay() === 0 ? 7 : d.getDay();
-        if (!eventDraft.weekdays.includes(isoDay)) continue;
-        const dateStr = alsDatum(d);
-        created.push({ id: `${dateStr}-${created.length}-${eventDraft.team}`, type: eventDraft.type, team: eventDraft.team, title: eventDraft.title.trim(), date: `${dateStr}T${eventDraft.startTime}`, location: eventDraft.location.trim(), desc: eventDraft.desc.trim(), carpool: false, home: true, ...(eventDraft.type === "training" ? { youthClassIds: [TEAM_TO_YOUTHCLASS[eventDraft.team]] } : {}) });
-      }
-      setEvents((all) => [...all, ...created].sort((a, b) => new Date(a.date) - new Date(b.date)));
+      /* Kein lokaler Nachbau der Reihe mehr. Er verdoppelte die Logik, die
+         die Datenbank ohnehin hat - und genau dabei entstand der Fehler mit
+         den verschobenen Wochentagen: Der Filter rechnete in Ortszeit, das
+         Datum daneben in UTC. Jetzt laden wir einmal frisch; was in der
+         Datenbank steht, ist die Wahrheit. */
+      onNeuLaden?.();
       setFilter(eventDraft.type);
       setTeamFilter(eventDraft.team);
       resetEventDraft();
@@ -8311,6 +8307,42 @@ export default function ClubMemberOrganisationApp() {
     });
   };
   const [subView, setSubView] = useState(null);
+  /* Neulade-Signal.
+     Die Lader unten hingen allein an Nutzer und Verein - sie liefen also nur
+     beim Anmelden oder beim Vereinswechsel. Wer die App offen liess, sah
+     stundenlang den Stand von vorhin: Neue Termine der Trainerin, fremde
+     Chatnachrichten, geaenderte Rollen kamen erst an, wenn man die App schloss
+     oder einmal aus dem Verein heraus und wieder hinein ging.
+     Diese Zahl steht zusaetzlich in ihren Abhaengigkeitslisten. Wird sie
+     erhoeht, laden alle noch einmal. */
+  const [datenStand, setDatenStand] = useState(0);
+  const datenNeuLaden = useCallback(() => setDatenStand((n) => n + 1), []);
+  /* Neu laden, sobald die App wieder im Vordergrund ist.
+     Das ist der Fall, den man als Nutzer merkt: Man legt das Telefon weg,
+     nimmt es wieder zur Hand - und liest den Stand von vorhin. Ein
+     Klick auf "Verein wechseln" und zurueck half, aber darauf kommt niemand.
+     visibilitychange feuert auch in der nativen Huelle: Legt iOS die App in
+     den Hintergrund, meldet die Webansicht "hidden", beim Zurueckholen
+     "visible". Dazu focus, weil ein Fenster im Browser den Fokus auch ohne
+     Sichtbarkeitswechsel zurueckbekommen kann.
+     Die Sperre von 20 Sekunden verhindert, dass ein kurzes Hin und Her
+     mehrere Ladevorgaenge gleichzeitig ausloest. */
+  const letztesLaden = useRef(0);
+  useEffect(() => {
+    const vielleichtLaden = () => {
+      if (document.visibilityState !== "visible") return;
+      const jetzt = Date.now();
+      if (jetzt - letztesLaden.current < 20000) return;
+      letztesLaden.current = jetzt;
+      datenNeuLaden();
+    };
+    document.addEventListener("visibilitychange", vielleichtLaden);
+    window.addEventListener("focus", vielleichtLaden);
+    return () => {
+      document.removeEventListener("visibilitychange", vielleichtLaden);
+      window.removeEventListener("focus", vielleichtLaden);
+    };
+  }, [datenNeuLaden]);
   /* Die Mannschaftswahl der Startseite steht hier oben bei den uebrigen
      Zustaenden - abmelden und Vereinswechsel setzen sie zurueck, und diese
      Funktionen stehen weiter oben in der Datei. */
@@ -8465,7 +8497,7 @@ export default function ClubMemberOrganisationApp() {
       .subscribe();
 
     return () => { abgemeldet = true; supabase.removeChannel(kanal); };
-  }, [selectedClubId, currentUserId]);
+  }, [selectedClubId, currentUserId, datenStand]);
   const [chatChannelId, setChatChannelId] = useState("team");
   /* Die Vereins-News. Sie kommen aus news_posts, nicht aus den Chatkanaelen -
      siehe RedaktionView. */
@@ -8581,7 +8613,7 @@ export default function ClubMemberOrganisationApp() {
       setEvents(mapped);
     };
     loadEvents();
-  }, [currentUser?.id, currentUser?.clubId]);
+  }, [currentUser?.id, currentUser?.clubId, datenStand]);
   const currentClub = clubs.find((c) => c.id === selectedClubId) || clubs.find((c) => c.id === currentUser?.clubId);
   const clubMembers = members.filter((m) => m.clubId === selectedClubId);
   const featureEnabled = (key) => clubFeatures[key] !== false;
@@ -8891,7 +8923,7 @@ export default function ClubMemberOrganisationApp() {
     if (!supabase || !selectedClubId || !meinProfil()) return;
     const { data } = await supabase.rpc("ungelesene_benachrichtigungen", { target_club: selectedClubId });
     setUngelesen(typeof data === "number" ? data : 0);
-  }, [selectedClubId, currentUserId]);
+  }, [selectedClubId, currentUserId, datenStand]);
   /* Der Effekt stand vorher weiter oben, direkt bei den anderen Ladeeffekten -
      und damit ueber dieser Definition. Die Abhaengigkeitsliste [ungelesenZaehlen]
      wird beim Rendern ausgewertet, also bevor das useCallback ueberhaupt
@@ -9954,7 +9986,7 @@ export default function ClubMemberOrganisationApp() {
                   mannschaften={startseiteAuswahl} gewaehlteMannschaft={startseiteWahl} onMannschaftWechsel={setStartseiteTeam} />
               )}
               {!subView && tab === "events" && (
-                <EventsView currentUser={currentUser} members={clubMembers} events={events} setEvents={setEvents} carpools={carpools} setCarpools={setCarpools}
+                <EventsView onNeuLaden={datenNeuLaden} currentUser={currentUser} members={clubMembers} events={events} setEvents={setEvents} carpools={carpools} setCarpools={setCarpools}
                   dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={dienstSetzen} entitlement={entitlement} goSubscribe={goSubscribe}
                   werbeplaetze={werbeplaetze} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick}
                   focusRequest={eventFocusRequest} onFocusApplied={()=>setEventFocusRequest(null)}
