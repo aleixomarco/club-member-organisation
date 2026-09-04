@@ -147,6 +147,7 @@ html { scroll-behavior: smooth; }
 button { transition: transform .16s cubic-bezier(.34,1.56,.64,1), opacity .12s ease, background-color .15s ease, box-shadow .18s ease; }
 button:active { transform: scale(0.96); }
 .tabFade { animation: tabFadeIn .22s ease; }
+@keyframes ptrDreht { to { transform: rotate(360deg); } }
 @keyframes tabFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 .erg-app ::-webkit-scrollbar { width: 0px; height: 0px; }
 
@@ -2096,6 +2097,107 @@ function MannschaftsWahl({ mannschaften, gewaehlt, onWechsel }) {
       </select>
       <ChevronDown size={13} style={{ color: C.textDim, marginLeft: -14, pointerEvents: "none" }} />
     </label>
+  );
+}
+/* Zum Aktualisieren nach unten ziehen.
+ *
+ * Die Geste, die auf dem Telefon jeder erwartet - und die hier fehlte: Bis
+ * eben aktualisierte sich die App nur beim Wechsel in den Vordergrund. Wer
+ * mitten in einer Liste stand und wissen wollte, ob inzwischen etwas
+ * dazugekommen ist, musste die App schliessen.
+ *
+ * Umschlossen wird der gemeinsame Scrollbereich aller Reiter - damit gilt die
+ * Geste ueberall, ohne sie in jeder Ansicht einzeln einzubauen.
+ *
+ * Gezogen wird nur, wenn die Liste GANZ OBEN steht (scrollTop === 0) und der
+ * Finger nach unten geht. Sonst bliebe normales Scrollen haengen.
+ * Der Weg wird gedaempft (Faktor 0,5): Das fuehlt sich nach Widerstand an und
+ * verhindert, dass ein kurzer Wisch schon ausloest.
+ */
+function ZumAktualisierenZiehen({ onAktualisieren, className, style, children }) {
+  const SCHWELLE = 70;
+  const behaelter = useRef(null);
+  const startY = useRef(null);
+  const [zug, setZug] = useState(0);
+  const [laeuft, setLaeuft] = useState(false);
+  /* Ob gerade ein Finger zieht - als Zustand, nicht als Referenz. Waehrend des
+     Renderns darf keine Referenz gelesen werden, und dieser Wert entscheidet,
+     ob die Bewegung weich nachfedert (nach dem Loslassen) oder dem Finger
+     unmittelbar folgt. */
+  const [zieht, setZieht] = useState(false);
+
+  const beginn = (e) => {
+    if (laeuft) return;
+    const el = behaelter.current;
+    if (!el || el.scrollTop > 0) return;
+    startY.current = e.touches[0].clientY;
+    setZieht(true);
+  };
+  const bewegung = (e) => {
+    if (startY.current === null || laeuft) return;
+    const el = behaelter.current;
+    if (el && el.scrollTop > 0) { startY.current = null; setZieht(false); setZug(0); return; }
+    const weg = e.touches[0].clientY - startY.current;
+    setZug(weg > 0 ? Math.min(110, weg * 0.5) : 0);
+  };
+  const ende = () => {
+    if (startY.current === null) return;
+    startY.current = null;
+    setZieht(false);
+    if (zug < SCHWELLE) { setZug(0); return; }
+    setLaeuft(true);
+    setZug(SCHWELLE);
+    Promise.resolve(onAktualisieren?.()).finally(() => {
+      /* Kurz stehenlassen, sonst blitzt es nur auf und der Nutzer weiss
+         nicht, ob etwas passiert ist. */
+      setTimeout(() => { setLaeuft(false); setZug(0); }, 700);
+    });
+  };
+
+  const sichtbar = zug > 4 || laeuft;
+  return (
+    <div
+      ref={behaelter}
+      className={className}
+      style={style}
+      onTouchStart={beginn}
+      onTouchMove={bewegung}
+      onTouchEnd={ende}
+      onTouchCancel={ende}
+    >
+      <div style={{ position: "relative", height: 0, overflow: "visible" }}>
+        <div aria-hidden={!sichtbar} style={{
+          position: "absolute", left: 0, right: 0, top: 0,
+          display: "flex", justifyContent: "center",
+          opacity: sichtbar ? 1 : 0,
+          transform: `translateY(${Math.max(0, zug - 34)}px)`,
+          transition: zieht ? "none" : "transform .25s ease, opacity .25s ease",
+          pointerEvents: "none", zIndex: 5,
+        }}>
+          <div style={{
+            width: 34, height: 34, borderRadius: 999,
+            background: C.glass, border: `1px solid ${C.edge}`,
+            boxShadow: "0 6px 16px rgba(60,30,45,0.14)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <RefreshCw
+              size={16}
+              style={{
+                color: C.red,
+                transform: laeuft ? undefined : `rotate(${zug * 3}deg)`,
+                animation: laeuft ? "ptrDreht .8s linear infinite" : undefined,
+              }}
+            />
+          </div>
+        </div>
+      </div>
+      <div style={{
+        transform: `translateY(${zug}px)`,
+        transition: zieht ? "none" : "transform .25s ease",
+      }}>
+        {children}
+      </div>
+    </div>
   );
 }
 function Scoreboard({ nextEvent, goTo, auswahlVorhanden = false }) {
@@ -9970,7 +10072,7 @@ export default function ClubMemberOrganisationApp() {
               </div>
             )}
 
-            <div key={`${tab}-${subView || ""}`} className="tabFade flex-1 overflow-y-auto" style={{ background: C.paper }}>
+            <ZumAktualisierenZiehen key={`${tab}-${subView || ""}`} onAktualisieren={datenNeuLaden} className="tabFade flex-1 overflow-y-auto" style={{ background: C.paper }}>
               {subView === "season" && featureEnabled("season_award") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Athlet/in der Saison"><SeasonVoteView currentUser={currentUser} members={clubMembers} seasonVotes={seasonVotes} setSeasonVotes={setSeasonVotes} onVote={saisonStimmeAbgeben} /></LockedFeature>}
               {subView === "tipp" && featureEnabled("tippspiel") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Tippspiel"><TippView members={clubMembers} currentUser={currentUser} events={events} tippPredictions={tippPredictions} setTippPredictions={setTippPredictions} tippResults={tippResults} onTippSpeichern={tippSpeichern} /></LockedFeature>}
               {subView === "postfach" && <PostfachView eintraege={postfach} laedt={postfachLaedt} onGelesen={postfachGelesen} onLoeschen={postfachLoeschen} />}
@@ -10012,7 +10114,7 @@ export default function ClubMemberOrganisationApp() {
                 </LockedFeature>
               )}
               {!subView && tab === "profile" && <ProfileView ziel={profilZiel} onZielErreicht={() => setProfilZiel("")} user={currentUser} members={clubMembers} setMembers={setMembers} currentClub={currentClub} dutyPlan={dutyPlan} punkteZiel={punkteZiel} punktePraemie={punktePraemie} werbeplaetze={werbeplaetze} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick} onLogout={logout} clubFeatures={clubFeatures} onClubFeaturesChanged={loadClubFeatures} entitlement={entitlement} goSubscribe={goSubscribe} dashboardTileOrder={dashboardTileOrder} setDashboardTileOrder={setDashboardTileOrder} />}
-            </div>
+            </ZumAktualisierenZiehen>
 
             {!subView && (
               <div ref={navRef} className="erg-navwrap absolute bottom-0 left-0 right-0 px-3 pt-2 pointer-events-none" style={{ display: tastaturOffen ? "none" : undefined }}>
