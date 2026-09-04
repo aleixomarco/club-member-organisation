@@ -18,11 +18,11 @@
     "build:worker": "vite build"
   },
   "dependencies": {
+    "@capacitor-firebase/messaging": "^8.5.1",
     "@capacitor/android": "^8.5.0",
     "@capacitor/core": "^8.5.0",
     "@capacitor/ios": "^8.5.0",
     "@capacitor/keyboard": "^8.0.5",
-    "@capacitor/push-notifications": "^8.1.2",
     "@capacitor/splash-screen": "^8.0.2",
     "@supabase/supabase-js": "^2.111.0",
     "drizzle-orm": "0.45.2",

@@ -1,18 +1,26 @@
 # Capacitor 8 bindet sich selbst und sämtliche Capacitor-Plugins über Swift Package
 # Manager ein — siehe CapApp-SPM/Package.swift, das die Capacitor-CLI bei `cap sync`
-# schreibt. CocoaPods wird hier ausschließlich für Firebase Cloud Messaging gebraucht.
+# schreibt.
 #
 # WICHTIG: Capacitor, CapacitorCordova und die Plugin-Pods dürfen hier NICHT zusätzlich
 # stehen. Sonst landen sie doppelt im Build (einmal via SPM, einmal via CocoaPods) und
 # der Linker bricht mit doppelten Symbolen ab.
+#
+# Hier standen bis zum 04.09.2026 'FirebaseCore' und 'FirebaseMessaging'. Sie sind
+# entfallen, weil @capacitor-firebase/messaging genau diese beiden Bibliotheken über
+# SPM mitbringt (siehe dessen Package.swift: firebase-ios-sdk, Produkte FirebaseCore
+# und FirebaseMessaging). Beides zusammen ist derselbe Fehler, vor dem der Absatz
+# darüber warnt — nur mit Firebase statt Capacitor.
+#
+# Damit bleibt für CocoaPods nichts mehr zu tun. Die Datei bleibt trotzdem stehen:
+# Das Xcode-Projekt ist ein Workspace, den CocoaPods erzeugt hat, und ein leeres Ziel
+# hält ihn gültig, ohne etwas einzubinden. Wer später einen Pod braucht, trägt ihn
+# hier ein.
 platform :ios, '15.0'
 use_frameworks!
 
 install! 'cocoapods', :disable_input_output_paths => true
 
 target 'App' do
-  # GoogleService-Info.plist liegt in ios/App/App/ und wird von FirebaseApp.configure()
-  # im AppDelegate gelesen.
-  pod 'FirebaseCore'
-  pod 'FirebaseMessaging'
+  # Absichtlich leer — siehe Kommentar oben.
 end

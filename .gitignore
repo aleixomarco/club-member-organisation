@@ -59,3 +59,9 @@ android/keystore.properties
 AuthKey_*
 *service-account*.json
 *serviceAccount*.json
+
+# Von "npx cap sync ios" erzeugt: ein Symlink auf node_modules, mit ABSOLUTEM
+# Pfad dieses Rechners. Eingecheckt waere er auf jedem anderen Geraet kaputt.
+# Package.swift verweist darauf; wer baut, muss ohnehin vorher cap sync laufen
+# lassen, und dabei entsteht der Ordner neu.
+ios/App/CapApp-SPM/symlinks/

@@ -30,6 +30,19 @@ const config: CapacitorConfig = {
        die Verbindung zurueck ist. */
     errorPath: "offline.html",
   },
+  /* Verlangt @capacitor-firebase/messaging fuer iOS: Ohne symlink kollidiert
+     die SwiftPM-Paketkennung des Plugins mit der des Firebase-SDK, und der
+     Build bricht ab (capawesome-team/capacitor-firebase#959). Setzt
+     Capacitor-CLI 8.4.0+ voraus - hier laeuft 8.5.0. */
+  experimental: {
+    ios: {
+      spm: {
+        packageOptions: {
+          "@capacitor-firebase/messaging": { symlink: true },
+        },
+      },
+    },
+  } as never,
   ios: {
     /* "never" statt "automatic": Bei "automatic" rueckt iOS die Webansicht
        selbst um Statusleiste und Home-Indikator ein. Die Seite wird dadurch
