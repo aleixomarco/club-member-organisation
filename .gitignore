@@ -50,3 +50,12 @@ android/local.properties
 android/keystore.properties
 *.jks
 *.keystore
+
+# Geheimnisse, die beim Einrichten von Push im Ordner landen koennen.
+# Der APNs-Schluessel und das Firebase-Dienstkonto sind private Schluessel:
+# Wer sie hat, kann im Namen der App Mitteilungen verschicken. Sie gehoeren in
+# den Passwortmanager und als Supabase-Geheimnis hinterlegt - niemals ins Git.
+*.p8
+AuthKey_*
+*service-account*.json
+*serviceAccount*.json
