@@ -146,6 +146,14 @@ const FONTS = `
 html { scroll-behavior: smooth; }
 button { transition: transform .16s cubic-bezier(.34,1.56,.64,1), opacity .12s ease, background-color .15s ease, box-shadow .18s ease; }
 button:active { transform: scale(0.96); }
+/* Achtung beim Aendern: Diese Animation bewegt transform. Solange sie laeuft
+   (0,22 s nach jedem Reiterwechsel), ist das Element Bezugsrahmen fuer alles,
+   was darin mit position: fixed liegt - Dialoge und Bottom-Sheets messen sich
+   dann an ihm statt am Bildschirm. Das ist hier unkritisch, weil der Teilbaum
+   beim Reiterwechsel neu aufgebaut wird und in diesen 0,22 s kein Fenster
+   offen sein kann. Wer die Animation dauerhaft macht (animation-fill-mode)
+   oder transform woanders im Geruest ergaenzt, bricht saemtliche Fenster der
+   App. Siehe die ausfuehrliche Notiz in ZumAktualisierenZiehen. */
 .tabFade { animation: tabFadeIn .22s ease; }
 @keyframes ptrDreht { to { transform: rotate(360deg); } }
 @keyframes tabFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
@@ -2191,8 +2199,20 @@ function ZumAktualisierenZiehen({ onAktualisieren, className, style, children })
           </div>
         </div>
       </div>
+      {/* Der Inhalt rueckt beim Ziehen nach unten - aber NUR dann.
+          Ein transform, der dauerhaft gesetzt ist, macht dieses Element laut
+          CSS zum Bezugsrahmen fuer alles, was darin mit position: fixed
+          liegt. Auch translateY(0px) zaehlt dabei als transform. Genau das
+          ist hier passiert: Saemtliche Dialoge und Bottom-Sheets der App
+          massen sich danach nicht mehr am Bildschirm, sondern an der vollen
+          Hoehe der Liste. Der Loeschen-Dialog wurde in 1554 px zentriert und
+          landete unterhalb des sichtbaren Bereichs - zurueck blieb nur die
+          Abdunklung, und der Bildschirm wirkte eingefroren.
+          Im Ruhezustand steht deshalb KEIN transform. Der Weg zurueck wird
+          trotzdem weich animiert: CSS rechnet "none" als Identitaet, ein
+          Uebergang von translateY(35px) nach "none" laeuft also normal. */}
       <div style={{
-        transform: `translateY(${zug}px)`,
+        transform: zug > 0 || laeuft ? `translateY(${zug}px)` : undefined,
         transition: zieht ? "none" : "transform .25s ease",
       }}>
         {children}
@@ -3182,8 +3202,14 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
         </select>
         <button aria-label="Als Standardansicht speichern" title="Als Standard speichern" onClick={saveDefaultTeam} disabled={savedTeam===teamFilter} className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{background:savedTeam===teamFilter?C.erfolgFlaeche:C.paperDim,color:savedTeam===teamFilter?C.secondary:C.textDim}}><Star size={13} fill={savedTeam===teamFilter?C.secondary:"none"}/></button>
       </div>}
+      {/* Der Hinweis steht am Listenanfang. Geloescht wird aber meist weiter
+          unten, und dann stand die Meldung ausserhalb des Sichtfelds: Man
+          tippte auf loeschen, der Termin blieb stehen, und es sah aus, als
+          waere gar nichts passiert. Die Rueckruf-Referenz holt sie einmal
+          beim Erscheinen ins Bild. */}
       {terminFehler && (
-        <div role="alert" className="flex items-center gap-1.5 text-xs mb-3 rounded-xl px-3 py-2.5" style={{ background: C.fehlerFlaeche, color: C.fehler, fontFamily: "Inter" }}>
+        <div role="alert" ref={(el) => { el?.scrollIntoView({ block: "center", behavior: "smooth" }); }}
+          className="flex items-center gap-1.5 text-xs mb-3 rounded-xl px-3 py-2.5" style={{ background: C.fehlerFlaeche, color: C.fehler, fontFamily: "Inter" }}>
           <AlertCircle size={13} /> {terminFehler}
         </div>
       )}
@@ -3219,7 +3245,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
           </div>
         </div>
       )}
-      {deleteRequest && <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => { setDeleteRequest(null); setTerminFehler(""); }}><div role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()} className="w-full max-w-sm rounded-2xl p-5" style={{ background: C.glass }}>{deleteRequest.seriesId ? <><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Wiederkehrendes Training</div><div className="text-xs mb-4" style={{ color: C.textDim }}>Sollen alle geplanten Sessions dieser Serie gelöscht werden, oder nur diese eine?</div><button onClick={performSeriesDelete} className="w-full py-2.5 rounded-xl text-xs font-bold mb-2" style={{ background: C.red, color: C.white }}>Alle Sessions</button><button onClick={performSingleDelete} className="w-full py-2.5 rounded-xl text-xs font-bold mb-2" style={{ background: C.paperDim, color: C.ink }}>Nur eine Session</button><button onClick={() => { setDeleteRequest(null); setTerminFehler(""); }} className="w-full py-2 text-xs font-bold" style={{ color: C.textDim }}>Abbrechen</button></> : <><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Wollen Sie die Trainingseinheit wirklich löschen?</div><div className="flex gap-2 mt-4"><button onClick={() => { setDeleteRequest(null); setTerminFehler(""); }} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>Nein</button><button onClick={performSingleDelete} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.red, color: C.white }}>Ja</button></div></>}</div></div>}
+      {deleteRequest && <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => { setDeleteRequest(null); setTerminFehler(""); }}><div role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()} className="w-full max-w-sm rounded-2xl p-5" style={{ background: C.glass }}>{deleteRequest.seriesId ? <><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Nur diesen Termin oder die ganze Reihe?</div><div className="text-xs mb-4" style={{ color: C.textDim }}>Dieses Training wiederholt sich. Du kannst nur diesen einen Termin entfernen und die Reihe bestehen lassen — oder die ganze Reihe löschen. Die ganze Reihe schließt bereits vergangene Termine mit ein.</div><button onClick={performSingleDelete} className="w-full py-2.5 rounded-xl text-xs font-bold mb-2" style={{ background: C.ink, color: C.white }}>Nur diesen Termin</button><button onClick={performSeriesDelete} className="w-full py-2.5 rounded-xl text-xs font-bold mb-2" style={{ background: C.fehlerFlaeche, color: C.fehler, border: `1px solid ${C.fehlerRand}` }}>Ganze Reihe löschen</button><button onClick={() => { setDeleteRequest(null); setTerminFehler(""); }} className="w-full py-2 text-xs font-bold" style={{ color: C.textDim }}>Abbrechen</button></> : <><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Diesen Termin wirklich löschen?</div><div className="text-xs" style={{ color: C.textDim }}>Er verschwindet für alle. Rückgängig machen lässt sich das nicht.</div><div className="flex gap-2 mt-4"><button onClick={() => { setDeleteRequest(null); setTerminFehler(""); }} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>Abbrechen</button><button onClick={performSingleDelete} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.red, color: C.white }}>Löschen</button></div></>}</div></div>}
     </div>
   );
 }
