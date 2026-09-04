@@ -2811,7 +2811,7 @@ function CarpoolSection({ ev, currentUser }) {
 
 /* initialOpen: Im Kalender-Overlay ist bereits klar, welcher Termin gemeint ist —
    dort wird die Karte aufgeklappt gezeigt, statt noch einmal tippen zu lassen. */
-function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser, dutyPlan, setDutyPlan, onDienstSetzen, canCancelTraining, onCancelTraining, onDeleteTraining, currentClub, featureEnabled, initialOpen = false }) {
+function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser, dutyPlan, setDutyPlan, onDienstSetzen, canCancelTraining, onCancelTraining, onDeleteTraining, currentClub, featureEnabled, onNeuLaden, initialOpen = false }) {
   const [open, setOpen] = useState(initialOpen);
   const meta = typeMeta[ev.type];
 
@@ -2868,7 +2868,7 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
               <HelperSlots ev={ev} members={members} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} eligible={helperEligible} onSetzen={onDienstSetzen} />
             </div>
           )}
-          {eventIsReal && ev.type === "spiel" && ev.home === true && featureEnabled("duty_roster") && <DutyTasksSection ev={ev} currentUser={currentUser} sport={currentClub?.sport} />}
+          {eventIsReal && ev.type === "spiel" && ev.home === true && featureEnabled("duty_roster") && <DutyTasksSection ev={ev} currentUser={currentUser} sport={currentClub?.sport} onNeuLaden={onNeuLaden} />}
         </div>
       )}
     </div>
@@ -3329,7 +3329,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
         <EventCard key={ev.id} ev={ev}
           carpoolOn={!!myCarpools[ev.id]} onCarpool={handleCarpool}
           currentUser={currentUser} members={members} isAdminUser={isAdminUser}
-          currentClub={currentClub} featureEnabled={featureEnabled}
+          currentClub={currentClub} featureEnabled={featureEnabled} onNeuLaden={onNeuLaden}
           dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={onDienstSetzen}
           canCancelTraining={canCancelFor(ev)} onCancelTraining={cancelTraining} onDeleteTraining={deleteTraining}
         />
@@ -3349,7 +3349,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
             <EventCard ev={openEvent} initialOpen
               carpoolOn={!!myCarpools[openEvent.id]} onCarpool={handleCarpool}
               currentUser={currentUser} members={members} isAdminUser={isAdminUser}
-              currentClub={currentClub} featureEnabled={featureEnabled}
+              currentClub={currentClub} featureEnabled={featureEnabled} onNeuLaden={onNeuLaden}
               dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={onDienstSetzen}
               canCancelTraining={canCancelFor(openEvent)} onCancelTraining={(id) => { cancelTraining(id); setSelectedEvent(null); }} onDeleteTraining={(...args) => { deleteTraining(...args); setSelectedEvent(null); }}
             />
@@ -5278,7 +5278,7 @@ function VehiclesView({ currentUser, currentClub }) {
   );
 }
 
-function DutyTasksSection({ ev, currentUser, sport }) {
+function DutyTasksSection({ ev, currentUser, sport, onNeuLaden }) {
   const cfg = sportConfig(sport);
   const [tasks, setTasks] = useState([]);
   const [templates, setTemplates] = useState([]);
@@ -5325,12 +5325,23 @@ function DutyTasksSection({ ev, currentUser, sport }) {
   const applyTemplate = async () => {
     if (!selectedTemplate) return;
     setApplying(true); setMessage("");
-    const { error } = await supabase.rpc("apply_duty_template", { target_event: ev.id, target_template: selectedTemplate });
+    /* Die Funktion liefert seit 20260905090000 die Zahl der uebernommenen
+       Stationen. Vorher gab sie void zurueck, und die App meldete deshalb auch
+       dann "angewendet", wenn der Satz gar keine Station enthielt - oder wenn
+       die Stationen zwar in die Aufgabenliste wanderten, aber nicht an den
+       Termin, wo man sich eintraegt. Beides sah fuer den Nutzer gleich aus:
+       freundliche Meldung, nichts passiert. */
+    const { data: uebernommen, error } = await supabase.rpc("apply_duty_template", { target_event: ev.id, target_template: selectedTemplate });
     setApplying(false);
     if (error) { setMessage("Vorlage konnte nicht angewendet werden."); return; }
+    if (!uebernommen) { setMessage("Dieser Satz enthält noch keine Stationen. Trage sie unter Verwaltung → Helferdienst-Sätze ein."); return; }
     setSelectedTemplate("");
-    setMessage("Vorlage wurde angewendet.");
+    setMessage(uebernommen === 1 ? "Eine Station wurde übernommen." : `${uebernommen} Stationen wurden übernommen.`);
     await loadTasks();
+    /* Die Stationen stehen jetzt am Termin selbst (events.helper_slots). Ohne
+       diesen Aufruf zeigt die Karte weiter die alte Liste - loadTasks holt nur
+       die Aufgabenliste, nicht den Termin. */
+    onNeuLaden?.();
   };
   const assignTask = async (taskId, membershipId) => { const { error } = await supabase.from("duty_tasks").update({ assignee_membership_id: membershipId || null }).eq("id", taskId); if (!error) await loadTasks(); };
   const setDueDate = async (taskId, date) => { const { error } = await supabase.from("duty_tasks").update({ due_date: date || null }).eq("id", taskId); if (!error) await loadTasks(); };
