@@ -505,6 +505,13 @@ const NOTIFICATION_OPTIONS = [
   ["polls", "Umfragen und Abstimmungen"], ["protocols", "Vorstandsprotokolle"],
   ["family", "Familienverknüpfungen"], ["security", "Sicherheitshinweise"],
   ["tipp", "Tippspiel"], ["birthdays", "Geburtstage"],
+  /* Neu: Spielergebnisse der Mannschaft, die man als Ansicht gespeichert hat.
+     Der Schluessel MUSS hier stehen, sonst laesst sich die Meldung nirgends
+     abstellen - genau das ist "vehicle" passiert: Diese Art wird seit langem
+     verschickt (Fahrzeugbuchung), stand aber in keiner Liste, und weil ein
+     unbekannter Schluessel als "ja" gilt, konnte ein Vereinsadmin sie nur ueber
+     den Hauptschalter loswerden. Deshalb steht sie jetzt ebenfalls hier. */
+  ["results", "Spielergebnisse"], ["vehicle", "Fahrzeugbuchungen"],
 ];
 
 /* ------------------------------------------------------------------ */
@@ -2937,13 +2944,31 @@ function EventMonthCalendar({ events, onSelect }) {
   );
 }
 
+/* Ein Bauplan fuer den Terminentwurf - benutzt an beiden Stellen, an denen er
+   entsteht.
+   Vorher standen dort zwei Objekte mit UNTERSCHIEDLICHEN Schluesseln, und beide
+   waren dadurch kaputt, nur in verschiedene Richtungen:
+     - Der Anfangszustand kannte kein isHome. Beim Speichern wird
+       eventDraft.isHome gelesen; beim allerersten Spiel einer Sitzung war es
+       undefined, und das Spiel landete als AUSWAERTSSPIEL in der Datenbank -
+       auch wenn das Haekchen "Heimspiel" gesetzt aussah.
+     - Das Zuruecksetzen nach dem Speichern kannte dafuer kein day und kein
+       helferStationen, setzte stattdessen ein date, das niemand liest. Ab dem
+       zweiten Termin war das Datumsfeld also nicht mehr angebunden.
+   Ein Bauplan statt zweier Listen: Was hier steht, gilt an beiden Stellen. */
+const leererTerminentwurf = (team = "") => ({
+  type: "training", team, title: "", day: "", location: "", desc: "",
+  recurring: false, weekdays: [], startTime: "19:30", endTime: "22:00",
+  rangeStart: "", rangeEnd: "", helferStationen: "", isHome: true,
+});
+
 function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpools, setCarpools, dutyPlan, setDutyPlan, onDienstSetzen, werbeplaetze, onSponsorImpression, onSponsorClick, focusRequest, onFocusApplied, currentClub, featureEnabled, entitlement, goSubscribe }) {
   const [filter, setFilter] = useState("alle");
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
   const [eventFehler, setEventFehler] = useState("");
-  const [eventDraft, setEventDraft] = useState({ type: "training", team: "", title: "", day: "", location: "", desc: "", recurring: false, weekdays: [], startTime: "19:30", endTime: "22:00", rangeStart: "", rangeEnd: "", helferStationen: "" });
+  const [eventDraft, setEventDraft] = useState(() => leererTerminentwurf());
   /* Die Standardansicht haengt an der Mitgliedschaft, nicht am Geraet. Wer auf
      dem Telefon "U15" gespeichert hat, will das auf dem Tablet auch - vorher
      lag die Vorliebe im Geraetespeicher und war nach einer Neuinstallation
@@ -3045,7 +3070,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
     setEventFehler("");
     setShowCreate(true);
   };
-  const resetEventDraft = () => setEventDraft({ type: "training", team: allowedEventTeams[0] || "", title: "", date: "", location: "", desc: "", recurring: false, weekdays: [], startTime: "18:00", endTime: "19:30", rangeStart: "", rangeEnd: "", isHome: true });
+  const resetEventDraft = () => setEventDraft(leererTerminentwurf(allowedEventTeams[0] || ""));
   const createSportEvent = async (event) => {
     event.preventDefault();
     const isClubEvent = eventDraft.type === "event";
@@ -7389,15 +7414,25 @@ function MatchResultsPanel({ results, onSave, events }) {
           return (
             <div key={match.id} className="rounded-2xl p-4" style={{ background: C.glass, border: `1px solid ${results[match.id] ? C.erfolgRand : C.line}` }}>
               <div className="flex items-center justify-between mb-3">
-                <div><div className="text-xs font-bold" style={{ color: C.ink }}>{match.titel}</div><span className="text-[11px]" style={{ color: C.textDim }}>{formatDate(match.date)} · {formatTime(match.date)}</span></div>
+                <div><div className="text-xs font-bold" style={{ color: C.ink }}>{match.titel}</div><span className="text-[11px]" style={{ color: C.textDim }}>{formatDate(match.date)} · {formatTime(match.date)} · {match.heim ? "Heimspiel" : "Auswärtsspiel"}</span></div>
                 {results[match.id] && <Pill bg={C.secondary}>ausgewertet</Pill>}
               </div>
+              {/* Links stehen IMMER unsere Tore, rechts die des Gegners - unabhaengig
+                  davon, ob heim oder auswaerts gespielt wurde. So wird es eingetragen,
+                  und so bedeuten es auch die Spalten heim/auswaerts in event_results
+                  (deren Namen etwas anderes vermuten lassen; siehe den Kommentar an
+                  der Tabelle).
+                  Vorher stand hier {match.home} und {match.away}. Diese Eigenschaften
+                  gibt es auf dem Objekt gar nicht - tippBegegnungen liefert
+                  { id, titel, team, heim, date }. Beide Beschriftungen waren deshalb
+                  leer, und die Vorlesehilfe sagte "Tore undefined". Wer ein Ergebnis
+                  eintrug, sah zwei nackte Zahlenfelder und musste raten. */}
               <div className="flex items-center gap-2 mb-3">
-                <span className="text-xs font-bold flex-1 text-right" style={{ color: C.ink }}>{match.home}</span>
-                <input aria-label={`Tore ${match.home}`} type="number" min="0" value={values.home} onChange={(event) => update(match.id, "home", event.target.value)} className="w-12 text-center py-2 rounded-lg outline-none" style={{ background: C.paperDim, fontFamily: "JetBrains Mono", fontWeight: 700 }} />
+                <span className="text-xs font-bold flex-1 text-right" style={{ color: C.ink }}>Wir</span>
+                <input aria-label="Unsere Tore" type="number" min="0" value={values.home} onChange={(event) => update(match.id, "home", event.target.value)} className="w-12 text-center py-2 rounded-lg outline-none" style={{ background: C.paperDim, fontFamily: "JetBrains Mono", fontWeight: 700 }} />
                 <span style={{ color: C.textDim }}>:</span>
-                <input aria-label={`Tore ${match.away}`} type="number" min="0" value={values.away} onChange={(event) => update(match.id, "away", event.target.value)} className="w-12 text-center py-2 rounded-lg outline-none" style={{ background: C.paperDim, fontFamily: "JetBrains Mono", fontWeight: 700 }} />
-                <span className="text-xs font-bold flex-1" style={{ color: C.ink }}>{match.away}</span>
+                <input aria-label="Tore des Gegners" type="number" min="0" value={values.away} onChange={(event) => update(match.id, "away", event.target.value)} className="w-12 text-center py-2 rounded-lg outline-none" style={{ background: C.paperDim, fontFamily: "JetBrains Mono", fontWeight: 700 }} />
+                <span className="text-xs font-bold flex-1" style={{ color: C.textDim }}>Gegner</span>
               </div>
               <button onClick={() => save(match)} className="w-full py-2 rounded-lg text-xs font-bold" style={{ background: savedId === match.id ? C.secondary : C.ink, color: C.white }}>
                 {savedId === match.id ? "Punkte wurden berechnet ✓" : results[match.id] ? "Ergebnis korrigieren & neu berechnen" : "Ergebnis speichern & Punkte berechnen"}
