@@ -6644,20 +6644,23 @@ function ProfileView({ user, members, setMembers, currentClub, dutyPlan, punkteZ
         </div>
       </div>
 
-      {isAdmin(user) && (
-        <>
-          <SectionTitle eyebrow="Verein verwalten" title="Vereinseinstellungen" />
-          <div className="space-y-2 mb-6">
-            <ProfileSettingsCard icon={Settings} title="Vereinseinstellungen" description="Funktionen wie Fahrzeugbuchung, Tippspiel & Athlet/in der Saison ein- oder ausblenden" color={C.red} onClick={() => setProfileFolder("clubsettings")}/>
-          </div>
-        </>
-      )}
+      {/* "Verein & Mitgliedschaft" steht jetzt hier statt unter "Einstellungen" -
+          es geht um den Verein, nicht um das Geraet oder das Konto.
+          Der Abschnitt wird deshalb fuer ALLE gezeigt, nicht nur fuer
+          Administratoren: Die eigenen Rollen und Mannschaften gehen jeden an.
+          Nur die Kachel mit den Vereinsfunktionen bleibt der Vereinsleitung
+          vorbehalten - haette ich den ganzen Abschnitt hinter isAdmin gelassen,
+          haetten alle anderen den Zugang zu ihren eigenen Angaben verloren. */}
+      <SectionTitle eyebrow="Verein verwalten" title="Vereinseinstellungen" />
+      <div className="space-y-2 mb-6">
+        {isAdmin(user) && <ProfileSettingsCard icon={Settings} title="Vereinseinstellungen" description="Funktionen wie Fahrzeugbuchung, Tippspiel & Athlet/in der Saison ein- oder ausblenden" color={C.red} onClick={() => setProfileFolder("clubsettings")}/>}
+        <ProfileSettingsCard icon={Trophy} title="Verein & Mitgliedschaft" description="Athleten-, Trainer- und Vereinsrollen" color={C.red} onClick={() => setProfileFolder("club")}/>
+      </div>
 
       <SectionTitle eyebrow="Verwalten" title="Einstellungen" />
       <div className="space-y-2 mb-6">
         <ProfileSettingsCard icon={User} title="Persönliche Daten" description="Stammdaten, Kontakte, Familie" color={C.secondary} onClick={() => setProfileFolder("personal")}/>
         <ProfileSettingsCard icon={KeyRound} title="Konto & Sicherheit" description="Passwort, Sicherheit, Rechtliches, Account" color={AVATAR_FARBEN[2]} onClick={() => setProfileFolder("security")}/>
-        <ProfileSettingsCard icon={Trophy} title="Verein & Mitgliedschaft" description="Athleten-, Trainer- und Vereinsrollen" color={C.red} onClick={() => setProfileFolder("club")}/>
         <ProfileSettingsCard icon={Bell} title="Benachrichtigungen & Kalender" description="Push-Einstellungen und Kalendersync" color={C.secondary} onClick={() => setProfileFolder("notify")}/>
         <ProfileSettingsCard icon={Euro} title="Zugang & Empfehlungen" description="Freischaltung des Vereins und Vereine werben Vereine" color={C.red} onClick={() => setProfileFolder("billing")}/>
         <ProfileSettingsCard icon={Star} title="Support & Feedback" description="Bewertung abgeben, Fehler melden" color={C.textDim} onClick={() => setProfileFolder("support")}/>
