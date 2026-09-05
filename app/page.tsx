@@ -6987,10 +6987,11 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
 
   return (
     <div className="px-4 pt-4 pb-10">
-      <div className="rounded-2xl p-4 mb-5 flex items-center gap-3" style={{ background: C.sekundaerWeich, border: `1px solid ${C.edge}` }}>
-        <Gift size={20} style={{ color: C.secondary }} />
-        <div className="text-xs" style={{ color: C.ink, fontFamily: "Inter" }}><b>Platz 1</b> am Saisonende gewinnt einen CMO-Artikel nach Wahl — Schal, Trikot oder mehr.</div>
-      </div>
+      {/* Der Hinweis auf den Saisonpreis ("Platz 1 gewinnt einen CMO-Artikel
+          nach Wahl") ist entfernt - es gibt zurzeit keinen solchen Preis.
+          Ein Versprechen, das niemand einloest, ist schlimmer als keines.
+          Mit dem Text ist auch der Kasten weg: Ein leerer Rahmen mit
+          Geschenksymbol haette ausgesehen, als fehle etwas. */}
 
       <SectionTitle eyebrow="Rangliste" title="Tippspiel-Tabelle" />
       <div className="rounded-2xl overflow-hidden mb-6" style={{ border: `1px solid ${C.line}` }}>
