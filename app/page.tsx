@@ -8398,10 +8398,23 @@ function AdminView({
         </div>
       </div>}
 
-      <div className="flex gap-2 mb-4 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
-        {panels.map(([k, l]) => (
-          <button key={k} onClick={() => setPanel(k)} className="px-3 py-1.5 rounded-full text-xs flex-shrink-0"
-            style={{ fontFamily: "Inter", fontWeight: 700, background: panel === k ? C.ink : C.paperDim, color: panel === k ? C.white : C.textDim }}>{l}</button>
+      {/* Untereinander statt waagerecht scrollend.
+          Als Pillenleiste passten drei Eintraege auf den Bildschirm, der Rest
+          lag hinter dem Rand - ein Vereinsadmin hat bis zu elf. Wer
+          "Vereinsprofil" suchte, musste erst wischen, um zu sehen, dass es das
+          ueberhaupt gibt. Untereinander steht alles sofort da. */}
+      <div className="rounded-2xl overflow-hidden mb-4" style={{ border: `1px solid ${C.line}` }}>
+        {panels.map(([k, l], i) => (
+          <button key={k} onClick={() => setPanel(k)}
+            aria-current={panel === k ? "page" : undefined}
+            className="w-full text-left px-4 py-3 text-xs flex items-center justify-between"
+            style={{ fontFamily: "Inter", fontWeight: 700,
+                     background: panel === k ? C.ink : C.paperDim,
+                     color: panel === k ? C.white : C.textDim,
+                     borderTop: i ? `1px solid ${C.line}` : "none" }}>
+            {l}
+            {panel === k && <ChevronRight size={14} style={{ color: C.white, opacity: .7 }} />}
+          </button>
         ))}
       </div>
 
