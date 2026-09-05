@@ -2000,7 +2000,7 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub, offeneS
               <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0" style={{ background: m.color, color: "#fff", fontFamily: "Inter" }}>{initialsOf(m.name)}</div>
               <div className="text-left flex-1">
                 <div className="text-xs" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{m.name}</div>
-                <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{m.roles.map((r) => ROLE_META[r].label).join(" · ")}</div>
+                <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{m.roles.map((r) => ROLE_META[r]?.label || r).join(" · ")}</div>
               </div>
               {isAdmin(m) && <ShieldCheck size={14} style={{ color: C.red }} />}
             </button>
@@ -6651,7 +6651,7 @@ function ProfileView({ user, members, setMembers, currentClub, dutyPlan, punkteZ
           <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{nachRangSortiert(memberAllTeams(user)).join(" · ") || user.team}{user.number ? ` · Rückennummer ${user.number}` : ""}</div>
           <div className="text-xs mt-0.5 mb-2" style={{ color: C.textDim, fontFamily: "Inter" }}>Dabei seit {user.since} · {age(user.birthdate)} Jahre</div>
           <div className="flex flex-wrap gap-1.5">
-            {user.roles.map((r) => <Pill key={r} bg={ROLE_META[r].color}>{ROLE_META[r].label}</Pill>)}
+            {user.roles.filter((r) => ROLE_META[r]).map((r) => <Pill key={r} bg={ROLE_META[r].color}>{ROLE_META[r].label}</Pill>)}
           </div>
         </div>
       </div>
@@ -7458,7 +7458,20 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
   }, [currentClub?.id]);
   useEffect(() => { ladeEigene(); }, [ladeEigene]);
 
-  const tag = (wert) => (wert ? alsDatum(new Date(wert)) : "");
+  /* Fruehe Fassung schnitt die Uhrzeit ab (alsDatum). Die Spalten in der
+     Tabelle "anzeigen" sind aber timestamptz - die Uhrzeit war also immer
+     speicherbar, nur nicht eingebbar. Ein Sponsorenlogo mag das egal sein,
+     eine Rabattaktion nicht: "gilt bis zum 12." heisst 0:00 oder 23:59, und
+     das sind zwei verschiedene Tage.
+     Ortszeit, nicht UTC - datetime-local kennt keine Zeitzone, und der Nutzer
+     meint seine eigene. */
+  const tag = (wert) => {
+    if (!wert) return "";
+    const d = new Date(wert);
+    if (Number.isNaN(d.getTime())) return "";
+    const zwei = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${zwei(d.getMonth() + 1)}-${zwei(d.getDate())}T${zwei(d.getHours())}:${zwei(d.getMinutes())}`;
+  };
   const leer = (platz) => ({
     id: null, platz, titel: "", text: "", bild_pfad: "", ziel_url: "",
     aktion_titel: "", aktion_text: "", aktion_url: "",
@@ -7494,7 +7507,11 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
     if (!entwurf.titel.trim()) { setFehler("Ohne Namen des Sponsors geht es nicht."); return; }
     /* Vor dem Speichern pruefen, was die Datenbank ohnehin verlangt - der
        Hinweis hier ist verstaendlich, die Fehlermeldung von dort nicht. */
-    if (entwurf.aktion_titel.trim() && !entwurf.aktion_bis) { setFehler("Eine Aktion braucht ein Enddatum. Bis wann läuft sie?"); return; }
+    /* Laufzeit ist jetzt Pflicht - mit Uhrzeit. Vorher war das Ende
+       freiwillig, und ein Sponsor ohne Ende stand fuer immer. */
+    if (!entwurf.laeuft_von) { setFehler("Wann soll der Sponsor erscheinen? Bitte Startzeitpunkt angeben."); return; }
+    if (!entwurf.laeuft_bis) { setFehler("Bis wann soll der Sponsor erscheinen? Bitte Endzeitpunkt angeben."); return; }
+    if (entwurf.aktion_titel.trim() && !entwurf.aktion_bis) { setFehler("Eine Aktion braucht einen Endzeitpunkt. Bis wann läuft sie?"); return; }
     if (entwurf.laeuft_bis && entwurf.laeuft_von && new Date(entwurf.laeuft_bis) <= new Date(entwurf.laeuft_von)) { setFehler("Der Sponsor kann nicht enden, bevor er beginnt."); return; }
     if (entwurf.aktion_bis && entwurf.aktion_von && new Date(entwurf.aktion_bis) <= new Date(entwurf.aktion_von)) { setFehler("Die Aktion kann nicht enden, bevor sie beginnt."); return; }
     setSpeichert(true); setFehler("");
@@ -7632,9 +7649,9 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
                 {entwurf.aktion_titel.trim() ? <>
                   <div className="flex gap-2">
                     <label className="flex-1"><span className="text-[10px] block mb-1" style={{ color: C.textDim }}>Aktion von</span>
-                      <input type="date" value={entwurf.aktion_von} onChange={(e) => setzen("aktion_von", e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} /></label>
+                      <input type="datetime-local" value={entwurf.aktion_von} onChange={(e) => setzen("aktion_von", e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} /></label>
                     <label className="flex-1"><span className="text-[10px] block mb-1" style={{ color: C.textDim }}>Aktion bis *</span>
-                      <input type="date" value={entwurf.aktion_bis} onChange={(e) => setzen("aktion_bis", e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} /></label>
+                      <input type="datetime-local" value={entwurf.aktion_bis} onChange={(e) => setzen("aktion_bis", e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} /></label>
                   </div>
                   <div className="text-[10px]" style={{ color: C.textDim }}>Der Aktionsknopf erscheint nur in diesem Zeitraum. Danach bleibt der Sponsor stehen, die Aktion verschwindet von selbst.</div>
                 </> : null}
@@ -7642,9 +7659,9 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
                 <div className="text-[10px] uppercase tracking-widest font-bold pt-1" style={{ color: C.textDim }}>Der Sponsor steht auf dem Platz</div>
                 <div className="flex gap-2">
                   <label className="flex-1"><span className="text-[10px] block mb-1" style={{ color: C.textDim }}>Von</span>
-                    <input type="date" value={entwurf.laeuft_von} onChange={(e) => setzen("laeuft_von", e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} /></label>
+                    <input type="datetime-local" value={entwurf.laeuft_von} onChange={(e) => setzen("laeuft_von", e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} /></label>
                   <label className="flex-1"><span className="text-[10px] block mb-1" style={{ color: C.textDim }}>Bis (optional)</span>
-                    <input type="date" value={entwurf.laeuft_bis} onChange={(e) => setzen("laeuft_bis", e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} /></label>
+                    <input type="datetime-local" value={entwurf.laeuft_bis} onChange={(e) => setzen("laeuft_bis", e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} /></label>
                 </div>
                 <div className="text-[10px]" style={{ color: C.textDim }}>Ohne Enddatum bleibt der Sponsor stehen, bis Sie ihn entfernen.</div>
 
@@ -7891,7 +7908,7 @@ function RolesPanel({ members, setMembers }) {
                 {!expanded && (
                   <div className="flex flex-wrap gap-1 mt-1">
                     {m.roles.filter((r) => ASSIGNABLE_ROLES.includes(r)).map((r) => (
-                      <span key={r} className="px-2 py-0.5 rounded-full text-[10px]" style={{ fontFamily: "Inter", fontWeight: 700, background: C.paperDim, color: C.textDim }}>{ROLE_META[r].label}</span>
+                      <span key={r} className="px-2 py-0.5 rounded-full text-[10px]" style={{ fontFamily: "Inter", fontWeight: 700, background: C.paperDim, color: C.textDim }}>{ROLE_META[r]?.label || r}</span>
                     ))}
                   </div>
                 )}
@@ -7905,8 +7922,8 @@ function RolesPanel({ members, setMembers }) {
                     const active = draftRoles.includes(r);
                     return (
                       <button key={r} type="button" onClick={() => toggleDraftRole(r)} className="px-2.5 py-1 rounded-full text-[11px]"
-                        style={{ fontFamily: "Inter", fontWeight: 700, background: active ? ROLE_META[r].color : C.paperDim, color: active ? "#fff" : C.textDim }}>
-                        {ROLE_META[r].label}
+                        style={{ fontFamily: "Inter", fontWeight: 700, background: active ? (ROLE_META[r]?.color || C.paperDim) : C.paperDim, color: active ? "#fff" : C.textDim }}>
+                        {ROLE_META[r]?.label || r}
                       </button>
                     );
                   })}
@@ -7959,7 +7976,7 @@ function SystemPanel({ members, channels, setChannels, maintenanceMode, setMaint
                 <span className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{m.name}</span>
                 <span className="text-[10px]" style={{ fontFamily: "JetBrains Mono", color: C.textDim }}>{m.id}</span>
               </div>
-              <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{m.email} · {m.roles.map((r) => ROLE_META[r].label).join(", ")}</div>
+              <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{m.email} · {m.roles.map((r) => ROLE_META[r]?.label || r).join(", ")}</div>
             </div>
           ))}
         </div>
