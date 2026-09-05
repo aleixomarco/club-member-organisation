@@ -589,23 +589,30 @@ const AVATAR_FARBEN = [
  * Jetzt kommen sie aus den beiden Vereinsfarben und neutralen Stufen. Die
  * Rollen bleiben unterscheidbar - sie tragen ohnehin ihren Namen daneben, die
  * Farbe war nie das, woran man sie erkannt hat. */
+/* Vorstand, Geschaeftsfuehrung und Finanzmanager sind im Vereins-Administrator
+   aufgegangen; "Eltern" ist ersatzlos entfallen. Wer eine der drei
+   Verwaltungsrollen hielt, hat den Vereins-Administrator bekommen, bevor die
+   alten Zeilen geloescht wurden (Migration 20260905160000) - niemand hat
+   Rechte verloren.
+   Die Rollen stehen hier nicht mehr, also lassen sie sich auch nicht mehr
+   vergeben. Die Enum-Werte in der Datenbank bleiben: Postgres entfernt sie nur
+   umstaendlich, und 22 Rechte-Funktionen nennen sie noch - deren Zweige laufen
+   jetzt einfach ins Leere.
+   ACHTUNG: "eltern" gibt es auch als family_relation (Elternteil/Kind im
+   Familienbaum). Das ist ein anderer Typ und bleibt unberuehrt. */
 const ROLE_META = {
   vereinsadmin: { label: "Vereins-Administrator", color: C.red, admin: true, formalMember: true, selfService: false },
   sysadmin: { label: "Sys-Admin", color: C.ink, admin: true, formalMember: true, selfService: false },
-  vorstand: { label: "Vorstand", color: C.red, admin: true, formalMember: true, selfService: false },
-  geschaeftsfuehrung: { label: "Geschäftsführung", color: C.ink, admin: true, formalMember: true, selfService: false },
-  finanzmanager: { label: "Finanzmanager", color: C.secondary, admin: false, formalMember: true, selfService: false },
   redakteur: { label: "Redakteur", color: C.secondary, admin: false, formalMember: true, selfService: false },
   sponsorenmanager: { label: "Sponsorenmanager", color: C.secondary, admin: false, formalMember: true, selfService: false },
   trainer: { label: "Trainer/in", color: C.red, admin: false, formalMember: true, selfService: false },
   kapitaen: { label: "Kapitän/in", color: C.red, admin: false, formalMember: true, selfService: false },
   teammanager: { label: "Teammanager/in", color: C.secondary, admin: false, formalMember: true, selfService: false },
   spieler: { label: "Athlet/in", color: C.secondary, admin: false, formalMember: true, selfService: true },
-  eltern: { label: "Eltern", color: C.secondary, admin: false, formalMember: true, selfService: true },
   mitglied: { label: "Mitglied", color: C.textDim, admin: false, formalMember: true, selfService: true, alwaysOn: true },
   organisator: { label: "Organisator/in", color: C.secondary, admin: false, formalMember: true, selfService: false },
 };
-const ROLE_OVERVIEW_KEYS = ["vereinsadmin", "vorstand", "geschaeftsfuehrung", "finanzmanager", "organisator", "trainer", "teammanager", "kapitaen", "spieler", "eltern"];
+const ROLE_OVERVIEW_KEYS = ["vereinsadmin", "organisator", "trainer", "teammanager", "kapitaen", "spieler"];
 /* Sys-Admin ist eine plattformweite Rolle für den Produkt-Owner, keine Vereinsrolle — daher in der
    Rollenvergabe der Vereine nicht wähl-/sichtbar. Technisch höchste vergebbare Rolle ist Vereins-Administrator. */
 const ASSIGNABLE_ROLES = Object.keys(ROLE_META).filter((r) => r !== "sysadmin");
@@ -1562,8 +1569,8 @@ function BeitrittsScreen({ club, vorschlagName, onBeitreten, goBack }) {
         <Field icon={User} placeholder="Vor- und Nachname" value={name} onChange={(e) => setName(e.target.value)} />
 
         <div className="text-xs font-semibold mb-2" style={{ color: C.ink, fontFamily: "Inter" }}>Ich trete bei als</div>
-        <div className="grid grid-cols-3 gap-2 mb-4">
-          {[{ id: "mitglied", label: "Mitglied", icon: User }, { id: "spieler", label: "Athlet/in", icon: Trophy }, { id: "eltern", label: "Elternteil", icon: Users }].map((typ) => {
+        <div className="grid grid-cols-2 gap-2 mb-4">
+          {[{ id: "mitglied", label: "Mitglied", icon: User }, { id: "spieler", label: "Athlet/in", icon: Trophy }].map((typ) => {
             const Icon = typ.icon; const aktiv = art === typ.id;
             return <button type="button" key={typ.id} onClick={() => setArt(typ.id)} className="rounded-xl py-3 px-1 flex flex-col items-center gap-1.5"
               style={{ background: aktiv ? C.fehlerFlaeche : C.paperDim, border: aktiv ? `1px solid ${C.red}` : "1px solid transparent", color: aktiv ? C.red : C.textDim }}><Icon size={17}/><span className="text-[11px] font-bold">{typ.label}</span></button>;
@@ -2119,8 +2126,8 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
             keinen Sinn - danach wird beim Beitritt gefragt. */}
         {!ohneVerein && <>
         <div className="text-xs font-semibold mb-2" style={{ color: C.ink, fontFamily: "Inter" }}>Ich registriere mich als</div>
-        <div className="grid grid-cols-3 gap-2 mb-4">
-          {[{ id: "mitglied", label: "Mitglied", icon: User }, { id: "spieler", label: "Athlet/in", icon: Trophy }, { id: "eltern", label: "Elternteil", icon: Users }].map((type) => {
+        <div className="grid grid-cols-2 gap-2 mb-4">
+          {[{ id: "mitglied", label: "Mitglied", icon: User }, { id: "spieler", label: "Athlet/in", icon: Trophy }].map((type) => {
             const Icon = type.icon; const active = form.accountType === type.id;
             return <button type="button" key={type.id} onClick={() => setForm((f) => ({ ...f, accountType: type.id, relativeId: "" }))} className="rounded-xl py-3 px-1 flex flex-col items-center gap-1.5"
               style={{ background: active ? C.fehlerFlaeche : C.paperDim, border: active ? `1px solid ${C.red}` : "1px solid transparent", color: active ? C.red : C.textDim }}><Icon size={17}/><span className="text-[11px] font-bold">{type.label}</span></button>;
