@@ -2789,6 +2789,109 @@ function toggleHelperSelf(setDutyPlan, eventId, station, userId, onSetzen) {
     return { ...dp, [eventId]: { ...plan, [station]: nextList } };
   });
 }
+/* Zu- und Absage zu einem Termin - und die Liste fuer die Verantwortlichen.
+ *
+ * Kein eigener Datensatz fuer "zugesagt": Das FEHLEN einer Zeile bedeutet
+ * zugesagt (siehe Migration 20260906090000). Geschrieben wird nur eine Absage
+ * oder eine Ruecknahme davon. Das spart bei woechentlichem Training tausende
+ * Zeilen, die nur sagen: nichts Besonderes.
+ *
+ * Die Liste holt eine Datenbankfunktion, keine zwei Abfragen: Sie prueft
+ * selbst, ob der Betrachter sie sehen darf, und liefert Mannschaft und Status
+ * zusammen. Ohne sie muesste die App die ganze Mitgliederliste laden - auch
+ * fuer jemanden, den sie nichts angeht. */
+function TerminZusage({ ev, currentUser }) {
+  const [meinStatus, setMeinStatus] = useState("zugesagt");
+  const [liste, setListe] = useState(null);
+  const [offen, setOffen] = useState(false);
+  const [laedt, setLaedt] = useState(false);
+  const [fehler, setFehler] = useState("");
+  const darfListeSehen = canManageDuty(currentUser)
+    || currentUser.roles?.some((r) => ["trainer", "kapitaen", "teammanager"].includes(r));
+
+  useEffect(() => {
+    if (!supabase || !isDbId(ev.id) || !isDbId(currentUser.id)) return;
+    supabase.from("event_attendance").select("status")
+      .eq("event_id", ev.id).eq("membership_id", currentUser.id).maybeSingle()
+      .then(({ data }) => setMeinStatus(data?.status || "zugesagt"));
+  }, [ev.id, currentUser.id]);
+
+  const setzen = async (status) => {
+    const vorher = meinStatus;
+    setMeinStatus(status);
+    setFehler("");
+    if (!supabase || !isDbId(ev.id) || !isDbId(currentUser.id)) return;
+    /* Zugesagt heisst: keine Zeile. Deshalb loeschen statt schreiben - sonst
+       sammelt die Tabelle Eintraege, die nichts aussagen. */
+    const { error } = status === "zugesagt"
+      ? await supabase.from("event_attendance").delete().eq("event_id", ev.id).eq("membership_id", currentUser.id)
+      : await supabase.from("event_attendance").upsert(
+          { event_id: ev.id, membership_id: currentUser.id, status, updated_at: new Date().toISOString() },
+          { onConflict: "event_id,membership_id" });
+    if (error) { setMeinStatus(vorher); setFehler("Deine Antwort konnte nicht gespeichert werden."); return; }
+    if (offen) await listeLaden();
+  };
+
+  const listeLaden = async () => {
+    setLaedt(true);
+    const { data, error } = await supabase.rpc("anwesenheit_fuer_termin", { target_event: ev.id });
+    setLaedt(false);
+    if (error) { setFehler("Die Liste konnte nicht geladen werden."); return; }
+    setListe(data || []);
+  };
+
+  if (!supabase || !isDbId(ev.id)) return null;
+  const zugesagt = (liste || []).filter((z) => z.status === "zugesagt").length;
+
+  return (
+    <div className="mb-3">
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-[11px] font-bold flex-shrink-0" style={{ color: C.textDim, fontFamily: "Inter" }}>Bist du dabei?</span>
+        <select value={meinStatus} onChange={(e) => setzen(e.target.value)}
+          aria-label="Deine Zu- oder Absage"
+          className="flex-1 text-xs px-3 py-2 rounded-lg outline-none font-bold"
+          style={{ background: meinStatus === "zugesagt" ? C.erfolgFlaeche : C.fehlerFlaeche,
+                   color: meinStatus === "zugesagt" ? C.erfolg : C.fehler,
+                   border: `1px solid ${meinStatus === "zugesagt" ? C.erfolgRand : C.fehler}`,
+                   fontFamily: "Inter" }}>
+          <option value="zugesagt">Zugesagt</option>
+          <option value="abgesagt">Abgesagt</option>
+        </select>
+      </div>
+
+      {darfListeSehen && (
+        <button onClick={() => { const n = !offen; setOffen(n); if (n && liste === null) listeLaden(); }}
+          className="w-full py-2.5 rounded-xl text-xs font-bold mb-2"
+          style={{ background: C.paperDim, color: C.ink, border: `1px solid ${C.line}` }}>
+          {offen ? "Spielerliste ausblenden" : "Wer ist dabei?"}
+          {liste && !offen ? ` · ${zugesagt} von ${liste.length}` : ""}
+        </button>
+      )}
+
+      {offen && darfListeSehen && (
+        <div className="rounded-xl overflow-hidden mb-2" style={{ border: `1px solid ${C.line}` }}>
+          {laedt && <div className="px-3 py-2.5 text-[11px]" style={{ color: C.textDim }}>Liste wird geladen …</div>}
+          {!laedt && (liste || []).length === 0 && (
+            <div className="px-3 py-2.5 text-[11px]" style={{ color: C.textDim }}>Für diesen Termin ist niemand eingeteilt.</div>
+          )}
+          {!laedt && (liste || []).map((z, i) => (
+            <div key={z.membership_id} className="flex items-center justify-between gap-2 px-3 py-2"
+              style={{ borderTop: i ? `1px solid ${C.line}` : "none", background: C.white }}>
+              <span className="text-xs truncate" style={{ color: C.ink, fontFamily: "Inter", fontWeight: 600 }}>{z.name}</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full flex-shrink-0"
+                style={{ background: z.status === "zugesagt" ? C.erfolgFlaeche : C.fehlerFlaeche,
+                         color: z.status === "zugesagt" ? C.erfolg : C.fehler, fontWeight: 700 }}>
+                {z.status === "zugesagt" ? "Zugesagt" : "Abgesagt"}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+      {fehler && <div role="status" className="text-[11px] rounded-lg px-2.5 py-1.5" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{fehler}</div>}
+    </div>
+  );
+}
+
 /* darfVerwalten: Vereinsleitung und Organisator duerfen fremde Eintragungen
    setzen und loeschen. Die Sicherheitsregel in der Datenbank erlaubt das
    laengst ("leaders manage duties" fuer vereinsadmin, sysadmin, organisator) -
@@ -3022,6 +3125,7 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
         <div className="px-4 pb-4">
           {ev.cancelled&&<div className="rounded-xl p-3 mb-3 text-xs font-bold" style={{background:C.fehlerFlaeche,color:C.fehler,border: `1px solid ${C.fehlerRand}`}}>Dieses {meta.label} wurde{ev.team?` für ${ev.team}`:""} abgesagt.</div>}
           <p className="text-sm mb-3" style={{ color: C.textDim, fontFamily: "Inter" }}>{ev.desc}</p>
+          {!ev.cancelled && <TerminZusage ev={ev} currentUser={currentUser} />}
           {canCancelTraining&&!ev.cancelled&&<button onClick={()=>onCancelTraining(ev.id)} className="w-full py-2.5 rounded-xl text-xs font-bold mb-3" style={{background:C.fehlerFlaeche,color:C.fehler,border: `1px solid ${C.fehlerRand}`}}>{meta.label}{ev.team?` für ${ev.team}`:""} absagen</button>}{canCancelTraining&&<button onClick={()=>onDeleteTraining(ev.id, ev.team, ev.seriesId)} className="w-full py-2.5 rounded-xl text-xs font-bold mb-3" style={{background:C.paperDim,color:C.fehler}}>{meta.label} endgültig löschen</button>}
 
           {ev.home !== true && (
