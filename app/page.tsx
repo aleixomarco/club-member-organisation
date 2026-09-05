@@ -6792,17 +6792,35 @@ function SeasonVoteView({ currentUser, members, seasonVotes, setSeasonVotes, onV
 function TippView({ members, currentUser, events, tippPredictions, setTippPredictions, tippResults, onTippSpeichern }) {
   const begegnungen = tippBegegnungen(events);
   const mine = tippPredictions[currentUser.id] || {};
-  /* Der Tipp geht in die Datenbank, sobald beide Zahlen dastehen. Vorher lag er
-     ausschliesslich im Arbeitsspeicher und war beim naechsten Oeffnen weg -
-     samt der Punkte, die die Rangliste daraus rechnet. */
-  const setPred = (matchId, side, val) => {
+  /* Getippt wird jetzt in zwei Schritten: eintragen, dann abgeben.
+     Vorher ging jede einzelne Ziffer sofort in die Datenbank. Wer "12" statt
+     "1" tippte, hatte zwischendurch einen Tipp auf 1 abgegeben; wer eine Zahl
+     loeschte, um sie zu aendern, loeschte damit den ganzen Tipp. Beides ohne
+     Rueckmeldung - man sah nie, ob etwas gespeichert war.
+     Der Entwurf lebt jetzt hier, gespeichert wird erst auf Knopfdruck. */
+  const [entwuerfe, setEntwuerfe] = useState({});
+  const entwurfVon = (matchId) => entwuerfe[matchId] ?? mine[matchId] ?? { home: "", away: "" };
+  const setPred = (matchId, side, val) =>
+    setEntwuerfe((e) => ({ ...e, [matchId]: { ...entwurfVon(matchId), [side]: val } }));
+
+  const tippAbgeben = (matchId) => {
+    const d = entwurfVon(matchId);
+    if (d.home === "" || d.away === "") return;
+    setTippPredictions((tp) => ({ ...tp, [currentUser.id]: { ...(tp[currentUser.id] || {}), [matchId]: d } }));
+    onTippSpeichern?.(matchId, d.home, d.away);
+    setEntwuerfe((e) => { const n = { ...e }; delete n[matchId]; return n; });
+  };
+
+  /* Zuruecknehmen bis zum Anpfiff. Danach nicht mehr - sonst koennte man den
+     Tipp abgeben, das Spiel schauen und ihn bei schlechtem Verlauf loeschen. */
+  const tippLoeschen = (matchId) => {
     setTippPredictions((tp) => {
-      const userPreds = tp[currentUser.id] || {};
-      const cur = userPreds[matchId] || { home: "", away: "" };
-      const neu = { ...cur, [side]: val };
-      onTippSpeichern?.(matchId, neu.home, neu.away);
-      return { ...tp, [currentUser.id]: { ...userPreds, [matchId]: neu } };
+      const meine = { ...(tp[currentUser.id] || {}) };
+      delete meine[matchId];
+      return { ...tp, [currentUser.id]: meine };
     });
+    onTippSpeichern?.(matchId, "", "");
+    setEntwuerfe((e) => { const n = { ...e }; delete n[matchId]; return n; });
   };
   const leaderboard = members.map((member) => ({ ...member, calculatedTippPoints: totalTippPoints(member.id, tippPredictions, tippResults, begegnungen) }))
     .sort((a, b) => b.calculatedTippPoints - a.calculatedTippPoints);
@@ -6841,6 +6859,10 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
         const result = tippResults[match.id];
         const locked = new Date(match.date) < new Date() || !!result;
         const pred = mine[match.id] || { home: "", away: "" };
+        const feld = entwurfVon(match.id);
+        const abgegeben = pred.home !== "" && pred.away !== "";
+        const entwurfVollstaendig = feld.home !== "" && feld.away !== "";
+        const hatAenderung = String(feld.home) !== String(pred.home) || String(feld.away) !== String(pred.away);
         const earned = predictionPoints(pred, result);
         return (
           <div key={match.id} className="rounded-2xl p-4 mb-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
@@ -6850,13 +6872,35 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
             </div>
             <div className="flex items-center justify-center gap-3">
               <span className="text-sm flex-1 text-right" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Wir</span>
-              <input type="number" min="0" disabled={locked} value={pred.home} onChange={(e) => setPred(match.id, "home", e.target.value)}
+              <input type="number" min="0" disabled={locked} aria-label="Unsere Tore tippen" value={feld.home} onChange={(e) => setPred(match.id, "home", e.target.value)}
                 className="w-12 text-center py-1.5 rounded-lg text-sm outline-none" style={{ background: C.paperDim, fontFamily: "JetBrains Mono", fontWeight: 700 }} />
               <span style={{ color: C.textDim }}>:</span>
-              <input type="number" min="0" disabled={locked} value={pred.away} onChange={(e) => setPred(match.id, "away", e.target.value)}
+              <input type="number" min="0" disabled={locked} aria-label="Tore des Gegners tippen" value={feld.away} onChange={(e) => setPred(match.id, "away", e.target.value)}
                 className="w-12 text-center py-1.5 rounded-lg text-sm outline-none" style={{ background: C.paperDim, fontFamily: "JetBrains Mono", fontWeight: 700 }} />
               <span className="text-sm flex-1" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Gegner</span>
             </div>
+            {!locked && (
+              <div className="mt-3 flex gap-2">
+                <button onClick={() => tippAbgeben(match.id)} disabled={!entwurfVollstaendig || !hatAenderung}
+                  className="flex-1 py-2 rounded-lg text-xs font-bold"
+                  style={{ background: entwurfVollstaendig && hatAenderung ? C.ink : C.paperDim,
+                           color: entwurfVollstaendig && hatAenderung ? C.white : C.textDim }}>
+                  {abgegeben ? "Tipp ändern" : "Tipp abgeben"}
+                </button>
+                {abgegeben && (
+                  <button onClick={() => { if (window.confirm(`Deinen Tipp ${pred.home}:${pred.away} für "${match.titel}" löschen?`)) tippLoeschen(match.id); }}
+                    className="px-3 py-2 rounded-lg text-xs font-bold"
+                    style={{ background: C.fehlerFlaeche, color: C.fehler }}>
+                    Löschen
+                  </button>
+                )}
+              </div>
+            )}
+            {abgegeben && !hatAenderung && !locked && (
+              <div className="mt-2 text-[11px]" style={{ color: C.erfolg, fontFamily: "Inter", fontWeight: 600 }}>
+                Tipp {pred.home}:{pred.away} abgegeben — änderbar bis zum Anpfiff.
+              </div>
+            )}
           </div>
         );
       })}
