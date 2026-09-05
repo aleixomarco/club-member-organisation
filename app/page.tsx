@@ -1539,7 +1539,6 @@ function MeineVereineScreen({ mitgliedschaften, onOeffnen, onWeitererVerein, onA
 function BeitrittsScreen({ club, vorschlagName, onBeitreten, goBack }) {
   const [name, setName] = useState(vorschlagName || "");
   const [art, setArt] = useState("mitglied");
-  const [team, setTeam] = useState("");
   const [busy, setBusy] = useState(false);
   const [fehler, setFehler] = useState("");
 
@@ -1547,7 +1546,7 @@ function BeitrittsScreen({ club, vorschlagName, onBeitreten, goBack }) {
     e.preventDefault();
     if (!name.trim()) { setFehler("Bitte gib deinen Namen an."); return; }
     setBusy(true); setFehler("");
-    const ergebnis = await onBeitreten({ name: name.trim(), art, team: team.trim() });
+    const ergebnis = await onBeitreten({ name: name.trim(), art, team: "" });
     setBusy(false);
     if (ergebnis?.error) setFehler(ergebnis.error);
   };
@@ -1571,10 +1570,14 @@ function BeitrittsScreen({ club, vorschlagName, onBeitreten, goBack }) {
           })}
         </div>
 
-        {/* Die Mannschaften lassen sich hier nicht laden - wer noch kein
-            Mitglied ist, darf sie nicht sehen. Also ein Wunsch als Text, den
-            die Vereinsleitung beim Freigeben zuordnet. */}
-        <Field icon={Users} placeholder="Gewünschte Mannschaft (optional)" value={team} onChange={(e) => setTeam(e.target.value)} />
+        {/* Kein Mannschaftsfeld mehr.
+            Es stand hier als Wunsch-Text, weil ein Neuling die Mannschaften des
+            Vereins nicht sehen darf. Nur: Wer beitritt, WEISS oft gar nicht, wie
+            die Mannschaft im Verein heisst - "Herren 1", "1. Herren", "H1"? Ein
+            Treffer ordnete automatisch zu, ein Vertipper nicht, und niemand sah
+            den Unterschied. Die Zuordnung macht ohnehin die Vereinsleitung beim
+            Freigeben, und die kennt die richtigen Namen. Ein Feld weniger auf
+            dem Weg in den Verein. */}
 
         {fehler && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-3" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{fehler}</div>}
 
@@ -2135,17 +2138,6 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
             Verein. Mit Datenbank wird gefragt statt geraten; die Angabe landet
             als Wunsch in requested_team, und die Vereinsverwaltung ordnet bei
             der Freigabe zu. */}
-        <div className="flex items-center gap-2 rounded-xl px-3.5 py-3 mb-3" style={{ background: C.paperDim }}>
-          <Users size={16} style={{ color: C.textDim, flexShrink: 0 }} />
-          {supabase ? (
-            <input value={form.team} onChange={set("team")} placeholder="Mannschaft (optional)" className="flex-1 bg-transparent outline-none text-sm" style={{ fontFamily: "Inter", color: C.ink }} />
-          ) : (
-            <select value={form.team} onChange={set("team")} className="flex-1 bg-transparent outline-none text-sm" style={{ fontFamily: "Inter", color: C.ink }}>
-              {TEAMS.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
-          )}
-        </div>
-        {supabase && <div className="text-[10px] -mt-2 mb-3 px-1" style={{ color: C.textDim, fontFamily: "Inter" }}>Wenn du sie noch nicht kennst, lass das Feld leer — die Vereinsverwaltung ordnet dich bei der Freigabe zu.</div>}
 
         {form.accountType !== "mitglied" && <div className="rounded-2xl p-3 mb-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
           <div className="text-xs font-bold mb-1" style={{ color: C.ink }}>{form.accountType === "eltern" ? "Kind / Athlet/in verknüpfen" : "Elternteil verknüpfen"}</div>
@@ -6068,6 +6060,7 @@ function JoinRequestsManager({ currentUser }) {
 }
 function SysAdminUserManager({ members, setMembers }) {
   const [selectedId, setSelectedId] = useState("");
+  const [suche, setSuche] = useState("");
   const [section, setSection] = useState("overview");
   const [form, setForm] = useState({ name: "", email: "", birthdate: "", since: "", status: "active" });
   const [teams, setTeams] = useState([]);
@@ -6135,7 +6128,42 @@ function SysAdminUserManager({ members, setMembers }) {
 
   return <div>
     <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Als Sys-Admin kannst du die Vereinseinstellungen aller Nutzer bearbeiten. Login-E-Mail, Passwort und private Zahlungsdaten bleiben geschützt.</div>
-    <select value={selectedId} onChange={(event) => setSelectedId(event.target.value)} className="w-full px-3 py-3 rounded-xl text-xs outline-none mb-4" style={{ background: C.glass, border: `1px solid ${C.line}`, color: C.ink }}><option value="">Nutzer auswählen …</option>{members.slice().sort((a, b) => a.name.localeCompare(b.name, "de")).map((member) => <option key={member.id} value={member.id}>{member.name} · {member.roles.map((role) => ROLE_META[role]?.label || role).join(", ")}</option>)}</select>
+    {/* Suchfeld statt Auswahlliste.
+        Das native <select> zeigte hinter jedem Namen alle Rollen - bei sieben
+        Rollen wurde daraus ein dreizeiliger Eintrag, und die Liste war weder
+        zu ueberblicken noch zu durchsuchen. Hier steht nur der Name; gesucht
+        wird ueber Name UND Rollen, damit "Vorstand" weiter zum Ziel fuehrt,
+        ohne die Liste zu verstopfen. Sortiert nach Vorname, weil die Namen so
+        gefuehrt werden. */}
+    <div className="mb-4">
+      <input value={suche} onChange={(e) => setSuche(e.target.value)}
+        placeholder={selected ? "Anderen Nutzer suchen …" : "Nutzer suchen …"}
+        aria-label="Nutzer suchen"
+        className="w-full px-3 py-3 rounded-xl text-xs outline-none"
+        style={{ background: C.glass, border: `1px solid ${C.line}`, color: C.ink }} />
+      {(!selected || suche.trim()) && (() => {
+        const q = suche.trim().toLowerCase();
+        const treffer = members.slice()
+          .sort((a, b) => String(a.name || "").trim().localeCompare(String(b.name || "").trim(), "de", { sensitivity: "base" }))
+          .filter((m) => !q || String(m.name || "").toLowerCase().includes(q)
+            || m.roles.some((r) => (ROLE_META[r]?.label || r).toLowerCase().includes(q)));
+        return (
+          <div className="mt-2 rounded-xl overflow-hidden" style={{ border: `1px solid ${C.line}`, background: C.glass, maxHeight: 260, overflowY: "auto" }}>
+            {treffer.length === 0 ? (
+              <div className="px-3 py-3 text-xs" style={{ color: C.textDim }}>Niemand gefunden.</div>
+            ) : treffer.map((member, i) => (
+              <button key={member.id} onClick={() => { setSelectedId(member.id); setSuche(""); }}
+                className="w-full text-left px-3 py-2.5 text-xs"
+                style={{ color: C.ink, fontFamily: "Inter", fontWeight: member.id === selectedId ? 700 : 500,
+                         borderTop: i ? `1px solid ${C.line}` : "none",
+                         background: member.id === selectedId ? C.paperDim : "transparent" }}>
+                {member.name}
+              </button>
+            ))}
+          </div>
+        );
+      })()}
+    </div>
     {selected && <><div className="rounded-2xl p-4 mb-4 flex items-center gap-3" style={{ background: C.ink, color: C.white }}><div className="w-11 h-11 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: selected.color }}>{initialsOf(selected.name)}</div><div className="min-w-0"><div className="text-base font-bold truncate" style={{ fontFamily: "Oswald" }}>{selected.name}</div><div className="text-[10px] truncate" style={{ color: C.textDim }}>{selected.email || "Profil ohne eigene E-Mail"}</div></div></div>
       <div className="grid grid-cols-2 gap-2 mb-4">{[["overview", "Stammdaten"], ["roles", "Rollen & Trainer"], ["teams", "Athleten-Teams"], ["family", "Familie"]].map(([id, label]) => <button key={id} onClick={() => { setSection(id); setMessage(""); }} className="py-2.5 rounded-xl text-[11px] font-bold" style={{ background: section === id ? C.ink : C.white, color: section === id ? C.white : C.textDim, border: `1px solid ${section === id ? C.ink : C.line}` }}>{label}</button>)}</div>
       {section === "overview" && <div className="rounded-2xl p-4 space-y-2" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="text-sm font-bold mb-2" style={{ color: C.ink }}>Vereinsprofil bearbeiten</div><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Anzeigename" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/><input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} placeholder="Kontakt-E-Mail im Verein" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/><div className="grid grid-cols-2 gap-2"><input type="date" value={form.birthdate} onChange={(event) => setForm({ ...form, birthdate: event.target.value })} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/><input type="number" min="1800" max="2200" value={form.since} onChange={(event) => setForm({ ...form, since: event.target.value })} placeholder="Mitglied seit" className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/></div><select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}><option value="active">Aktiv</option><option value="pending">Ausstehend</option><option value="inactive">Inaktiv</option><option value="blocked">Gesperrt</option></select><button onClick={saveProfile} disabled={saving} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: C.red, color: C.white }}>{saving ? "Wird gespeichert …" : "Stammdaten speichern"}</button></div>}
