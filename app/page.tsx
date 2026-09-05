@@ -6667,6 +6667,7 @@ function ProfileView({ user, members, setMembers, currentClub, dutyPlan, punkteZ
       <div className="space-y-2 mb-6">
         {isAdmin(user) && <ProfileSettingsCard icon={Settings} title="Vereinseinstellungen" description="Funktionen wie Fahrzeugbuchung, Tippspiel & Athlet/in der Saison ein- oder ausblenden" color={C.red} onClick={() => setProfileFolder("clubsettings")}/>}
         <ProfileSettingsCard icon={Trophy} title="Verein & Mitgliedschaft" description="Athleten-, Trainer- und Vereinsrollen" color={C.red} onClick={() => setProfileFolder("club")}/>
+        <ProfileSettingsCard icon={Euro} title="Zugang & Empfehlungen" description="Freischaltung des Vereins und Vereine werben Vereine" color={C.red} onClick={() => setProfileFolder("billing")}/>
       </div>
 
       <SectionTitle eyebrow="Verwalten" title="Einstellungen" />
@@ -6674,7 +6675,6 @@ function ProfileView({ user, members, setMembers, currentClub, dutyPlan, punkteZ
         <ProfileSettingsCard icon={User} title="Persönliche Daten" description="Stammdaten, Kontakte, Familie" color={C.secondary} onClick={() => setProfileFolder("personal")}/>
         <ProfileSettingsCard icon={KeyRound} title="Konto & Sicherheit" description="Passwort, Sicherheit, Rechtliches, Account" color={AVATAR_FARBEN[2]} onClick={() => setProfileFolder("security")}/>
         <ProfileSettingsCard icon={Bell} title="Benachrichtigungen & Kalender" description="Push-Einstellungen und Kalendersync" color={C.secondary} onClick={() => setProfileFolder("notify")}/>
-        <ProfileSettingsCard icon={Euro} title="Zugang & Empfehlungen" description="Freischaltung des Vereins und Vereine werben Vereine" color={C.red} onClick={() => setProfileFolder("billing")}/>
         <ProfileSettingsCard icon={Star} title="Support & Feedback" description="Bewertung abgeben, Fehler melden" color={C.textDim} onClick={() => setProfileFolder("support")}/>
         {vorhandeneVideos.length > 0 && <ProfileSettingsCard icon={PlayCircle} title="App kennenlernen" description="Kurzvideos zu den Funktionen, die du nutzen kannst" color={C.secondary} onClick={() => setProfileFolder("howto")}/>}
         {/* Direkter Weg zur Kontolöschung. Vorher lag sie drei Overlay-Ebenen tief
