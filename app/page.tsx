@@ -6309,6 +6309,18 @@ function SysAdminUserManager({ members, setMembers }) {
         );
       })()}
     </div>
+    {/* Zurueck zur Nutzeruebersicht.
+        Wer einen Nutzer geoeffnet hatte, kam nur ueber das Suchfeld zurueck -
+        man musste erst tippen, um die Liste wiederzusehen. Ein Weg zurueck,
+        der aussieht wie einer, fehlte ganz.
+        In Vereinsfarbe, weil er die Hauptbewegung auf diesem Bildschirm ist. */}
+    {selected && (
+      <button onClick={() => { setSelectedId(""); setSuche(""); setSection("overview"); }}
+        className="flex items-center gap-1.5 mb-3 px-3 py-2 rounded-full text-xs"
+        style={{ background: C.primaerWeich, border: `1px solid ${C.red}`, color: C.red, fontFamily: "Inter", fontWeight: 700 }}>
+        <ArrowLeft size={14} style={{ color: C.red }} /> Zur Nutzerübersicht
+      </button>
+    )}
     {selected && <><div className="rounded-2xl p-4 mb-4 flex items-center gap-3" style={{ background: C.ink, color: C.white }}><div className="w-11 h-11 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: selected.color }}>{initialsOf(selected.name)}</div><div className="min-w-0"><div className="text-base font-bold truncate" style={{ fontFamily: "Oswald" }}>{selected.name}</div><div className="text-[10px] truncate" style={{ color: C.textDim }}>{selected.email || "Profil ohne eigene E-Mail"}</div></div></div>
       <div className="grid grid-cols-2 gap-2 mb-4">{[["overview", "Stammdaten"], ["roles", "Rollen & Trainer"], ["teams", "Athleten-Teams"], ["family", "Familie"]].map(([id, label]) => <button key={id} onClick={() => { setSection(id); setMessage(""); }} className="py-2.5 rounded-xl text-[11px] font-bold" style={{ background: section === id ? C.ink : C.white, color: section === id ? C.white : C.textDim, border: `1px solid ${section === id ? C.ink : C.line}` }}>{label}</button>)}</div>
       {section === "overview" && <div className="rounded-2xl p-4 space-y-2" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="text-sm font-bold mb-2" style={{ color: C.ink }}>Vereinsprofil bearbeiten</div><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Anzeigename" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/><input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} placeholder="Kontakt-E-Mail im Verein" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/><div className="grid grid-cols-2 gap-2"><input type="date" value={form.birthdate} onChange={(event) => setForm({ ...form, birthdate: event.target.value })} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/><input type="number" min="1800" max="2200" value={form.since} onChange={(event) => setForm({ ...form, since: event.target.value })} placeholder="Mitglied seit" className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/></div><select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}><option value="active">Aktiv</option><option value="pending">Ausstehend</option><option value="inactive">Inaktiv</option><option value="blocked">Gesperrt</option></select><button onClick={saveProfile} disabled={saving} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: C.red, color: C.white }}>{saving ? "Wird gespeichert …" : "Stammdaten speichern"}</button></div>}
