@@ -3262,6 +3262,27 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
     setEvents((all) => all.filter((item) => item.seriesId !== seriesId));
     setDeleteRequest(null);
   };
+  const [kalenderLaedt, setKalenderLaedt] = useState(false);
+  const kalenderVerbinden = async () => {
+    if (!supabase || !isDbId(currentUser.clubId)) { window.alert("Die Kalenderverbindung braucht ein echtes Vereinskonto."); return; }
+    setKalenderLaedt(true);
+    try {
+      let token = "";
+      const { data } = await supabase.rpc("my_calendar_subscription", { target_club: currentUser.clubId });
+      token = data?.[0]?.token || "";
+      if (!token) {
+        const { data: neu, error } = await supabase.rpc("configure_calendar_subscription", {
+          target_club: currentUser.clubId, requested_interval: "daily",
+          requested_types: ["training", "spiel", "event"], requested_teams: [],
+        });
+        if (error) { window.alert("Die Kalenderverbindung konnte nicht angelegt werden."); return; }
+        token = neu?.[0]?.token || "";
+      }
+      if (!token) { window.alert("Es kam keine Kalenderadresse zurück."); return; }
+      window.location.href = `${window.location.origin}/api/calendar/feed/${token}`.replace(/^https?:/, "webcal:");
+    } finally { setKalenderLaedt(false); }
+  };
+
   const saveDefaultTeam = async () => {
     setSavedTeam(teamFilter);
     if (!supabase || !isDbId(currentUser.id)) return;
@@ -3314,6 +3335,19 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
           ))}
         </div>
         <button onClick={() => setCalendarOpen((v) => !v)} aria-pressed={calendarOpen} aria-label="Kalenderübersicht ein- oder ausblenden" className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: calendarOpen ? C.ink : C.paperDim, color: calendarOpen ? C.white : C.textDim }}><CalendarDays size={15}/></button>
+        {/* Kalender abonnieren, ohne erst ins Profil zu muessen.
+            Die Verbindung gab es schon, aber nur tief in den Einstellungen -
+            wer im Terminplan stand und seine Termine im Telefonkalender haben
+            wollte, musste den Weg dorthin erst kennen. Steht schon eine
+            Verbindung, oeffnet der Knopf sie direkt; sonst legt er sie mit den
+            ueblichen Vorgaben an (taeglich, alle Terminarten, eigene
+            Mannschaften) und oeffnet sie dann. */}
+        <button onClick={kalenderVerbinden} disabled={kalenderLaedt}
+          aria-label="Termine mit dem Telefonkalender verbinden" title="Mit Telefonkalender verbinden"
+          className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ml-1"
+          style={{ background: C.glass, border: `1px solid ${C.line}`, opacity: kalenderLaedt ? .5 : 1 }}>
+          <RefreshCw size={14} style={{ color: C.textDim }} />
+        </button>
       </div>
       {teamFilterActive && <div className="flex items-center gap-2 mb-4 px-2.5 py-2 rounded-xl" style={{background:C.glass,border:`1px solid ${C.line}`}}>
         <Users size={13} style={{color:C.textDim,flexShrink:0}}/>
