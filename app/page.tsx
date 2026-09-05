@@ -2789,8 +2789,15 @@ function toggleHelperSelf(setDutyPlan, eventId, station, userId, onSetzen) {
     return { ...dp, [eventId]: { ...plan, [station]: nextList } };
   });
 }
-function HelperSlots({ ev, members, currentUser, dutyPlan, setDutyPlan, eligible, onSetzen }) {
+/* darfVerwalten: Vereinsleitung und Organisator duerfen fremde Eintragungen
+   setzen und loeschen. Die Sicherheitsregel in der Datenbank erlaubt das
+   laengst ("leaders manage duties" fuer vereinsadmin, sysadmin, organisator) -
+   es fehlte nur die Bedienung. Wer eingeteilt war und absagte, musste bisher
+   selbst in die App, sonst stand sein Name weiter im Plan. */
+function HelperSlots({ ev, members, currentUser, dutyPlan, setDutyPlan, eligible, onSetzen, darfVerwalten }) {
   const plan = dutyPlan[ev.id] || {};
+  const [eintragPerson, setEintragPerson] = useState("");
+  const [eintragStation, setEintragStation] = useState("");
   return (
     <div className="space-y-2">
       {ev.helperSlots.map((station) => {
@@ -2802,7 +2809,24 @@ function HelperSlots({ ev, members, currentUser, dutyPlan, setDutyPlan, eligible
           <div key={station} className="flex items-center justify-between px-3 py-2 rounded-lg" style={{ background: C.paper }}>
             <div>
               <div className="text-xs" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{station}</div>
-              <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{names.length ? names.join(", ") : "Noch niemand eingetragen"} · {list.length}/{STATION_CAP}</div>
+              {darfVerwalten ? (
+                <div className="text-[11px] flex flex-wrap items-center gap-1 mt-0.5" style={{ color: C.textDim, fontFamily: "Inter" }}>
+                  {list.length === 0 ? <span>Noch niemand eingetragen</span> : list.map((id) => {
+                    const person = members.find((m) => m.id === id);
+                    return (
+                      <button key={id} onClick={() => onSetzen?.(ev.id, station, id, false)}
+                        aria-label={`${person?.name || "Eintrag"} von ${station} entfernen`}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
+                        style={{ background: C.paperDim, color: C.ink, fontWeight: 600 }}>
+                        {person?.name || "Unbekannt"} <X size={9} style={{ color: C.fehler }} />
+                      </button>
+                    );
+                  })}
+                  <span>· {list.length}/{STATION_CAP}</span>
+                </div>
+              ) : (
+                <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{names.length ? names.join(", ") : "Noch niemand eingetragen"} · {list.length}/{STATION_CAP}</div>
+              )}
             </div>
             {eligible && (
               <button onClick={() => toggleHelperSelf(setDutyPlan, ev.id, station, currentUser.id, onSetzen)} disabled={!imIn && full}
@@ -2814,6 +2838,32 @@ function HelperSlots({ ev, members, currentUser, dutyPlan, setDutyPlan, eligible
           </div>
         );
       })}
+      {/* Beliebige Person eintragen - auch sich selbst.
+          Vorher konnte jeder nur sich selbst setzen; wer jemanden einteilen
+          wollte, musste ihn bitten, es selbst zu tun. Die Auswahl sucht nach
+          Namen, weil ein Verein mit hundert Mitgliedern in keiner Rollenliste
+          zu finden ist. */}
+      {darfVerwalten && ev.helperSlots?.length > 0 && (
+        <div className="rounded-lg p-2 mt-1" style={{ background: C.paperDim }}>
+          <div className="text-[10px] font-bold mb-1.5" style={{ color: C.textDim, fontFamily: "Inter" }}>Jemanden eintragen</div>
+          <div className="flex gap-1.5 items-start">
+            <NutzerWahl personen={members} wert={eintragPerson} onWaehlen={setEintragPerson} leerLabel="Person wählen …" klein />
+            <select value={eintragStation} onChange={(e) => setEintragStation(e.target.value)}
+              aria-label="Station wählen"
+              className="flex-1 min-w-0 text-[11px] px-2 py-1.5 rounded-lg outline-none"
+              style={{ background: C.glass, border: `1px solid ${C.line}`, color: C.ink, fontFamily: "Inter", fontWeight: 600 }}>
+              <option value="">Station …</option>
+              {ev.helperSlots.map((st) => <option key={st} value={st}>{st}</option>)}
+            </select>
+            <button onClick={() => { if (eintragPerson && eintragStation) { onSetzen?.(ev.id, eintragStation, eintragPerson, true); setEintragPerson(""); setEintragStation(""); } }}
+              disabled={!eintragPerson || !eintragStation}
+              className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold flex-shrink-0"
+              style={{ background: eintragPerson && eintragStation ? C.ink : C.line, color: eintragPerson && eintragStation ? C.white : C.textDim }}>
+              Eintragen
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2985,10 +3035,10 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
           {ev.helperSlots && featureEnabled("duty_roster") && (
             <div className="mt-3">
               <div className="text-xs font-semibold mb-2" style={{ fontFamily: "Inter", color: C.ink }}>Helfer:innen gesucht</div>
-              <HelperSlots ev={ev} members={members} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} eligible={helperEligible} onSetzen={onDienstSetzen} />
+              <HelperSlots ev={ev} members={members} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} eligible={helperEligible} onSetzen={onDienstSetzen} darfVerwalten={canManageDuty(currentUser)} />
             </div>
           )}
-          {eventIsReal && ev.type === "spiel" && ev.home === true && featureEnabled("duty_roster") && <DutyTasksSection ev={ev} currentUser={currentUser} sport={currentClub?.sport} onNeuLaden={onNeuLaden} dutyPlan={dutyPlan} />}
+          {eventIsReal && ev.type === "spiel" && ev.home === true && featureEnabled("duty_roster") && <DutyTasksSection ev={ev} currentUser={currentUser} sport={currentClub?.sport} onNeuLaden={onNeuLaden} dutyPlan={dutyPlan} members={members} />}
         </div>
       )}
     </div>
@@ -5432,7 +5482,7 @@ function VehiclesView({ currentUser, currentClub }) {
   );
 }
 
-function DutyTasksSection({ ev, currentUser, sport, onNeuLaden, dutyPlan }) {
+function DutyTasksSection({ ev, currentUser, sport, onNeuLaden, dutyPlan, members }) {
   const cfg = sportConfig(sport);
   const [tasks, setTasks] = useState([]);
   const [templates, setTemplates] = useState([]);
@@ -5598,10 +5648,7 @@ function DutyTasksSection({ ev, currentUser, sport, onNeuLaden, dutyPlan }) {
               </div>
               {canManage && (
                 <div className="flex gap-1.5">
-                  <select value={task.assigneeId || ""} onChange={(e) => assignTask(task.id, e.target.value)} className="flex-1 px-2 py-1.5 rounded-lg text-[11px] outline-none" style={{ background: C.glass, color: C.ink }}>
-                    <option value="">Nicht zugewiesen</option>
-                    {duMembers.map((m) => <option key={m.id} value={m.id}>{m.display_name}</option>)}
-                  </select>
+                  <NutzerWahl personen={members} wert={task.assigneeId || ""} onWaehlen={(v) => assignTask(task.id, v)} leerLabel="niemand zugewiesen" klein />
                   <input type="date" value={task.dueDate || ""} onChange={(e) => setDueDate(task.id, e.target.value)} className="px-2 py-1.5 rounded-lg text-[11px] outline-none" style={{ background: C.glass, color: C.ink }}/>
                   <button onClick={() => toggleDone(task)} className="px-2 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: task.done ? C.erfolgFlaeche : C.white, color: task.done ? C.secondary : C.textDim }}>{task.done ? "Erledigt" : "Erledigt?"}</button>
                 </div>
@@ -7110,7 +7157,7 @@ function DutyView({ members, currentUser, events, dutyPlan, setDutyPlan, onDiens
               </div>
               <Pill bg={ev.home ? C.red : typeMeta[ev.type].color}>{ev.home ? "Heimspiel" : typeMeta[ev.type].label}</Pill>
             </div>
-            <HelperSlots ev={ev} members={members} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} eligible={eligible} onSetzen={onDienstSetzen} />
+            <HelperSlots ev={ev} members={members} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} eligible={eligible} onSetzen={onDienstSetzen} darfVerwalten={canManageDuty(currentUser)} />
           </div>
         );
       })}
