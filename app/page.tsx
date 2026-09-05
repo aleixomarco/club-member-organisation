@@ -7803,8 +7803,20 @@ function RolesPanel({ members, setMembers }) {
     setSaving(true);
     setMessage("");
     if (supabase && isDbId(memberId)) {
-      const toAdd = draftRoles.filter((r) => !member.roles.includes(r));
-      const toRemove = member.roles.filter((r) => !draftRoles.includes(r));
+      /* Nur Rollen schreiben, die es noch gibt.
+         Diese Funktion schreibt die Differenz zwischen Entwurf und dem Stand IM
+         GERAET. Nach dem Zusammenlegen der Rollen war dieser Stand veraltet: Er
+         enthielt Vorstand, Geschaeftsfuehrung, Finanzmanager und Eltern noch,
+         obwohl die Datenbank sie nicht mehr hatte. Beim naechsten Speichern
+         legte die Schleife sie wieder an - vier geloeschte Rollen kamen so
+         zurueck, ohne dass jemand sie angeklickt hatte.
+         Der Filter gegen ROLE_META schliesst das aus: Was in der App nicht
+         mehr existiert, kann auch nicht mehr geschrieben werden. Entfernt wird
+         dagegen ungefiltert, damit Altbestand beim naechsten Speichern
+         verschwindet statt sich zu halten. */
+      const bekannt = (r) => Object.prototype.hasOwnProperty.call(ROLE_META, r);
+      const toAdd = draftRoles.filter((r) => bekannt(r) && !member.roles.includes(r));
+      const toRemove = member.roles.filter((r) => !draftRoles.includes(r) || !bekannt(r));
       const grantedBy = (await supabase.auth.getUser()).data.user?.id || null;
       for (const role of toAdd) {
         const { error } = await supabase.from("membership_roles").insert({ membership_id: memberId, role, granted_by: grantedBy });
@@ -7816,7 +7828,7 @@ function RolesPanel({ members, setMembers }) {
       }
     }
     setMembers((ms) => ms.map((m) => (m.id === memberId
-      ? { ...m, roles: draftRoles, ...(!draftRoles.includes("teammanager") ? { managedTeam: null } : {}) }
+      ? { ...m, roles: draftRoles.filter((r) => Object.prototype.hasOwnProperty.call(ROLE_META, r)), ...(!draftRoles.includes("teammanager") ? { managedTeam: null } : {}) }
       : m)));
     setSaving(false);
     closeMember();
