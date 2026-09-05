@@ -2177,10 +2177,12 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
    einmal im Zweig "kein Spiel geplant". Damit steuerte es auch nur diese eine
    Kachel. Jetzt liegt es einmal ueber beiden Kacheln und gilt fuer Spiel und
    Training zugleich. */
-function MannschaftsWahl({ mannschaften, gewaehlt, onWechsel }) {
+function MannschaftsWahl({ mannschaften, gewaehlt, onWechsel, favorit, onFavorit }) {
   if (!mannschaften || mannschaften.length <= 1) return null;
+  const istFavorit = favorit === gewaehlt;
   return (
-    <label className="inline-flex items-center gap-1.5 rounded-full pl-3 pr-2 py-1.5 mb-3 cursor-pointer"
+    <div className="inline-flex items-center gap-1 mb-3">
+    <label className="inline-flex items-center gap-1.5 rounded-full pl-3 pr-2 py-1.5 cursor-pointer"
       style={{ background: C.glass, border: `1px solid ${C.line}` }}>
       <ListFilter size={13} style={{ color: C.red, flexShrink: 0 }} />
       <select aria-label="Mannschaft filtern" value={gewaehlt} onChange={(e) => onWechsel?.(e.target.value)}
@@ -2190,6 +2192,21 @@ function MannschaftsWahl({ mannschaften, gewaehlt, onWechsel }) {
       </select>
       <ChevronDown size={13} style={{ color: C.textDim, marginLeft: -14, pointerEvents: "none" }} />
     </label>
+    {/* Stern setzt die gewaehlte Mannschaft als Startansicht.
+        Bisher gab es das nur im Terminplan - auf der Startseite fing man
+        jedes Mal bei derselben Mannschaft an und musste umstellen. Wechseln
+        geht ueber dieselbe Taste: andere Mannschaft waehlen, Stern druecken.
+        Der gefuellte Stern zeigt, dass die aktuelle Wahl die gespeicherte ist. */}
+    {onFavorit && (
+      <button onClick={() => onFavorit(gewaehlt)} disabled={istFavorit}
+        aria-label={istFavorit ? `${gewaehlt} ist deine Startansicht` : `${gewaehlt} als Startansicht speichern`}
+        title={istFavorit ? "Das ist deine Startansicht" : "Als Startansicht speichern"}
+        className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+        style={{ background: istFavorit ? C.erfolgFlaeche : C.glass, border: `1px solid ${istFavorit ? C.erfolgRand : C.line}`, opacity: istFavorit ? 1 : .85 }}>
+        <Star size={14} style={{ color: istFavorit ? C.erfolg : C.textDim }} fill={istFavorit ? C.erfolg : "none"} />
+      </button>
+    )}
+    </div>
   );
 }
 /* Zum Aktualisieren nach unten ziehen.
@@ -2437,7 +2454,7 @@ function NextTrainingCard({ training, team, auswahlVorhanden = false }) {
     </div>
   );
 }
-function Dashboard({ user, members, events, feePaid, channels, news, dutyPlan, seasonVotes, tippPredictions, tippResults, polls, setPolls, onVote, werbeplaetze, onSponsorImpression, onSponsorClick, goEvents, goSeason, goTipp, goDuty, goNews, goTasks, goVehicles, currentClub, featureEnabled, dashboardTileOrder, entitlement, goSubscribe, mannschaften = [], gewaehlteMannschaft = "", onMannschaftWechsel }) {
+function Dashboard({ user, members, events, feePaid, channels, news, dutyPlan, seasonVotes, tippPredictions, tippResults, polls, setPolls, onVote, onFavoritMannschaft, werbeplaetze, onSponsorImpression, onSponsorClick, goEvents, goSeason, goTipp, goDuty, goNews, goTasks, goVehicles, currentClub, featureEnabled, dashboardTileOrder, entitlement, goSubscribe, mannschaften = [], gewaehlteMannschaft = "", onMannschaftWechsel }) {
   const sport = currentClub?.sport || "rollhockey";
   /* Alle Kacheln in „Aktionen & Abstimmungen" hängen am Premium-Tarif
      (siehe die LockedFeature-Hüllen der jeweiligen Ansichten). Während der
@@ -2559,7 +2576,7 @@ function Dashboard({ user, members, events, feePaid, channels, news, dutyPlan, s
 
       {/* Ein Auswahlfeld fuer beide Kacheln - vorher steckte es in der
           Spielkachel und liess das Training unberuehrt. */}
-      <MannschaftsWahl mannschaften={mannschaften} gewaehlt={gewaehlteMannschaft} onWechsel={onMannschaftWechsel} />
+      <MannschaftsWahl mannschaften={mannschaften} gewaehlt={gewaehlteMannschaft} onWechsel={onMannschaftWechsel} favorit={user.teamFilter || "alle"} onFavorit={onFavoritMannschaft} />
       <Scoreboard nextEvent={nextEvent} goTo={goEvents} auswahlVorhanden={mannschaften.length > 1} />
       <NextTrainingCard training={naechstesTraining} team={gewaehlteMannschaft} auswahlVorhanden={mannschaften.length > 1} />
 
@@ -10229,6 +10246,17 @@ export default function ClubMemberOrganisationApp() {
     });
   };
 
+  /* Lieblingsmannschaft: Sie steht in club_memberships.team_filter - derselbe
+     Wert, den der Terminplan schon als Standardansicht nutzt. Bewusst nicht
+     zwei Speicherplaetze, sonst laufen Startseite und Terminplan auseinander
+     und niemand versteht, welcher Stern welchen setzt. */
+  const setzeFavoritMannschaft = async (mannschaft) => {
+    setMembers((liste) => liste.map((m) => (m.id === currentUser?.id ? { ...m, teamFilter: mannschaft } : m)));
+    if (!supabase || !isDbId(currentUser?.id)) return;
+    const { error } = await supabase.from("club_memberships").update({ team_filter: mannschaft }).eq("id", currentUser.id);
+    if (error) setSchreibFehler("Die Startansicht konnte nicht gespeichert werden.");
+  };
+
   const currentUserIsAdmin = isAdmin(currentUser);
   const currentUserCanEditNews = canWriteNews(currentUser);
   const currentUserCanEditSponsors = canManageSponsors(currentUser);
@@ -10402,7 +10430,7 @@ export default function ClubMemberOrganisationApp() {
               {subView === "vehicles" && featureEnabled("vehicle_booking") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Vereinsfahrzeuge"><VehiclesView currentUser={currentUser} currentClub={currentClub} /></LockedFeature>}
 
               {!subView && tab === "home" && (
-                <Dashboard user={currentUser} members={clubMembers} events={events} feePaid={!!feePaid[currentUser.id]} channels={channels} news={vereinsNews} dutyPlan={dutyPlan} seasonVotes={seasonVotes} tippPredictions={tippPredictions} tippResults={tippResults} polls={polls} setPolls={setPolls} onVote={stimmeAbgeben}
+                <Dashboard user={currentUser} onFavoritMannschaft={setzeFavoritMannschaft} members={clubMembers} events={events} feePaid={!!feePaid[currentUser.id]} channels={channels} news={vereinsNews} dutyPlan={dutyPlan} seasonVotes={seasonVotes} tippPredictions={tippPredictions} tippResults={tippResults} polls={polls} setPolls={setPolls} onVote={stimmeAbgeben}
                   werbeplaetze={werbeplaetze} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick}
                   goEvents={goToMyNextMatch} goSeason={() => setSubView("season")} goTipp={() => setSubView("tipp")} goDuty={() => setSubView("duty")} goTasks={() => setSubView("tasks")} goVehicles={() => setSubView("vehicles")} goNews={currentUserCanEditNews ? goNews : null}
                   currentClub={currentClub} featureEnabled={featureEnabled} dashboardTileOrder={dashboardTileOrder} entitlement={entitlement} goSubscribe={goSubscribe}
