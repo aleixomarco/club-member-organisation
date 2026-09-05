@@ -7483,7 +7483,7 @@ function PollManagerPanel({ polls, setPolls, clubId, onAnlegen, onUmschalten }) 
   return <div className="space-y-4"><div className="rounded-2xl p-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">Neue Mitmach-Umfrage</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>Mindestens zwei Antwortmöglichkeiten eintragen.</div><input value={title} onChange={(e)=>setTitle(e.target.value)} placeholder="Frage oder Titel" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim}}/>{options.map((o,i)=><input key={i} value={o} onChange={(e)=>setOptions((all)=>all.map((x,idx)=>idx===i?e.target.value:x))} placeholder={`Antwort ${i+1}`} className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2" style={{background:C.paperDim}}/>)}<div className="flex gap-2"><button onClick={()=>setOptions((o)=>[...o,""])} className="px-3 py-2 rounded-lg text-xs font-bold" style={{background:C.paperDim,color:C.ink}}>＋ Antwort</button><button onClick={create} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{background:C.red,color:C.white}}>Veröffentlichen</button></div>{fehler&&<div role="status" className="text-[11px] rounded-xl px-3 py-2 mt-2" style={{background:C.fehlerFlaeche,color:C.fehler}}>{fehler}</div>}</div><div className="space-y-2">{polls.map((poll)=><div key={poll.id} className="rounded-xl p-3 flex items-center gap-3" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="flex-1"><div className="text-xs font-bold">{poll.title}</div><div className="text-[10px] mt-1" style={{color:C.textDim}}>{poll.options.length} Antworten · {poll.options.reduce((n,o)=>n+o.votes,0)} Stimmen</div></div><button onClick={()=>{onUmschalten?.(poll.id,!poll.active);setPolls((ps)=>ps.map((p)=>p.id===poll.id?{...p,active:!p.active}:p));}} className="px-2.5 py-1.5 rounded-full text-[10px] font-bold" style={{background:poll.active?C.erfolgFlaeche:C.paperDim,color:poll.active?C.secondary:C.textDim}}>{poll.active?"Aktiv":"Inaktiv"}</button></div>)}</div></div>;
 }
 
-function MatchResultsPanel({ results, onSave, events }) {
+function MatchResultsPanel({ results, onSave, onDelete, events }) {
   const begegnungen = tippBegegnungen(events);
   const [drafts, setDrafts] = useState({});
   const [savedId, setSavedId] = useState(null);
@@ -7538,6 +7538,17 @@ function MatchResultsPanel({ results, onSave, events }) {
               <button onClick={() => save(match)} className="w-full py-2 rounded-lg text-xs font-bold" style={{ background: savedId === match.id ? C.secondary : C.ink, color: C.white }}>
                 {savedId === match.id ? "Punkte wurden berechnet ✓" : results[match.id] ? "Ergebnis korrigieren & neu berechnen" : "Ergebnis speichern & Punkte berechnen"}
               </button>
+              {/* Entfernen statt nur ueberschreiben: Ein Ergebnis am falschen
+                  Termin liess sich bisher nicht zuruecknehmen - man konnte nur
+                  eine andere Zahl hinschreiben. Die Tippspiel-Punkte zaehlten
+                  dann weiter fuer ein Spiel, das so nie ausging. */}
+              {results[match.id] && (
+                <button onClick={() => { if (window.confirm(`Ergebnis für "${match.titel}" entfernen? Die dafür vergebenen Tippspiel-Punkte verfallen.`)) { onDelete?.(match.id); setDrafts((c) => { const n = { ...c }; delete n[match.id]; return n; }); } }}
+                  className="w-full py-2 rounded-lg text-xs font-bold mt-2"
+                  style={{ background: C.fehlerFlaeche, color: C.fehler }}>
+                  Ergebnis entfernen
+                </button>
+              )}
             </div>
           );
         })}
@@ -8358,7 +8369,7 @@ function AdminView({
   channels, setChannels, maintenanceMode, setMaintenanceMode, onResetDemo,
   protocols, setProtocols, remindersSent, setRemindersSent,
   welcomeAutomation, setWelcomeAutomation, billingAutomation, setBillingAutomation,
-  werbeplaetze, onWerbeplaetzeGeaendert, polls, setPolls, tippResults, onSaveTippResult,
+  werbeplaetze, onWerbeplaetzeGeaendert, polls, setPolls, tippResults, onSaveTippResult, onDeleteTippResult,
   dashboardTileOrder, setDashboardTileOrder,
   onUmfrageAnlegen, onUmfrageUmschalten, onDienstSetzen, onProtokollSpeichern, onAufgabeUmschalten,
   onEinstellung, onErinnerung,
@@ -8437,7 +8448,7 @@ function AdminView({
       {panel === "sponsoring" && <SponsoringPanel bookings={werbeplaetze} currentClub={currentClub} clubFeatures={clubFeatures} onFeaturesChanged={onClubFeaturesChanged} onChanged={onWerbeplaetzeGeaendert} />}
       {panel === "polls" && <PollManagerPanel polls={polls} setPolls={setPolls} clubId={currentUser.clubId} onAnlegen={onUmfrageAnlegen} onUmschalten={onUmfrageUmschalten} />}
       {panel === "roles" && <><RolesPanel members={members} setMembers={setMembers} /><ClaimManagedPlayerPanel members={members} setMembers={setMembers} currentUser={currentUser} /></>}
-      {panel === "results" && currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role)) && <MatchResultsPanel results={tippResults} onSave={onSaveTippResult} events={events} />}
+      {panel === "results" && currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role)) && <MatchResultsPanel results={tippResults} onSave={onSaveTippResult} onDelete={onDeleteTippResult} events={events} />}
       {panel === "families" && isSysAdmin(currentUser) && <AdminFamilyPanel members={members} setMembers={setMembers} />}
       {panel === "system" && isSysAdmin(currentUser) && (
         <SystemPanel members={members} channels={channels} setChannels={setChannels} maintenanceMode={maintenanceMode} setMaintenanceMode={setMaintenanceMode} onResetDemo={onResetDemo} onEinstellung={onEinstellung} />
@@ -9189,6 +9200,18 @@ export default function ClubMemberOrganisationApp() {
       erfasst_von: isDbId(meineMitgliedsId) ? meineMitgliedsId : null,
     }, { onConflict: "club_id,event_id" });
     if (error) setSchreibFehler("Das Ergebnis konnte nicht gespeichert werden.");
+  };
+
+  /* Ein eingetragenes Ergebnis wieder entfernen.
+     Bisher liess es sich nur ueberschreiben - wer sich im Spiel vertan hatte
+     oder ein Ergebnis am falschen Termin eintrug, musste eine Zahl stehen
+     lassen, die nie gefallen ist. Die Tippspiel-Punkte haengen daran, also
+     zaehlten sie falsch weiter. */
+  const ergebnisLoeschen = async (eventId) => {
+    if (!supabase || !selectedClubId || typeof eventId !== "string") return;
+    const { error } = await supabase.from("event_results").delete()
+      .eq("club_id", selectedClubId).eq("event_id", eventId);
+    if (error) setSchreibFehler("Das Ergebnis konnte nicht entfernt werden.");
   };
 
   const stimmeAbgeben = async (pollId, optionId) => {
@@ -10191,6 +10214,21 @@ export default function ClubMemberOrganisationApp() {
     if (supabase && currentUser?.clubId) supabase.rpc("notify_club", { target_club: currentUser.clubId, p_notif_type: "tipp", p_title: "Tippspiel-Ergebnis eingetragen", p_body: "Ein Spielergebnis wurde eingetragen. Schau nach, wie viele Punkte du gemacht hast!" });
   };
 
+  /* Beim Entfernen muessen die Tippspiel-Punkte mit. Sonst behalten alle die
+     Punkte fuer ein Spiel, dessen Ergebnis es nicht mehr gibt. */
+  const deleteTippResult = (matchId) => {
+    ergebnisLoeschen(matchId);
+    setTippResults((currentResults) => {
+      const nextResults = { ...currentResults };
+      delete nextResults[matchId];
+      setMembers((currentMembers) => currentMembers.map((member) => ({
+        ...member,
+        tippPoints: totalTippPoints(member.id, tippPredictions, nextResults, tippBegegnungen(events)),
+      })));
+      return nextResults;
+    });
+  };
+
   const currentUserIsAdmin = isAdmin(currentUser);
   const currentUserCanEditNews = canWriteNews(currentUser);
   const currentUserCanEditSponsors = canManageSponsors(currentUser);
@@ -10391,7 +10429,7 @@ export default function ClubMemberOrganisationApp() {
                   onUmfrageAnlegen={umfrageAnlegen} onUmfrageUmschalten={umfrageUmschalten} onDienstSetzen={dienstSetzen}
                   onProtokollSpeichern={protokollSpeichern} onAufgabeUmschalten={aufgabeUmschalten}
                   onEinstellung={vereinseinstellungSetzen} onErinnerung={erinnerungVermerken}
-                  tippResults={tippResults} onSaveTippResult={saveTippResult}
+                  tippResults={tippResults} onSaveTippResult={saveTippResult} onDeleteTippResult={deleteTippResult}
                   dashboardTileOrder={dashboardTileOrder} setDashboardTileOrder={setDashboardTileOrder}
                   currentClub={currentClub} onClubLogoUpdated={updateCurrentClubLogo} onClubColorsUpdated={updateCurrentClubColors} clubFeatures={clubFeatures} onClubFeaturesChanged={loadClubFeatures} />
                 </LockedFeature>
