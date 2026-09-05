@@ -2177,6 +2177,72 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
    einmal im Zweig "kein Spiel geplant". Damit steuerte es auch nur diese eine
    Kachel. Jetzt liegt es einmal ueber beiden Kacheln und gilt fuer Spiel und
    Training zugleich. */
+/* Durchsuchbare Nutzerauswahl.
+   Ein <select> mit Mitgliedern ist ab etwa dreissig Namen unbrauchbar: Auf dem
+   Telefon rollt man durch eine Liste, in der man nicht springen kann, und der
+   gesuchte Name steht garantiert in der Mitte. Diese Auswahl zeigt zuerst den
+   aktuellen Stand; beim Antippen klappt ein Suchfeld mit Trefferliste auf.
+   Bewusst NICHT absolut positioniert - in Karten mit overflow:hidden waere die
+   Liste sonst abgeschnitten. Sie schiebt den Inhalt darunter weg, was auf dem
+   Telefon ohnehin natuerlicher wirkt. */
+function NutzerWahl({ personen, wert, onWaehlen, leerLabel = "nicht zugewiesen", klein, vorschlaege }) {
+  const [offen, setOffen] = useState(false);
+  const [suche, setSuche] = useState("");
+  const gewaehlt = (personen || []).find((p) => p.id === wert);
+  const q = suche.trim().toLowerCase();
+  const treffer = (personen || []).slice()
+    .sort((a, b) => String(a.name || "").trim().localeCompare(String(b.name || "").trim(), "de", { sensitivity: "base" }))
+    .filter((p) => !q || String(p.name || "").toLowerCase().includes(q));
+  const groesse = klein ? "text-[11px] px-2 py-1.5" : "text-xs px-3 py-2";
+  return (
+    <div className="flex-1 min-w-0">
+      <button type="button" onClick={() => { setOffen((o) => !o); setSuche(""); }}
+        aria-expanded={offen}
+        className={`w-full text-left rounded-lg outline-none flex items-center justify-between gap-1 ${groesse}`}
+        style={{ background: C.paperDim, color: gewaehlt ? C.ink : C.textDim, fontFamily: "Inter", fontWeight: 600 }}>
+        <span className="truncate">{gewaehlt ? gewaehlt.name : leerLabel}</span>
+        <ChevronDown size={12} style={{ color: C.textDim, flexShrink: 0 }} />
+      </button>
+      {offen && (
+        <div className="mt-1 rounded-lg overflow-hidden" style={{ border: `1px solid ${C.line}`, background: C.glass }}>
+          <input autoFocus value={suche} onChange={(e) => setSuche(e.target.value)}
+            placeholder="Namen suchen …" aria-label="Nutzer suchen"
+            className={`w-full outline-none ${groesse}`}
+            style={{ background: C.white, color: C.ink, borderBottom: `1px solid ${C.line}` }} />
+          <div style={{ maxHeight: 190, overflowY: "auto" }}>
+            <button type="button" onClick={() => { onWaehlen(""); setOffen(false); }}
+              className={`w-full text-left ${groesse}`} style={{ color: C.textDim, fontFamily: "Inter" }}>{leerLabel}</button>
+            {/* Vorschlaege zuerst, aber nur solange nicht gesucht wird - wer
+                tippt, will Treffer sehen, keine Sortierung nach Verdacht. */}
+            {!q && (vorschlaege || []).length > 0 && (
+              <>
+                <div className="px-2 py-1 text-[10px] font-bold" style={{ color: C.textDim, background: C.paperDim }}>Vorschlag · Name stimmt überein</div>
+                {(personen || []).filter((p) => vorschlaege.includes(p.id)).map((p) => (
+                  <button type="button" key={`v-${p.id}`} onClick={() => { onWaehlen(p.id); setOffen(false); }}
+                    className={`w-full text-left ${groesse}`}
+                    style={{ color: C.ink, fontFamily: "Inter", fontWeight: 700, borderTop: `1px solid ${C.line}` }}>
+                    {p.name}
+                  </button>
+                ))}
+                <div className="px-2 py-1 text-[10px] font-bold" style={{ color: C.textDim, background: C.paperDim }}>Alle Mitglieder</div>
+              </>
+            )}
+            {treffer.length === 0 ? (
+              <div className={groesse} style={{ color: C.textDim }}>Niemand gefunden.</div>
+            ) : treffer.map((p) => (
+              <button type="button" key={p.id} onClick={() => { onWaehlen(p.id); setOffen(false); }}
+                className={`w-full text-left ${groesse}`}
+                style={{ color: C.ink, fontFamily: "Inter", fontWeight: p.id === wert ? 700 : 500,
+                         background: p.id === wert ? C.paperDim : "transparent", borderTop: `1px solid ${C.line}` }}>
+                {p.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 function MannschaftsWahl({ mannschaften, gewaehlt, onWechsel, favorit, onFavorit }) {
   if (!mannschaften || mannschaften.length <= 1) return null;
   const istFavorit = favorit === gewaehlt;
@@ -7197,10 +7263,7 @@ function ProtokollePanel({ members, protocols, setProtocols, clubId, onSpeichern
           <input value={newTaskText} onChange={(e) => setNewTaskText(e.target.value)} placeholder="Neue Aufgabe eintippen…"
             className="w-full px-3 py-2 rounded-lg text-sm outline-none mb-2" style={{ background: C.paperDim, fontFamily: "Inter", color: C.ink }} />
           <div className="flex gap-2 mb-2">
-            <select value={newTaskAssignee} onChange={(e) => setNewTaskAssignee(e.target.value)} className="flex-1 text-xs px-2 py-1.5 rounded-lg outline-none" style={{ background: C.paperDim, fontFamily: "Inter", border: `1px solid ${C.line}` }}>
-              <option value="">nicht zugewiesen</option>
-              {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-            </select>
+            <NutzerWahl personen={members} wert={newTaskAssignee} onWaehlen={setNewTaskAssignee} />
             <input type="date" value={newTaskDue} onChange={(e) => setNewTaskDue(e.target.value)} className="text-xs px-2 py-1.5 rounded-lg outline-none" style={{ background: C.paperDim, fontFamily: "Inter", border: `1px solid ${C.line}` }} />
           </div>
           <button onClick={addDraftTask} disabled={!newTaskText.trim()} className="w-full py-2 rounded-lg text-xs" style={{ background: C.ink, color: "#fff", fontFamily: "Inter", fontWeight: 700, opacity: !newTaskText.trim() ? 0.5 : 1 }}>+ Aufgabe hinzufügen</button>
@@ -7215,10 +7278,7 @@ function ProtokollePanel({ members, protocols, setProtocols, clubId, onSpeichern
                   <button onClick={() => removeDraftTask(t.id)}><X size={13} style={{ color: C.textDim }} /></button>
                 </div>
                 <div className="flex gap-2">
-                  <select value={t.assignee} onChange={(e) => updateDraftTask(t.id, { assignee: e.target.value })} className="flex-1 text-[11px] px-2 py-1.5 rounded-lg outline-none" style={{ background: C.paperDim, fontFamily: "Inter", border: `1px solid ${C.line}` }}>
-                    <option value="">nicht zugewiesen</option>
-                    {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-                  </select>
+                  <NutzerWahl personen={members} wert={t.assignee} onWaehlen={(v) => updateDraftTask(t.id, { assignee: v })} klein />
                   <input type="date" value={t.due} onChange={(e) => updateDraftTask(t.id, { due: e.target.value })} className="text-[11px] px-2 py-1.5 rounded-lg outline-none" style={{ background: C.paperDim, fontFamily: "Inter", border: `1px solid ${C.line}` }} />
                 </div>
               </div>
@@ -8448,11 +8508,8 @@ function ClaimManagedPlayerPanel({ members, setMembers, currentUser }) {
         {managedCandidates.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
       </select>
       {managed && (
-        <select value={realId} onChange={(e) => setRealId(e.target.value)} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}>
-          <option value="">Echtes Konto auswählen …</option>
-          {suggestions.length > 0 && <optgroup label="Vorschlag · Name stimmt überein">{suggestions.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</optgroup>}
-          <optgroup label="Alle Mitglieder">{realCandidates.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}</optgroup>
-        </select>
+        <NutzerWahl personen={realCandidates} wert={realId} onWaehlen={setRealId}
+          leerLabel="Echtes Konto auswählen …" vorschlaege={suggestions.map((m) => m.id)} />
       )}
       <button type="button" disabled={!managedId || !realId || saving} onClick={merge} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: (managedId && realId) ? C.ink : C.line, color: C.white }}>{saving ? "Wird zusammengeführt …" : "Zusammenführen"}</button>
     </div>
