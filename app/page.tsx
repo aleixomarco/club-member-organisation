@@ -8398,22 +8398,23 @@ function AdminView({
         </div>
       </div>}
 
-      {/* Untereinander statt waagerecht scrollend.
+      {/* Zwei Spalten statt waagerecht scrollend.
           Als Pillenleiste passten drei Eintraege auf den Bildschirm, der Rest
           lag hinter dem Rand - ein Vereinsadmin hat bis zu elf. Wer
           "Vereinsprofil" suchte, musste erst wischen, um zu sehen, dass es das
-          ueberhaupt gibt. Untereinander steht alles sofort da. */}
-      <div className="rounded-2xl overflow-hidden mb-4" style={{ border: `1px solid ${C.line}` }}>
-        {panels.map(([k, l], i) => (
+          ueberhaupt gibt. Untereinander waere alles sichtbar, aber elf Zeilen
+          schieben den Inhalt vom Bildschirm. Zwei Spalten zeigen alles und
+          brauchen die halbe Hoehe. */}
+      <div className="grid grid-cols-2 gap-2 mb-4">
+        {panels.map(([k, l]) => (
           <button key={k} onClick={() => setPanel(k)}
             aria-current={panel === k ? "page" : undefined}
-            className="w-full text-left px-4 py-3 text-xs flex items-center justify-between"
+            className="px-3 py-2.5 rounded-xl text-xs text-left"
             style={{ fontFamily: "Inter", fontWeight: 700,
                      background: panel === k ? C.ink : C.paperDim,
                      color: panel === k ? C.white : C.textDim,
-                     borderTop: i ? `1px solid ${C.line}` : "none" }}>
+                     border: `1px solid ${panel === k ? C.ink : C.line}` }}>
             {l}
-            {panel === k && <ChevronRight size={14} style={{ color: C.white, opacity: .7 }} />}
           </button>
         ))}
       </div>
