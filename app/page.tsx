@@ -6896,6 +6896,7 @@ function ProfileView({ user, members, setMembers, currentClub, dutyPlan, punkteZ
       {profileFolder === "clubsettings" && isAdmin(user) && <ProfileUnderlay title="Vereinseinstellungen" eyebrow="Verein verwalten" onClose={() => setProfileFolder("")}>
         <ClubRoleOverviewPanel members={members} />
         <ClubFeatureSettingsPanel currentClub={currentClub} clubFeatures={clubFeatures} onFeaturesChanged={onClubFeaturesChanged} dashboardTileOrder={dashboardTileOrder} setDashboardTileOrder={setDashboardTileOrder} />
+        <TippRundenPanel currentClub={currentClub} />
       </ProfileUnderlay>}
 
       {profileFolder === "personal" && <ProfileUnderlay title="Persönliche Daten" eyebrow="Einstellungen" onClose={() => setProfileFolder("")}>
@@ -7141,8 +7142,78 @@ function SeasonVoteView({ currentUser, members, seasonVotes, setSeasonVotes, onV
 /* ------------------------------------------------------------------ */
 /* Tippspiel                                                            */
 /* ------------------------------------------------------------------ */
+/* Welche Mannschaften ein eigenes Tippspiel bekommen.
+   Wie bei den Chatkanaelen entscheidet die Vereinsleitung, welche Gruppen es
+   gibt - und nicht die App, indem sie einfach alle Spiele in einen Topf wirft.
+   Ausschalten loescht nichts: Tipps und Teilnehmerliste bleiben stehen, damit
+   eine versehentlich abgeschaltete Runde nicht eine halbe Saison mitnimmt. */
+function TippRundenPanel({ currentClub }) {
+  const [zeilen, setZeilen] = useState([]);
+  const [laedt, setLaedt] = useState(true);
+  const [fehler, setFehler] = useState("");
+
+  const laden = useCallback(async () => {
+    if (!supabase || !isDbId(currentClub?.id)) { setLaedt(false); return; }
+    const { data, error } = await supabase.rpc("tipprunden_fuer_verein", { target_club: currentClub.id });
+    setLaedt(false);
+    if (error) { setFehler("Die Mannschaften konnten nicht geladen werden."); return; }
+    setZeilen(data || []);
+  }, [currentClub?.id]);
+  useEffect(() => { laden(); }, [laden]);
+
+  const umschalten = async (zeile) => {
+    setFehler("");
+    const { error } = await supabase.rpc("tipprunde_setzen",
+      { target_club: currentClub.id, target_team: zeile.team_id, an: !zeile.aktiv });
+    if (error) { setFehler("Die Änderung konnte nicht gespeichert werden."); return; }
+    await laden();
+  };
+
+  if (!supabase) return null;
+  return (
+    <div className="rounded-2xl p-4 mt-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
+      <div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Tippspiel je Mannschaft</div>
+      <div className="text-[11px] mb-3" style={{ color: C.textDim }}>
+        Jede freigegebene Mannschaft bekommt eine eigene Tipprunde mit eigener Tabelle. Die Runden lassen sich nicht mischen — wie bei den Chatkanälen.
+      </div>
+      {laedt ? <div className="text-xs" style={{ color: C.textDim }}>Mannschaften werden geladen …</div>
+       : zeilen.length === 0 ? <div className="text-xs" style={{ color: C.textDim }}>Noch keine Mannschaften angelegt.</div>
+       : (
+        <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${C.line}` }}>
+          {zeilen.map((z, i) => (
+            <div key={z.team_id} className="flex items-center justify-between gap-2 px-3 py-2.5"
+              style={{ borderTop: i ? `1px solid ${C.line}` : "none", background: C.white }}>
+              <div className="min-w-0">
+                <div className="text-xs font-bold truncate" style={{ color: C.ink }}>{z.team_name}</div>
+                <div className="text-[10px]" style={{ color: C.textDim }}>
+                  {z.aktiv ? `${z.teilnehmer} ${z.teilnehmer === 1 ? "Teilnehmer" : "Teilnehmende"}` : "Kein Tippspiel"}
+                </div>
+              </div>
+              <button onClick={() => umschalten(z)}
+                className="px-3 py-1.5 rounded-full text-[11px] font-bold flex-shrink-0"
+                style={{ background: z.aktiv ? C.erfolgFlaeche : C.paperDim,
+                         color: z.aktiv ? C.erfolg : C.textDim,
+                         border: `1px solid ${z.aktiv ? C.erfolgRand : C.line}` }}>
+                {z.aktiv ? "Freigegeben" : "Freigeben"}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      {fehler && <div role="status" className="text-[11px] mt-2" style={{ color: C.fehler }}>{fehler}</div>}
+    </div>
+  );
+}
+
 function TippView({ members, currentUser, events, tippPredictions, setTippPredictions, tippResults, onTippSpeichern }) {
-  const begegnungen = tippBegegnungen(events);
+  const aktuelleRunde = runden.find((r) => r.runde_id === rundeId) || null;
+  /* Nur die Spiele der gewaehlten Mannschaft. Ein Spiel gehoert ueber
+     events.team_id zu genau einer Mannschaft und damit zu genau einer Runde -
+     die Zuordnung kann nicht auseinanderlaufen. */
+  const alleBegegnungen = tippBegegnungen(events);
+  const begegnungen = aktuelleRunde
+    ? alleBegegnungen.filter((m) => m.team === aktuelleRunde.team_name)
+    : [];
   const mine = tippPredictions[currentUser.id] || {};
   /* Getippt wird jetzt in zwei Schritten: eintragen, dann abgeben.
      Vorher ging jede einzelne Ziffer sofort in die Datenbank. Wer "12" statt
@@ -7150,6 +7221,42 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
      loeschte, um sie zu aendern, loeschte damit den ganzen Tipp. Beides ohne
      Rueckmeldung - man sah nie, ob etwas gespeichert war.
      Der Entwurf lebt jetzt hier, gespeichert wird erst auf Knopfdruck. */
+  /* Runden je Mannschaft. Frueher war das Tippspiel eine einzige Liste ueber
+     alle Spiele des Vereins - Erwachsene und Kinder in derselben Tabelle, und
+     drin war man automatisch. Jetzt waehlt man eine Mannschaft und tritt ihr
+     bei; getippt wird nur, wo man beigetreten ist. */
+  const [runden, setRunden] = useState([]);
+  const [rundeId, setRundeId] = useState("");
+  const [tabelle, setTabelle] = useState(null);
+  const [rundenFehler, setRundenFehler] = useState("");
+
+  const rundenLaden = useCallback(async () => {
+    if (!supabase || !isDbId(currentUser.clubId)) return;
+    const { data, error } = await supabase.rpc("tipprunden_fuer_verein", { target_club: currentUser.clubId });
+    if (error) { setRundenFehler("Die Tipprunden konnten nicht geladen werden."); return; }
+    const aktive = (data || []).filter((r) => r.aktiv);
+    setRunden(aktive);
+    setRundeId((bisher) => bisher || aktive[0]?.runde_id || "");
+  }, [currentUser.clubId]);
+  useEffect(() => { rundenLaden(); }, [rundenLaden]);
+
+  const tabelleLaden = useCallback(async () => {
+    if (!supabase || !rundeId) { setTabelle(null); return; }
+    const { data, error } = await supabase.rpc("tipp_tabelle", { target_runde: rundeId });
+    setTabelle(error ? [] : (data || []));
+  }, [rundeId]);
+  useEffect(() => { tabelleLaden(); }, [tabelleLaden]);
+
+  const beitreten = async (dabei) => {
+    if (!supabase || !rundeId || !isDbId(currentUser.id)) return;
+    setRundenFehler("");
+    const { error } = dabei
+      ? await supabase.from("tipp_teilnehmer").delete().eq("runde_id", rundeId).eq("membership_id", currentUser.id)
+      : await supabase.from("tipp_teilnehmer").insert({ runde_id: rundeId, membership_id: currentUser.id });
+    if (error) { setRundenFehler(dabei ? "Austritt nicht möglich." : "Beitritt nicht möglich."); return; }
+    await rundenLaden(); await tabelleLaden();
+  };
+
   const [entwuerfe, setEntwuerfe] = useState({});
   const entwurfVon = (matchId) => entwuerfe[matchId] ?? mine[matchId] ?? { home: "", away: "" };
   const setPred = (matchId, side, val) =>
@@ -7185,14 +7292,52 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
           Mit dem Text ist auch der Kasten weg: Ein leerer Rahmen mit
           Geschenksymbol haette ausgesehen, als fehle etwas. */}
 
-      <SectionTitle eyebrow="Rangliste" title="Tippspiel-Tabelle" />
+      {/* Mannschaft waehlen - nur freigegebene Runden. Ohne Runde gibt es
+          nichts zu tippen; das sagt die Ansicht dann auch, statt eine leere
+          Tabelle zu zeigen. */}
+      {runden.length === 0 ? (
+        <div className="rounded-2xl p-4 mb-5 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>
+          Für diesen Verein ist noch kein Tippspiel freigegeben. Die Vereinsleitung legt unter „Vereinseinstellungen" fest, welche Mannschaften eine eigene Tipprunde bekommen.
+        </div>
+      ) : (
+        <>
+          <div className="flex gap-2 mb-4 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+            {runden.map((r) => (
+              <button key={r.runde_id} onClick={() => setRundeId(r.runde_id)}
+                className="px-3 py-1.5 rounded-full text-xs flex-shrink-0"
+                style={{ fontFamily: "Inter", fontWeight: 700,
+                         background: r.runde_id === rundeId ? C.ink : C.paperDim,
+                         color: r.runde_id === rundeId ? C.white : C.textDim }}>
+                {r.team_name}{r.ich_dabei ? " ✓" : ""}
+              </button>
+            ))}
+          </div>
+
+          {aktuelleRunde && !aktuelleRunde.ich_dabei && (
+            <div className="rounded-2xl p-4 mb-5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
+              <div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Tipprunde {aktuelleRunde.team_name}</div>
+              <div className="text-xs mb-3" style={{ color: C.textDim }}>
+                Du bist noch nicht dabei. Jede Mannschaft hat eine eigene Runde mit eigener Tabelle — beitreten musst du überall einzeln.
+              </div>
+              <button onClick={() => beitreten(false)} className="w-full py-2.5 rounded-xl text-xs font-bold"
+                style={{ background: C.ink, color: C.aufPrimaer === undefined ? C.white : C.white }}>
+                Tipprunde beitreten
+              </button>
+            </div>
+          )}
+          {rundenFehler && <div role="status" className="text-[11px] mb-3 rounded-xl px-3 py-2" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{rundenFehler}</div>}
+        </>
+      )}
+
+      {aktuelleRunde?.ich_dabei && (<>
+      <SectionTitle eyebrow="Rangliste" title={`Tabelle ${aktuelleRunde.team_name}`} />
       <div className="rounded-2xl overflow-hidden mb-6" style={{ border: `1px solid ${C.line}` }}>
-        {leaderboard.map((m, i) => (
-          <div key={m.id} className="flex items-center gap-3 px-4 py-2.5" style={{ background: m.id === currentUser.id ? C.fehlerFlaeche : C.white, borderBottom: i < leaderboard.length - 1 ? `1px solid ${C.line}` : "none" }}>
+        {(tabelle || []).length === 0 && <div className="px-4 py-3 text-xs" style={{ color: C.textDim }}>Noch niemand in dieser Runde.</div>}
+        {(tabelle || []).map((m, i) => (
+          <div key={m.membership_id} className="flex items-center gap-3 px-4 py-2.5" style={{ background: m.membership_id === currentUser.id ? C.fehlerFlaeche : C.white, borderBottom: i < (tabelle || []).length - 1 ? `1px solid ${C.line}` : "none" }}>
             <div className="w-6 text-center text-sm" style={{ fontFamily: "JetBrains Mono", fontWeight: 700, color: i === 0 ? C.secondary : C.textDim }}>{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}</div>
-            <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: m.color, color: "#fff" }}>{initialsOf(m.name)}</div>
-            <div className="flex-1 text-sm" style={{ fontFamily: "Inter", fontWeight: 600, color: C.ink }}>{m.name}{m.id === currentUser.id ? " (Du)" : ""}</div>
-            <div className="text-sm" style={{ fontFamily: "JetBrains Mono", fontWeight: 700, color: C.ink }}>{m.calculatedTippPoints} P</div>
+            <div className="flex-1 text-sm truncate" style={{ fontFamily: "Inter", fontWeight: 600, color: C.ink }}>{m.name}{m.membership_id === currentUser.id ? " (Du)" : ""}</div>
+            <div className="text-sm" style={{ fontFamily: "JetBrains Mono", fontWeight: 700, color: C.ink }}>{m.punkte} P</div>
           </div>
         ))}
       </div>
@@ -7257,6 +7402,7 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
           </div>
         );
       })}
+      </>)}
     </div>
   );
 }
