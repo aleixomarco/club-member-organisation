@@ -2868,7 +2868,7 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
               <HelperSlots ev={ev} members={members} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} eligible={helperEligible} onSetzen={onDienstSetzen} />
             </div>
           )}
-          {eventIsReal && ev.type === "spiel" && ev.home === true && featureEnabled("duty_roster") && <DutyTasksSection ev={ev} currentUser={currentUser} sport={currentClub?.sport} onNeuLaden={onNeuLaden} />}
+          {eventIsReal && ev.type === "spiel" && ev.home === true && featureEnabled("duty_roster") && <DutyTasksSection ev={ev} currentUser={currentUser} sport={currentClub?.sport} onNeuLaden={onNeuLaden} dutyPlan={dutyPlan} />}
         </div>
       )}
     </div>
@@ -5278,7 +5278,7 @@ function VehiclesView({ currentUser, currentClub }) {
   );
 }
 
-function DutyTasksSection({ ev, currentUser, sport, onNeuLaden }) {
+function DutyTasksSection({ ev, currentUser, sport, onNeuLaden, dutyPlan }) {
   const cfg = sportConfig(sport);
   const [tasks, setTasks] = useState([]);
   const [templates, setTemplates] = useState([]);
@@ -5354,6 +5354,40 @@ function DutyTasksSection({ ev, currentUser, sport, onNeuLaden }) {
     await loadTasks();
   };
 
+  /* Stationen wieder entfernen - einzeln oder alle.
+     Vorher gewarnt wird nur, wenn wirklich jemand betroffen ist: Eine
+     Rueckfrage bei einer leeren Station ist eine Ruecktrage zu viel. Die Zahl
+     steht im Geraet schon bereit (dutyPlan), es braucht keinen Zusatzaufruf.
+     Geloescht wird in der Datenbank, weil eine Station an drei Stellen haengt -
+     am Termin, in den Eintragungen und in dieser Aufgabenliste. */
+  const stationEntfernen = async (station) => {
+    const eingetragen = (dutyPlan?.[ev.id]?.[station] || []).length;
+    const frage = eingetragen
+      ? `"${station}" entfernen? ${eingetragen === 1 ? "Eine Person ist" : `${eingetragen} Personen sind`} dafür eingetragen — ${eingetragen === 1 ? "ihr Dienst" : "ihre Dienste"} entfällt damit.`
+      : `"${station}" entfernen?`;
+    if (!window.confirm(frage)) return;
+    setMessage("");
+    const { data, error } = await supabase.rpc("remove_duty_station", { target_event: ev.id, station_name: station });
+    if (error) { setMessage("Die Station konnte nicht entfernt werden."); return; }
+    setMessage(data ? `Station entfernt. ${data === 1 ? "Eine Eintragung wurde" : `${data} Eintragungen wurden`} gelöscht.` : "Station entfernt.");
+    await loadTasks();
+    onNeuLaden?.();
+  };
+
+  const alleEntfernen = async () => {
+    const gesamt = Object.values(dutyPlan?.[ev.id] || {}).reduce((n, l) => n + (l?.length || 0), 0);
+    const frage = gesamt
+      ? `Alle Stationen dieses Termins entfernen? ${gesamt === 1 ? "Eine Eintragung geht" : `${gesamt} Eintragungen gehen`} dabei verloren.`
+      : "Alle Stationen dieses Termins entfernen?";
+    if (!window.confirm(frage)) return;
+    setMessage("");
+    const { data, error } = await supabase.rpc("clear_duty_stations", { target_event: ev.id });
+    if (error) { setMessage("Die Stationen konnten nicht entfernt werden."); return; }
+    setMessage(data ? `Alle Stationen entfernt, dazu ${data === 1 ? "eine Eintragung" : `${data} Eintragungen`}.` : "Alle Stationen entfernt.");
+    await loadTasks();
+    onNeuLaden?.();
+  };
+
   if (!supabase) return null;
   if (loading) return <div className="mt-3 text-xs" style={{ color: C.textDim }}>{cfg.dutyTabLabel} wird geladen …</div>;
 
@@ -5367,6 +5401,28 @@ function DutyTasksSection({ ev, currentUser, sport, onNeuLaden }) {
             {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
           </select>
           <button onClick={applyTemplate} disabled={!selectedTemplate || applying} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: selectedTemplate ? C.ink : C.line, color: C.white }}>{applying ? "…" : "Anwenden"}</button>
+        </div>
+      )}
+      {/* Stationen dieses Termins wieder abraeumen. Steht bewusst hier und nicht
+          in der Liste "Helfer:innen gesucht" darueber: Dort traegt man sich ein,
+          hier verwaltet die Leitung - und nur dieser Abschnitt weiss ueberhaupt,
+          ob der Betrachter das darf (canManage). */}
+      {canManage && (ev.helperSlots?.length > 0) && (
+        <div className="rounded-xl p-2.5 mb-2.5" style={{ background: C.paperDim }}>
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[11px] font-bold" style={{ color: C.ink, fontFamily: "Inter" }}>Stationen an diesem Termin</span>
+            <button onClick={alleEntfernen} className="text-[11px] font-bold" style={{ color: C.fehler, fontFamily: "Inter" }}>Alle entfernen</button>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {ev.helperSlots.map((station) => (
+              <button key={station} onClick={() => stationEntfernen(station)}
+                aria-label={`Station ${station} entfernen`}
+                className="px-2.5 py-1 rounded-full text-[11px] flex items-center gap-1.5"
+                style={{ background: C.glass, border: `1px solid ${C.line}`, color: C.ink, fontFamily: "Inter", fontWeight: 600 }}>
+                {station} <X size={11} style={{ color: C.fehler }} />
+              </button>
+            ))}
+          </div>
         </div>
       )}
       {tasks.length === 0 ? (
