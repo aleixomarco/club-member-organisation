@@ -5215,7 +5215,7 @@ function VehiclesView({ currentUser, currentClub }) {
     const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
     const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 1);
     const { data, error } = await supabase.from("vehicle_bookings")
-      .select("id,vehicle_id,membership_id,team_id,private_label,starts_at,ends_at,club_vehicles(label),teams(name),club_memberships(display_name)")
+      .select("id,vehicle_id,membership_id,team_id,private_label,starts_at,ends_at,status,club_vehicles(label),teams(name),club_memberships(display_name)")
       .eq("club_id", currentUser.clubId)
       .lt("starts_at", monthEnd.toISOString())
       .gt("ends_at", monthStart.toISOString())
@@ -5225,7 +5225,7 @@ function VehiclesView({ currentUser, currentClub }) {
       const vehicle = Array.isArray(row.club_vehicles) ? row.club_vehicles[0] : row.club_vehicles;
       const team = Array.isArray(row.teams) ? row.teams[0] : row.teams;
       const member = Array.isArray(row.club_memberships) ? row.club_memberships[0] : row.club_memberships;
-      return { id: row.id, vehicleId: row.vehicle_id, membershipId: row.membership_id, teamId: row.team_id, privateLabel: row.private_label, vehicleLabel: vehicle?.label || "—", label: team?.name || row.private_label || "Privat", bookedBy: member?.display_name || "—", startsAt: new Date(row.starts_at), endsAt: new Date(row.ends_at) };
+      return { id: row.id, status: row.status || "bestaetigt", vehicleId: row.vehicle_id, membershipId: row.membership_id, teamId: row.team_id, privateLabel: row.private_label, vehicleLabel: vehicle?.label || "—", label: team?.name || row.private_label || "Privat", bookedBy: member?.display_name || "—", startsAt: new Date(row.starts_at), endsAt: new Date(row.ends_at) };
     }));
     setLoading(false);
   }, [databaseMembership, currentUser.clubId, monthDate]);
@@ -5314,6 +5314,18 @@ function VehiclesView({ currentUser, currentClub }) {
     setSelectedVehicle(null); setEditingBookingId(null); setSavingBooking(false);
     await loadBookings();
   };
+  /* Ueber eine Anfrage entscheiden. Die Datenbank prueft das Recht noch einmal
+     selbst - die Knoepfe hier sind die Bedienung, nicht die Sicherung. */
+  const entscheide = async (booking, annehmen) => {
+    setMessage("");
+    const { error } = await supabase.rpc("entscheide_fahrzeug_anfrage", { target_booking: booking.id, annehmen });
+    if (error) { setMessage("Die Entscheidung konnte nicht gespeichert werden."); return; }
+    setMessage(annehmen ? "Buchung bestätigt — die anfragende Person wurde benachrichtigt."
+                        : "Anfrage abgelehnt — die anfragende Person wurde benachrichtigt.");
+    await loadVehicles();
+  };
+  const darfEntscheiden = canManageDuty(currentUser);
+
   const cancelBooking = async (booking) => {
     if (!window.confirm("Buchung wirklich stornieren?")) return;
     const { error } = await supabase.from("vehicle_bookings").delete().eq("id", booking.id);
@@ -5341,7 +5353,7 @@ function VehiclesView({ currentUser, currentClub }) {
   return (
     <div className="px-4 pt-4 pb-24">
       <SectionTitle eyebrow="Verein" title={cfg.vehicleTabLabel} right={canManageFleet ? <button onClick={() => { if (showAddVehicle) { setEditingVehicleId(null); setNewVehicle({ label: "", plate: "", seats: "" }); } setShowAddVehicle((v) => !v); }} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showAddVehicle ? "Schließen" : "+ Fahrzeug"}</button> : null}/>
-      <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>{cfg.vehicleIntro} Buchen können Vorstand, Vereinsadmin, Trainer, Teammanager, Kapitäne, Finanzmanager und Geschäftsführung.</div>
+      <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>{cfg.vehicleIntro} Jedes Mitglied kann anfragen; Vereinsadministration und Organisation geben frei. </div>
       {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{message}</div>}
       {showAddVehicle && (
         <div className="rounded-2xl p-4 mb-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
@@ -5399,12 +5411,41 @@ function VehiclesView({ currentUser, currentClub }) {
       <SectionTitle eyebrow="Übersicht" title="Buchungen diesen Monat"/>
       <div className="space-y-2">
         {bookings.map((b) => (
-          <div key={b.id} className="flex items-center gap-3 rounded-xl px-3 py-2.5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
+          <div key={b.id} className="flex items-center gap-3 rounded-xl px-3 py-2.5"
+            style={{ background: b.status === "angefragt" ? C.paperDim : C.glass,
+                     border: `1px solid ${b.status === "angefragt" ? C.secondary : b.status === "abgelehnt" ? C.fehlerFlaeche : C.line}`,
+                     opacity: b.status === "abgelehnt" ? .6 : 1 }}>
             <button onClick={() => openBookingDetail(b)} className="flex-1 min-w-0 text-left">
               <div className="text-xs font-bold truncate" style={{ color: C.ink }}>{b.vehicleLabel} · {b.label}</div>
               <div className="text-[10px] truncate" style={{ color: C.textDim }}>{b.bookedBy} · {b.startsAt.toLocaleDateString("de-DE")} {String(b.startsAt.getHours()).padStart(2,"0")}:00 – {b.endsAt.toLocaleDateString("de-DE")} {String(b.endsAt.getHours()).padStart(2,"0")}:00</div>
             </button>
-            {canCancel(b) && (
+            {/* Eine Anfrage sieht aus wie eine Buchung - so war es gewuenscht -
+                und traegt fuer die Entscheider Haken und Kreuz. Fuer alle
+                anderen nur den Hinweis, dass sie noch nicht bestaetigt ist:
+                Sonst plant jemand mit einem Fahrzeug, das ihm keiner zugesagt
+                hat. */}
+            {b.status === "angefragt" && (
+              darfEntscheiden ? (
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <button onClick={() => entscheide(b, true)} aria-label="Anfrage annehmen"
+                    className="w-8 h-8 rounded-lg flex items-center justify-center"
+                    style={{ background: C.erfolgFlaeche, border: `1px solid ${C.erfolgRand}` }}>
+                    <Check size={15} style={{ color: C.erfolg }} />
+                  </button>
+                  <button onClick={() => entscheide(b, false)} aria-label="Anfrage ablehnen"
+                    className="w-8 h-8 rounded-lg flex items-center justify-center"
+                    style={{ background: C.fehlerFlaeche, border: `1px solid ${C.fehler}` }}>
+                    <X size={15} style={{ color: C.fehler }} />
+                  </button>
+                </div>
+              ) : (
+                <span className="text-[10px] px-2 py-1 rounded-full flex-shrink-0" style={{ background: C.paperDim, color: C.textDim, fontWeight: 700 }}>angefragt</span>
+              )
+            )}
+            {b.status === "abgelehnt" && (
+              <span className="text-[10px] px-2 py-1 rounded-full flex-shrink-0" style={{ background: C.fehlerFlaeche, color: C.fehler, fontWeight: 700 }}>abgelehnt</span>
+            )}
+            {b.status !== "angefragt" && canCancel(b) && (
               <div className="flex items-center gap-1.5 flex-shrink-0">
                 <button onClick={() => openEditBooking(b)} className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold" style={{ background: C.paperDim, color: C.textDim }}>Bearbeiten</button>
                 <button onClick={() => cancelBooking(b)} aria-label="Buchung stornieren" className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: C.paperDim, color: C.red }}><X size={14}/></button>
