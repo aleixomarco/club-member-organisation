@@ -2440,7 +2440,7 @@ function Scoreboard({ nextEvent, goTo, auswahlVorhanden = false }) {
     </div>
   );
 }
-function PollWidget({ poll, userId, setPolls, onVote }) {
+function PollWidget({ poll, userId, setPolls, onVote, onUnvote }) {
   const options = poll.options;
   const voted = poll.voterIds?.includes(userId);
   const total = options.reduce((a, o) => a + o.votes, 0);
@@ -2458,6 +2458,18 @@ function PollWidget({ poll, userId, setPolls, onVote }) {
       setPolls((ps)=>ps.map((p)=>p.id===poll.id?{...p,options:p.options.map((x,idx)=>idx===i?{...x,votes:Math.max(0,x.votes-1)}:x),voterIds:(p.voterIds||[]).filter((v)=>v!==userId),meineAntwortId:null}:p));
     }
   };
+  /* Wie beim Abstimmen: erst anzeigen, bei Fehlschlag zuruecknehmen. */
+  const zuruecknehmen = async () => {
+    const meine = options.findIndex((o) => o.id === poll.meineAntwortId);
+    setFehler("");
+    setPolls((ps) => ps.map((p) => p.id === poll.id ? { ...p, options: p.options.map((x, idx) => idx === meine ? { ...x, votes: Math.max(0, x.votes - 1) } : x), voterIds: (p.voterIds || []).filter((v) => v !== userId), meineAntwortId: null } : p));
+    const ergebnis = await onUnvote?.(poll.id);
+    if (ergebnis?.error) {
+      setFehler(ergebnis.error);
+      setPolls((ps) => ps.map((p) => p.id === poll.id ? { ...p, options: p.options.map((x, idx) => idx === meine ? { ...x, votes: x.votes + 1 } : x), voterIds: [...(p.voterIds || []), userId], meineAntwortId: poll.meineAntwortId } : p));
+    }
+  };
+
   return (
     <div className="rounded-2xl p-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
       <div className="flex items-center gap-2 mb-3">
@@ -2479,6 +2491,15 @@ function PollWidget({ poll, userId, setPolls, onVote }) {
         })}
       </div>
       {!voted && <div className="text-xs mt-2" style={{ color: C.textDim, fontFamily: "Inter" }}>Tippe, um abzustimmen</div>}
+      {/* Auswahl zuruecknehmen. Eine Umfrage war bisher eine Einbahnstrasse:
+          einmal getippt, fuer immer festgelegt - auch wer danebengriff, blieb
+          bei der falschen Antwort. */}
+      {voted && onUnvote && (
+        <button onClick={zuruecknehmen} className="w-full mt-2 py-1.5 rounded-lg text-[11px] font-bold"
+          style={{ background: C.paperDim, color: C.textDim }}>
+          Auswahl zurücknehmen
+        </button>
+      )}
     </div>
   );
 }
@@ -2527,7 +2548,7 @@ function NextTrainingCard({ training, team, auswahlVorhanden = false }) {
     </div>
   );
 }
-function Dashboard({ user, members, events, feePaid, channels, news, dutyPlan, seasonVotes, tippPredictions, tippResults, polls, setPolls, onVote, onFavoritMannschaft, werbeplaetze, onSponsorImpression, onSponsorClick, goEvents, goSeason, goTipp, goDuty, goNews, goTasks, goVehicles, currentClub, featureEnabled, dashboardTileOrder, entitlement, goSubscribe, mannschaften = [], gewaehlteMannschaft = "", onMannschaftWechsel }) {
+function Dashboard({ user, members, events, feePaid, channels, news, dutyPlan, seasonVotes, tippPredictions, tippResults, polls, setPolls, onVote, onUnvote, onFavoritMannschaft, werbeplaetze, onSponsorImpression, onSponsorClick, goEvents, goSeason, goTipp, goDuty, goNews, goTasks, goVehicles, currentClub, featureEnabled, dashboardTileOrder, entitlement, goSubscribe, mannschaften = [], gewaehlteMannschaft = "", onMannschaftWechsel }) {
   const sport = currentClub?.sport || "rollhockey";
   /* Alle Kacheln in „Aktionen & Abstimmungen" hängen am Premium-Tarif
      (siehe die LockedFeature-Hüllen der jeweiligen Ansichten). Während der
@@ -2711,7 +2732,7 @@ function Dashboard({ user, members, events, feePaid, channels, news, dutyPlan, s
       {polls.some((p) => p.active) && (
         <DashboardSection accent={C.secondary} background={C.sekundaerWeich}>
           <SectionTitle eyebrow="Mitmachen" title="Deine Stimme zählt" />
-          <div className="space-y-3">{polls.filter((p)=>p.active).map((poll)=><PollWidget key={poll.id} poll={poll} userId={user.id} setPolls={setPolls} onVote={onVote}/>)}</div>
+          <div className="space-y-3">{polls.filter((p)=>p.active).map((poll)=><PollWidget key={poll.id} poll={poll} userId={user.id} setPolls={setPolls} onVote={onVote} onUnvote={onUnvote}/>)}</div>
         </DashboardSection>
       )}
 
@@ -9382,6 +9403,17 @@ export default function ClubMemberOrganisationApp() {
     return error ? { error: "Deine Stimme konnte nicht gespeichert werden." } : {};
   };
 
+  /* Stimme zuruecknehmen. Bisher war eine Umfrage eine Einbahnstrasse: einmal
+     getippt, fuer immer festgelegt - auch wenn man danebengegriffen hatte.
+     Geloescht wird nur die eigene Zeile; RLS sorgt dafuer, dass niemand die
+     Stimme eines anderen entfernt. */
+  const stimmeZuruecknehmen = async (pollId) => {
+    if (!supabase || !meinProfil() || typeof pollId !== "string") return { error: "Nicht moeglich." };
+    const { error } = await supabase.from("poll_votes").delete()
+      .eq("poll_id", pollId).eq("profile_id", meinProfil());
+    return error ? { error: "Deine Stimme konnte nicht entfernt werden." } : {};
+  };
+
   const umfrageAnlegen = async (titel, antworten) => {
     if (!supabase || !selectedClubId) return { error: "Nicht moeglich." };
     const { data: umfrage, error } = await supabase.from("polls")
@@ -10572,7 +10604,7 @@ export default function ClubMemberOrganisationApp() {
               {subView === "vehicles" && featureEnabled("vehicle_booking") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Vereinsfahrzeuge"><VehiclesView currentUser={currentUser} currentClub={currentClub} /></LockedFeature>}
 
               {!subView && tab === "home" && (
-                <Dashboard user={currentUser} onFavoritMannschaft={setzeFavoritMannschaft} members={clubMembers} events={events} feePaid={!!feePaid[currentUser.id]} channels={channels} news={vereinsNews} dutyPlan={dutyPlan} seasonVotes={seasonVotes} tippPredictions={tippPredictions} tippResults={tippResults} polls={polls} setPolls={setPolls} onVote={stimmeAbgeben}
+                <Dashboard user={currentUser} onFavoritMannschaft={setzeFavoritMannschaft} members={clubMembers} events={events} feePaid={!!feePaid[currentUser.id]} channels={channels} news={vereinsNews} dutyPlan={dutyPlan} seasonVotes={seasonVotes} tippPredictions={tippPredictions} tippResults={tippResults} polls={polls} setPolls={setPolls} onVote={stimmeAbgeben} onUnvote={stimmeZuruecknehmen}
                   werbeplaetze={werbeplaetze} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick}
                   goEvents={goToMyNextMatch} goSeason={() => setSubView("season")} goTipp={() => setSubView("tipp")} goDuty={() => setSubView("duty")} goTasks={() => setSubView("tasks")} goVehicles={() => setSubView("vehicles")} goNews={currentUserCanEditNews ? goNews : null}
                   currentClub={currentClub} featureEnabled={featureEnabled} dashboardTileOrder={dashboardTileOrder} entitlement={entitlement} goSubscribe={goSubscribe}
