@@ -193,6 +193,28 @@ button:active { transform: scale(0.96); }
 .erg-shell { min-height: 100vh; min-height: 100dvh; padding: 16px; background: #D9D9DF; }
 .erg-frame { max-width: 400px; height: 820px; border-radius: 44px; box-shadow: 0 30px 70px rgba(60,30,45,0.28); }
 
+/* Am Rechner die ganze Flaeche nutzen.
+   Der Telefonrahmen war richtig, solange die Web-Fassung nur eine Vorschau
+   war. Jetzt arbeitet man damit - und 400 Pixel Breite auf einem 27-Zoll-
+   Bildschirm sehen aus, als sei etwas kaputt.
+   Der Inhalt bleibt trotzdem BEGRENZT (860px). Die Ansichten sind einspaltig
+   gebaut; ueber die ganze Breite gezogen entstuenden Zeilen von zwei Metern,
+   die niemand liest. Eine Zeitung macht es genauso: volle Seite, begrenzte
+   Spalte.
+   Der untere Navigationsbalken bleibt mittig und schwebt - er ist die
+   Hauptbewegung und soll dort liegen, wo der Blick ohnehin ist. */
+@media (min-width: 900px) and (hover: hover) and (pointer: fine) {
+  .erg-shell { padding: 0; background: #F7F4F5; }
+  .erg-frame {
+    max-width: none; width: 100%; height: 100vh; height: 100dvh;
+    border-radius: 0; box-shadow: none;
+  }
+  /* Inhalt zentriert und lesbar begrenzt */
+  .erg-frame .px-4 { padding-left: max(24px, calc((100% - 860px) / 2)); padding-right: max(24px, calc((100% - 860px) / 2)); }
+  /* Die schwebende Navigation mittig halten statt ueber die ganze Breite */
+  .erg-navwrap { left: 50% !important; right: auto !important; transform: translateX(-50%); width: min(680px, calc(100% - 48px)); }
+}
+
 /* Milchige Unterseite (Profil-Unterpunkte). Ohne eigene Deckung würde man durch die
    Seite hindurch auf die Liste darunter lesen — die Ebene dahinter soll schemenhaft
    bleiben, aber nicht mitlesbar. */
