@@ -1765,7 +1765,7 @@ function BeitrittsScreen({ club, vorschlagName, onBeitreten, goBack }) {
         {fehler && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-3" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{fehler}</div>}
 
         <button type="submit" disabled={busy} className="w-full py-3 rounded-xl text-sm font-bold" style={{ background: C.ink, color: C.white, fontFamily: "Inter", opacity: busy ? .6 : 1 }}>
-          {busy ? "Wird gesendet …" : "Beitritt anfragen"}
+          {busy ? "Wird gesendet …" : t("verein.beitrittAnfragen")}
         </button>
       </form>
     </AuthShell>
@@ -1848,10 +1848,10 @@ function ClubSelectScreen({ clubs, onSelect, goNewClub, goBack, onAbmelden, onKo
         </div>
       )}
 
-      {/* Kein "Zurück" mehr. Wer hier steht, ist angemeldet und hat noch keinen
+      {/* Kein t("allg.zurueck") mehr. Wer hier steht, ist angemeldet und hat noch keinen
           Verein - zurueck gibt es nichts: Die Anmeldeseite liegt hinter einer
           bestehenden Sitzung und haette nur zu sich selbst zurueckgefuehrt.
-          Der einzige echte Ausweg ist "Abmelden", und der steht oben. */}
+          Der einzige echte Ausweg ist t("allg.abmelden"), und der steht oben. */}
     </div>
   );
 }
@@ -1985,7 +1985,7 @@ function KontoLoeschenBlock({ onDelete }) {
         /* Zurueckhaltend, aber auffindbar. Apple verlangt einen Weg zur
             Kontoloeschung, den ein Pruefer ohne Anleitung findet - deshalb
             steht er hier und nicht drei Ebenen tief. Er muss aber nicht laut
-            sein: Ein roter Kasten neben "Abmelden" laesst zwei harmlose
+            sein: Ein roter Kasten neben t("allg.abmelden") laesst zwei harmlose
             Handlungen gleich schwer aussehen. Als Textlink bleibt er
             erreichbar, ohne sich anzubieten. Die Rueckfrage danach ist
             unveraendert deutlich. */
@@ -2116,7 +2116,7 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub, offeneS
     >
       <div className="flex items-center justify-between mb-5">
         <div className="text-xl" style={{ fontFamily: "Oswald", fontWeight: 600, color: C.ink }}>{uebersetzung("login.willkommen")}</div>
-        {/* "Verein wechseln" gibt es nur, wenn ueberhaupt einer gewaehlt ist.
+        {/* t("verein.wechseln") gibt es nur, wenn ueberhaupt einer gewaehlt ist.
             Seit die Anmeldung vorn steht, ist das der Ausnahmefall - man kommt
             nur noch ueber die Vereinssuche hierher. */}
         {club && <button onClick={goChangeClub} className="text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>{t("verein.wechseln")}</button>}
@@ -2221,7 +2221,7 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
   /* Ohne vorgewaehlten Verein wird nur das KONTO angelegt. Der Verein kommt
      danach - genau in der Reihenfolge, in der die App seit dem Umbau
      funktioniert: erst anmelden, dann Verein waehlen.
-     Vorher fuehrte "Jetzt registrieren" ohne Verein in die Vereinssuche. Das
+     Vorher fuehrte t("login.registrieren") ohne Verein in die Vereinssuche. Das
      war zwar kein Absturz mehr, aber auch nicht das, was der Knopf verspricht:
      Wer ein Konto anlegen will, will ein Formular sehen, keine Vereinsliste. */
   const ohneVerein = !club?.id;
@@ -2243,11 +2243,11 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
        Pflichtfelder aus" vor einem sichtbar vollstaendigen Formular ist kein
        Hinweis, sondern ein Raetsel. */
     const fehlt = [
-      [!form.firstName.trim(), "Vorname"],
-      [!form.lastName.trim(), "Nachname"],
-      [!form.email.trim(), "E-Mail-Adresse"],
+      [!form.firstName.trim(), t("reg.vorname")],
+      [!form.lastName.trim(), t("reg.nachname")],
+      [!form.email.trim(), t("login.email")],
       [!form.birthdate, "Geburtsdatum"],
-      [!form.password, "Passwort"],
+      [!form.password, t("login.passwort")],
     ].filter(([leer]) => leer).map(([, bezeichnung]) => bezeichnung);
     if (fehlt.length) {
       setError(fehlt.length === 1
@@ -2344,7 +2344,7 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
       </div>
 
       <form onSubmit={submit}>
-        {/* Getrennte Felder statt eines einzigen "Vor- und Nachname".
+        {/* Getrennte Felder statt eines einzigen t("feld.vollerName").
             Mit einem Feld schrieben Leute alles Moegliche hinein oder liessen
             es leer - dann fiel der Code auf den Teil der E-Mail vor dem @
             zurueck, und auf der Startseite stand "Hallo marcoaleixo004".
@@ -2401,7 +2401,7 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
         {notice && <div className="flex items-center gap-1.5 text-xs mb-3" style={{ color: C.erfolg, fontFamily: "Inter" }}><CheckCircle2 size={13} /> {notice}</div>}
 
         <button type="submit" disabled={busy || !legalAccepted} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm" style={{ background: C.red, color: C.aufPrimaer, fontFamily: "Inter", fontWeight: 700, opacity: (busy || !legalAccepted) ? 0.65 : 1 }}>
-          <UserPlus size={15} /> {busy ? "Konto wird erstellt …" : "Konto erstellen"}
+          <UserPlus size={15} /> {busy ? "Konto wird erstellt …" : t("reg.titel")}
         </button>
       </form>
       <div className="text-[11px] mt-4 text-center" style={{ color: C.textDim, fontFamily: "Inter" }}>{isSupabaseConfigured ? "Sichere Registrierung über Supabase" : "Demo-Prototyp — es werden keine echten Daten übertragen."}</div>
@@ -2886,7 +2886,7 @@ function Dashboard({ user, members, events, feePaid, channels, news, dutyPlan, s
        solange man in keinen Helferdienst eingeteilt ist, also im Normalfall.
        Das warf beim Rendern der Startseite und liess sie weiss. */
     const zugehoeriger = assigned ? (events || []).find((e) => String(e.id) === String(assigned.eid)) : null;
-    dutySubtitle = assigned && zugehoeriger ? `${assigned.station} · ${formatDate(zugehoeriger.date)}` : assigned ? assigned.station : "Jetzt eintragen";
+    dutySubtitle = assigned && zugehoeriger ? `${assigned.station} · ${formatDate(zugehoeriger.date)}` : assigned ? assigned.station : t("allg.jetztEintragen");
   }
 
   return (
@@ -3159,14 +3159,14 @@ function HelperSlots({ ev, members, currentUser, dutyPlan, setDutyPlan, eligible
                   <span>· {list.length}/{STATION_CAP}</span>
                 </div>
               ) : (
-                <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{names.length ? names.join(", ") : "Noch niemand eingetragen"} · {list.length}/{STATION_CAP}</div>
+                <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{names.length ? names.join(", ") : t("helf.niemand")} · {list.length}/{STATION_CAP}</div>
               )}
             </div>
             {eligible && (
               <button onClick={() => toggleHelperSelf(setDutyPlan, ev.id, station, currentUser.id, onSetzen)} disabled={!imIn && full}
                 className="px-2.5 py-1 rounded-full text-[11px] flex-shrink-0"
                 style={{ fontFamily: "Inter", fontWeight: 700, background: imIn ? C.secondary : full ? C.paperDim : C.ink, color: imIn ? "#fff" : full ? C.textDim : "#fff" }}>
-                {imIn ? "Eingetragen ✓" : full ? "Voll" : "Übernehmen"}
+                {imIn ? "Eingetragen ✓" : full ? "Voll" : t("allg.uebernehmen")}
               </button>
             )}
           </div>
@@ -3543,7 +3543,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
   const filterTeams = [...new Set(events.map((e) => e.team).filter(Boolean))].sort((a, b) => a.localeCompare(b, "de"));
 
   /* Der Filter ist immer sichtbar. Frueher erschien er erst, nachdem man auf
-     "Spiele" oder "Training" umgeschaltet hatte - in der Voreinstellung "alle",
+     "Spiele" oder t("ev.training") umgeschaltet hatte - in der Voreinstellung "alle",
      also genau dort, wo man ihn sucht, war er unsichtbar. */
   const teamFilterActive = filterTeams.length > 1;
 
@@ -3878,7 +3878,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
       <SponsorSlot slotKey="events_header" bookings={werbeplaetze} onImpression={onSponsorImpression} onClick={onSponsorClick} visible={featureEnabled("sponsor_events_header")} />
       <div className="flex items-center gap-2 mb-3">
         <div className="flex gap-2 overflow-x-auto pb-1 flex-1 min-w-0" style={{ scrollbarWidth: "none" }}>
-          {[["alle", "Alle"], ["training", "Training"], ["spiel", "Spiele"], ["event", "Events"]].map(([k, l]) => (
+          {[["alle", "Alle"], ["training", t("ev.training")], ["spiel", "Spiele"], ["event", "Events"]].map(([k, l]) => (
             <button key={k} onClick={() => setFilter(k)} className="px-3 py-1.5 rounded-full text-xs flex-shrink-0"
               style={{ fontFamily: "Inter", fontWeight: 700, background: filter === k ? C.ink : C.paperDim, color: filter === k ? C.white : C.textDim }}>{l}</button>
           ))}
@@ -3959,7 +3959,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
 function FeesView({ members, records, setRecords }) {
   const t = useT();
   const [selectedMemberId, setSelectedMemberId] = useState(null);
-  const [form, setForm] = useState({ year: "2026", type: "Mitgliedsbeitrag", amount: "", paid: "offen", invoiceNumber: "", linkedMemberIds: [], manualNames: "", personCount: "1" });
+  const [form, setForm] = useState({ year: "2026", type: t("bei.mitglied"), amount: "", paid: "offen", invoiceNumber: "", linkedMemberIds: [], manualNames: "", personCount: "1" });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const selectedMember = members.find((member) => member.id === selectedMemberId);
@@ -4059,7 +4059,7 @@ function FeesView({ members, records, setRecords }) {
                 )}
               </div>
             )}
-            <div className="mt-2 flex items-center gap-2"><button onClick={() => togglePaid(record)} className="px-2.5 py-1 rounded-full text-[11px]" style={{ background: record.paid ? C.erfolgFlaeche : C.fehlerFlaeche, color: record.paid ? C.erfolg : C.fehler, fontWeight: 700 }}>{record.paid ? "Bezahlt ✓" : "Noch nicht bezahlt"}</button><button onClick={() => deleteRecord(record)} className="px-2.5 py-1 rounded-full text-[11px]" style={{ background:C.paperDim,color:C.textDim,fontWeight:700 }}>{t("allg.loeschen")}</button></div>
+            <div className="mt-2 flex items-center gap-2"><button onClick={() => togglePaid(record)} className="px-2.5 py-1 rounded-full text-[11px]" style={{ background: record.paid ? C.erfolgFlaeche : C.fehlerFlaeche, color: record.paid ? C.erfolg : C.fehler, fontWeight: 700 }}>{record.paid ? "Bezahlt ✓" : t("bei.offen")}</button><button onClick={() => deleteRecord(record)} className="px-2.5 py-1 rounded-full text-[11px]" style={{ background:C.paperDim,color:C.textDim,fontWeight:700 }}>{t("allg.loeschen")}</button></div>
           </div>
         ))}
         {memberRecords.length === 0 && <div className="rounded-2xl p-4 text-xs text-center" style={{ background: C.paperDim, color: C.textDim }}>{t("bei.keineDaten")}</div>}
@@ -4355,7 +4355,7 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
           /* Nach Kennung vergleichen, nicht nach Namen: Datenbank-Nachrichten
              tragen den Namen aus profiles, der angemeldete Nutzer seinen
              Anzeigenamen aus der Mitgliedschaft. Weichen die ab, erschienen
-             eigene Nachrichten als fremde - samt "Melden" und "Blockieren" an
+             eigene Nachrichten als fremde - samt t("chat.melden") und t("chat.blockieren") an
              der eigenen Nachricht. Der Namensvergleich bleibt als Rueckfall
              fuer den Demo-Betrieb ohne Datenbank. */
           const mine = m.authorId ? m.authorId === user.authProfileId : m.who === user.name;
@@ -4549,7 +4549,7 @@ function RedaktionView({ user, news, setNews }) {
           </label>
           {imageUrl && <img src={imageUrl} alt="" className="w-full rounded-lg" style={{ maxHeight: 160, objectFit: "cover" }} />}
           <div className="flex gap-2">
-            <button onClick={publish} disabled={saving || !title.trim() || !text.trim()} className="flex-1 py-2.5 rounded-lg text-xs" style={{ background: C.red, color: C.aufPrimaer, fontFamily: "Inter", fontWeight: 700, opacity: (saving || !title.trim() || !text.trim()) ? 0.5 : 1 }}>{saving ? "Wird gespeichert …" : editingPost ? "Änderungen speichern" : "Veröffentlichen"}</button>
+            <button onClick={publish} disabled={saving || !title.trim() || !text.trim()} className="flex-1 py-2.5 rounded-lg text-xs" style={{ background: C.red, color: C.aufPrimaer, fontFamily: "Inter", fontWeight: 700, opacity: (saving || !title.trim() || !text.trim()) ? 0.5 : 1 }}>{saving ? "Wird gespeichert …" : editingPost ? "Änderungen speichern" : t("allg.veroeffentlichen")}</button>
             <button disabled={saving} onClick={cancelForm} className="px-4 py-2.5 rounded-lg text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter", fontWeight: 700 }}>{t("allg.abbrechen")}</button>
           </div>
         </div>
@@ -4683,7 +4683,7 @@ function FamilyLinkManager({ user, members, setMembers, adminMode = false }) {
     setSaving(false);
   };
   return <div className="rounded-2xl p-4 mb-5" style={{background:C.glass,border:`1px solid ${C.line}`}}>
-    <div className="flex items-center justify-between"><div><div className="text-sm font-bold" style={{color:C.ink}}>{t("fam.verknuepfung")}</div><div className="text-[11px]" style={{color:C.textDim}}>{adminMode ? `Sysadmin bearbeitet das Profil von ${user.name}.` : "Du verwaltest dein Familienprofil selbst."} Verknüpfungen gelten automatisch für beide Profile.</div></div><button disabled={saving} onClick={()=>setOpen(!open)} className="px-3 py-1.5 rounded-full text-xs font-bold" style={{background:C.paperDim,color:C.ink}}>{open?"Schließen":"＋ Verknüpfen"}</button></div>
+    <div className="flex items-center justify-between"><div><div className="text-sm font-bold" style={{color:C.ink}}>{t("fam.verknuepfung")}</div><div className="text-[11px]" style={{color:C.textDim}}>{adminMode ? `Sysadmin bearbeitet das Profil von ${user.name}.` : "Du verwaltest dein Familienprofil selbst."} Verknüpfungen gelten automatisch für beide Profile.</div></div><button disabled={saving} onClick={()=>setOpen(!open)} className="px-3 py-1.5 rounded-full text-xs font-bold" style={{background:C.paperDim,color:C.ink}}>{open?t("allg.schliessen"):"＋ Verknüpfen"}</button></div>
     {message&&<div className="mt-2 text-[11px] font-semibold" style={{color:C.red}}>{message}</div>}
     {familyConnections.length>0&&<div className="mt-3 pt-3 space-y-1.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] font-bold mb-1" style={{color:C.textDim}}>BESTEHENDE VERKNÜPFUNGEN</div>{familyConnections.map((member)=><div key={member.id} className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{background:C.paperDim}}><div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold" style={{background:member.color,color:C.white}}>{initialsOf(member.name)}</div><div className="flex-1 min-w-0"><div className="text-xs font-bold truncate" style={{color:C.ink}}>{member.name}</div><div className="text-[10px]" style={{color:C.textDim}}>{member.familyRole||"Familie"}</div></div><button onClick={()=>removeConnection(member)} className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold" style={{background:C.fehlerFlaeche,color:C.fehler}}>{t("allg.loeschen")}</button></div>)}</div>}
     {open&&<div className="mt-3 pt-3" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[11px] font-bold mb-1">{t("fam.rolle")}</div><select value={relationMode} onChange={(e)=>{setRelationMode(e.target.value);setQuery("");}} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim}}><option value="eltern">Elternteil – Athlet/in oder Kind hinzufügen</option><option value="kind">Athlet/in / Kind – Elternteil hinzufügen</option></select><input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder={userIsParent?"Vorhandenen Athlet/in suchen …":"Vorhandenes Elternteil suchen …"} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim}}/>{query&&<div className="space-y-1">{results.map(m=><button key={m.id} onClick={()=>connect(m.id)} className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs" style={{background:C.paperDim,color:C.ink}}><span>{m.name} · {m.team}</span><span style={{color:C.red}}>{t("fam.verbinden")}</span></button>)}{results.length===0&&<div className="text-[11px] py-2" style={{color:C.textDim}}>{t("fam.keinProfil")}</div>}</div>}{userIsParent&&<div className="mt-3 pt-3" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[11px] font-bold mb-2">{t("fam.kindAnlegen")}</div><div className="flex gap-2"><input value={newName} onChange={(e)=>setNewName(e.target.value)} placeholder={t("feld.vollerName")} className="flex-1 px-3 py-2 rounded-lg text-xs outline-none" style={{background:C.paperDim}}/><button onClick={createDependent} disabled={!newName.trim()} className="px-3 rounded-lg text-xs font-bold" style={{background:newName.trim()?C.red:C.line,color:"#fff"}}>{t("allg.anlegen")}</button></div><div className="text-[10px] mt-2" style={{color:C.textDim}}>Das Kind kann sein vorläufiges Profil später beim Erstellen des eigenen Kontos übernehmen.</div></div>}</div>}
@@ -4950,7 +4950,7 @@ function TeamsView({ currentUser, members, setMembers, currentClub }) {
     setLoading(true); setMessage("");
     if (!databaseMembership) {
       const names = [...new Set([...TEAMS.filter((team) => team !== "Eltern / Angehörige"), ...members.flatMap((member) => memberPlayerTeams(member))])];
-      setTeams((current) => names.map((teamName) => current.find((team) => team.name === teamName) || { id: teamName, name: teamName, category: "Mannschaft" }));
+      setTeams((current) => names.map((teamName) => current.find((team) => team.name === teamName) || { id: teamName, name: teamName, category: t("tm.mannschaft") }));
       setLoading(false); return;
     }
     const { data, error } = await supabase.from("teams").select("id,name,category,active").eq("club_id", currentUser.clubId).eq("active", true).order("name");
@@ -5035,7 +5035,7 @@ function TeamsView({ currentUser, members, setMembers, currentClub }) {
       createdId = data;
       await loadTeams();
     } else {
-      setTeams((current) => [...current, { id: createdId, name: name.trim(), category: category.trim() || "Mannschaft", is_adult: isAdultTeam }].sort((a, b) => a.name.localeCompare(b.name, "de")));
+      setTeams((current) => [...current, { id: createdId, name: name.trim(), category: category.trim() || t("tm.mannschaft"), is_adult: isAdultTeam }].sort((a, b) => a.name.localeCompare(b.name, "de")));
     }
     setName(""); setCategory(""); setIsAdultTeam(false); setShowCreate(false); setSelectedTeamId(createdId); setMessage("Mannschaft wurde angelegt."); setSaving(false);
   };
@@ -5050,7 +5050,7 @@ function TeamsView({ currentUser, members, setMembers, currentClub }) {
       if (error) { setMessage(error.message?.includes("already exists") ? "Diese Mannschaft ist bereits vorhanden." : "Die Mannschaft konnte nicht geändert werden."); setSavingTeamEdit(false); return; }
       await loadTeams();
     } else {
-      setTeams((current) => current.map((team) => team.id === selectedTeam.id ? { ...team, name: editName.trim(), category: editCategory.trim() || "Mannschaft" } : team));
+      setTeams((current) => current.map((team) => team.id === selectedTeam.id ? { ...team, name: editName.trim(), category: editCategory.trim() || t("tm.mannschaft") } : team));
     }
     setEditingTeam(false); setMessage("Mannschaft wurde geändert."); setSavingTeamEdit(false);
   };
@@ -5067,16 +5067,16 @@ function TeamsView({ currentUser, members, setMembers, currentClub }) {
   };
   const TeamCard = ({ team }) => {
     const roster = rosterFor(team); const own = ownNames.includes(team.name);
-    return <button onClick={() => setSelectedTeamId(team.id)} className="w-full flex items-center gap-3 rounded-2xl px-3.5 py-3 text-left" style={{ background: C.glass, border: own ? `1px solid ${C.secondary}` : `1px solid ${C.line}` }}><div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: own ? C.erfolgFlaeche : C.paperDim, color: own ? C.erfolg : C.fehler }}><Users size={18}/></div><div className="flex-1 min-w-0"><div className="text-sm font-bold truncate" style={{ color: C.ink }}>{team.name}</div><div className="text-[11px]" style={{ color: C.textDim }}>{team.category || "Mannschaft"} · {roster.length} Athlet{roster.length === 1 ? "" : "/innen"}</div></div>{own && <span className="text-[9px] font-bold px-2 py-1 rounded-full" style={{ background: C.erfolgFlaeche, color: C.erfolg }}>MEIN TEAM</span>}<ChevronRight size={15} style={{ color: C.textDim }}/></button>;
+    return <button onClick={() => setSelectedTeamId(team.id)} className="w-full flex items-center gap-3 rounded-2xl px-3.5 py-3 text-left" style={{ background: C.glass, border: own ? `1px solid ${C.secondary}` : `1px solid ${C.line}` }}><div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: own ? C.erfolgFlaeche : C.paperDim, color: own ? C.erfolg : C.fehler }}><Users size={18}/></div><div className="flex-1 min-w-0"><div className="text-sm font-bold truncate" style={{ color: C.ink }}>{team.name}</div><div className="text-[11px]" style={{ color: C.textDim }}>{team.category || t("tm.mannschaft")} · {roster.length} Athlet{roster.length === 1 ? "" : "/innen"}</div></div>{own && <span className="text-[9px] font-bold px-2 py-1 rounded-full" style={{ background: C.erfolgFlaeche, color: C.erfolg }}>MEIN TEAM</span>}<ChevronRight size={15} style={{ color: C.textDim }}/></button>;
   };
 
   return <div className="px-4 pt-4 pb-24">
-    <SectionTitle eyebrow="Verein" title="Teams" right={canCreate ? <button onClick={() => setShowCreate((value) => !value)} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showCreate ? "Schließen" : "+ Team"}</button> : null}/>
+    <SectionTitle eyebrow="Verein" title="Teams" right={canCreate ? <button onClick={() => setShowCreate((value) => !value)} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showCreate ? t("allg.schliessen") : "+ Team"}</button> : null}/>
     <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>Alle Mannschaften von {currentClub?.shortName}. Öffne ein Team, um den Athletenkader anzusehen.</div>
     {showCreate && <form onSubmit={createTeam} className="rounded-2xl p-4 mb-5" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>{t("tm.neuAnlegen")}</div><div className="text-[11px] mb-3" style={{ color: C.textDim }}>Danach können Athlet/innen das Team in ihrem Profil auswählen.</div><input value={name} onChange={(event) => setName(event.target.value)} maxLength={80} placeholder={t("ph.mannschaftsnameBsp")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}/><input value={category} onChange={(event) => setCategory(event.target.value)} maxLength={80} placeholder={t("ph.kategorieBeispiel")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}/><button type="button" onClick={() => setIsAdultTeam((v) => !v)} className="w-full flex items-center justify-between rounded-xl px-3 py-2.5 mb-2" style={{ background: isAdultTeam ? C.fehlerFlaeche : C.paperDim, border: isAdultTeam ? `1px solid ${C.red}` : "1px solid transparent" }}><div className="text-left"><div className="text-xs font-bold" style={{ color: C.ink }}>{t("tm.erwachsene")}</div><div className="text-[10px]" style={{ color: C.textDim }}>Nur dann gibt es Strafenkatalog & Zuweisungen für dieses Team.</div></div><span className="w-10 h-6 rounded-full flex items-center px-0.5" style={{ background: isAdultTeam ? C.red : C.line, justifyContent: isAdultTeam ? "flex-end" : "flex-start" }}><span className="w-5 h-5 rounded-full" style={{ background: C.glass }}/></span></button><button disabled={saving || !name.trim()} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: name.trim() ? C.red : C.line, color: C.white }}>{saving ? "Wird angelegt …" : "Mannschaft anlegen"}</button></form>}
     {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: (message.includes("angelegt")||message.includes("geändert")||message.includes("archiviert")) ? C.erfolgFlaeche : C.fehlerFlaeche, color: (message.includes("angelegt")||message.includes("geändert")||message.includes("archiviert")) ? C.erfolg : C.fehler }}>{message}</div>}
-    {selectedTeam ? <div><button onClick={() => { setSelectedTeamId(""); setShowPlayerPicker(false); setEditingTeam(false); }} className="flex items-center gap-1 text-xs font-bold mb-3" style={{ color: C.fehler }}><ArrowLeft size={14}/> Alle Teams</button><div className="rounded-2xl p-4 mb-4" style={{ background: C.ink, color: C.white }}><div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: C.textDim }}>{selectedTeam.category || "Mannschaft"}</div><div className="text-xl font-bold" style={{ fontFamily: "Oswald" }}>{selectedTeam.name}</div><div className="text-xs mt-1" style={{ color: C.textDim }}>{rosterFor(selectedTeam).length} verknüpfte Athlet/innen</div></div>{canCreate && !editingTeam && <div className="flex gap-2 mb-4"><button onClick={() => openEditTeam(selectedTeam)} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>{t("allg.bearbeiten")}</button><button onClick={archiveTeam} disabled={archivingTeam} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{archivingTeam ? "…" : "Archivieren"}</button></div>}{canCreate && editingTeam && <div className="rounded-2xl p-3.5 mb-4" style={{ background: C.paperDim }}><input value={editName} onChange={(e) => setEditName(e.target.value)} maxLength={80} placeholder={t("ph.mannschaftsname")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.glass }}/><input value={editCategory} onChange={(e) => setEditCategory(e.target.value)} maxLength={80} placeholder={t("ph.kategorie")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.glass }}/><div className="flex gap-2"><button onClick={saveTeamEdit} disabled={savingTeamEdit} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{savingTeamEdit ? "…" : "Speichern"}</button><button onClick={() => setEditingTeam(false)} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>{t("allg.abbrechen")}</button></div></div>}<SectionTitle eyebrow="Kader" title="Athlet/innen" right={canAssignPlayers ? <button onClick={() => setShowPlayerPicker((value) => !value)} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showPlayerPicker ? "Schließen" : "+ Zuweisen"}</button> : null}/>{showPlayerPicker && <div className="rounded-2xl p-3 mb-4" style={{ background: C.paperDim }}><div className="text-[11px] mb-2" style={{ color: C.textDim }}>Athlet/in auswählen und anschließend seine Mannschaften festlegen.</div>{!showNewPlayer ? <button type="button" onClick={() => setShowNewPlayer(true)} className="w-full flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 mb-2 text-[11px] font-bold" style={{ background: C.glass, color: C.fehler, border: `1px dashed ${C.red}` }}><Plus size={13}/> Spieler ohne Account anlegen</button> : <div className="rounded-xl p-2.5 mb-2" style={{ background: C.glass }}><div className="text-[10px] mb-1.5" style={{ color: C.textDim }}>Für Athlet/innen ohne eigenes Handy/Konto (z. B. Kindermannschaften). Vorname und Nachname reichen — die Verknüpfung mit einem Elternteil erfolgt separat in den Familienprofilen.</div><input value={newPlayerName} onChange={(e) => setNewPlayerName(e.target.value)} placeholder={t("feld.vollerName")} className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2" style={{ background: C.paperDim }}/><div className="flex gap-2"><button type="button" onClick={() => { setShowNewPlayer(false); setNewPlayerName(""); }} className="flex-1 py-2 rounded-lg text-[11px] font-bold" style={{ background: C.paperDim, color: C.ink }}>{t("allg.abbrechen")}</button><button type="button" disabled={creatingPlayer || !newPlayerName.trim()} onClick={createPlayerWithoutAccount} className="flex-1 py-2 rounded-lg text-[11px] font-bold" style={{ background: newPlayerName.trim() ? C.ink : C.line, color: C.white }}>{creatingPlayer ? "…" : "Anlegen"}</button></div></div>}<div className="space-y-1.5 max-h-56 overflow-y-auto">{players.map((player) => <button key={player.id} onClick={() => openPlayer(player)} className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-left" style={{ background: C.glass }}><div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold" style={{ background: player.color, color: C.white }}>{initialsOf(player.name)}</div><div className="flex-1"><div className="text-xs font-bold" style={{ color: C.ink }}>{player.name}</div><div className="text-[9px]" style={{ color: C.textDim }}>{memberPlayerTeams(player).join(" · ") || "Noch ohne Mannschaft"}</div></div><ChevronRight size={13} style={{ color: C.textDim }}/></button>)}</div></div>}{rosterFor(selectedTeam).length ? <div className="space-y-2">{rosterFor(selectedTeam).map((player) => <button key={player.id} onClick={() => openPlayer(player)} className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: player.color, color: C.white }}>{initialsOf(player.name)}</div><div className="flex-1"><div className="text-xs font-bold" style={{ color: C.ink }}>{player.name}</div><div className="text-[10px]" style={{ color: C.textDim }}>{memberPlayerTeams(player).join(" · ")}</div></div><ChevronRight size={14} style={{ color: C.textDim }}/></button>)}</div> : <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>Dieser Mannschaft sind noch keine Athlet/innen zugeordnet.</div>}</div> : loading ? <div className="text-xs py-4" style={{ color: C.textDim }}>{t("tm.laden")}</div> : <><SectionTitle eyebrow="Persönlich" title="Meine Teams"/><div className="space-y-2 mb-6">{ownTeams.length ? ownTeams.map((team) => <TeamCard key={team.id} team={team}/>) : <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>Du bist noch keiner Mannschaft als Athlet/in zugeordnet. Athlet/innen können im Profil bis zu drei Teams auswählen.</div>}</div><SectionTitle eyebrow="Vereinsübersicht" title="Alle Mannschaften"/><div className="space-y-2">{teams.map((team) => <TeamCard key={team.id} team={team}/>)}{teams.length === 0 && <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>{t("tm.keine")}</div>}</div></>}
-    {selectedPlayer && <div className="absolute inset-0 z-50 flex items-end p-3" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setSelectedPlayerId("")}><div role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()} className="w-full rounded-3xl p-5 max-h-[82%] overflow-y-auto" style={{ background: C.glass }}><div className="flex items-start justify-between mb-4"><div className="flex items-center gap-3"><div className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold" style={{ background: selectedPlayer.color, color: C.white }}>{initialsOf(selectedPlayer.name)}</div><div><div className="text-lg font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{selectedPlayer.name}</div><div className="text-xs" style={{ color: C.textDim }}>Athlet/in · dabei seit {selectedPlayer.since}</div></div></div><button onClick={() => setSelectedPlayerId("")} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><X size={15}/></button></div><div className="flex items-center justify-between mb-2"><div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.textDim }}>{t("tm.mannschaften")}</div>{canAssignPlayers && <span className="text-[10px] font-bold" style={{ color: playerTeamIds.length === 3 ? C.red : C.textDim }}>{playerTeamIds.length}/3</span>}{canAssignPlayers && <button type="button" onClick={() => setTeamsOpen((v) => !v)} className="p-1"><ChevronRight size={14} style={{ color: C.textDim, transform: teamsOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .15s" }}/></button>}</div>{canAssignPlayers ? (teamsOpen && <div className="space-y-2">{teams.map((team) => { const active = playerTeamIds.includes(team.id); return <button key={team.id} onClick={() => togglePlayerTeam(team.id)} className="w-full flex items-center justify-between rounded-xl px-3 py-2.5 text-left" style={{ background: active ? C.erfolgFlaeche : C.paperDim, border: active ? `1px solid ${C.secondary}` : "1px solid transparent" }}><div><div className="text-xs font-bold" style={{ color: C.ink }}>{team.name}</div><div className="text-[9px]" style={{ color: C.textDim }}>{team.category || "Mannschaft"}</div></div><span className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: active ? C.secondary : C.white, color: C.white }}>{active && <Check size={13}/>}</span></button>; })}<button onClick={savePlayerTeams} disabled={savingPlayer || JSON.stringify([...playerTeamIds].sort()) === JSON.stringify([...savedPlayerTeamIds].sort())} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: JSON.stringify([...playerTeamIds].sort()) !== JSON.stringify([...savedPlayerTeamIds].sort()) ? C.ink : C.paperDim, color: JSON.stringify([...playerTeamIds].sort()) !== JSON.stringify([...savedPlayerTeamIds].sort()) ? C.white : C.textDim, opacity: savingPlayer ? .6 : 1 }}>{savingPlayer ? "Wird gespeichert …" : "Zuordnung speichern"}</button>{playerMessage && <div role="status" className="text-[11px]" style={{ color: playerMessage.includes("gespeichert") ? C.erfolg : C.fehler }}>{playerMessage}</div>}</div>) : <div className="flex flex-wrap gap-2">{memberPlayerTeams(selectedPlayer).length ? memberPlayerTeams(selectedPlayer).map((team) => <span key={team} className="px-3 py-1.5 rounded-full text-xs font-bold" style={{ background: C.erfolgFlaeche, color: C.erfolg }}>{team}</span>) : <span className="text-xs" style={{ color: C.textDim }}>{t("tm.keineZuordnungKurz")}</span>}</div>}{canManagePenalties && (<div className="mt-4 pt-4" style={{ borderTop: `1px solid ${C.line}` }}><button type="button" onClick={() => setPenaltyOpen((v) => !v)} className="w-full flex items-center justify-between mb-2"><div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.textDim }}>{t("straf.verwaltung")}</div><ChevronRight size={14} style={{ color: C.textDim, transform: penaltyOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .15s" }}/></button>{penaltyOpen && (<><div className="flex gap-2 mb-3"><select value={assignRuleId} onChange={(e) => setAssignRuleId(e.target.value)} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}><option value="">{t("straf.waehlen")}</option>{penaltyRules.map((r) => <option key={r.id} value={r.id}>{r.title} ({r.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €)</option>)}</select><button onClick={assignPenaltyToPlayer} disabled={assigningPenalty || !assignRuleId} className="px-4 rounded-xl text-xs font-bold" style={{ background: assignRuleId ? C.ink : C.line, color: C.white }}>{assigningPenalty ? "…" : "Zuweisen"}</button></div>{penaltyMessage && <div role="status" className="text-[11px] mb-2" style={{ color: penaltyMessage.includes("zugewiesen") ? C.erfolg : C.fehler }}>{penaltyMessage}</div>}<div className="text-[10px] uppercase tracking-widest font-bold mb-1.5" style={{ color: C.textDim }}>{t("straf.bisherige")}</div><div className="space-y-1.5">{playerPenalties.map((p) => <div key={p.id} className="flex items-center justify-between px-3 py-2 rounded-xl" style={{ background: C.paperDim }}><span className="text-xs font-bold" style={{ color: C.ink }}>{p.title}</span><span className="text-xs font-bold" style={{ color: C.red, fontFamily: "JetBrains Mono" }}>{p.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span><button type="button" onClick={() => togglePlayerPenaltyPaid(p)} className="px-2 py-1 rounded-lg text-[9px] font-bold flex-shrink-0" style={{ background: p.paidAt ? C.erfolgFlaeche : C.white, color: p.paidAt ? C.secondary : C.textDim }}>{p.paidAt ? "Bezahlt" : "Offen"}</button><button type="button" onClick={() => removePlayerPenalty(p)} aria-label={t("aria.strafeEntfernen")} className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.glass, color: C.red }}><X size={12}/></button></div>)}{playerPenalties.length === 0 && <div className="text-[11px]" style={{ color: C.textDim }}>{t("straf.keine")}</div>}</div></>)}</div>)}</div></div>}
+    {selectedTeam ? <div><button onClick={() => { setSelectedTeamId(""); setShowPlayerPicker(false); setEditingTeam(false); }} className="flex items-center gap-1 text-xs font-bold mb-3" style={{ color: C.fehler }}><ArrowLeft size={14}/> Alle Teams</button><div className="rounded-2xl p-4 mb-4" style={{ background: C.ink, color: C.white }}><div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: C.textDim }}>{selectedTeam.category || t("tm.mannschaft")}</div><div className="text-xl font-bold" style={{ fontFamily: "Oswald" }}>{selectedTeam.name}</div><div className="text-xs mt-1" style={{ color: C.textDim }}>{rosterFor(selectedTeam).length} verknüpfte Athlet/innen</div></div>{canCreate && !editingTeam && <div className="flex gap-2 mb-4"><button onClick={() => openEditTeam(selectedTeam)} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>{t("allg.bearbeiten")}</button><button onClick={archiveTeam} disabled={archivingTeam} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{archivingTeam ? "…" : "Archivieren"}</button></div>}{canCreate && editingTeam && <div className="rounded-2xl p-3.5 mb-4" style={{ background: C.paperDim }}><input value={editName} onChange={(e) => setEditName(e.target.value)} maxLength={80} placeholder={t("ph.mannschaftsname")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.glass }}/><input value={editCategory} onChange={(e) => setEditCategory(e.target.value)} maxLength={80} placeholder={t("ph.kategorie")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.glass }}/><div className="flex gap-2"><button onClick={saveTeamEdit} disabled={savingTeamEdit} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{savingTeamEdit ? "…" : t("allg.speichern")}</button><button onClick={() => setEditingTeam(false)} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>{t("allg.abbrechen")}</button></div></div>}<SectionTitle eyebrow="Kader" title="Athlet/innen" right={canAssignPlayers ? <button onClick={() => setShowPlayerPicker((value) => !value)} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showPlayerPicker ? t("allg.schliessen") : "+ Zuweisen"}</button> : null}/>{showPlayerPicker && <div className="rounded-2xl p-3 mb-4" style={{ background: C.paperDim }}><div className="text-[11px] mb-2" style={{ color: C.textDim }}>Athlet/in auswählen und anschließend seine Mannschaften festlegen.</div>{!showNewPlayer ? <button type="button" onClick={() => setShowNewPlayer(true)} className="w-full flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 mb-2 text-[11px] font-bold" style={{ background: C.glass, color: C.fehler, border: `1px dashed ${C.red}` }}><Plus size={13}/> Spieler ohne Account anlegen</button> : <div className="rounded-xl p-2.5 mb-2" style={{ background: C.glass }}><div className="text-[10px] mb-1.5" style={{ color: C.textDim }}>Für Athlet/innen ohne eigenes Handy/Konto (z. B. Kindermannschaften). Vorname und Nachname reichen — die Verknüpfung mit einem Elternteil erfolgt separat in den Familienprofilen.</div><input value={newPlayerName} onChange={(e) => setNewPlayerName(e.target.value)} placeholder={t("feld.vollerName")} className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2" style={{ background: C.paperDim }}/><div className="flex gap-2"><button type="button" onClick={() => { setShowNewPlayer(false); setNewPlayerName(""); }} className="flex-1 py-2 rounded-lg text-[11px] font-bold" style={{ background: C.paperDim, color: C.ink }}>{t("allg.abbrechen")}</button><button type="button" disabled={creatingPlayer || !newPlayerName.trim()} onClick={createPlayerWithoutAccount} className="flex-1 py-2 rounded-lg text-[11px] font-bold" style={{ background: newPlayerName.trim() ? C.ink : C.line, color: C.white }}>{creatingPlayer ? "…" : t("allg.anlegen")}</button></div></div>}<div className="space-y-1.5 max-h-56 overflow-y-auto">{players.map((player) => <button key={player.id} onClick={() => openPlayer(player)} className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-left" style={{ background: C.glass }}><div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold" style={{ background: player.color, color: C.white }}>{initialsOf(player.name)}</div><div className="flex-1"><div className="text-xs font-bold" style={{ color: C.ink }}>{player.name}</div><div className="text-[9px]" style={{ color: C.textDim }}>{memberPlayerTeams(player).join(" · ") || "Noch ohne Mannschaft"}</div></div><ChevronRight size={13} style={{ color: C.textDim }}/></button>)}</div></div>}{rosterFor(selectedTeam).length ? <div className="space-y-2">{rosterFor(selectedTeam).map((player) => <button key={player.id} onClick={() => openPlayer(player)} className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: player.color, color: C.white }}>{initialsOf(player.name)}</div><div className="flex-1"><div className="text-xs font-bold" style={{ color: C.ink }}>{player.name}</div><div className="text-[10px]" style={{ color: C.textDim }}>{memberPlayerTeams(player).join(" · ")}</div></div><ChevronRight size={14} style={{ color: C.textDim }}/></button>)}</div> : <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>Dieser Mannschaft sind noch keine Athlet/innen zugeordnet.</div>}</div> : loading ? <div className="text-xs py-4" style={{ color: C.textDim }}>{t("tm.laden")}</div> : <><SectionTitle eyebrow="Persönlich" title="Meine Teams"/><div className="space-y-2 mb-6">{ownTeams.length ? ownTeams.map((team) => <TeamCard key={team.id} team={team}/>) : <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>Du bist noch keiner Mannschaft als Athlet/in zugeordnet. Athlet/innen können im Profil bis zu drei Teams auswählen.</div>}</div><SectionTitle eyebrow="Vereinsübersicht" title="Alle Mannschaften"/><div className="space-y-2">{teams.map((team) => <TeamCard key={team.id} team={team}/>)}{teams.length === 0 && <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>{t("tm.keine")}</div>}</div></>}
+    {selectedPlayer && <div className="absolute inset-0 z-50 flex items-end p-3" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setSelectedPlayerId("")}><div role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()} className="w-full rounded-3xl p-5 max-h-[82%] overflow-y-auto" style={{ background: C.glass }}><div className="flex items-start justify-between mb-4"><div className="flex items-center gap-3"><div className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold" style={{ background: selectedPlayer.color, color: C.white }}>{initialsOf(selectedPlayer.name)}</div><div><div className="text-lg font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{selectedPlayer.name}</div><div className="text-xs" style={{ color: C.textDim }}>Athlet/in · dabei seit {selectedPlayer.since}</div></div></div><button onClick={() => setSelectedPlayerId("")} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><X size={15}/></button></div><div className="flex items-center justify-between mb-2"><div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.textDim }}>{t("tm.mannschaften")}</div>{canAssignPlayers && <span className="text-[10px] font-bold" style={{ color: playerTeamIds.length === 3 ? C.red : C.textDim }}>{playerTeamIds.length}/3</span>}{canAssignPlayers && <button type="button" onClick={() => setTeamsOpen((v) => !v)} className="p-1"><ChevronRight size={14} style={{ color: C.textDim, transform: teamsOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .15s" }}/></button>}</div>{canAssignPlayers ? (teamsOpen && <div className="space-y-2">{teams.map((team) => { const active = playerTeamIds.includes(team.id); return <button key={team.id} onClick={() => togglePlayerTeam(team.id)} className="w-full flex items-center justify-between rounded-xl px-3 py-2.5 text-left" style={{ background: active ? C.erfolgFlaeche : C.paperDim, border: active ? `1px solid ${C.secondary}` : "1px solid transparent" }}><div><div className="text-xs font-bold" style={{ color: C.ink }}>{team.name}</div><div className="text-[9px]" style={{ color: C.textDim }}>{team.category || t("tm.mannschaft")}</div></div><span className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: active ? C.secondary : C.white, color: C.white }}>{active && <Check size={13}/>}</span></button>; })}<button onClick={savePlayerTeams} disabled={savingPlayer || JSON.stringify([...playerTeamIds].sort()) === JSON.stringify([...savedPlayerTeamIds].sort())} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: JSON.stringify([...playerTeamIds].sort()) !== JSON.stringify([...savedPlayerTeamIds].sort()) ? C.ink : C.paperDim, color: JSON.stringify([...playerTeamIds].sort()) !== JSON.stringify([...savedPlayerTeamIds].sort()) ? C.white : C.textDim, opacity: savingPlayer ? .6 : 1 }}>{savingPlayer ? "Wird gespeichert …" : "Zuordnung speichern"}</button>{playerMessage && <div role="status" className="text-[11px]" style={{ color: playerMessage.includes("gespeichert") ? C.erfolg : C.fehler }}>{playerMessage}</div>}</div>) : <div className="flex flex-wrap gap-2">{memberPlayerTeams(selectedPlayer).length ? memberPlayerTeams(selectedPlayer).map((team) => <span key={team} className="px-3 py-1.5 rounded-full text-xs font-bold" style={{ background: C.erfolgFlaeche, color: C.erfolg }}>{team}</span>) : <span className="text-xs" style={{ color: C.textDim }}>{t("tm.keineZuordnungKurz")}</span>}</div>}{canManagePenalties && (<div className="mt-4 pt-4" style={{ borderTop: `1px solid ${C.line}` }}><button type="button" onClick={() => setPenaltyOpen((v) => !v)} className="w-full flex items-center justify-between mb-2"><div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.textDim }}>{t("straf.verwaltung")}</div><ChevronRight size={14} style={{ color: C.textDim, transform: penaltyOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .15s" }}/></button>{penaltyOpen && (<><div className="flex gap-2 mb-3"><select value={assignRuleId} onChange={(e) => setAssignRuleId(e.target.value)} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}><option value="">{t("straf.waehlen")}</option>{penaltyRules.map((r) => <option key={r.id} value={r.id}>{r.title} ({r.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €)</option>)}</select><button onClick={assignPenaltyToPlayer} disabled={assigningPenalty || !assignRuleId} className="px-4 rounded-xl text-xs font-bold" style={{ background: assignRuleId ? C.ink : C.line, color: C.white }}>{assigningPenalty ? "…" : "Zuweisen"}</button></div>{penaltyMessage && <div role="status" className="text-[11px] mb-2" style={{ color: penaltyMessage.includes("zugewiesen") ? C.erfolg : C.fehler }}>{penaltyMessage}</div>}<div className="text-[10px] uppercase tracking-widest font-bold mb-1.5" style={{ color: C.textDim }}>{t("straf.bisherige")}</div><div className="space-y-1.5">{playerPenalties.map((p) => <div key={p.id} className="flex items-center justify-between px-3 py-2 rounded-xl" style={{ background: C.paperDim }}><span className="text-xs font-bold" style={{ color: C.ink }}>{p.title}</span><span className="text-xs font-bold" style={{ color: C.red, fontFamily: "JetBrains Mono" }}>{p.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span><button type="button" onClick={() => togglePlayerPenaltyPaid(p)} className="px-2 py-1 rounded-lg text-[9px] font-bold flex-shrink-0" style={{ background: p.paidAt ? C.erfolgFlaeche : C.white, color: p.paidAt ? C.secondary : C.textDim }}>{p.paidAt ? t("bei.bezahlt") : "Offen"}</button><button type="button" onClick={() => removePlayerPenalty(p)} aria-label={t("aria.strafeEntfernen")} className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.glass, color: C.red }}><X size={12}/></button></div>)}{playerPenalties.length === 0 && <div className="text-[11px]" style={{ color: C.textDim }}>{t("straf.keine")}</div>}</div></>)}</div>)}</div></div>}
   </div>;
 }
 
@@ -5336,7 +5336,7 @@ function TeamPenaltyCatalog({ user }) {
         {rules.map((rule) => <div key={rule.id} className="flex items-center gap-2 px-3 py-2.5 rounded-xl" style={{ background: C.paperDim }}><div className="flex-1 min-w-0"><div className="text-xs font-bold truncate" style={{ color: C.ink }}>{rule.title}</div></div><div className="text-xs font-bold whitespace-nowrap" style={{ color: C.red, fontFamily: "JetBrains Mono" }}>{rule.amount.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</div>{canManageSelectedTeam && <><button type="button" disabled={saving} onClick={() => editRule(rule)} className="px-2 py-1.5 rounded-lg text-[10px] font-bold" style={{ background: C.glass, color: C.ink }}>{t("allg.aendern")}</button><button type="button" disabled={saving} onClick={() => removeRule(rule)} aria-label={`${rule.title} löschen`} className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: C.glass, color: C.red }}><X size={14}/></button></>}</div>)}
         {rules.length === 0 && <div className="text-[11px] rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Für diese Mannschaft sind noch keine Regeln hinterlegt.</div>}
       </div>
-      {canManageSelectedTeam && <form onSubmit={addRule} className="pt-3" style={{ borderTop: `1px solid ${C.line}` }}><div className="flex items-center justify-between mb-2"><div className="text-[10px] font-bold" style={{ color: C.textDim }}>{editingId ? "REGEL BEARBEITEN" : "NEUE REGEL"}</div>{editingId && <button type="button" onClick={() => { setEditingId(""); setTitle(""); setAmount(""); }} className="text-[10px] font-bold" style={{ color: C.red }}>{t("allg.abbrechen")}</button>}</div><input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={120} placeholder={t("ph.strafeTitel")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim, color: C.ink }}/><div className="flex gap-2"><div className="relative flex-1"><input value={amount} onChange={(event) => setAmount(event.target.value)} inputMode="decimal" placeholder={t("ph.kosten")} className="w-full px-3 pr-8 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}/><span className="absolute right-3 top-2.5 text-xs" style={{ color: C.textDim }}>€</span></div><button type="submit" disabled={saving || !title.trim() || !amount.trim()} className="px-4 rounded-xl text-xs font-bold" style={{ background: title.trim() && amount.trim() ? C.ink : C.line, color: C.white }}>{saving ? "…" : editingId ? "Speichern" : "Hinzufügen"}</button></div></form>}
+      {canManageSelectedTeam && <form onSubmit={addRule} className="pt-3" style={{ borderTop: `1px solid ${C.line}` }}><div className="flex items-center justify-between mb-2"><div className="text-[10px] font-bold" style={{ color: C.textDim }}>{editingId ? "REGEL BEARBEITEN" : "NEUE REGEL"}</div>{editingId && <button type="button" onClick={() => { setEditingId(""); setTitle(""); setAmount(""); }} className="text-[10px] font-bold" style={{ color: C.red }}>{t("allg.abbrechen")}</button>}</div><input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={120} placeholder={t("ph.strafeTitel")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim, color: C.ink }}/><div className="flex gap-2"><div className="relative flex-1"><input value={amount} onChange={(event) => setAmount(event.target.value)} inputMode="decimal" placeholder={t("ph.kosten")} className="w-full px-3 pr-8 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}/><span className="absolute right-3 top-2.5 text-xs" style={{ color: C.textDim }}>€</span></div><button type="submit" disabled={saving || !title.trim() || !amount.trim()} className="px-4 rounded-xl text-xs font-bold" style={{ background: title.trim() && amount.trim() ? C.ink : C.line, color: C.white }}>{saving ? "…" : editingId ? t("allg.speichern") : t("allg.hinzufuegen")}</button></div></form>}
       {canManageSelectedTeam && (
         <div className="pt-4 mt-4" style={{ borderTop: `1px solid ${C.line}` }}>
           <div className="text-[10px] font-bold mb-2" style={{ color: C.textDim }}>STRAFE ZUWEISEN</div>
@@ -5373,7 +5373,7 @@ function TeamPenaltyCatalog({ user }) {
                   <div className="text-[10px] truncate" style={{ color: C.textDim }}>{a.ruleTitle} · {new Date(a.assignedAt).toLocaleDateString("de-DE")}</div>
                 </div>
                 <div className="text-xs font-bold whitespace-nowrap" style={{ color: C.red, fontFamily: "JetBrains Mono" }}>{a.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</div>
-                <button type="button" onClick={() => toggleAssignmentPaid(a)} className="px-2 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: a.paidAt ? C.erfolgFlaeche : C.white, color: a.paidAt ? C.secondary : C.textDim }}>{a.paidAt ? "Bezahlt" : "Offen"}</button>
+                <button type="button" onClick={() => toggleAssignmentPaid(a)} className="px-2 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: a.paidAt ? C.erfolgFlaeche : C.white, color: a.paidAt ? C.secondary : C.textDim }}>{a.paidAt ? t("bei.bezahlt") : "Offen"}</button>
                 <button type="button" onClick={() => removeAssignment(a)} aria-label={`Strafe bei ${a.playerName} entfernen`} className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.glass, color: C.red }}><X size={14}/></button>
               </div>
             ))}
@@ -5495,7 +5495,7 @@ function TaskCreateForm({ form, setForm, onSubmit, onCancel, editing = false, te
       </div>
 
       <div className="flex gap-2">
-        <button onClick={onSubmit} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{editing ? "Änderungen speichern" : "Anlegen"}</button>
+        <button onClick={onSubmit} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{editing ? "Änderungen speichern" : t("allg.anlegen")}</button>
         <button onClick={onCancel} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>{t("allg.abbrechen")}</button>
       </div>
     </div>
@@ -5634,7 +5634,7 @@ function TasksView({ currentUser, members }) {
   if (!databaseMembership) return <div className="px-4 pt-4 pb-24"><div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Aufgaben sind nur mit einem echten Vereinskonto verfügbar.</div></div>;
   return (
     <div className="px-4 pt-4 pb-24">
-      <SectionTitle eyebrow="Verein" title="Aufgaben" right={canCreateClubTask ? <button onClick={() => { if (showCreateClub) { setEditingTaskId(null); resetForm(); } setShowCreateClub((v) => !v); }} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showCreateClub ? "Schließen" : "+ Aufgabe"}</button> : null}/>
+      <SectionTitle eyebrow="Verein" title="Aufgaben" right={canCreateClubTask ? <button onClick={() => { if (showCreateClub) { setEditingTaskId(null); resetForm(); } setShowCreateClub((v) => !v); }} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showCreateClub ? t("allg.schliessen") : "+ Aufgabe"}</button> : null}/>
       <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>Vereins- und Mannschaftsaufgaben, für die sich Mitglieder freiwillig eintragen können.</div>
       {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: (message.includes("angelegt")||message.includes("geändert")) ? C.erfolgFlaeche : C.fehlerFlaeche, color: (message.includes("angelegt")||message.includes("geändert")) ? C.erfolg : C.fehler }}>{message}</div>}
       {loading ? <div className="text-xs py-4" style={{ color: C.textDim }}>{t("auf.laden")}</div> : <>
@@ -5646,7 +5646,7 @@ function TasksView({ currentUser, members }) {
           const canManage = manageableTeamIds.includes(team.id);
           return (
             <div key={team.id} className="mb-5">
-              <SectionTitle eyebrow="Mannschaft" title={`Aufgaben · ${team.name}`} right={canManage ? <button onClick={() => { if (showCreateTeamId === team.id) { setEditingTaskId(null); resetForm(); } setShowCreateTeamId((v) => v === team.id ? "" : team.id); }} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showCreateTeamId === team.id ? "Schließen" : "+ Aufgabe"}</button> : null}/>
+              <SectionTitle eyebrow="Mannschaft" title={`Aufgaben · ${team.name}`} right={canManage ? <button onClick={() => { if (showCreateTeamId === team.id) { setEditingTaskId(null); resetForm(); } setShowCreateTeamId((v) => v === team.id ? "" : team.id); }} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showCreateTeamId === team.id ? t("allg.schliessen") : "+ Aufgabe"}</button> : null}/>
               {showCreateTeamId === team.id && <TaskCreateForm teams={myTeams} members={members} form={form} setForm={setForm} editing={!!editingTaskId} onSubmit={() => createTask(team.id)} onCancel={() => { setShowCreateTeamId(""); resetForm(); setEditingTaskId(null); }}/>}
               {tasks.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Aktuell keine Aufgaben für {team.name}.</div> : tasks.map((t) => <TaskCard key={t.id} task={t} canManage={canManage} onEdit={openEditTask}/>)}
             </div>
@@ -5837,7 +5837,7 @@ function VehiclesView({ currentUser, currentClub }) {
   if (!databaseMembership) return <div className="px-4 pt-4 pb-24"><div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Fahrzeugbuchungen sind nur mit einem echten Vereinskonto verfügbar.</div></div>;
   return (
     <div className="px-4 pt-4 pb-24">
-      <SectionTitle eyebrow="Verein" title={cfg.vehicleTabLabel} right={canManageFleet ? <button onClick={() => { if (showAddVehicle) { setEditingVehicleId(null); setNewVehicle({ label: "", plate: "", seats: "" }); } setShowAddVehicle((v) => !v); }} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showAddVehicle ? "Schließen" : "+ Fahrzeug"}</button> : null}/>
+      <SectionTitle eyebrow="Verein" title={cfg.vehicleTabLabel} right={canManageFleet ? <button onClick={() => { if (showAddVehicle) { setEditingVehicleId(null); setNewVehicle({ label: "", plate: "", seats: "" }); } setShowAddVehicle((v) => !v); }} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showAddVehicle ? t("allg.schliessen") : "+ Fahrzeug"}</button> : null}/>
       <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>{cfg.vehicleIntro} Jedes Mitglied kann anfragen; Vereinsadministration und Organisation geben frei. </div>
       {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{message}</div>}
       {showAddVehicle && (
@@ -5847,7 +5847,7 @@ function VehiclesView({ currentUser, currentClub }) {
           <input value={newVehicle.plate} onChange={(e) => setNewVehicle({ ...newVehicle, plate: e.target.value })} placeholder={t("ph.kennzeichen")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}/>
           <input value={newVehicle.seats} onChange={(e) => setNewVehicle({ ...newVehicle, seats: e.target.value })} inputMode="numeric" placeholder={t("ph.anzahlPlaetze")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}/>
           <div className="flex gap-2">
-            <button onClick={addVehicle} disabled={savingVehicle} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{savingVehicle ? "…" : editingVehicleId ? "Änderungen speichern" : "Anlegen"}</button>
+            <button onClick={addVehicle} disabled={savingVehicle} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{savingVehicle ? "…" : editingVehicleId ? "Änderungen speichern" : t("allg.anlegen")}</button>
             {editingVehicleId && <button onClick={() => { setEditingVehicleId(null); setNewVehicle({ label: "", plate: "", seats: "" }); setShowAddVehicle(false); }} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.textDim }}>{t("allg.abbrechen")}</button>}
           </div>
         </div>
@@ -6135,7 +6135,7 @@ function DutyTasksSection({ ev, currentUser, sport, onNeuLaden, dutyPlan, member
         </div>
       )}
       {/* Stationen dieses Termins wieder abraeumen. Steht bewusst hier und nicht
-          in der Liste "Helfer:innen gesucht" darueber: Dort traegt man sich ein,
+          in der Liste t("helf.gesucht") darueber: Dort traegt man sich ein,
           hier verwaltet die Leitung - und nur dieser Abschnitt weiss ueberhaupt,
           ob der Betrachter das darf (canManage). */}
       {canManage && (ev.helperSlots?.length > 0) && (
@@ -6517,7 +6517,7 @@ function ProfileUnderlay({ title, eyebrow = "Profileinstellungen", onClose, onSa
     <div className="erg-underlay-bar flex items-center gap-3 px-4 py-3 flex-shrink-0" style={{ borderBottom: `1px solid ${C.line}` }}>
       <button onClick={onClose} aria-label={t("aria.zurueckProfil")} className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: C.glass, border: `1px solid ${C.edge}` }}><ArrowLeft size={16}/></button>
       <div className="flex-1 min-w-0"><div className="text-[9px] uppercase tracking-widest font-bold" style={{ color: C.red }}>{eyebrow}</div><div className="text-base font-bold truncate" style={{ fontFamily: "Oswald", color: C.ink }}>{title}</div></div>
-      {onSave && <button onClick={onSave} disabled={saving || saveDisabled} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold flex-shrink-0" style={{ background: C.red, color: C.aufPrimaer, opacity: saving || saveDisabled ? .45 : 1 }}><Save size={13}/>{saving ? "Speichert …" : "Speichern"}</button>}
+      {onSave && <button onClick={onSave} disabled={saving || saveDisabled} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold flex-shrink-0" style={{ background: C.red, color: C.aufPrimaer, opacity: saving || saveDisabled ? .45 : 1 }}><Save size={13}/>{saving ? "Speichert …" : t("allg.speichern")}</button>}
     </div>
     <div className="flex-1 overflow-y-auto px-4 pt-4 pb-24">{children}</div>
   </div>;
@@ -7632,7 +7632,7 @@ function TippRundenPanel({ currentClub }) {
                 style={{ background: z.aktiv ? C.erfolgFlaeche : C.paperDim,
                          color: z.aktiv ? C.erfolg : C.textDim,
                          border: `1px solid ${z.aktiv ? C.erfolgRand : C.line}` }}>
-                {z.aktiv ? "Freigegeben" : "Freigeben"}
+                {z.aktiv ? "Freigegeben" : t("mit.freigeben")}
               </button>
             </div>
           ))}
@@ -7850,6 +7850,7 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
 /* Helferplanung — eigene Ansicht                                       */
 /* ------------------------------------------------------------------ */
 function DutyView({ members, currentUser, events, dutyPlan, setDutyPlan, onDienstSetzen }) {
+  const t = useT();
   const helperEvents = (events || []).filter((e) => e.helperSlots && e.helperSlots.length);
   const formalMember = isFormalMember(currentUser);
   const oldEnough = age(currentUser.birthdate) >= 16;
@@ -7885,7 +7886,7 @@ function DutyView({ members, currentUser, events, dutyPlan, setDutyPlan, onDiens
                 <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{ev.title}</div>
                 <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{formatDate(ev.date)} · {formatTime(ev.date)}</div>
               </div>
-              <Pill bg={ev.home ? C.red : typeMeta[ev.type].color}>{ev.home ? "Heimspiel" : typeMeta[ev.type].label}</Pill>
+              <Pill bg={ev.home ? C.red : typeMeta[ev.type].color}>{ev.home ? t("ev.heimspiel") : typeMeta[ev.type].label}</Pill>
             </div>
             <HelperSlots ev={ev} members={members} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} eligible={eligible} onSetzen={onDienstSetzen} darfVerwalten={canManageDuty(currentUser)} />
           </div>
@@ -8550,7 +8551,7 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
 
                 <div className="flex gap-2 pt-1">
                   <button onClick={() => { setOffen(""); setEntwurf(null); setFehler(""); }} className="flex-1 px-3 py-2.5 rounded-xl text-xs" style={{ background: C.paperDim, color: C.ink, fontWeight: 600, border: `1px solid ${C.line}` }}>{t("allg.abbrechen")}</button>
-                  <button onClick={speichern} disabled={speichert} className="flex-1 px-3 py-2.5 rounded-xl text-xs" style={{ background: C.ink, color: C.white, fontWeight: 700, opacity: speichert ? .6 : 1 }}>{speichert ? "…" : "Speichern"}</button>
+                  <button onClick={speichern} disabled={speichert} className="flex-1 px-3 py-2.5 rounded-xl text-xs" style={{ background: C.ink, color: C.white, fontWeight: 700, opacity: speichert ? .6 : 1 }}>{speichert ? "…" : t("allg.speichern")}</button>
                 </div>
                 {entwurf.id && <button onClick={() => entfernen(entwurf.id)} disabled={speichert} className="w-full text-[11px] pt-1" style={{ color: C.red, fontWeight: 600 }}>{t("sp.entfernen")}</button>}
               </div>
@@ -8579,7 +8580,7 @@ function PollManagerPanel({ polls, setPolls, clubId, onAnlegen, onUmschalten }) 
     if (supabase && clubId) supabase.rpc("notify_club", { target_club: clubId, p_notif_type: "polls", p_title: "Neue Umfrage", p_body: title.trim() });
     setTitle(""); setOptions(["",""]);
   };
-  return <div className="space-y-4"><div className="rounded-2xl p-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">{t("umf.neu")}</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>{t("umf.mindestens")}</div><input value={title} onChange={(e)=>setTitle(e.target.value)} placeholder={t("ph.frageTitel")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim}}/>{options.map((o,i)=><input key={i} value={o} onChange={(e)=>setOptions((all)=>all.map((x,idx)=>idx===i?e.target.value:x))} placeholder={`Antwort ${i+1}`} className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2" style={{background:C.paperDim}}/>)}<div className="flex gap-2"><button onClick={()=>setOptions((o)=>[...o,""])} className="px-3 py-2 rounded-lg text-xs font-bold" style={{background:C.paperDim,color:C.ink}}>＋ Antwort</button><button onClick={create} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{background: C.red, color: C.aufPrimaer}}>{t("allg.veroeffentlichen")}</button></div>{fehler&&<div role="status" className="text-[11px] rounded-xl px-3 py-2 mt-2" style={{background:C.fehlerFlaeche,color:C.fehler}}>{fehler}</div>}</div><div className="space-y-2">{polls.map((poll)=><div key={poll.id} className="rounded-xl p-3 flex items-center gap-3" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="flex-1"><div className="text-xs font-bold">{poll.title}</div><div className="text-[10px] mt-1" style={{color:C.textDim}}>{poll.options.length} Antworten · {poll.options.reduce((n,o)=>n+o.votes,0)} Stimmen</div></div><button onClick={()=>{onUmschalten?.(poll.id,!poll.active);setPolls((ps)=>ps.map((p)=>p.id===poll.id?{...p,active:!p.active}:p));}} className="px-2.5 py-1.5 rounded-full text-[10px] font-bold" style={{background:poll.active?C.erfolgFlaeche:C.paperDim,color:poll.active?C.secondary:C.textDim}}>{poll.active?"Aktiv":"Inaktiv"}</button></div>)}</div></div>;
+  return <div className="space-y-4"><div className="rounded-2xl p-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">{t("umf.neu")}</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>{t("umf.mindestens")}</div><input value={title} onChange={(e)=>setTitle(e.target.value)} placeholder={t("ph.frageTitel")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim}}/>{options.map((o,i)=><input key={i} value={o} onChange={(e)=>setOptions((all)=>all.map((x,idx)=>idx===i?e.target.value:x))} placeholder={`Antwort ${i+1}`} className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2" style={{background:C.paperDim}}/>)}<div className="flex gap-2"><button onClick={()=>setOptions((o)=>[...o,""])} className="px-3 py-2 rounded-lg text-xs font-bold" style={{background:C.paperDim,color:C.ink}}>＋ Antwort</button><button onClick={create} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{background: C.red, color: C.aufPrimaer}}>{t("allg.veroeffentlichen")}</button></div>{fehler&&<div role="status" className="text-[11px] rounded-xl px-3 py-2 mt-2" style={{background:C.fehlerFlaeche,color:C.fehler}}>{fehler}</div>}</div><div className="space-y-2">{polls.map((poll)=><div key={poll.id} className="rounded-xl p-3 flex items-center gap-3" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="flex-1"><div className="text-xs font-bold">{poll.title}</div><div className="text-[10px] mt-1" style={{color:C.textDim}}>{poll.options.length} Antworten · {poll.options.reduce((n,o)=>n+o.votes,0)} Stimmen</div></div><button onClick={()=>{onUmschalten?.(poll.id,!poll.active);setPolls((ps)=>ps.map((p)=>p.id===poll.id?{...p,active:!p.active}:p));}} className="px-2.5 py-1.5 rounded-full text-[10px] font-bold" style={{background:poll.active?C.erfolgFlaeche:C.paperDim,color:poll.active?C.secondary:C.textDim}}>{poll.active?t("status.aktiv"):t("status.inaktiv")}</button></div>)}</div></div>;
 }
 
 function MatchResultsPanel({ results, onSave, onDelete, events }) {
@@ -8615,7 +8616,7 @@ function MatchResultsPanel({ results, onSave, onDelete, events }) {
           return (
             <div key={match.id} className="rounded-2xl p-4" style={{ background: C.glass, border: `1px solid ${results[match.id] ? C.erfolgRand : C.line}` }}>
               <div className="flex items-center justify-between mb-3">
-                <div><div className="text-xs font-bold" style={{ color: C.ink }}>{match.titel}</div><span className="text-[11px]" style={{ color: C.textDim }}>{formatDate(match.date)} · {formatTime(match.date)} · {match.heim ? "Heimspiel" : "Auswärtsspiel"}</span></div>
+                <div><div className="text-xs font-bold" style={{ color: C.ink }}>{match.titel}</div><span className="text-[11px]" style={{ color: C.textDim }}>{formatDate(match.date)} · {formatTime(match.date)} · {match.heim ? t("ev.heimspiel") : "Auswärtsspiel"}</span></div>
                 {results[match.id] && <Pill bg={C.secondary}>ausgewertet</Pill>}
               </div>
               {/* Links stehen IMMER unsere Tore, rechts die des Gegners - unabhaengig
@@ -8818,7 +8819,7 @@ function RolesPanel({ members, setMembers }) {
                 {m.roles.includes("teammanager")&&<div className="mt-2.5 pt-2.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] mb-1 font-bold" style={{color:C.textDim}}>Betreute Mannschaft · maximal ein Teammanager je Mannschaft</div><select value={m.managedTeam||""} onChange={(e)=>assignManagedTeam(m.id,e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{background:C.paperDim}}><option value="">{t("tm.mannschaftWaehlen2")}</option>{waehlbareMannschaften.map((team)=><option key={team.name} value={team.name}>{team.name}</option>)}</select></div>}
                 <div className="flex gap-2 mt-3 pt-3" style={{ borderTop: `1px solid ${C.line}` }}>
                   <button type="button" onClick={closeMember} disabled={saving} className="flex-1 py-2 rounded-lg text-xs" style={{ background: C.paperDim, color: C.ink, fontFamily: "Inter", fontWeight: 700 }}>{t("allg.abbrechen")}</button>
-                  <button type="button" onClick={() => saveMemberRoles(m.id)} disabled={saving} className="flex-1 py-2 rounded-lg text-xs" style={{ background: C.ink, color: "#fff", fontFamily: "Inter", fontWeight: 700, opacity: saving ? 0.6 : 1 }}>{saving ? "Speichert …" : "Speichern"}</button>
+                  <button type="button" onClick={() => saveMemberRoles(m.id)} disabled={saving} className="flex-1 py-2 rounded-lg text-xs" style={{ background: C.ink, color: "#fff", fontFamily: "Inter", fontWeight: 700, opacity: saving ? 0.6 : 1 }}>{saving ? "Speichert …" : t("allg.speichern")}</button>
                 </div>
               </div>
             )}
@@ -9013,7 +9014,7 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
      darf sofort wieder anfragen. Nur diese Aktion hier hat Bestand.
 
      Die Mitgliedschaftszeile bleibt erhalten; sie IST die Sperrliste. Wird sie
-     ueber "Entfernen" geloescht, faellt die Sperre mit ihr weg - dann darf die
+     ueber t("allg.entfernen") geloescht, faellt die Sperre mit ihr weg - dann darf die
      Person sich neu bewerben. Das ist Absicht: Entfernen heisst weg, nicht
      verbannt. */
   const blockMember = async (member) => {
@@ -9203,7 +9204,7 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
               <div className="text-xs font-bold truncate" style={{ color: C.ink }}>{member.display_name}</div>
               <div className="text-[10px] truncate" style={{ color: C.textDim }}>{member.email || "Keine E-Mail hinterlegt"}</div>
             </div>
-            <span className="text-[9px] font-bold px-2 py-1 rounded-full flex-shrink-0" style={{ background: member.status === "active" ? C.erfolgFlaeche : C.fehlerFlaeche, color: member.status === "active" ? C.erfolg : C.fehler }}>{member.status === "active" ? "Aktiv" : member.status === "blocked" ? "Gesperrt" : "Inaktiv"}</span>
+            <span className="text-[9px] font-bold px-2 py-1 rounded-full flex-shrink-0" style={{ background: member.status === "active" ? C.erfolgFlaeche : C.fehlerFlaeche, color: member.status === "active" ? C.erfolg : C.fehler }}>{member.status === "active" ? t("status.aktiv") : member.status === "blocked" ? t("status.gesperrt") : t("status.inaktiv")}</span>
             {/* Gesperrte bekommen nur den Weg zurueck. Fuer alle anderen steht
                 neben dem Beenden das Sperren - der einzige Weg, jemanden
                 dauerhaft draussen zu halten. */}
@@ -9215,7 +9216,7 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
                 </>}
             {/* Zwei getrennte Wege, bewusst unterschiedlich gewichtet:
                 "Beenden" legt die Mitgliedschaft still und laesst sie in der
-                Historie - das ist der Regelfall. "Entfernen" loescht sie
+                Historie - das ist der Regelfall. t("allg.entfernen") loescht sie
                 endgueltig und steht deshalb unauffaelliger daneben. */}
             <button disabled={workingId === member.id} onClick={() => removeMember(member)} title="Endgültig aus dem Verein entfernen" className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: C.paperDim, color: C.textDim, opacity: workingId === member.id ? .6 : 1 }}>{t("allg.entfernen")}</button>
           </div>
@@ -9383,7 +9384,7 @@ function ClubFeatureSettingsPanel({ currentClub, clubFeatures, onFeaturesChanged
   };
   /* Ein Eintrag je Dashboard-Kachel: an/aus und Position in einer Karte. Die Liste
      folgt der Dashboard-Reihenfolge, damit die Nummer auch das ist, was der Nutzer
-     später sieht. "Aufgaben" hat bewusst keinen Schalter — die Funktion lässt sich
+     später sieht. t("auf.titel") hat bewusst keinen Schalter — die Funktion lässt sich
      nicht abschalten, deshalb steht dort ein Hinweis statt eines toten Schalters. */
   const featureByKey = Object.fromEntries(CLUB_FEATURES.map((f) => [f.key, f]));
 
@@ -9781,7 +9782,7 @@ export default function ClubMemberOrganisationApp() {
      Ohne diese Unterscheidung sah ein fehlgeschlagener Ladevorgang genauso
      aus wie "es gibt keinen Verein": In beiden Faellen blieb clubs leer, und
      der Suchbildschirm schrieb "Kein Verein gefunden." - direkt ueber dem
-     Knopf "Neuen Verein registrieren". Wer bei einem Netzhaenger dort landet,
+     Knopf t("verein.neuAnlegen"). Wer bei einem Netzhaenger dort landet,
      legt seinen Verein ein zweites Mal an. */
   const [vereineGeladen, setVereineGeladen] = useState(null);
   /* Erst nach dem ersten Rendern bekannt: Auf dem Server gibt es kein
@@ -9944,7 +9945,7 @@ export default function ClubMemberOrganisationApp() {
   /* Neu laden, sobald die App wieder im Vordergrund ist.
      Das ist der Fall, den man als Nutzer merkt: Man legt das Telefon weg,
      nimmt es wieder zur Hand - und liest den Stand von vorhin. Ein
-     Klick auf "Verein wechseln" und zurueck half, aber darauf kommt niemand.
+     Klick auf t("verein.wechseln") und zurueck half, aber darauf kommt niemand.
      visibilitychange feuert auch in der nativen Huelle: Legt iOS die App in
      den Hintergrund, meldet die Webansicht "hidden", beim Zurueckholen
      "visible". Dazu focus, weil ein Fenster im Browser den Fokus auch ohne
@@ -11357,9 +11358,9 @@ export default function ClubMemberOrganisationApp() {
      trennen. */
   /* Abmelden heisst: nichts vom alten Konto bleibt stehen.
      Vorher landete man auf der Vereinssuche, deren "Zurueck" wegen der noch
-     gefuellten Mitgliedschaftsliste auf "Deine Vereine" des GERADE
+     gefuellten Mitgliedschaftsliste auf t("verein.deine") des GERADE
      abgemeldeten Kontos fuehrte - und im Anmeldeformular bot die Karte
-     "Angemeldet bleiben" Name und E-Mail des Vorgaengers an. Auf einem
+     t("login.bleiben") Name und E-Mail des Vorgaengers an. Auf einem
      geteilten Vereinsgeraet ist das keine Kleinigkeit. */
   const logout = async () => {
     await geraetAbmelden();
@@ -11406,7 +11407,7 @@ export default function ClubMemberOrganisationApp() {
      Zeit, als die News ein Chat-Kanal mit der Kennung "news" waren (der steht
      noch in den Ruecckfalldaten, INITIAL_CHANNELS). Seit die News eine eigene
      Tabelle haben, gibt es diesen Kanal nicht mehr: Der Chat oeffnete
-     stattdessen den erstbesten Mannschaftskanal, und wer auf "Alle ansehen"
+     stattdessen den erstbesten Mannschaftskanal, und wer auf t("allg.alleAnsehen")
      tippte, landete in einem leeren Chat. Die vollstaendige Liste steht heute
      im Reiter Redaktion. */
   const goNews = () => navigateTab("redaktion");
