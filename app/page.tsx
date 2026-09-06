@@ -2948,7 +2948,11 @@ function Dashboard({ user, members, events, feePaid, channels, news, dutyPlan, s
               dem @ heraus: "Hallo marcoaleixo004". */}
           <div style={{ fontFamily: "Oswald", fontWeight: 700, fontSize: 24, color: C.ink }}>{user.firstName?.trim() || user.name.split(" ")[0]} 👋</div>
         </div>
-        <ClubLogo club={currentClub} size={44} rounded={12} />
+        {/* Deutlich groesser als die 44 Punkte von vorher. Das Wappen ist das
+            Einzige auf der Startseite, das den Verein sofort erkennbar macht -
+            daneben steht nur der eigene Vorname. In der Groesse eines
+            Symbolknopfs ging es zwischen Zurueck-Pfeil und Glocke unter. */}
+        <ClubLogo club={currentClub} size={72} rounded={20} />
       </div>
 
 
@@ -5649,8 +5653,21 @@ function TasksView({ currentUser, members }) {
       teamMap.set(team.id, team.name);
       if (["trainer", "kapitaen", "teammanager"].includes(row.function)) manageIds.push(team.id);
     });
-    setMyTeams([...teamMap.entries()].map(([id, name]) => ({ id, name })));
-    setManageableTeamIds([...new Set(manageIds)]);
+    /* Wer vereinsweit plant, sieht auch alle Mannschaften.
+       Bisher kamen die Mannschaften ausschliesslich aus team_members - also
+       nur die, in denen man selbst steht. Ein Vereinsadministrator, der in
+       keiner Jugendmannschaft spielt, konnte deshalb keine Aufgabe fuer die
+       C- oder D-Jugend anlegen: Sie standen nicht einmal im Auswahlfeld.
+       Derselbe Fehler wie beim Anlegen von Terminen, nur an anderer Stelle. */
+    const vereinsweit = isAdmin(currentUser) || currentUser.roles.includes("organisator");
+    if (vereinsweit) {
+      const { data: alle } = await supabase.from("teams")
+        .select("id,name").eq("club_id", currentUser.clubId).eq("active", true).order("name");
+      (alle || []).forEach((team) => teamMap.set(team.id, team.name));
+    }
+    setMyTeams([...teamMap.entries()].map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name, "de")));
+    setManageableTeamIds([...new Set(vereinsweit ? [...manageIds, ...teamMap.keys()] : manageIds)]);
     const { data: tasksData, error } = await supabase.from("club_tasks")
       .select("id,team_id,title,description,due_date,slots_needed,created_by,created_at,erledigt_am,erledigt_von,teams(name),club_task_signups(membership_id,club_memberships(display_name)),club_task_assignees(membership_id,club_memberships(display_name))")
       .eq("club_id", currentUser.clubId)
