@@ -1649,6 +1649,7 @@ function AuthShell({ children, footer, club }) {
  * einer, wird er ohne Umweg geoeffnet - dieser Bildschirm erscheint dann gar
  * nicht. */
 function MeineVereineScreen({ mitgliedschaften, onOeffnen, onWeitererVerein, onAbmelden, onKontoLoeschen, laedt }) {
+  const t = useT();
   /* Der Bildschirm listet ausdruecklich auch Mitgliedschaften auf, deren
      Aufnahme noch nicht bestaetigt ist. Tippte man auf so einen Eintrag,
      passierte sichtbar gar nichts: keine Meldung, kein Wechsel. Der
@@ -1697,7 +1698,7 @@ function MeineVereineScreen({ mitgliedschaften, onOeffnen, onWeitererVerein, onA
         {mitgliedschaften.length === 0 ? "Verein suchen oder anlegen" : "Weiterem Verein beitreten"}
       </button>
 
-      <button onClick={onAbmelden} className="w-full py-2.5 text-xs font-bold mb-2" style={{ color: C.textDim, fontFamily: "Inter" }}>Abmelden</button>
+      <button onClick={onAbmelden} className="w-full py-2.5 text-xs font-bold mb-2" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("allg.abmelden")}</button>
 
       {onKontoLoeschen && <KontoLoeschenBlock onDelete={onKontoLoeschen} />}
     </div>
@@ -1717,6 +1718,7 @@ function MeineVereineScreen({ mitgliedschaften, onOeffnen, onWeitererVerein, onA
  * Passwort ist gesetzt, das Geburtsdatum steht im Profil - danach noch einmal
  * zu fragen, waere Beschaeftigung. */
 function BeitrittsScreen({ club, vorschlagName, onBeitreten, goBack }) {
+  const t = useT();
   const [name, setName] = useState(vorschlagName || "");
   const [art, setArt] = useState("mitglied");
   const [busy, setBusy] = useState(false);
@@ -1732,14 +1734,14 @@ function BeitrittsScreen({ club, vorschlagName, onBeitreten, goBack }) {
   };
 
   return (
-    <AuthShell club={club} footer={<div className="text-center text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}><button onClick={goBack} className="font-bold" style={{ color: C.red }}>Zurück</button></div>}>
+    <AuthShell club={club} footer={<div className="text-center text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}><button onClick={goBack} className="font-bold" style={{ color: C.red }}>{t("allg.zurueck")}</button></div>}>
       <div className="text-xl mb-1" style={{ fontFamily: "Oswald", fontWeight: 600, color: C.ink }}>Beitritt anfragen</div>
       <div className="text-xs mb-5" style={{ color: C.textDim, fontFamily: "Inter" }}>
         Du bist bereits angemeldet. Für {club?.name || "diesen Verein"} braucht es nur noch deinen Namen — die Vereinsleitung gibt den Beitritt dann frei.
       </div>
 
       <form onSubmit={senden}>
-        <Field icon={User} placeholder="Vor- und Nachname" value={name} onChange={(e) => setName(e.target.value)} />
+        <Field icon={User} placeholder={t("feld.vollerName")} value={name} onChange={(e) => setName(e.target.value)} />
 
         <div className="text-xs font-semibold mb-2" style={{ color: C.ink, fontFamily: "Inter" }}>Ich trete bei als</div>
         <div className="grid grid-cols-3 gap-2 mb-4">
@@ -1770,6 +1772,7 @@ function BeitrittsScreen({ club, vorschlagName, onBeitreten, goBack }) {
 }
 
 function ClubSelectScreen({ clubs, onSelect, goNewClub, goBack, onAbmelden, onKontoLoeschen, geladen = true, onErneutVersuchen }) {
+  const t = useT();
   const [query, setQuery] = useState("");
   /* Gekennzeichnete Vereine erscheinen hier nicht - das ist derzeit der
      Demo-Verein fuer die Pruefung durch Apple. Gefiltert wird NUR diese
@@ -1839,7 +1842,7 @@ function ClubSelectScreen({ clubs, onSelect, goNewClub, goBack, onAbmelden, onKo
           sucht, hat kein Konto, das sich abmelden oder loeschen liesse. */}
       {onKontoLoeschen && (
         <div className="mb-4">
-          {onAbmelden && <button onClick={onAbmelden} className="w-full py-2.5 text-xs font-bold mb-2" style={{ color: C.textDim, fontFamily: "Inter" }}>Abmelden</button>}
+          {onAbmelden && <button onClick={onAbmelden} className="w-full py-2.5 text-xs font-bold mb-2" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("allg.abmelden")}</button>}
           <KontoLoeschenBlock onDelete={onKontoLoeschen} />
         </div>
       )}
@@ -1887,6 +1890,7 @@ function ClubColorPicker({ primary, secondary, onChange }) {
 }
 
 function NewClubScreen({ onCreate, goBack }) {
+  const t = useT();
   const [form, setForm] = useState({ name: "", shortName: "", city: "", registerNumber: "", currency: "EUR", referralCode: "", logoDataUrl: "", sport: "rollhockey", primaryColor: DEFAULT_CLUB_COLORS.primary, secondaryColor: DEFAULT_CLUB_COLORS.secondary });
   const [error, setError] = useState("");
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -1926,7 +1930,7 @@ function NewClubScreen({ onCreate, goBack }) {
             {SPORTS.map((s) => <option key={s} value={s}>{sportConfig(s).label}</option>)}
           </select>
         </div>
-        <Field icon={MapPin} placeholder="Stadt" value={form.city} onChange={set("city")} />
+        <Field icon={MapPin} placeholder={t("feld.stadt")} value={form.city} onChange={set("city")} />
         <Field icon={Building2} placeholder="Vereinsregisternummer" value={form.registerNumber} onChange={set("registerNumber")} />
         <select value={form.currency} onChange={set("currency")} className="w-full px-3.5 py-3 rounded-xl text-sm mb-3 outline-none" style={{background:C.paperDim,color:C.ink}}><option value="EUR">Euro (€)</option><option value="CHF">Schweizer Franken (CHF)</option><option value="GBP">Britisches Pfund (£)</option><option value="USD">US-Dollar ($)</option><option value="DKK">Dänische Krone</option><option value="NOK">Norwegische Krone</option><option value="SEK">Schwedische Krone</option><option value="PLN">Polnischer Złoty</option><option value="CZK">Tschechische Krone</option></select>
         <Field icon={Gift} placeholder="Empfehlungscode (optional)" value={form.referralCode} onChange={set("referralCode")} />
@@ -1965,6 +1969,7 @@ function NewClubScreen({ onCreate, goBack }) {
  * Deshalb einmal als Baustein und an allen drei Stellen eingehaengt, statt
  * dreimal abgeschrieben. */
 function KontoLoeschenBlock({ onDelete }) {
+  const t = useT();
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -1993,7 +1998,7 @@ function KontoLoeschenBlock({ onDelete }) {
             Dein Konto und alle personenbezogenen Daten werden unwiderruflich entfernt. Kosten entstehen dir dadurch keine: Ein persönliches Abonnement gibt es nicht.
           </div>
           <div className="flex gap-2">
-            <button onClick={() => setConfirming(false)} disabled={busy} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>Abbrechen</button>
+            <button onClick={() => setConfirming(false)} disabled={busy} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>{t("allg.abbrechen")}</button>
             <button onClick={remove} disabled={busy} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.red, color: C.aufPrimaer, opacity: busy ? .6 : 1 }}>{busy ? "Wird gelöscht …" : "Endgültig löschen"}</button>
           </div>
         </div>
@@ -2004,6 +2009,7 @@ function KontoLoeschenBlock({ onDelete }) {
 }
 
 function PendingAccountScreen({ account, onLeave, onDelete }) {
+  const t = useT();
   const waiting = account.reason === "membership_pending";
 
   return (
@@ -2022,7 +2028,7 @@ function PendingAccountScreen({ account, onLeave, onDelete }) {
           <div className="text-[11px]" style={{ color: C.textDim }}>Angemeldet als {account.email}</div>
         </div>
 
-        <button onClick={onLeave} className="w-full py-3 rounded-xl text-sm font-bold mb-2.5" style={{ background: C.ink, color: C.white }}>Abmelden</button>
+        <button onClick={onLeave} className="w-full py-3 rounded-xl text-sm font-bold mb-2.5" style={{ background: C.ink, color: C.white }}>{t("allg.abmelden")}</button>
 
         <KontoLoeschenBlock onDelete={onDelete} />
       </div>
@@ -2031,6 +2037,7 @@ function PendingAccountScreen({ account, onLeave, onDelete }) {
 }
 
 function LoginScreen({ onLogin, members, club, goRegister, goChangeClub, offeneSitzung, onSitzungNutzen, verdraengt, onVerdraengtGelesen }) {
+  const t = useT();
   const uebersetzung = useT();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -2153,10 +2160,10 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub, offeneS
       )}
 
       <form onSubmit={submit}>
-        <Field icon={Mail} type="email" placeholder="E-Mail-Adresse" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <Field icon={Mail} type="email" placeholder={t("login.email")} value={email} onChange={(e) => setEmail(e.target.value)} />
         <div className="flex items-center gap-2 rounded-xl px-3.5 py-3 mb-2" style={{ background: C.paperDim }}>
           <Lock size={16} style={{ color: C.textDim, flexShrink: 0 }} />
-          <input type={showPw ? "text" : "password"} placeholder="Passwort" value={password} onChange={(e) => setPassword(e.target.value)}
+          <input type={showPw ? "text" : "password"} placeholder={t("login.passwort")} value={password} onChange={(e) => setPassword(e.target.value)}
             className="flex-1 bg-transparent outline-none text-sm" style={{ fontFamily: "Inter", color: C.ink }} />
           <button type="button" onClick={() => setShowPw((s) => !s)}>{showPw ? <EyeOff size={15} style={{ color: C.textDim }} /> : <Eye size={15} style={{ color: C.textDim }} />}</button>
         </div>
@@ -2198,6 +2205,7 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub, offeneS
 
 
 function RegisterScreen({ onRegister, members, club, goLogin }) {
+  const t = useT();
   const [form, setForm] = useState({ firstName: "", lastName: "", email: "", team: supabase ? "" : TEAMS[0], birthdate: "", password: "", password2: "", accountType: "mitglied", relativeId: "", childName: "", childBirthdate: "", childTeam: "U11" });
   const [legalAccepted, setLegalAccepted] = useState(false);
   const [error, setError] = useState("");
@@ -2342,7 +2350,7 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
             die App an jeder Stelle, an der sie jemanden anspricht. */}
         <Field icon={User} placeholder="Vorname" value={form.firstName} onChange={set("firstName")} />
         <Field icon={User} placeholder="Nachname" value={form.lastName} onChange={set("lastName")} />
-        <Field icon={Mail} type="email" placeholder="E-Mail-Adresse" value={form.email} onChange={set("email")} />
+        <Field icon={Mail} type="email" placeholder={t("login.email")} value={form.email} onChange={set("email")} />
         <Field icon={Cake} type="date" value={form.birthdate} onChange={set("birthdate")} />
 
         {/* Rolle, Mannschaft und Familienverknuepfung ergeben ohne Verein
@@ -2382,10 +2390,10 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
         </div>}
         </>}
 
-        <Field icon={Lock} type="password" placeholder="Passwort" value={form.password} onChange={set("password")} />
+        <Field icon={Lock} type="password" placeholder={t("login.passwort")} value={form.password} onChange={set("password")} />
         <Field icon={Lock} type="password" placeholder="Passwort bestätigen" value={form.password2} onChange={set("password2")} />
 
-        <label className="flex items-start gap-2 mb-3"><input type="checkbox" checked={legalAccepted} onChange={(e) => setLegalAccepted(e.target.checked)} className="mt-0.5"/><span className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>Ich akzeptiere die <a href="/nutzungsbedingungen" target="_blank" rel="noreferrer" style={{ color: C.red, fontWeight: 700 }}>Nutzungsbedingungen</a> und die <a href="/datenschutz" target="_blank" rel="noreferrer" style={{ color: C.red, fontWeight: 700 }}>Datenschutzerklärung</a>.</span></label>
+        <label className="flex items-start gap-2 mb-3"><input type="checkbox" checked={legalAccepted} onChange={(e) => setLegalAccepted(e.target.checked)} className="mt-0.5"/><span className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>Ich akzeptiere die <a href="/nutzungsbedingungen" target="_blank" rel="noreferrer" style={{ color: C.red, fontWeight: 700 }}>{t("recht.nutzung")}</a> und die <a href="/datenschutz" target="_blank" rel="noreferrer" style={{ color: C.red, fontWeight: 700 }}>Datenschutzerklärung</a>.</span></label>
 
         {error && <div className="flex items-center gap-1.5 text-xs mb-3" style={{ color: C.red, fontFamily: "Inter" }}><AlertCircle size={13} /> {error}</div>}
         {notice && <div className="flex items-center gap-1.5 text-xs mb-3" style={{ color: C.erfolg, fontFamily: "Inter" }}><CheckCircle2 size={13} /> {notice}</div>}
@@ -2416,6 +2424,7 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
    Liste sonst abgeschnitten. Sie schiebt den Inhalt darunter weg, was auf dem
    Telefon ohnehin natuerlicher wirkt. */
 function NutzerWahl({ personen, wert, onWaehlen, leerLabel = "nicht zugewiesen", klein, vorschlaege }) {
+  const t = useT();
   const [offen, setOffen] = useState(false);
   const [suche, setSuche] = useState("");
   const gewaehlt = (personen || []).find((p) => p.id === wert);
@@ -2458,7 +2467,7 @@ function NutzerWahl({ personen, wert, onWaehlen, leerLabel = "nicht zugewiesen",
               </>
             )}
             {treffer.length === 0 ? (
-              <div className={groesse} style={{ color: C.textDim }}>Niemand gefunden.</div>
+              <div className={groesse} style={{ color: C.textDim }}>{t("allg.niemandGefunden")}</div>
             ) : treffer.map((p) => (
               <button type="button" key={p.id} onClick={() => { onWaehlen(p.id); setOffen(false); }}
                 className={`w-full text-left ${groesse}`}
@@ -3209,6 +3218,7 @@ function HelperSlots({ ev, members, currentUser, dutyPlan, setDutyPlan, eligible
 /* Events                                                               */
 /* ------------------------------------------------------------------ */
 function CarpoolSection({ ev, currentUser }) {
+  const t = useT();
   const [carpools, setCarpools] = useState([]);
   const [abfahrt, setAbfahrt] = useState("");
   const [loading, setLoading] = useState(true);
@@ -3272,7 +3282,7 @@ function CarpoolSection({ ev, currentUser }) {
   return (
     <div className="mt-2 mb-1">
       <div className="text-xs font-semibold mb-2 flex items-center gap-1.5" style={{ fontFamily: "Inter", color: C.ink }}><Car size={14}/> Fahrgemeinschaft</div>
-      {loading ? <div className="text-[11px]" style={{ color: C.textDim }}>Wird geladen …</div> : <>
+      {loading ? <div className="text-[11px]" style={{ color: C.textDim }}>{t("allg.laedt")}</div> : <>
         <div className="space-y-1.5 mb-2">
           {carpools.map((c) => {
             const isDriver = c.driverId === currentUser.id;
@@ -3289,7 +3299,7 @@ function CarpoolSection({ ev, currentUser }) {
                 {c.passengers.length > 0 && <div className="text-[10px] mb-1.5" style={{ color: C.textDim }}>Mitfahrer: {c.passengers.map((p) => p.name).join(", ")}</div>}
                 <div className="flex gap-2">
                   {!isDriver && !isPassenger && free > 0 && <button onClick={() => join(c.id)} className="flex-1 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: C.ink, color: C.white }}>Mitfahren</button>}
-                  {!isDriver && isPassenger && <button onClick={() => leave(c.id)} className="flex-1 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: C.glass, color: C.red }}>Austragen</button>}
+                  {!isDriver && isPassenger && <button onClick={() => leave(c.id)} className="flex-1 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: C.glass, color: C.red }}>{t("allg.austragen")}</button>}
                   {isDriver && <button onClick={() => removeCarpool(c.id)} className="flex-1 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: C.glass, color: C.red }}>Fahrgemeinschaft löschen</button>}
                 </div>
               </div>
@@ -3306,7 +3316,7 @@ function CarpoolSection({ ev, currentUser }) {
             <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Notiz (optional), z. B. Kofferraum begrenzt" className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-1.5" style={{ background: C.glass, color: C.ink }}/>
             <div className="flex gap-2">
               <button onClick={createCarpool} disabled={saving || !seats.trim()} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: seats.trim() ? C.ink : C.line, color: C.white }}>{saving ? "…" : "Anbieten"}</button>
-              <button onClick={() => { setShowCreate(false); setSeats(""); setNote(""); setAbfahrt(""); }} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>Abbrechen</button>
+              <button onClick={() => { setShowCreate(false); setSeats(""); setNote(""); setAbfahrt(""); }} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>{t("allg.abbrechen")}</button>
             </div>
           </div>
         )}
@@ -3857,7 +3867,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
           <label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>Beginn *</span><input type="time" value={eventDraft.startTime} onChange={(e)=>setEventDraft({...eventDraft,startTime:e.target.value})} className="erg-datetime w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim,color:C.ink}}/></label>
           <label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>Ende *</span><input type="time" value={eventDraft.endTime} onChange={(e)=>setEventDraft({...eventDraft,endTime:e.target.value})} className="erg-datetime w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim,color:C.ink}}/></label>
         </div>
-      </div> : <div className="space-y-2"><div className="flex gap-1.5 flex-wrap">{[["1","Mo"],["2","Di"],["3","Mi"],["4","Do"],["5","Fr"],["6","Sa"],["7","So"]].map(([num,label])=>{const n=Number(num);const active=eventDraft.weekdays.includes(n);return <button type="button" key={num} onClick={()=>setEventDraft({...eventDraft,weekdays:active?eventDraft.weekdays.filter((w)=>w!==n):[...eventDraft.weekdays,n]})} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?C.red:C.paperDim,color:active?C.white:C.textDim}}>{label}</button>;})}</div><div className="grid grid-cols-2 gap-2"><input type="time" value={eventDraft.startTime} onChange={(e)=>setEventDraft({...eventDraft,startTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><input type="time" value={eventDraft.endTime} onChange={(e)=>setEventDraft({...eventDraft,endTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></div><div className="grid grid-cols-2 gap-2"><input type="date" value={eventDraft.rangeStart} onChange={(e)=>setEventDraft({...eventDraft,rangeStart:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><input type="date" value={eventDraft.rangeEnd} onChange={(e)=>setEventDraft({...eventDraft,rangeEnd:e.target.value})} className="erg-datetime px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim,color:C.ink}}/></div></div>}<input value={eventDraft.location} onChange={(e)=>setEventDraft({...eventDraft,location:e.target.value})} placeholder="Ort *" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><textarea value={eventDraft.desc} onChange={(e)=>setEventDraft({...eventDraft,desc:e.target.value})} placeholder="Beschreibung (optional)" rows={2} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none" style={{background:C.paperDim}}/><input value={eventDraft.helferStationen} onChange={(e)=>setEventDraft({...eventDraft,helferStationen:e.target.value})} placeholder={`Helferstationen, mit Komma getrennt (optional) — ${sportConfig(currentClub?.sport).dutyStationExamples}`} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/>{/* Die Meldung stand vorher IM Zweig fuer Einzeltermine. Bei einer Serie erschien sie deshalb nie, und das Speichern blieb wieder stumm - genau der Fehler, den sie beheben sollte. Jetzt steht sie vor der Knopfzeile und gilt fuer beide Zweige. */}{eventFehler && <div className="text-[10px] rounded-xl px-3 py-2" style={{background:C.fehlerFlaeche,color:C.fehler}}>{eventFehler}</div>}<div className="flex gap-2"><button type="submit" className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{background:C.ink,color:C.white}}>Speichern</button><button type="button" onClick={()=>{setShowCreate(false);setEventFehler("");}} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{background:C.paperDim,color:C.textDim}}>Abbrechen</button></div></form>}
+      </div> : <div className="space-y-2"><div className="flex gap-1.5 flex-wrap">{[["1","Mo"],["2","Di"],["3","Mi"],["4","Do"],["5","Fr"],["6","Sa"],["7","So"]].map(([num,label])=>{const n=Number(num);const active=eventDraft.weekdays.includes(n);return <button type="button" key={num} onClick={()=>setEventDraft({...eventDraft,weekdays:active?eventDraft.weekdays.filter((w)=>w!==n):[...eventDraft.weekdays,n]})} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?C.red:C.paperDim,color:active?C.white:C.textDim}}>{label}</button>;})}</div><div className="grid grid-cols-2 gap-2"><input type="time" value={eventDraft.startTime} onChange={(e)=>setEventDraft({...eventDraft,startTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><input type="time" value={eventDraft.endTime} onChange={(e)=>setEventDraft({...eventDraft,endTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></div><div className="grid grid-cols-2 gap-2"><input type="date" value={eventDraft.rangeStart} onChange={(e)=>setEventDraft({...eventDraft,rangeStart:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><input type="date" value={eventDraft.rangeEnd} onChange={(e)=>setEventDraft({...eventDraft,rangeEnd:e.target.value})} className="erg-datetime px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim,color:C.ink}}/></div></div>}<input value={eventDraft.location} onChange={(e)=>setEventDraft({...eventDraft,location:e.target.value})} placeholder="Ort *" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/><textarea value={eventDraft.desc} onChange={(e)=>setEventDraft({...eventDraft,desc:e.target.value})} placeholder="Beschreibung (optional)" rows={2} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none" style={{background:C.paperDim}}/><input value={eventDraft.helferStationen} onChange={(e)=>setEventDraft({...eventDraft,helferStationen:e.target.value})} placeholder={`Helferstationen, mit Komma getrennt (optional) — ${sportConfig(currentClub?.sport).dutyStationExamples}`} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/>{/* Die Meldung stand vorher IM Zweig fuer Einzeltermine. Bei einer Serie erschien sie deshalb nie, und das Speichern blieb wieder stumm - genau der Fehler, den sie beheben sollte. Jetzt steht sie vor der Knopfzeile und gilt fuer beide Zweige. */}{eventFehler && <div className="text-[10px] rounded-xl px-3 py-2" style={{background:C.fehlerFlaeche,color:C.fehler}}>{eventFehler}</div>}<div className="flex gap-2"><button type="submit" className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{background:C.ink,color:C.white}}>{t("allg.speichern")}</button><button type="button" onClick={()=>{setShowCreate(false);setEventFehler("");}} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{background:C.paperDim,color:C.textDim}}>{t("allg.abbrechen")}</button></div></form>}
       <SponsorSlot slotKey="events_header" bookings={werbeplaetze} onImpression={onSponsorImpression} onClick={onSponsorClick} visible={featureEnabled("sponsor_events_header")} />
       <div className="flex items-center gap-2 mb-3">
         <div className="flex gap-2 overflow-x-auto pb-1 flex-1 min-w-0" style={{ scrollbarWidth: "none" }}>
@@ -3919,7 +3929,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
           <div role="dialog" aria-modal="true" aria-label={openEvent.title} onClick={(e) => e.stopPropagation()} className="w-full rounded-3xl p-4 max-h-[85%] overflow-y-auto" style={{ background: C.glass }}>
             <div className="flex items-center justify-between mb-3">
               <div className="text-sm font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{typeMeta[openEvent.type].label}</div>
-              <button onClick={() => setSelectedEvent(null)} aria-label="Schließen" className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><X size={15}/></button>
+              <button onClick={() => setSelectedEvent(null)} aria-label={t("allg.schliessen")} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><X size={15}/></button>
             </div>
             <EventCard ev={openEvent} initialOpen
               carpoolOn={!!myCarpools[openEvent.id]} onCarpool={handleCarpool}
@@ -3931,7 +3941,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
           </div>
         </div>
       )}
-      {deleteRequest && <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => { setDeleteRequest(null); setTerminFehler(""); }}><div role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()} className="w-full max-w-sm rounded-2xl p-5" style={{ background: C.glass }}>{deleteRequest.seriesId ? <><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Nur diesen Termin oder die ganze Reihe?</div><div className="text-xs mb-4" style={{ color: C.textDim }}>Dieses Training wiederholt sich. Du kannst nur diesen einen Termin entfernen und die Reihe bestehen lassen — oder die ganze Reihe löschen. Die ganze Reihe schließt bereits vergangene Termine mit ein.</div><button onClick={performSingleDelete} className="w-full py-2.5 rounded-xl text-xs font-bold mb-2" style={{ background: C.ink, color: C.white }}>Nur diesen Termin</button><button onClick={performSeriesDelete} className="w-full py-2.5 rounded-xl text-xs font-bold mb-2" style={{ background: C.fehlerFlaeche, color: C.fehler, border: `1px solid ${C.fehlerRand}` }}>Ganze Reihe löschen</button><button onClick={() => { setDeleteRequest(null); setTerminFehler(""); }} className="w-full py-2 text-xs font-bold" style={{ color: C.textDim }}>Abbrechen</button></> : <><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Diesen Termin wirklich löschen?</div><div className="text-xs" style={{ color: C.textDim }}>Er verschwindet für alle. Rückgängig machen lässt sich das nicht.</div><div className="flex gap-2 mt-4"><button onClick={() => { setDeleteRequest(null); setTerminFehler(""); }} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>Abbrechen</button><button onClick={performSingleDelete} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.red, color: C.aufPrimaer }}>Löschen</button></div></>}</div></div>}
+      {deleteRequest && <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => { setDeleteRequest(null); setTerminFehler(""); }}><div role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()} className="w-full max-w-sm rounded-2xl p-5" style={{ background: C.glass }}>{deleteRequest.seriesId ? <><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Nur diesen Termin oder die ganze Reihe?</div><div className="text-xs mb-4" style={{ color: C.textDim }}>Dieses Training wiederholt sich. Du kannst nur diesen einen Termin entfernen und die Reihe bestehen lassen — oder die ganze Reihe löschen. Die ganze Reihe schließt bereits vergangene Termine mit ein.</div><button onClick={performSingleDelete} className="w-full py-2.5 rounded-xl text-xs font-bold mb-2" style={{ background: C.ink, color: C.white }}>Nur diesen Termin</button><button onClick={performSeriesDelete} className="w-full py-2.5 rounded-xl text-xs font-bold mb-2" style={{ background: C.fehlerFlaeche, color: C.fehler, border: `1px solid ${C.fehlerRand}` }}>Ganze Reihe löschen</button><button onClick={() => { setDeleteRequest(null); setTerminFehler(""); }} className="w-full py-2 text-xs font-bold" style={{ color: C.textDim }}>{t("allg.abbrechen")}</button></> : <><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Diesen Termin wirklich löschen?</div><div className="text-xs" style={{ color: C.textDim }}>Er verschwindet für alle. Rückgängig machen lässt sich das nicht.</div><div className="flex gap-2 mt-4"><button onClick={() => { setDeleteRequest(null); setTerminFehler(""); }} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>{t("allg.abbrechen")}</button><button onClick={performSingleDelete} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.red, color: C.aufPrimaer }}>{t("allg.loeschen")}</button></div></>}</div></div>}
     </div>
   );
 }
@@ -3940,6 +3950,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
 /* Beiträge                                                             */
 /* ------------------------------------------------------------------ */
 function FeesView({ members, records, setRecords }) {
+  const t = useT();
   const [selectedMemberId, setSelectedMemberId] = useState(null);
   const [form, setForm] = useState({ year: "2026", type: "Mitgliedsbeitrag", amount: "", paid: "offen", invoiceNumber: "", linkedMemberIds: [], manualNames: "", personCount: "1" });
   const [saving, setSaving] = useState(false);
@@ -4041,7 +4052,7 @@ function FeesView({ members, records, setRecords }) {
                 )}
               </div>
             )}
-            <div className="mt-2 flex items-center gap-2"><button onClick={() => togglePaid(record)} className="px-2.5 py-1 rounded-full text-[11px]" style={{ background: record.paid ? C.erfolgFlaeche : C.fehlerFlaeche, color: record.paid ? C.erfolg : C.fehler, fontWeight: 700 }}>{record.paid ? "Bezahlt ✓" : "Noch nicht bezahlt"}</button><button onClick={() => deleteRecord(record)} className="px-2.5 py-1 rounded-full text-[11px]" style={{ background:C.paperDim,color:C.textDim,fontWeight:700 }}>Löschen</button></div>
+            <div className="mt-2 flex items-center gap-2"><button onClick={() => togglePaid(record)} className="px-2.5 py-1 rounded-full text-[11px]" style={{ background: record.paid ? C.erfolgFlaeche : C.fehlerFlaeche, color: record.paid ? C.erfolg : C.fehler, fontWeight: 700 }}>{record.paid ? "Bezahlt ✓" : "Noch nicht bezahlt"}</button><button onClick={() => deleteRecord(record)} className="px-2.5 py-1 rounded-full text-[11px]" style={{ background:C.paperDim,color:C.textDim,fontWeight:700 }}>{t("allg.loeschen")}</button></div>
           </div>
         ))}
         {memberRecords.length === 0 && <div className="rounded-2xl p-4 text-xs text-center" style={{ background: C.paperDim, color: C.textDim }}>Noch keine Beitragsdatensätze vorhanden.</div>}
@@ -4094,6 +4105,7 @@ function FeesView({ members, records, setRecords }) {
 /* Chat                                                                  */
 /* ------------------------------------------------------------------ */
 function ChatView({ user, channels, setChannels, activeId, setActiveId, members }) {
+  const t = useT();
   /* ALLE Hooks stehen vor dem ersten return - ohne Ausnahme.
      Vorher lag der Ausstieg fuer "kein Kanal sichtbar" zwischen dem ersten und
      dem zweiten useState. Beim leeren Durchlauf rief die Komponente damit einen
@@ -4369,7 +4381,7 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
                   <div className="text-[10px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{m.time}</div>
                   {!mine && <a href={`mailto:${legal.email}?subject=${encodeURIComponent("Nachricht melden - " + (active.name || "Chat"))}&body=${encodeURIComponent(`Ich möchte folgende Nachricht melden:\n\nVerfasser: ${m.who}\nInhalt: ${m.text || ""}\n\nGrund:\n`)}`} className="text-[10px]" style={{ color: C.textDim, fontFamily: "Inter", textDecoration: "underline" }}>Melden</a>}
                   {!mine && <button onClick={() => blockAuthor(m.authorId)} className="text-[10px]" style={{ color: C.textDim, fontFamily: "Inter", textDecoration: "underline" }}>Blockieren</button>}
-                  {(mine || darfModerieren) && <button onClick={() => nachrichtLoeschen(m)} className="text-[10px]" style={{ color: C.textDim, fontFamily: "Inter", textDecoration: "underline" }}>Löschen</button>}
+                  {(mine || darfModerieren) && <button onClick={() => nachrichtLoeschen(m)} className="text-[10px]" style={{ color: C.textDim, fontFamily: "Inter", textDecoration: "underline" }}>{t("allg.loeschen")}</button>}
                 </div>
               </div>
             </div>
@@ -4410,6 +4422,7 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
  * Beim Anmelden wurden sie sogar geladen (samt signierter Bild-Adressen) und
  * das Ergebnis anschliessend weggeworfen. */
 function RedaktionView({ user, news, setNews }) {
+  const t = useT();
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState("");
   const [text, setText] = useState("");
@@ -4530,7 +4543,7 @@ function RedaktionView({ user, news, setNews }) {
           {imageUrl && <img src={imageUrl} alt="" className="w-full rounded-lg" style={{ maxHeight: 160, objectFit: "cover" }} />}
           <div className="flex gap-2">
             <button onClick={publish} disabled={saving || !title.trim() || !text.trim()} className="flex-1 py-2.5 rounded-lg text-xs" style={{ background: C.red, color: C.aufPrimaer, fontFamily: "Inter", fontWeight: 700, opacity: (saving || !title.trim() || !text.trim()) ? 0.5 : 1 }}>{saving ? "Wird gespeichert …" : editingPost ? "Änderungen speichern" : "Veröffentlichen"}</button>
-            <button disabled={saving} onClick={cancelForm} className="px-4 py-2.5 rounded-lg text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter", fontWeight: 700 }}>Abbrechen</button>
+            <button disabled={saving} onClick={cancelForm} className="px-4 py-2.5 rounded-lg text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter", fontWeight: 700 }}>{t("allg.abbrechen")}</button>
           </div>
         </div>
       )}
@@ -4547,8 +4560,8 @@ function RedaktionView({ user, news, setNews }) {
               <div className="flex items-center justify-between mb-1">
                 <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{m.who} · {m.time}</div>
                 <div className="flex items-center gap-1.5 flex-shrink-0">
-                  <button onClick={() => openEdit(m)} className="text-[11px] px-2 py-1 rounded-full" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter", fontWeight: 700 }}>Bearbeiten</button>
-                  <button onClick={() => deleteNews(m)} className="text-[11px] px-2 py-1 rounded-full" style={{ background: C.fehlerFlaeche, color: C.fehler, fontFamily: "Inter", fontWeight: 700 }}>Löschen</button>
+                  <button onClick={() => openEdit(m)} className="text-[11px] px-2 py-1 rounded-full" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter", fontWeight: 700 }}>{t("allg.bearbeiten")}</button>
+                  <button onClick={() => deleteNews(m)} className="text-[11px] px-2 py-1 rounded-full" style={{ background: C.fehlerFlaeche, color: C.fehler, fontFamily: "Inter", fontWeight: 700 }}>{t("allg.loeschen")}</button>
                 </div>
               </div>
               {m.title ? <div className="text-sm mb-0.5" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>{m.title}</div> : null}
@@ -4601,6 +4614,7 @@ function FamilyTree({ user, members }) {
 }
 
 function FamilyLinkManager({ user, members, setMembers, adminMode = false }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [newName, setNewName] = useState("");
@@ -4664,8 +4678,8 @@ function FamilyLinkManager({ user, members, setMembers, adminMode = false }) {
   return <div className="rounded-2xl p-4 mb-5" style={{background:C.glass,border:`1px solid ${C.line}`}}>
     <div className="flex items-center justify-between"><div><div className="text-sm font-bold" style={{color:C.ink}}>Familienverknüpfung</div><div className="text-[11px]" style={{color:C.textDim}}>{adminMode ? `Sysadmin bearbeitet das Profil von ${user.name}.` : "Du verwaltest dein Familienprofil selbst."} Verknüpfungen gelten automatisch für beide Profile.</div></div><button disabled={saving} onClick={()=>setOpen(!open)} className="px-3 py-1.5 rounded-full text-xs font-bold" style={{background:C.paperDim,color:C.ink}}>{open?"Schließen":"＋ Verknüpfen"}</button></div>
     {message&&<div className="mt-2 text-[11px] font-semibold" style={{color:C.red}}>{message}</div>}
-    {familyConnections.length>0&&<div className="mt-3 pt-3 space-y-1.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] font-bold mb-1" style={{color:C.textDim}}>BESTEHENDE VERKNÜPFUNGEN</div>{familyConnections.map((member)=><div key={member.id} className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{background:C.paperDim}}><div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold" style={{background:member.color,color:C.white}}>{initialsOf(member.name)}</div><div className="flex-1 min-w-0"><div className="text-xs font-bold truncate" style={{color:C.ink}}>{member.name}</div><div className="text-[10px]" style={{color:C.textDim}}>{member.familyRole||"Familie"}</div></div><button onClick={()=>removeConnection(member)} className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold" style={{background:C.fehlerFlaeche,color:C.fehler}}>Löschen</button></div>)}</div>}
-    {open&&<div className="mt-3 pt-3" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[11px] font-bold mb-1">Rolle in der Verknüpfung</div><select value={relationMode} onChange={(e)=>{setRelationMode(e.target.value);setQuery("");}} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim}}><option value="eltern">Elternteil – Athlet/in oder Kind hinzufügen</option><option value="kind">Athlet/in / Kind – Elternteil hinzufügen</option></select><input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder={userIsParent?"Vorhandenen Athlet/in suchen …":"Vorhandenes Elternteil suchen …"} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim}}/>{query&&<div className="space-y-1">{results.map(m=><button key={m.id} onClick={()=>connect(m.id)} className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs" style={{background:C.paperDim,color:C.ink}}><span>{m.name} · {m.team}</span><span style={{color:C.red}}>Verbinden</span></button>)}{results.length===0&&<div className="text-[11px] py-2" style={{color:C.textDim}}>Kein passendes Profil gefunden.</div>}</div>}{userIsParent&&<div className="mt-3 pt-3" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[11px] font-bold mb-2">Kind ohne Account vorläufig anlegen</div><div className="flex gap-2"><input value={newName} onChange={(e)=>setNewName(e.target.value)} placeholder="Vor- und Nachname" className="flex-1 px-3 py-2 rounded-lg text-xs outline-none" style={{background:C.paperDim}}/><button onClick={createDependent} disabled={!newName.trim()} className="px-3 rounded-lg text-xs font-bold" style={{background:newName.trim()?C.red:C.line,color:"#fff"}}>Anlegen</button></div><div className="text-[10px] mt-2" style={{color:C.textDim}}>Das Kind kann sein vorläufiges Profil später beim Erstellen des eigenen Kontos übernehmen.</div></div>}</div>}
+    {familyConnections.length>0&&<div className="mt-3 pt-3 space-y-1.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] font-bold mb-1" style={{color:C.textDim}}>BESTEHENDE VERKNÜPFUNGEN</div>{familyConnections.map((member)=><div key={member.id} className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{background:C.paperDim}}><div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold" style={{background:member.color,color:C.white}}>{initialsOf(member.name)}</div><div className="flex-1 min-w-0"><div className="text-xs font-bold truncate" style={{color:C.ink}}>{member.name}</div><div className="text-[10px]" style={{color:C.textDim}}>{member.familyRole||"Familie"}</div></div><button onClick={()=>removeConnection(member)} className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold" style={{background:C.fehlerFlaeche,color:C.fehler}}>{t("allg.loeschen")}</button></div>)}</div>}
+    {open&&<div className="mt-3 pt-3" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[11px] font-bold mb-1">Rolle in der Verknüpfung</div><select value={relationMode} onChange={(e)=>{setRelationMode(e.target.value);setQuery("");}} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim}}><option value="eltern">Elternteil – Athlet/in oder Kind hinzufügen</option><option value="kind">Athlet/in / Kind – Elternteil hinzufügen</option></select><input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder={userIsParent?"Vorhandenen Athlet/in suchen …":"Vorhandenes Elternteil suchen …"} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim}}/>{query&&<div className="space-y-1">{results.map(m=><button key={m.id} onClick={()=>connect(m.id)} className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs" style={{background:C.paperDim,color:C.ink}}><span>{m.name} · {m.team}</span><span style={{color:C.red}}>Verbinden</span></button>)}{results.length===0&&<div className="text-[11px] py-2" style={{color:C.textDim}}>Kein passendes Profil gefunden.</div>}</div>}{userIsParent&&<div className="mt-3 pt-3" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[11px] font-bold mb-2">Kind ohne Account vorläufig anlegen</div><div className="flex gap-2"><input value={newName} onChange={(e)=>setNewName(e.target.value)} placeholder={t("feld.vollerName")} className="flex-1 px-3 py-2 rounded-lg text-xs outline-none" style={{background:C.paperDim}}/><button onClick={createDependent} disabled={!newName.trim()} className="px-3 rounded-lg text-xs font-bold" style={{background:newName.trim()?C.red:C.line,color:"#fff"}}>{t("allg.anlegen")}</button></div><div className="text-[10px] mt-2" style={{color:C.textDim}}>Das Kind kann sein vorläufiges Profil später beim Erstellen des eigenen Kontos übernehmen.</div></div>}</div>}
   </div>;
 }
 
@@ -4793,6 +4807,7 @@ function TrainerTeamSettings({ user, members, setMembers }) {
 }
 
 function PlayerTeamSettings({ user, setMembers }) {
+  const t = useT();
   const [teams, setTeams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
@@ -4825,7 +4840,7 @@ function PlayerTeamSettings({ user, setMembers }) {
   return <div className="rounded-2xl p-4 mb-5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
     <div className="flex items-center gap-2 mb-1 text-sm font-bold" style={{ color: C.ink }}><Users size={15} style={{ color: C.secondary }}/> Meine Mannschaften</div>
     <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Deine Mannschaftszuordnung wird von Trainer, Teammanager oder Vereins-Admin verwaltet.</div>
-    {loading ? <div className="text-xs py-3" style={{ color: C.textDim }}>Wird geladen …</div> : teams.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Du bist aktuell keiner Mannschaft zugeordnet.</div> : <div className="flex flex-wrap gap-2">{teams.map((team) => <span key={team.id} className="px-3 py-1.5 rounded-full text-xs font-bold" style={{ background: C.erfolgFlaeche, color: C.erfolg }}>{team.name}</span>)}</div>}
+    {loading ? <div className="text-xs py-3" style={{ color: C.textDim }}>{t("allg.laedt")}</div> : teams.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Du bist aktuell keiner Mannschaft zugeordnet.</div> : <div className="flex flex-wrap gap-2">{teams.map((team) => <span key={team.id} className="px-3 py-1.5 rounded-full text-xs font-bold" style={{ background: C.erfolgFlaeche, color: C.erfolg }}>{team.name}</span>)}</div>}
     {message && <div role="status" className="text-[11px] mt-2" style={{ color: C.red }}>{message}</div>}
   </div>;
 }
@@ -5052,12 +5067,13 @@ function TeamsView({ currentUser, members, setMembers, currentClub }) {
     <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>Alle Mannschaften von {currentClub?.shortName}. Öffne ein Team, um den Athletenkader anzusehen.</div>
     {showCreate && <form onSubmit={createTeam} className="rounded-2xl p-4 mb-5" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Neue Mannschaft anlegen</div><div className="text-[11px] mb-3" style={{ color: C.textDim }}>Danach können Athlet/innen das Team in ihrem Profil auswählen.</div><input value={name} onChange={(event) => setName(event.target.value)} maxLength={80} placeholder="Mannschaftsname, z. B. U17" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}/><input value={category} onChange={(event) => setCategory(event.target.value)} maxLength={80} placeholder="Kategorie, z. B. Jugend oder Herren" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}/><button type="button" onClick={() => setIsAdultTeam((v) => !v)} className="w-full flex items-center justify-between rounded-xl px-3 py-2.5 mb-2" style={{ background: isAdultTeam ? C.fehlerFlaeche : C.paperDim, border: isAdultTeam ? `1px solid ${C.red}` : "1px solid transparent" }}><div className="text-left"><div className="text-xs font-bold" style={{ color: C.ink }}>Erwachsenenmannschaft?</div><div className="text-[10px]" style={{ color: C.textDim }}>Nur dann gibt es Strafenkatalog & Zuweisungen für dieses Team.</div></div><span className="w-10 h-6 rounded-full flex items-center px-0.5" style={{ background: isAdultTeam ? C.red : C.line, justifyContent: isAdultTeam ? "flex-end" : "flex-start" }}><span className="w-5 h-5 rounded-full" style={{ background: C.glass }}/></span></button><button disabled={saving || !name.trim()} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: name.trim() ? C.red : C.line, color: C.white }}>{saving ? "Wird angelegt …" : "Mannschaft anlegen"}</button></form>}
     {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: (message.includes("angelegt")||message.includes("geändert")||message.includes("archiviert")) ? C.erfolgFlaeche : C.fehlerFlaeche, color: (message.includes("angelegt")||message.includes("geändert")||message.includes("archiviert")) ? C.erfolg : C.fehler }}>{message}</div>}
-    {selectedTeam ? <div><button onClick={() => { setSelectedTeamId(""); setShowPlayerPicker(false); setEditingTeam(false); }} className="flex items-center gap-1 text-xs font-bold mb-3" style={{ color: C.fehler }}><ArrowLeft size={14}/> Alle Teams</button><div className="rounded-2xl p-4 mb-4" style={{ background: C.ink, color: C.white }}><div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: C.textDim }}>{selectedTeam.category || "Mannschaft"}</div><div className="text-xl font-bold" style={{ fontFamily: "Oswald" }}>{selectedTeam.name}</div><div className="text-xs mt-1" style={{ color: C.textDim }}>{rosterFor(selectedTeam).length} verknüpfte Athlet/innen</div></div>{canCreate && !editingTeam && <div className="flex gap-2 mb-4"><button onClick={() => openEditTeam(selectedTeam)} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>Bearbeiten</button><button onClick={archiveTeam} disabled={archivingTeam} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{archivingTeam ? "…" : "Archivieren"}</button></div>}{canCreate && editingTeam && <div className="rounded-2xl p-3.5 mb-4" style={{ background: C.paperDim }}><input value={editName} onChange={(e) => setEditName(e.target.value)} maxLength={80} placeholder="Mannschaftsname" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.glass }}/><input value={editCategory} onChange={(e) => setEditCategory(e.target.value)} maxLength={80} placeholder="Kategorie" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.glass }}/><div className="flex gap-2"><button onClick={saveTeamEdit} disabled={savingTeamEdit} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{savingTeamEdit ? "…" : "Speichern"}</button><button onClick={() => setEditingTeam(false)} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>Abbrechen</button></div></div>}<SectionTitle eyebrow="Kader" title="Athlet/innen" right={canAssignPlayers ? <button onClick={() => setShowPlayerPicker((value) => !value)} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showPlayerPicker ? "Schließen" : "+ Zuweisen"}</button> : null}/>{showPlayerPicker && <div className="rounded-2xl p-3 mb-4" style={{ background: C.paperDim }}><div className="text-[11px] mb-2" style={{ color: C.textDim }}>Athlet/in auswählen und anschließend seine Mannschaften festlegen.</div>{!showNewPlayer ? <button type="button" onClick={() => setShowNewPlayer(true)} className="w-full flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 mb-2 text-[11px] font-bold" style={{ background: C.glass, color: C.fehler, border: `1px dashed ${C.red}` }}><Plus size={13}/> Spieler ohne Account anlegen</button> : <div className="rounded-xl p-2.5 mb-2" style={{ background: C.glass }}><div className="text-[10px] mb-1.5" style={{ color: C.textDim }}>Für Athlet/innen ohne eigenes Handy/Konto (z. B. Kindermannschaften). Vorname und Nachname reichen — die Verknüpfung mit einem Elternteil erfolgt separat in den Familienprofilen.</div><input value={newPlayerName} onChange={(e) => setNewPlayerName(e.target.value)} placeholder="Vor- und Nachname" className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2" style={{ background: C.paperDim }}/><div className="flex gap-2"><button type="button" onClick={() => { setShowNewPlayer(false); setNewPlayerName(""); }} className="flex-1 py-2 rounded-lg text-[11px] font-bold" style={{ background: C.paperDim, color: C.ink }}>Abbrechen</button><button type="button" disabled={creatingPlayer || !newPlayerName.trim()} onClick={createPlayerWithoutAccount} className="flex-1 py-2 rounded-lg text-[11px] font-bold" style={{ background: newPlayerName.trim() ? C.ink : C.line, color: C.white }}>{creatingPlayer ? "…" : "Anlegen"}</button></div></div>}<div className="space-y-1.5 max-h-56 overflow-y-auto">{players.map((player) => <button key={player.id} onClick={() => openPlayer(player)} className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-left" style={{ background: C.glass }}><div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold" style={{ background: player.color, color: C.white }}>{initialsOf(player.name)}</div><div className="flex-1"><div className="text-xs font-bold" style={{ color: C.ink }}>{player.name}</div><div className="text-[9px]" style={{ color: C.textDim }}>{memberPlayerTeams(player).join(" · ") || "Noch ohne Mannschaft"}</div></div><ChevronRight size={13} style={{ color: C.textDim }}/></button>)}</div></div>}{rosterFor(selectedTeam).length ? <div className="space-y-2">{rosterFor(selectedTeam).map((player) => <button key={player.id} onClick={() => openPlayer(player)} className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: player.color, color: C.white }}>{initialsOf(player.name)}</div><div className="flex-1"><div className="text-xs font-bold" style={{ color: C.ink }}>{player.name}</div><div className="text-[10px]" style={{ color: C.textDim }}>{memberPlayerTeams(player).join(" · ")}</div></div><ChevronRight size={14} style={{ color: C.textDim }}/></button>)}</div> : <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>Dieser Mannschaft sind noch keine Athlet/innen zugeordnet.</div>}</div> : loading ? <div className="text-xs py-4" style={{ color: C.textDim }}>Mannschaften werden geladen …</div> : <><SectionTitle eyebrow="Persönlich" title="Meine Teams"/><div className="space-y-2 mb-6">{ownTeams.length ? ownTeams.map((team) => <TeamCard key={team.id} team={team}/>) : <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>Du bist noch keiner Mannschaft als Athlet/in zugeordnet. Athlet/innen können im Profil bis zu drei Teams auswählen.</div>}</div><SectionTitle eyebrow="Vereinsübersicht" title="Alle Mannschaften"/><div className="space-y-2">{teams.map((team) => <TeamCard key={team.id} team={team}/>)}{teams.length === 0 && <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>Noch keine Mannschaften angelegt.</div>}</div></>}
-    {selectedPlayer && <div className="absolute inset-0 z-50 flex items-end p-3" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setSelectedPlayerId("")}><div role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()} className="w-full rounded-3xl p-5 max-h-[82%] overflow-y-auto" style={{ background: C.glass }}><div className="flex items-start justify-between mb-4"><div className="flex items-center gap-3"><div className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold" style={{ background: selectedPlayer.color, color: C.white }}>{initialsOf(selectedPlayer.name)}</div><div><div className="text-lg font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{selectedPlayer.name}</div><div className="text-xs" style={{ color: C.textDim }}>Athlet/in · dabei seit {selectedPlayer.since}</div></div></div><button onClick={() => setSelectedPlayerId("")} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><X size={15}/></button></div><div className="flex items-center justify-between mb-2"><div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.textDim }}>Mannschaften</div>{canAssignPlayers && <span className="text-[10px] font-bold" style={{ color: playerTeamIds.length === 3 ? C.red : C.textDim }}>{playerTeamIds.length}/3</span>}{canAssignPlayers && <button type="button" onClick={() => setTeamsOpen((v) => !v)} className="p-1"><ChevronRight size={14} style={{ color: C.textDim, transform: teamsOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .15s" }}/></button>}</div>{canAssignPlayers ? (teamsOpen && <div className="space-y-2">{teams.map((team) => { const active = playerTeamIds.includes(team.id); return <button key={team.id} onClick={() => togglePlayerTeam(team.id)} className="w-full flex items-center justify-between rounded-xl px-3 py-2.5 text-left" style={{ background: active ? C.erfolgFlaeche : C.paperDim, border: active ? `1px solid ${C.secondary}` : "1px solid transparent" }}><div><div className="text-xs font-bold" style={{ color: C.ink }}>{team.name}</div><div className="text-[9px]" style={{ color: C.textDim }}>{team.category || "Mannschaft"}</div></div><span className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: active ? C.secondary : C.white, color: C.white }}>{active && <Check size={13}/>}</span></button>; })}<button onClick={savePlayerTeams} disabled={savingPlayer || JSON.stringify([...playerTeamIds].sort()) === JSON.stringify([...savedPlayerTeamIds].sort())} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: JSON.stringify([...playerTeamIds].sort()) !== JSON.stringify([...savedPlayerTeamIds].sort()) ? C.ink : C.paperDim, color: JSON.stringify([...playerTeamIds].sort()) !== JSON.stringify([...savedPlayerTeamIds].sort()) ? C.white : C.textDim, opacity: savingPlayer ? .6 : 1 }}>{savingPlayer ? "Wird gespeichert …" : "Zuordnung speichern"}</button>{playerMessage && <div role="status" className="text-[11px]" style={{ color: playerMessage.includes("gespeichert") ? C.erfolg : C.fehler }}>{playerMessage}</div>}</div>) : <div className="flex flex-wrap gap-2">{memberPlayerTeams(selectedPlayer).length ? memberPlayerTeams(selectedPlayer).map((team) => <span key={team} className="px-3 py-1.5 rounded-full text-xs font-bold" style={{ background: C.erfolgFlaeche, color: C.erfolg }}>{team}</span>) : <span className="text-xs" style={{ color: C.textDim }}>Noch keiner Mannschaft zugeordnet.</span>}</div>}{canManagePenalties && (<div className="mt-4 pt-4" style={{ borderTop: `1px solid ${C.line}` }}><button type="button" onClick={() => setPenaltyOpen((v) => !v)} className="w-full flex items-center justify-between mb-2"><div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.textDim }}>Strafenverwaltung</div><ChevronRight size={14} style={{ color: C.textDim, transform: penaltyOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .15s" }}/></button>{penaltyOpen && (<><div className="flex gap-2 mb-3"><select value={assignRuleId} onChange={(e) => setAssignRuleId(e.target.value)} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}><option value="">Strafe wählen …</option>{penaltyRules.map((r) => <option key={r.id} value={r.id}>{r.title} ({r.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €)</option>)}</select><button onClick={assignPenaltyToPlayer} disabled={assigningPenalty || !assignRuleId} className="px-4 rounded-xl text-xs font-bold" style={{ background: assignRuleId ? C.ink : C.line, color: C.white }}>{assigningPenalty ? "…" : "Zuweisen"}</button></div>{penaltyMessage && <div role="status" className="text-[11px] mb-2" style={{ color: penaltyMessage.includes("zugewiesen") ? C.erfolg : C.fehler }}>{penaltyMessage}</div>}<div className="text-[10px] uppercase tracking-widest font-bold mb-1.5" style={{ color: C.textDim }}>Bisherige Strafen</div><div className="space-y-1.5">{playerPenalties.map((p) => <div key={p.id} className="flex items-center justify-between px-3 py-2 rounded-xl" style={{ background: C.paperDim }}><span className="text-xs font-bold" style={{ color: C.ink }}>{p.title}</span><span className="text-xs font-bold" style={{ color: C.red, fontFamily: "JetBrains Mono" }}>{p.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span><button type="button" onClick={() => togglePlayerPenaltyPaid(p)} className="px-2 py-1 rounded-lg text-[9px] font-bold flex-shrink-0" style={{ background: p.paidAt ? C.erfolgFlaeche : C.white, color: p.paidAt ? C.secondary : C.textDim }}>{p.paidAt ? "Bezahlt" : "Offen"}</button><button type="button" onClick={() => removePlayerPenalty(p)} aria-label="Strafe entfernen" className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.glass, color: C.red }}><X size={12}/></button></div>)}{playerPenalties.length === 0 && <div className="text-[11px]" style={{ color: C.textDim }}>Noch keine Strafen vergeben.</div>}</div></>)}</div>)}</div></div>}
+    {selectedTeam ? <div><button onClick={() => { setSelectedTeamId(""); setShowPlayerPicker(false); setEditingTeam(false); }} className="flex items-center gap-1 text-xs font-bold mb-3" style={{ color: C.fehler }}><ArrowLeft size={14}/> Alle Teams</button><div className="rounded-2xl p-4 mb-4" style={{ background: C.ink, color: C.white }}><div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: C.textDim }}>{selectedTeam.category || "Mannschaft"}</div><div className="text-xl font-bold" style={{ fontFamily: "Oswald" }}>{selectedTeam.name}</div><div className="text-xs mt-1" style={{ color: C.textDim }}>{rosterFor(selectedTeam).length} verknüpfte Athlet/innen</div></div>{canCreate && !editingTeam && <div className="flex gap-2 mb-4"><button onClick={() => openEditTeam(selectedTeam)} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>{t("allg.bearbeiten")}</button><button onClick={archiveTeam} disabled={archivingTeam} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{archivingTeam ? "…" : "Archivieren"}</button></div>}{canCreate && editingTeam && <div className="rounded-2xl p-3.5 mb-4" style={{ background: C.paperDim }}><input value={editName} onChange={(e) => setEditName(e.target.value)} maxLength={80} placeholder="Mannschaftsname" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.glass }}/><input value={editCategory} onChange={(e) => setEditCategory(e.target.value)} maxLength={80} placeholder="Kategorie" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.glass }}/><div className="flex gap-2"><button onClick={saveTeamEdit} disabled={savingTeamEdit} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{savingTeamEdit ? "…" : "Speichern"}</button><button onClick={() => setEditingTeam(false)} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>{t("allg.abbrechen")}</button></div></div>}<SectionTitle eyebrow="Kader" title="Athlet/innen" right={canAssignPlayers ? <button onClick={() => setShowPlayerPicker((value) => !value)} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showPlayerPicker ? "Schließen" : "+ Zuweisen"}</button> : null}/>{showPlayerPicker && <div className="rounded-2xl p-3 mb-4" style={{ background: C.paperDim }}><div className="text-[11px] mb-2" style={{ color: C.textDim }}>Athlet/in auswählen und anschließend seine Mannschaften festlegen.</div>{!showNewPlayer ? <button type="button" onClick={() => setShowNewPlayer(true)} className="w-full flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 mb-2 text-[11px] font-bold" style={{ background: C.glass, color: C.fehler, border: `1px dashed ${C.red}` }}><Plus size={13}/> Spieler ohne Account anlegen</button> : <div className="rounded-xl p-2.5 mb-2" style={{ background: C.glass }}><div className="text-[10px] mb-1.5" style={{ color: C.textDim }}>Für Athlet/innen ohne eigenes Handy/Konto (z. B. Kindermannschaften). Vorname und Nachname reichen — die Verknüpfung mit einem Elternteil erfolgt separat in den Familienprofilen.</div><input value={newPlayerName} onChange={(e) => setNewPlayerName(e.target.value)} placeholder={t("feld.vollerName")} className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2" style={{ background: C.paperDim }}/><div className="flex gap-2"><button type="button" onClick={() => { setShowNewPlayer(false); setNewPlayerName(""); }} className="flex-1 py-2 rounded-lg text-[11px] font-bold" style={{ background: C.paperDim, color: C.ink }}>{t("allg.abbrechen")}</button><button type="button" disabled={creatingPlayer || !newPlayerName.trim()} onClick={createPlayerWithoutAccount} className="flex-1 py-2 rounded-lg text-[11px] font-bold" style={{ background: newPlayerName.trim() ? C.ink : C.line, color: C.white }}>{creatingPlayer ? "…" : "Anlegen"}</button></div></div>}<div className="space-y-1.5 max-h-56 overflow-y-auto">{players.map((player) => <button key={player.id} onClick={() => openPlayer(player)} className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-left" style={{ background: C.glass }}><div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold" style={{ background: player.color, color: C.white }}>{initialsOf(player.name)}</div><div className="flex-1"><div className="text-xs font-bold" style={{ color: C.ink }}>{player.name}</div><div className="text-[9px]" style={{ color: C.textDim }}>{memberPlayerTeams(player).join(" · ") || "Noch ohne Mannschaft"}</div></div><ChevronRight size={13} style={{ color: C.textDim }}/></button>)}</div></div>}{rosterFor(selectedTeam).length ? <div className="space-y-2">{rosterFor(selectedTeam).map((player) => <button key={player.id} onClick={() => openPlayer(player)} className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: player.color, color: C.white }}>{initialsOf(player.name)}</div><div className="flex-1"><div className="text-xs font-bold" style={{ color: C.ink }}>{player.name}</div><div className="text-[10px]" style={{ color: C.textDim }}>{memberPlayerTeams(player).join(" · ")}</div></div><ChevronRight size={14} style={{ color: C.textDim }}/></button>)}</div> : <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>Dieser Mannschaft sind noch keine Athlet/innen zugeordnet.</div>}</div> : loading ? <div className="text-xs py-4" style={{ color: C.textDim }}>Mannschaften werden geladen …</div> : <><SectionTitle eyebrow="Persönlich" title="Meine Teams"/><div className="space-y-2 mb-6">{ownTeams.length ? ownTeams.map((team) => <TeamCard key={team.id} team={team}/>) : <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>Du bist noch keiner Mannschaft als Athlet/in zugeordnet. Athlet/innen können im Profil bis zu drei Teams auswählen.</div>}</div><SectionTitle eyebrow="Vereinsübersicht" title="Alle Mannschaften"/><div className="space-y-2">{teams.map((team) => <TeamCard key={team.id} team={team}/>)}{teams.length === 0 && <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>Noch keine Mannschaften angelegt.</div>}</div></>}
+    {selectedPlayer && <div className="absolute inset-0 z-50 flex items-end p-3" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setSelectedPlayerId("")}><div role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()} className="w-full rounded-3xl p-5 max-h-[82%] overflow-y-auto" style={{ background: C.glass }}><div className="flex items-start justify-between mb-4"><div className="flex items-center gap-3"><div className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold" style={{ background: selectedPlayer.color, color: C.white }}>{initialsOf(selectedPlayer.name)}</div><div><div className="text-lg font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{selectedPlayer.name}</div><div className="text-xs" style={{ color: C.textDim }}>Athlet/in · dabei seit {selectedPlayer.since}</div></div></div><button onClick={() => setSelectedPlayerId("")} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><X size={15}/></button></div><div className="flex items-center justify-between mb-2"><div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.textDim }}>{t("tm.mannschaften")}</div>{canAssignPlayers && <span className="text-[10px] font-bold" style={{ color: playerTeamIds.length === 3 ? C.red : C.textDim }}>{playerTeamIds.length}/3</span>}{canAssignPlayers && <button type="button" onClick={() => setTeamsOpen((v) => !v)} className="p-1"><ChevronRight size={14} style={{ color: C.textDim, transform: teamsOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .15s" }}/></button>}</div>{canAssignPlayers ? (teamsOpen && <div className="space-y-2">{teams.map((team) => { const active = playerTeamIds.includes(team.id); return <button key={team.id} onClick={() => togglePlayerTeam(team.id)} className="w-full flex items-center justify-between rounded-xl px-3 py-2.5 text-left" style={{ background: active ? C.erfolgFlaeche : C.paperDim, border: active ? `1px solid ${C.secondary}` : "1px solid transparent" }}><div><div className="text-xs font-bold" style={{ color: C.ink }}>{team.name}</div><div className="text-[9px]" style={{ color: C.textDim }}>{team.category || "Mannschaft"}</div></div><span className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: active ? C.secondary : C.white, color: C.white }}>{active && <Check size={13}/>}</span></button>; })}<button onClick={savePlayerTeams} disabled={savingPlayer || JSON.stringify([...playerTeamIds].sort()) === JSON.stringify([...savedPlayerTeamIds].sort())} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: JSON.stringify([...playerTeamIds].sort()) !== JSON.stringify([...savedPlayerTeamIds].sort()) ? C.ink : C.paperDim, color: JSON.stringify([...playerTeamIds].sort()) !== JSON.stringify([...savedPlayerTeamIds].sort()) ? C.white : C.textDim, opacity: savingPlayer ? .6 : 1 }}>{savingPlayer ? "Wird gespeichert …" : "Zuordnung speichern"}</button>{playerMessage && <div role="status" className="text-[11px]" style={{ color: playerMessage.includes("gespeichert") ? C.erfolg : C.fehler }}>{playerMessage}</div>}</div>) : <div className="flex flex-wrap gap-2">{memberPlayerTeams(selectedPlayer).length ? memberPlayerTeams(selectedPlayer).map((team) => <span key={team} className="px-3 py-1.5 rounded-full text-xs font-bold" style={{ background: C.erfolgFlaeche, color: C.erfolg }}>{team}</span>) : <span className="text-xs" style={{ color: C.textDim }}>Noch keiner Mannschaft zugeordnet.</span>}</div>}{canManagePenalties && (<div className="mt-4 pt-4" style={{ borderTop: `1px solid ${C.line}` }}><button type="button" onClick={() => setPenaltyOpen((v) => !v)} className="w-full flex items-center justify-between mb-2"><div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.textDim }}>Strafenverwaltung</div><ChevronRight size={14} style={{ color: C.textDim, transform: penaltyOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .15s" }}/></button>{penaltyOpen && (<><div className="flex gap-2 mb-3"><select value={assignRuleId} onChange={(e) => setAssignRuleId(e.target.value)} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}><option value="">Strafe wählen …</option>{penaltyRules.map((r) => <option key={r.id} value={r.id}>{r.title} ({r.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €)</option>)}</select><button onClick={assignPenaltyToPlayer} disabled={assigningPenalty || !assignRuleId} className="px-4 rounded-xl text-xs font-bold" style={{ background: assignRuleId ? C.ink : C.line, color: C.white }}>{assigningPenalty ? "…" : "Zuweisen"}</button></div>{penaltyMessage && <div role="status" className="text-[11px] mb-2" style={{ color: penaltyMessage.includes("zugewiesen") ? C.erfolg : C.fehler }}>{penaltyMessage}</div>}<div className="text-[10px] uppercase tracking-widest font-bold mb-1.5" style={{ color: C.textDim }}>Bisherige Strafen</div><div className="space-y-1.5">{playerPenalties.map((p) => <div key={p.id} className="flex items-center justify-between px-3 py-2 rounded-xl" style={{ background: C.paperDim }}><span className="text-xs font-bold" style={{ color: C.ink }}>{p.title}</span><span className="text-xs font-bold" style={{ color: C.red, fontFamily: "JetBrains Mono" }}>{p.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span><button type="button" onClick={() => togglePlayerPenaltyPaid(p)} className="px-2 py-1 rounded-lg text-[9px] font-bold flex-shrink-0" style={{ background: p.paidAt ? C.erfolgFlaeche : C.white, color: p.paidAt ? C.secondary : C.textDim }}>{p.paidAt ? "Bezahlt" : "Offen"}</button><button type="button" onClick={() => removePlayerPenalty(p)} aria-label="Strafe entfernen" className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.glass, color: C.red }}><X size={12}/></button></div>)}{playerPenalties.length === 0 && <div className="text-[11px]" style={{ color: C.textDim }}>Noch keine Strafen vergeben.</div>}</div></>)}</div>)}</div></div>}
   </div>;
 }
 
 function TeamPenaltyCatalog({ user }) {
+  const t = useT();
   const [teams, setTeams] = useState([]);
   const [selectedTeamId, setSelectedTeamId] = useState("");
   const [rules, setRules] = useState([]);
@@ -5312,7 +5328,7 @@ function TeamPenaltyCatalog({ user }) {
         {rules.map((rule) => <div key={rule.id} className="flex items-center gap-2 px-3 py-2.5 rounded-xl" style={{ background: C.paperDim }}><div className="flex-1 min-w-0"><div className="text-xs font-bold truncate" style={{ color: C.ink }}>{rule.title}</div></div><div className="text-xs font-bold whitespace-nowrap" style={{ color: C.red, fontFamily: "JetBrains Mono" }}>{rule.amount.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</div>{canManageSelectedTeam && <><button type="button" disabled={saving} onClick={() => editRule(rule)} className="px-2 py-1.5 rounded-lg text-[10px] font-bold" style={{ background: C.glass, color: C.ink }}>Ändern</button><button type="button" disabled={saving} onClick={() => removeRule(rule)} aria-label={`${rule.title} löschen`} className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: C.glass, color: C.red }}><X size={14}/></button></>}</div>)}
         {rules.length === 0 && <div className="text-[11px] rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Für diese Mannschaft sind noch keine Regeln hinterlegt.</div>}
       </div>
-      {canManageSelectedTeam && <form onSubmit={addRule} className="pt-3" style={{ borderTop: `1px solid ${C.line}` }}><div className="flex items-center justify-between mb-2"><div className="text-[10px] font-bold" style={{ color: C.textDim }}>{editingId ? "REGEL BEARBEITEN" : "NEUE REGEL"}</div>{editingId && <button type="button" onClick={() => { setEditingId(""); setTitle(""); setAmount(""); }} className="text-[10px] font-bold" style={{ color: C.red }}>Abbrechen</button>}</div><input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={120} placeholder="Titel, z. B. Zuspätkommen" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim, color: C.ink }}/><div className="flex gap-2"><div className="relative flex-1"><input value={amount} onChange={(event) => setAmount(event.target.value)} inputMode="decimal" placeholder="Kosten" className="w-full px-3 pr-8 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}/><span className="absolute right-3 top-2.5 text-xs" style={{ color: C.textDim }}>€</span></div><button type="submit" disabled={saving || !title.trim() || !amount.trim()} className="px-4 rounded-xl text-xs font-bold" style={{ background: title.trim() && amount.trim() ? C.ink : C.line, color: C.white }}>{saving ? "…" : editingId ? "Speichern" : "Hinzufügen"}</button></div></form>}
+      {canManageSelectedTeam && <form onSubmit={addRule} className="pt-3" style={{ borderTop: `1px solid ${C.line}` }}><div className="flex items-center justify-between mb-2"><div className="text-[10px] font-bold" style={{ color: C.textDim }}>{editingId ? "REGEL BEARBEITEN" : "NEUE REGEL"}</div>{editingId && <button type="button" onClick={() => { setEditingId(""); setTitle(""); setAmount(""); }} className="text-[10px] font-bold" style={{ color: C.red }}>{t("allg.abbrechen")}</button>}</div><input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={120} placeholder="Titel, z. B. Zuspätkommen" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim, color: C.ink }}/><div className="flex gap-2"><div className="relative flex-1"><input value={amount} onChange={(event) => setAmount(event.target.value)} inputMode="decimal" placeholder="Kosten" className="w-full px-3 pr-8 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}/><span className="absolute right-3 top-2.5 text-xs" style={{ color: C.textDim }}>€</span></div><button type="submit" disabled={saving || !title.trim() || !amount.trim()} className="px-4 rounded-xl text-xs font-bold" style={{ background: title.trim() && amount.trim() ? C.ink : C.line, color: C.white }}>{saving ? "…" : editingId ? "Speichern" : "Hinzufügen"}</button></div></form>}
       {canManageSelectedTeam && (
         <div className="pt-4 mt-4" style={{ borderTop: `1px solid ${C.line}` }}>
           <div className="text-[10px] font-bold mb-2" style={{ color: C.textDim }}>STRAFE ZUWEISEN</div>
@@ -5393,6 +5409,7 @@ function TeamPenaltyCatalog({ user }) {
    jemand, der die Aufgabe verantwortet. Beides nebeneinander ist richtig:
    "Kuchenverkauf" hat eine Verantwortliche und braucht drei Helfer. */
 function TaskCreateForm({ form, setForm, onSubmit, onCancel, editing = false, teams = [], members = [] }) {
+  const t = useT();
   const verantwortliche = form.verantwortliche || [];
   const hinzufuegen = (id) => { if (id && !verantwortliche.includes(id)) setForm({ ...form, verantwortliche: [...verantwortliche, id] }); };
   const entfernen = (id) => setForm({ ...form, verantwortliche: verantwortliche.filter((v) => v !== id) });
@@ -5442,7 +5459,7 @@ function TaskCreateForm({ form, setForm, onSubmit, onCancel, editing = false, te
       </div>
       {teams.length > 0 && (
         <select value={form.teamId || ""} onChange={(e) => setForm({ ...form, teamId: e.target.value })}
-          aria-label="Mannschaft" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2"
+          aria-label={t("tm.mannschaft")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2"
           style={{ background: C.white, border: `1px solid ${C.line}`, color: C.ink, fontFamily: "Inter" }}>
           <option value="">Ganzer Verein</option>
           {teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -5471,12 +5488,13 @@ function TaskCreateForm({ form, setForm, onSubmit, onCancel, editing = false, te
 
       <div className="flex gap-2">
         <button onClick={onSubmit} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{editing ? "Änderungen speichern" : "Anlegen"}</button>
-        <button onClick={onCancel} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>Abbrechen</button>
+        <button onClick={onCancel} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>{t("allg.abbrechen")}</button>
       </div>
     </div>
   );
 }
 function TasksView({ currentUser, members }) {
+  const t = useT();
   const databaseMembership = !!supabase && isDbId(currentUser.id);
   const [clubTasks, setClubTasks] = useState([]);
   const [teamTasks, setTeamTasks] = useState([]);
@@ -5597,10 +5615,10 @@ function TasksView({ currentUser, members }) {
         <div className="text-[10px] mb-2" style={{ color: C.textDim }}>{task.teamName ? `${task.teamName} · ` : "Verein · "}{task.dueDate ? `Fällig bis ${new Date(task.dueDate).toLocaleDateString("de-DE")}` : "Kein Fälligkeitsdatum"}</div>
         {taken > 0 && <div className="text-[10px] mb-2" style={{ color: C.textDim }}>Eingetragen: {task.signups.map((s) => s.name).join(", ")}</div>}
         <div className="flex gap-2">
-          {!isSignedUp && free > 0 && <button onClick={() => signUp(task.id)} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: C.ink, color: C.white }}>Eintragen</button>}
-          {isSignedUp && <button onClick={() => withdraw(task.id)} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: C.paperDim, color: C.red }}>Austragen</button>}
-          {(isCreator || canManage) && <button onClick={() => onEdit(task)} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.paperDim, color: C.textDim }}>Bearbeiten</button>}
-          {(isCreator || canManage) && <button onClick={() => removeTask(task)} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.paperDim, color: C.red }}>Löschen</button>}
+          {!isSignedUp && free > 0 && <button onClick={() => signUp(task.id)} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: C.ink, color: C.white }}>{t("allg.eintragenKnopf")}</button>}
+          {isSignedUp && <button onClick={() => withdraw(task.id)} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: C.paperDim, color: C.red }}>{t("allg.austragen")}</button>}
+          {(isCreator || canManage) && <button onClick={() => onEdit(task)} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.paperDim, color: C.textDim }}>{t("allg.bearbeiten")}</button>}
+          {(isCreator || canManage) && <button onClick={() => removeTask(task)} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.paperDim, color: C.red }}>{t("allg.loeschen")}</button>}
         </div>
       </div>
     );
@@ -5632,6 +5650,7 @@ function TasksView({ currentUser, members }) {
 }
 
 function VehiclesView({ currentUser, currentClub }) {
+  const t = useT();
   const cfg = sportConfig(currentClub?.sport);
   const databaseMembership = !!supabase && isDbId(currentUser.id);
   const canManageFleet = currentUser.roles.some((r) => ["vorstand", "vereinsadmin", "geschaeftsfuehrung"].includes(r));
@@ -5821,7 +5840,7 @@ function VehiclesView({ currentUser, currentClub }) {
           <input value={newVehicle.seats} onChange={(e) => setNewVehicle({ ...newVehicle, seats: e.target.value })} inputMode="numeric" placeholder="Anzahl Plätze" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}/>
           <div className="flex gap-2">
             <button onClick={addVehicle} disabled={savingVehicle} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{savingVehicle ? "…" : editingVehicleId ? "Änderungen speichern" : "Anlegen"}</button>
-            {editingVehicleId && <button onClick={() => { setEditingVehicleId(null); setNewVehicle({ label: "", plate: "", seats: "" }); setShowAddVehicle(false); }} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.textDim }}>Abbrechen</button>}
+            {editingVehicleId && <button onClick={() => { setEditingVehicleId(null); setNewVehicle({ label: "", plate: "", seats: "" }); setShowAddVehicle(false); }} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.textDim }}>{t("allg.abbrechen")}</button>}
           </div>
         </div>
       )}
@@ -5834,7 +5853,7 @@ function VehiclesView({ currentUser, currentClub }) {
               <div className="text-[11px]" style={{ color: C.textDim }}>{v.license_plate} · {v.seats} Plätze</div>
             </button>
             {canBook && <ChevronRight size={15} style={{ color: C.textDim }}/>}
-            {canManageFleet && <button onClick={() => openEditVehicle(v)} aria-label={`${v.label} bearbeiten`} className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: C.paperDim, color: C.textDim }}>Bearbeiten</button>}
+            {canManageFleet && <button onClick={() => openEditVehicle(v)} aria-label={`${v.label} bearbeiten`} className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: C.paperDim, color: C.textDim }}>{t("allg.bearbeiten")}</button>}
             {canManageFleet && <button onClick={() => removeVehicle(v)} aria-label={`${v.label} löschen`} className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.paperDim, color: C.red }}><X size={14}/></button>}
           </div>
         ))}
@@ -5905,7 +5924,7 @@ function VehiclesView({ currentUser, currentClub }) {
             )}
             {b.status !== "angefragt" && canCancel(b) && (
               <div className="flex items-center gap-1.5 flex-shrink-0">
-                <button onClick={() => openEditBooking(b)} className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold" style={{ background: C.paperDim, color: C.textDim }}>Bearbeiten</button>
+                <button onClick={() => openEditBooking(b)} className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold" style={{ background: C.paperDim, color: C.textDim }}>{t("allg.bearbeiten")}</button>
                 <button onClick={() => cancelBooking(b)} aria-label="Buchung stornieren" className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: C.paperDim, color: C.red }}><X size={14}/></button>
               </div>
             )}
@@ -5982,6 +6001,7 @@ function VehiclesView({ currentUser, currentClub }) {
 }
 
 function DutyTasksSection({ ev, currentUser, sport, onNeuLaden, dutyPlan, members }) {
+  const t = useT();
   const cfg = sportConfig(sport);
   const [tasks, setTasks] = useState([]);
   const [templates, setTemplates] = useState([]);
@@ -6139,7 +6159,7 @@ function DutyTasksSection({ ev, currentUser, sport, onNeuLaden, dutyPlan, member
                   {task.done ? <CheckCircle2 size={13} style={{ color: C.secondary }} /> : <Circle size={13} style={{ color: C.textDim }} />}
                   {task.title}
                 </div>
-                {canManage && <button onClick={() => deleteTask(task.id)} className="text-[10px] font-bold" style={{ color: C.red }}>Löschen</button>}
+                {canManage && <button onClick={() => deleteTask(task.id)} className="text-[10px] font-bold" style={{ color: C.red }}>{t("allg.loeschen")}</button>}
               </div>
               <div className="text-[10px] mb-1.5" style={{ color: C.textDim }}>
                 {task.assigneeName ? `Zugewiesen: ${task.assigneeName}` : "Noch niemandem zugewiesen"}
@@ -6164,6 +6184,7 @@ function DutyTasksSection({ ev, currentUser, sport, onNeuLaden, dutyPlan, member
 }
 
 function DutyTemplatesPanel({ currentUser, sport }) {
+  const t = useT();
   const cfg = sportConfig(sport);
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -6223,7 +6244,7 @@ function DutyTemplatesPanel({ currentUser, sport }) {
       <div className="rounded-2xl p-3.5 mb-4" style={{ background: C.paperDim }}>
         <div className="flex gap-2">
           <input value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={80} placeholder={`Name, z. B. Standard ${cfg.homeEventLabel}tag`} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.glass, color: C.ink }}/>
-          <button onClick={createTemplate} disabled={!newName.trim()} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: newName.trim() ? C.ink : C.line, color: C.white }}>Anlegen</button>
+          <button onClick={createTemplate} disabled={!newName.trim()} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: newName.trim() ? C.ink : C.line, color: C.white }}>{t("allg.anlegen")}</button>
         </div>
       </div>
       {templates.length === 0 ? (
@@ -6244,7 +6265,7 @@ function DutyTemplatesPanel({ currentUser, sport }) {
                 {t.items.map((item) => (
                   <div key={item.id} className="flex items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 mb-1.5" style={{ background: C.paperDim }}>
                     <span className="text-xs" style={{ color: C.ink }}>{item.title}</span>
-                    <button onClick={() => removeItem(item.id)} className="text-[10px] font-bold" style={{ color: C.red }}>Entfernen</button>
+                    <button onClick={() => removeItem(item.id)} className="text-[10px] font-bold" style={{ color: C.red }}>{t("allg.entfernen")}</button>
                   </div>
                 ))}
                 <div className="flex gap-2 mt-2">
@@ -6262,6 +6283,7 @@ function DutyTemplatesPanel({ currentUser, sport }) {
 }
 
 function PlayerDataCard({ user, setMembers }) {
+  const t = useT();
   const [editing, setEditing] = useState(false);
   const [number, setNumber] = useState(user.number ?? "");
 
@@ -6276,27 +6298,27 @@ function PlayerDataCard({ user, setMembers }) {
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2 text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}><Star size={15} style={{ color: C.secondary }} /> Athletendaten</div>
         {!editing && (
-          <button onClick={() => setEditing(true)} className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: C.paperDim, color: C.ink, fontFamily: "Inter" }}>Bearbeiten</button>
+          <button onClick={() => setEditing(true)} className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: C.paperDim, color: C.ink, fontFamily: "Inter" }}>{t("allg.bearbeiten")}</button>
         )}
       </div>
 
       {!editing ? (
         <div>
           <div className="rounded-xl px-3 py-2.5" style={{ background: C.paperDim }}>
-            <div className="text-[10px] uppercase tracking-widest" style={{ color: C.textDim, fontFamily: "Inter" }}>Rückennummer</div>
+            <div className="text-[10px] uppercase tracking-widest" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("feld.rueckennummer")}</div>
             <div className="text-sm" style={{ fontFamily: "JetBrains Mono", fontWeight: 700, color: C.ink }}>{user.number ?? "—"}</div>
           </div>
         </div>
       ) : (
         <div className="space-y-2.5">
           <div>
-            <div className="text-[11px] mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>Rückennummer</div>
+            <div className="text-[11px] mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("feld.rueckennummer")}</div>
             <input type="number" min="0" max="99" value={number} onChange={(e) => setNumber(e.target.value)} placeholder="z. B. 14"
               className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={{ background: C.paperDim, fontFamily: "JetBrains Mono", color: C.ink }} />
           </div>
           <div className="flex gap-2">
-            <button onClick={save} className="flex-1 py-2 rounded-lg text-xs" style={{ background: C.red, color: C.aufPrimaer, fontFamily: "Inter", fontWeight: 700 }}>Speichern</button>
-            <button onClick={cancel} className="px-4 py-2 rounded-lg text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter", fontWeight: 700 }}>Abbrechen</button>
+            <button onClick={save} className="flex-1 py-2 rounded-lg text-xs" style={{ background: C.red, color: C.aufPrimaer, fontFamily: "Inter", fontWeight: 700 }}>{t("allg.speichern")}</button>
+            <button onClick={cancel} className="px-4 py-2 rounded-lg text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter", fontWeight: 700 }}>{t("allg.abbrechen")}</button>
           </div>
         </div>
       )}
@@ -6327,6 +6349,7 @@ function PlayerDataCard({ user, setMembers }) {
  * das fuer Dienste zu, die an Organisationen verkauft werden - aber nur, wenn
  * in der App weder gekauft noch zum Kauf aufgefordert wird. */
 function SubscriptionPanel({ user }) {
+  const t = useT();
   const [clubStatus, setClubStatus] = useState(null);
   const [accountUsage, setAccountUsage] = useState(null);
   const [anfrage, setAnfrage] = useState(undefined); // undefined = laedt, null = keine
@@ -6458,7 +6481,7 @@ function SubscriptionPanel({ user }) {
               <textarea value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} rows={2} placeholder="Anmerkung (optional)" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none" style={{ background: C.paperDim }} />
               <div className="flex gap-2">
                 <button type="submit" disabled={sendet} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white, opacity: sendet ? .6 : 1 }}>{sendet ? "Wird gesendet …" : "Anfrage senden"}</button>
-                <button type="button" onClick={() => setFormularOffen(false)} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.textDim }}>Abbrechen</button>
+                <button type="button" onClick={() => setFormularOffen(false)} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.textDim }}>{t("allg.abbrechen")}</button>
               </div>
             </form>
           ) : (
@@ -6546,6 +6569,7 @@ function HowToVideoLibrary({ user, vorhanden = null }) {
 }
 
 function BoardMemberOverview({ members, currentUser }) {
+  const t = useT();
   const [search, setSearch] = useState("");
   const [liveMembers, setLiveMembers] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -6590,7 +6614,7 @@ function BoardMemberOverview({ members, currentUser }) {
   return <div>
     <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Nur-Lese-Ansicht aller Vereinsmitglieder. Änderungen sind hier nicht möglich.</div>
     <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Mitglied suchen …" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-3" style={{ background: C.paperDim, color: C.ink }}/>
-    {loading && !liveMembers && supabase && <div className="text-xs py-3" style={{ color: C.textDim }}>Wird geladen …</div>}
+    {loading && !liveMembers && supabase && <div className="text-xs py-3" style={{ color: C.textDim }}>{t("allg.laedt")}</div>}
     {message && <div className="text-[11px] mb-2" style={{ color: C.red }}>{message}</div>}
     <div className="space-y-2">
       {filtered.map((m) => <div key={m.id} onClick={() => setSelectedMember(m)} role="button" tabIndex={0} className="rounded-2xl p-3 cursor-pointer" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
@@ -6613,6 +6637,7 @@ function BoardMemberOverview({ members, currentUser }) {
   </div>;
 }
 function MemberDetailPanel({ member, onClose }) {
+  const t = useT();
   const [loading, setLoading] = useState(true);
   const [penalties, setPenalties] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -6678,10 +6703,10 @@ function MemberDetailPanel({ member, onClose }) {
               <div className="text-xs" style={{ color: C.textDim }}>{member.email || "—"}</div>
             </div>
           </div>
-          <button onClick={onClose} aria-label="Schließen" className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><X size={15}/></button>
+          <button onClick={onClose} aria-label={t("allg.schliessen")} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><X size={15}/></button>
         </div>
         {message && <div className="text-[11px] mb-3" style={{ color: C.red }}>{message}</div>}
-        {loading ? <div className="text-xs py-4" style={{ color: C.textDim }}>Wird geladen …</div> : <>
+        {loading ? <div className="text-xs py-4" style={{ color: C.textDim }}>{t("allg.laedt")}</div> : <>
           <div className="text-[10px] uppercase tracking-widest font-bold mb-2" style={{ color: C.textDim }}>Strafen</div>
           {unpaidPenalties.length === 0 && paidPenalties.length === 0 ? <div className="text-[11px] rounded-xl p-3 mb-4" style={{ background: C.paperDim, color: C.textDim }}>Keine aktiven Strafen.</div> : (
             <div className="space-y-1.5 mb-4">
@@ -6717,6 +6742,7 @@ function MemberDetailPanel({ member, onClose }) {
 }
 
 function JoinRequestsManager({ currentUser }) {
+  const t = useT();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
@@ -6750,7 +6776,7 @@ function JoinRequestsManager({ currentUser }) {
   };
   return <div>
     <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Neue Mitglieder, die deinem Verein beitreten möchten. Beim Annehmen legst du die finale Rolle fest.</div>
-    {loading ? <div className="text-xs py-3" style={{ color: C.textDim }}>Wird geladen …</div> : requests.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Aktuell keine offenen Beitrittsanfragen.</div> : <div className="space-y-2">
+    {loading ? <div className="text-xs py-3" style={{ color: C.textDim }}>{t("allg.laedt")}</div> : requests.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Aktuell keine offenen Beitrittsanfragen.</div> : <div className="space-y-2">
       {requests.map((r) => <div key={r.id} className="rounded-2xl p-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
         <div className="text-xs font-bold mb-0.5" style={{ color: C.ink }}>{r.display_name}</div>
         <div className="text-[10px] mb-2" style={{ color: C.textDim }}>{r.email} · angefragte Rolle: {ROLE_META[r.requested_role]?.label || r.requested_role || "Mitglied"}</div>
@@ -6758,8 +6784,8 @@ function JoinRequestsManager({ currentUser }) {
           {ROLE_OPTIONS.map((role) => <option key={role} value={role}>{ROLE_META[role]?.label || role}</option>)}
         </select>
         <div className="flex gap-2">
-          <button disabled={busyId === r.id} onClick={() => respond(r, false)} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.red }}>Ablehnen</button>
-          <button disabled={busyId === r.id} onClick={() => respond(r, true)} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>Annehmen</button>
+          <button disabled={busyId === r.id} onClick={() => respond(r, false)} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.red }}>{t("allg.ablehnen")}</button>
+          <button disabled={busyId === r.id} onClick={() => respond(r, true)} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{t("allg.annehmen")}</button>
         </div>
       </div>)}
     </div>}
@@ -6767,6 +6793,7 @@ function JoinRequestsManager({ currentUser }) {
   </div>;
 }
 function SysAdminUserManager({ members, setMembers }) {
+  const t = useT();
   const [selectedId, setSelectedId] = useState("");
   const [suche, setSuche] = useState("");
   const [section, setSection] = useState("overview");
@@ -6858,7 +6885,7 @@ function SysAdminUserManager({ members, setMembers }) {
         return (
           <div className="mt-2 rounded-xl overflow-hidden" style={{ border: `1px solid ${C.line}`, background: C.glass, maxHeight: 260, overflowY: "auto" }}>
             {treffer.length === 0 ? (
-              <div className="px-3 py-3 text-xs" style={{ color: C.textDim }}>Niemand gefunden.</div>
+              <div className="px-3 py-3 text-xs" style={{ color: C.textDim }}>{t("allg.niemandGefunden")}</div>
             ) : treffer.map((member, i) => (
               <button key={member.id} onClick={() => { setSelectedId(member.id); setSuche(""); }}
                 className="w-full text-left px-3 py-2.5 text-xs"
@@ -6897,6 +6924,7 @@ function SysAdminUserManager({ members, setMembers }) {
 
 const inputStyle = { background: C.paperDim, color: C.ink };
 function ProfileDataSettings({ user, setMembers, saveRef }) {
+  const t = useT();
   const splitName = String(user.name || "").trim().split(/\s+/);
   const [form, setForm] = useState({
     membershipNumber: user.membershipNumber || "", academicTitle: user.academicTitle || "",
@@ -6951,9 +6979,9 @@ function ProfileDataSettings({ user, setMembers, saveRef }) {
   return <div>
     {message&&<div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{background:message.includes("gespeichert")?C.erfolgFlaeche:C.fehlerFlaeche,color:message.includes("gespeichert")?C.erfolg:C.fehler}}>{message}</div>}
     {section("Persönliche Daten", <><input value={form.membershipNumber} onChange={(e)=>setForm({...form,membershipNumber:e.target.value})} placeholder="Mitgliederausweisnummer" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><input value={form.academicTitle} onChange={(e)=>setForm({...form,academicTitle:e.target.value})} placeholder="Akademischer Titel (optional)" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><div className="grid grid-cols-2 gap-2"><input value={form.firstName} onChange={(e)=>setForm({...form,firstName:e.target.value})} placeholder="Vorname" className="px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><input value={form.lastName} onChange={(e)=>setForm({...form,lastName:e.target.value})} placeholder="Nachname" className="px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/></div></>)}
-    {section("Kontaktdaten", <><div className="text-[10px] font-bold" style={{color:C.textDim}}>E-Mail-Adressen</div>{form.emails.map((value,index)=><div key={`e-${index}`} className="flex gap-2"><input type="email" value={value} onChange={(e)=>updateList("emails",index,e.target.value)} placeholder="E-Mail-Adresse" className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/>{index>0&&<button onClick={()=>setForm({...form,emails:form.emails.filter((_,i)=>i!==index)})}><X size={15}/></button>}</div>)}<button onClick={()=>addList("emails")} className="flex items-center gap-1 text-[11px] font-bold" style={{color:C.red}}><Plus size={13}/> Weitere E-Mail</button><div className="text-[10px] font-bold pt-2" style={{color:C.textDim}}>Telefonnummern</div>{form.phones.map((value,index)=><div key={`p-${index}`} className="flex gap-2"><input type="tel" value={value} onChange={(e)=>updateList("phones",index,e.target.value)} placeholder="Telefonnummer" className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/>{index>0&&<button onClick={()=>setForm({...form,phones:form.phones.filter((_,i)=>i!==index)})}><X size={15}/></button>}</div>)}<button onClick={()=>addList("phones")} className="flex items-center gap-1 text-[11px] font-bold" style={{color:C.red}}><Plus size={13}/> Weitere Telefonnummer</button></>)}
+    {section("Kontaktdaten", <><div className="text-[10px] font-bold" style={{color:C.textDim}}>E-Mail-Adressen</div>{form.emails.map((value,index)=><div key={`e-${index}`} className="flex gap-2"><input type="email" value={value} onChange={(e)=>updateList("emails",index,e.target.value)} placeholder={t("login.email")} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/>{index>0&&<button onClick={()=>setForm({...form,emails:form.emails.filter((_,i)=>i!==index)})}><X size={15}/></button>}</div>)}<button onClick={()=>addList("emails")} className="flex items-center gap-1 text-[11px] font-bold" style={{color:C.red}}><Plus size={13}/> Weitere E-Mail</button><div className="text-[10px] font-bold pt-2" style={{color:C.textDim}}>Telefonnummern</div>{form.phones.map((value,index)=><div key={`p-${index}`} className="flex gap-2"><input type="tel" value={value} onChange={(e)=>updateList("phones",index,e.target.value)} placeholder="Telefonnummer" className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/>{index>0&&<button onClick={()=>setForm({...form,phones:form.phones.filter((_,i)=>i!==index)})}><X size={15}/></button>}</div>)}<button onClick={()=>addList("phones")} className="flex items-center gap-1 text-[11px] font-bold" style={{color:C.red}}><Plus size={13}/> Weitere Telefonnummer</button></>)}
     {section("Weitere Angaben", <><input type="date" value={form.birthdate} onChange={(e)=>setForm({...form,birthdate:e.target.value})} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><label className="flex items-center justify-between gap-3 px-0.5 py-1"><span className="text-xs" style={{color:C.ink}}>Geburtstag im Verein anzeigen</span><button type="button" onClick={()=>setForm({...form,showBirthday:!form.showBirthday})} className="w-10 h-6 rounded-full flex items-center px-0.5" style={{background:form.showBirthday?C.secondary:C.line,justifyContent:form.showBirthday?"flex-end":"flex-start"}}><span className="w-5 h-5 rounded-full" style={{background:C.glass}}/></button></label><select value={form.gender} onChange={(e)=>setForm({...form,gender:e.target.value})} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}><option value="weiblich">Weiblich</option><option value="maennlich">Männlich</option><option value="divers">Divers</option><option value="keine_angabe">Keine Angabe</option></select><input value={form.nationality} onChange={(e)=>setForm({...form,nationality:e.target.value})} placeholder="Nationalität" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/></>)}
-    {section("Adresse", <><input value={form.street} onChange={(e)=>setForm({...form,street:e.target.value})} placeholder="Straße und Hausnummer" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><div className="grid grid-cols-2 gap-2"><input value={form.postalCode} onChange={(e)=>setForm({...form,postalCode:e.target.value})} placeholder="PLZ" className="px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><input value={form.city} onChange={(e)=>setForm({...form,city:e.target.value})} placeholder="Stadt" className="px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/></div><div className="relative"><input value={countryQuery || countryNames.find((c)=>c.code===form.countryCode)?.name || form.countryCode} onChange={(e)=>setCountryQuery(e.target.value)} onFocus={()=>setCountryQuery("")} placeholder="Land suchen …" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/>{countryQuery&&<div className="absolute z-10 left-0 right-0 top-full mt-1 rounded-xl overflow-hidden shadow-xl" style={{background:C.glass,border:`1px solid ${C.line}`}}>{matches.map((item)=><button key={item.code} onClick={()=>{setForm({...form,countryCode:item.code});setCountryQuery("");}} className="w-full px-3 py-2 text-left text-xs hover:bg-gray-50">{item.name} <span style={{color:C.textDim}}>({item.code})</span></button>)}</div>}</div></>)}
+    {section("Adresse", <><input value={form.street} onChange={(e)=>setForm({...form,street:e.target.value})} placeholder="Straße und Hausnummer" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><div className="grid grid-cols-2 gap-2"><input value={form.postalCode} onChange={(e)=>setForm({...form,postalCode:e.target.value})} placeholder="PLZ" className="px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><input value={form.city} onChange={(e)=>setForm({...form,city:e.target.value})} placeholder={t("feld.stadt")} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/></div><div className="relative"><input value={countryQuery || countryNames.find((c)=>c.code===form.countryCode)?.name || form.countryCode} onChange={(e)=>setCountryQuery(e.target.value)} onFocus={()=>setCountryQuery("")} placeholder="Land suchen …" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/>{countryQuery&&<div className="absolute z-10 left-0 right-0 top-full mt-1 rounded-xl overflow-hidden shadow-xl" style={{background:C.glass,border:`1px solid ${C.line}`}}>{matches.map((item)=><button key={item.code} onClick={()=>{setForm({...form,countryCode:item.code});setCountryQuery("");}} className="w-full px-3 py-2 text-left text-xs hover:bg-gray-50">{item.name} <span style={{color:C.textDim}}>({item.code})</span></button>)}</div>}</div></>)}
   </div>;
 }
 
@@ -7033,6 +7061,7 @@ const CALENDAR_EVENT_TYPES = [
 ];
 
 function CalendarSyncSettings({ user, saveRef }) {
+  const t = useT();
   const [interval, setInterval] = useState(user.calendarSyncInterval || "never");
   const [types, setTypes] = useState(["training", "spiel", "event"]);
   /* Leere Auswahl heisst "meine Mannschaften" - genau das bisherige Verhalten.
@@ -7116,7 +7145,7 @@ function CalendarSyncSettings({ user, saveRef }) {
       {!types.length && <div className="text-[11px] rounded-xl px-3 py-2 mb-3" style={{ background: C.sekundaerWeich, color: C.textDim }}>Ohne Auswahl bliebe der Kalender leer — wähle mindestens eine Art.</div>}
 
       {alleTeams.length > 0 && <>
-        <div className="text-[10px] font-bold uppercase tracking-widest mb-1.5" style={{ color: C.textDim }}>Mannschaften</div>
+        <div className="text-[10px] font-bold uppercase tracking-widest mb-1.5" style={{ color: C.textDim }}>{t("tm.mannschaften")}</div>
         <div className="text-[10px] mb-2 leading-snug" style={{ color: C.textDim }}>
           {teams.length === 0
             ? "Ohne Auswahl kommen die Mannschaften, in denen du oder deine Kinder stehen — dazu alle vereinsweiten Termine."
@@ -7410,8 +7439,8 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
       <SponsorSlot slotKey="profile_bottom" bookings={werbeplaetze} onImpression={onSponsorImpression} onClick={onSponsorClick} visible={featureEnabled("sponsor_profile_bottom")} />
 
       <div className="grid grid-cols-3 gap-2 mb-4 text-center">
-        <a href="/datenschutz" className="py-2 rounded-xl text-[10px] font-bold" style={{ background: C.glass, border: `1px solid ${C.line}`, color: C.textDim }}>Datenschutz</a>
-        <a href="/impressum" className="py-2 rounded-xl text-[10px] font-bold" style={{ background: C.glass, border: `1px solid ${C.line}`, color: C.textDim }}>Impressum</a>
+        <a href="/datenschutz" className="py-2 rounded-xl text-[10px] font-bold" style={{ background: C.glass, border: `1px solid ${C.line}`, color: C.textDim }}>{t("recht.datenschutz")}</a>
+        <a href="/impressum" className="py-2 rounded-xl text-[10px] font-bold" style={{ background: C.glass, border: `1px solid ${C.line}`, color: C.textDim }}>{t("recht.impressum")}</a>
         <a href="/nutzungsbedingungen" className="py-2 rounded-xl text-[10px] font-bold" style={{ background: C.glass, border: `1px solid ${C.line}`, color: C.textDim }}>Bedingungen</a>
       </div>
 
@@ -7439,7 +7468,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
       {profileUnderlay === "join-requests" && user.roles.some((role) => ["sysadmin","vereinsadmin","vorstand"].includes(role)) && <ProfileUnderlay title="Beitrittsanfragen" eyebrow="Verwalten" onClose={() => setProfileUnderlay("")}><JoinRequestsManager currentUser={user}/></ProfileUnderlay>}
       {profileUnderlay === "account" && <ProfileUnderlay title="Kontoeinstellungen" onClose={() => setProfileUnderlay("")}>
         <div className="rounded-2xl p-4 mb-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="flex items-center gap-2 text-sm font-bold mb-1" style={{ color: C.ink }}><ShieldCheck size={16} style={{ color: C.sekundaerAufHell }}/> Sicherheit</div><div className="text-[11px]" style={{ color: C.textDim }}>Dein Konto ist über Supabase geschützt. Passwortänderungen und Wiederherstellung erfolgen über deine hinterlegte E-Mail-Adresse.</div></div>
-        <div className="space-y-2 mb-6"><a href="/datenschutz" className="w-full flex items-center justify-between rounded-2xl px-3.5 py-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}><span className="text-xs font-bold" style={{ color: C.ink }}>Datenschutz</span><ChevronRight size={14} style={{ color: C.textDim }}/></a><a href="/nutzungsbedingungen" className="w-full flex items-center justify-between rounded-2xl px-3.5 py-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}><span className="text-xs font-bold" style={{ color: C.ink }}>Nutzungsbedingungen</span><ChevronRight size={14} style={{ color: C.textDim }}/></a></div>
+        <div className="space-y-2 mb-6"><a href="/datenschutz" className="w-full flex items-center justify-between rounded-2xl px-3.5 py-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}><span className="text-xs font-bold" style={{ color: C.ink }}>{t("recht.datenschutz")}</span><ChevronRight size={14} style={{ color: C.textDim }}/></a><a href="/nutzungsbedingungen" className="w-full flex items-center justify-between rounded-2xl px-3.5 py-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}><span className="text-xs font-bold" style={{ color: C.ink }}>{t("recht.nutzung")}</span><ChevronRight size={14} style={{ color: C.textDim }}/></a></div>
         <SectionTitle eyebrow="Weitere Optionen" title="Accountverwaltung"/>
         <ProfileSettingsCard icon={User} title="Account verwalten" description="Persönliche Kontodaten und weitere Kontoaktionen" color={C.textDim} onClick={() => setProfileUnderlay("account-delete")}/>
       </ProfileUnderlay>}
@@ -7451,7 +7480,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
         <SectionTitle eyebrow="Gefahrenbereich" title="Account-Löschung"/>
         <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Die Löschung entfernt dein Konto und alle personenbezogenen Daten dauerhaft.</div>
         {!deleteConfirm ? <button onClick={() => setDeleteConfirm(true)} className="w-full py-2.5 rounded-2xl text-xs" style={{ background: C.glass, border: `1px solid ${C.fehlerRand}`, color: C.red, fontWeight: 700 }}>Konto und persönliche Daten löschen</button> :
-          <div className="rounded-2xl p-3" style={{ background: C.fehlerFlaeche, border: `1px solid ${C.fehlerRand}` }}><div className="flex items-center gap-2 text-xs font-bold mb-2" style={{ color: C.fehler }}><AlertCircle size={15}/> Endgültige Löschung bestätigen</div><div className="text-xs mb-3" style={{ color: C.ink }}>Das Konto, Vereinsprofile und persönliche Inhalte werden dauerhaft gelöscht. Dieser Schritt kann nicht rückgängig gemacht werden.</div>{deleteError && <div className="text-xs mb-2" style={{ color: C.fehler }}>{deleteError}</div>}<div className="flex gap-2"><button disabled={deleting} onClick={deleteAccount} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: C.red, color: C.aufPrimaer }}>{deleting ? "Wird gelöscht …" : "Endgültig löschen"}</button><button onClick={() => { setDeleteConfirm(false); setDeleteError(""); }} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>Abbrechen</button></div></div>}
+          <div className="rounded-2xl p-3" style={{ background: C.fehlerFlaeche, border: `1px solid ${C.fehlerRand}` }}><div className="flex items-center gap-2 text-xs font-bold mb-2" style={{ color: C.fehler }}><AlertCircle size={15}/> Endgültige Löschung bestätigen</div><div className="text-xs mb-3" style={{ color: C.ink }}>Das Konto, Vereinsprofile und persönliche Inhalte werden dauerhaft gelöscht. Dieser Schritt kann nicht rückgängig gemacht werden.</div>{deleteError && <div className="text-xs mb-2" style={{ color: C.fehler }}>{deleteError}</div>}<div className="flex gap-2"><button disabled={deleting} onClick={deleteAccount} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: C.red, color: C.aufPrimaer }}>{deleting ? "Wird gelöscht …" : "Endgültig löschen"}</button><button onClick={() => { setDeleteConfirm(false); setDeleteError(""); }} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>{t("allg.abbrechen")}</button></div></div>}
       </ProfileUnderlay>}
     </div>
   );
@@ -7602,6 +7631,7 @@ function TippRundenPanel({ currentClub }) {
 }
 
 function TippView({ members, currentUser, events, tippPredictions, setTippPredictions, tippResults, onTippSpeichern }) {
+  const t = useT();
   const aktuelleRunde = runden.find((r) => r.runde_id === rundeId) || null;
   /* Nur die Spiele der gewaehlten Mannschaft. Ein Spiel gehoert ueber
      events.team_id zu genau einer Mannschaft und damit zu genau einer Runde -
@@ -7771,7 +7801,7 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
               <span style={{ color: C.textDim }}>:</span>
               <input type="number" min="0" disabled={locked} aria-label="Tore des Gegners tippen" value={feld.away} onChange={(e) => setPred(match.id, "away", e.target.value)}
                 className="w-12 text-center py-1.5 rounded-lg text-sm outline-none" style={{ background: C.paperDim, fontFamily: "JetBrains Mono", fontWeight: 700 }} />
-              <span className="text-sm flex-1" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Gegner</span>
+              <span className="text-sm flex-1" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{t("feld.gegner")}</span>
             </div>
             {!locked && (
               <div className="mt-3 flex gap-2">
@@ -8254,6 +8284,7 @@ function OverviewPanel({ members, events, feePaid, protocols, dutyPlan, seasonVo
  * sagen, bis wann sie laeuft - die Datenbank besteht darauf, und dieses
  * Formular fragt vorher danach, statt den Fehler durchzureichen. */
 function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChanged, onChanged }) {
+  const t = useT();
   const [eigene, setEigene] = useState([]);
   const [laden, setLaden] = useState(true);
   const [offen, setOffen] = useState("");
@@ -8395,7 +8426,7 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
     onFeaturesChanged?.();
   };
 
-  if (laden) return <div className="text-xs py-6 text-center" style={{ color: C.textDim }}>Wird geladen …</div>;
+  if (laden) return <div className="text-xs py-6 text-center" style={{ color: C.textDim }}>{t("allg.laedt")}</div>;
 
   return (
     <div className="space-y-3">
@@ -8502,7 +8533,7 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
                 <div className="text-[10px]" style={{ color: C.textDim }}>In diesem Zeitraum wird der Sponsor angezeigt — und, falls eine Aktion hinterlegt ist, auch ihr Knopf.</div>
 
                 <div className="flex gap-2 pt-1">
-                  <button onClick={() => { setOffen(""); setEntwurf(null); setFehler(""); }} className="flex-1 px-3 py-2.5 rounded-xl text-xs" style={{ background: C.paperDim, color: C.ink, fontWeight: 600, border: `1px solid ${C.line}` }}>Abbrechen</button>
+                  <button onClick={() => { setOffen(""); setEntwurf(null); setFehler(""); }} className="flex-1 px-3 py-2.5 rounded-xl text-xs" style={{ background: C.paperDim, color: C.ink, fontWeight: 600, border: `1px solid ${C.line}` }}>{t("allg.abbrechen")}</button>
                   <button onClick={speichern} disabled={speichert} className="flex-1 px-3 py-2.5 rounded-xl text-xs" style={{ background: C.ink, color: C.white, fontWeight: 700, opacity: speichert ? .6 : 1 }}>{speichert ? "…" : "Speichern"}</button>
                 </div>
                 {entwurf.id && <button onClick={() => entfernen(entwurf.id)} disabled={speichert} className="w-full text-[11px] pt-1" style={{ color: C.red, fontWeight: 600 }}>Sponsor von diesem Platz entfernen</button>}
@@ -8535,6 +8566,7 @@ function PollManagerPanel({ polls, setPolls, clubId, onAnlegen, onUmschalten }) 
 }
 
 function MatchResultsPanel({ results, onSave, onDelete, events }) {
+  const t = useT();
   const begegnungen = tippBegegnungen(events);
   const [drafts, setDrafts] = useState({});
   const [savedId, setSavedId] = useState(null);
@@ -8584,7 +8616,7 @@ function MatchResultsPanel({ results, onSave, onDelete, events }) {
                 <input aria-label="Unsere Tore" type="number" min="0" value={values.home} onChange={(event) => update(match.id, "home", event.target.value)} className="w-12 text-center py-2 rounded-lg outline-none" style={{ background: C.paperDim, fontFamily: "JetBrains Mono", fontWeight: 700 }} />
                 <span style={{ color: C.textDim }}>:</span>
                 <input aria-label="Tore des Gegners" type="number" min="0" value={values.away} onChange={(event) => update(match.id, "away", event.target.value)} className="w-12 text-center py-2 rounded-lg outline-none" style={{ background: C.paperDim, fontFamily: "JetBrains Mono", fontWeight: 700 }} />
-                <span className="text-xs font-bold flex-1" style={{ color: C.textDim }}>Gegner</span>
+                <span className="text-xs font-bold flex-1" style={{ color: C.textDim }}>{t("feld.gegner")}</span>
               </div>
               <button onClick={() => save(match)} className="w-full py-2 rounded-lg text-xs font-bold" style={{ background: savedId === match.id ? C.secondary : C.ink, color: C.white }}>
                 {savedId === match.id ? "Punkte wurden berechnet ✓" : results[match.id] ? "Ergebnis korrigieren & neu berechnen" : "Ergebnis speichern & Punkte berechnen"}
@@ -8612,6 +8644,7 @@ function MatchResultsPanel({ results, onSave, onDelete, events }) {
 /* Rollenverwaltung                                                     */
 /* ------------------------------------------------------------------ */
 function RolesPanel({ members, setMembers }) {
+  const t = useT();
   /* Die Mannschaften kommen aus dem Verein, nicht aus der Demo-Konstante.
      YOUTH_CLASSES ist eine feste Liste - Herren 1, Herren 2, Damen 1, U15, U11 -,
      und genau die wurde jedem Verein zur Auswahl gestellt: Ein Vorstand konnte
@@ -8767,7 +8800,7 @@ function RolesPanel({ members, setMembers }) {
                 {m.roles.includes("trainer")&&<div className="mt-2.5 pt-2.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] mb-2 font-bold" style={{color:C.textDim}}>TRAINER FÜR · MEHRERE MANNSCHAFTEN MÖGLICH</div><div className="flex flex-wrap gap-1.5">{waehlbareMannschaften.length===0&&<span className="text-[11px]" style={{color:C.textDim}}>Noch keine Mannschaften angelegt — das geht im Reiter „Mannschaften“.</span>}{waehlbareMannschaften.map((team)=>{const active=(m.trainerTeams||[]).includes(team.name);return <button type="button" key={team.name} onClick={()=>toggleTrainerTeam(m.id,team.name)} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?ROLE_META.trainer.color:C.paperDim,color:active?C.white:C.textDim}}>{active?"✓ ":""}{team.name}</button>})}</div></div>}
                 {m.roles.includes("teammanager")&&<div className="mt-2.5 pt-2.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] mb-1 font-bold" style={{color:C.textDim}}>Betreute Mannschaft · maximal ein Teammanager je Mannschaft</div><select value={m.managedTeam||""} onChange={(e)=>assignManagedTeam(m.id,e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{background:C.paperDim}}><option value="">Mannschaft auswählen …</option>{waehlbareMannschaften.map((team)=><option key={team.name} value={team.name}>{team.name}</option>)}</select></div>}
                 <div className="flex gap-2 mt-3 pt-3" style={{ borderTop: `1px solid ${C.line}` }}>
-                  <button type="button" onClick={closeMember} disabled={saving} className="flex-1 py-2 rounded-lg text-xs" style={{ background: C.paperDim, color: C.ink, fontFamily: "Inter", fontWeight: 700 }}>Abbrechen</button>
+                  <button type="button" onClick={closeMember} disabled={saving} className="flex-1 py-2 rounded-lg text-xs" style={{ background: C.paperDim, color: C.ink, fontFamily: "Inter", fontWeight: 700 }}>{t("allg.abbrechen")}</button>
                   <button type="button" onClick={() => saveMemberRoles(m.id)} disabled={saving} className="flex-1 py-2 rounded-lg text-xs" style={{ background: C.ink, color: "#fff", fontFamily: "Inter", fontWeight: 700, opacity: saving ? 0.6 : 1 }}>{saving ? "Speichert …" : "Speichern"}</button>
                 </div>
               </div>
@@ -8783,6 +8816,7 @@ function RolesPanel({ members, setMembers }) {
 /* System (Sys-Admin)                                                   */
 /* ------------------------------------------------------------------ */
 function SystemPanel({ members, channels, setChannels, maintenanceMode, setMaintenanceMode, onResetDemo, onEinstellung }) {
+  const t = useT();
   /* Die Sicherheitsabfrage vor dem Zuruecksetzen. Der Zustand war beim Umbau der
      Kanalverwaltung verschwunden, die beiden Verwendungen weiter unten blieben
      stehen - damit riss Verwaltung > System mit einem ReferenceError ab, sobald
@@ -8835,7 +8869,7 @@ function SystemPanel({ members, channels, setChannels, maintenanceMode, setMaint
             <div className="text-xs mb-2" style={{ color: C.ink, fontFamily: "Inter" }}>Wirklich alle Aktivitätsdaten zurücksetzen? Konten, Rollen und Protokolle bleiben erhalten.</div>
             <div className="flex gap-2">
               <button onClick={() => { onResetDemo(); setConfirmReset(false); }} className="flex-1 py-2 rounded-lg text-xs" style={{ background: C.red, color: C.aufPrimaer, fontFamily: "Inter", fontWeight: 700 }}>Ja, zurücksetzen</button>
-              <button onClick={() => setConfirmReset(false)} className="flex-1 py-2 rounded-lg text-xs" style={{ background: C.glass, color: C.textDim, fontFamily: "Inter", fontWeight: 700, border: `1px solid ${C.line}` }}>Abbrechen</button>
+              <button onClick={() => setConfirmReset(false)} className="flex-1 py-2 rounded-lg text-xs" style={{ background: C.glass, color: C.textDim, fontFamily: "Inter", fontWeight: 700, border: `1px solid ${C.line}` }}>{t("allg.abbrechen")}</button>
             </div>
           </div>
         )}
@@ -8926,6 +8960,7 @@ function ClubColorPanel({ club, onColorsUpdated }) {
 }
 
 function MembershipApprovalsPanel({ club, members, setMembers }) {
+  const t = useT();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [workingId, setWorkingId] = useState(null);
@@ -9131,8 +9166,8 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
         const roles = (request.membership_roles || []).map((entry) => ROLE_META[entry.role]?.label || entry.role);
         return <div key={request.id} className="rounded-2xl p-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
           <div className="flex items-start gap-3 mb-3"><div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: C.red, color: C.aufPrimaer }}>{initialsOf(request.display_name)}</div><div className="min-w-0"><div className="text-sm font-bold truncate" style={{ color: C.ink }}>{request.display_name}</div><div className="text-[11px] truncate" style={{ color: C.textDim }}>{request.email || "Keine E-Mail hinterlegt"}</div></div></div>
-          <div className="grid grid-cols-2 gap-2 mb-3"><div className="rounded-xl px-3 py-2" style={{ background: C.paperDim }}><div className="text-[9px] uppercase tracking-wider" style={{ color: C.textDim }}>Registrierung</div><div className="text-xs font-bold mt-0.5">{roles.filter((role) => role !== "Mitglied").join(", ") || "Mitglied"}</div></div><div className="rounded-xl px-3 py-2" style={{ background: C.paperDim }}><div className="text-[9px] uppercase tracking-wider" style={{ color: C.textDim }}>Mannschaft</div><div className="text-xs font-bold mt-0.5">{request.requested_team || "Noch offen"}</div></div></div>
-          <div className="flex gap-2"><button disabled={workingId === request.id} onClick={() => decide(request, "active")} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.secondary, color: C.aufSekundaer, opacity: workingId === request.id ? .6 : 1 }}>Freigeben</button><button disabled={workingId === request.id} onClick={() => decide(request, "blocked")} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.fehlerFlaeche, color: C.fehler, opacity: workingId === request.id ? .6 : 1 }}>Ablehnen</button></div>
+          <div className="grid grid-cols-2 gap-2 mb-3"><div className="rounded-xl px-3 py-2" style={{ background: C.paperDim }}><div className="text-[9px] uppercase tracking-wider" style={{ color: C.textDim }}>Registrierung</div><div className="text-xs font-bold mt-0.5">{roles.filter((role) => role !== "Mitglied").join(", ") || "Mitglied"}</div></div><div className="rounded-xl px-3 py-2" style={{ background: C.paperDim }}><div className="text-[9px] uppercase tracking-wider" style={{ color: C.textDim }}>{t("tm.mannschaft")}</div><div className="text-xs font-bold mt-0.5">{request.requested_team || "Noch offen"}</div></div></div>
+          <div className="flex gap-2"><button disabled={workingId === request.id} onClick={() => decide(request, "active")} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.secondary, color: C.aufSekundaer, opacity: workingId === request.id ? .6 : 1 }}>Freigeben</button><button disabled={workingId === request.id} onClick={() => decide(request, "blocked")} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.fehlerFlaeche, color: C.fehler, opacity: workingId === request.id ? .6 : 1 }}>{t("allg.ablehnen")}</button></div>
         </div>;
       })}</div>}
     <button onClick={loadRequests} disabled={loading} className="w-full mt-3 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.textDim }}>Liste aktualisieren</button>
@@ -9163,7 +9198,7 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
                 "Beenden" legt die Mitgliedschaft still und laesst sie in der
                 Historie - das ist der Regelfall. "Entfernen" loescht sie
                 endgueltig und steht deshalb unauffaelliger daneben. */}
-            <button disabled={workingId === member.id} onClick={() => removeMember(member)} title="Endgültig aus dem Verein entfernen" className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: C.paperDim, color: C.textDim, opacity: workingId === member.id ? .6 : 1 }}>Entfernen</button>
+            <button disabled={workingId === member.id} onClick={() => removeMember(member)} title="Endgültig aus dem Verein entfernen" className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: C.paperDim, color: C.textDim, opacity: workingId === member.id ? .6 : 1 }}>{t("allg.entfernen")}</button>
           </div>
         ))}
         {nichtGesperrte.length === 0 && <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Keine Mitgliedschaften vorhanden.</div>}
@@ -9194,7 +9229,7 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
                 <div className="text-[10px] truncate" style={{ color: C.textDim }}>{member.email || "Keine E-Mail hinterlegt"}</div>
               </div>
               <button disabled={workingId === member.id} onClick={() => unblockMember(member)} className="px-3 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: C.erfolgFlaeche, color: C.erfolg, opacity: workingId === member.id ? .6 : 1 }}>Entsperren</button>
-              <button disabled={workingId === member.id} onClick={() => removeMember(member)} title="Endgültig aus dem Verein entfernen" className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: C.paperDim, color: C.textDim, opacity: workingId === member.id ? .6 : 1 }}>Entfernen</button>
+              <button disabled={workingId === member.id} onClick={() => removeMember(member)} title="Endgültig aus dem Verein entfernen" className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: C.paperDim, color: C.textDim, opacity: workingId === member.id ? .6 : 1 }}>{t("allg.entfernen")}</button>
             </div>
           ))}
         </div>
@@ -9602,6 +9637,7 @@ const subviewTitel = (t) => ({ season: t("sub.season"), tipp: t("sub.tipp"), dut
  * Bewusst kein eigener Reiter unten: Das Postfach ist etwas, das man aufmacht,
  * wenn die Glocke etwas anzeigt - keine Ansicht, in der man sich aufhaelt. */
 function PostfachView({ eintraege, laedt, onGelesen, onLoeschen, onAlleLoeschen }) {
+  const t = useT();
   const zeit = (wert) => {
     const d = new Date(wert);
     const minuten = Math.round((Date.now() - d.getTime()) / 60000);
@@ -9611,7 +9647,7 @@ function PostfachView({ eintraege, laedt, onGelesen, onLoeschen, onAlleLoeschen 
   };
   const ungelesen = eintraege.filter((e) => !e.read_at).length;
 
-  if (laedt) return <div className="px-4 pt-4 text-xs" style={{ color: C.textDim }}>Wird geladen …</div>;
+  if (laedt) return <div className="px-4 pt-4 text-xs" style={{ color: C.textDim }}>{t("allg.laedt")}</div>;
 
   return (
     <div className="px-4 pt-4 pb-24">
@@ -9652,7 +9688,7 @@ function PostfachView({ eintraege, laedt, onGelesen, onLoeschen, onAlleLoeschen 
                 {e.body && <div className="text-[11px] mt-0.5 leading-relaxed" style={{ color: C.textDim }}>{e.body}</div>}
                 <div className="text-[10px] mt-1" style={{ color: C.textDim }}>{zeit(e.created_at)}</div>
               </div>
-              <button onClick={() => onLoeschen(e.id)} aria-label="Entfernen"
+              <button onClick={() => onLoeschen(e.id)} aria-label={t("allg.entfernen")}
                 className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0" style={{ color: C.textDim }}>
                 <X size={13} />
               </button>
@@ -9686,6 +9722,7 @@ function KonfigurationFehlt() {
 }
 
 function NurAlsAppHinweis() {
+  const t = useT();
   const appStore = process.env.NEXT_PUBLIC_APP_STORE_URL;
   const playStore = process.env.NEXT_PUBLIC_PLAY_STORE_URL;
   return (
@@ -9705,9 +9742,9 @@ function NurAlsAppHinweis() {
           {!appStore && !playStore && <div className="text-[11px] rounded-2xl px-4 py-3" style={{ background: C.paperDim, color: C.textDim }}>Die App wird gerade veröffentlicht. Die Store-Links erscheinen hier, sobald sie verfügbar sind.</div>}
         </div>
         <div className="flex items-center justify-center gap-4 text-[11px]" style={{ color: C.textDim }}>
-          <a href="/nutzungsbedingungen" className="underline">Nutzungsbedingungen</a>
-          <a href="/datenschutz" className="underline">Datenschutz</a>
-          <a href="/impressum" className="underline">Impressum</a>
+          <a href="/nutzungsbedingungen" className="underline">{t("recht.nutzung")}</a>
+          <a href="/datenschutz" className="underline">{t("recht.datenschutz")}</a>
+          <a href="/impressum" className="underline">{t("recht.impressum")}</a>
         </div>
       </div>
     </div>
@@ -11596,7 +11633,7 @@ export default function ClubMemberOrganisationApp() {
               <div className="erg-topbar flex items-center px-4 pt-3 pb-2 flex-shrink-0">
                 <div className="flex items-center gap-2">
                   {tabHistory.length > 0 ? (
-                    <button onClick={goBack} aria-label="Zurück" className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
+                    <button onClick={goBack} aria-label={t("allg.zurueck")} className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
                       <ArrowLeft size={15} style={{ color: C.ink }} />
                     </button>
                   ) : (
