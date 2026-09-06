@@ -1581,7 +1581,19 @@ function SprachwahlScreen({ onWaehlen }) {
   const [gewaehlt, setGewaehlt] = useState("de");
   const t = (k) => uebersetze(gewaehlt, k);
   return (
-    <div className="erg-auth flex flex-col h-full px-6 pt-10 pb-6 overflow-y-auto" style={{ background: C.paper }}>
+    /* Der obere Abstand steht hier DIREKT am Element, nicht nur ueber die
+       Klasse .erg-frame .pt-10. Auf dem iPhone lag das Logo sonst hinter der
+       Dynamic Island - und ob eine Klassenregel greift, haengt daran, dass das
+       Element wirklich im Rahmen sitzt und die Regel nicht ueberschrieben
+       wird. Der Wert kommt von iOS selbst: 0 beim iPhone SE, rund 47px bei
+       der Notch, rund 59px bei der Dynamic Island. Android meldet ueber
+       dieselbe Eigenschaft seine Statusleiste. */
+    <div className="erg-auth flex flex-col h-full px-6 pb-6 overflow-y-auto"
+      style={{ background: C.paper,
+               paddingTop: "calc(env(safe-area-inset-top, 0px) + 40px)",
+               paddingLeft: "calc(env(safe-area-inset-left, 0px) + 24px)",
+               paddingRight: "calc(env(safe-area-inset-right, 0px) + 24px)",
+               paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)" }}>
       <div className="flex flex-col items-center mb-8">
         <div className="mb-3"><AppBrandMark size={46} /></div>
         <div className="text-sm tracking-widest" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>VEREINS-APP</div>
