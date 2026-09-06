@@ -7838,7 +7838,7 @@ function AutomationsPanel({ members, feePaid, remindersSent, setRemindersSent, w
  * etwas zu tun, und die Liste waere sauber und falsch.
  *
  * Jede Zeile weiss, wohin sie fuehrt - die Datenbank liefert das Ziel mit. */
-function TodoBoard({ currentClub, goPanel, goFahrzeuge }) {
+function TodoBoard({ currentClub, goPanel, goFahrzeuge, goAufgaben }) {
   const [punkte, setPunkte] = useState(null);
   const [fehler, setFehler] = useState("");
 
@@ -7869,7 +7869,7 @@ function TodoBoard({ currentClub, goPanel, goFahrzeuge }) {
         </div>
       ) : /* Fahrzeugbuchungen liegen in einer eigenen Ansicht, nicht in der Verwaltung - ohne die Weiche unten liefe der Klick ins Leere. */
         punkte.map((p, i) => (
-        <button key={`${p.art}-${p.ziel_id}`} onClick={() => (p.ziel === "vehicle" ? goFahrzeuge?.() : goPanel?.(p.ziel))}
+        <button key={`${p.art}-${p.ziel_id}`} onClick={() => (p.ziel === "vehicle" ? goFahrzeuge?.() : p.ziel === "tasks" ? goAufgaben?.() : goPanel?.(p.ziel))}
           className="w-full text-left flex items-center gap-2 px-4 py-2.5"
           style={{ background: C.white, borderTop: i ? `1px solid ${C.line}` : "none" }}>
           <span className="w-1.5 h-1.5 rounded-full flex-shrink-0"
@@ -7886,7 +7886,7 @@ function TodoBoard({ currentClub, goPanel, goFahrzeuge }) {
   );
 }
 
-function OverviewPanel({ members, events, feePaid, protocols, dutyPlan, seasonVotes, goPanel, showFees, currentClub, goFahrzeuge }) {
+function OverviewPanel({ members, events, feePaid, protocols, dutyPlan, seasonVotes, goPanel, showFees, currentClub, goFahrzeuge, goAufgaben }) {
   const paidCount = members.filter((m) => feePaid[m.id]).length;
   const feeRate = members.length ? Math.round((paidCount / members.length) * 100) : 100;
   const openTasks = protocols.flatMap((p) => p.tasks.filter((t) => !t.done)).length;
@@ -7908,7 +7908,7 @@ function OverviewPanel({ members, events, feePaid, protocols, dutyPlan, seasonVo
     <>
     {/* Zuerst das, was Handlung braucht - dann die Zahlen. Ein Kennwert sagt,
         wie es steht; ein offener Punkt sagt, was zu tun ist. */}
-    <TodoBoard currentClub={currentClub} goPanel={goPanel} goFahrzeuge={goFahrzeuge} />
+    <TodoBoard currentClub={currentClub} goPanel={goPanel} goFahrzeuge={goFahrzeuge} goAufgaben={goAufgaben} />
     <div className="grid grid-cols-2 gap-3">
       <StatCard icon={Users} label="Mitglieder" value={members.length} sub="alle formale Mitglieder" accent={C.ink} />
       {showFees && <StatCard icon={Euro} label="Beitragsquote" value={`${feeRate}%`} sub={`${members.length - paidCount} offen`} accent={C.secondary} />}
@@ -9084,7 +9084,7 @@ function ClaimManagedPlayerPanel({ members, setMembers, currentUser }) {
 }
 
 function AdminView({
-  goFahrzeuge,
+  goFahrzeuge, goAufgaben,
   members, setMembers, events, feePaid, setFeePaid, dutyPlan, setDutyPlan, seasonVotes, currentUser,
   channels, setChannels, maintenanceMode, setMaintenanceMode, onResetDemo,
   protocols, setProtocols, remindersSent, setRemindersSent,
@@ -9150,7 +9150,7 @@ function AdminView({
         ))}
       </div>
 
-      {panel === "overview" && <OverviewPanel members={members} events={events} feePaid={feePaid} protocols={protocols} dutyPlan={dutyPlan} seasonVotes={seasonVotes} goPanel={setPanel} goFahrzeuge={goFahrzeuge} currentClub={currentClub} showFees={canSeeFees} />}
+      {panel === "overview" && <OverviewPanel members={members} events={events} feePaid={feePaid} protocols={protocols} dutyPlan={dutyPlan} seasonVotes={seasonVotes} goPanel={setPanel} goFahrzeuge={goFahrzeuge} goAufgaben={goAufgaben} currentClub={currentClub} showFees={canSeeFees} />}
       {panel === "memberships" && currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role)) && <MembershipApprovalsPanel club={currentClub} members={members} setMembers={setMembers} />}
       {panel === "clubprofile" && currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role)) && <><ClubLogoPanel club={currentClub} onLogoUpdated={onClubLogoUpdated} /><ClubColorPanel club={currentClub} onColorsUpdated={onClubColorsUpdated} /></>}
 
@@ -9233,7 +9233,7 @@ const SUBVIEW_TITLES = { season: "Athlet/in der Saison", tipp: "Tippspiel", duty
  *
  * Bewusst kein eigener Reiter unten: Das Postfach ist etwas, das man aufmacht,
  * wenn die Glocke etwas anzeigt - keine Ansicht, in der man sich aufhaelt. */
-function PostfachView({ eintraege, laedt, onGelesen, onLoeschen }) {
+function PostfachView({ eintraege, laedt, onGelesen, onLoeschen, onAlleLoeschen }) {
   const zeit = (wert) => {
     const d = new Date(wert);
     const minuten = Math.round((Date.now() - d.getTime()) / 60000);
@@ -9247,6 +9247,17 @@ function PostfachView({ eintraege, laedt, onGelesen, onLoeschen }) {
 
   return (
     <div className="px-4 pt-4 pb-24">
+      {/* Alles auf einmal wegraeumen. Einzeln loeschen gab es schon - bei
+          dreissig Meldungen ist das dreissigmal tippen, und danach hat man
+          Daumenkrampf statt Uebersicht. Mit Rueckfrage, weil es nicht
+          rueckgaengig zu machen ist. */}
+      {eintraege.length > 0 && (
+        <button onClick={() => { if (window.confirm(`Alle ${eintraege.length} Benachrichtigungen löschen? Das lässt sich nicht rückgängig machen.`)) onAlleLoeschen?.(); }}
+          className="w-full py-2.5 rounded-xl text-xs font-bold mb-3"
+          style={{ background: C.fehlerFlaeche, color: C.fehler, border: `1px solid ${C.fehler}` }}>
+          Alle Nachrichten löschen
+        </button>
+      )}
       {ungelesen > 0 && (
         <button onClick={onGelesen} className="w-full py-2.5 rounded-xl text-xs font-bold mb-3"
           style={{ background: C.paperDim, color: C.ink }}>
@@ -10098,6 +10109,14 @@ export default function ClubMemberOrganisationApp() {
     setUngelesen((n) => Math.max(0, n - (vorher.find((e) => e.id === id)?.read_at ? 0 : 1)));
     const { error } = await supabase.from("user_notifications").delete().eq("id", id);
     if (error) { setSchreibFehler("Die Benachrichtigung konnte nicht entfernt werden."); setPostfach(vorher); }
+  };
+
+  const postfachAlleLoeschen = async () => {
+    if (!supabase || !meinProfil()) return;
+    const vorher = postfach;
+    setPostfach([]); setUngelesen(0);
+    const { error } = await supabase.from("user_notifications").delete().eq("profile_id", meinProfil());
+    if (error) { setSchreibFehler("Die Benachrichtigungen konnten nicht entfernt werden."); setPostfach(vorher); }
   };
 
   const kachelreihenfolgeSpeichern = async (reihenfolge) => {
@@ -11153,7 +11172,7 @@ export default function ClubMemberOrganisationApp() {
             <ZumAktualisierenZiehen key={`${tab}-${subView || ""}`} onAktualisieren={datenNeuLaden} className="tabFade flex-1 overflow-y-auto" style={{ background: C.paper }}>
               {subView === "season" && featureEnabled("season_award") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Athlet/in der Saison"><SeasonVoteView currentUser={currentUser} members={clubMembers} seasonVotes={seasonVotes} setSeasonVotes={setSeasonVotes} onVote={saisonStimmeAbgeben} /></LockedFeature>}
               {subView === "tipp" && featureEnabled("tippspiel") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Tippspiel"><TippView members={clubMembers} currentUser={currentUser} events={events} tippPredictions={tippPredictions} setTippPredictions={setTippPredictions} tippResults={tippResults} onTippSpeichern={tippSpeichern} /></LockedFeature>}
-              {subView === "postfach" && <PostfachView eintraege={postfach} laedt={postfachLaedt} onGelesen={postfachGelesen} onLoeschen={postfachLoeschen} />}
+              {subView === "postfach" && <PostfachView eintraege={postfach} laedt={postfachLaedt} onGelesen={postfachGelesen} onAlleLoeschen={postfachAlleLoeschen} onLoeschen={postfachLoeschen} />}
               {subView === "duty" && featureEnabled("duty_roster") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Helferplanung"><DutyView members={clubMembers} currentUser={currentUser} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={dienstSetzen} /></LockedFeature>}
               {subView === "tasks" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Aufgaben"><TasksView currentUser={currentUser} members={clubMembers} /></LockedFeature>}
               {subView === "vehicles" && featureEnabled("vehicle_booking") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Vereinsfahrzeuge"><VehiclesView currentUser={currentUser} currentClub={currentClub} /></LockedFeature>}
@@ -11178,7 +11197,7 @@ export default function ClubMemberOrganisationApp() {
               {!subView && tab === "redaktion" && currentUserCanEditNews && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Redaktion"><RedaktionView user={currentUser} news={vereinsNews} setNews={setVereinsNews} /></LockedFeature>}
               {!subView && tab === "admin" && (currentUserIsAdmin || currentUserCanEditSponsors) && (
                 <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Verwaltung">
-                <AdminView goFahrzeuge={() => setSubView("vehicles")} members={clubMembers} setMembers={setMembers} events={events} feePaid={feePaid} setFeePaid={setFeePaid} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} seasonVotes={seasonVotes}
+                <AdminView goFahrzeuge={() => setSubView("vehicles")} goAufgaben={() => setSubView("tasks")} members={clubMembers} setMembers={setMembers} events={events} feePaid={feePaid} setFeePaid={setFeePaid} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} seasonVotes={seasonVotes}
                   currentUser={currentUser} channels={channels} setChannels={setChannels} maintenanceMode={maintenanceMode} setMaintenanceMode={setMaintenanceMode} onResetDemo={resetDemoData}
                   protocols={protocols} setProtocols={setProtocols} remindersSent={remindersSent} setRemindersSent={setRemindersSent}
                   welcomeAutomation={welcomeAutomation} setWelcomeAutomation={setWelcomeAutomation} billingAutomation={billingAutomation} setBillingAutomation={setBillingAutomation}
