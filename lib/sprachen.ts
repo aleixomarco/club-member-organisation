@@ -1122,6 +1122,10 @@ const de: Woerterbuch = {
   "sport.zbzeitnahmesekretariatband": "z. B. Zeitnahme, Sekretariat, Bandenaufbau, Kasse",
   "sport.zbzeitnahmesekretariatkass": "z. B. Zeitnahme, Sekretariat, Kasse, Kuchenverkauf",
   "sport.zbzeitnahmetoraufbaubootst": "z. B. Zeitnahme, Toraufbau, Bootstransport, Kasse",
+
+  "auf.nichtMehrDa": "Diese Aufgabe gibt es nicht mehr.",
+  "help.frei": "frei",
+  "nav.tasks": "Aufgaben",
 };
 
 const en: Woerterbuch = {
@@ -2211,6 +2215,10 @@ const en: Woerterbuch = {
   "sport.zbzeitnahmesekretariatband": "e.g. timekeeping, scorekeeping, board setup, cash desk",
   "sport.zbzeitnahmesekretariatkass": "e.g. timekeeping, scorekeeping, cash desk, cake sale",
   "sport.zbzeitnahmetoraufbaubootst": "e.g. timekeeping, goal setup, boat transport, cash desk",
+
+  "auf.nichtMehrDa": "This task no longer exists.",
+  "help.frei": "free",
+  "nav.tasks": "Tasks",
 };
 
 const es: Woerterbuch = {
@@ -3300,6 +3308,10 @@ const es: Woerterbuch = {
   "sport.zbzeitnahmesekretariatband": "p. ej. cronometraje, anotación, montaje de las vallas, caja",
   "sport.zbzeitnahmesekretariatkass": "p. ej. cronometraje, anotación, caja, venta de tartas",
   "sport.zbzeitnahmetoraufbaubootst": "p. ej. cronometraje, montaje de las porterías, transporte de embarcaciones, caja",
+
+  "auf.nichtMehrDa": "Esta tarea ya no existe.",
+  "help.frei": "libres",
+  "nav.tasks": "Tareas",
 };
 
 const pt: Woerterbuch = {
@@ -4389,6 +4401,10 @@ const pt: Woerterbuch = {
   "sport.zbzeitnahmesekretariatband": "p. ex. cronometragem, secretariado, montagem das tabelas, caixa",
   "sport.zbzeitnahmesekretariatkass": "p. ex. cronometragem, secretariado, caixa, venda de bolos",
   "sport.zbzeitnahmetoraufbaubootst": "p. ex. cronometragem, montagem das balizas, transporte de barcos, caixa",
+
+  "auf.nichtMehrDa": "Esta tarefa já não existe.",
+  "help.frei": "livres",
+  "nav.tasks": "Tarefas",
 };
 
 const it: Woerterbuch = {
@@ -5478,6 +5494,10 @@ const it: Woerterbuch = {
   "sport.zbzeitnahmesekretariatband": "es. cronometraggio, segreteria, montaggio delle balaustre, cassa",
   "sport.zbzeitnahmesekretariatkass": "es. cronometraggio, segreteria, cassa, vendita di dolci",
   "sport.zbzeitnahmetoraufbaubootst": "es. cronometraggio, montaggio delle porte, trasporto delle barche, cassa",
+
+  "auf.nichtMehrDa": "Questo compito non esiste più.",
+  "help.frei": "liberi",
+  "nav.tasks": "Attività",
 };
 
 const tr: Woerterbuch = {
@@ -6567,6 +6587,10 @@ const tr: Woerterbuch = {
   "sport.zbzeitnahmesekretariatband": "örn. zaman tutma, sekreterlik, bant kurulumu, kasa",
   "sport.zbzeitnahmesekretariatkass": "örn. zaman tutma, sekreterlik, kasa, pasta satışı",
   "sport.zbzeitnahmetoraufbaubootst": "örn. zaman tutma, kale kurulumu, tekne taşıma, kasa",
+
+  "auf.nichtMehrDa": "Bu görev artık yok.",
+  "help.frei": "boş",
+  "nav.tasks": "Görevler",
 };
 
 const fr: Woerterbuch = {
@@ -7656,6 +7680,10 @@ const fr: Woerterbuch = {
   "sport.zbzeitnahmesekretariatband": "p. ex. chronométrage, secrétariat, montage des bandes, caisse",
   "sport.zbzeitnahmesekretariatkass": "p. ex. chronométrage, secrétariat, caisse, vente de gâteaux",
   "sport.zbzeitnahmetoraufbaubootst": "p. ex. chronométrage, montage des buts, transport des bateaux, caisse",
+
+  "auf.nichtMehrDa": "Cette tâche n'existe plus.",
+  "help.frei": "libres",
+  "nav.tasks": "Tâches",
 };
 
 const WOERTERBUECHER: Record<string, Woerterbuch> = { de, en, es, pt, it, tr, fr };

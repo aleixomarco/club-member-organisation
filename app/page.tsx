@@ -3587,6 +3587,10 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
   const [savedTeam, setSavedTeam] = useState(currentUser.teamFilter || "alle");
   useEffect(() => {
     if (!focusRequest) return;
+    /* Ein Wunsch kann eine Mannschaft nennen oder einen einzelnen Termin.
+       Beim Tippen auf eine Meldung in der Glocke ist es der Termin: Die
+       Liste soll ihn nicht nur zeigen, sondern aufschlagen. */
+    if (focusRequest.eventId) setSelectedEvent(focusRequest.eventId);
     setFilter("spiel");
     setTeamFilter(focusRequest.team || "alle");
     onFocusApplied?.();
@@ -10037,7 +10041,117 @@ const subviewTitel = (t) => ({ season: t("sub.season"), tipp: t("sub.tipp"), dut
  *
  * Bewusst kein eigener Reiter unten: Das Postfach ist etwas, das man aufmacht,
  * wenn die Glocke etwas anzeigt - keine Ansicht, in der man sich aufhaelt. */
-function PostfachView({ eintraege, laedt, onGelesen, onLoeschen, onAlleLoeschen }) {
+/* Eine einzelne Aufgabe als Overlay.
+ *
+ * Wer in der Glocke auf "Neue Aufgabe" tippt, will die Aufgabe sehen und
+ * etwas damit tun - nicht in einer Liste danach suchen. Deshalb laedt dieses
+ * Fenster genau den einen Datensatz und bringt alle Handgriffe mit:
+ * eintragen, austragen, abhaken.
+ *
+ * Es laedt selbst, statt eine Aufgabe durchgereicht zu bekommen. Der Grund:
+ * Die Meldung kann Tage alt sein. Was inzwischen daraus geworden ist - wer
+ * sich eingetragen hat, ob sie erledigt ist -, weiss nur die Datenbank.
+ * Wurde die Aufgabe geloescht, sagt das Fenster das auch, statt leer zu
+ * bleiben. */
+function AufgabeOverlay({ taskId, currentUser, onClose }) {
+  const t = useT();
+  const [aufgabe, setAufgabe] = useState(null);
+  const [laedt, setLaedt] = useState(true);
+  const [fehler, setFehler] = useState("");
+  const [arbeitet, setArbeitet] = useState(false);
+
+  const laden = useCallback(async () => {
+    if (!supabase || !isDbId(taskId)) { setLaedt(false); return; }
+    const { data, error } = await supabase.from("club_tasks")
+      .select("id,title,description,due_date,slots_needed,start_time,end_time,erledigt_am,created_by,created_at,teams(name),club_task_signups(membership_id,club_memberships(display_name)),club_task_assignees(membership_id,club_memberships(display_name))")
+      .eq("id", taskId).maybeSingle();
+    setLaedt(false);
+    if (error) { setFehler(t("auf.ladenFehler")); return; }
+    setAufgabe(data || null);
+  }, [taskId]);
+  useEffect(() => { laden(); }, [laden]);
+
+  const namen = (e) => {
+    const m = Array.isArray(e.club_memberships) ? e.club_memberships[0] : e.club_memberships;
+    return { membershipId: e.membership_id, name: m?.display_name || "—" };
+  };
+  const verantwortliche = (aufgabe?.club_task_assignees || []).map(namen);
+  const eintragungen = (aufgabe?.club_task_signups || []).map(namen);
+  const belegt = [...verantwortliche, ...eintragungen]
+    .filter((p, i, alle) => alle.findIndex((x) => x.membershipId === p.membershipId) === i);
+  const frei = Math.max(0, (aufgabe?.slots_needed || 1) - belegt.length);
+  const binDrin = belegt.some((p) => p.membershipId === currentUser.id);
+  const binEingetragen = eintragungen.some((p) => p.membershipId === currentUser.id);
+  const erledigt = !!aufgabe?.erledigt_am;
+  const team = Array.isArray(aufgabe?.teams) ? aufgabe.teams[0] : aufgabe?.teams;
+
+  const tun = async (was) => {
+    setArbeitet(true); setFehler("");
+    let error = null;
+    if (was === "eintragen") ({ error } = await supabase.from("club_task_signups").insert({ task_id: taskId, membership_id: currentUser.id }));
+    else if (was === "austragen") ({ error } = await supabase.from("club_task_signups").delete().eq("task_id", taskId).eq("membership_id", currentUser.id));
+    else ({ error } = await supabase.rpc("aufgabe_erledigen", { target_task: taskId, erledigt: !erledigt }));
+    setArbeitet(false);
+    if (error) { setFehler(t("auf.erledigenFehler")); return; }
+    await laden();
+  };
+
+  return (
+    <div className="absolute inset-0 z-50 flex items-end" style={{ background: "rgba(20,21,26,.72)" }} onClick={onClose}>
+      <div className="w-full rounded-t-3xl p-5 pb-8" style={{ background: C.paper, maxHeight: "88%", overflowY: "auto" }}
+           onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.red }}>{t("nav.tasks")}</div>
+          <button onClick={onClose} aria-label={t("allg.schliessen")} className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background: C.paperDim, color: C.textDim }}>
+            <X size={14} />
+          </button>
+        </div>
+
+        {laedt ? <div className="text-xs py-4" style={{ color: C.textDim }}>{t("allg.laedt")}</div>
+         : !aufgabe ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{t("auf.nichtMehrDa")}</div>
+         : (
+          <>
+            <div className="text-lg font-bold mb-1" style={{ color: C.ink, fontFamily: "Oswald" }}>{aufgabe.title}</div>
+            <div className="text-[11px] mb-3" style={{ color: C.textDim }}>
+              {team?.name ? `${team.name} · ` : t("verein.mitPunktRaum")}
+              {aufgabe.due_date ? new Date(aufgabe.due_date).toLocaleDateString("de-DE") : t("auf.keinFaelligkeitsdatum")}
+              {aufgabe.start_time ? ` · ${aufgabe.start_time.slice(0, 5)}` : ""}
+              {aufgabe.end_time ? `–${aufgabe.end_time.slice(0, 5)}` : ""}
+            </div>
+            {aufgabe.description && <div className="text-xs mb-3" style={{ color: C.textDim }}>{aufgabe.description}</div>}
+
+            <div className="rounded-xl p-3 mb-3" style={{ background: C.paperDim }}>
+              {verantwortliche.length > 0 && <div className="text-[11px] mb-1" style={{ color: C.textDim }}>{t("auf.verantwortlich")} {verantwortliche.map((v) => v.name).join(", ")}</div>}
+              {eintragungen.length > 0 && <div className="text-[11px] mb-1" style={{ color: C.textDim }}>{t("help.eingetragenLabel")}: {eintragungen.map((v) => v.name).join(", ")}</div>}
+              <div className="text-[11px]" style={{ color: erledigt ? C.erfolg : frei > 0 ? C.textDim : C.fehler, fontWeight: 700 }}>
+                {erledigt ? `${t("auf.erledigtAm")} ${new Date(aufgabe.erledigt_am).toLocaleDateString("de-DE")}`
+                  : frei > 0 ? `${frei}/${aufgabe.slots_needed} ${t("help.frei")}` : t("help.voll")}
+              </div>
+            </div>
+
+            {fehler && <div role="status" className="text-[11px] mb-2" style={{ color: C.fehler }}>{fehler}</div>}
+
+            <div className="flex gap-2">
+              {!binDrin && !erledigt && frei > 0 && (
+                <button onClick={() => tun("eintragen")} disabled={arbeitet} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{t("allg.eintragenKnopf")}</button>
+              )}
+              {binDrin && (
+                <button onClick={() => tun("erledigt")} disabled={arbeitet} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: erledigt ? C.paperDim : C.erfolg, color: erledigt ? C.textDim : C.white }}>
+                  {erledigt ? t("auf.wiederOeffnen") : t("auf.erledigt")}
+                </button>
+              )}
+              {binEingetragen && !erledigt && (
+                <button onClick={() => tun("austragen")} disabled={arbeitet} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.red }}>{t("allg.austragen")}</button>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PostfachView({ eintraege, laedt, onGelesen, onLoeschen, onAlleLoeschen, onOeffnen }) {
   const t = useT();
   const zeit = (wert) => {
     const d = new Date(wert);
@@ -10081,15 +10195,20 @@ function PostfachView({ eintraege, laedt, onGelesen, onLoeschen, onAlleLoeschen 
       ) : (
         <div className="space-y-2">
           {eintraege.map((e) => (
+            /* Anklickbar, wenn die Meldung ein Ziel hat. Ohne Ziel bleibt sie
+               eine Notiz - dann waere ein Zeiger, der nichts tut, schlimmer
+               als keiner. */
             <div key={e.id} className="rounded-2xl p-3.5 flex gap-3"
-                 style={{ background: e.read_at ? C.paperDim : C.glass, border: `1px solid ${e.read_at ? "transparent" : C.edge}` }}>
+                 role={e.ziel_art ? "button" : undefined}
+                 onClick={e.ziel_art ? () => onOeffnen?.(e) : undefined}
+                 style={{ background: e.read_at ? C.paperDim : C.glass, border: `1px solid ${e.read_at ? "transparent" : C.edge}`, cursor: e.ziel_art ? "pointer" : "default" }}>
               {!e.read_at && <span className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5" style={{ background: C.red }} />}
               <div className="flex-1 min-w-0">
                 <div className="text-xs" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{e.title}</div>
                 {e.body && <div className="text-[11px] mt-0.5 leading-relaxed" style={{ color: C.textDim }}>{e.body}</div>}
                 <div className="text-[10px] mt-1" style={{ color: C.textDim }}>{zeit(e.created_at)}</div>
               </div>
-              <button onClick={() => onLoeschen(e.id)} aria-label={t("allg.entfernen")}
+              <button onClick={(ev) => { ev.stopPropagation(); onLoeschen(e.id); }} aria-label={t("allg.entfernen")}
                 className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0" style={{ color: C.textDim }}>
                 <X size={13} />
               </button>
@@ -10706,6 +10825,25 @@ export default function ClubMemberOrganisationApp() {
      Profils wieder normal auf der Uebersicht beginnt. */
   const [profilZiel, setProfilZiel] = useState("");
 
+  /* Wohin eine angetippte Meldung fuehrt.
+     Die Meldung traegt seit heute ziel_art und ziel_id mit sich; hier wird
+     daraus ein Sprung. Kennt die App die Art nicht - etwa weil eine neuere
+     Datenbank eine neue Art schickt -, passiert nichts. Ein Sprung ins Leere
+     waere schlechter als keiner. */
+  const [offeneAufgabe, setOffeneAufgabe] = useState(null);
+  const meldungOeffnen = (e) => {
+    if (!e?.ziel_art || !e?.ziel_id) return;
+    if (e.ziel_art === "aufgabe") { setOffeneAufgabe(e.ziel_id); return; }
+    if (e.ziel_art === "termin") {
+      setSubView(null);
+      setEventFocusRequest({ team: "alle", eventId: e.ziel_id, requestedAt: Date.now() });
+      setTab("events");
+      return;
+    }
+    if (e.ziel_art === "umfrage") { setSubView(null); setTab("home"); return; }
+    if (e.ziel_art === "news") { setSubView(null); setTab("home"); return; }
+  };
+
   /* Steht im App Store eine neuere Version?
      Einmal beim Start, nur in der nativen Huelle. Im Browser gibt es nichts
      zu aktualisieren - dort ist die Oberflaeche immer die aktuelle. */
@@ -11076,7 +11214,7 @@ export default function ClubMemberOrganisationApp() {
     if (!supabase || !selectedClubId) return;
     setPostfachLaedt(true);
     const { data, error } = await supabase.from("user_notifications")
-      .select("id,kind,title,body,read_at,created_at")
+      .select("id,kind,title,body,read_at,created_at,ziel_art,ziel_id")
       .eq("club_id", selectedClubId)
       .order("created_at", { ascending: false })
       .limit(100);
@@ -12085,6 +12223,7 @@ export default function ClubMemberOrganisationApp() {
     <SprachKontext.Provider value={sprache || "de"}>
     <MitgliederKontext.Provider value={members}>
     {updateNoetig && <UpdateSperre {...updateNoetig} />}
+    {offeneAufgabe && currentUser && <AufgabeOverlay taskId={offeneAufgabe} currentUser={currentUser} onClose={() => setOffeneAufgabe(null)} />}
     <div className="erg-app erg-shell w-full flex items-center justify-center" style={{ fontFamily: "Inter", ...themeVars }}>
       <style>{FONTS}</style>
       <div className="erg-canvas erg-frame relative w-full flex flex-col overflow-hidden">
@@ -12197,7 +12336,7 @@ export default function ClubMemberOrganisationApp() {
             <ZumAktualisierenZiehen key={`${tab}-${subView || ""}`} onAktualisieren={datenNeuLaden} className="tabFade flex-1 overflow-y-auto" style={{ background: C.paper }}>
               {subView === "season" && featureEnabled("season_award") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Athlet/in der Saison"><SeasonVoteView currentUser={currentUser} members={clubMembers} seasonVotes={seasonVotes} setSeasonVotes={setSeasonVotes} onVote={saisonStimmeAbgeben} onUnvote={saisonStimmeZuruecknehmen} /></LockedFeature>}
               {subView === "tipp" && featureEnabled("tippspiel") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Tippspiel"><TippView members={clubMembers} currentUser={currentUser} events={events} tippPredictions={tippPredictions} setTippPredictions={setTippPredictions} tippResults={tippResults} onTippSpeichern={tippSpeichern} onZurueck={() => setSubView(null)} /></LockedFeature>}
-              {subView === "postfach" && <PostfachView eintraege={postfach} laedt={postfachLaedt} onGelesen={postfachGelesen} onAlleLoeschen={postfachAlleLoeschen} onLoeschen={postfachLoeschen} />}
+              {subView === "postfach" && <PostfachView eintraege={postfach} laedt={postfachLaedt} onGelesen={postfachGelesen} onAlleLoeschen={postfachAlleLoeschen} onLoeschen={postfachLoeschen}  onOeffnen={meldungOeffnen}/>}
               {subView === "duty" && featureEnabled("duty_roster") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Helferplanung"><DutyView members={clubMembers} currentUser={currentUser} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={dienstSetzen} /></LockedFeature>}
               {subView === "tasks" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Aufgaben"><TasksView currentUser={currentUser} members={clubMembers} /></LockedFeature>}
               {subView === "vehicles" && featureEnabled("vehicle_booking") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Vereinsfahrzeuge"><VehiclesView currentUser={currentUser} currentClub={currentClub} /></LockedFeature>}
