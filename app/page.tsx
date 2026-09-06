@@ -1539,7 +1539,7 @@ function SprachwahlScreen({ onWaehlen }) {
       </div>
 
       <button onClick={() => onWaehlen(gewaehlt)} className="w-full py-3 rounded-xl text-sm font-bold"
-        style={{ background: C.ink, color: C.aufPrimaer, fontFamily: "Inter" }}>
+        style={{ background: C.ink, color: C.white, fontFamily: "Inter" }}>
         {t("sprache.weiter")}
       </button>
     </div>
@@ -2232,7 +2232,7 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
           </div>
         </div>
         <button onClick={goLogin} className="w-full py-3 rounded-xl text-sm font-bold"
-          style={{ background: C.ink, color: C.aufPrimaer, fontFamily: "Inter" }}>
+          style={{ background: C.ink, color: C.white, fontFamily: "Inter" }}>
           Jetzt anmelden
         </button>
         <div className="text-[11px] mt-3 text-center" style={{ color: C.textDim, fontFamily: "Inter" }}>
@@ -7520,7 +7520,7 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
                 Du bist noch nicht dabei. Jede Mannschaft hat eine eigene Runde mit eigener Tabelle — beitreten musst du überall einzeln.
               </div>
               <button onClick={() => beitreten(false)} className="w-full py-2.5 rounded-xl text-xs font-bold"
-                style={{ background: C.ink, color: C.aufPrimaer === undefined ? C.white : C.white }}>
+                style={{ background: C.ink, color: C.white === undefined ? C.white : C.white }}>
                 Tipprunde beitreten
               </button>
             </div>
