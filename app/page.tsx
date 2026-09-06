@@ -11594,11 +11594,29 @@ export default function ClubMemberOrganisationApp() {
   }, []);
   const attemptLogin = async (email, password) => {
     if (!supabase) {
-      /* Hiess frueher ebenfalls "E-Mail oder Passwort ist falsch". Das war
-         gleich doppelt irrefuehrend: Es ist kein Anmeldefehler, sondern eine
-         fehlende Einrichtung, und niemand findet den Grund, indem er sein
-         Passwort noch einmal tippt. */
-      return { error: t("sys.keineDatenbank") };
+      /* OHNE DATENBANK: Anmeldung gegen die Demodaten.
+       *
+       * Dieser Zweig existiert NUR, wenn gar keine Datenbank eingerichtet ist
+       * - supabase ist dann null, weil die beiden Umgebungsvariablen fehlen.
+       * In jedem echten Betrieb sind sie gesetzt, der Zweig ist dort also
+       * nicht erreichbar. Ein Passwortvergleich im Browser waere sonst
+       * natuerlich unhaltbar; hier vergleicht er erfundene Namen mit dem Wort
+       * "demo".
+       *
+       * WOZU
+       * Ohne ihn kommt niemand ueber den Anmeldebildschirm hinaus, solange
+       * keine Datenbank da ist - auch nicht, um die Oberflaeche zu pruefen.
+       * Genau das hat gefehlt: Der Absturz in Profil > Benachrichtigungen
+       * waere hier in zehn Sekunden aufgefallen, statt im echten Betrieb.
+       * Aufruf ueber scripts/dev-demo.sh, Konten stehen in INITIAL_MEMBERS
+       * (z. B. marco@cmo.app / demo). */
+      const konto = INITIAL_MEMBERS.find(
+        (m) => m.email?.toLowerCase() === String(email || "").trim().toLowerCase() && m.password === password,
+      );
+      if (!konto) return { error: t("login.falscheDaten") };
+      setCurrentUserId(konto.id);
+      setSelectedClubId(konto.clubId);
+      return {};
     }
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return { error: anmeldeFehlerText(error, t) };
