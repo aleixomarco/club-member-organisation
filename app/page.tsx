@@ -2126,6 +2126,38 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
     if (result?.message) setNotice(result.message);
   };
 
+  /* Nach erfolgreicher Kontoanlage: eine eigene Seite statt einer gruenen
+     Zeile ueber dem Formular.
+     Vorher blieb das ausgefuellte Formular stehen und darueber stand ein
+     Hinweis - das sah aus, als sei etwas schiefgegangen und man muesse es noch
+     einmal versuchen. Manche haben genau das getan und bekamen "E-Mail bereits
+     vergeben".
+     Der Weg endet hier bewusst: Weitergehen kann man erst nach dem Klick in
+     der Mail, und den kann die App nicht abwarten. */
+  if (notice) {
+    return (
+      <AuthShell club={club}>
+        <div className="text-xl mb-3" style={{ fontFamily: "Oswald", fontWeight: 600, color: C.ink }}>Fast geschafft</div>
+        <div className="rounded-2xl p-4 mb-5" style={{ background: C.erfolgFlaeche, border: `1px solid ${C.erfolgRand}` }}>
+          <div className="flex items-start gap-2">
+            <CheckCircle2 size={16} style={{ color: C.erfolg, flexShrink: 0, marginTop: 1 }} />
+            <div className="text-xs leading-relaxed" style={{ color: C.ink, fontFamily: "Inter" }}>
+              Du erhältst eine E-Mail. Bitte bestätige sie, damit wir sicher gehen können, dass deine Daten korrekt sind.
+              <div className="mt-2">Anschließend kannst du dich anmelden.</div>
+            </div>
+          </div>
+        </div>
+        <button onClick={goLogin} className="w-full py-3 rounded-xl text-sm font-bold"
+          style={{ background: C.ink, color: C.aufPrimaer, fontFamily: "Inter" }}>
+          Jetzt anmelden
+        </button>
+        <div className="text-[11px] mt-3 text-center" style={{ color: C.textDim, fontFamily: "Inter" }}>
+          Keine E-Mail erhalten? Sieh im Spam-Ordner nach — sie kommt meist innerhalb einer Minute.
+        </div>
+      </AuthShell>
+    );
+  }
+
   return (
     <AuthShell
       club={club}
