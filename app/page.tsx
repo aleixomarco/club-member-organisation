@@ -3900,10 +3900,17 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
      Fehlten die Trainer-Mannschaften, galt ersatzweise die eigene
      Spielmannschaft - ein Recht an der falschen Stelle.
      Jetzt zaehlt je Funktion die passende Liste. */
+  /* Absagen und Loeschen folgt derselben Regel wie das Anlegen:
+     Vereinsadministration und Organisator vereinsweit, Trainer, Kapitaen und
+     Teammanager fuer ihre eigene Mannschaft.
+
+     Hier stand vorher nur isSysAdmin. Ein Vereinsadministrator konnte also
+     ein Training anlegen, es danach aber nicht mehr absagen - die Datenbank
+     haette es erlaubt, der Knopf war nur nicht da. */
   const canCancelFor = (ev) => {
     if (ev.type === "event") return isAdminUser;
     if (ev.type !== "training" && ev.type !== "spiel") return false;
-    return isSysAdmin(currentUser)
+    return darfVereinsweitPlanen
       || memberTrainerTeams(currentUser).includes(ev.team)
       || memberCaptainTeams(currentUser).includes(ev.team)
       || memberManagedTeams(currentUser).includes(ev.team);
