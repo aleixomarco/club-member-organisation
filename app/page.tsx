@@ -429,68 +429,134 @@ const DEMO_CLUB_ID = "00000000-0000-4000-8000-000000000001";
 
 /* Sportartspezifisches Wording: dieselben zwei Bausteine (Helferdienst, Vereinsfahrzeuge) wie bei
    Rollhockey, nur pro Sportart anders benannt und mit passenden Stationen-Vorschlägen. */
+/* Die Sportarten der App.
+ *
+ * Ausschliesslich MANNSCHAFTSSPORTARTEN mit Heimspielen. Frueher standen hier
+ * auch Tennis, Schwimmen, Ringen, Leichtathletik und Judo/Karate - Sportarten
+ * ohne feste Mannschaft und ohne Heimspiel. Fuer sie ergaben Helferdienste am
+ * Spieltag, Mannschaftsbus und Tippspiel keinen Sinn; die App zeigte Begriffe,
+ * die es in diesen Vereinen nicht gibt.
+ *
+ * Entfernt wurde gefahrlos: Beide bestehenden Vereine spielen Rollhockey.
+ * Sollte spaeter doch ein Verein auf einem entfernten Wert stehen, faellt
+ * sportConfig() auf Rollhockey zurueck - die App bleibt bedienbar, nur die
+ * Begriffe passen dann nicht.
+ *
+ * Die Helferdienste sind je Sportart benannt, weil sie dort anders heissen:
+ * Beim Fussball ist es der Kioskdienst, beim Wasserball der Beckenrand. */
 const SPORT_CONFIG = {
-  rollhockey: {
-    label: "Rollhockey", homeEventLabel: "Heimspiel",
-    dutyTabLabel: "Helferdienst", dutyStationExamples: "z. B. Theke, Kasse, Grill, Zeitnahme",
-    vehicleTabLabel: "Vereinsfahrzeuge", vehicleIntro: "Alle Vereinsfahrzeuge und ihre Buchungen für Auswärtsfahrten.",
-  },
   fussball: {
     label: "Fußball", homeEventLabel: "Heimspiel",
     dutyTabLabel: "Kioskdienst", dutyStationExamples: "z. B. Kiosk, Kasse, Grill, Ordnungsdienst, Parkplatzeinweisung",
     vehicleTabLabel: "Mannschaftsbus", vehicleIntro: "Der Mannschaftsbus und seine Buchungen für Auswärtsspiele.",
   },
-  tennis: {
-    label: "Tennis", homeEventLabel: "Heim-Medenspiel",
-    dutyTabLabel: "Vereinsheimdienst", dutyStationExamples: "z. B. Kuchenbuffet, Getränke, Platzherrichtung, Aufbau",
-    vehicleTabLabel: "Vereinsbus", vehicleIntro: "Der Vereinsbus und seine Buchungen für Auswärts-Medenspiele.",
-  },
-  schwimmen: {
-    label: "Schwimmen", homeEventLabel: "Heimwettkampf",
-    dutyTabLabel: "Wettkampfhelfer", dutyStationExamples: "z. B. Zeitnahme, Kampfrichter, Startblock-Aufsicht, Kiosk",
-    vehicleTabLabel: "Vereinsbus", vehicleIntro: "Der Vereinsbus und seine Buchungen für Auswärtswettkämpfe.",
-  },
-  ringen: {
-    label: "Ringen", homeEventLabel: "Heimkampf",
-    dutyTabLabel: "Kampfrichter & Helfer", dutyStationExamples: "z. B. Kampftisch, Zeitnahme, Verpflegung, Auf-/Abbau der Matten",
-    vehicleTabLabel: "Vereinsbus", vehicleIntro: "Der Vereinsbus und seine Buchungen für Auswärtskämpfe.",
-  },
-  handball: {
-    label: "Handball", homeEventLabel: "Heimspiel",
-    dutyTabLabel: "Kioskdienst", dutyStationExamples: "z. B. Kiosk, Kasse, Wurftisch/Zeitnahme, Ordnungsdienst",
+  futsal: {
+    label: "Futsal", homeEventLabel: "Heimspiel",
+    dutyTabLabel: "Hallendienst", dutyStationExamples: "z. B. Kasse, Zeitnahme, Getränke, Hallenaufsicht",
     vehicleTabLabel: "Mannschaftsbus", vehicleIntro: "Der Mannschaftsbus und seine Buchungen für Auswärtsspiele.",
-  },
-  volleyball: {
-    label: "Volleyball", homeEventLabel: "Heimspiel",
-    dutyTabLabel: "Hallendienst", dutyStationExamples: "z. B. Netz-/Feldaufbau, Anschreiber, Kasse, Kuchenbuffet",
-    vehicleTabLabel: "Vereinsbus", vehicleIntro: "Der Vereinsbus und seine Buchungen für Auswärtsspiele.",
   },
   basketball: {
     label: "Basketball", homeEventLabel: "Heimspiel",
-    dutyTabLabel: "Kampfgerichtsdienst", dutyStationExamples: "z. B. Kampfgericht/Anschreiber, Kiosk, Kasse, Ordnungsdienst",
+    dutyTabLabel: "Hallendienst", dutyStationExamples: "z. B. Kampfgericht, Anzeigetafel, Kasse, Getränke",
     vehicleTabLabel: "Mannschaftsbus", vehicleIntro: "Der Mannschaftsbus und seine Buchungen für Auswärtsspiele.",
   },
-  tischtennis: {
-    label: "Tischtennis", homeEventLabel: "Heim-Punktspiel",
-    dutyTabLabel: "Vereinsheimdienst", dutyStationExamples: "z. B. Kuchenbuffet, Getränke, Tischaufbau, Zählertisch",
-    vehicleTabLabel: "Vereinsbus", vehicleIntro: "Der Vereinsbus und seine Buchungen für Auswärts-Punktspiele.",
+  handball: {
+    label: "Handball", homeEventLabel: "Heimspiel",
+    dutyTabLabel: "Hallendienst", dutyStationExamples: "z. B. Zeitnahme, Sekretariat, Kasse, Kuchenverkauf",
+    vehicleTabLabel: "Mannschaftsbus", vehicleIntro: "Der Mannschaftsbus und seine Buchungen für Auswärtsspiele.",
   },
-  badminton: {
-    label: "Badminton", homeEventLabel: "Heim-Punktspiel",
-    dutyTabLabel: "Vereinsheimdienst", dutyStationExamples: "z. B. Kuchenbuffet, Getränke, Feldaufbau, Zählertisch",
-    vehicleTabLabel: "Vereinsbus", vehicleIntro: "Der Vereinsbus und seine Buchungen für Auswärts-Punktspiele.",
+  rollhockey: {
+    label: "Rollhockey", homeEventLabel: "Heimspiel",
+    dutyTabLabel: "Helferdienst", dutyStationExamples: "z. B. Theke, Kasse, Grill, Zeitnahme",
+    vehicleTabLabel: "Vereinsfahrzeuge", vehicleIntro: "Alle Vereinsfahrzeuge und ihre Buchungen für Auswärtsfahrten.",
   },
-  leichtathletik: {
-    label: "Leichtathletik", homeEventLabel: "Heimwettkampf",
-    dutyTabLabel: "Kampfrichter & Helfer", dutyStationExamples: "z. B. Zeitnahme, Kampfrichter, Startnummernausgabe, Kiosk",
-    vehicleTabLabel: "Vereinsbus", vehicleIntro: "Der Vereinsbus und seine Buchungen für Auswärtswettkämpfe.",
+  eishockey: {
+    label: "Eishockey", homeEventLabel: "Heimspiel",
+    dutyTabLabel: "Hallendienst", dutyStationExamples: "z. B. Strafbank, Anzeigetafel, Kasse, Bandenwerbung",
+    vehicleTabLabel: "Mannschaftsbus", vehicleIntro: "Der Mannschaftsbus und seine Buchungen für Auswärtsspiele.",
   },
-  judo_karate: {
-    label: "Judo/Karate", homeEventLabel: "Heimkampf",
-    dutyTabLabel: "Kampfrichter & Helfer", dutyStationExamples: "z. B. Kampftisch, Zeitnahme, Verpflegung, Matten-Auf-/Abbau",
-    vehicleTabLabel: "Vereinsbus", vehicleIntro: "Der Vereinsbus und seine Buchungen für Auswärtskämpfe und -turniere.",
+  feldhockey: {
+    label: "Feldhockey", homeEventLabel: "Heimspiel",
+    dutyTabLabel: "Platzdienst", dutyStationExamples: "z. B. Kuchenbuffet, Getränke, Kasse, Platzaufbau",
+    vehicleTabLabel: "Mannschaftsbus", vehicleIntro: "Der Mannschaftsbus und seine Buchungen für Auswärtsspiele.",
+  },
+  floorball: {
+    label: "Floorball / Unihockey", homeEventLabel: "Heimspiel",
+    dutyTabLabel: "Hallendienst", dutyStationExamples: "z. B. Zeitnahme, Sekretariat, Bandenaufbau, Kasse",
+    vehicleTabLabel: "Mannschaftsbus", vehicleIntro: "Der Mannschaftsbus und seine Buchungen für Auswärtsspiele.",
+  },
+  wasserball: {
+    label: "Wasserball", homeEventLabel: "Heimspiel",
+    dutyTabLabel: "Beckendienst", dutyStationExamples: "z. B. Zeitnahme, Kasse, Getränke, Einlass",
+    vehicleTabLabel: "Vereinsfahrzeuge", vehicleIntro: "Alle Vereinsfahrzeuge und ihre Buchungen für Auswärtsfahrten.",
+  },
+  lacrosse: {
+    label: "Lacrosse", homeEventLabel: "Heimspiel",
+    dutyTabLabel: "Platzdienst", dutyStationExamples: "z. B. Kasse, Getränke, Grill, Feldaufbau",
+    vehicleTabLabel: "Mannschaftsbus", vehicleIntro: "Der Mannschaftsbus und seine Buchungen für Auswärtsspiele.",
+  },
+  bandy: {
+    label: "Bandy", homeEventLabel: "Heimspiel",
+    dutyTabLabel: "Eisdienst", dutyStationExamples: "z. B. Zeitnahme, Kasse, Getränke, Eisaufbereitung",
+    vehicleTabLabel: "Mannschaftsbus", vehicleIntro: "Der Mannschaftsbus und seine Buchungen für Auswärtsspiele.",
+  },
+  netball: {
+    label: "Netball", homeEventLabel: "Heimspiel",
+    dutyTabLabel: "Hallendienst", dutyStationExamples: "z. B. Kampfgericht, Kasse, Getränke, Aufbau",
+    vehicleTabLabel: "Mannschaftsbus", vehicleIntro: "Der Mannschaftsbus und seine Buchungen für Auswärtsspiele.",
+  },
+  korfball: {
+    label: "Korfball", homeEventLabel: "Heimspiel",
+    dutyTabLabel: "Hallendienst", dutyStationExamples: "z. B. Zeitnahme, Kasse, Getränke, Korbaufbau",
+    vehicleTabLabel: "Mannschaftsbus", vehicleIntro: "Der Mannschaftsbus und seine Buchungen für Auswärtsspiele.",
+  },
+  rugby_union: {
+    label: "Rugby Union", homeEventLabel: "Heimspiel",
+    dutyTabLabel: "Clubhausdienst", dutyStationExamples: "z. B. Theke, Grill, Kasse, Ordnungsdienst",
+    vehicleTabLabel: "Mannschaftsbus", vehicleIntro: "Der Mannschaftsbus und seine Buchungen für Auswärtsspiele.",
+  },
+  rugby_league: {
+    label: "Rugby League", homeEventLabel: "Heimspiel",
+    dutyTabLabel: "Clubhausdienst", dutyStationExamples: "z. B. Theke, Grill, Kasse, Ordnungsdienst",
+    vehicleTabLabel: "Mannschaftsbus", vehicleIntro: "Der Mannschaftsbus und seine Buchungen für Auswärtsspiele.",
+  },
+  american_football: {
+    label: "American Football", homeEventLabel: "Heimspiel",
+    dutyTabLabel: "Gameday-Dienst", dutyStationExamples: "z. B. Kettencrew, Anzeigetafel, Kasse, Grill, Sanitätsdienst",
+    vehicleTabLabel: "Mannschaftsbus", vehicleIntro: "Der Mannschaftsbus und seine Buchungen für Auswärtsspiele.",
+  },
+  australian_football: {
+    label: "Australian Football", homeEventLabel: "Heimspiel",
+    dutyTabLabel: "Platzdienst", dutyStationExamples: "z. B. Torrichter, Kasse, Getränke, Grill",
+    vehicleTabLabel: "Mannschaftsbus", vehicleIntro: "Der Mannschaftsbus und seine Buchungen für Auswärtsspiele.",
+  },
+  gaelic_football: {
+    label: "Gaelic Football", homeEventLabel: "Heimspiel",
+    dutyTabLabel: "Platzdienst", dutyStationExamples: "z. B. Kasse, Getränke, Grill, Feldaufbau",
+    vehicleTabLabel: "Mannschaftsbus", vehicleIntro: "Der Mannschaftsbus und seine Buchungen für Auswärtsspiele.",
+  },
+  polo: {
+    label: "Polo", homeEventLabel: "Heimspiel",
+    dutyTabLabel: "Turnierdienst", dutyStationExamples: "z. B. Empfang, Bewirtung, Divot Stomping, Parkplatzeinweisung",
+    vehicleTabLabel: "Pferdeanhänger", vehicleIntro: "Alle Anhänger und Fahrzeuge des Vereins und ihre Buchungen.",
+  },
+  bike_polo: {
+    label: "Bike Polo", homeEventLabel: "Heimspiel",
+    dutyTabLabel: "Courtdienst", dutyStationExamples: "z. B. Zeitnahme, Bandenaufbau, Getränke, Kasse",
+    vehicleTabLabel: "Vereinsfahrzeuge", vehicleIntro: "Alle Vereinsfahrzeuge und ihre Buchungen für Auswärtsfahrten.",
+  },
+  kanupolo: {
+    label: "Kanupolo", homeEventLabel: "Heimspiel",
+    dutyTabLabel: "Beckendienst", dutyStationExamples: "z. B. Zeitnahme, Toraufbau, Bootstransport, Kasse",
+    vehicleTabLabel: "Bootsanhänger", vehicleIntro: "Alle Anhänger und Fahrzeuge des Vereins und ihre Buchungen.",
+  },
+  rollerderby: {
+    label: "Roller Derby", homeEventLabel: "Heimbout",
+    dutyTabLabel: "Bout-Dienst", dutyStationExamples: "z. B. NSO-Crew, Kasse, Merch-Stand, Sanitätsdienst",
+    vehicleTabLabel: "Vereinsfahrzeuge", vehicleIntro: "Alle Vereinsfahrzeuge und ihre Buchungen für Auswärtsfahrten.",
   },
 };
+
 const SPORTS = Object.keys(SPORT_CONFIG);
 const sportConfig = (sport) => SPORT_CONFIG[sport] || SPORT_CONFIG.rollhockey;
 
