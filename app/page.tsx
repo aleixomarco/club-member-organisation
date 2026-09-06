@@ -2031,6 +2031,7 @@ function PendingAccountScreen({ account, onLeave, onDelete }) {
 }
 
 function LoginScreen({ onLogin, members, club, goRegister, goChangeClub, offeneSitzung, onSitzungNutzen, verdraengt, onVerdraengtGelesen }) {
+  const uebersetzung = useT();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
@@ -2105,7 +2106,7 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub, offeneS
       }
     >
       <div className="flex items-center justify-between mb-5">
-        <div className="text-xl" style={{ fontFamily: "Oswald", fontWeight: 600, color: C.ink }}>Willkommen zurück</div>
+        <div className="text-xl" style={{ fontFamily: "Oswald", fontWeight: 600, color: C.ink }}>{uebersetzung("login.willkommen")}</div>
         {/* "Verein wechseln" gibt es nur, wenn ueberhaupt einer gewaehlt ist.
             Seit die Anmeldung vorn steht, ist das der Ausnahmefall - man kommt
             nur noch ueber die Vereinssuche hierher. */}
@@ -2771,6 +2772,7 @@ function NextTrainingCard({ training, team, auswahlVorhanden = false }) {
   );
 }
 function Dashboard({ user, members, events, feePaid, channels, news, dutyPlan, seasonVotes, tippPredictions, tippResults, polls, setPolls, onVote, onUnvote, onFavoritMannschaft, werbeplaetze, onSponsorImpression, onSponsorClick, goEvents, goSeason, goTipp, goDuty, goNews, goTasks, goVehicles, currentClub, featureEnabled, dashboardTileOrder, entitlement, goSubscribe, mannschaften = [], gewaehlteMannschaft = "", onMannschaftWechsel }) {
+  const t = useT();
   const sport = currentClub?.sport || "rollhockey";
   /* Alle Kacheln in „Aktionen & Abstimmungen" hängen am Premium-Tarif
      (siehe die LockedFeature-Hüllen der jeweiligen Ansichten). Während der
@@ -2910,7 +2912,7 @@ function Dashboard({ user, members, events, feePaid, channels, news, dutyPlan, s
       )}
 
       <DashboardSection accent={C.red} background={C.primaerWeich}>
-        <SectionTitle eyebrow="Mitmachen" title="Aktionen & Abstimmungen" />
+        <SectionTitle eyebrow={t("home.mitmachen")} title={t("home.aktionen")} />
         <div>
           {resolveDashboardTileOrder(dashboardTileOrder).map((tileKey) => {
             switch (tileKey) {
@@ -9554,6 +9556,21 @@ function AdminView({
    (TABS.map((t) => ...)). Ein zweites "t" fuer die Uebersetzung darin waere
    dasselbe Wort fuer zwei verschiedene Dinge - der haeufigste Weg, sich in
    einer Datei dieser Groesse zu vertun. */
+/* Die Sprache steht allen Bauteilen zur Verfuegung, ohne durch jede Ebene
+   durchgereicht zu werden.
+   Diese Datei hat ueber hundert Komponenten. Die Uebersetzungsfunktion als
+   Eigenschaft von oben nach unten zu reichen haette bedeutet, an jeder
+   einzelnen eine weitere Zeile zu aendern - und an der ersten vergessenen
+   waere sie undefined, also ein Absturz. Ein Kontext kostet einmal drei
+   Zeilen und gilt dann ueberall.
+   Der Rueckfall ist Deutsch: Wer useT ausserhalb des Anbieters benutzt -
+   etwa in einem Test - bekommt deutsche Texte statt eines Fehlers. */
+const SprachKontext = React.createContext("de");
+function useT() {
+  const code = React.useContext(SprachKontext);
+  return useCallback((schluessel) => uebersetze(code, schluessel), [code]);
+}
+
 function baseTabs(t, isAdminUser, canEditNews, canEditSponsors, canManageFees, canManageDutyUser) {
   const tabs = [
     { id: "home", label: t("nav.home"), icon: Home },
@@ -11512,7 +11529,10 @@ export default function ClubMemberOrganisationApp() {
      Apple-Pruefung live. Also lieber laut scheitern. */
   if (!supabase && process.env.NODE_ENV === "production") return <KonfigurationFehlt />;
 
+  /* Alles unterhalb bekommt die gewaehlte Sprache ueber den Kontext - ohne
+     dass sie durch jede Ebene gereicht werden muss. */
   return (
+    <SprachKontext.Provider value={sprache || "de"}>
     <div className="erg-app erg-shell w-full flex items-center justify-center" style={{ fontFamily: "Inter", ...themeVars }}>
       <style>{FONTS}</style>
       <div className="erg-canvas erg-frame relative w-full flex flex-col overflow-hidden">
@@ -11686,5 +11706,6 @@ export default function ClubMemberOrganisationApp() {
         )}
       </div>
     </div>
+    </SprachKontext.Provider>
   );
 }
