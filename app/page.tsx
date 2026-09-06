@@ -9,7 +9,7 @@ import {
   ShieldCheck, ArrowRight, ArrowLeft, AlertCircle, UserPlus, Eye, EyeOff,
   Target, ClipboardList, Newspaper, Bell, KeyRound, Settings, RefreshCw,
   Bug, Smartphone, Save, Plus, Building2, ExternalLink, Phone, Copy, PlayCircle, ChevronUp
-, ListFilter,
+, ListFilter, Globe,
 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { SPRACHEN, gespeicherteSprache, spracheMerken, uebersetze } from "@/lib/sprachen";
@@ -6824,6 +6824,20 @@ function ProfileDataSettings({ user, setMembers, saveRef }) {
   const matches = countryNames.filter((item) => !countryQuery || item.name.toLowerCase().includes(countryQuery.toLowerCase()) || item.code.toLowerCase().startsWith(countryQuery.toLowerCase())).slice(0, 12);
   const save = async () => {
     if (!form.firstName.trim() || !form.lastName.trim()) { setMessage("Bitte Vor- und Nachname ausfüllen."); return; }
+    /* Bei der E-Mail wird nachgefragt.
+       Alle anderen Angaben - Adresse, Geburtstag, Telefon - speichern still;
+       eine Rueckfrage bei jedem Feld waere nur laestig. Die Kontaktadresse ist
+       anders: An sie gehen Vereinsnachrichten, und ein Vertipper faellt erst
+       auf, wenn nichts mehr ankommt. Genau so ist heute eine Anmeldeadresse
+       auf ".con" statt ".com" gelandet und blieb zwei Tage unbemerkt. */
+    const alteMails = (user.contactEmails?.length ? user.contactEmails : [user.email || ""]).filter(Boolean).join(", ");
+    const neueMails = form.emails.map((m) => m.trim()).filter(Boolean).join(", ");
+    if (neueMails !== alteMails) {
+      const frage = neueMails
+        ? `E-Mail-Adresse wirklich auf "${neueMails}" ändern?\n\nAn diese Adresse gehen künftig deine Vereinsnachrichten.`
+        : "Alle E-Mail-Adressen entfernen? Du erhältst dann keine Vereinsnachrichten mehr per Mail.";
+      if (!window.confirm(frage)) { setMessage("Änderung verworfen — deine E-Mail-Adresse ist unverändert."); return; }
+    }
     const payload = { ...form, emails: form.emails.map((v)=>v.trim()).filter(Boolean), phones: form.phones.map((v)=>v.trim()).filter(Boolean) };
     if (supabase && user.authProfileId) {
       const { error } = await supabase.rpc("update_own_profile_settings", {
@@ -7055,7 +7069,7 @@ function CalendarSyncSettings({ user, saveRef }) {
   </div>;
 }
 
-function ProfileView({ user, members, setMembers, currentClub, dutyPlan, punkteZiel, punktePraemie, werbeplaetze, onSponsorImpression, onSponsorClick, onLogout, clubFeatures, onClubFeaturesChanged, entitlement, goSubscribe, dashboardTileOrder, setDashboardTileOrder, ziel, onZielErreicht }) {
+function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, currentClub, dutyPlan, punkteZiel, punktePraemie, werbeplaetze, onSponsorImpression, onSponsorClick, onLogout, clubFeatures, onClubFeaturesChanged, entitlement, goSubscribe, dashboardTileOrder, setDashboardTileOrder, ziel, onZielErreicht }) {
   const featureEnabled = (key) => clubFeatures[key] !== false;
   /* Ziel und Praemie legt der VEREIN fest, nicht die App. Ohne Eintrag steht
      kein Versprechen da - vorher verpflichtete die App jeden Verein zu einem
@@ -7149,6 +7163,27 @@ function ProfileView({ user, members, setMembers, currentClub, dutyPlan, punkteZ
       <div className="space-y-2 mb-6">
         <ProfileSettingsCard icon={User} title="Persönliche Daten" description="Stammdaten, Kontakte, Familie" color={C.secondary} onClick={() => setProfileFolder("personal")}/>
         <ProfileSettingsCard icon={KeyRound} title="Konto & Sicherheit" description="Passwort, Sicherheit, Rechtliches, Account" color={AVATAR_FARBEN[2]} onClick={() => setProfileFolder("security")}/>
+        {/* Die Sprache wird beim ersten Oeffnen gewaehlt - danach muss sie
+            auch aenderbar sein. Ohne diese Karte waere die Wahl endgueltig,
+            und wer sich vertippt hat, muesste die App loeschen. */}
+        {/* Freunde einladen. Der Link traegt die Vereinskennung; wer ihm folgt
+            und ein Konto anlegt, landet direkt bei der Beitrittsanfrage fuer
+            genau diesen Verein - statt in einer Vereinssuche, in der er den
+            Namen tippen muesste, den ihm gerade jemand geschickt hat. */}
+        <ProfileSettingsCard icon={UserPlus} title="Freunde einladen" description="Link zum Verein teilen" color={C.secondary} onClick={async () => {
+          const link = `${window.location.origin}/?verein=${currentClub?.id || ""}`;
+          const text = `Komm zu ${currentClub?.name || "unserem Verein"} in die Vereins-App:`;
+          try {
+            if (navigator.share) { await navigator.share({ title: currentClub?.name || "Vereins-App", text, url: link }); return; }
+            await navigator.clipboard.writeText(`${text} ${link}`);
+            window.alert("Einladungslink kopiert — jetzt einfügen und verschicken.");
+          } catch {
+            /* Teilen abgebrochen oder nicht erlaubt: Dann wenigstens den Link
+               zeigen, damit man ihn von Hand kopieren kann. */
+            window.prompt("Einladungslink:", link);
+          }
+        }}/>
+        <ProfileSettingsCard icon={Globe} title="Sprache" description={SPRACHEN.find((x) => x.code === sprache)?.name || "Deutsch"} color={C.secondary} onClick={() => setProfileFolder("sprache")}/>
         <ProfileSettingsCard icon={Bell} title="Benachrichtigungen & Kalender" description="Push-Einstellungen und Kalendersync" color={C.secondary} onClick={() => setProfileFolder("notify")}/>
         <ProfileSettingsCard icon={Star} title="Support & Feedback" description="Bewertung abgeben, Fehler melden" color={C.textDim} onClick={() => setProfileFolder("support")}/>
         {vorhandeneVideos.length > 0 && <ProfileSettingsCard icon={PlayCircle} title="App kennenlernen" description="Kurzvideos zu den Funktionen, die du nutzen kannst" color={C.secondary} onClick={() => setProfileFolder("howto")}/>}
@@ -7158,6 +7193,27 @@ function ProfileView({ user, members, setMembers, currentClub, dutyPlan, punkteZ
             hätte die Funktion nicht gefunden und als fehlend gemeldet. */}
         <ProfileSettingsCard icon={Trash2} title="Konto löschen" description="Konto und persönliche Daten dauerhaft entfernen" color={C.red} onClick={() => setProfileUnderlay("account-delete")}/>
       </div>
+
+      {profileFolder === "sprache" && <ProfileUnderlay title="Sprache" eyebrow="Einstellungen" onClose={() => setProfileFolder("")}>
+        <div className="text-xs mb-3" style={{ color: C.textDim, fontFamily: "Inter" }}>
+          Die Sprache gilt für dein Konto — auch auf anderen Geräten.
+        </div>
+        <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${C.line}` }}>
+          {SPRACHEN.map((eintrag, i) => (
+            <button key={eintrag.code} onClick={() => onSpracheWaehlen?.(eintrag.code)}
+              className="w-full flex items-center gap-3 px-4 py-3 text-left"
+              style={{ background: eintrag.code === sprache ? C.paperDim : C.white,
+                       borderTop: i ? `1px solid ${C.line}` : "none" }}>
+              <span style={{ fontSize: 18, lineHeight: 1 }}>{eintrag.flagge}</span>
+              <span className="flex-1 text-sm" style={{ color: C.ink, fontFamily: "Inter", fontWeight: eintrag.code === sprache ? 700 : 500 }}>{eintrag.name}</span>
+              {eintrag.code === sprache && <Check size={15} style={{ color: C.erfolg }} />}
+            </button>
+          ))}
+        </div>
+        <div className="text-[11px] mt-3" style={{ color: C.textDim, fontFamily: "Inter" }}>
+          Übersetzt sind bisher Anmeldung und Registrierung. Die übrigen Bereiche folgen — bis dahin bleiben sie deutsch.
+        </div>
+      </ProfileUnderlay>}
 
       {profileFolder === "clubsettings" && isAdmin(user) && <ProfileUnderlay title="Vereinseinstellungen" eyebrow="Verein verwalten" onClose={() => setProfileFolder("")}>
         <ClubRoleOverviewPanel members={members} />
@@ -9564,6 +9620,31 @@ export default function ClubMemberOrganisationApp() {
   /* null = noch nicht gelesen, "" = noch nie gewaehlt (dann fragen wir).
      Getrennt vom Wert selbst, damit die Sprachwahl nicht kurz aufblitzt,
      bevor der gespeicherte Wert da ist. */
+  /* Einladungslink: ?verein=<Kennung>
+     Bewusst die Vereinskennung und nicht der Empfehlungscode - den hat nicht
+     jeder Verein (ERG Iserlohn zum Beispiel nicht), die Kennung hat jeder.
+     Sie ist keine Geheimnis: Wer den Link hat, sieht den Verein - beitreten
+     kann er trotzdem nur, wenn die Vereinsleitung ihn freigibt.
+     Einmal gelesen und gemerkt: Der Parameter ueberlebt so die Anmeldung und
+     den Bestaetigungslink aus der Registrierungsmail. */
+  const [einladungsVerein, setEinladungsVerein] = useState(null);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const ausAdresse = new URLSearchParams(window.location.search).get("verein");
+      if (ausAdresse && isDbId(ausAdresse)) {
+        window.sessionStorage.setItem("cmo.einladung", ausAdresse);
+        setEinladungsVerein(ausAdresse);
+        /* Die Adresse wieder saeubern, damit ein Neuladen nicht erneut
+           dorthin fuehrt, wenn man laengst woanders ist. */
+        window.history.replaceState({}, "", window.location.pathname);
+        return;
+      }
+      const gemerkt = window.sessionStorage.getItem("cmo.einladung");
+      if (gemerkt && isDbId(gemerkt)) setEinladungsVerein(gemerkt);
+    } catch { /* privater Modus - dann eben ohne Einladung */ }
+  }, []);
+
   const [sprache, setSprache] = useState(null);
   useEffect(() => { setSprache(gespeicherteSprache() || ""); }, []);
   const t = useCallback((schluessel) => uebersetze(sprache || "de", schluessel), [sprache]);
@@ -11038,10 +11119,15 @@ export default function ClubMemberOrganisationApp() {
          auf zwei anderen Geraeten in Benutzung. */
       await geraetAnmelden(data.user.id);
 
-      /* Konto ohne Verein: Es gibt nichts zu registrieren, nur weiterzugehen. */
+      /* Konto ohne Verein: Es gibt nichts zu registrieren, nur weiterzugehen.
+         Kam der Nutzer ueber einen Einladungslink, geht es direkt zu diesem
+         Verein - genau das ist der Sinn des Links. Ohne diese Weiche landete
+         er in der Vereinssuche und muesste den Verein tippen, den ihm gerade
+         jemand geschickt hat. */
       if (nurKonto) {
         setOffeneSitzung({ profileId: data.user.id, email: data.user.email, mitgliedschaften: [] });
-        setAuthScreen("club");
+        if (einladungsVerein) { setSelectedClubId(einladungsVerein); setAuthScreen("beitreten"); }
+        else setAuthScreen("club");
         return {};
       }
 
@@ -11489,7 +11575,7 @@ export default function ClubMemberOrganisationApp() {
                   currentClub={currentClub} onClubLogoUpdated={updateCurrentClubLogo} onClubColorsUpdated={updateCurrentClubColors} clubFeatures={clubFeatures} onClubFeaturesChanged={loadClubFeatures} />
                 </LockedFeature>
               )}
-              {!subView && tab === "profile" && <ProfileView ziel={profilZiel} onZielErreicht={() => setProfilZiel("")} user={currentUser} members={clubMembers} setMembers={setMembers} currentClub={currentClub} dutyPlan={dutyPlan} punkteZiel={punkteZiel} punktePraemie={punktePraemie} werbeplaetze={werbeplaetze} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick} onLogout={logout} clubFeatures={clubFeatures} onClubFeaturesChanged={loadClubFeatures} entitlement={entitlement} goSubscribe={goSubscribe} dashboardTileOrder={dashboardTileOrder} setDashboardTileOrder={setDashboardTileOrder} />}
+              {!subView && tab === "profile" && <ProfileView sprache={sprache} onSpracheWaehlen={spracheWaehlen} ziel={profilZiel} onZielErreicht={() => setProfilZiel("")} user={currentUser} members={clubMembers} setMembers={setMembers} currentClub={currentClub} dutyPlan={dutyPlan} punkteZiel={punkteZiel} punktePraemie={punktePraemie} werbeplaetze={werbeplaetze} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick} onLogout={logout} clubFeatures={clubFeatures} onClubFeaturesChanged={loadClubFeatures} entitlement={entitlement} goSubscribe={goSubscribe} dashboardTileOrder={dashboardTileOrder} setDashboardTileOrder={setDashboardTileOrder} />}
             </ZumAktualisierenZiehen>
 
             {!subView && (
