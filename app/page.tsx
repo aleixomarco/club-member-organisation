@@ -113,6 +113,21 @@ const CLUB_COLOR_PRESETS = [
  * Bewusst hier und nicht per color-mix in CSS: Das gibt es erst ab iOS 16.2,
  * und die App laeuft ab iOS 15. Dort waere jede solche Regel ungueltig - die
  * Flaeche bliebe farblos, und zwar ohne jede Fehlermeldung. */
+/* Erfolg oder Fehler - woran erkennt man das?
+ *
+ * Frueher entschied das der Text selbst: message.includes("gespeichert")
+ * faerbte den Hinweis gruen, alles andere rot. Auf Deutsch ging das gut.
+ * Sobald dieselbe Meldung aber "Salvato" oder "Kaydedildi" heisst, findet
+ * die Suche nichts mehr - und JEDE Erfolgsmeldung waere in sechs Sprachen
+ * rot. Ein geglueckter Speichervorgang saehe aus wie ein Fehlschlag.
+ *
+ * Deshalb traegt eine Erfolgsmeldung jetzt ein unsichtbares Zeichen am
+ * Anfang (U+200B, Breite null). Es haengt an der Meldung, nicht an ihrer
+ * Sprache, und wird beim Anzeigen wieder entfernt. */
+const OK_ZEICHEN = "\u200B";
+const istErfolg = (m) => typeof m === "string" && m.startsWith(OK_ZEICHEN);
+const meldungstext = (m) => (typeof m === "string" ? m.split(OK_ZEICHEN).join("") : m);
+
 function mischeHex(hex, anteil, mitWeiss = true) {
   const clean = String(hex || "").replace("#", "");
   if (!/^[0-9a-fA-F]{6}$/.test(clean)) return hex;
@@ -3327,7 +3342,7 @@ function CarpoolSection({ ev, currentUser }) {
           </div>
         )}
       </>}
-      {message && <div className="text-[11px] mt-1.5" style={{ color: C.red }}>{message}</div>}
+      {message && <div className="text-[11px] mt-1.5" style={{ color: C.red }}>{meldungstext(message)}</div>}
     </div>
   );
 }
@@ -3991,7 +4006,7 @@ function FeesView({ members, records, setRecords }) {
     }
     setRecords((all) => [{ id, memberId: selectedMemberId, year: form.year, type: form.type, amount: amountNumber.toFixed(2).replace(".", ","), paid: form.paid === "bezahlt", invoiceNumber: form.invoiceNumber.trim(), linkedMemberIds: form.type === "Familienbeitrag" ? form.linkedMemberIds : [], manualNames, personCount: form.type === "Familienbeitrag" ? Math.max(1, Number(form.personCount) || 1) : 1 }, ...all]);
     setForm((current) => ({ ...current, amount: "", invoiceNumber: "", linkedMemberIds: [], manualNames: "", personCount: current.type === "Familienbeitrag" ? "2" : "1" }));
-    setSaving(false); setMessage("Beitragsdatensatz wurde gespeichert.");
+    setSaving(false); setMessage((OK_ZEICHEN + "Beitragsdatensatz wurde gespeichert."));
   };
   const togglePaid = async (record) => {
     const nextPaid = !record.paid;
@@ -4065,7 +4080,7 @@ function FeesView({ members, records, setRecords }) {
         {memberRecords.length === 0 && <div className="rounded-2xl p-4 text-xs text-center" style={{ background: C.paperDim, color: C.textDim }}>{t("bei.keineDaten")}</div>}
       </div>
       <SectionTitle eyebrow="Neuer Datensatz" title="Beitrag hinterlegen" />
-      {message&&<div className="mb-3 rounded-xl px-3 py-2 text-[11px] font-semibold" style={{background:message.includes("gespeichert")?C.erfolgFlaeche:C.fehlerFlaeche,color:message.includes("gespeichert")?C.erfolg:C.fehler}}>{message}</div>}
+      {message&&<div className="mb-3 rounded-xl px-3 py-2 text-[11px] font-semibold" style={{background:istErfolg(message)?C.erfolgFlaeche:C.fehlerFlaeche,color:istErfolg(message)?C.erfolg:C.fehler}}>{meldungstext(message)}</div>}
       <form onSubmit={addRecord} className="rounded-2xl p-4 space-y-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
         <div className="grid grid-cols-2 gap-2">
           <input value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} placeholder={t("ph.jahr")} inputMode="numeric" className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }} />
@@ -4554,7 +4569,7 @@ function RedaktionView({ user, news, setNews }) {
           </div>
         </div>
       )}
-      {message&&<div className="mb-3 rounded-xl px-3 py-2 text-[11px] font-semibold" style={{background:C.fehlerFlaeche,color:C.fehler}}>{message}</div>}
+      {message&&<div className="mb-3 rounded-xl px-3 py-2 text-[11px] font-semibold" style={{background:C.fehlerFlaeche,color:C.fehler}}>{meldungstext(message)}</div>}
 
       <SectionTitle eyebrow="Veröffentlicht" title="Alle News" />
       <div className="space-y-2">
@@ -4684,7 +4699,7 @@ function FamilyLinkManager({ user, members, setMembers, adminMode = false }) {
   };
   return <div className="rounded-2xl p-4 mb-5" style={{background:C.glass,border:`1px solid ${C.line}`}}>
     <div className="flex items-center justify-between"><div><div className="text-sm font-bold" style={{color:C.ink}}>{t("fam.verknuepfung")}</div><div className="text-[11px]" style={{color:C.textDim}}>{adminMode ? `Sysadmin bearbeitet das Profil von ${user.name}.` : "Du verwaltest dein Familienprofil selbst."} Verknüpfungen gelten automatisch für beide Profile.</div></div><button disabled={saving} onClick={()=>setOpen(!open)} className="px-3 py-1.5 rounded-full text-xs font-bold" style={{background:C.paperDim,color:C.ink}}>{open?t("allg.schliessen"):"＋ Verknüpfen"}</button></div>
-    {message&&<div className="mt-2 text-[11px] font-semibold" style={{color:C.red}}>{message}</div>}
+    {message&&<div className="mt-2 text-[11px] font-semibold" style={{color:C.red}}>{meldungstext(message)}</div>}
     {familyConnections.length>0&&<div className="mt-3 pt-3 space-y-1.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] font-bold mb-1" style={{color:C.textDim}}>BESTEHENDE VERKNÜPFUNGEN</div>{familyConnections.map((member)=><div key={member.id} className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{background:C.paperDim}}><div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold" style={{background:member.color,color:C.white}}>{initialsOf(member.name)}</div><div className="flex-1 min-w-0"><div className="text-xs font-bold truncate" style={{color:C.ink}}>{member.name}</div><div className="text-[10px]" style={{color:C.textDim}}>{member.familyRole||"Familie"}</div></div><button onClick={()=>removeConnection(member)} className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold" style={{background:C.fehlerFlaeche,color:C.fehler}}>{t("allg.loeschen")}</button></div>)}</div>}
     {open&&<div className="mt-3 pt-3" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[11px] font-bold mb-1">{t("fam.rolle")}</div><select value={relationMode} onChange={(e)=>{setRelationMode(e.target.value);setQuery("");}} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim}}><option value="eltern">Elternteil – Athlet/in oder Kind hinzufügen</option><option value="kind">Athlet/in / Kind – Elternteil hinzufügen</option></select><input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder={userIsParent?"Vorhandenen Athlet/in suchen …":"Vorhandenes Elternteil suchen …"} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim}}/>{query&&<div className="space-y-1">{results.map(m=><button key={m.id} onClick={()=>connect(m.id)} className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs" style={{background:C.paperDim,color:C.ink}}><span>{m.name} · {m.team}</span><span style={{color:C.red}}>{t("fam.verbinden")}</span></button>)}{results.length===0&&<div className="text-[11px] py-2" style={{color:C.textDim}}>{t("fam.keinProfil")}</div>}</div>}{userIsParent&&<div className="mt-3 pt-3" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[11px] font-bold mb-2">{t("fam.kindAnlegen")}</div><div className="flex gap-2"><input value={newName} onChange={(e)=>setNewName(e.target.value)} placeholder={t("feld.vollerName")} className="flex-1 px-3 py-2 rounded-lg text-xs outline-none" style={{background:C.paperDim}}/><button onClick={createDependent} disabled={!newName.trim()} className="px-3 rounded-lg text-xs font-bold" style={{background:newName.trim()?C.red:C.line,color:"#fff"}}>{t("allg.anlegen")}</button></div><div className="text-[10px] mt-2" style={{color:C.textDim}}>Das Kind kann sein vorläufiges Profil später beim Erstellen des eigenen Kontos übernehmen.</div></div>}</div>}
   </div>;
@@ -4786,11 +4801,11 @@ function TrainerTeamSettings({ user, members, setMembers }) {
         const roles = captainTeams.length ? member.roles : member.roles.filter((role) => role !== "kapitaen");
         return { ...member, roles, captainTeams };
       }));
-      setSavedCaptainId(captainId); setMessage("Kapitän wurde für diese Mannschaft gespeichert."); setSaving(false); return;
+      setSavedCaptainId(captainId); setMessage((OK_ZEICHEN + "Kapitän wurde für diese Mannschaft gespeichert.")); setSaving(false); return;
     }
     const { error } = await supabase.rpc("set_team_captain", { target_team: selectedTeamId, target_membership: captainId });
     if (error) setMessage("Der Kapitän konnte nicht gespeichert werden.");
-    else { setSavedCaptainId(captainId); setMessage("Kapitän wurde für diese Mannschaft gespeichert."); }
+    else { setSavedCaptainId(captainId); setMessage((OK_ZEICHEN + "Kapitän wurde für diese Mannschaft gespeichert.")); }
     setSaving(false);
   };
 
@@ -4810,7 +4825,7 @@ function TrainerTeamSettings({ user, members, setMembers }) {
       <button onClick={saveCaptain} disabled={!captainId || saving || captainId === savedCaptainId} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: captainId && captainId !== savedCaptainId ? C.ink : C.paperDim, color: captainId && captainId !== savedCaptainId ? C.white : C.textDim, opacity: saving ? .6 : 1 }}>{saving ? "Wird gespeichert …" : captainId === savedCaptainId && captainId ? "Kapitän gespeichert" : "Kapitän speichern"}</button>
       </>}
     </>}
-    {message && <div role="status" className="text-[11px] mt-2" style={{ color: message.includes("gespeichert") ? C.erfolg : C.fehler }}>{message}</div>}
+    {message && <div role="status" className="text-[11px] mt-2" style={{ color: istErfolg(message) ? C.erfolg : C.fehler }}>{meldungstext(message)}</div>}
   </div>;
 }
 
@@ -4849,7 +4864,7 @@ function PlayerTeamSettings({ user, setMembers }) {
     <div className="flex items-center gap-2 mb-1 text-sm font-bold" style={{ color: C.ink }}><Users size={15} style={{ color: C.secondary }}/> Meine Mannschaften</div>
     <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Deine Mannschaftszuordnung wird von Trainer, Teammanager oder Vereins-Admin verwaltet.</div>
     {loading ? <div className="text-xs py-3" style={{ color: C.textDim }}>{t("allg.laedt")}</div> : teams.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{t("tm.keineZuordnung")}</div> : <div className="flex flex-wrap gap-2">{teams.map((team) => <span key={team.id} className="px-3 py-1.5 rounded-full text-xs font-bold" style={{ background: C.erfolgFlaeche, color: C.erfolg }}>{team.name}</span>)}</div>}
-    {message && <div role="status" className="text-[11px] mt-2" style={{ color: C.red }}>{message}</div>}
+    {message && <div role="status" className="text-[11px] mt-2" style={{ color: C.red }}>{meldungstext(message)}</div>}
   </div>;
 }
 function TeamsView({ currentUser, members, setMembers, currentClub }) {
@@ -5037,7 +5052,7 @@ function TeamsView({ currentUser, members, setMembers, currentClub }) {
     } else {
       setTeams((current) => [...current, { id: createdId, name: name.trim(), category: category.trim() || t("tm.mannschaft"), is_adult: isAdultTeam }].sort((a, b) => a.name.localeCompare(b.name, "de")));
     }
-    setName(""); setCategory(""); setIsAdultTeam(false); setShowCreate(false); setSelectedTeamId(createdId); setMessage("Mannschaft wurde angelegt."); setSaving(false);
+    setName(""); setCategory(""); setIsAdultTeam(false); setShowCreate(false); setSelectedTeamId(createdId); setMessage((OK_ZEICHEN + "Mannschaft wurde angelegt.")); setSaving(false);
   };
   const openEditTeam = (team) => {
     setEditName(team.name); setEditCategory(team.category || ""); setEditingTeam(true); setMessage("");
@@ -5052,7 +5067,7 @@ function TeamsView({ currentUser, members, setMembers, currentClub }) {
     } else {
       setTeams((current) => current.map((team) => team.id === selectedTeam.id ? { ...team, name: editName.trim(), category: editCategory.trim() || t("tm.mannschaft") } : team));
     }
-    setEditingTeam(false); setMessage("Mannschaft wurde geändert."); setSavingTeamEdit(false);
+    setEditingTeam(false); setMessage((OK_ZEICHEN + "Mannschaft wurde geändert.")); setSavingTeamEdit(false);
   };
   const archiveTeam = async () => {
     if (!selectedTeam) return;
@@ -5063,7 +5078,7 @@ function TeamsView({ currentUser, members, setMembers, currentClub }) {
       if (error) { setMessage("Die Mannschaft konnte nicht archiviert werden."); setArchivingTeam(false); return; }
     }
     setTeams((current) => current.filter((team) => team.id !== selectedTeam.id));
-    setSelectedTeamId(""); setEditingTeam(false); setMessage("Mannschaft wurde archiviert."); setArchivingTeam(false);
+    setSelectedTeamId(""); setEditingTeam(false); setMessage((OK_ZEICHEN + "Mannschaft wurde archiviert.")); setArchivingTeam(false);
   };
   const TeamCard = ({ team }) => {
     const roster = rosterFor(team); const own = ownNames.includes(team.name);
@@ -5074,7 +5089,7 @@ function TeamsView({ currentUser, members, setMembers, currentClub }) {
     <SectionTitle eyebrow="Verein" title="Teams" right={canCreate ? <button onClick={() => setShowCreate((value) => !value)} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showCreate ? t("allg.schliessen") : "+ Team"}</button> : null}/>
     <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>Alle Mannschaften von {currentClub?.shortName}. Öffne ein Team, um den Athletenkader anzusehen.</div>
     {showCreate && <form onSubmit={createTeam} className="rounded-2xl p-4 mb-5" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>{t("tm.neuAnlegen")}</div><div className="text-[11px] mb-3" style={{ color: C.textDim }}>Danach können Athlet/innen das Team in ihrem Profil auswählen.</div><input value={name} onChange={(event) => setName(event.target.value)} maxLength={80} placeholder={t("ph.mannschaftsnameBsp")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}/><input value={category} onChange={(event) => setCategory(event.target.value)} maxLength={80} placeholder={t("ph.kategorieBeispiel")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}/><button type="button" onClick={() => setIsAdultTeam((v) => !v)} className="w-full flex items-center justify-between rounded-xl px-3 py-2.5 mb-2" style={{ background: isAdultTeam ? C.fehlerFlaeche : C.paperDim, border: isAdultTeam ? `1px solid ${C.red}` : "1px solid transparent" }}><div className="text-left"><div className="text-xs font-bold" style={{ color: C.ink }}>{t("tm.erwachsene")}</div><div className="text-[10px]" style={{ color: C.textDim }}>Nur dann gibt es Strafenkatalog & Zuweisungen für dieses Team.</div></div><span className="w-10 h-6 rounded-full flex items-center px-0.5" style={{ background: isAdultTeam ? C.red : C.line, justifyContent: isAdultTeam ? "flex-end" : "flex-start" }}><span className="w-5 h-5 rounded-full" style={{ background: C.glass }}/></span></button><button disabled={saving || !name.trim()} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: name.trim() ? C.red : C.line, color: C.white }}>{saving ? "Wird angelegt …" : "Mannschaft anlegen"}</button></form>}
-    {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: (message.includes("angelegt")||message.includes("geändert")||message.includes("archiviert")) ? C.erfolgFlaeche : C.fehlerFlaeche, color: (message.includes("angelegt")||message.includes("geändert")||message.includes("archiviert")) ? C.erfolg : C.fehler }}>{message}</div>}
+    {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: (istErfolg(message)||istErfolg(message)||istErfolg(message)) ? C.erfolgFlaeche : C.fehlerFlaeche, color: (istErfolg(message)||istErfolg(message)||istErfolg(message)) ? C.erfolg : C.fehler }}>{meldungstext(message)}</div>}
     {selectedTeam ? <div><button onClick={() => { setSelectedTeamId(""); setShowPlayerPicker(false); setEditingTeam(false); }} className="flex items-center gap-1 text-xs font-bold mb-3" style={{ color: C.fehler }}><ArrowLeft size={14}/> Alle Teams</button><div className="rounded-2xl p-4 mb-4" style={{ background: C.ink, color: C.white }}><div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: C.textDim }}>{selectedTeam.category || t("tm.mannschaft")}</div><div className="text-xl font-bold" style={{ fontFamily: "Oswald" }}>{selectedTeam.name}</div><div className="text-xs mt-1" style={{ color: C.textDim }}>{rosterFor(selectedTeam).length} verknüpfte Athlet/innen</div></div>{canCreate && !editingTeam && <div className="flex gap-2 mb-4"><button onClick={() => openEditTeam(selectedTeam)} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>{t("allg.bearbeiten")}</button><button onClick={archiveTeam} disabled={archivingTeam} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{archivingTeam ? "…" : "Archivieren"}</button></div>}{canCreate && editingTeam && <div className="rounded-2xl p-3.5 mb-4" style={{ background: C.paperDim }}><input value={editName} onChange={(e) => setEditName(e.target.value)} maxLength={80} placeholder={t("ph.mannschaftsname")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.glass }}/><input value={editCategory} onChange={(e) => setEditCategory(e.target.value)} maxLength={80} placeholder={t("ph.kategorie")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.glass }}/><div className="flex gap-2"><button onClick={saveTeamEdit} disabled={savingTeamEdit} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{savingTeamEdit ? "…" : t("allg.speichern")}</button><button onClick={() => setEditingTeam(false)} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>{t("allg.abbrechen")}</button></div></div>}<SectionTitle eyebrow="Kader" title="Athlet/innen" right={canAssignPlayers ? <button onClick={() => setShowPlayerPicker((value) => !value)} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showPlayerPicker ? t("allg.schliessen") : "+ Zuweisen"}</button> : null}/>{showPlayerPicker && <div className="rounded-2xl p-3 mb-4" style={{ background: C.paperDim }}><div className="text-[11px] mb-2" style={{ color: C.textDim }}>Athlet/in auswählen und anschließend seine Mannschaften festlegen.</div>{!showNewPlayer ? <button type="button" onClick={() => setShowNewPlayer(true)} className="w-full flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 mb-2 text-[11px] font-bold" style={{ background: C.glass, color: C.fehler, border: `1px dashed ${C.red}` }}><Plus size={13}/> Spieler ohne Account anlegen</button> : <div className="rounded-xl p-2.5 mb-2" style={{ background: C.glass }}><div className="text-[10px] mb-1.5" style={{ color: C.textDim }}>Für Athlet/innen ohne eigenes Handy/Konto (z. B. Kindermannschaften). Vorname und Nachname reichen — die Verknüpfung mit einem Elternteil erfolgt separat in den Familienprofilen.</div><input value={newPlayerName} onChange={(e) => setNewPlayerName(e.target.value)} placeholder={t("feld.vollerName")} className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2" style={{ background: C.paperDim }}/><div className="flex gap-2"><button type="button" onClick={() => { setShowNewPlayer(false); setNewPlayerName(""); }} className="flex-1 py-2 rounded-lg text-[11px] font-bold" style={{ background: C.paperDim, color: C.ink }}>{t("allg.abbrechen")}</button><button type="button" disabled={creatingPlayer || !newPlayerName.trim()} onClick={createPlayerWithoutAccount} className="flex-1 py-2 rounded-lg text-[11px] font-bold" style={{ background: newPlayerName.trim() ? C.ink : C.line, color: C.white }}>{creatingPlayer ? "…" : t("allg.anlegen")}</button></div></div>}<div className="space-y-1.5 max-h-56 overflow-y-auto">{players.map((player) => <button key={player.id} onClick={() => openPlayer(player)} className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-left" style={{ background: C.glass }}><div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold" style={{ background: player.color, color: C.white }}>{initialsOf(player.name)}</div><div className="flex-1"><div className="text-xs font-bold" style={{ color: C.ink }}>{player.name}</div><div className="text-[9px]" style={{ color: C.textDim }}>{memberPlayerTeams(player).join(" · ") || "Noch ohne Mannschaft"}</div></div><ChevronRight size={13} style={{ color: C.textDim }}/></button>)}</div></div>}{rosterFor(selectedTeam).length ? <div className="space-y-2">{rosterFor(selectedTeam).map((player) => <button key={player.id} onClick={() => openPlayer(player)} className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: player.color, color: C.white }}>{initialsOf(player.name)}</div><div className="flex-1"><div className="text-xs font-bold" style={{ color: C.ink }}>{player.name}</div><div className="text-[10px]" style={{ color: C.textDim }}>{memberPlayerTeams(player).join(" · ")}</div></div><ChevronRight size={14} style={{ color: C.textDim }}/></button>)}</div> : <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>Dieser Mannschaft sind noch keine Athlet/innen zugeordnet.</div>}</div> : loading ? <div className="text-xs py-4" style={{ color: C.textDim }}>{t("tm.laden")}</div> : <><SectionTitle eyebrow="Persönlich" title="Meine Teams"/><div className="space-y-2 mb-6">{ownTeams.length ? ownTeams.map((team) => <TeamCard key={team.id} team={team}/>) : <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>Du bist noch keiner Mannschaft als Athlet/in zugeordnet. Athlet/innen können im Profil bis zu drei Teams auswählen.</div>}</div><SectionTitle eyebrow="Vereinsübersicht" title="Alle Mannschaften"/><div className="space-y-2">{teams.map((team) => <TeamCard key={team.id} team={team}/>)}{teams.length === 0 && <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>{t("tm.keine")}</div>}</div></>}
     {selectedPlayer && <div className="absolute inset-0 z-50 flex items-end p-3" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setSelectedPlayerId("")}><div role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()} className="w-full rounded-3xl p-5 max-h-[82%] overflow-y-auto" style={{ background: C.glass }}><div className="flex items-start justify-between mb-4"><div className="flex items-center gap-3"><div className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold" style={{ background: selectedPlayer.color, color: C.white }}>{initialsOf(selectedPlayer.name)}</div><div><div className="text-lg font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{selectedPlayer.name}</div><div className="text-xs" style={{ color: C.textDim }}>Athlet/in · dabei seit {selectedPlayer.since}</div></div></div><button onClick={() => setSelectedPlayerId("")} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><X size={15}/></button></div><div className="flex items-center justify-between mb-2"><div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.textDim }}>{t("tm.mannschaften")}</div>{canAssignPlayers && <span className="text-[10px] font-bold" style={{ color: playerTeamIds.length === 3 ? C.red : C.textDim }}>{playerTeamIds.length}/3</span>}{canAssignPlayers && <button type="button" onClick={() => setTeamsOpen((v) => !v)} className="p-1"><ChevronRight size={14} style={{ color: C.textDim, transform: teamsOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .15s" }}/></button>}</div>{canAssignPlayers ? (teamsOpen && <div className="space-y-2">{teams.map((team) => { const active = playerTeamIds.includes(team.id); return <button key={team.id} onClick={() => togglePlayerTeam(team.id)} className="w-full flex items-center justify-between rounded-xl px-3 py-2.5 text-left" style={{ background: active ? C.erfolgFlaeche : C.paperDim, border: active ? `1px solid ${C.secondary}` : "1px solid transparent" }}><div><div className="text-xs font-bold" style={{ color: C.ink }}>{team.name}</div><div className="text-[9px]" style={{ color: C.textDim }}>{team.category || t("tm.mannschaft")}</div></div><span className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: active ? C.secondary : C.white, color: C.white }}>{active && <Check size={13}/>}</span></button>; })}<button onClick={savePlayerTeams} disabled={savingPlayer || JSON.stringify([...playerTeamIds].sort()) === JSON.stringify([...savedPlayerTeamIds].sort())} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: JSON.stringify([...playerTeamIds].sort()) !== JSON.stringify([...savedPlayerTeamIds].sort()) ? C.ink : C.paperDim, color: JSON.stringify([...playerTeamIds].sort()) !== JSON.stringify([...savedPlayerTeamIds].sort()) ? C.white : C.textDim, opacity: savingPlayer ? .6 : 1 }}>{savingPlayer ? "Wird gespeichert …" : "Zuordnung speichern"}</button>{playerMessage && <div role="status" className="text-[11px]" style={{ color: playerMessage.includes("gespeichert") ? C.erfolg : C.fehler }}>{playerMessage}</div>}</div>) : <div className="flex flex-wrap gap-2">{memberPlayerTeams(selectedPlayer).length ? memberPlayerTeams(selectedPlayer).map((team) => <span key={team} className="px-3 py-1.5 rounded-full text-xs font-bold" style={{ background: C.erfolgFlaeche, color: C.erfolg }}>{team}</span>) : <span className="text-xs" style={{ color: C.textDim }}>{t("tm.keineZuordnungKurz")}</span>}</div>}{canManagePenalties && (<div className="mt-4 pt-4" style={{ borderTop: `1px solid ${C.line}` }}><button type="button" onClick={() => setPenaltyOpen((v) => !v)} className="w-full flex items-center justify-between mb-2"><div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.textDim }}>{t("straf.verwaltung")}</div><ChevronRight size={14} style={{ color: C.textDim, transform: penaltyOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .15s" }}/></button>{penaltyOpen && (<><div className="flex gap-2 mb-3"><select value={assignRuleId} onChange={(e) => setAssignRuleId(e.target.value)} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}><option value="">{t("straf.waehlen")}</option>{penaltyRules.map((r) => <option key={r.id} value={r.id}>{r.title} ({r.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €)</option>)}</select><button onClick={assignPenaltyToPlayer} disabled={assigningPenalty || !assignRuleId} className="px-4 rounded-xl text-xs font-bold" style={{ background: assignRuleId ? C.ink : C.line, color: C.white }}>{assigningPenalty ? "…" : "Zuweisen"}</button></div>{penaltyMessage && <div role="status" className="text-[11px] mb-2" style={{ color: penaltyMessage.includes("zugewiesen") ? C.erfolg : C.fehler }}>{penaltyMessage}</div>}<div className="text-[10px] uppercase tracking-widest font-bold mb-1.5" style={{ color: C.textDim }}>{t("straf.bisherige")}</div><div className="space-y-1.5">{playerPenalties.map((p) => <div key={p.id} className="flex items-center justify-between px-3 py-2 rounded-xl" style={{ background: C.paperDim }}><span className="text-xs font-bold" style={{ color: C.ink }}>{p.title}</span><span className="text-xs font-bold" style={{ color: C.red, fontFamily: "JetBrains Mono" }}>{p.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span><button type="button" onClick={() => togglePlayerPenaltyPaid(p)} className="px-2 py-1 rounded-lg text-[9px] font-bold flex-shrink-0" style={{ background: p.paidAt ? C.erfolgFlaeche : C.white, color: p.paidAt ? C.secondary : C.textDim }}>{p.paidAt ? t("bei.bezahlt") : "Offen"}</button><button type="button" onClick={() => removePlayerPenalty(p)} aria-label={t("aria.strafeEntfernen")} className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.glass, color: C.red }}><X size={12}/></button></div>)}{playerPenalties.length === 0 && <div className="text-[11px]" style={{ color: C.textDim }}>{t("straf.keine")}</div>}</div></>)}</div>)}</div></div>}
   </div>;
@@ -5242,7 +5257,7 @@ function TeamPenaltyCatalog({ user }) {
     const replaceOrAdd = (current) => [...current.filter((rule) => rule.id !== created.id), created].sort((a, b) => a.title.localeCompare(b.title, "de"));
     if (!databaseMembership) setLocalRules(replaceOrAdd);
     setRules(replaceOrAdd);
-    setTitle(""); setAmount(""); setEditingId(""); setMessage("Regel wurde gespeichert."); setSaving(false);
+    setTitle(""); setAmount(""); setEditingId(""); setMessage((OK_ZEICHEN + "Regel wurde gespeichert.")); setSaving(false);
   };
   const editRule = (rule) => {
     setEditingId(rule.id);
@@ -5260,7 +5275,7 @@ function TeamPenaltyCatalog({ user }) {
     }
     if (!databaseMembership) setLocalRules((current) => current.filter((item) => item.id !== rule.id));
     setRules((current) => current.filter((item) => item.id !== rule.id));
-    setMessage("Regel wurde gelöscht."); setSaving(false);
+    setMessage((OK_ZEICHEN + "Regel wurde gelöscht.")); setSaving(false);
   };
   const assignPenalty = async (event) => {
     event.preventDefault();
@@ -5288,7 +5303,7 @@ function TeamPenaltyCatalog({ user }) {
         return { id: entry.id, teamId: selectedTeamId, ruleId: entry.rule_id, ruleTitle: r?.title || "—", amount: Number(r?.amount || 0), membershipId: entry.membership_id, playerName: membership?.display_name || "—", assignedAt: entry.assigned_at, paidAt: entry.paid_at };
       }));
     }
-    setAssignPlayerId(""); setAssignRuleId(""); setMessage("Strafe wurde zugewiesen."); setAssigning(false);
+    setAssignPlayerId(""); setAssignRuleId(""); setMessage((OK_ZEICHEN + "Strafe wurde zugewiesen.")); setAssigning(false);
   };
   const removeAssignment = async (assignment) => {
     if (!window.confirm(`Strafe „${assignment.ruleTitle}“ bei ${assignment.playerName} wirklich entfernen?`)) return;
@@ -5310,7 +5325,7 @@ function TeamPenaltyCatalog({ user }) {
       setLocalAssignments((current) => current.map((item) => item.id === assignment.id ? { ...item, paidAt: nextPaid ? new Date().toISOString() : null } : item));
     }
     setAssignments((current) => current.map((item) => item.id === assignment.id ? { ...item, paidAt: nextPaid ? new Date().toISOString() : null } : item));
-    setMessage(nextPaid ? "Strafe als bezahlt markiert." : "Strafe als offen markiert.");
+    setMessage(nextPaid ? (OK_ZEICHEN + "Strafe als bezahlt markiert.") : (OK_ZEICHEN + "Strafe als offen markiert."));
   };
   const runSeasonReset = async () => {
     if (!seasonLabel.trim()) { setMessage("Bitte eine Saisonbezeichnung eingeben, z. B. 2025/26."); return; }
@@ -5405,7 +5420,7 @@ function TeamPenaltyCatalog({ user }) {
         </div>
       )}
     </>}
-    {message && <div role="status" className="text-[11px] mt-2" style={{ color: message.includes("gespeichert") || message.includes("gelöscht") || message.includes("zugewiesen") || message.includes("markiert") || message.includes("abgeschlossen") ? C.erfolg : C.fehler }}>{message}</div>}
+    {message && <div role="status" className="text-[11px] mt-2" style={{ color: istErfolg(message) || istErfolg(message) || istErfolg(message) || istErfolg(message) || istErfolg(message) ? C.erfolg : C.fehler }}>{meldungstext(message)}</div>}
   </div>;
 }
 /* Mannschaft und Verantwortliche.
@@ -5559,7 +5574,7 @@ function TasksView({ currentUser, members }) {
         due_date: form.dueDate || null, slots_needed: slotsNeeded,
       }).eq("id", editingTaskId);
       if (error) { setMessage("Aufgabe konnte nicht geändert werden."); return; }
-      resetForm(); setEditingTaskId(null); setShowCreateClub(false); setShowCreateTeamId(""); setMessage("Aufgabe wurde geändert.");
+      resetForm(); setEditingTaskId(null); setShowCreateClub(false); setShowCreateTeamId(""); setMessage((OK_ZEICHEN + "Aufgabe wurde geändert."));
       await loadAll();
       return;
     }
@@ -5579,7 +5594,7 @@ function TasksView({ currentUser, members }) {
          zurueckziehen, aber verschweigen darf man sie auch nicht. */
       if (zuFehler) { setMessage("Aufgabe angelegt, aber die Verantwortlichen konnten nicht gesetzt werden."); await loadAll(); return; }
     }
-    resetForm(); setShowCreateClub(false); setShowCreateTeamId(""); setMessage("Aufgabe wurde angelegt.");
+    resetForm(); setShowCreateClub(false); setShowCreateTeamId(""); setMessage((OK_ZEICHEN + "Aufgabe wurde angelegt."));
     await loadAll();
   };
   const openEditTask = (task) => {
@@ -5636,7 +5651,7 @@ function TasksView({ currentUser, members }) {
     <div className="px-4 pt-4 pb-24">
       <SectionTitle eyebrow="Verein" title="Aufgaben" right={canCreateClubTask ? <button onClick={() => { if (showCreateClub) { setEditingTaskId(null); resetForm(); } setShowCreateClub((v) => !v); }} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showCreateClub ? t("allg.schliessen") : "+ Aufgabe"}</button> : null}/>
       <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>Vereins- und Mannschaftsaufgaben, für die sich Mitglieder freiwillig eintragen können.</div>
-      {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: (message.includes("angelegt")||message.includes("geändert")) ? C.erfolgFlaeche : C.fehlerFlaeche, color: (message.includes("angelegt")||message.includes("geändert")) ? C.erfolg : C.fehler }}>{message}</div>}
+      {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: (istErfolg(message)||istErfolg(message)) ? C.erfolgFlaeche : C.fehlerFlaeche, color: (istErfolg(message)||istErfolg(message)) ? C.erfolg : C.fehler }}>{meldungstext(message)}</div>}
       {loading ? <div className="text-xs py-4" style={{ color: C.textDim }}>{t("auf.laden")}</div> : <>
         <SectionTitle eyebrow="Vereinsweit" title="Vereinsaufgaben"/>
         {showCreateClub && <TaskCreateForm teams={myTeams} members={members} form={form} setForm={setForm} editing={!!editingTaskId} onSubmit={() => createTask(null)} onCancel={() => { setShowCreateClub(false); resetForm(); setEditingTaskId(null); }}/>}
@@ -5839,7 +5854,7 @@ function VehiclesView({ currentUser, currentClub }) {
     <div className="px-4 pt-4 pb-24">
       <SectionTitle eyebrow="Verein" title={cfg.vehicleTabLabel} right={canManageFleet ? <button onClick={() => { if (showAddVehicle) { setEditingVehicleId(null); setNewVehicle({ label: "", plate: "", seats: "" }); } setShowAddVehicle((v) => !v); }} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showAddVehicle ? t("allg.schliessen") : "+ Fahrzeug"}</button> : null}/>
       <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>{cfg.vehicleIntro} Jedes Mitglied kann anfragen; Vereinsadministration und Organisation geben frei. </div>
-      {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{message}</div>}
+      {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{meldungstext(message)}</div>}
       {showAddVehicle && (
         <div className="rounded-2xl p-4 mb-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
           <div className="text-sm font-bold mb-2">{editingVehicleId ? "Fahrzeug bearbeiten" : "Neues Fahrzeug"}</div>
@@ -6067,7 +6082,7 @@ function DutyTasksSection({ ev, currentUser, sport, onNeuLaden, dutyPlan, member
     if (error) { setMessage("Vorlage konnte nicht angewendet werden."); return; }
     if (!uebernommen) { setMessage("Dieser Satz enthält noch keine Stationen. Trage sie unter Verwaltung → Helferdienst-Sätze ein."); return; }
     setSelectedTemplate("");
-    setMessage(uebernommen === 1 ? "Eine Station wurde übernommen." : `${uebernommen} Stationen wurden übernommen.`);
+    setMessage(uebernommen === 1 ? (OK_ZEICHEN + "Eine Station wurde übernommen.") : `${uebernommen} Stationen wurden übernommen.`);
     await loadTasks();
     /* Die Stationen stehen jetzt am Termin selbst (events.helper_slots). Ohne
        diesen Aufruf zeigt die Karte weiter die alte Liste - loadTasks holt nur
@@ -6100,7 +6115,7 @@ function DutyTasksSection({ ev, currentUser, sport, onNeuLaden, dutyPlan, member
     setMessage("");
     const { data, error } = await supabase.rpc("remove_duty_station", { target_event: ev.id, station_name: station });
     if (error) { setMessage("Die Station konnte nicht entfernt werden."); return; }
-    setMessage(data ? `Station entfernt. ${data === 1 ? "Eine Eintragung wurde" : `${data} Eintragungen wurden`} gelöscht.` : "Station entfernt.");
+    setMessage(data ? `Station entfernt. ${data === 1 ? (OK_ZEICHEN + "Eine Eintragung wurde") : `${data} Eintragungen wurden`} gelöscht.` : "Station entfernt.");
     await loadTasks();
     onNeuLaden?.();
   };
@@ -6186,7 +6201,7 @@ function DutyTasksSection({ ev, currentUser, sport, onNeuLaden, dutyPlan, member
           ))}
         </div>
       )}
-      {message && <div className="text-[11px] mt-1.5" style={{ color: message.includes("wurde") ? C.erfolg : C.fehler }}>{message}</div>}
+      {message && <div className="text-[11px] mt-1.5" style={{ color: istErfolg(message) ? C.erfolg : C.fehler }}>{meldungstext(message)}</div>}
     </div>
   );
 }
@@ -6248,7 +6263,7 @@ function DutyTemplatesPanel({ currentUser, sport }) {
     <div>
       <SectionTitle eyebrow={cfg.dutyTabLabel} title="Sätze & Stationen" />
       <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>Wiederverwendbare Vorlagen mit Stationen, die beim Anlegen eines {cfg.homeEventLabel}s vorgeladen werden können.</div>
-      {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: messageOk ? C.erfolgFlaeche : C.fehlerFlaeche, color: messageOk ? C.erfolg : C.fehler }}>{message}</div>}
+      {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: messageOk ? C.erfolgFlaeche : C.fehlerFlaeche, color: messageOk ? C.erfolg : C.fehler }}>{meldungstext(message)}</div>}
       <div className="rounded-2xl p-3.5 mb-4" style={{ background: C.paperDim }}>
         <div className="flex gap-2">
           <input value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={80} placeholder={`Name, z. B. Standard ${cfg.homeEventLabel}tag`} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.glass, color: C.ink }}/>
@@ -6427,7 +6442,7 @@ function SubscriptionPanel({ user }) {
   const vollzugang = clubStatus && clubStatus.tier !== "none";
 
   return <div>
-    {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{message}</div>}
+    {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{meldungstext(message)}</div>}
 
     <SectionTitle eyebrow="Mein Zugang" title="Für dich kostenlos" />
     <div className="rounded-2xl p-4 mb-3" style={{ background: C.erfolgFlaeche, border: `1px solid ${C.erfolgRand}` }}>
@@ -6625,7 +6640,7 @@ function BoardMemberOverview({ members, currentUser }) {
     <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Nur-Lese-Ansicht aller Vereinsmitglieder. Änderungen sind hier nicht möglich.</div>
     <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("ph.mitgliedSuchen")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-3" style={{ background: C.paperDim, color: C.ink }}/>
     {loading && !liveMembers && supabase && <div className="text-xs py-3" style={{ color: C.textDim }}>{t("allg.laedt")}</div>}
-    {message && <div className="text-[11px] mb-2" style={{ color: C.red }}>{message}</div>}
+    {message && <div className="text-[11px] mb-2" style={{ color: C.red }}>{meldungstext(message)}</div>}
     <div className="space-y-2">
       {filtered.map((m) => <div key={m.id} onClick={() => setSelectedMember(m)} role="button" tabIndex={0} className="rounded-2xl p-3 cursor-pointer" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
         <div className="flex items-center gap-3 mb-1.5">
@@ -6715,7 +6730,7 @@ function MemberDetailPanel({ member, onClose }) {
           </div>
           <button onClick={onClose} aria-label={t("allg.schliessen")} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><X size={15}/></button>
         </div>
-        {message && <div className="text-[11px] mb-3" style={{ color: C.red }}>{message}</div>}
+        {message && <div className="text-[11px] mb-3" style={{ color: C.red }}>{meldungstext(message)}</div>}
         {loading ? <div className="text-xs py-4" style={{ color: C.textDim }}>{t("allg.laedt")}</div> : <>
           <div className="text-[10px] uppercase tracking-widest font-bold mb-2" style={{ color: C.textDim }}>{t("straf.titel")}</div>
           {unpaidPenalties.length === 0 && paidPenalties.length === 0 ? <div className="text-[11px] rounded-xl p-3 mb-4" style={{ background: C.paperDim, color: C.textDim }}>{t("straf.keineAktiven")}</div> : (
@@ -6781,7 +6796,7 @@ function JoinRequestsManager({ currentUser }) {
     });
     if (error) { setMessage("Aktion konnte nicht ausgeführt werden."); setBusyId(""); return; }
     setRequests((current) => current.filter((r) => r.id !== request.id));
-    setMessage(approve ? "Anfrage angenommen." : "Anfrage abgelehnt.");
+    setMessage(approve ? (OK_ZEICHEN + "Anfrage angenommen.") : "Anfrage abgelehnt.");
     setBusyId("");
   };
   return <div>
@@ -6799,7 +6814,7 @@ function JoinRequestsManager({ currentUser }) {
         </div>
       </div>)}
     </div>}
-    {message && <div role="status" className="text-[11px] mt-3" style={{ color: message.includes("angenommen") ? C.erfolg : C.fehler }}>{message}</div>}
+    {message && <div role="status" className="text-[11px] mt-3" style={{ color: istErfolg(message) ? C.erfolg : C.fehler }}>{meldungstext(message)}</div>}
   </div>;
 }
 function SysAdminUserManager({ members, setMembers }) {
@@ -6853,7 +6868,7 @@ function SysAdminUserManager({ members, setMembers }) {
       if (error) { setMessage("Das Vereinsprofil konnte nicht gespeichert werden."); setSaving(false); return; }
     }
     setMembers((items) => items.map((member) => member.id === selected.id ? { ...member, name: form.name.trim(), email: form.email.trim(), birthdate: form.birthdate, since: Number(form.since), status: form.status } : member));
-    setMessage("Vereinsprofil gespeichert."); setSaving(false);
+    setMessage((OK_ZEICHEN + "Vereinsprofil gespeichert.")); setSaving(false);
   };
   const togglePlayerTeam = (teamId) => {
     setMessage("");
@@ -6868,7 +6883,7 @@ function SysAdminUserManager({ members, setMembers }) {
     }
     const names = teams.filter((team) => playerTeamIds.includes(team.id)).map((team) => team.name);
     setMembers((items) => items.map((member) => member.id === selected.id ? { ...member, playerTeams: names, team: hoechsteMannschaft(names) || "Mitglied", teams: [...new Set([...names, ...(member.trainerTeams || []), member.managedTeam].filter(Boolean))] } : member));
-    setSavedPlayerTeamIds(playerTeamIds); setMessage("Athleten-Mannschaften gespeichert."); setSaving(false);
+    setSavedPlayerTeamIds(playerTeamIds); setMessage((OK_ZEICHEN + "Athleten-Mannschaften gespeichert.")); setSaving(false);
   };
 
   return <div>
@@ -6927,7 +6942,7 @@ function SysAdminUserManager({ members, setMembers }) {
       {section === "roles" && <RolesPanel members={[selected]} setMembers={setMembers}/>}
       {section === "teams" && <div className="rounded-2xl p-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>{!selected.roles.includes("spieler") ? <div className="text-xs" style={{ color: C.textDim }}>Vergib zuerst unter „Rollen & Trainer“ die Rolle Athlet/in.</div> : <><div className="flex items-center justify-between mb-2"><div className="text-sm font-bold">{t("tm.athletenTeams")}</div><span className="text-[10px] font-bold" style={{ color: playerTeamIds.length === 3 ? C.red : C.textDim }}>{playerTeamIds.length}/3</span></div><div className="space-y-2 mb-3">{teams.map((team) => { const active = playerTeamIds.includes(team.id); return <button key={team.id} onClick={() => togglePlayerTeam(team.id)} className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left" style={{ background: active ? C.erfolgFlaeche : C.paperDim, border: active ? `1px solid ${C.secondary}` : "1px solid transparent" }}><span className="text-xs font-bold">{team.name}</span>{active && <Check size={14} style={{ color: C.erfolg }}/>}</button>; })}</div><button onClick={savePlayerTeams} disabled={saving || JSON.stringify([...playerTeamIds].sort()) === JSON.stringify([...savedPlayerTeamIds].sort())} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white, opacity: JSON.stringify([...playerTeamIds].sort()) === JSON.stringify([...savedPlayerTeamIds].sort()) ? .35 : 1 }}>{saving ? "Wird gespeichert …" : "Mannschaften speichern"}</button></>}</div>}
       {section === "family" && <><FamilyTree user={selected} members={members}/><div className="mt-3"><FamilyLinkManager user={selected} members={members} setMembers={setMembers} adminMode /></div></>}
-      {message && <div role="status" className="text-[11px] mt-3 rounded-xl px-3 py-2" style={{ background: message.includes("gespeichert") ? C.erfolgFlaeche : C.fehlerFlaeche, color: message.includes("gespeichert") ? C.erfolg : C.fehler }}>{message}</div>}
+      {message && <div role="status" className="text-[11px] mt-3 rounded-xl px-3 py-2" style={{ background: istErfolg(message) ? C.erfolgFlaeche : C.fehlerFlaeche, color: istErfolg(message) ? C.erfolg : C.fehler }}>{meldungstext(message)}</div>}
     </>}
   </div>;
 }
@@ -6980,14 +6995,14 @@ function ProfileDataSettings({ user, setMembers, saveRef }) {
     }
     const name = `${payload.firstName} ${payload.lastName}`.trim();
     setMembers((items)=>items.map((item)=>item.id===user.id?{...item,...payload,name,contactEmails:payload.emails,contactPhones:payload.phones}:item));
-    setMessage("Persönliche Daten gespeichert.");
+    setMessage((OK_ZEICHEN + "Persönliche Daten gespeichert."));
   };
   useEffect(() => { saveRef.current = save; });
   const updateList = (key,index,value) => setForm((old)=>({...old,[key]:old[key].map((v,i)=>i===index?value:v)}));
   const addList = (key) => setForm((old)=>({...old,[key]:[...old[key],""]}));
   const section = (title, children) => <div className="rounded-2xl p-4 mb-4 space-y-2" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-2">{title}</div>{children}</div>;
   return <div>
-    {message&&<div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{background:message.includes("gespeichert")?C.erfolgFlaeche:C.fehlerFlaeche,color:message.includes("gespeichert")?C.erfolg:C.fehler}}>{message}</div>}
+    {message&&<div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{background:istErfolg(message)?C.erfolgFlaeche:C.fehlerFlaeche,color:istErfolg(message)?C.erfolg:C.fehler}}>{meldungstext(message)}</div>}
     {section("Persönliche Daten", <><input value={form.membershipNumber} onChange={(e)=>setForm({...form,membershipNumber:e.target.value})} placeholder={t("ph.ausweisnummer")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><input value={form.academicTitle} onChange={(e)=>setForm({...form,academicTitle:e.target.value})} placeholder={t("ph.akadTitel")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><div className="grid grid-cols-2 gap-2"><input value={form.firstName} onChange={(e)=>setForm({...form,firstName:e.target.value})} placeholder={t("reg.vorname")} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><input value={form.lastName} onChange={(e)=>setForm({...form,lastName:e.target.value})} placeholder={t("reg.nachname")} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/></div></>)}
     {section("Kontaktdaten", <><div className="text-[10px] font-bold" style={{color:C.textDim}}>E-Mail-Adressen</div>{form.emails.map((value,index)=><div key={`e-${index}`} className="flex gap-2"><input type="email" value={value} onChange={(e)=>updateList("emails",index,e.target.value)} placeholder={t("login.email")} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/>{index>0&&<button onClick={()=>setForm({...form,emails:form.emails.filter((_,i)=>i!==index)})}><X size={15}/></button>}</div>)}<button onClick={()=>addList("emails")} className="flex items-center gap-1 text-[11px] font-bold" style={{color:C.red}}><Plus size={13}/> Weitere E-Mail</button><div className="text-[10px] font-bold pt-2" style={{color:C.textDim}}>{t("feld.telefonnummern")}</div>{form.phones.map((value,index)=><div key={`p-${index}`} className="flex gap-2"><input type="tel" value={value} onChange={(e)=>updateList("phones",index,e.target.value)} placeholder={t("ph.telefonnummer")} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/>{index>0&&<button onClick={()=>setForm({...form,phones:form.phones.filter((_,i)=>i!==index)})}><X size={15}/></button>}</div>)}<button onClick={()=>addList("phones")} className="flex items-center gap-1 text-[11px] font-bold" style={{color:C.red}}><Plus size={13}/> Weitere Telefonnummer</button></>)}
     {section("Weitere Angaben", <><input type="date" value={form.birthdate} onChange={(e)=>setForm({...form,birthdate:e.target.value})} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><label className="flex items-center justify-between gap-3 px-0.5 py-1"><span className="text-xs" style={{color:C.ink}}>{t("feld.geburtstagZeigen")}</span><button type="button" onClick={()=>setForm({...form,showBirthday:!form.showBirthday})} className="w-10 h-6 rounded-full flex items-center px-0.5" style={{background:form.showBirthday?C.secondary:C.line,justifyContent:form.showBirthday?"flex-end":"flex-start"}}><span className="w-5 h-5 rounded-full" style={{background:C.glass}}/></button></label><select value={form.gender} onChange={(e)=>setForm({...form,gender:e.target.value})} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}><option value="weiblich">{t("gesch.w")}</option><option value="maennlich">{t("gesch.m")}</option><option value="divers">{t("gesch.d")}</option><option value="keine_angabe">{t("gesch.k")}</option></select><input value={form.nationality} onChange={(e)=>setForm({...form,nationality:e.target.value})} placeholder={t("ph.nationalitaet")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/></>)}
@@ -7020,7 +7035,7 @@ function NotificationSettings({ user, setMembers, saveRef }) {
   };
   const save = async()=>{ if(supabase&&user.authProfileId){const {error}=await supabase.from("profiles").update({notification_master:master,notification_preferences:prefs}).eq("id",user.authProfileId);if(error){setMessage("Benachrichtigungen konnten nicht gespeichert werden.");return;}} setMembers((items)=>items.map((item)=>item.id===user.id?{...item,notificationMaster:master,notificationPreferences:prefs}:item));setMessage("Benachrichtigungen gespeichert.");};
   useEffect(() => { saveRef.current = save; });
-  return <div>{message&&<div className="mb-4 text-[11px] rounded-xl px-3 py-2" style={{background:C.erfolgFlaeche,color:C.erfolg}}>{message}</div>}{/* Die Push-Karte erscheint nur ausserhalb der nativen App. In der
+  return <div>{message&&<div className="mb-4 text-[11px] rounded-xl px-3 py-2" style={{background:C.erfolgFlaeche,color:C.erfolg}}>{meldungstext(message)}</div>}{/* Die Push-Karte erscheint nur ausserhalb der nativen App. In der
       nativen Huelle laeuft die Oberflaeche in einem WKWebView, und dort gibt es
       weder Notification noch serviceWorker - enablePushNotifications kehrte
       sofort mit "unsupported" zurueck. Der Knopf oeffnete also nie einen
@@ -7040,11 +7055,11 @@ function NotificationSettings({ user, setMembers, saveRef }) {
 
 function PasswordSettings({ user, onLogout, saveRef }) {
   const [form,setForm]=useState({old:"",next:"",repeat:"",logoutAll:false}); const [message,setMessage]=useState("");
-  const save=async()=>{if(!supabase){setMessage("Passwortänderung ist nur mit einem echten Konto möglich.");return;}if(form.next.length<8||form.next!==form.repeat){setMessage("Das neue Passwort muss mindestens 8 Zeichen haben und übereinstimmen.");return;}const {error:loginError}=await supabase.auth.signInWithPassword({email:user.email,password:form.old});if(loginError){/* Nur der Fall "Passwort stimmt nicht" darf so heissen. Ein Netzfehler oder eine Bremse wegen zu vieler Versuche haben nichts mit dem alten Passwort zu tun; hier ist die Verwechslung besonders aergerlich, weil man dann das eine Passwort sucht, das man sicher kennt. Eine Preisgabe ist das nicht: Wer hier steht, ist bereits angemeldet und kennt seine eigene Adresse. */const falschesPasswort=loginError.code==="invalid_credentials"||/invalid login credentials/i.test(String(loginError.message||""));/* Hier darf die Sperre beim Namen genannt werden: Wer bis hierher kommt, ist angemeldet und kennt seine eigene Adresse - es gibt nichts zu verraten. */const gesperrt=loginError.code==="user_banned"||/user is banned/i.test(String(loginError.message||""));setMessage(gesperrt?"Dieses Konto ist gesperrt. Bitte wende dich an die Vereinsleitung.":falschesPasswort?"Das bisherige Passwort ist nicht korrekt.":anmeldeFehlerText(loginError));return;}const {error}=await supabase.auth.updateUser({password:form.next});if(error){const zuSchwach=error.code==="weak_password"||/password/i.test(String(error.message||""))&&/short|weak|least/i.test(String(error.message||""));setMessage(zuSchwach?"Das neue Passwort ist zu schwach. Nimm ein längeres oder ungewöhnlicheres.":"Das Passwort konnte nicht geändert werden. "+anmeldeFehlerText(error));return;}if(form.logoutAll){await supabase.auth.signOut({scope:"global"});await onLogout();return;}setForm({old:"",next:"",repeat:"",logoutAll:false});setMessage("Passwort erfolgreich geändert.");}; useEffect(() => { saveRef.current = save; });
-  return <div className="rounded-2xl p-4 space-y-3" style={{background:C.glass,border:`1px solid ${C.line}`}}><input type="password" value={form.old} onChange={(e)=>setForm({...form,old:e.target.value})} placeholder={t("ph.altesPasswort")} className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><input type="password" value={form.next} onChange={(e)=>setForm({...form,next:e.target.value})} placeholder={t("ph.neuesPasswort")} className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><input type="password" value={form.repeat} onChange={(e)=>setForm({...form,repeat:e.target.value})} placeholder={t("ph.neuesPasswortWdh")} className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><ToggleCard title="Von allen Geräten ausloggen" desc="Nach der Änderung werden alle bestehenden Sitzungen beendet." value={form.logoutAll} onChange={(v)=>setForm((old)=>({...old,logoutAll:typeof v==="function"?v(old.logoutAll):v}))}/>{message&&<div className="text-[11px]" style={{color:message.includes("erfolgreich")?C.erfolg:C.fehler}}>{message}</div>}</div>;
+  const save=async()=>{if(!supabase){setMessage("Passwortänderung ist nur mit einem echten Konto möglich.");return;}if(form.next.length<8||form.next!==form.repeat){setMessage("Das neue Passwort muss mindestens 8 Zeichen haben und übereinstimmen.");return;}const {error:loginError}=await supabase.auth.signInWithPassword({email:user.email,password:form.old});if(loginError){/* Nur der Fall "Passwort stimmt nicht" darf so heissen. Ein Netzfehler oder eine Bremse wegen zu vieler Versuche haben nichts mit dem alten Passwort zu tun; hier ist die Verwechslung besonders aergerlich, weil man dann das eine Passwort sucht, das man sicher kennt. Eine Preisgabe ist das nicht: Wer hier steht, ist bereits angemeldet und kennt seine eigene Adresse. */const falschesPasswort=loginError.code==="invalid_credentials"||/invalid login credentials/i.test(String(loginError.message||""));/* Hier darf die Sperre beim Namen genannt werden: Wer bis hierher kommt, ist angemeldet und kennt seine eigene Adresse - es gibt nichts zu verraten. */const gesperrt=loginError.code==="user_banned"||/user is banned/i.test(String(loginError.message||""));setMessage(gesperrt?"Dieses Konto ist gesperrt. Bitte wende dich an die Vereinsleitung.":falschesPasswort?"Das bisherige Passwort ist nicht korrekt.":anmeldeFehlerText(loginError));return;}const {error}=await supabase.auth.updateUser({password:form.next});if(error){const zuSchwach=error.code==="weak_password"||/password/i.test(String(error.message||""))&&/short|weak|least/i.test(String(error.message||""));setMessage(zuSchwach?"Das neue Passwort ist zu schwach. Nimm ein längeres oder ungewöhnlicheres.":"Das Passwort konnte nicht geändert werden. "+anmeldeFehlerText(error));return;}if(form.logoutAll){await supabase.auth.signOut({scope:"global"});await onLogout();return;}setForm({old:"",next:"",repeat:"",logoutAll:false});setMessage((OK_ZEICHEN + "Passwort erfolgreich geändert."));}; useEffect(() => { saveRef.current = save; });
+  return <div className="rounded-2xl p-4 space-y-3" style={{background:C.glass,border:`1px solid ${C.line}`}}><input type="password" value={form.old} onChange={(e)=>setForm({...form,old:e.target.value})} placeholder={t("ph.altesPasswort")} className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><input type="password" value={form.next} onChange={(e)=>setForm({...form,next:e.target.value})} placeholder={t("ph.neuesPasswort")} className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><input type="password" value={form.repeat} onChange={(e)=>setForm({...form,repeat:e.target.value})} placeholder={t("ph.neuesPasswortWdh")} className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><ToggleCard title="Von allen Geräten ausloggen" desc="Nach der Änderung werden alle bestehenden Sitzungen beendet." value={form.logoutAll} onChange={(v)=>setForm((old)=>({...old,logoutAll:typeof v==="function"?v(old.logoutAll):v}))}/>{message&&<div className="text-[11px]" style={{color:istErfolg(message)?C.erfolg:C.fehler}}>{meldungstext(message)}</div>}</div>;
 }
 
-function SecuritySettings({user,setMembers,saveRef}) { const t = useT(); const [days,setDays]=useState(user.autoLogoutDays??"");const [message,setMessage]=useState("");const save=async()=>{const value=days===""?null:Number(days);if(supabase&&user.authProfileId){const {error}=await supabase.from("profiles").update({auto_logout_days:value}).eq("id",user.authProfileId);if(error){setMessage("Einstellung konnte nicht gespeichert werden.");return;}}setMembers((items)=>items.map((item)=>item.id===user.id?{...item,autoLogoutDays:value}:item));localStorage.setItem(`cmo-last-activity-${user.authProfileId||user.id}`,String(Date.now()));setMessage("Sicherheitseinstellung gespeichert.");};useEffect(() => { saveRef.current = save; });return <div className="rounded-2xl p-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">{t("sich.autoLogout")}</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>Nach längerer Inaktivität wird dieses Konto automatisch abgemeldet.</div><select value={days} onChange={(e)=>setDays(e.target.value)} className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}><option value="">Nie</option><option value="30">{t("sich.tage30")}</option><option value="60">{t("sich.tage60")}</option><option value="90">{t("sich.tage90")}</option></select>{message&&<div className="text-[11px] mt-3" style={{color:C.secondary}}>{message}</div>}</div>; }
+function SecuritySettings({user,setMembers,saveRef}) { const t = useT(); const [days,setDays]=useState(user.autoLogoutDays??"");const [message,setMessage]=useState("");const save=async()=>{const value=days===""?null:Number(days);if(supabase&&user.authProfileId){const {error}=await supabase.from("profiles").update({auto_logout_days:value}).eq("id",user.authProfileId);if(error){setMessage("Einstellung konnte nicht gespeichert werden.");return;}}setMembers((items)=>items.map((item)=>item.id===user.id?{...item,autoLogoutDays:value}:item));localStorage.setItem(`cmo-last-activity-${user.authProfileId||user.id}`,String(Date.now()));setMessage("Sicherheitseinstellung gespeichert.");};useEffect(() => { saveRef.current = save; });return <div className="rounded-2xl p-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">{t("sich.autoLogout")}</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>Nach längerer Inaktivität wird dieses Konto automatisch abgemeldet.</div><select value={days} onChange={(e)=>setDays(e.target.value)} className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}><option value="">Nie</option><option value="30">{t("sich.tage30")}</option><option value="60">{t("sich.tage60")}</option><option value="90">{t("sich.tage90")}</option></select>{message&&<div className="text-[11px] mt-3" style={{color:C.secondary}}>{meldungstext(message)}</div>}</div>; }
 
 function ReferralSettings({user,club}) { const t = useT(); const [code,setCode]=useState("");const [used,setUsed]=useState(false);const [loading,setLoading]=useState(false);useEffect(()=>{if(!supabase||!club?.id||!user.authProfileId)return;supabase.from("club_referral_codes").select("code,redeemed_at").eq("club_id",club.id).eq("profile_id",user.authProfileId).maybeSingle().then(({data})=>{setCode(data?.code||"");setUsed(Boolean(data?.redeemed_at));});},[club?.id,user.authProfileId]);const create=async()=>{setLoading(true);const {data,error}=await supabase.rpc("ensure_club_referral_code",{target_club:club.id});if(!error)setCode(data);setLoading(false);};if(used&&!user.roles.includes("sysadmin"))return <div className="rounded-2xl p-4 text-xs" style={{background:C.paperDim,color:C.textDim}}>Dein persönlicher Empfehlungscode wurde bereits einmal verwendet. Die drei kostenlosen Vereinsmonate werden automatisch berücksichtigt.</div>;return <div className="rounded-2xl p-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">{t("zug.werben")}</div><div className="text-[11px] mb-4" style={{color:C.textDim}}>Wirbst du einmalig einen neuen Verein, erhält dein aktueller Verein drei kostenlose Monate. Der neue Verein gibt deinen persönlichen Code bei seiner Registrierung ein.</div>{code?<><div className="rounded-xl px-3 py-3 text-center font-bold tracking-wider" style={{background:C.paperDim}}>{code}</div><button onClick={()=>navigator.clipboard?.writeText(code)} className="w-full mt-2 py-2 text-xs font-bold" style={{color:C.red}}>{t("zug.codeKopieren")}</button></>:<button disabled={loading} onClick={create} className="w-full py-3 rounded-xl text-xs font-bold" style={{background:C.ink,color:C.white}}>{loading?"Wird erstellt …":"Persönlichen Code erstellen"}</button>}</div>; }
 
@@ -7125,7 +7140,7 @@ function CalendarSyncSettings({ user, saveRef }) {
     if (error) { setMessage("Kalender konnte nicht verbunden werden."); return; }
     const row = data?.[0];
     setToken(row?.token || "");
-    setMessage("Kalenderverbindung aktualisiert.");
+    setMessage((OK_ZEICHEN + "Kalenderverbindung aktualisiert."));
   };
   useEffect(() => { saveRef.current = sync; });
 
@@ -7193,7 +7208,7 @@ function CalendarSyncSettings({ user, saveRef }) {
         <div className="text-[10px] mt-2 leading-snug" style={{ color: C.textDim }}>Abonniert: {selectedLabel || "nichts"}. Änderst du die Auswahl, übernimmt dein Gerätekalender sie beim nächsten Abruf — ohne erneutes Einrichten.</div>
       </>}
     </div>
-    {message && <div role="status" className="text-[11px] mt-3" style={{ color: message.includes("aktualisiert") ? C.erfolg : C.fehler }}>{message}</div>}
+    {message && <div role="status" className="text-[11px] mt-3" style={{ color: istErfolg(message) ? C.erfolg : C.fehler }}>{meldungstext(message)}</div>}
   </div>;
 }
 
@@ -8783,7 +8798,7 @@ function RolesPanel({ members, setMembers }) {
   return (
     <div className="space-y-3">
       <div className="text-xs mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>Tippe auf ein Mitglied, um die Rollen zu bearbeiten. Vereins-Administrator, Vorstand & Geschäftsführung können nur hier zugewiesen werden.</div>
-      {message&&<div className="rounded-xl px-3 py-2 text-[11px] font-semibold" style={{background:C.fehlerFlaeche,color:C.fehler}}>{message}</div>}
+      {message&&<div className="rounded-xl px-3 py-2 text-[11px] font-semibold" style={{background:C.fehlerFlaeche,color:C.fehler}}>{meldungstext(message)}</div>}
       {members.map((m) => {
         const expanded = expandedId === m.id;
         return (
@@ -8917,7 +8932,7 @@ function ClubLogoPanel({ club, onLogoUpdated }) {
     setBusy(true); setMessage("");
     if (!supabase) {
       const reader = new FileReader();
-      reader.onload = () => { onLogoUpdated(String(reader.result)); setMessage("Vereinslogo gespeichert."); setBusy(false); };
+      reader.onload = () => { onLogoUpdated(String(reader.result)); setMessage((OK_ZEICHEN + "Vereinslogo gespeichert.")); setBusy(false); };
       reader.onerror = () => { setMessage("Das Bild konnte nicht gelesen werden."); setBusy(false); };
       reader.readAsDataURL(file);
       return;
@@ -8937,7 +8952,7 @@ function ClubLogoPanel({ club, onLogoUpdated }) {
       setMessage("Das Vereinsprofil konnte nicht aktualisiert werden."); setBusy(false); return;
     }
     if (oldPaths.length) await supabase.storage.from("club-logos").remove(oldPaths);
-    onLogoUpdated(logoUrl); setMessage("Vereinslogo gespeichert."); setBusy(false);
+    onLogoUpdated(logoUrl); setMessage((OK_ZEICHEN + "Vereinslogo gespeichert.")); setBusy(false);
   };
 
   return <div className="rounded-2xl p-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
@@ -8949,7 +8964,7 @@ function ClubLogoPanel({ club, onLogoUpdated }) {
       <ImageIcon size={15} /> {busy ? "Wird gespeichert …" : "Vereinslogo auswählen"}
       <input type="file" accept="image/jpeg,image/png,image/webp" onChange={uploadLogo} disabled={busy} className="hidden" />
     </label>
-    {message && <div className="text-[11px] mt-2" role="status" style={{ color: message.includes("gespeichert") ? C.erfolg : C.fehler }}>{message}</div>}
+    {message && <div className="text-[11px] mt-2" role="status" style={{ color: istErfolg(message) ? C.erfolg : C.fehler }}>{meldungstext(message)}</div>}
   </div>;
 }
 
@@ -8963,19 +8978,19 @@ function ClubColorPanel({ club, onColorsUpdated }) {
 
   const save = async () => {
     setSaving(true); setMessage("");
-    if (!supabase) { onColorsUpdated(primary, secondary); setMessage("Vereinsfarben gespeichert."); setSaving(false); return; }
+    if (!supabase) { onColorsUpdated(primary, secondary); setMessage((OK_ZEICHEN + "Vereinsfarben gespeichert.")); setSaving(false); return; }
     const { error } = await supabase.from("clubs").update({ primary_color: primary, secondary_color: secondary }).eq("id", club.id);
     setSaving(false);
     if (error) { setMessage("Die Vereinsfarben konnten nicht gespeichert werden."); return; }
     onColorsUpdated(primary, secondary);
-    setMessage("Vereinsfarben gespeichert.");
+    setMessage((OK_ZEICHEN + "Vereinsfarben gespeichert."));
   };
 
   return <div className="rounded-2xl p-4 mt-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
     <div className="text-sm font-bold mb-3" style={{ color: C.ink }}>{t("verein.farben")}</div>
     <ClubColorPicker primary={primary} secondary={secondary} onChange={(p, s) => { setPrimary(p); setSecondary(s); setMessage(""); }} />
     <button onClick={save} disabled={saving || !dirty} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: dirty ? C.ink : C.paperDim, color: dirty ? C.white : C.textDim, opacity: saving ? .6 : 1 }}>{saving ? "Wird gespeichert …" : "Farben speichern"}</button>
-    {message && <div className="text-[11px] mt-2" role="status" style={{ color: message.includes("gespeichert") ? C.erfolg : C.fehler }}>{message}</div>}
+    {message && <div className="text-[11px] mt-2" role="status" style={{ color: istErfolg(message) ? C.erfolg : C.fehler }}>{meldungstext(message)}</div>}
   </div>;
 }
 
@@ -9051,7 +9066,7 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
     if (error) { setMessage("Der Status konnte nicht geändert werden."); setWorkingId(null); return; }
     setActiveMembers((items) => items.map((item) => item.id === member.id ? { ...item, status: nextStatus } : item));
     setMembers((items) => items.map((item) => item.id === member.id ? { ...item, status: nextStatus, accountPending: false } : item));
-    setMessage(nextStatus === "inactive" ? "Mitgliedschaft wurde beendet." : "Mitgliedschaft wurde reaktiviert.");
+    setMessage(nextStatus === "inactive" ? (OK_ZEICHEN + "Mitgliedschaft wurde beendet.") : (OK_ZEICHEN + "Mitgliedschaft wurde reaktiviert."));
     setWorkingId(null);
     if (nextStatus === "inactive") {
       notifyClubAdmins(club.id, "membership", "Mitgliedschaft beendet", `${member.display_name} ist nicht mehr aktives Mitglied.`, member.id);
@@ -9113,7 +9128,7 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
     if (!supabase) {
       setMembers((items) => items.map((member) => member.id === request.id ? { ...member, accountPending: nextStatus !== "active", accountRejected: nextStatus === "blocked" } : member));
       setRequests((items) => items.filter((item) => item.id !== request.id));
-      setMessage(nextStatus === "active" ? "Mitgliedschaft wurde freigegeben." : "Mitgliedschaft wurde abgelehnt.");
+      setMessage(nextStatus === "active" ? (OK_ZEICHEN + "Mitgliedschaft wurde freigegeben.") : (OK_ZEICHEN + "Mitgliedschaft wurde abgelehnt."));
       setWorkingId(null); return;
     }
     /* Ablehnen heisst "diesmal nicht" - und stellt sich keiner neuen Anfrage in
@@ -9179,7 +9194,7 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
         <span className="min-w-8 h-8 px-2 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: C.glass, color: C.red }}>{requests.length}</span>
       </div>
     </div>
-    {message && <div role="status" className="text-xs rounded-xl px-3 py-2.5 mb-3" style={{ background: message.includes("wurde") ? C.erfolgFlaeche : C.fehlerFlaeche, color: message.includes("wurde") ? C.erfolg : C.fehler }}>{message}</div>}
+    {message && <div role="status" className="text-xs rounded-xl px-3 py-2.5 mb-3" style={{ background: istErfolg(message) ? C.erfolgFlaeche : C.fehlerFlaeche, color: istErfolg(message) ? C.erfolg : C.fehler }}>{meldungstext(message)}</div>}
     {loading ? <div className="text-xs py-5 text-center" style={{ color: C.textDim }}>{t("mit.antraegeLaden")}</div> : requests.length === 0 ?
       <div className="rounded-2xl p-5 text-center" style={{ background: C.glass, border: `1px solid ${C.line}` }}><CheckCircle2 size={24} className="mx-auto mb-2" style={{ color: C.sekundaerAufHell }}/><div className="text-sm font-bold">{t("mit.keineAntraegeKurz")}</div><div className="text-[11px] mt-1" style={{ color: C.textDim }}>Neue Registrierungen erscheinen automatisch hier.</div></div> :
       <div className="space-y-3">{requests.map((request) => {
@@ -9392,7 +9407,7 @@ function ClubFeatureSettingsPanel({ currentClub, clubFeatures, onFeaturesChanged
     <div>
       <SectionTitle eyebrow={sportConfig(sport).label} title="Funktionen & Reihenfolge" />
       <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>Lege je Funktion fest, ob ihr sie nutzt und an welcher Stelle sie unter „Aktionen &amp; Abstimmungen“ auf dem Dashboard erscheint. Abgeschaltete Funktionen sind für alle Mitglieder ausgeblendet.</div>
-      {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{message}</div>}
+      {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{meldungstext(message)}</div>}
 
       <div className="space-y-2.5">
         {order.map((key, index) => {
@@ -9460,7 +9475,7 @@ function ClaimManagedPlayerPanel({ members, setMembers, currentUser }) {
         teams: [...new Set([...(m.teams || []), ...(src.teams || [])])],
       } : m);
     });
-    setManagedId(""); setRealId(""); setMessage("Profile wurden zusammengeführt."); setSaving(false);
+    setManagedId(""); setRealId(""); setMessage((OK_ZEICHEN + "Profile wurden zusammengeführt.")); setSaving(false);
   };
 
   if (!managedCandidates.length) return null;
@@ -9469,7 +9484,7 @@ function ClaimManagedPlayerPanel({ members, setMembers, currentUser }) {
     <div className="rounded-2xl p-3.5 mt-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
       <div className="text-sm mb-1" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{t("sys.profileZusammen")}</div>
       <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Wenn ein ohne Konto angelegter Spieler (z. B. aus einer Kindermannschaft) später sein eigenes Konto registriert, hier das Platzhalter-Profil mit dem neuen echten Konto verknüpfen.</div>
-      {message && <div className="rounded-xl px-3 py-2 text-[11px] font-semibold mb-2" style={{ background: message.includes("nicht") ? C.fehlerFlaeche : C.erfolgFlaeche, color: message.includes("nicht") ? C.fehler : C.erfolg }}>{message}</div>}
+      {message && <div className="rounded-xl px-3 py-2 text-[11px] font-semibold mb-2" style={{ background: !istErfolg(message) ? C.fehlerFlaeche : C.erfolgFlaeche, color: !istErfolg(message) ? C.fehler : C.erfolg }}>{meldungstext(message)}</div>}
       <select value={managedId} onChange={(e) => { setManagedId(e.target.value); setRealId(""); setMessage(""); }} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}>
         <option value="">{t("sys.platzhalter")}</option>
         {managedCandidates.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
