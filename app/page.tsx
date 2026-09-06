@@ -11124,7 +11124,18 @@ export default function ClubMemberOrganisationApp() {
    * installierte App laufen. Wer die Adresse im Browser oeffnet, bekommt den
    * Weg in den Store gezeigt - keine Anmeldung, kein Zugang. */
   if (imGeraet === null) return <div style={{ minHeight: "100vh", background: C.paper }} />;
-  if (!imGeraet) return <NurAlsAppHinweis />;
+  /* Die Web-Fassung ist wieder offen.
+     Vorher endete JEDER Browserbesuch auf der Hinweisseite "gibt es als App
+     fuers Smartphone" - auch der Klick auf einen Bestaetigungslink aus einer
+     Registrierungsmail. Wer sein Konto bestaetigen wollte, landete in einer
+     Sackgasse und konnte von dort nirgendwohin.
+     Die Sperre war auch technisch nicht noetig: Der Rahmen fuer breite
+     Bildschirme steht seit jeher im Stylesheet (.erg-frame, 400px breit wie
+     ein Telefon, auf schmalen Geraeten formatfuellend). Die App war fuer den
+     Browser gebaut - sie wurde nur nicht gezeigt.
+     Die Hinweisseite bleibt im Code: Sie ist die richtige Antwort, wenn
+     jemand die Adresse ohne Konto aufruft, und dafuer gibt es sie unter
+     /willkommen. */
 
   /* Ohne Datenbank faellt die App in den Demo-Betrieb: achtzehn erfundene
      Konten mit echten Namen und dem Passwort "demo", zehn erfundene Termine in
