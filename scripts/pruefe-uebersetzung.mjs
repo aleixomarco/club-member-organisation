@@ -175,6 +175,30 @@ for (const code of SPRACHCODES.slice(1)) {
 console.log(`  ${undurchgereicht.length} Eintraege stehen unveraendert auf Deutsch`);
 undurchgereicht.slice(0, 20).forEach((l) => console.log(`  ! ${l}`));
 
+/* Dritte Frage: Steht ein t()-Aufruf an einer Stelle, an der es t noch gar
+ * nicht gibt?
+ *
+ * Vorgabewerte von Parametern werden ausgewertet, BEVOR der Funktionsrumpf
+ * laeuft. Steht dort t("..."), wirft der Aufruf sofort - und zwar nur zur
+ * Laufzeit, nur beim Rendern, und nur wenn der Aufrufer den Parameter
+ * weglaesst. Der Build sagt nichts, ESLint sagt nichts.
+ *
+ * Das ist heute zweimal passiert. Beim zweiten Mal traf es ProfileUnderlay:
+ *   function ProfileUnderlay({ title, eyebrow = t("pf.einstellungen2"), ... }) {
+ *     const t = useT();
+ * Profil > Benachrichtigungen ist die einzige Ansicht, die ProfileUnderlay
+ * ohne eigenes eyebrow benutzt - sie stuerzte beim Oeffnen ab, alle anderen
+ * Unterseiten liefen. So etwas findet man nicht durch Nachdenken. */
+const zuFrueh = [];
+for (let i = 0; i < zeilen.length; i++) {
+  const s = zeilen[i];
+  if (!/^\s*(export default )?(function|const)\s/.test(s)) continue;
+  if (!/=\s*t\("/.test(s)) continue;
+  zuFrueh.push(`Zeile ${i + 1}: ${s.trim().slice(0, 120)}`);
+}
+console.log(`  ${zuFrueh.length} t()-Aufrufe im Funktionskopf (dort gibt es t noch nicht)`);
+zuFrueh.forEach((l) => console.log(`  ! ${l}`));
+
 const uebersetzt = (quelle.match(/\bt\("[a-z]+\.[A-Za-z0-9_.]+"\)/g) || []).length;
 console.log(`  ${uebersetzt} uebersetzte Aufrufe`);
 console.log(`  ${funde.size} verdaechtige Texte (${AUSNAHMEN.size} bekannte Ausnahmen ausgenommen)`);
@@ -187,4 +211,4 @@ if (funde.size > 0 && zeigeListe) {
   console.log("  (mit 'liste' als Argument einzeln anzeigen)");
 }
 
-process.exit(funde.size === 0 && luecken.length === 0 && undurchgereicht.length === 0 ? 0 : 1);
+process.exit(funde.size === 0 && luecken.length === 0 && undurchgereicht.length === 0 && zuFrueh.length === 0 ? 0 : 1);

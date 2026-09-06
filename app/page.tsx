@@ -6638,12 +6638,21 @@ function SubscriptionPanel({ user }) {
 /* Unterseite über dem Profil: liegt als eigene milchige Glasfläche über dem Inhalt.
    Die Ebene dahinter bleibt schemenhaft sichtbar, wird aber kräftig weichgezeichnet —
    ohne diese Deckung würde man mitten durch die Seite auf die Liste darunter lesen. */
-function ProfileUnderlay({ title, eyebrow = t("pf.einstellungen2"), onClose, onSave, saving = false, saveDisabled = false, children }) {
+/* Der Vorgabewert fuer eyebrow darf NICHT im Funktionskopf stehen.
+   Vorgabewerte werden ausgewertet, BEVOR der Rumpf laeuft - t entsteht aber
+   erst dort. Der Zugriff darauf wirft dann sofort einen ReferenceError, und
+   zwar bei jedem Aufruf ohne eigenes eyebrow. Genau das war Profil >
+   Benachrichtigungen: Die Ansicht ist die einzige, die ProfileUnderlay ohne
+   eyebrow benutzt - sie stuerzte beim Oeffnen ab, waehrend alle anderen
+   Unterseiten liefen. Der Build merkt davon nichts; es ist ein
+   Laufzeitfehler. */
+function ProfileUnderlay({ title, eyebrow, onClose, onSave, saving = false, saveDisabled = false, children }) {
   const t = useT();
+  const rubrik = eyebrow ?? t("pf.einstellungen2");
   return <div className="erg-underlay absolute inset-0 z-40 flex flex-col">
     <div className="erg-underlay-bar flex items-center gap-3 px-4 py-3 flex-shrink-0" style={{ borderBottom: `1px solid ${C.line}` }}>
       <button onClick={onClose} aria-label={t("aria.zurueckProfil")} className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: C.glass, border: `1px solid ${C.edge}` }}><ArrowLeft size={16}/></button>
-      <div className="flex-1 min-w-0"><div className="text-[9px] uppercase tracking-widest font-bold" style={{ color: C.red }}>{eyebrow}</div><div className="text-base font-bold truncate" style={{ fontFamily: "Oswald", color: C.ink }}>{title}</div></div>
+      <div className="flex-1 min-w-0"><div className="text-[9px] uppercase tracking-widest font-bold" style={{ color: C.red }}>{rubrik}</div><div className="text-base font-bold truncate" style={{ fontFamily: "Oswald", color: C.ink }}>{title}</div></div>
       {onSave && <button onClick={onSave} disabled={saving || saveDisabled} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold flex-shrink-0" style={{ background: C.red, color: C.aufPrimaer, opacity: saving || saveDisabled ? .45 : 1 }}><Save size={13}/>{saving ? t("allg.speichertKurz") : t("allg.speichern")}</button>}
     </div>
     <div className="flex-1 overflow-y-auto px-4 pt-4 pb-24">{children}</div>
