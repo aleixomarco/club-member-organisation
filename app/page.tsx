@@ -753,7 +753,8 @@ const ASSIGNABLE_ROLES = Object.keys(ROLE_META).filter((r) => r !== "sysadmin");
  * Geprueft wird Code UND Text: Der Fehlercode ist erst in neueren Fassungen der
  * Bibliothek gesetzt, der englische Text ist der Rueckfall. */
 function anmeldeFehlerText(error) {
-  if (!error) return "Die Anmeldung hat nicht geklappt. Bitte versuche es noch einmal.";
+  const t = useT();
+  if (!error) return t("login.fehlgeschlagen");
   const code = String(error.code || "");
   const status = Number(error.status || 0);
   const text = String(error.message || "").toLowerCase();
@@ -768,26 +769,26 @@ function anmeldeFehlerText(error) {
      Auffangsatz durch und das Orakel bliebe, nur mit anderem Wortlaut. */
   if (code === "invalid_credentials" || text.includes("invalid login credentials")
       || code === "user_banned" || text.includes("user is banned")) {
-    return "E-Mail oder Passwort ist falsch.";
+    return t("login.falscheDaten");
   }
   /* Anders als die Sperre ist das hier kein Orakel: Die Bestaetigung prueft
      GoTrue erst NACH dem Passwort. Diesen Satz sieht also nur, wer das
      richtige Passwort kennt. */
   if (code === "email_not_confirmed" || text.includes("email not confirmed")) {
-    return "Diese E-Mail-Adresse ist noch nicht bestätigt. Sieh in deinem Postfach nach.";
+    return t("login.mailNichtBestaetigt");
   }
   if (status === 429 || code === "over_request_rate_limit" || text.includes("rate limit")) {
-    return "Zu viele Versuche. Warte einen Moment und versuche es dann noch einmal.";
+    return t("sich.zuVieleVersuche");
   }
   /* Ohne Netz kommt die Anfrage gar nicht erst beim Server an - dann gibt es
      keinen Status, nur einen abgebrochenen fetch. */
   if (status === 0 || text.includes("failed to fetch") || text.includes("network") || text.includes("load failed")) {
-    return "Keine Verbindung. Prüfe dein Internet und versuche es noch einmal.";
+    return t("allg.keineVerbindung");
   }
   if (status >= 500) {
-    return "Die Anmeldung ist gerade nicht möglich. Bitte versuche es in ein paar Minuten noch einmal.";
+    return t("login.geradeNichtMoeglich");
   }
-  return "Die Anmeldung hat nicht geklappt. Bitte versuche es noch einmal.";
+  return t("login.fehlgeschlagen");
 }
 
 /* Dasselbe fuer die REGISTRIERUNG. Bisher wurde dort genau ein Fall
@@ -804,38 +805,39 @@ function anmeldeFehlerText(error) {
  * verraten - dass eine Adresse schon vergeben ist, muss man sagen, sonst
  * kaeme man nie weiter. */
 function registrierFehlerText(error) {
-  if (!error) return "Die Registrierung hat nicht geklappt. Bitte versuche es noch einmal.";
+  const t = useT();
+  if (!error) return t("reg.fehlgeschlagen");
   const code = String(error.code || "");
   const status = Number(error.status || 0);
   const text = String(error.message || "").toLowerCase();
 
   if (code === "user_already_exists" || text.includes("already registered") || text.includes("already been registered")) {
-    return "Für diese E-Mail existiert bereits ein Konto. Melde dich an oder setze dein Passwort zurück.";
+    return t("reg.mailVergeben");
   }
   /* Der Fall, den das enge Kontingent des eingebauten Mail-Dienstes taeglich
      ausloesen kann. Ob das Konto dabei schon angelegt wurde, sagt GoTrue
      nicht zuverlaessig - deshalb keine Behauptung darueber, sondern der
      einzige Rat, der in jedem Fall stimmt. */
   if (text.includes("sending confirmation") || text.includes("error sending") || text.includes("smtp")) {
-    return "Die Bestätigungsmail konnte gerade nicht verschickt werden. Bitte versuche es in ein paar Minuten noch einmal — dein Konto ist noch nicht fertig eingerichtet.";
+    return t("reg.bestaetigungsmailFehler");
   }
   if (status === 429 || code === "over_email_send_rate_limit" || code === "over_request_rate_limit"
       || text.includes("rate limit") || text.includes("you can only request this after")) {
-    return "Zu viele Anmeldeversuche in kurzer Zeit. Bitte warte ein paar Minuten und versuche es dann noch einmal.";
+    return t("login.zuVieleVersuche");
   }
   if (code === "weak_password" || (text.includes("password") && (text.includes("at least") || text.includes("short") || text.includes("weak")))) {
-    return "Das Passwort ist zu kurz. Nimm mindestens 8 Zeichen.";
+    return t("sich.passwortZuKurz");
   }
   if (code === "email_address_invalid" || text.includes("validate email") || text.includes("invalid format")) {
-    return "Diese E-Mail-Adresse sieht nicht richtig aus. Bitte prüfe sie auf Tippfehler.";
+    return t("reg.emailUngueltig");
   }
   if (status === 0 || text.includes("failed to fetch") || text.includes("network") || text.includes("load failed")) {
-    return "Keine Verbindung. Prüfe dein Internet und versuche es noch einmal.";
+    return t("allg.keineVerbindung");
   }
   if (status >= 500) {
-    return "Die Registrierung ist gerade nicht möglich. Bitte versuche es in ein paar Minuten noch einmal.";
+    return t("reg.geradeNichtMoeglich");
   }
-  return "Die Registrierung hat nicht geklappt. Bitte versuche es noch einmal.";
+  return t("reg.fehlgeschlagen");
 }
 
 const isDbId = (id) => /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(id));
@@ -1068,10 +1070,11 @@ const INITIAL_FEE_RECORDS = [
 ];
 const OVERDUE_DAYS = { m1: 5, m3: 14 };
 function reminderStage(days) {
+  const t = useT();
   if (days >= 20) return { n: 3, label: "Vorstand informiert", color: C.red };
   if (days >= 10) return { n: 2, label: "Mahnung", color: C.secondary };
   if (days >= 3) return { n: 1, label: "Freundliche Erinnerung", color: C.secondary };
-  return { n: 0, label: "Noch nicht fällig", color: C.textDim };
+  return { n: 0, label: t("bei.nochNichtFaellig"), color: C.textDim };
 }
 
 const INITIAL_DUTY_PLAN = {
@@ -1641,12 +1644,13 @@ function SprachwahlScreen({ onWaehlen }) {
 }
 
 function AuthShell({ children, footer, club }) {
+  const t = useT();
   return (
     <div className="erg-auth flex flex-col h-full px-6 pt-8 pb-6 overflow-y-auto" style={{ background: C.paper }}>
       <div className="flex flex-col items-center mb-8">
         <div className="mb-3"><ClubLogo club={club} size={56} rounded={16} /></div>
         <div className="text-sm tracking-widest" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>{club ? club.shortName : "VEREINS-APP"}</div>
-        <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{club ? `Mitglieder-App · seit ${club.foundedYear}` : "Mitglieder-App für Vereine"}</div>
+        <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{club ? `Mitglieder-App · seit ${club.foundedYear}` : t("allg.mitgliederApp")}</div>
       </div>
       {children}
       <div className="mt-auto pt-6">{footer}</div>
@@ -1685,7 +1689,7 @@ function MeineVereineScreen({ mitgliedschaften, onOeffnen, onWeitererVerein, onA
         </div>
         <div className="text-xl text-center" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>{t("verein.deine")}</div>
         <div className="text-xs text-center mt-1" style={{ color: C.textDim, fontFamily: "Inter" }}>
-          {mitgliedschaften.length === 0 ? "Du gehörst noch keinem Verein an." : "Wähle den Verein, in den du möchtest."}
+          {mitgliedschaften.length === 0 ? t("verein.nochKeiner") : t("verein.waehlenZiel")}
         </div>
       </div>
 
@@ -1702,7 +1706,7 @@ function MeineVereineScreen({ mitgliedschaften, onOeffnen, onWeitererVerein, onA
             <div className="flex-1 min-w-0">
               <div className="text-sm font-bold truncate" style={{ color: C.ink, fontFamily: "Inter" }}>{m.clubName}</div>
               <div className="text-[11px] truncate" style={{ color: C.textDim, fontFamily: "Inter" }}>
-                {m.status === "pending" ? "Aufnahme noch nicht bestätigt" : m.display_name}
+                {m.status === "pending" ? t("mit.aufnahmeOffen") : m.display_name}
               </div>
             </div>
             <ChevronRight size={16} style={{ color: C.textDim, flexShrink: 0 }} />
@@ -1742,7 +1746,7 @@ function BeitrittsScreen({ club, vorschlagName, onBeitreten, goBack }) {
 
   const senden = async (e) => {
     e.preventDefault();
-    if (!name.trim()) { setFehler("Bitte gib deinen Namen an."); return; }
+    if (!name.trim()) { setFehler(t("reg.nameAngeben")); return; }
     setBusy(true); setFehler("");
     const ergebnis = await onBeitreten({ name: name.trim(), art, team: "" });
     setBusy(false);
@@ -1780,7 +1784,7 @@ function BeitrittsScreen({ club, vorschlagName, onBeitreten, goBack }) {
         {fehler && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-3" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{fehler}</div>}
 
         <button type="submit" disabled={busy} className="w-full py-3 rounded-xl text-sm font-bold" style={{ background: C.ink, color: C.white, fontFamily: "Inter", opacity: busy ? .6 : 1 }}>
-          {busy ? "Wird gesendet …" : t("verein.beitrittAnfragen")}
+          {busy ? t("allg.wirdGesendet2") : t("verein.beitrittAnfragen")}
         </button>
       </form>
     </AuthShell>
@@ -1837,7 +1841,7 @@ function ClubSelectScreen({ clubs, onSelect, goNewClub, goBack, onAbmelden, onKo
             {onErneutVersuchen && <button onClick={onErneutVersuchen} className="w-full py-2 rounded-lg text-xs font-bold" style={{ background: C.ink, color: "#fff", fontFamily: "Inter" }}>{t("allg.erneut")}</button>}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{query.trim() ? "Kein Verein gefunden." : "Es ist noch kein Verein eingetragen."}</div>
+          <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{query.trim() ? t("verein.keinerGefunden") : t("verein.keinerEingetragen")}</div>
         ) : filtered.map((c) => (
           <button key={c.id} onClick={() => onSelect(c.id)} className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
             <ClubLogo club={c} size={36} rounded={9} />
@@ -1918,7 +1922,7 @@ function NewClubScreen({ onCreate, goBack }) {
   const [busy, setBusy] = useState(false);
   const submit = async (e) => {
     e.preventDefault();
-    if (!form.name.trim() || !form.shortName.trim() || !form.registerNumber.trim()) { setError("Bitte Vereinsname, Kurzname und Vereinsregisternummer angeben."); return; }
+    if (!form.name.trim() || !form.shortName.trim() || !form.registerNumber.trim()) { setError(t("verein.pflichtfelder")); return; }
     setBusy(true); setError("");
     const ergebnis = await onCreate({
       id: form.name.trim().toLowerCase().replace(/[^a-z0-9äöüß]+/g, "-").replace(/^-+|-+$/g, "") + "-" + Date.now(),
@@ -1952,10 +1956,10 @@ function NewClubScreen({ onCreate, goBack }) {
         <select value={form.currency} onChange={set("currency")} className="w-full px-3.5 py-3 rounded-xl text-sm mb-3 outline-none" style={{background:C.paperDim,color:C.ink}}><option value="EUR">Euro (€)</option><option value="CHF">Schweizer Franken (CHF)</option><option value="GBP">Britisches Pfund (£)</option><option value="USD">US-Dollar ($)</option><option value="DKK">Dänische Krone</option><option value="NOK">Norwegische Krone</option><option value="SEK">Schwedische Krone</option><option value="PLN">Polnischer Złoty</option><option value="CZK">Tschechische Krone</option></select>
         <Field icon={Gift} placeholder={t("ph.empfehlungscode")} value={form.referralCode} onChange={set("referralCode")} />
         <ClubColorPicker primary={form.primaryColor} secondary={form.secondaryColor} onChange={(primaryColor, secondaryColor) => setForm((f) => ({ ...f, primaryColor, secondaryColor }))} />
-        <label className="w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-xs mb-3 cursor-pointer" style={{background:C.paperDim,color:C.textDim}}><span>{form.logoDataUrl?"Vereinslogo ausgewählt":"Vereinslogo optional auswählen"}</span><ImageIcon size={16}/><input type="file" accept="image/*" className="hidden" onChange={(e)=>{const file=e.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>setForm((old)=>({...old,logoDataUrl:String(reader.result||"")}));reader.readAsDataURL(file);}}/></label>
+        <label className="w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-xs mb-3 cursor-pointer" style={{background:C.paperDim,color:C.textDim}}><span>{form.logoDataUrl?t("verein.logoAusgewaehlt"):t("verein.logoWaehlenOptional")}</span><ImageIcon size={16}/><input type="file" accept="image/*" className="hidden" onChange={(e)=>{const file=e.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>setForm((old)=>({...old,logoDataUrl:String(reader.result||"")}));reader.readAsDataURL(file);}}/></label>
         {error && <div className="flex items-center gap-1.5 text-xs mb-3" style={{ color: C.red, fontFamily: "Inter" }}><AlertCircle size={13} /> {error}</div>}
         <button type="submit" disabled={busy} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm" style={{ background: C.red, color: C.aufPrimaer, fontFamily: "Inter", fontWeight: 700, opacity: busy ? .65 : 1 }}>
-          {busy ? "Wird angelegt …" : <>Verein anlegen <ArrowRight size={15} /></>}
+          {busy ? t("allg.wirdAngelegt") : <>Verein anlegen <ArrowRight size={15} /></>}
         </button>
       </form>
     </AuthShell>
@@ -2016,7 +2020,7 @@ function KontoLoeschenBlock({ onDelete }) {
           </div>
           <div className="flex gap-2">
             <button onClick={() => setConfirming(false)} disabled={busy} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>{t("allg.abbrechen")}</button>
-            <button onClick={remove} disabled={busy} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.red, color: C.aufPrimaer, opacity: busy ? .6 : 1 }}>{busy ? "Wird gelöscht …" : "Endgültig löschen"}</button>
+            <button onClick={remove} disabled={busy} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.red, color: C.aufPrimaer, opacity: busy ? .6 : 1 }}>{busy ? t("allg.wirdGeloescht") : t("allg.endgueltigLoeschen")}</button>
           </div>
         </div>
       )}
@@ -2035,12 +2039,12 @@ function PendingAccountScreen({ account, onLeave, onDelete }) {
         <div className="flex justify-center mb-6"><AppBrandMark size={64} /></div>
         <div className="rounded-3xl p-5 mb-4" style={{ background: C.glass, border: `1px solid ${C.edge}`, boxShadow: "0 18px 40px rgba(60,30,45,0.08)" }}>
           <div className="text-lg font-bold mb-2" style={{ fontFamily: "Oswald", color: C.ink }}>
-            {waiting ? "Warten auf Freigabe" : "Noch keine Mitgliedschaft"}
+            {waiting ? "Warten auf Freigabe" : t("mit.keineMitgliedschaft2")}
           </div>
           <div className="text-xs leading-relaxed mb-1" style={{ color: C.textDim }}>
             {waiting
-              ? "Dein Konto ist angelegt. Sobald der Verein deine Aufnahme bestätigt, kannst du dich anmelden und alle Funktionen nutzen."
-              : "Für dieses Konto besteht in diesem Verein noch keine Mitgliedschaft. Wende dich an die Vereinsverwaltung oder wähle einen anderen Verein."}
+              ? t("reg.kontoAngelegt2")
+              : t("verein.keineMitgliedschaft")}
           </div>
           <div className="text-[11px]" style={{ color: C.textDim }}>Angemeldet als {account.email}</div>
         </div>
@@ -2078,8 +2082,8 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub, offeneS
     const address = email.trim();
     /* Beides sind Fehler und gehoerten trotzdem in die gruene Box - die App
        meldete also Erfolg, wo keiner war. */
-    if (!address) { setError("Bitte zuerst deine E-Mail-Adresse eintragen."); return; }
-    if (!supabase) { setError("Zurücksetzen ist nur mit einem echten Konto möglich."); return; }
+    if (!address) { setError(t("login.emailZuerst")); return; }
+    if (!supabase) { setError(t("konto.zuruecksetzenNurEcht")); return; }
     setBusy(true);
     const { error: resetFehler } = await supabase.auth.resetPasswordForEmail(address, {
       redirectTo: `${window.location.origin}/passwort-neu`,
@@ -2089,7 +2093,7 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub, offeneS
       /* Der Rueckgabewert wurde vorher weggeworfen: Kein Netz, eine Bremse
          wegen zu vieler Versuche und ein Serverfehler liefern kein
          geworfenes Ausnahmeobjekt, sondern { error } - die App meldete also
-         "Mail ist unterwegs", obwohl nie eine losging. Genau daran hat sich
+         t("reg.mailUnterwegs"), obwohl nie eine losging. Genau daran hat sich
          am 01.09. jemand eine Stunde lang aufgehalten.
 
          Verraten wird damit nichts: Ein Transportfehler sagt nichts darueber,
@@ -2099,14 +2103,14 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub, offeneS
       const tx = String(resetFehler.message || "").toLowerCase();
       setError(
         st === 429 || resetFehler.code === "over_request_rate_limit" || tx.includes("rate limit")
-          ? "Zu viele Versuche. Warte einen Moment und versuche es dann noch einmal."
+          ? t("sich.zuVieleVersuche")
           : st === 0 || tx.includes("failed to fetch") || tx.includes("network") || tx.includes("load failed")
-            ? "Keine Verbindung. Prüfe dein Internet und versuche es noch einmal."
-            : "Das Zurücksetzen ist gerade nicht möglich. Bitte versuche es in ein paar Minuten noch einmal."
+            ? t("allg.keineVerbindung")
+            : t("login.zuruecksetzenNichtMoeglich")
       );
       return;
     }
-    setResetNote("Falls ein Konto mit dieser Adresse besteht, ist eine E-Mail mit einem Link unterwegs. Prüfe auch den Spam-Ordner.");
+    setResetNote(t("login.resetMailUnterwegs"));
   };
 
   const submit = async (e) => {
@@ -2124,7 +2128,7 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub, offeneS
       club={club}
       footer={
         <div className="text-center text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>
-          {club ? `Neu bei ${club.shortName}?` : "Noch kein Konto?"}{" "}
+          {club ? `Neu bei ${club.shortName}?` : t("login.keinKonto2")}{" "}
           <button onClick={goRegister} className="font-bold" style={{ color: C.red }}>{t("login.registrieren")}</button>
         </div>
       }
@@ -2167,7 +2171,7 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub, offeneS
             <div className="text-left flex-1 min-w-0">
               <div className="text-xs font-bold truncate" style={{ color: C.ink, fontFamily: "Inter" }}>{eigeneMitgliedschaft.display_name || offeneSitzung?.email}</div>
               <div className="text-[11px] truncate" style={{ color: C.textDim, fontFamily: "Inter" }}>
-                {uebernahmeLaeuft ? "Wird geöffnet …" : eigeneMitgliedschaft.status === "pending" ? "Aufnahme noch nicht bestätigt" : "Als dieses Konto fortfahren"}
+                {uebernahmeLaeuft ? t("allg.wirdGeoeffnet") : eigeneMitgliedschaft.status === "pending" ? t("mit.aufnahmeOffen") : "Als dieses Konto fortfahren"}
               </div>
             </div>
             <ArrowRight size={15} style={{ color: C.textDim, flexShrink: 0 }} />
@@ -2188,7 +2192,7 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub, offeneS
         <button type="button" onClick={requestReset} disabled={busy} className="text-xs mb-2 underline" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("login.vergessen")}</button>
         {resetNote && <div role="status" className="text-[11px] mb-3 rounded-xl px-3 py-2" style={{ background: C.erfolgFlaeche, color: C.erfolg, fontFamily: "Inter" }}>{resetNote}</div>}
         <button type="submit" disabled={busy} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm" style={{ background: C.ink, color: "#fff", fontFamily: "Inter", fontWeight: 700, opacity: busy ? 0.65 : 1 }}>
-          {busy ? "Anmeldung läuft …" : "Anmelden"} {!busy && <ArrowRight size={15} />}
+          {busy ? t("login.laeuft") : "Anmelden"} {!busy && <ArrowRight size={15} />}
         </button>
       </form>
 
@@ -2274,10 +2278,10 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
        antwortet GoTrue mit "Password should be at least 6 characters." -
        englisch, und mit einer anderen Zahl als der Passwort-aendern-Dialog
        dieser App verlangt (8). */
-    if (form.password.length < 8) { setError("Das Passwort muss mindestens 8 Zeichen haben."); return; }
-    if (form.password !== form.password2) { setError("Die Passwörter stimmen nicht überein."); return; }
-    if (!ohneVerein && members.some((m) => m.email.toLowerCase() === form.email.trim().toLowerCase())) { setError("Für diese E-Mail existiert bei diesem Verein bereits ein Konto."); return; }
-    if (!legalAccepted) { setError("Bitte akzeptiere die Nutzungsbedingungen und die Datenschutzerklärung."); return; }
+    if (form.password.length < 8) { setError(t("reg.passwortMindestens8")); return; }
+    if (form.password !== form.password2) { setError(t("reg.passwoerterUngleich")); return; }
+    if (!ohneVerein && members.some((m) => m.email.toLowerCase() === form.email.trim().toLowerCase())) { setError(t("reg.kontoExistiert")); return; }
+    if (!legalAccepted) { setError(t("reg.bitteAkzeptieren")); return; }
     setError("");
     /* Ein Fan bekommt NUR die Fan-Rolle, nicht zusaetzlich "mitglied" - sonst
        zaehlte er als formales Mitglied und der Verein wuerde ihm Beitraege
@@ -2354,7 +2358,7 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
       <div className="text-xl mb-1" style={{ fontFamily: "Oswald", fontWeight: 600, color: C.ink }}>{t("reg.titel")}</div>
       <div className="text-xs mb-5" style={{ color: C.textDim, fontFamily: "Inter" }}>
         {ohneVerein
-          ? "Zuerst dein Konto. Deinen Verein suchst du gleich danach aus — oder legst einen neuen an."
+          ? t("reg.zuerstKonto")
           : isFirstAccount ? `Du bist das erste Konto bei ${vereinsName} — automatisch Vereins-Administrator.` : `Für aktive Mitglieder von ${vereinsName}`}
       </div>
 
@@ -2395,7 +2399,7 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
             der Freigabe zu. */}
 
         {form.accountType !== "mitglied" && <div className="rounded-2xl p-3 mb-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
-          <div className="text-xs font-bold mb-1" style={{ color: C.ink }}>{form.accountType === "eltern" ? "Kind / Athlet/in verknüpfen" : "Elternteil verknüpfen"}</div>
+          <div className="text-xs font-bold mb-1" style={{ color: C.ink }}>{form.accountType === "eltern" ? t("fam.kindVerknuepfen") : t("fam.elternteilVerknuepfen")}</div>
           <div className="text-[11px] mb-2" style={{ color: C.textDim }}>Ist das Profil bereits vorhanden, suche es hier. Die Verbindung wird automatisch auf beiden Profilen angezeigt.</div>
           <div className="flex items-center gap-2 rounded-xl px-3 py-2 mb-2" style={{ background: C.paperDim }}><Users size={14}/><input value={relativeSearch} onChange={(e)=>setRelativeSearch(e.target.value)} placeholder={form.accountType === "eltern" ? "Athlet/in suchen …" : "Elternteil suchen …"} className="flex-1 bg-transparent outline-none text-xs"/></div>
           {relativeSearch && <div className="space-y-1 mb-2">{possibleRelatives.slice(0,4).map((m)=><button type="button" key={m.id} onClick={()=>setForm((f)=>({...f,relativeId:m.id}))} className="w-full flex items-center justify-between p-2 rounded-lg text-xs" style={{ background: form.relativeId===m.id ? C.fehlerFlaeche : C.paperDim, color:C.ink }}><span>{m.name} · {m.team}</span>{form.relativeId===m.id&&<Check size={13}/>}</button>)}</div>}
@@ -2416,10 +2420,10 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
         {notice && <div className="flex items-center gap-1.5 text-xs mb-3" style={{ color: C.erfolg, fontFamily: "Inter" }}><CheckCircle2 size={13} /> {notice}</div>}
 
         <button type="submit" disabled={busy || !legalAccepted} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm" style={{ background: C.red, color: C.aufPrimaer, fontFamily: "Inter", fontWeight: 700, opacity: (busy || !legalAccepted) ? 0.65 : 1 }}>
-          <UserPlus size={15} /> {busy ? "Konto wird erstellt …" : t("reg.titel")}
+          <UserPlus size={15} /> {busy ? t("reg.kontoWirdErstellt") : t("reg.titel")}
         </button>
       </form>
-      <div className="text-[11px] mt-4 text-center" style={{ color: C.textDim, fontFamily: "Inter" }}>{isSupabaseConfigured ? "Sichere Registrierung über Supabase" : "Demo-Prototyp — es werden keine echten Daten übertragen."}</div>
+      <div className="text-[11px] mt-4 text-center" style={{ color: C.textDim, fontFamily: "Inter" }}>{isSupabaseConfigured ? t("reg.sicherUeberSupabase") : t("sys.demoPrototyp")}</div>
     </AuthShell>
   );
 }
@@ -2523,7 +2527,7 @@ function MannschaftsWahl({ mannschaften, gewaehlt, onWechsel, favorit, onFavorit
     {onFavorit && (
       <button onClick={() => onFavorit(gewaehlt)} disabled={istFavorit}
         aria-label={istFavorit ? `${gewaehlt} ist deine Startansicht` : `${gewaehlt} als Startansicht speichern`}
-        title={istFavorit ? "Das ist deine Startansicht" : "Als Startansicht speichern"}
+        title={istFavorit ? t("pf.startansicht") : "Als Startansicht speichern"}
         className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
         style={{ background: istFavorit ? C.erfolgFlaeche : C.glass, border: `1px solid ${istFavorit ? C.erfolgRand : C.line}`, opacity: istFavorit ? 1 : .85 }}>
         <Star size={14} style={{ color: istFavorit ? C.erfolg : C.textDim }} fill={istFavorit ? C.erfolg : "none"} />
@@ -2650,7 +2654,7 @@ function Scoreboard({ nextEvent, goTo, auswahlVorhanden = false }) {
   const { d, h, m } = useCountdown(nextEvent ? nextEvent.date : "2099-01-01T00:00:00");
   const digit = (n) => String(n).padStart(2, "0");
   /* Ohne Auswahl verschwindet die Kachel, wenn kein Spiel ansteht - ein Hinweis
-     "keine Termine geplant" waere falsch, denn Training und anderes stecken in
+     t("ev.keineGeplant") waere falsch, denn Training und anderes stecken in
      eigenen Kacheln.
      Steht eine Auswahl zur Verfuegung, bleibt die Kachel dagegen stehen und
      sagt, dass fuer diese Mannschaft nichts geplant ist. Sonst wirkte ein
@@ -2854,13 +2858,13 @@ function Dashboard({ user, members, events, feePaid, channels, news, dutyPlan, s
   const seasonSieger = seasonResults(seasonVotes, saisonKandidaten(members)).sorted[0];
   const seasonSubtitle = !seasonClosed
     ? `Bis ${new Date(SEASON_VOTE_DEADLINE).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })} abstimmen`
-    : seasonSieger ? `🏆 ${seasonSieger.name}` : "Keine Kandidat/innen hinterlegt";
+    : seasonSieger ? `🏆 ${seasonSieger.name}` : t("sais.keineKandidaten");
 
   /* Dieselbe Rechnung wie in der Tippansicht.
      Vorher stand hier member.tippPoints - ein Feld, das aus der Datenbank
      geladene Mitglieder immer mit 0 bekommen und das nur in der Sitzung dessen
      neu berechnet wird, der gerade ein Ergebnis eintraegt. Nach jedem Neuladen
-     stand deshalb bei allen 0, und die Kachel zeigte "Platz 1 von 24" fuer
+     stand deshalb bei allen 0, und die Kachel zeigte t("tipp.platzVon") fuer
      jeden, der zufaellig oben in der Liste stand. */
   const tippBegegnungenJetzt = tippBegegnungen(events);
   const leaderboard = [...members]
@@ -2885,7 +2889,7 @@ function Dashboard({ user, members, events, feePaid, channels, news, dutyPlan, s
     checkReminder();
   }, [user.id, user.clubId]);
 
-  let dutySubtitle = isFormalMember(user) ? "Theke, Grill, Kuchenbuffet …" : "Nur für Vereinsmitglieder";
+  let dutySubtitle = isFormalMember(user) ? "Theke, Grill, Kuchenbuffet …" : t("allg.nurMitglieder");
   if (isFormalMember(user)) {
     let assigned = null;
     Object.entries(dutyPlan).forEach(([eid, stations]) => {
@@ -3065,7 +3069,7 @@ function TerminZusage({ ev, currentUser }) {
       : await supabase.from("event_attendance").upsert(
           { event_id: ev.id, membership_id: currentUser.id, status, updated_at: new Date().toISOString() },
           { onConflict: "event_id,membership_id" });
-    if (error) { setMeinStatus(vorher); setFehler("Deine Antwort konnte nicht gespeichert werden."); return; }
+    if (error) { setMeinStatus(vorher); setFehler(t("umf.antwortNichtGespeichert")); return; }
     if (offen) await listeLaden();
   };
 
@@ -3073,7 +3077,7 @@ function TerminZusage({ ev, currentUser }) {
     setLaedt(true);
     const { data, error } = await supabase.rpc("anwesenheit_fuer_termin", { target_event: ev.id });
     setLaedt(false);
-    if (error) { setFehler("Die Liste konnte nicht geladen werden."); return; }
+    if (error) { setFehler(t("allg.listeLadenFehler")); return; }
     setListe(data || []);
   };
 
@@ -3268,36 +3272,36 @@ function CarpoolSection({ ev, currentUser }) {
   useEffect(() => { load(); }, [load]);
   const createCarpool = async () => {
     const seatCount = Number(seats);
-    if (!Number.isFinite(seatCount) || seatCount < 1) { setMessage("Bitte eine gültige Anzahl freier Plätze angeben."); return; }
+    if (!Number.isFinite(seatCount) || seatCount < 1) { setMessage(t("fzg.freiePlaetzeUngueltig")); return; }
     /* Beide Pflichtfeldpruefungen stehen VOR setSaving(true). Die zweite stand
        vorher darunter und stieg mit return aus, ohne saving zurueckzusetzen:
        Der Knopf blieb deaktiviert und zeigte "…" - ausgerechnet nachdem die
        App per roter Meldung genau die Eingabe verlangt hatte, die sie danach
        nicht mehr annehmen konnte. */
-    if (!abfahrt.trim()) { setMessage("Bitte gib an, von wo du losfährst."); return; }
+    if (!abfahrt.trim()) { setMessage(t("fzg.abfahrtsortFehlt")); return; }
     setSaving(true); setMessage("");
     const { error } = await supabase.from("carpools").insert({ event_id: ev.id, driver_membership_id: currentUser.id, seats_available: seatCount, departure: abfahrt.trim(), note: note.trim() || null });
-    if (error) { setMessage("Fahrgemeinschaft konnte nicht angelegt werden."); setSaving(false); return; }
+    if (error) { setMessage(t("fzg.fahrgemeinschaftFehler")); setSaving(false); return; }
     setSeats(""); setNote(""); setAbfahrt(""); setShowCreate(false); setSaving(false);
     await load();
   };
   const join = async (carpoolId) => {
     setMessage("");
     const { error } = await supabase.from("carpool_passengers").insert({ carpool_id: carpoolId, membership_id: currentUser.id });
-    if (error) { setMessage("Eintragen nicht möglich (evtl. schon voll)."); return; }
+    if (error) { setMessage(t("help.eintragenNichtMoeglichVoll")); return; }
     await load();
   };
   const leave = async (carpoolId) => {
     setMessage("");
     const { error } = await supabase.from("carpool_passengers").delete().eq("carpool_id", carpoolId).eq("membership_id", currentUser.id);
-    if (error) { setMessage("Konnte nicht entfernt werden."); return; }
+    if (error) { setMessage(t("allg.entfernenFehler")); return; }
     await load();
   };
   const removeCarpool = async (carpoolId) => {
     if (!window.confirm("Fahrgemeinschaft wirklich entfernen?")) return;
     setMessage("");
     const { error } = await supabase.from("carpools").delete().eq("id", carpoolId);
-    if (error) { setMessage("Konnte nicht entfernt werden."); return; }
+    if (error) { setMessage(t("allg.entfernenFehler")); return; }
     await load();
   };
   return (
@@ -3312,7 +3316,7 @@ function CarpoolSection({ ev, currentUser }) {
             return (
               <div key={c.id} className="rounded-xl px-3 py-2" style={{ background: C.paperDim }}>
                 <div className="flex items-center justify-between mb-1">
-                  <div className="text-xs font-bold" style={{ color: C.ink }}>{c.driverName} fährt{isDriver ? " (du)" : ""}</div>
+                  <div className="text-xs font-bold" style={{ color: C.ink }}>{c.driverName} fährt{isDriver ? t("allg.duKlammer") : ""}</div>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: free > 0 ? C.erfolgFlaeche : C.fehlerFlaeche, color: free > 0 ? C.erfolg : C.fehler }}>{free > 0 ? `${free} frei` : "voll"}</span>
                 </div>
                 {c.departure && <div className="text-[10px] mb-1 flex items-start gap-1" style={{ color: C.ink }}><MapPin size={11} style={{ color: C.textDim, flexShrink: 0, marginTop: 1 }} /><span>Abfahrt: {c.departure}</span></div>}
@@ -3427,7 +3431,7 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
             eventIsReal ? <CarpoolSection ev={ev} currentUser={currentUser} /> : ev.carpool && (
             <button onClick={() => onCarpool(ev.id)} className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs mb-1"
               style={{ fontFamily: "Inter", fontWeight: 700, background: carpoolOn ? C.erfolgFlaeche : C.ink, color: carpoolOn ? C.secondary : C.white, border: carpoolOn ? `1px solid ${C.secondary}` : "none" }}>
-              <Car size={14} /> {carpoolOn ? "Du bietest einen Platz an ✓" : "Fahrgemeinschaft: Platz anbieten"}
+              <Car size={14} /> {carpoolOn ? t("fzg.platzAngeboten") : "Fahrgemeinschaft: Platz anbieten"}
             </button>
           ))}
 
@@ -3587,8 +3591,8 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
         .eq("membership_id", currentUser.id)
         .in("function", ["trainer", "kapitaen", "teammanager"]);
       const names = [...new Set((data || []).map((entry) => {
-        const t = Array.isArray(entry.teams) ? entry.teams[0] : entry.teams;
-        return t?.name;
+        const mannschaft = Array.isArray(entry.teams) ? entry.teams[0] : entry.teams;
+        return mannschaft?.name;
       }).filter(Boolean))];
       setManageableTeams(names);
     };
@@ -3652,14 +3656,14 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
          die Vereinsverwaltung. Ein Trainer oder Kapitaen an dieselbe Stelle zu
          schicken waere ins Leere geschickt - dort darf er nichts. */
       setEventFehler(allowedEventTeams.length > 0
-        ? "Bitte wähle eine Mannschaft aus."
+        ? t("tm.bitteWaehlen")
         : isSysAdmin(currentUser) || isAdminUser
-          ? "Für Training und Spiel wird eine Mannschaft gebraucht. Lege zuerst unter „Mannschaften“ eine an."
-          : "Dir ist noch keine Mannschaft zugewiesen. Die Vereinsverwaltung kann das eintragen.");
+          ? t("ev.mannschaftNoetig")
+          : t("tm.keineZugewiesen"));
       return;
     }
     if (!eventDraft.title.trim() || !eventDraft.location.trim()) {
-      setEventFehler("Bitte gib einen Titel und einen Ort an.");
+      setEventFehler(t("ev.titelUndOrt"));
       return;
     }
     if (eventDraft.recurring) {
@@ -3698,7 +3702,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
     if (!eventDraft.day || !eventDraft.startTime || !eventDraft.endTime) return;
     const beginn = new Date(`${eventDraft.day}T${eventDraft.startTime}`);
     const ende = new Date(`${eventDraft.day}T${eventDraft.endTime}`);
-    if (!(ende > beginn)) { setEventFehler("Das Ende muss nach dem Beginn liegen."); return; }
+    if (!(ende > beginn)) { setEventFehler(t("ev.endeNachBeginn")); return; }
     setEventFehler("");
     /* Die Helferstationen. Sie gehoeren an den Termin, nicht in eine feste
        Liste im Code - vorher hatten nur die Demo-Termine welche, und die
@@ -3717,11 +3721,11 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
          danach die Datenbank, weil beide auf eine Zeichenkette als Kennung
          pruefen - der stille Fehlschlag setzte sich also fort. */
       if (anlegeFehler) {
-        setTerminFehler("Der Termin konnte nicht gespeichert werden. Prüfe deine Verbindung und versuche es noch einmal.");
+        setTerminFehler(t("ev.speichernFehler"));
         return;
       }
       if (!saved?.id) {
-        setTerminFehler("Der Termin wurde nicht gespeichert — dir fehlt das Recht, für diese Mannschaft einzutragen.");
+        setTerminFehler(t("ev.keinRechtEintragen"));
         return;
       }
       eventId = saved.id;
@@ -3754,11 +3758,11 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
          dann "dir fehlt das Recht" liest, schliesst daraus, man habe ihm die
          Mannschaft entzogen. */
       if (error) {
-        setTerminFehler("Die Absage konnte nicht gespeichert werden. Prüfe deine Verbindung und versuche es noch einmal.");
+        setTerminFehler(t("ev.absageFehler"));
         return;
       }
       if (!data?.length) {
-        setTerminFehler("Die Absage wurde nicht gespeichert. Entweder fehlt dir das Recht für diese Mannschaft, oder der Termin gibt es nicht mehr.");
+        setTerminFehler(t("ev.absageNichtGespeichert"));
         return;
       }
     }
@@ -3787,12 +3791,12 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
     if (supabase && typeof id === "string") {
       const { data, error } = await supabase.from("events").delete().eq("id", id).select("id");
       if (error) {
-        setTerminFehler("Der Termin konnte nicht gelöscht werden. Prüfe deine Verbindung und versuche es noch einmal.");
+        setTerminFehler(t("ev.loeschenFehler"));
         setDeleteRequest(null);
         return;
       }
       if (!data?.length) {
-        setTerminFehler("Der Termin wurde nicht gelöscht. Entweder fehlt dir das Recht für diese Mannschaft, oder er ist bereits entfernt.");
+        setTerminFehler(t("ev.loeschenFehlgeschlagen"));
         setDeleteRequest(null);
         return;
       }
@@ -3812,12 +3816,12 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
          den stillen Fehlschlag stehen, den dieser Block verhindern soll. */
       const { data: geloescht, error } = await supabase.rpc("delete_event_series", { target_series: seriesId });
       if (error) {
-        setTerminFehler("Die Terminreihe konnte nicht gelöscht werden. Prüfe deine Verbindung und versuche es noch einmal.");
+        setTerminFehler(t("ev.reiheLoeschenFehler"));
         setDeleteRequest(null);
         return;
       }
       if (!geloescht) {
-        setTerminFehler("Die Terminreihe wurde nicht gelöscht. Entweder fehlt dir das Recht für diese Mannschaft, oder sie ist bereits entfernt.");
+        setTerminFehler(t("ev.reiheNichtGeloescht"));
         setDeleteRequest(null);
         return;
       }
@@ -3828,7 +3832,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
   };
   const [kalenderLaedt, setKalenderLaedt] = useState(false);
   const kalenderVerbinden = async () => {
-    if (!supabase || !isDbId(currentUser.clubId)) { window.alert("Die Kalenderverbindung braucht ein echtes Vereinskonto."); return; }
+    if (!supabase || !isDbId(currentUser.clubId)) { window.alert(t("kal.brauchtVereinskonto")); return; }
     setKalenderLaedt(true);
     try {
       let token = "";
@@ -3839,10 +3843,10 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
           target_club: currentUser.clubId, requested_interval: "daily",
           requested_types: ["training", "spiel", "event"], requested_teams: [],
         });
-        if (error) { window.alert("Die Kalenderverbindung konnte nicht angelegt werden."); return; }
+        if (error) { window.alert(t("kal.verbindungFehler")); return; }
         token = neu?.[0]?.token || "";
       }
-      if (!token) { window.alert("Es kam keine Kalenderadresse zurück."); return; }
+      if (!token) { window.alert(t("kal.keineAdresse")); return; }
       window.location.href = `${window.location.origin}/api/calendar/feed/${token}`.replace(/^https?:/, "webcal:");
     } finally { setKalenderLaedt(false); }
   };
@@ -3883,7 +3887,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
   return (
     <div className="px-4 pt-4 pb-24">
       <div className="flex items-start justify-between gap-3"><SectionTitle title="Termine" />{(canCreateSportEvent||canCreateClubEvent)&&<button onClick={openCreate} className="px-3 py-1.5 rounded-full text-xs flex-shrink-0" style={{background: C.red, color: C.aufPrimaer,fontWeight:700}}>＋ Eintragen</button>}</div>
-      {showCreate&&<form onSubmit={createSportEvent} className="rounded-2xl p-4 mb-4 space-y-2.5" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold">{t("ev.eintragen")}</div><div className="text-[10px]" style={{color:C.textDim}}>{eventDraft.type==="event"?"Vereins-Events sind für alle Mitglieder sichtbar, unabhängig von Mannschaft.":isSysAdmin(currentUser)?"Als Vereins-Sysadmin kannst du jede Mannschaft auswählen.":currentUser.roles.includes("trainer")?"Du kannst nur deine im Profil hinterlegten Mannschaften auswählen.":"Als Kapitän oder Teammanager kannst du nur für deine hinterlegte Mannschaft eintragen."}</div><div className="text-[10px] font-bold" style={{color:C.red}}>* Pflichtfeld</div><div className="grid grid-cols-2 gap-2"><select value={eventDraft.type} onChange={(e)=>setEventDraft({...eventDraft,type:e.target.value,team:e.target.value==="event"?"":eventDraft.team})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}>{canCreateSportEvent&&<option value="training">{t("ev.training")}</option>}{canCreateSportEvent&&<option value="spiel">{t("ev.spiel")}</option>}{canCreateClubEvent&&<option value="event">{t("ev.vereinsevent")}</option>}</select>{eventDraft.type!=="event"&&<select value={eventDraft.team} onChange={(e)=>setEventDraft({...eventDraft,team:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}>{allowedEventTeams.map((team)=><option key={team} value={team}>{team}</option>)}</select>}</div><input value={eventDraft.title} onChange={(e)=>setEventDraft({...eventDraft,title:e.target.value})} placeholder={eventDraft.type==="training"?"Titel des Trainings *":eventDraft.type==="event"?"Titel des Events *":"Titel des Spiels *"} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/>{eventDraft.type === "spiel" && <label className="flex items-center gap-2 px-0.5"><input type="checkbox" checked={eventDraft.isHome} onChange={(e)=>setEventDraft({...eventDraft,isHome:e.target.checked})}/><span className="text-xs font-bold" style={{color:C.ink}}>{t("ev.heimspiel")}</span></label>}{eventDraft.type === "training" && <label className="flex items-center gap-2 px-0.5"><input type="checkbox" checked={eventDraft.recurring} onChange={(e)=>setEventDraft({...eventDraft,recurring:e.target.checked})}/><span className="text-xs font-bold" style={{color:C.ink}}>{t("ev.wiederholend")}</span></label>}{!eventDraft.recurring ? <div className="space-y-2">
+      {showCreate&&<form onSubmit={createSportEvent} className="rounded-2xl p-4 mb-4 space-y-2.5" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold">{t("ev.eintragen")}</div><div className="text-[10px]" style={{color:C.textDim}}>{eventDraft.type==="event"?t("ev.vereinseventSichtbar"):isSysAdmin(currentUser)?t("tm.sysadminAlle"):currentUser.roles.includes("trainer")?t("tm.nurEigeneWaehlen"):t("tm.nurEigeneMannschaft")}</div><div className="text-[10px] font-bold" style={{color:C.red}}>* Pflichtfeld</div><div className="grid grid-cols-2 gap-2"><select value={eventDraft.type} onChange={(e)=>setEventDraft({...eventDraft,type:e.target.value,team:e.target.value==="event"?"":eventDraft.team})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}>{canCreateSportEvent&&<option value="training">{t("ev.training")}</option>}{canCreateSportEvent&&<option value="spiel">{t("ev.spiel")}</option>}{canCreateClubEvent&&<option value="event">{t("ev.vereinsevent")}</option>}</select>{eventDraft.type!=="event"&&<select value={eventDraft.team} onChange={(e)=>setEventDraft({...eventDraft,team:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}>{allowedEventTeams.map((team)=><option key={team} value={team}>{team}</option>)}</select>}</div><input value={eventDraft.title} onChange={(e)=>setEventDraft({...eventDraft,title:e.target.value})} placeholder={eventDraft.type==="training"?"Titel des Trainings *":eventDraft.type==="event"?"Titel des Events *":"Titel des Spiels *"} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/>{eventDraft.type === "spiel" && <label className="flex items-center gap-2 px-0.5"><input type="checkbox" checked={eventDraft.isHome} onChange={(e)=>setEventDraft({...eventDraft,isHome:e.target.checked})}/><span className="text-xs font-bold" style={{color:C.ink}}>{t("ev.heimspiel")}</span></label>}{eventDraft.type === "training" && <label className="flex items-center gap-2 px-0.5"><input type="checkbox" checked={eventDraft.recurring} onChange={(e)=>setEventDraft({...eventDraft,recurring:e.target.checked})}/><span className="text-xs font-bold" style={{color:C.ink}}>{t("ev.wiederholend")}</span></label>}{!eventDraft.recurring ? <div className="space-y-2">
         <label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>Datum *</span><input type="date" value={eventDraft.day} onChange={(e)=>setEventDraft({...eventDraft,day:e.target.value})} className="erg-datetime w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim,color:C.ink}}/></label>
         <div className="grid grid-cols-2 gap-2">
           <label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>Beginn *</span><input type="time" value={eventDraft.startTime} onChange={(e)=>setEventDraft({...eventDraft,startTime:e.target.value})} className="erg-datetime w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim,color:C.ink}}/></label>
@@ -3893,7 +3897,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
       <SponsorSlot slotKey="events_header" bookings={werbeplaetze} onImpression={onSponsorImpression} onClick={onSponsorClick} visible={featureEnabled("sponsor_events_header")} />
       <div className="flex items-center gap-2 mb-3">
         <div className="flex gap-2 overflow-x-auto pb-1 flex-1 min-w-0" style={{ scrollbarWidth: "none" }}>
-          {[["alle", "Alle"], ["training", t("ev.training")], ["spiel", "Spiele"], ["event", "Events"]].map(([k, l]) => (
+          {[["alle", t("ev.alle2")], ["training", t("ev.training")], ["spiel", "Spiele"], ["event", "Events"]].map(([k, l]) => (
             <button key={k} onClick={() => setFilter(k)} className="px-3 py-1.5 rounded-full text-xs flex-shrink-0"
               style={{ fontFamily: "Inter", fontWeight: 700, background: filter === k ? C.ink : C.paperDim, color: filter === k ? C.white : C.textDim }}>{l}</button>
           ))}
@@ -3974,7 +3978,13 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
 function FeesView({ members, records, setRecords }) {
   const t = useT();
   const [selectedMemberId, setSelectedMemberId] = useState(null);
-  const [form, setForm] = useState({ year: "2026", type: t("bei.mitglied"), amount: "", paid: "offen", invoiceNumber: "", linkedMemberIds: [], manualNames: "", personCount: "1" });
+  /* "Mitgliedsbeitrag" ist hier KEINE Beschriftung, sondern der Wert, der
+     als fee_kind in die Datenbank geht und weiter unten mit
+     "Familienbeitrag" verglichen wird. Uebersetzt man ihn, steht in der
+     Datenbank je nach Sprache des Erfassers etwas anderes - und der
+     Vergleich auf Familienbeitrag trifft nie mehr zu. Uebersetzt wird nur
+     die Beschriftung im Auswahlfeld. */
+  const [form, setForm] = useState({ year: "2026", type: "Mitgliedsbeitrag", amount: "", paid: "offen", invoiceNumber: "", linkedMemberIds: [], manualNames: "", personCount: "1" });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const selectedMember = members.find((member) => member.id === selectedMemberId);
@@ -3985,7 +3995,7 @@ function FeesView({ members, records, setRecords }) {
     const manualNames = form.type === "Familienbeitrag" ? form.manualNames.split(",").map((name) => name.trim()).filter(Boolean) : [];
     const databaseMembership = !!supabase && isDbId(selectedMemberId);
     const amountNumber = Number(form.amount.replace(",", "."));
-    if (!Number.isFinite(amountNumber) || amountNumber < 0) { setMessage("Bitte eine gültige Beitragshöhe eingeben."); return; }
+    if (!Number.isFinite(amountNumber) || amountNumber < 0) { setMessage(t("bei.hoeheUngueltig")); return; }
     setSaving(true); setMessage("");
     let id = `fee-${Date.now()}`;
     if (databaseMembership) {
@@ -4001,7 +4011,7 @@ function FeesView({ members, records, setRecords }) {
         linked_memberships: form.type === "Familienbeitrag" ? form.linkedMemberIds : [],
         manual_people: manualNames,
       });
-      if (error) { setMessage(error.message.includes("invoice") ? "Diese Rechnungsnummer ist bereits vergeben." : "Der Beitrag konnte nicht gespeichert werden."); setSaving(false); return; }
+      if (error) { setMessage(error.message.includes("invoice") ? t("bei.rechnungsnummerVergeben") : t("bei.speichernFehler")); setSaving(false); return; }
       id = data;
     }
     setRecords((all) => [{ id, memberId: selectedMemberId, year: form.year, type: form.type, amount: amountNumber.toFixed(2).replace(".", ","), paid: form.paid === "bezahlt", invoiceNumber: form.invoiceNumber.trim(), linkedMemberIds: form.type === "Familienbeitrag" ? form.linkedMemberIds : [], manualNames, personCount: form.type === "Familienbeitrag" ? Math.max(1, Number(form.personCount) || 1) : 1 }, ...all]);
@@ -4012,7 +4022,7 @@ function FeesView({ members, records, setRecords }) {
     const nextPaid = !record.paid;
     if (supabase && isDbId(record.id)) {
       const { error } = await supabase.rpc("set_fee_payment_status", { target_fee: record.id, new_status: nextPaid ? "bezahlt" : "offen" });
-      if (error) { setMessage("Der Zahlungsstatus konnte nicht gespeichert werden."); return; }
+      if (error) { setMessage(t("bei.zahlungsstatusFehler")); return; }
     }
     setRecords((all) => all.map((item) => item.id === record.id ? { ...item, paid: nextPaid } : item));
   };
@@ -4020,7 +4030,7 @@ function FeesView({ members, records, setRecords }) {
     if (!window.confirm(`Beitragsdatensatz ${record.invoiceNumber || record.year} wirklich löschen?`)) return;
     if (supabase && isDbId(record.id)) {
       const { error } = await supabase.rpc("delete_fee_record", { target_fee: record.id });
-      if (error) { setMessage("Der Beitragsdatensatz konnte nicht gelöscht werden."); return; }
+      if (error) { setMessage(t("bei.datensatzLoeschenFehler")); return; }
     }
     setRecords((all) => all.filter((item) => item.id !== record.id));
   };
@@ -4117,7 +4127,7 @@ function FeesView({ members, records, setRecords }) {
         )}
         <input value={form.invoiceNumber} onChange={(e) => setForm({ ...form, invoiceNumber: e.target.value })} placeholder={t("ph.rechnungsnummer")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }} />
         <select value={form.paid} onChange={(e) => setForm({ ...form, paid: e.target.value })} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}><option value="offen">{t("bei.offen")}</option><option value="bezahlt">{t("bei.bezahlt")}</option></select>
-        <button disabled={saving} type="submit" className="w-full py-2.5 rounded-xl text-xs" style={{ background: saving ? C.textDim : C.ink, color: C.white, fontWeight: 700 }}>{saving ? "Wird gespeichert …" : "Datensatz anlegen"}</button>
+        <button disabled={saving} type="submit" className="w-full py-2.5 rounded-xl text-xs" style={{ background: saving ? C.textDim : C.ink, color: C.white, fontWeight: 700 }}>{saving ? t("allg.wirdGespeichert") : "Datensatz anlegen"}</button>
       </form>
     </div>
   );
@@ -4129,7 +4139,7 @@ function FeesView({ members, records, setRecords }) {
 function ChatView({ user, channels, setChannels, activeId, setActiveId, members }) {
   const t = useT();
   /* ALLE Hooks stehen vor dem ersten return - ohne Ausnahme.
-     Vorher lag der Ausstieg fuer "kein Kanal sichtbar" zwischen dem ersten und
+     Vorher lag der Ausstieg fuer t("chat.keinKanalSichtbar") zwischen dem ersten und
      dem zweiten useState. Beim leeren Durchlauf rief die Komponente damit einen
      Hook auf, beim gefuellten drei. Sobald die Kanalliste zwischen leer und
      gefuellt wechselt - und genau das kann sie jetzt, weil ein Verein ohne
@@ -4277,7 +4287,7 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
     if (!window.confirm("Diese Nachricht dauerhaft loeschen?")) return;
     if (supabase && isDbId(m.id)) {
       const { error } = await supabase.from("messages").delete().eq("id", m.id);
-      if (error) { setSendeFehler("Die Nachricht konnte nicht geloescht werden."); return; }
+      if (error) { setSendeFehler(t("chat.nachrichtLoeschenFehler")); return; }
     }
     setSendeFehler("");
     setChannels((cs) => cs.map((c) => (c.id !== active.id ? c : { ...c, messages: c.messages.filter((x) => x.id !== m.id) })));
@@ -4301,7 +4311,7 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
         .select("id,channel_id,body,created_at,author_id,profiles(full_name)")
         .maybeSingle();
       if (error) {
-        setSendeFehler("Die Nachricht konnte nicht gesendet werden.");
+        setSendeFehler(t("chat.sendenFehler"));
         return;
       }
       if (gespeichert) {
@@ -4412,7 +4422,7 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
       </div>
       <div className="px-4 pt-3">
         {!canPost ? (
-          <div className="text-xs text-center py-2 rounded-lg" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>{active.writeRoles ? "In dieser Gruppe schreiben Trainer, Kapitäne und freigegebene Teammitglieder." : "Nur berechtigte Rollen können hier schreiben."}</div>
+          <div className="text-xs text-center py-2 rounded-lg" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>{active.writeRoles ? t("chat.werSchreibtGruppe") : t("chat.nurBerechtigte")}</div>
         ) : (
           /* Der Fehler stand als Flex-Geschwister NEBEN dem Eingabefeld und
              quetschte es zusammen, sobald das Senden scheiterte. Er gehoert
@@ -4474,7 +4484,7 @@ function RedaktionView({ user, news, setNews }) {
     setMessage("");
     if (supabase && isDbId(item.id)) {
       const { data: imagePath, error } = await supabase.rpc("delete_news_post", { target_post: item.id });
-      if (error) { setMessage("Die News konnte nicht gelöscht werden."); return; }
+      if (error) { setMessage(t("news.loeschenFehler")); return; }
       if (imagePath) await supabase.storage.from("news-images").remove([imagePath]);
     }
     setNews((alle) => alle.filter((m, i) => (item.id ? m.id !== item.id : i !== item.idx)));
@@ -4484,7 +4494,7 @@ function RedaktionView({ user, news, setNews }) {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 5 * 1024 * 1024) {
-      setMessage("Bitte JPG, PNG oder WebP mit maximal 5 MB auswählen."); return;
+      setMessage(t("allg.bildFormatHinweis")); return;
     }
     setImageFile(file); setMessage("");
     const reader = new FileReader();
@@ -4504,9 +4514,9 @@ function RedaktionView({ user, news, setNews }) {
         const extension = imageFile.type === "image/png" ? "png" : imageFile.type === "image/webp" ? "webp" : "jpg";
         imagePath = `${user.clubId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
         const { error: uploadError } = await supabase.storage.from("news-images").upload(imagePath, imageFile, { contentType: imageFile.type, upsert: false });
-        if (uploadError) { setMessage("Das News-Bild konnte nicht hochgeladen werden."); setSaving(false); return; }
+        if (uploadError) { setMessage(t("news.bildUploadFehler")); setSaving(false); return; }
         const { data: signedImage, error: signedError } = await supabase.storage.from("news-images").createSignedUrl(imagePath, 604800);
-        if (signedError) { await supabase.storage.from("news-images").remove([imagePath]); setMessage("Das News-Bild konnte nicht vorbereitet werden."); setSaving(false); return; }
+        if (signedError) { await supabase.storage.from("news-images").remove([imagePath]); setMessage(t("news.bildFehler")); setSaving(false); return; }
         finalImageUrl = signedImage.signedUrl;
       }
       if (editingPost && isDbId(editingPost.id)) {
@@ -4516,7 +4526,7 @@ function RedaktionView({ user, news, setNews }) {
           new_body: text.trim(),
           new_image_path: imagePath,
         });
-        if (error) { if (imagePath) await supabase.storage.from("news-images").remove([imagePath]); setMessage("Die News konnte nicht geändert werden."); setSaving(false); return; }
+        if (error) { if (imagePath) await supabase.storage.from("news-images").remove([imagePath]); setMessage(t("news.aendernFehler")); setSaving(false); return; }
         if (replacedImagePath) await supabase.storage.from("news-images").remove([replacedImagePath]);
         if (!imageFile) finalImageUrl = editingPost.imageUrl;
       } else {
@@ -4526,7 +4536,7 @@ function RedaktionView({ user, news, setNews }) {
           post_body: text.trim(),
           post_image_path: imagePath,
         });
-        if (error) { if (imagePath) await supabase.storage.from("news-images").remove([imagePath]); setMessage("Die News konnte nicht gespeichert werden."); setSaving(false); return; }
+        if (error) { if (imagePath) await supabase.storage.from("news-images").remove([imagePath]); setMessage(t("news.speichernFehler")); setSaving(false); return; }
         id = data;
       }
     }
@@ -4559,12 +4569,12 @@ function RedaktionView({ user, news, setNews }) {
           <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder={t("ph.newsText")} rows={4}
             className="w-full px-3 py-2.5 rounded-lg text-sm outline-none resize-none" style={{ background: C.paperDim, fontFamily: "Inter", color: C.ink }} />
           <label className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs cursor-pointer" style={{ background: C.paperDim, fontFamily: "Inter", color: C.textDim }}>
-            <ImageIcon size={14} /> {imageUrl ? "Bild ändern" : "Bild auswählen (optional)"}
+            <ImageIcon size={14} /> {imageUrl ? t("allg.bildAendern") : t("allg.bildWaehlen2")}
             <input type="file" accept="image/jpeg,image/png,image/webp" onChange={onFile} className="hidden" />
           </label>
           {imageUrl && <img src={imageUrl} alt="" className="w-full rounded-lg" style={{ maxHeight: 160, objectFit: "cover" }} />}
           <div className="flex gap-2">
-            <button onClick={publish} disabled={saving || !title.trim() || !text.trim()} className="flex-1 py-2.5 rounded-lg text-xs" style={{ background: C.red, color: C.aufPrimaer, fontFamily: "Inter", fontWeight: 700, opacity: (saving || !title.trim() || !text.trim()) ? 0.5 : 1 }}>{saving ? "Wird gespeichert …" : editingPost ? "Änderungen speichern" : t("allg.veroeffentlichen")}</button>
+            <button onClick={publish} disabled={saving || !title.trim() || !text.trim()} className="flex-1 py-2.5 rounded-lg text-xs" style={{ background: C.red, color: C.aufPrimaer, fontFamily: "Inter", fontWeight: 700, opacity: (saving || !title.trim() || !text.trim()) ? 0.5 : 1 }}>{saving ? t("allg.wirdGespeichert") : editingPost ? t("allg.aenderungenSpeichern") : t("allg.veroeffentlichen")}</button>
             <button disabled={saving} onClick={cancelForm} className="px-4 py-2.5 rounded-lg text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter", fontWeight: 700 }}>{t("allg.abbrechen")}</button>
           </div>
         </div>
@@ -4600,6 +4610,7 @@ function RedaktionView({ user, news, setNews }) {
 /* Familien-Stammbaum                                                   */
 /* ------------------------------------------------------------------ */
 function FamilyTree({ user, members }) {
+  const t = useT();
   if (!user.familyId) {
     return (
       <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>
@@ -4610,7 +4621,7 @@ function FamilyTree({ user, members }) {
   const family = members.filter((m) => m.familyId === user.familyId);
   const gen = (role) => family.filter((m) => m.familyRole === role);
   const rows = [
-    { role: "großeltern", label: "Großeltern", list: gen("großeltern") },
+    { role: "großeltern", label: t("fam.grosseltern"), list: gen("großeltern") },
     { role: "eltern", label: "Eltern", list: gen("eltern") },
     { role: "kind", label: "Kinder", list: gen("kind") },
   ].filter((r) => r.list.length);
@@ -4624,7 +4635,7 @@ function FamilyTree({ user, members }) {
             {r.list.map((m) => (
               <div key={m.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-full" style={{ background: m.id === user.id ? C.fehlerFlaeche : C.paperDim, border: m.id === user.id ? `1px solid ${C.red}` : "none" }}>
                 <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold" style={{ background: m.color, color: "#fff" }}>{initialsOf(m.name)}</div>
-                <span className="text-xs" style={{ fontFamily: "Inter", fontWeight: 600, color: C.ink }}>{m.name}{m.id === user.id ? " (Du)" : ""}</span>
+                <span className="text-xs" style={{ fontFamily: "Inter", fontWeight: 600, color: C.ink }}>{m.name}{m.id === user.id ? t("allg.duSuffix") : ""}</span>
               </div>
             ))}
           </div>
@@ -4659,7 +4670,7 @@ function FamilyLinkManager({ user, members, setMembers, adminMode = false }) {
         related_membership: targetId,
         acting_relation: userIsParent ? "eltern" : "kind",
       });
-      if (error) { setMessage("Die Verknüpfung konnte nicht gespeichert werden."); setSaving(false); return; }
+      if (error) { setMessage(t("fam.verknuepfungFehler")); setSaving(false); return; }
       linkId = data;
     }
     setMembers((ms) => linkFamilyRecords(ms, user.id, targetId, userIsParent ? "eltern" : "kind", linkId));
@@ -4678,7 +4689,7 @@ function FamilyLinkManager({ user, members, setMembers, adminMode = false }) {
         child_birthdate: null,
         child_team: null,
       });
-      if (error || !data?.membership_id) { setMessage("Das Kinderprofil konnte nicht gespeichert werden."); setSaving(false); return; }
+      if (error || !data?.membership_id) { setMessage(t("fam.kindProfilFehler")); setSaving(false); return; }
       id = data.membership_id;
       linkId = data.family_link_id;
     }
@@ -4692,13 +4703,13 @@ function FamilyLinkManager({ user, members, setMembers, adminMode = false }) {
     const link = (user.familyLinks || []).find((item) => item.memberId === target.id);
     if (databaseMembership && link?.linkId) {
       const { error } = await supabase.rpc("delete_family_link", { target_link: link.linkId, acting_membership: user.id });
-      if (error) { setMessage("Die Verknüpfung konnte nicht gelöscht werden."); setSaving(false); return; }
+      if (error) { setMessage(t("fam.verknuepfungLoeschenFehler")); setSaving(false); return; }
     }
     setMembers((all) => unlinkFamilyRecords(all, user.id, target.id));
     setSaving(false);
   };
   return <div className="rounded-2xl p-4 mb-5" style={{background:C.glass,border:`1px solid ${C.line}`}}>
-    <div className="flex items-center justify-between"><div><div className="text-sm font-bold" style={{color:C.ink}}>{t("fam.verknuepfung")}</div><div className="text-[11px]" style={{color:C.textDim}}>{adminMode ? `Sysadmin bearbeitet das Profil von ${user.name}.` : "Du verwaltest dein Familienprofil selbst."} Verknüpfungen gelten automatisch für beide Profile.</div></div><button disabled={saving} onClick={()=>setOpen(!open)} className="px-3 py-1.5 rounded-full text-xs font-bold" style={{background:C.paperDim,color:C.ink}}>{open?t("allg.schliessen"):"＋ Verknüpfen"}</button></div>
+    <div className="flex items-center justify-between"><div><div className="text-sm font-bold" style={{color:C.ink}}>{t("fam.verknuepfung")}</div><div className="text-[11px]" style={{color:C.textDim}}>{adminMode ? `Sysadmin bearbeitet das Profil von ${user.name}.` : t("fam.selbstVerwalten")} Verknüpfungen gelten automatisch für beide Profile.</div></div><button disabled={saving} onClick={()=>setOpen(!open)} className="px-3 py-1.5 rounded-full text-xs font-bold" style={{background:C.paperDim,color:C.ink}}>{open?t("allg.schliessen"):t("fam.verknuepfenKnopf")}</button></div>
     {message&&<div className="mt-2 text-[11px] font-semibold" style={{color:C.red}}>{meldungstext(message)}</div>}
     {familyConnections.length>0&&<div className="mt-3 pt-3 space-y-1.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] font-bold mb-1" style={{color:C.textDim}}>BESTEHENDE VERKNÜPFUNGEN</div>{familyConnections.map((member)=><div key={member.id} className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{background:C.paperDim}}><div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold" style={{background:member.color,color:C.white}}>{initialsOf(member.name)}</div><div className="flex-1 min-w-0"><div className="text-xs font-bold truncate" style={{color:C.ink}}>{member.name}</div><div className="text-[10px]" style={{color:C.textDim}}>{member.familyRole||"Familie"}</div></div><button onClick={()=>removeConnection(member)} className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold" style={{background:C.fehlerFlaeche,color:C.fehler}}>{t("allg.loeschen")}</button></div>)}</div>}
     {open&&<div className="mt-3 pt-3" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[11px] font-bold mb-1">{t("fam.rolle")}</div><select value={relationMode} onChange={(e)=>{setRelationMode(e.target.value);setQuery("");}} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim}}><option value="eltern">Elternteil – Athlet/in oder Kind hinzufügen</option><option value="kind">Athlet/in / Kind – Elternteil hinzufügen</option></select><input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder={userIsParent?"Vorhandenen Athlet/in suchen …":"Vorhandenes Elternteil suchen …"} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim}}/>{query&&<div className="space-y-1">{results.map(m=><button key={m.id} onClick={()=>connect(m.id)} className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs" style={{background:C.paperDim,color:C.ink}}><span>{m.name} · {m.team}</span><span style={{color:C.red}}>{t("fam.verbinden")}</span></button>)}{results.length===0&&<div className="text-[11px] py-2" style={{color:C.textDim}}>{t("fam.keinProfil")}</div>}</div>}{userIsParent&&<div className="mt-3 pt-3" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[11px] font-bold mb-2">{t("fam.kindAnlegen")}</div><div className="flex gap-2"><input value={newName} onChange={(e)=>setNewName(e.target.value)} placeholder={t("feld.vollerName")} className="flex-1 px-3 py-2 rounded-lg text-xs outline-none" style={{background:C.paperDim}}/><button onClick={createDependent} disabled={!newName.trim()} className="px-3 rounded-lg text-xs font-bold" style={{background:newName.trim()?C.red:C.line,color:"#fff"}}>{t("allg.anlegen")}</button></div><div className="text-[10px] mt-2" style={{color:C.textDim}}>Das Kind kann sein vorläufiges Profil später beim Erstellen des eigenen Kontos übernehmen.</div></div>}</div>}
@@ -4740,7 +4751,7 @@ function TrainerTeamSettings({ user, members, setMembers }) {
         setTeams(localTeams); setSelectedTeamId((current) => current || hoechstesTeam(localTeams)?.id || ""); setLoading(false); return;
       }
       const { data, error } = await supabase.from("team_members").select("team_id,teams(id,name)").eq("membership_id", user.id).eq("function", "trainer");
-      if (error) { setMessage("Die Trainer-Mannschaften konnten nicht geladen werden."); setLoading(false); return; }
+      if (error) { setMessage(t("tm.trainerTeamsLadenFehler")); setLoading(false); return; }
       const assigned = (data || []).map((entry) => Array.isArray(entry.teams) ? entry.teams[0] : entry.teams).filter(Boolean);
       setTeams(assigned); setSelectedTeamId((current) => current || hoechstesTeam(assigned)?.id || ""); setLoading(false);
     };
@@ -4765,7 +4776,7 @@ function TrainerTeamSettings({ user, members, setMembers }) {
       const { data, error } = await supabase.from("team_members")
         .select("membership_id,function,club_memberships(id,display_name,status)")
         .eq("team_id", selectedTeamId).in("function", ["spieler", "kapitaen"]);
-      if (error) { setMessage("Der Mannschaftskader konnte nicht geladen werden."); return; }
+      if (error) { setMessage(t("tm.kaderLadenFehler")); return; }
       const playerMap = new Map(); let currentCaptain = "";
       (data || []).forEach((entry) => {
         const membership = Array.isArray(entry.club_memberships) ? entry.club_memberships[0] : entry.club_memberships;
@@ -4780,7 +4791,7 @@ function TrainerTeamSettings({ user, members, setMembers }) {
   }, [selectedTeamId, databaseMembership, teams, members]);
 
   const saveCaptain = async () => {
-    if (!captainId) { setMessage("Bitte zuerst einen Athlet/in auswählen."); return; }
+    if (!captainId) { setMessage(t("tm.athletZuerstWaehlen")); return; }
     setSaving(true); setMessage("");
     if (!databaseMembership) {
       const selectedTeam = teams.find((team) => team.id === selectedTeamId)?.name;
@@ -4801,11 +4812,11 @@ function TrainerTeamSettings({ user, members, setMembers }) {
         const roles = captainTeams.length ? member.roles : member.roles.filter((role) => role !== "kapitaen");
         return { ...member, roles, captainTeams };
       }));
-      setSavedCaptainId(captainId); setMessage((OK_ZEICHEN + "Kapitän wurde für diese Mannschaft gespeichert.")); setSaving(false); return;
+      setSavedCaptainId(captainId); setMessage((OK_ZEICHEN + t("tm.kapitaenGespeichert2"))); setSaving(false); return;
     }
     const { error } = await supabase.rpc("set_team_captain", { target_team: selectedTeamId, target_membership: captainId });
-    if (error) setMessage("Der Kapitän konnte nicht gespeichert werden.");
-    else { setSavedCaptainId(captainId); setMessage((OK_ZEICHEN + "Kapitän wurde für diese Mannschaft gespeichert.")); }
+    if (error) setMessage(t("tm.kapitaenFehler"));
+    else { setSavedCaptainId(captainId); setMessage((OK_ZEICHEN + t("tm.kapitaenGespeichert2"))); }
     setSaving(false);
   };
 
@@ -4822,7 +4833,7 @@ function TrainerTeamSettings({ user, members, setMembers }) {
       <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>KAPITÄN</div>
       <select value={captainId} onChange={(event) => { setCaptainId(event.target.value); setMessage(""); }} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-3" style={{ background: C.paperDim, color: C.ink }}><option value="">{t("tm.athletWaehlen")}</option>{players.map((player) => <option key={player.id} value={player.id}>{player.name}</option>)}</select>
       {players.length === 0 && <div className="text-[11px] -mt-1 mb-3" style={{ color: C.textDim }}>Für diese Mannschaft sind noch keine aktiven Athlet/innen hinterlegt.</div>}
-      <button onClick={saveCaptain} disabled={!captainId || saving || captainId === savedCaptainId} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: captainId && captainId !== savedCaptainId ? C.ink : C.paperDim, color: captainId && captainId !== savedCaptainId ? C.white : C.textDim, opacity: saving ? .6 : 1 }}>{saving ? "Wird gespeichert …" : captainId === savedCaptainId && captainId ? "Kapitän gespeichert" : "Kapitän speichern"}</button>
+      <button onClick={saveCaptain} disabled={!captainId || saving || captainId === savedCaptainId} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: captainId && captainId !== savedCaptainId ? C.ink : C.paperDim, color: captainId && captainId !== savedCaptainId ? C.white : C.textDim, opacity: saving ? .6 : 1 }}>{saving ? t("allg.wirdGespeichert") : captainId === savedCaptainId && captainId ? t("tm.kapitaenGespeichert") : t("tm.kapitaenSpeichern")}</button>
       </>}
     </>}
     {message && <div role="status" className="text-[11px] mt-2" style={{ color: istErfolg(message) ? C.erfolg : C.fehler }}>{meldungstext(message)}</div>}
@@ -4847,10 +4858,10 @@ function PlayerTeamSettings({ user, setMembers }) {
         supabase.from("teams").select("id,name,category").eq("club_id", user.clubId).eq("active", true).order("name"),
         supabase.from("team_members").select("team_id").eq("membership_id", user.id).eq("function", "spieler"),
       ]);
-      if (teamError || assignmentError) { setMessage("Deine Mannschaften konnten nicht geladen werden."); setLoading(false); return; }
+      if (teamError || assignmentError) { setMessage(t("tm.meineLadenFehler")); setLoading(false); return; }
       /* Hier standen zwei Aufrufe von setMyTeamIds - einer Funktion, die es
          nirgends gibt. Sie warfen mitten im Laden, noch vor setLoading(false),
-         sodass "Meine Mannschaften" dauerhaft auf "Wird geladen ..." stand.
+         sodass "Meine Mannschaften" dauerhaft auf t("allg.wirdGeladen") stand.
          Gelesen wurde der Wert nie: Die Kanaele filtert die Datenbankregel
          "members read channels" ueber team_members, und in der Ansicht
          entscheidet memberInTeam ueber alle Mannschaften der Person. */
@@ -4939,14 +4950,14 @@ function TeamsView({ currentUser, members, setMembers, currentClub }) {
     setAssigningPenalty(true); setPenaltyMessage("");
     const { error } = await supabase.from("team_penalty_assignments")
       .insert({ team_id: selectedTeamId, rule_id: assignRuleId, membership_id: selectedPlayerId });
-    if (error) { setPenaltyMessage("Die Strafe konnte nicht zugewiesen werden."); setAssigningPenalty(false); return; }
+    if (error) { setPenaltyMessage(t("straf.zuweisenFehler")); setAssigningPenalty(false); return; }
     setAssignRuleId(""); setPenaltyMessage("Strafe wurde zugewiesen."); setAssigningPenalty(false);
   };
   const removePlayerPenalty = async (penalty) => {
     if (!window.confirm("Strafe wirklich entfernen?")) return;
     setPenaltyMessage("");
     const { error } = await supabase.from("team_penalty_assignments").delete().eq("id", penalty.id);
-    if (error) { setPenaltyMessage("Konnte nicht entfernt werden."); return; }
+    if (error) { setPenaltyMessage(t("allg.entfernenFehler")); return; }
     setPlayerPenalties((current) => current.filter((item) => item.id !== penalty.id));
     setPenaltyMessage("Strafe wurde entfernt.");
   };
@@ -4955,7 +4966,7 @@ function TeamsView({ currentUser, members, setMembers, currentClub }) {
     const nextPaid = !penalty.paidAt;
     if (databaseMembership) {
       const { error } = await supabase.rpc("mark_penalty_paid", { target_assignment: penalty.id, mark_paid: nextPaid });
-      if (error) { setPenaltyMessage("Bezahlt-Status konnte nicht geändert werden."); return; }
+      if (error) { setPenaltyMessage(t("bei.bezahltStatusFehler")); return; }
     }
     setPlayerPenalties((current) => current.map((item) => item.id === penalty.id ? { ...item, paidAt: nextPaid ? new Date().toISOString() : null } : item));
     setPenaltyMessage(nextPaid ? "Strafe als bezahlt markiert." : "Strafe als offen markiert.");
@@ -4969,7 +4980,7 @@ function TeamsView({ currentUser, members, setMembers, currentClub }) {
       setLoading(false); return;
     }
     const { data, error } = await supabase.from("teams").select("id,name,category,active").eq("club_id", currentUser.clubId).eq("active", true).order("name");
-    if (error) setMessage("Die Mannschaften konnten nicht geladen werden.");
+    if (error) setMessage(t("tm.ladenFehler"));
     else setTeams(data || []);
     setLoading(false);
   }, [databaseMembership, currentUser.clubId, members]);
@@ -5001,7 +5012,7 @@ function TeamsView({ currentUser, members, setMembers, currentClub }) {
         player_name: newPlayerName.trim(),
         membership_number: null,
       });
-      if (error || !data) { setPlayerMessage("Der Spieler konnte nicht angelegt werden."); setCreatingPlayer(false); return; }
+      if (error || !data) { setPlayerMessage(t("tm.spielerAnlegenFehler")); setCreatingPlayer(false); return; }
       id = data;
     }
     const player = { id, clubId: currentUser.clubId, name: newPlayerName.trim(), email: "", password: "", team: "", number: null, since: new Date().getFullYear(), roles: ["mitglied", "spieler"], color: AVATAR_FARBEN[2], points: 0, tippPoints: 0, badges: [], birthdate: "", accountPending: true };
@@ -5013,7 +5024,7 @@ function TeamsView({ currentUser, members, setMembers, currentClub }) {
     setPlayerMessage("");
     setPlayerTeamIds((current) => {
       if (current.includes(teamId)) return current.filter((id) => id !== teamId);
-      if (current.length >= 3) { setPlayerMessage("Athlet/innen können höchstens drei Mannschaften zugeordnet sein."); return current; }
+      if (current.length >= 3) { setPlayerMessage(t("tm.maxDreiMannschaften")); return current; }
       return [...current, teamId];
     });
   };
@@ -5026,7 +5037,7 @@ function TeamsView({ currentUser, members, setMembers, currentClub }) {
         target_membership: selectedPlayer.id,
         target_team_ids: playerTeamIds,
       });
-      if (error) { setPlayerMessage("Die Mannschaftszuordnung konnte nicht gespeichert werden."); setSavingPlayer(false); return; }
+      if (error) { setPlayerMessage(t("tm.zuordnungFehler")); setSavingPlayer(false); return; }
     }
     const assignedNames = teams.filter((team) => playerTeamIds.includes(team.id)).map((team) => team.name);
     setMembers((items) => items.map((member) => member.id === selectedPlayer.id ? {
@@ -5041,12 +5052,12 @@ function TeamsView({ currentUser, members, setMembers, currentClub }) {
   };
   const createTeam = async (event) => {
     event.preventDefault();
-    if (!name.trim()) { setMessage("Bitte einen Mannschaftsnamen eingeben."); return; }
+    if (!name.trim()) { setMessage(t("tm.nameEingeben")); return; }
     setSaving(true); setMessage("");
     let createdId = `team-${Date.now()}`;
     if (databaseMembership) {
       const { data, error } = await supabase.rpc("create_club_team", { target_club: currentUser.clubId, team_name: name.trim(), team_category: category.trim() || null, team_is_adult: isAdultTeam });
-      if (error) { setMessage(error.message?.includes("already exists") ? "Diese Mannschaft ist bereits vorhanden." : "Die Mannschaft konnte nicht angelegt werden."); setSaving(false); return; }
+      if (error) { setMessage(error.message?.includes("already exists") ? t("tm.bereitsVorhanden") : t("tm.anlegenFehler")); setSaving(false); return; }
       createdId = data;
       await loadTeams();
     } else {
@@ -5058,16 +5069,16 @@ function TeamsView({ currentUser, members, setMembers, currentClub }) {
     setEditName(team.name); setEditCategory(team.category || ""); setEditingTeam(true); setMessage("");
   };
   const saveTeamEdit = async () => {
-    if (!selectedTeam || !editName.trim()) { setMessage("Bitte einen Mannschaftsnamen eingeben."); return; }
+    if (!selectedTeam || !editName.trim()) { setMessage(t("tm.nameEingeben")); return; }
     setSavingTeamEdit(true); setMessage("");
     if (databaseMembership) {
       const { error } = await supabase.rpc("update_club_team", { target_club: currentUser.clubId, target_team: selectedTeam.id, new_name: editName.trim(), new_category: editCategory.trim() || null });
-      if (error) { setMessage(error.message?.includes("already exists") ? "Diese Mannschaft ist bereits vorhanden." : "Die Mannschaft konnte nicht geändert werden."); setSavingTeamEdit(false); return; }
+      if (error) { setMessage(error.message?.includes("already exists") ? t("tm.bereitsVorhanden") : t("tm.aendernFehler")); setSavingTeamEdit(false); return; }
       await loadTeams();
     } else {
       setTeams((current) => current.map((team) => team.id === selectedTeam.id ? { ...team, name: editName.trim(), category: editCategory.trim() || t("tm.mannschaft") } : team));
     }
-    setEditingTeam(false); setMessage((OK_ZEICHEN + "Mannschaft wurde geändert.")); setSavingTeamEdit(false);
+    setEditingTeam(false); setMessage((OK_ZEICHEN + t("tm.geaendert"))); setSavingTeamEdit(false);
   };
   const archiveTeam = async () => {
     if (!selectedTeam) return;
@@ -5075,7 +5086,7 @@ function TeamsView({ currentUser, members, setMembers, currentClub }) {
     setArchivingTeam(true); setMessage("");
     if (databaseMembership) {
       const { error } = await supabase.rpc("archive_club_team", { target_club: currentUser.clubId, target_team: selectedTeam.id });
-      if (error) { setMessage("Die Mannschaft konnte nicht archiviert werden."); setArchivingTeam(false); return; }
+      if (error) { setMessage(t("tm.archivierenFehler")); setArchivingTeam(false); return; }
     }
     setTeams((current) => current.filter((team) => team.id !== selectedTeam.id));
     setSelectedTeamId(""); setEditingTeam(false); setMessage((OK_ZEICHEN + "Mannschaft wurde archiviert.")); setArchivingTeam(false);
@@ -5088,10 +5099,10 @@ function TeamsView({ currentUser, members, setMembers, currentClub }) {
   return <div className="px-4 pt-4 pb-24">
     <SectionTitle eyebrow="Verein" title="Teams" right={canCreate ? <button onClick={() => setShowCreate((value) => !value)} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showCreate ? t("allg.schliessen") : "+ Team"}</button> : null}/>
     <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>Alle Mannschaften von {currentClub?.shortName}. Öffne ein Team, um den Athletenkader anzusehen.</div>
-    {showCreate && <form onSubmit={createTeam} className="rounded-2xl p-4 mb-5" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>{t("tm.neuAnlegen")}</div><div className="text-[11px] mb-3" style={{ color: C.textDim }}>Danach können Athlet/innen das Team in ihrem Profil auswählen.</div><input value={name} onChange={(event) => setName(event.target.value)} maxLength={80} placeholder={t("ph.mannschaftsnameBsp")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}/><input value={category} onChange={(event) => setCategory(event.target.value)} maxLength={80} placeholder={t("ph.kategorieBeispiel")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}/><button type="button" onClick={() => setIsAdultTeam((v) => !v)} className="w-full flex items-center justify-between rounded-xl px-3 py-2.5 mb-2" style={{ background: isAdultTeam ? C.fehlerFlaeche : C.paperDim, border: isAdultTeam ? `1px solid ${C.red}` : "1px solid transparent" }}><div className="text-left"><div className="text-xs font-bold" style={{ color: C.ink }}>{t("tm.erwachsene")}</div><div className="text-[10px]" style={{ color: C.textDim }}>Nur dann gibt es Strafenkatalog & Zuweisungen für dieses Team.</div></div><span className="w-10 h-6 rounded-full flex items-center px-0.5" style={{ background: isAdultTeam ? C.red : C.line, justifyContent: isAdultTeam ? "flex-end" : "flex-start" }}><span className="w-5 h-5 rounded-full" style={{ background: C.glass }}/></span></button><button disabled={saving || !name.trim()} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: name.trim() ? C.red : C.line, color: C.white }}>{saving ? "Wird angelegt …" : "Mannschaft anlegen"}</button></form>}
+    {showCreate && <form onSubmit={createTeam} className="rounded-2xl p-4 mb-5" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>{t("tm.neuAnlegen")}</div><div className="text-[11px] mb-3" style={{ color: C.textDim }}>Danach können Athlet/innen das Team in ihrem Profil auswählen.</div><input value={name} onChange={(event) => setName(event.target.value)} maxLength={80} placeholder={t("ph.mannschaftsnameBsp")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}/><input value={category} onChange={(event) => setCategory(event.target.value)} maxLength={80} placeholder={t("ph.kategorieBeispiel")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}/><button type="button" onClick={() => setIsAdultTeam((v) => !v)} className="w-full flex items-center justify-between rounded-xl px-3 py-2.5 mb-2" style={{ background: isAdultTeam ? C.fehlerFlaeche : C.paperDim, border: isAdultTeam ? `1px solid ${C.red}` : "1px solid transparent" }}><div className="text-left"><div className="text-xs font-bold" style={{ color: C.ink }}>{t("tm.erwachsene")}</div><div className="text-[10px]" style={{ color: C.textDim }}>Nur dann gibt es Strafenkatalog & Zuweisungen für dieses Team.</div></div><span className="w-10 h-6 rounded-full flex items-center px-0.5" style={{ background: isAdultTeam ? C.red : C.line, justifyContent: isAdultTeam ? "flex-end" : "flex-start" }}><span className="w-5 h-5 rounded-full" style={{ background: C.glass }}/></span></button><button disabled={saving || !name.trim()} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: name.trim() ? C.red : C.line, color: C.white }}>{saving ? t("allg.wirdAngelegt") : "Mannschaft anlegen"}</button></form>}
     {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: (istErfolg(message)||istErfolg(message)||istErfolg(message)) ? C.erfolgFlaeche : C.fehlerFlaeche, color: (istErfolg(message)||istErfolg(message)||istErfolg(message)) ? C.erfolg : C.fehler }}>{meldungstext(message)}</div>}
     {selectedTeam ? <div><button onClick={() => { setSelectedTeamId(""); setShowPlayerPicker(false); setEditingTeam(false); }} className="flex items-center gap-1 text-xs font-bold mb-3" style={{ color: C.fehler }}><ArrowLeft size={14}/> Alle Teams</button><div className="rounded-2xl p-4 mb-4" style={{ background: C.ink, color: C.white }}><div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: C.textDim }}>{selectedTeam.category || t("tm.mannschaft")}</div><div className="text-xl font-bold" style={{ fontFamily: "Oswald" }}>{selectedTeam.name}</div><div className="text-xs mt-1" style={{ color: C.textDim }}>{rosterFor(selectedTeam).length} verknüpfte Athlet/innen</div></div>{canCreate && !editingTeam && <div className="flex gap-2 mb-4"><button onClick={() => openEditTeam(selectedTeam)} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>{t("allg.bearbeiten")}</button><button onClick={archiveTeam} disabled={archivingTeam} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{archivingTeam ? "…" : "Archivieren"}</button></div>}{canCreate && editingTeam && <div className="rounded-2xl p-3.5 mb-4" style={{ background: C.paperDim }}><input value={editName} onChange={(e) => setEditName(e.target.value)} maxLength={80} placeholder={t("ph.mannschaftsname")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.glass }}/><input value={editCategory} onChange={(e) => setEditCategory(e.target.value)} maxLength={80} placeholder={t("ph.kategorie")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.glass }}/><div className="flex gap-2"><button onClick={saveTeamEdit} disabled={savingTeamEdit} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{savingTeamEdit ? "…" : t("allg.speichern")}</button><button onClick={() => setEditingTeam(false)} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>{t("allg.abbrechen")}</button></div></div>}<SectionTitle eyebrow="Kader" title="Athlet/innen" right={canAssignPlayers ? <button onClick={() => setShowPlayerPicker((value) => !value)} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showPlayerPicker ? t("allg.schliessen") : "+ Zuweisen"}</button> : null}/>{showPlayerPicker && <div className="rounded-2xl p-3 mb-4" style={{ background: C.paperDim }}><div className="text-[11px] mb-2" style={{ color: C.textDim }}>Athlet/in auswählen und anschließend seine Mannschaften festlegen.</div>{!showNewPlayer ? <button type="button" onClick={() => setShowNewPlayer(true)} className="w-full flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 mb-2 text-[11px] font-bold" style={{ background: C.glass, color: C.fehler, border: `1px dashed ${C.red}` }}><Plus size={13}/> Spieler ohne Account anlegen</button> : <div className="rounded-xl p-2.5 mb-2" style={{ background: C.glass }}><div className="text-[10px] mb-1.5" style={{ color: C.textDim }}>Für Athlet/innen ohne eigenes Handy/Konto (z. B. Kindermannschaften). Vorname und Nachname reichen — die Verknüpfung mit einem Elternteil erfolgt separat in den Familienprofilen.</div><input value={newPlayerName} onChange={(e) => setNewPlayerName(e.target.value)} placeholder={t("feld.vollerName")} className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2" style={{ background: C.paperDim }}/><div className="flex gap-2"><button type="button" onClick={() => { setShowNewPlayer(false); setNewPlayerName(""); }} className="flex-1 py-2 rounded-lg text-[11px] font-bold" style={{ background: C.paperDim, color: C.ink }}>{t("allg.abbrechen")}</button><button type="button" disabled={creatingPlayer || !newPlayerName.trim()} onClick={createPlayerWithoutAccount} className="flex-1 py-2 rounded-lg text-[11px] font-bold" style={{ background: newPlayerName.trim() ? C.ink : C.line, color: C.white }}>{creatingPlayer ? "…" : t("allg.anlegen")}</button></div></div>}<div className="space-y-1.5 max-h-56 overflow-y-auto">{players.map((player) => <button key={player.id} onClick={() => openPlayer(player)} className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-left" style={{ background: C.glass }}><div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold" style={{ background: player.color, color: C.white }}>{initialsOf(player.name)}</div><div className="flex-1"><div className="text-xs font-bold" style={{ color: C.ink }}>{player.name}</div><div className="text-[9px]" style={{ color: C.textDim }}>{memberPlayerTeams(player).join(" · ") || "Noch ohne Mannschaft"}</div></div><ChevronRight size={13} style={{ color: C.textDim }}/></button>)}</div></div>}{rosterFor(selectedTeam).length ? <div className="space-y-2">{rosterFor(selectedTeam).map((player) => <button key={player.id} onClick={() => openPlayer(player)} className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: player.color, color: C.white }}>{initialsOf(player.name)}</div><div className="flex-1"><div className="text-xs font-bold" style={{ color: C.ink }}>{player.name}</div><div className="text-[10px]" style={{ color: C.textDim }}>{memberPlayerTeams(player).join(" · ")}</div></div><ChevronRight size={14} style={{ color: C.textDim }}/></button>)}</div> : <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>Dieser Mannschaft sind noch keine Athlet/innen zugeordnet.</div>}</div> : loading ? <div className="text-xs py-4" style={{ color: C.textDim }}>{t("tm.laden")}</div> : <><SectionTitle eyebrow="Persönlich" title="Meine Teams"/><div className="space-y-2 mb-6">{ownTeams.length ? ownTeams.map((team) => <TeamCard key={team.id} team={team}/>) : <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>Du bist noch keiner Mannschaft als Athlet/in zugeordnet. Athlet/innen können im Profil bis zu drei Teams auswählen.</div>}</div><SectionTitle eyebrow="Vereinsübersicht" title="Alle Mannschaften"/><div className="space-y-2">{teams.map((team) => <TeamCard key={team.id} team={team}/>)}{teams.length === 0 && <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>{t("tm.keine")}</div>}</div></>}
-    {selectedPlayer && <div className="absolute inset-0 z-50 flex items-end p-3" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setSelectedPlayerId("")}><div role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()} className="w-full rounded-3xl p-5 max-h-[82%] overflow-y-auto" style={{ background: C.glass }}><div className="flex items-start justify-between mb-4"><div className="flex items-center gap-3"><div className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold" style={{ background: selectedPlayer.color, color: C.white }}>{initialsOf(selectedPlayer.name)}</div><div><div className="text-lg font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{selectedPlayer.name}</div><div className="text-xs" style={{ color: C.textDim }}>Athlet/in · dabei seit {selectedPlayer.since}</div></div></div><button onClick={() => setSelectedPlayerId("")} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><X size={15}/></button></div><div className="flex items-center justify-between mb-2"><div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.textDim }}>{t("tm.mannschaften")}</div>{canAssignPlayers && <span className="text-[10px] font-bold" style={{ color: playerTeamIds.length === 3 ? C.red : C.textDim }}>{playerTeamIds.length}/3</span>}{canAssignPlayers && <button type="button" onClick={() => setTeamsOpen((v) => !v)} className="p-1"><ChevronRight size={14} style={{ color: C.textDim, transform: teamsOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .15s" }}/></button>}</div>{canAssignPlayers ? (teamsOpen && <div className="space-y-2">{teams.map((team) => { const active = playerTeamIds.includes(team.id); return <button key={team.id} onClick={() => togglePlayerTeam(team.id)} className="w-full flex items-center justify-between rounded-xl px-3 py-2.5 text-left" style={{ background: active ? C.erfolgFlaeche : C.paperDim, border: active ? `1px solid ${C.secondary}` : "1px solid transparent" }}><div><div className="text-xs font-bold" style={{ color: C.ink }}>{team.name}</div><div className="text-[9px]" style={{ color: C.textDim }}>{team.category || t("tm.mannschaft")}</div></div><span className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: active ? C.secondary : C.white, color: C.white }}>{active && <Check size={13}/>}</span></button>; })}<button onClick={savePlayerTeams} disabled={savingPlayer || JSON.stringify([...playerTeamIds].sort()) === JSON.stringify([...savedPlayerTeamIds].sort())} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: JSON.stringify([...playerTeamIds].sort()) !== JSON.stringify([...savedPlayerTeamIds].sort()) ? C.ink : C.paperDim, color: JSON.stringify([...playerTeamIds].sort()) !== JSON.stringify([...savedPlayerTeamIds].sort()) ? C.white : C.textDim, opacity: savingPlayer ? .6 : 1 }}>{savingPlayer ? "Wird gespeichert …" : "Zuordnung speichern"}</button>{playerMessage && <div role="status" className="text-[11px]" style={{ color: playerMessage.includes("gespeichert") ? C.erfolg : C.fehler }}>{playerMessage}</div>}</div>) : <div className="flex flex-wrap gap-2">{memberPlayerTeams(selectedPlayer).length ? memberPlayerTeams(selectedPlayer).map((team) => <span key={team} className="px-3 py-1.5 rounded-full text-xs font-bold" style={{ background: C.erfolgFlaeche, color: C.erfolg }}>{team}</span>) : <span className="text-xs" style={{ color: C.textDim }}>{t("tm.keineZuordnungKurz")}</span>}</div>}{canManagePenalties && (<div className="mt-4 pt-4" style={{ borderTop: `1px solid ${C.line}` }}><button type="button" onClick={() => setPenaltyOpen((v) => !v)} className="w-full flex items-center justify-between mb-2"><div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.textDim }}>{t("straf.verwaltung")}</div><ChevronRight size={14} style={{ color: C.textDim, transform: penaltyOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .15s" }}/></button>{penaltyOpen && (<><div className="flex gap-2 mb-3"><select value={assignRuleId} onChange={(e) => setAssignRuleId(e.target.value)} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}><option value="">{t("straf.waehlen")}</option>{penaltyRules.map((r) => <option key={r.id} value={r.id}>{r.title} ({r.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €)</option>)}</select><button onClick={assignPenaltyToPlayer} disabled={assigningPenalty || !assignRuleId} className="px-4 rounded-xl text-xs font-bold" style={{ background: assignRuleId ? C.ink : C.line, color: C.white }}>{assigningPenalty ? "…" : "Zuweisen"}</button></div>{penaltyMessage && <div role="status" className="text-[11px] mb-2" style={{ color: penaltyMessage.includes("zugewiesen") ? C.erfolg : C.fehler }}>{penaltyMessage}</div>}<div className="text-[10px] uppercase tracking-widest font-bold mb-1.5" style={{ color: C.textDim }}>{t("straf.bisherige")}</div><div className="space-y-1.5">{playerPenalties.map((p) => <div key={p.id} className="flex items-center justify-between px-3 py-2 rounded-xl" style={{ background: C.paperDim }}><span className="text-xs font-bold" style={{ color: C.ink }}>{p.title}</span><span className="text-xs font-bold" style={{ color: C.red, fontFamily: "JetBrains Mono" }}>{p.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span><button type="button" onClick={() => togglePlayerPenaltyPaid(p)} className="px-2 py-1 rounded-lg text-[9px] font-bold flex-shrink-0" style={{ background: p.paidAt ? C.erfolgFlaeche : C.white, color: p.paidAt ? C.secondary : C.textDim }}>{p.paidAt ? t("bei.bezahlt") : "Offen"}</button><button type="button" onClick={() => removePlayerPenalty(p)} aria-label={t("aria.strafeEntfernen")} className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.glass, color: C.red }}><X size={12}/></button></div>)}{playerPenalties.length === 0 && <div className="text-[11px]" style={{ color: C.textDim }}>{t("straf.keine")}</div>}</div></>)}</div>)}</div></div>}
+    {selectedPlayer && <div className="absolute inset-0 z-50 flex items-end p-3" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setSelectedPlayerId("")}><div role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()} className="w-full rounded-3xl p-5 max-h-[82%] overflow-y-auto" style={{ background: C.glass }}><div className="flex items-start justify-between mb-4"><div className="flex items-center gap-3"><div className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold" style={{ background: selectedPlayer.color, color: C.white }}>{initialsOf(selectedPlayer.name)}</div><div><div className="text-lg font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{selectedPlayer.name}</div><div className="text-xs" style={{ color: C.textDim }}>Athlet/in · dabei seit {selectedPlayer.since}</div></div></div><button onClick={() => setSelectedPlayerId("")} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><X size={15}/></button></div><div className="flex items-center justify-between mb-2"><div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.textDim }}>{t("tm.mannschaften")}</div>{canAssignPlayers && <span className="text-[10px] font-bold" style={{ color: playerTeamIds.length === 3 ? C.red : C.textDim }}>{playerTeamIds.length}/3</span>}{canAssignPlayers && <button type="button" onClick={() => setTeamsOpen((v) => !v)} className="p-1"><ChevronRight size={14} style={{ color: C.textDim, transform: teamsOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .15s" }}/></button>}</div>{canAssignPlayers ? (teamsOpen && <div className="space-y-2">{teams.map((team) => { const active = playerTeamIds.includes(team.id); return <button key={team.id} onClick={() => togglePlayerTeam(team.id)} className="w-full flex items-center justify-between rounded-xl px-3 py-2.5 text-left" style={{ background: active ? C.erfolgFlaeche : C.paperDim, border: active ? `1px solid ${C.secondary}` : "1px solid transparent" }}><div><div className="text-xs font-bold" style={{ color: C.ink }}>{team.name}</div><div className="text-[9px]" style={{ color: C.textDim }}>{team.category || t("tm.mannschaft")}</div></div><span className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: active ? C.secondary : C.white, color: C.white }}>{active && <Check size={13}/>}</span></button>; })}<button onClick={savePlayerTeams} disabled={savingPlayer || JSON.stringify([...playerTeamIds].sort()) === JSON.stringify([...savedPlayerTeamIds].sort())} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: JSON.stringify([...playerTeamIds].sort()) !== JSON.stringify([...savedPlayerTeamIds].sort()) ? C.ink : C.paperDim, color: JSON.stringify([...playerTeamIds].sort()) !== JSON.stringify([...savedPlayerTeamIds].sort()) ? C.white : C.textDim, opacity: savingPlayer ? .6 : 1 }}>{savingPlayer ? t("allg.wirdGespeichert") : "Zuordnung speichern"}</button>{playerMessage && <div role="status" className="text-[11px]" style={{ color: playerMessage.includes("gespeichert") ? C.erfolg : C.fehler }}>{playerMessage}</div>}</div>) : <div className="flex flex-wrap gap-2">{memberPlayerTeams(selectedPlayer).length ? memberPlayerTeams(selectedPlayer).map((team) => <span key={team} className="px-3 py-1.5 rounded-full text-xs font-bold" style={{ background: C.erfolgFlaeche, color: C.erfolg }}>{team}</span>) : <span className="text-xs" style={{ color: C.textDim }}>{t("tm.keineZuordnungKurz")}</span>}</div>}{canManagePenalties && (<div className="mt-4 pt-4" style={{ borderTop: `1px solid ${C.line}` }}><button type="button" onClick={() => setPenaltyOpen((v) => !v)} className="w-full flex items-center justify-between mb-2"><div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.textDim }}>{t("straf.verwaltung")}</div><ChevronRight size={14} style={{ color: C.textDim, transform: penaltyOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .15s" }}/></button>{penaltyOpen && (<><div className="flex gap-2 mb-3"><select value={assignRuleId} onChange={(e) => setAssignRuleId(e.target.value)} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}><option value="">{t("straf.waehlen")}</option>{penaltyRules.map((r) => <option key={r.id} value={r.id}>{r.title} ({r.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €)</option>)}</select><button onClick={assignPenaltyToPlayer} disabled={assigningPenalty || !assignRuleId} className="px-4 rounded-xl text-xs font-bold" style={{ background: assignRuleId ? C.ink : C.line, color: C.white }}>{assigningPenalty ? "…" : "Zuweisen"}</button></div>{penaltyMessage && <div role="status" className="text-[11px] mb-2" style={{ color: penaltyMessage.includes("zugewiesen") ? C.erfolg : C.fehler }}>{penaltyMessage}</div>}<div className="text-[10px] uppercase tracking-widest font-bold mb-1.5" style={{ color: C.textDim }}>{t("straf.bisherige")}</div><div className="space-y-1.5">{playerPenalties.map((p) => <div key={p.id} className="flex items-center justify-between px-3 py-2 rounded-xl" style={{ background: C.paperDim }}><span className="text-xs font-bold" style={{ color: C.ink }}>{p.title}</span><span className="text-xs font-bold" style={{ color: C.red, fontFamily: "JetBrains Mono" }}>{p.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span><button type="button" onClick={() => togglePlayerPenaltyPaid(p)} className="px-2 py-1 rounded-lg text-[9px] font-bold flex-shrink-0" style={{ background: p.paidAt ? C.erfolgFlaeche : C.white, color: p.paidAt ? C.secondary : C.textDim }}>{p.paidAt ? t("bei.bezahlt") : "Offen"}</button><button type="button" onClick={() => removePlayerPenalty(p)} aria-label={t("aria.strafeEntfernen")} className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.glass, color: C.red }}><X size={12}/></button></div>)}{playerPenalties.length === 0 && <div className="text-[11px]" style={{ color: C.textDim }}>{t("straf.keine")}</div>}</div></>)}</div>)}</div></div>}
   </div>;
 }
 
@@ -5143,7 +5154,7 @@ function TeamPenaltyCatalog({ user }) {
       p_strafen: feld === "strafen_aktiv" ? wert : null,
     });
     setSchaltet("");
-    if (error) { setTeams(vorher); setMessage("Die Einstellung konnte nicht gespeichert werden."); }
+    if (error) { setTeams(vorher); setMessage(t("sys.einstellungFehler")); }
   };
   const canManageSeasons = databaseMembership && user.roles.some((role) => ["vorstand", "finanzmanager", "sysadmin", "vereinsadmin"].includes(role));
   useEffect(() => {
@@ -5173,7 +5184,7 @@ function TeamPenaltyCatalog({ user }) {
         .select("team_id,function,teams(id,name,is_adult,zusagen_aktiv,strafen_aktiv)")
         .eq("membership_id", user.id)
         .in("function", ["spieler", "trainer", "teammanager", "kapitaen"]);
-      if (error) { setMessage("Die Mannschaften konnten nicht geladen werden."); setLoading(false); return; }
+      if (error) { setMessage(t("tm.ladenFehler")); setLoading(false); return; }
       const byId = new Map();
       (data || []).forEach((entry) => {
         const team = Array.isArray(entry.teams) ? entry.teams[0] : entry.teams;
@@ -5198,7 +5209,7 @@ function TeamPenaltyCatalog({ user }) {
         .select("id,team_id,title,amount,created_at")
         .eq("team_id", selectedTeamId)
         .order("title", { ascending: true });
-      if (error) { setMessage("Der Strafenkatalog konnte nicht geladen werden."); return; }
+      if (error) { setMessage(t("straf.katalogLadenFehler")); return; }
       setRules((data || []).map((rule) => ({ ...rule, teamId: rule.team_id, amount: Number(rule.amount) })));
     };
     loadRules();
@@ -5231,7 +5242,7 @@ function TeamPenaltyCatalog({ user }) {
         .eq("team_id", selectedTeamId)
         .is("archived_season", null)
         .order("assigned_at", { ascending: false });
-      if (error) { setMessage("Die vergebenen Strafen konnten nicht geladen werden."); return; }
+      if (error) { setMessage(t("straf.vergebeneLadenFehler")); return; }
       setAssignments((data || []).map((entry) => {
         const rule = Array.isArray(entry.team_penalty_rules) ? entry.team_penalty_rules[0] : entry.team_penalty_rules;
         const membership = Array.isArray(entry.club_memberships) ? entry.club_memberships[0] : entry.club_memberships;
@@ -5250,7 +5261,7 @@ function TeamPenaltyCatalog({ user }) {
         .not("archived_season", "is", null)
         .order("archived_season", { ascending: false })
         .order("assigned_at", { ascending: false });
-      if (error) { setMessage("Die Saison-Historie konnte nicht geladen werden."); setHistoryLoading(false); return; }
+      if (error) { setMessage(t("sais.historieLadenFehler")); setHistoryLoading(false); return; }
       setHistoryAssignments((data || []).map((entry) => {
         const rule = Array.isArray(entry.team_penalty_rules) ? entry.team_penalty_rules[0] : entry.team_penalty_rules;
         const membership = Array.isArray(entry.club_memberships) ? entry.club_memberships[0] : entry.club_memberships;
@@ -5264,9 +5275,9 @@ function TeamPenaltyCatalog({ user }) {
     event.preventDefault();
     const normalizedAmount = Number(amount.replace(",", "."));
     if (!title.trim() || !Number.isFinite(normalizedAmount) || normalizedAmount < 0) {
-      setMessage("Bitte einen Titel und einen gültigen Betrag eingeben."); return;
+      setMessage(t("bei.titelBetragPflicht")); return;
     }
-    if (!canManageSelectedTeam) { setMessage("Für diese Mannschaft darfst du den Katalog nur ansehen."); return; }
+    if (!canManageSelectedTeam) { setMessage(t("straf.nurAnsehen")); return; }
     setSaving(true); setMessage("");
     let created = { id: editingId || `penalty-${Date.now()}`, teamId: selectedTeamId, title: title.trim(), amount: normalizedAmount };
     if (databaseMembership) {
@@ -5275,7 +5286,7 @@ function TeamPenaltyCatalog({ user }) {
         : supabase.from("team_penalty_rules").insert({ team_id: selectedTeamId, title: title.trim(), amount: normalizedAmount });
       const { data, error } = await request
         .select("id,team_id,title,amount,created_at").single();
-      if (error) { setMessage("Die Regel konnte nicht gespeichert werden."); setSaving(false); return; }
+      if (error) { setMessage(t("straf.regelSpeichernFehler")); setSaving(false); return; }
       created = { ...data, teamId: data.team_id, amount: Number(data.amount) };
     }
     const replaceOrAdd = (current) => [...current.filter((rule) => rule.id !== created.id), created].sort((a, b) => a.title.localeCompare(b.title, "de"));
@@ -5295,21 +5306,21 @@ function TeamPenaltyCatalog({ user }) {
     setSaving(true); setMessage("");
     if (databaseMembership) {
       const { error } = await supabase.from("team_penalty_rules").delete().eq("id", rule.id);
-      if (error) { setMessage("Die Regel konnte nicht gelöscht werden."); setSaving(false); return; }
+      if (error) { setMessage(t("straf.regelLoeschenFehler")); setSaving(false); return; }
     }
     if (!databaseMembership) setLocalRules((current) => current.filter((item) => item.id !== rule.id));
     setRules((current) => current.filter((item) => item.id !== rule.id));
-    setMessage((OK_ZEICHEN + "Regel wurde gelöscht.")); setSaving(false);
+    setMessage((OK_ZEICHEN + t("straf.regelGeloescht"))); setSaving(false);
   };
   const assignPenalty = async (event) => {
     event.preventDefault();
-    if (!assignPlayerId || !assignRuleId) { setMessage("Bitte Athlet/in und Strafe auswählen."); return; }
+    if (!assignPlayerId || !assignRuleId) { setMessage(t("straf.athletUndStrafeWaehlen")); return; }
     setAssigning(true); setMessage("");
     const rule = rules.find((r) => r.id === assignRuleId);
     if (databaseMembership) {
       const { error } = await supabase.from("team_penalty_assignments")
         .insert({ team_id: selectedTeamId, rule_id: assignRuleId, membership_id: assignPlayerId });
-      if (error) { setMessage("Die Strafe konnte nicht zugewiesen werden."); setAssigning(false); return; }
+      if (error) { setMessage(t("straf.zuweisenFehler")); setAssigning(false); return; }
       setLocalAssignments((current) => [...current]);
     } else {
       const player = teamPlayers.find((p) => p.id === assignPlayerId);
@@ -5333,7 +5344,7 @@ function TeamPenaltyCatalog({ user }) {
     if (!window.confirm(`Strafe „${assignment.ruleTitle}“ bei ${assignment.playerName} wirklich entfernen?`)) return;
     if (databaseMembership) {
       const { error } = await supabase.from("team_penalty_assignments").delete().eq("id", assignment.id);
-      if (error) { setMessage("Konnte nicht entfernt werden."); return; }
+      if (error) { setMessage(t("allg.entfernenFehler")); return; }
     } else {
       setLocalAssignments((current) => current.filter((item) => item.id !== assignment.id));
     }
@@ -5344,7 +5355,7 @@ function TeamPenaltyCatalog({ user }) {
     const nextPaid = !assignment.paidAt;
     if (databaseMembership) {
       const { error } = await supabase.rpc("mark_penalty_paid", { target_assignment: assignment.id, mark_paid: nextPaid });
-      if (error) { setMessage("Bezahlt-Status konnte nicht geändert werden."); return; }
+      if (error) { setMessage(t("bei.bezahltStatusFehler")); return; }
     } else {
       setLocalAssignments((current) => current.map((item) => item.id === assignment.id ? { ...item, paidAt: nextPaid ? new Date().toISOString() : null } : item));
     }
@@ -5352,11 +5363,11 @@ function TeamPenaltyCatalog({ user }) {
     setMessage(nextPaid ? (OK_ZEICHEN + "Strafe als bezahlt markiert.") : (OK_ZEICHEN + "Strafe als offen markiert."));
   };
   const runSeasonReset = async () => {
-    if (!seasonLabel.trim()) { setMessage("Bitte eine Saisonbezeichnung eingeben, z. B. 2025/26."); return; }
+    if (!seasonLabel.trim()) { setMessage(t("sais.bezeichnungFehlt")); return; }
     if (!window.confirm(`Alle bezahlten Strafen des Vereins werden unter „${seasonLabel.trim()}“ archiviert und aus der aktiven Ansicht entfernt. Fortfahren?`)) return;
     setResettingSeason(true); setMessage("");
     const { data, error } = await supabase.rpc("run_season_reset", { target_club: user.clubId, season_label: seasonLabel.trim() });
-    if (error) { setMessage("Der Saison-Reset konnte nicht durchgeführt werden."); setResettingSeason(false); return; }
+    if (error) { setMessage(t("sais.resetFehler")); setResettingSeason(false); return; }
     setAssignments((current) => current.filter((item) => !item.paidAt));
     setSeasonLabel("");
     setMessage(`Saison-Reset abgeschlossen. ${data ?? 0} bezahlte Strafe(n) archiviert.`);
@@ -5556,7 +5567,7 @@ function TaskCreateForm({ form, setForm, onSubmit, onCancel, editing = false, te
       </div>
 
       <div className="flex gap-2">
-        <button onClick={onSubmit} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{editing ? "Änderungen speichern" : t("allg.anlegen")}</button>
+        <button onClick={onSubmit} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{editing ? t("allg.aenderungenSpeichern") : t("allg.anlegen")}</button>
         <button onClick={onCancel} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>{t("allg.abbrechen")}</button>
       </div>
     </div>
@@ -5596,7 +5607,7 @@ function TasksView({ currentUser, members }) {
       .select("id,team_id,title,description,due_date,slots_needed,created_by,teams(name),club_task_signups(membership_id,club_memberships(display_name))")
       .eq("club_id", currentUser.clubId)
       .order("created_at", { ascending: false });
-    if (error) { setMessage("Die Aufgaben konnten nicht geladen werden."); setLoading(false); return; }
+    if (error) { setMessage(t("auf.ladenFehler")); setLoading(false); return; }
     const mapped = (tasksData || []).map((row) => {
       const team = Array.isArray(row.teams) ? row.teams[0] : row.teams;
       const signups = (row.club_task_signups || []).map((s) => {
@@ -5612,14 +5623,14 @@ function TasksView({ currentUser, members }) {
   useEffect(() => { loadAll(); }, [loadAll]);
   const resetForm = () => setForm({ title: "", description: "", dueDate: "", slots: "1", teamId: "", verantwortliche: [], startTime: "", endTime: "" });
   const createTask = async (teamId) => {
-    if (!form.title.trim()) { setMessage("Bitte einen Titel eingeben."); return; }
+    if (!form.title.trim()) { setMessage(t("allg.titelEingeben")); return; }
     const slotsNeeded = Math.max(1, Number(form.slots) || 1);
     if (editingTaskId) {
       const { error } = await supabase.from("club_tasks").update({
         title: form.title.trim(), description: form.description.trim() || null,
         due_date: form.dueDate || null, slots_needed: slotsNeeded,
       }).eq("id", editingTaskId);
-      if (error) { setMessage("Aufgabe konnte nicht geändert werden."); return; }
+      if (error) { setMessage(t("auf.aendernFehler")); return; }
       resetForm(); setEditingTaskId(null); setShowCreateClub(false); setShowCreateTeamId(""); setMessage((OK_ZEICHEN + "Aufgabe wurde geändert."));
       await loadAll();
       return;
@@ -5632,13 +5643,13 @@ function TasksView({ currentUser, members }) {
       slots_needed: slotsNeeded, created_by: currentUser.id,
       start_time: form.startTime || null, end_time: form.endTime || null,
     }).select("id").single();
-    if (error) { setMessage("Aufgabe konnte nicht angelegt werden."); return; }
+    if (error) { setMessage(t("auf.anlegenFehler")); return; }
     if (angelegt?.id && (form.verantwortliche || []).length) {
       const { error: zuFehler } = await supabase.from("club_task_assignees")
         .insert(form.verantwortliche.map((mid) => ({ task_id: angelegt.id, membership_id: mid })));
       /* Die Aufgabe steht schon - eine misslungene Zuweisung darf sie nicht
          zurueckziehen, aber verschweigen darf man sie auch nicht. */
-      if (zuFehler) { setMessage("Aufgabe angelegt, aber die Verantwortlichen konnten nicht gesetzt werden."); await loadAll(); return; }
+      if (zuFehler) { setMessage(t("auf.angelegtOhneVerantwortliche")); await loadAll(); return; }
     }
     resetForm(); setShowCreateClub(false); setShowCreateTeamId(""); setMessage((OK_ZEICHEN + "Aufgabe wurde angelegt."));
     await loadAll();
@@ -5653,20 +5664,20 @@ function TasksView({ currentUser, members }) {
   const signUp = async (taskId) => {
     setMessage("");
     const { error } = await supabase.from("club_task_signups").insert({ task_id: taskId, membership_id: currentUser.id });
-    if (error) { setMessage("Eintragen nicht möglich."); return; }
+    if (error) { setMessage(t("help.eintragenNichtMoeglich")); return; }
     await loadAll();
     supabase.rpc("check_task_reminder_threshold", { target_club: currentUser.clubId });
   };
   const withdraw = async (taskId) => {
     setMessage("");
     const { error } = await supabase.from("club_task_signups").delete().eq("task_id", taskId).eq("membership_id", currentUser.id);
-    if (error) { setMessage("Konnte nicht entfernt werden."); return; }
+    if (error) { setMessage(t("allg.entfernenFehler")); return; }
     await loadAll();
   };
   const removeTask = async (task) => {
     if (!window.confirm(`Aufgabe „${task.title}“ wirklich löschen?`)) return;
     const { error } = await supabase.from("club_tasks").delete().eq("id", task.id);
-    if (error) { setMessage("Konnte nicht gelöscht werden."); return; }
+    if (error) { setMessage(t("allg.loeschenFehler")); return; }
     await loadAll();
   };
   const TaskCard = ({ task, canManage, onEdit }) => {
@@ -5681,7 +5692,7 @@ function TasksView({ currentUser, members }) {
           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={{ background: free > 0 ? C.erfolgFlaeche : C.fehlerFlaeche, color: free > 0 ? C.erfolg : C.fehler }}>{free > 0 ? `${free}/${task.slots} frei` : "voll"}</span>
         </div>
         {task.description && <div className="text-xs mb-1.5" style={{ color: C.textDim }}>{task.description}</div>}
-        <div className="text-[10px] mb-2" style={{ color: C.textDim }}>{task.teamName ? `${task.teamName} · ` : "Verein · "}{task.dueDate ? `Fällig bis ${new Date(task.dueDate).toLocaleDateString("de-DE")}` : "Kein Fälligkeitsdatum"}</div>
+        <div className="text-[10px] mb-2" style={{ color: C.textDim }}>{task.teamName ? `${task.teamName} · ` : "Verein · "}{task.dueDate ? `Fällig bis ${new Date(task.dueDate).toLocaleDateString("de-DE")}` : t("auf.keinFaelligkeitsdatum")}</div>
         {taken > 0 && <div className="text-[10px] mb-2" style={{ color: C.textDim }}>Eingetragen: {task.signups.map((s) => s.name).join(", ")}</div>}
         <div className="flex gap-2">
           {!isSignedUp && free > 0 && <button onClick={() => signUp(task.id)} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: C.ink, color: C.white }}>{t("allg.eintragenKnopf")}</button>}
@@ -5747,7 +5758,7 @@ function VehiclesView({ currentUser, currentClub }) {
   const loadVehicles = useCallback(async () => {
     if (!databaseMembership) { setVehicles([]); return; }
     const { data, error } = await supabase.from("club_vehicles").select("id,label,license_plate,seats").eq("club_id", currentUser.clubId).order("label");
-    if (error) { setMessage("Die Fahrzeuge konnten nicht geladen werden."); return; }
+    if (error) { setMessage(t("fzg.ladenFehler")); return; }
     setVehicles(data || []);
   }, [databaseMembership, currentUser.clubId]);
   const loadTeams = useCallback(async () => {
@@ -5766,7 +5777,7 @@ function VehiclesView({ currentUser, currentClub }) {
       .lt("starts_at", monthEnd.toISOString())
       .gt("ends_at", monthStart.toISOString())
       .order("starts_at");
-    if (error) { setMessage("Die Buchungen konnten nicht geladen werden."); setLoading(false); return; }
+    if (error) { setMessage(t("fzg.buchungenFehler")); setLoading(false); return; }
     setBookings((data || []).map((row) => {
       const vehicle = Array.isArray(row.club_vehicles) ? row.club_vehicles[0] : row.club_vehicles;
       const team = Array.isArray(row.teams) ? row.teams[0] : row.teams;
@@ -5778,13 +5789,13 @@ function VehiclesView({ currentUser, currentClub }) {
   useEffect(() => { loadVehicles(); loadTeams(); }, [loadVehicles, loadTeams]);
   useEffect(() => { loadBookings(); }, [loadBookings]);
   const addVehicle = async () => {
-    if (!newVehicle.label.trim() || !newVehicle.plate.trim() || !Number(newVehicle.seats)) { setMessage("Bitte alle Felder ausfüllen."); return; }
+    if (!newVehicle.label.trim() || !newVehicle.plate.trim() || !Number(newVehicle.seats)) { setMessage(t("allg.alleFelderAusfuellen")); return; }
     setSavingVehicle(true); setMessage("");
     const payload = { label: newVehicle.label.trim(), license_plate: newVehicle.plate.trim(), seats: Number(newVehicle.seats) };
     const { error } = editingVehicleId
       ? await supabase.from("club_vehicles").update(payload).eq("id", editingVehicleId)
       : await supabase.from("club_vehicles").insert({ ...payload, club_id: currentUser.clubId, created_by: currentUser.id });
-    if (error) { setMessage(editingVehicleId ? "Fahrzeug konnte nicht geändert werden." : "Fahrzeug konnte nicht angelegt werden."); setSavingVehicle(false); return; }
+    if (error) { setMessage(editingVehicleId ? t("fzg.aendernFehler") : t("fzg.anlegenFehler")); setSavingVehicle(false); return; }
     setNewVehicle({ label: "", plate: "", seats: "" }); setEditingVehicleId(null); setShowAddVehicle(false); setSavingVehicle(false);
     await loadVehicles();
   };
@@ -5797,7 +5808,7 @@ function VehiclesView({ currentUser, currentClub }) {
   const removeVehicle = async (vehicle) => {
     if (!window.confirm(`Fahrzeug „${vehicle.label}“ wirklich löschen? Bestehende Buchungen werden ebenfalls entfernt.`)) return;
     const { error } = await supabase.from("club_vehicles").delete().eq("id", vehicle.id);
-    if (error) { setMessage("Konnte nicht gelöscht werden."); return; }
+    if (error) { setMessage(t("allg.loeschenFehler")); return; }
     await loadVehicles(); await loadBookings();
   };
   const openBooking = (vehicle) => {
@@ -5833,13 +5844,13 @@ function VehiclesView({ currentUser, currentClub }) {
     setTimeout(() => setCopiedPhone(""), 1500);
   };
   const submitBooking = async () => {
-    if (!editingBookingId && !hasPhone) { setMessage("Bitte hinterlege zuerst eine Telefonnummer in deinem Profil (Profil → Kontaktdaten), um ein Fahrzeug zu buchen."); return; }
-    if (!bookingForm.startDate || !bookingForm.endDate) { setMessage("Bitte Start- und Enddatum angeben."); return; }
-    if (!bookingForm.isPrivate && !bookingForm.teamId) { setMessage("Bitte eine Mannschaft auswählen oder auf „Privat“ umschalten."); return; }
-    if (bookingForm.isPrivate && !bookingForm.privateLabel.trim()) { setMessage("Bitte einen Namen für die private Buchung angeben."); return; }
+    if (!editingBookingId && !hasPhone) { setMessage(t("fzg.telefonNoetig")); return; }
+    if (!bookingForm.startDate || !bookingForm.endDate) { setMessage(t("ev.startEndeDatum")); return; }
+    if (!bookingForm.isPrivate && !bookingForm.teamId) { setMessage(t("ev.mannschaftOderPrivat")); return; }
+    if (bookingForm.isPrivate && !bookingForm.privateLabel.trim()) { setMessage(t("fzg.privatNameFehlt")); return; }
     const startsAt = `${bookingForm.startDate}T${String(bookingForm.startHour).padStart(2, "0")}:00:00`;
     const endsAt = `${bookingForm.endDate}T${String(bookingForm.endHour).padStart(2, "0")}:00:00`;
-    if (new Date(endsAt) <= new Date(startsAt)) { setMessage("Das Ende muss nach dem Start liegen."); return; }
+    if (new Date(endsAt) <= new Date(startsAt)) { setMessage(t("fzg.endeNachStart")); return; }
     setSavingBooking(true); setMessage("");
     const payload = {
       vehicle_id: selectedVehicle.id,
@@ -5851,7 +5862,7 @@ function VehiclesView({ currentUser, currentClub }) {
       ? await supabase.from("vehicle_bookings").update(payload).eq("id", editingBookingId)
       : await supabase.from("vehicle_bookings").insert({ ...payload, club_id: currentUser.clubId, membership_id: currentUser.id });
     if (error) {
-      setMessage(error.message?.includes("exclude") || error.code === "23P01" ? "Das Fahrzeug ist in diesem Zeitraum bereits gebucht." : editingBookingId ? "Buchung konnte nicht geändert werden." : "Buchung konnte nicht angelegt werden.");
+      setMessage(error.message?.includes("exclude") || error.code === "23P01" ? t("fzg.zeitraumBelegt") : editingBookingId ? t("fzg.buchungAendernFehler") : t("fzg.buchungAnlegenFehler"));
       setSavingBooking(false); return;
     }
     if (!editingBookingId) {
@@ -5865,9 +5876,9 @@ function VehiclesView({ currentUser, currentClub }) {
   const entscheide = async (booking, annehmen) => {
     setMessage("");
     const { error } = await supabase.rpc("entscheide_fahrzeug_anfrage", { target_booking: booking.id, annehmen });
-    if (error) { setMessage("Die Entscheidung konnte nicht gespeichert werden."); return; }
-    setMessage(annehmen ? "Buchung bestätigt — die anfragende Person wurde benachrichtigt."
-                        : "Anfrage abgelehnt — die anfragende Person wurde benachrichtigt.");
+    if (error) { setMessage(t("allg.entscheidungNichtGespeichert")); return; }
+    setMessage(annehmen ? t("fzg.buchungBestaetigt")
+                        : t("mit.anfrageAbgelehnt"));
     await loadVehicles();
   };
   const darfEntscheiden = canManageDuty(currentUser);
@@ -5875,7 +5886,7 @@ function VehiclesView({ currentUser, currentClub }) {
   const cancelBooking = async (booking) => {
     if (!window.confirm("Buchung wirklich stornieren?")) return;
     const { error } = await supabase.from("vehicle_bookings").delete().eq("id", booking.id);
-    if (error) { setMessage("Konnte nicht storniert werden."); return; }
+    if (error) { setMessage(t("allg.stornoFehler")); return; }
     await loadBookings();
   };
   const monthLabel = monthDate.toLocaleDateString("de-DE", { month: "long", year: "numeric" });
@@ -5908,7 +5919,7 @@ function VehiclesView({ currentUser, currentClub }) {
           <input value={newVehicle.plate} onChange={(e) => setNewVehicle({ ...newVehicle, plate: e.target.value })} placeholder={t("ph.kennzeichen")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}/>
           <input value={newVehicle.seats} onChange={(e) => setNewVehicle({ ...newVehicle, seats: e.target.value })} inputMode="numeric" placeholder={t("ph.anzahlPlaetze")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}/>
           <div className="flex gap-2">
-            <button onClick={addVehicle} disabled={savingVehicle} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{savingVehicle ? "…" : editingVehicleId ? "Änderungen speichern" : t("allg.anlegen")}</button>
+            <button onClick={addVehicle} disabled={savingVehicle} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{savingVehicle ? "…" : editingVehicleId ? t("allg.aenderungenSpeichern") : t("allg.anlegen")}</button>
             {editingVehicleId && <button onClick={() => { setEditingVehicleId(null); setNewVehicle({ label: "", plate: "", seats: "" }); setShowAddVehicle(false); }} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.textDim }}>{t("allg.abbrechen")}</button>}
           </div>
         </div>
@@ -5917,7 +5928,7 @@ function VehiclesView({ currentUser, currentClub }) {
         {vehicles.map((v) => (
           <div key={v.id} className="flex items-center gap-3 rounded-2xl px-3.5 py-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
             <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: C.paperDim, color: C.red }}><Car size={18}/></div>
-            <button onClick={() => { if (!canBook) return; if (!hasPhone) { setMessage("Bitte hinterlege zuerst eine Telefonnummer in deinem Profil (Profil → Kontaktdaten), um ein Fahrzeug zu buchen."); return; } openBooking(v); }} disabled={!canBook} className="flex-1 text-left">
+            <button onClick={() => { if (!canBook) return; if (!hasPhone) { setMessage(t("fzg.telefonNoetig")); return; } openBooking(v); }} disabled={!canBook} className="flex-1 text-left">
               <div className="text-sm font-bold" style={{ color: C.ink }}>{v.label}</div>
               <div className="text-[11px]" style={{ color: C.textDim }}>{v.license_plate} · {v.seats} Plätze</div>
             </button>
@@ -6027,7 +6038,7 @@ function VehiclesView({ currentUser, currentClub }) {
                 {teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
             )}
-            <button onClick={submitBooking} disabled={savingBooking} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{savingBooking ? (editingBookingId ? "Wird gespeichert …" : "Wird gebucht …") : (editingBookingId ? "Änderungen speichern" : "Fahrzeug buchen")}</button>
+            <button onClick={submitBooking} disabled={savingBooking} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{savingBooking ? (editingBookingId ? t("allg.wirdGespeichert") : t("fzg.wirdGebucht")) : (editingBookingId ? t("allg.aenderungenSpeichern") : "Fahrzeug buchen")}</button>
           </div>
         </div>
       )}
@@ -6125,10 +6136,10 @@ function DutyTasksSection({ ev, currentUser, sport, onNeuLaden, dutyPlan, member
        freundliche Meldung, nichts passiert. */
     const { data: uebernommen, error } = await supabase.rpc("apply_duty_template", { target_event: ev.id, target_template: selectedTemplate });
     setApplying(false);
-    if (error) { setMessage("Vorlage konnte nicht angewendet werden."); return; }
-    if (!uebernommen) { setMessage("Dieser Satz enthält noch keine Stationen. Trage sie unter Verwaltung → Helferdienst-Sätze ein."); return; }
+    if (error) { setMessage(t("help.vorlageNichtAngewendet")); return; }
+    if (!uebernommen) { setMessage(t("help.satzOhneStationen")); return; }
     setSelectedTemplate("");
-    setMessage(OK_ZEICHEN + (uebernommen === 1 ? "Eine Station wurde übernommen." : `${uebernommen} Stationen wurden übernommen.`));
+    setMessage(OK_ZEICHEN + (uebernommen === 1 ? t("help.stationUebernommen") : `${uebernommen} Stationen wurden übernommen.`));
     await loadTasks();
     /* Die Stationen stehen jetzt am Termin selbst (events.helper_slots). Ohne
        diesen Aufruf zeigt die Karte weiter die alte Liste - loadTasks holt nur
@@ -6142,7 +6153,7 @@ function DutyTasksSection({ ev, currentUser, sport, onNeuLaden, dutyPlan, member
   const claimTask = async (taskId) => {
     setMessage("");
     const { error } = await supabase.rpc("claim_duty_task", { target_task: taskId });
-    if (error) { setMessage("Aktion nicht möglich."); return; }
+    if (error) { setMessage(t("allg.aktionNichtMoeglich")); return; }
     await loadTasks();
   };
 
@@ -6155,13 +6166,13 @@ function DutyTasksSection({ ev, currentUser, sport, onNeuLaden, dutyPlan, member
   const stationEntfernen = async (station) => {
     const eingetragen = (dutyPlan?.[ev.id]?.[station] || []).length;
     const frage = eingetragen
-      ? `"${station}" entfernen? ${eingetragen === 1 ? "Eine Person ist" : `${eingetragen} Personen sind`} dafür eingetragen — ${eingetragen === 1 ? "ihr Dienst" : "ihre Dienste"} entfällt damit.`
+      ? `"${station}" entfernen? ${eingetragen === 1 ? t("allg.einePersonIst") : `${eingetragen} Personen sind`} dafür eingetragen — ${eingetragen === 1 ? "ihr Dienst" : "ihre Dienste"} entfällt damit.`
       : `"${station}" entfernen?`;
     if (!window.confirm(frage)) return;
     setMessage("");
     const { data, error } = await supabase.rpc("remove_duty_station", { target_event: ev.id, station_name: station });
-    if (error) { setMessage("Die Station konnte nicht entfernt werden."); return; }
-    setMessage(OK_ZEICHEN + (data ? `Station entfernt. ${data === 1 ? "Eine Eintragung wurde" : `${data} Eintragungen wurden`} gelöscht.` : "Station entfernt."));
+    if (error) { setMessage(t("help.stationEntfernenFehler")); return; }
+    setMessage(OK_ZEICHEN + (data ? `Station entfernt. ${data === 1 ? t("help.eintragungWurde") : `${data} Eintragungen wurden`} gelöscht.` : "Station entfernt."));
     await loadTasks();
     onNeuLaden?.();
   };
@@ -6169,13 +6180,13 @@ function DutyTasksSection({ ev, currentUser, sport, onNeuLaden, dutyPlan, member
   const alleEntfernen = async () => {
     const gesamt = Object.values(dutyPlan?.[ev.id] || {}).reduce((n, l) => n + (l?.length || 0), 0);
     const frage = gesamt
-      ? `Alle Stationen dieses Termins entfernen? ${gesamt === 1 ? "Eine Eintragung geht" : `${gesamt} Eintragungen gehen`} dabei verloren.`
-      : "Alle Stationen dieses Termins entfernen?";
+      ? `Alle Stationen dieses Termins entfernen? ${gesamt === 1 ? t("help.eineEintragungVerloren") : `${gesamt} Eintragungen gehen`} dabei verloren.`
+      : t("help.alleStationenEntfernen");
     if (!window.confirm(frage)) return;
     setMessage("");
     const { data, error } = await supabase.rpc("clear_duty_stations", { target_event: ev.id });
-    if (error) { setMessage("Die Stationen konnten nicht entfernt werden."); return; }
-    setMessage(data ? `Alle Stationen entfernt, dazu ${data === 1 ? "eine Eintragung" : `${data} Eintragungen`}.` : "Alle Stationen entfernt.");
+    if (error) { setMessage(t("help.stationenEntfernenFehler")); return; }
+    setMessage(data ? `Alle Stationen entfernt, dazu ${data === 1 ? t("help.eineEintragung") : `${data} Eintragungen`}.` : t("help.alleStationenEntfernt"));
     await loadTasks();
     onNeuLaden?.();
   };
@@ -6231,7 +6242,7 @@ function DutyTasksSection({ ev, currentUser, sport, onNeuLaden, dutyPlan, member
                 {canManage && <button onClick={() => deleteTask(task.id)} className="text-[10px] font-bold" style={{ color: C.red }}>{t("allg.loeschen")}</button>}
               </div>
               <div className="text-[10px] mb-1.5" style={{ color: C.textDim }}>
-                {task.assigneeName ? `Zugewiesen: ${task.assigneeName}` : "Noch niemandem zugewiesen"}
+                {task.assigneeName ? `Zugewiesen: ${task.assigneeName}` : t("auf.niemandZugewiesen")}
                 {task.dueDate ? ` · Frist ${new Date(task.dueDate).toLocaleDateString("de-DE")}` : ""}
               </div>
               {canManage && (
@@ -6269,7 +6280,7 @@ function DutyTemplatesPanel({ currentUser, sport }) {
       .select("id,name,duty_task_template_items(id,title,sort_order)")
       .eq("club_id", currentUser.clubId)
       .order("name");
-    if (error) { setMessage("Sätze konnten nicht geladen werden."); setMessageOk(false); setLoading(false); return; }
+    if (error) { setMessage(t("help.saetzeLadenFehler")); setMessageOk(false); setLoading(false); return; }
     setTemplates((data || []).map((row) => ({
       id: row.id, name: row.name,
       items: (row.duty_task_template_items || []).slice().sort((a, b) => a.sort_order - b.sort_order),
@@ -6281,13 +6292,13 @@ function DutyTemplatesPanel({ currentUser, sport }) {
   const createTemplate = async () => {
     if (!newName.trim()) return;
     const { error } = await supabase.from("duty_task_templates").insert({ club_id: currentUser.clubId, name: newName.trim(), created_by: currentUser.id });
-    if (error) { setMessage("Satz konnte nicht angelegt werden."); setMessageOk(false); return; }
+    if (error) { setMessage(t("help.satzAnlegenFehler")); setMessageOk(false); return; }
     setNewName(""); setMessage("Satz wurde angelegt."); setMessageOk(true); await loadTemplates();
   };
   const deleteTemplate = async (id) => {
-    if (!window.confirm("Diesen Satz inklusive aller Stationen wirklich löschen?")) return;
+    if (!window.confirm(t("help.satzMitStationenLoeschen"))) return;
     const { error } = await supabase.from("duty_task_templates").delete().eq("id", id);
-    if (error) { setMessage("Satz konnte nicht gelöscht werden."); setMessageOk(false); return; }
+    if (error) { setMessage(t("help.satzNichtGeloescht")); setMessageOk(false); return; }
     await loadTemplates();
   };
   const addItem = async (templateId) => {
@@ -6296,7 +6307,7 @@ function DutyTemplatesPanel({ currentUser, sport }) {
     const template = templates.find((t) => t.id === templateId);
     const nextOrder = template?.items.length || 0;
     const { error } = await supabase.from("duty_task_template_items").insert({ template_id: templateId, title, sort_order: nextOrder });
-    if (error) { setMessage("Station konnte nicht hinzugefügt werden."); setMessageOk(false); return; }
+    if (error) { setMessage(t("help.stationHinzufuegenFehler")); setMessageOk(false); return; }
     setNewItemTitles((all) => ({ ...all, [templateId]: "" }));
     await loadTemplates();
   };
@@ -6454,7 +6465,7 @@ function SubscriptionPanel({ user }) {
 
   const absenden = async (e) => {
     e.preventDefault();
-    if (!form.contact_name.trim() || !form.contact_email.trim()) { setMessage("Bitte Name und E-Mail angeben."); return; }
+    if (!form.contact_name.trim() || !form.contact_email.trim()) { setMessage(t("allg.nameUndMailAngeben")); return; }
     setSendet(true); setMessage("");
     const { error } = await supabase.from("club_access_requests").insert({
       club_id: user.clubId,
@@ -6471,8 +6482,8 @@ function SubscriptionPanel({ user }) {
          sonst sammelt sich beim Betreiber derselbe Wunsch mehrfach, weil in der
          App mehrere Berechtigte sitzen. */
       setMessage(/duplicate|unique/i.test(error.message || "")
-        ? "Für euren Verein liegt bereits eine Anfrage vor. Wir melden uns."
-        : "Die Anfrage konnte nicht gesendet werden.");
+        ? t("zug.anfrageBereitsVorhanden")
+        : t("allg.anfrageSendenFehler"));
       setSendet(false); return;
     }
     setFormularOffen(false); setSendet(false);
@@ -6480,7 +6491,7 @@ function SubscriptionPanel({ user }) {
   };
 
   const zurueckziehen = async () => {
-    if (!anfrage || !window.confirm("Anfrage zurückziehen?")) return;
+    if (!anfrage || !window.confirm(t("mit.anfrageZurueckziehenFrage"))) return;
     await supabase.from("club_access_requests").delete().eq("id", anfrage.id);
     await laden();
   };
@@ -6502,14 +6513,14 @@ function SubscriptionPanel({ user }) {
           {vollzugang ? `Vollzugang aktiv (${CLUB_TIER_INFO[clubStatus.tier]?.label || clubStatus.tier})` : "Kostenlose Stufe"}
         </div>
         {accountUsage && <div className="text-[11px]" style={{ color: accountUsage.used >= accountUsage.allowed ? C.red : C.textDim }}>
-          {accountUsage.used} von {accountUsage.allowed} Zugängen belegt{accountUsage.used >= accountUsage.allowed ? " — für weitere Mitglieder braucht ihr den Vollzugang." : ""}
+          {accountUsage.used} von {accountUsage.allowed} Zugängen belegt{accountUsage.used >= accountUsage.allowed ? t("zug.vollzugangHinweis") : ""}
         </div>}
         {!vollzugang && <div className="text-[11px] mt-1.5" style={{ color: C.textDim }}>Trainings- und Spielpläne sind dauerhaft kostenlos. Mannschaften, Chat, Vereins-News, Helferplanung, Fahrzeugbuchung und das Kalender-Abo kommen mit dem Vollzugang dazu.</div>}
       </div>
     )}
 
     {/* Ohne Datenbank gibt es nichts abzuschicken: supabase ist dann null, und
-        der Knopf fuehrte in einen TypeError, nach dem er auf "Wird gesendet ..."
+        der Knopf fuehrte in einen TypeError, nach dem er auf t("allg.wirdGesendet")
         stehen blieb. */}
     {!vollzugang && databaseClub && anfrage !== undefined && (
       <>
@@ -6518,11 +6529,11 @@ function SubscriptionPanel({ user }) {
         {anfrage ? (
           <div className="rounded-2xl p-4 mb-5" style={{ background: C.sekundaerWeich, border: `1px solid ${C.edge}` }}>
             <div className="text-sm font-bold mb-1" style={{ color: C.ink }}>
-              {anfrage.status === "berechnet" ? "Rechnung ist unterwegs" : "Anfrage liegt vor"}
+              {anfrage.status === "berechnet" ? t("bei.rechnungUnterwegs") : "Anfrage liegt vor"}
             </div>
             <div className="text-[11px]" style={{ color: C.textDim }}>
               {anfrage.status === "berechnet"
-                ? "Wir haben euch die Rechnung geschickt. Nach dem Zahlungseingang schalten wir den Verein frei."
+                ? t("zug.rechnungGeschickt")
                 : `Eingegangen am ${new Date(anfrage.created_at).toLocaleDateString("de-DE")} durch ${anfrage.contact_name}. Wir melden uns mit einem Angebot.`}
             </div>
             {anfrage.status === "offen" && darfAnfragen && (
@@ -6549,7 +6560,7 @@ function SubscriptionPanel({ user }) {
               </button>
               <textarea value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} rows={2} placeholder={t("ph.anmerkung")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none" style={{ background: C.paperDim }} />
               <div className="flex gap-2">
-                <button type="submit" disabled={sendet} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white, opacity: sendet ? .6 : 1 }}>{sendet ? "Wird gesendet …" : "Anfrage senden"}</button>
+                <button type="submit" disabled={sendet} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white, opacity: sendet ? .6 : 1 }}>{sendet ? t("allg.wirdGesendet2") : "Anfrage senden"}</button>
                 <button type="button" onClick={() => setFormularOffen(false)} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.textDim }}>{t("allg.abbrechen")}</button>
               </div>
             </form>
@@ -6653,7 +6664,7 @@ function BoardMemberOverview({ members, currentUser }) {
       const { data, error } = await supabase.from("club_memberships")
         .select("id,display_name,email,member_since,status,membership_roles(role),team_members(function,teams(name))")
         .eq("club_id", currentUser.clubId).eq("status", "active");
-      if (error) { setMessage("Die Mitgliederliste konnte nicht geladen werden."); setLoading(false); return; }
+      if (error) { setMessage(t("mit.listeFehler")); setLoading(false); return; }
       /* team ist das eine Feld, wenn nur EINE Mannschaft gemeint sein kann.
          Vorher stand dort playerTeamNames[0] - also die Zeile, die Supabase
          zufaellig zuerst zurueckgab. Wer in Herren 1 und Herren 2 spielt,
@@ -6734,7 +6745,7 @@ function MemberDetailPanel({ member, onClose }) {
           .eq("membership_id", member.id).order("joined_at", { ascending: false }),
       ]);
       if (penaltyRes.error || taskRes.error || driverRes.error || passengerRes.error) {
-        setMessage("Einige Daten konnten nicht geladen werden.");
+        setMessage(t("allg.datenTeilweiseFehler"));
       }
       setPenalties((penaltyRes.data || []).map((row) => {
         const rule = Array.isArray(row.team_penalty_rules) ? row.team_penalty_rules[0] : row.team_penalty_rules;
@@ -6796,7 +6807,7 @@ function MemberDetailPanel({ member, onClose }) {
           <div className="text-[10px] uppercase tracking-widest font-bold mb-2" style={{ color: C.textDim }}>{t("auf.titel")}</div>
           {tasks.length === 0 ? <div className="text-[11px] rounded-xl p-3 mb-4" style={{ background: C.paperDim, color: C.textDim }}>{t("auf.keineEingetragen")}</div> : (
             <div className="space-y-1.5 mb-4">
-              {tasks.map((t) => <div key={t.id} className="px-3 py-2 rounded-xl" style={{ background: C.paperDim }}><div className="text-xs font-bold" style={{ color: C.ink }}>{t.title}</div><div className="text-[10px]" style={{ color: C.textDim }}>{t.teamName ? `${t.teamName} · ` : "Verein · "}{t.dueDate ? `Fällig bis ${new Date(t.dueDate).toLocaleDateString("de-DE")}` : "Kein Fälligkeitsdatum"}</div></div>)}
+              {tasks.map((t) => <div key={t.id} className="px-3 py-2 rounded-xl" style={{ background: C.paperDim }}><div className="text-xs font-bold" style={{ color: C.ink }}>{t.title}</div><div className="text-[10px]" style={{ color: C.textDim }}>{t.teamName ? `${t.teamName} · ` : "Verein · "}{t.dueDate ? `Fällig bis ${new Date(t.dueDate).toLocaleDateString("de-DE")}` : t("auf.keinFaelligkeitsdatum")}</div></div>)}
             </div>
           )}
           <div className="text-[10px] uppercase tracking-widest font-bold mb-2" style={{ color: C.textDim }}>{t("fahr.titel")}</div>
@@ -6828,7 +6839,7 @@ function JoinRequestsManager({ currentUser }) {
       .eq("club_id", currentUser.clubId)
       .eq("status", "pending")
       .order("created_at", { ascending: true });
-    if (error) { setMessage("Anfragen konnten nicht geladen werden."); setLoading(false); return; }
+    if (error) { setMessage(t("zug.anfragenLadenFehler")); setLoading(false); return; }
     setRequests(data || []);
     setLoading(false);
   };
@@ -6840,7 +6851,7 @@ function JoinRequestsManager({ currentUser }) {
       approve,
       granted_role: approve ? (roleChoice[request.id] || request.requested_role || "mitglied") : null,
     });
-    if (error) { setMessage("Aktion konnte nicht ausgeführt werden."); setBusyId(""); return; }
+    if (error) { setMessage(t("allg.aktionFehler")); setBusyId(""); return; }
     setRequests((current) => current.filter((r) => r.id !== request.id));
     setMessage(approve ? (OK_ZEICHEN + "Anfrage angenommen.") : "Anfrage abgelehnt.");
     setBusyId("");
@@ -6889,7 +6900,7 @@ function SysAdminUserManager({ members, setMembers }) {
       let available = TEAMS.filter((name) => name !== "Eltern / Angehörige").map((name) => ({ id: name, name }));
       if (databaseMembership) {
         const { data, error } = await supabase.from("teams").select("id,name,category").eq("club_id", selected.clubId).eq("active", true).order("name");
-        if (error) { setMessage("Die Mannschaften konnten nicht geladen werden."); return; }
+        if (error) { setMessage(t("tm.ladenFehler")); return; }
         available = data || [];
       }
       const names = memberPlayerTeams(selected);
@@ -6900,7 +6911,7 @@ function SysAdminUserManager({ members, setMembers }) {
   }, [selectedId, databaseMembership]);
 
   const saveProfile = async () => {
-    if (!selected || !form.name.trim()) { setMessage("Bitte einen Namen eingeben."); return; }
+    if (!selected || !form.name.trim()) { setMessage(t("allg.nameEingeben")); return; }
     setSaving(true); setMessage("");
     if (databaseMembership) {
       const { error } = await supabase.rpc("sysadmin_update_member_profile", {
@@ -6911,7 +6922,7 @@ function SysAdminUserManager({ members, setMembers }) {
         new_member_since: Number(form.since),
         new_status: form.status,
       });
-      if (error) { setMessage("Das Vereinsprofil konnte nicht gespeichert werden."); setSaving(false); return; }
+      if (error) { setMessage(t("verein.profilSpeichernFehler")); setSaving(false); return; }
     }
     setMembers((items) => items.map((member) => member.id === selected.id ? { ...member, name: form.name.trim(), email: form.email.trim(), birthdate: form.birthdate, since: Number(form.since), status: form.status } : member));
     setMessage((OK_ZEICHEN + "Vereinsprofil gespeichert.")); setSaving(false);
@@ -6925,7 +6936,7 @@ function SysAdminUserManager({ members, setMembers }) {
     setSaving(true); setMessage("");
     if (databaseMembership) {
       const { error } = await supabase.rpc("set_managed_player_teams", { target_club: selected.clubId, target_membership: selected.id, target_team_ids: playerTeamIds });
-      if (error) { setMessage("Die Athleten-Mannschaften konnten nicht gespeichert werden."); setSaving(false); return; }
+      if (error) { setMessage(t("tm.athletenTeamsSpeichernFehler")); setSaving(false); return; }
     }
     const names = teams.filter((team) => playerTeamIds.includes(team.id)).map((team) => team.name);
     setMembers((items) => items.map((member) => member.id === selected.id ? { ...member, playerTeams: names, team: hoechsteMannschaft(names) || "Mitglied", teams: [...new Set([...names, ...(member.trainerTeams || []), member.managedTeam].filter(Boolean))] } : member));
@@ -6984,9 +6995,9 @@ function SysAdminUserManager({ members, setMembers }) {
     )}
     {selected && <><div className="rounded-2xl p-4 mb-4 flex items-center gap-3" style={{ background: C.ink, color: C.white }}><div className="w-11 h-11 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: selected.color }}>{initialsOf(selected.name)}</div><div className="min-w-0"><div className="text-base font-bold truncate" style={{ fontFamily: "Oswald" }}>{selected.name}</div><div className="text-[10px] truncate" style={{ color: C.textDim }}>{selected.email || "Profil ohne eigene E-Mail"}</div></div></div>
       <div className="grid grid-cols-2 gap-2 mb-4">{[["overview", "Stammdaten"], ["roles", "Rollen & Trainer"], ["teams", "Athleten-Teams"], ["family", "Familie"]].map(([id, label]) => <button key={id} onClick={() => { setSection(id); setMessage(""); }} className="py-2.5 rounded-xl text-[11px] font-bold" style={{ background: section === id ? C.ink : C.white, color: section === id ? C.white : C.textDim, border: `1px solid ${section === id ? C.ink : C.line}` }}>{label}</button>)}</div>
-      {section === "overview" && <div className="rounded-2xl p-4 space-y-2" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="text-sm font-bold mb-2" style={{ color: C.ink }}>{t("verein.profilBearbeiten")}</div><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder={t("ph.anzeigename")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/><input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} placeholder={t("ph.kontaktmail")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/><div className="grid grid-cols-2 gap-2"><input type="date" value={form.birthdate} onChange={(event) => setForm({ ...form, birthdate: event.target.value })} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/><input type="number" min="1800" max="2200" value={form.since} onChange={(event) => setForm({ ...form, since: event.target.value })} placeholder={t("ph.mitgliedSeit")} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/></div><select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}><option value="active">{t("status.aktiv")}</option><option value="pending">{t("status.ausstehend")}</option><option value="inactive">{t("status.inaktiv")}</option><option value="blocked">{t("status.gesperrt")}</option></select><button onClick={saveProfile} disabled={saving} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: C.red, color: C.aufPrimaer }}>{saving ? "Wird gespeichert …" : "Stammdaten speichern"}</button></div>}
+      {section === "overview" && <div className="rounded-2xl p-4 space-y-2" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="text-sm font-bold mb-2" style={{ color: C.ink }}>{t("verein.profilBearbeiten")}</div><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder={t("ph.anzeigename")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/><input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} placeholder={t("ph.kontaktmail")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/><div className="grid grid-cols-2 gap-2"><input type="date" value={form.birthdate} onChange={(event) => setForm({ ...form, birthdate: event.target.value })} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/><input type="number" min="1800" max="2200" value={form.since} onChange={(event) => setForm({ ...form, since: event.target.value })} placeholder={t("ph.mitgliedSeit")} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/></div><select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}><option value="active">{t("status.aktiv")}</option><option value="pending">{t("status.ausstehend")}</option><option value="inactive">{t("status.inaktiv")}</option><option value="blocked">{t("status.gesperrt")}</option></select><button onClick={saveProfile} disabled={saving} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: C.red, color: C.aufPrimaer }}>{saving ? t("allg.wirdGespeichert") : "Stammdaten speichern"}</button></div>}
       {section === "roles" && <RolesPanel members={[selected]} setMembers={setMembers}/>}
-      {section === "teams" && <div className="rounded-2xl p-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>{!selected.roles.includes("spieler") ? <div className="text-xs" style={{ color: C.textDim }}>Vergib zuerst unter „Rollen & Trainer“ die Rolle Athlet/in.</div> : <><div className="flex items-center justify-between mb-2"><div className="text-sm font-bold">{t("tm.athletenTeams")}</div><span className="text-[10px] font-bold" style={{ color: playerTeamIds.length === 3 ? C.red : C.textDim }}>{playerTeamIds.length}/3</span></div><div className="space-y-2 mb-3">{teams.map((team) => { const active = playerTeamIds.includes(team.id); return <button key={team.id} onClick={() => togglePlayerTeam(team.id)} className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left" style={{ background: active ? C.erfolgFlaeche : C.paperDim, border: active ? `1px solid ${C.secondary}` : "1px solid transparent" }}><span className="text-xs font-bold">{team.name}</span>{active && <Check size={14} style={{ color: C.erfolg }}/>}</button>; })}</div><button onClick={savePlayerTeams} disabled={saving || JSON.stringify([...playerTeamIds].sort()) === JSON.stringify([...savedPlayerTeamIds].sort())} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white, opacity: JSON.stringify([...playerTeamIds].sort()) === JSON.stringify([...savedPlayerTeamIds].sort()) ? .35 : 1 }}>{saving ? "Wird gespeichert …" : "Mannschaften speichern"}</button></>}</div>}
+      {section === "teams" && <div className="rounded-2xl p-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>{!selected.roles.includes("spieler") ? <div className="text-xs" style={{ color: C.textDim }}>Vergib zuerst unter „Rollen & Trainer“ die Rolle Athlet/in.</div> : <><div className="flex items-center justify-between mb-2"><div className="text-sm font-bold">{t("tm.athletenTeams")}</div><span className="text-[10px] font-bold" style={{ color: playerTeamIds.length === 3 ? C.red : C.textDim }}>{playerTeamIds.length}/3</span></div><div className="space-y-2 mb-3">{teams.map((team) => { const active = playerTeamIds.includes(team.id); return <button key={team.id} onClick={() => togglePlayerTeam(team.id)} className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left" style={{ background: active ? C.erfolgFlaeche : C.paperDim, border: active ? `1px solid ${C.secondary}` : "1px solid transparent" }}><span className="text-xs font-bold">{team.name}</span>{active && <Check size={14} style={{ color: C.erfolg }}/>}</button>; })}</div><button onClick={savePlayerTeams} disabled={saving || JSON.stringify([...playerTeamIds].sort()) === JSON.stringify([...savedPlayerTeamIds].sort())} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white, opacity: JSON.stringify([...playerTeamIds].sort()) === JSON.stringify([...savedPlayerTeamIds].sort()) ? .35 : 1 }}>{saving ? t("allg.wirdGespeichert") : "Mannschaften speichern"}</button></>}</div>}
       {section === "family" && <><FamilyTree user={selected} members={members}/><div className="mt-3"><FamilyLinkManager user={selected} members={members} setMembers={setMembers} adminMode /></div></>}
       {message && <div role="status" className="text-[11px] mt-3 rounded-xl px-3 py-2" style={{ background: istErfolg(message) ? C.erfolgFlaeche : C.fehlerFlaeche, color: istErfolg(message) ? C.erfolg : C.fehler }}>{meldungstext(message)}</div>}
     </>}
@@ -7010,7 +7021,7 @@ function ProfileDataSettings({ user, setMembers, saveRef }) {
   const countryNames = React.useMemo(() => { const names = new Intl.DisplayNames(["de"], { type: "region" }); return COUNTRY_CODES.map((code) => ({ code, name: names.of(code) || code })).sort((a,b)=>a.name.localeCompare(b.name,"de")); }, []);
   const matches = countryNames.filter((item) => !countryQuery || item.name.toLowerCase().includes(countryQuery.toLowerCase()) || item.code.toLowerCase().startsWith(countryQuery.toLowerCase())).slice(0, 12);
   const save = async () => {
-    if (!form.firstName.trim() || !form.lastName.trim()) { setMessage("Bitte Vor- und Nachname ausfüllen."); return; }
+    if (!form.firstName.trim() || !form.lastName.trim()) { setMessage(t("pf.namePflicht")); return; }
     /* Bei der E-Mail wird nachgefragt.
        Alle anderen Angaben - Adresse, Geburtstag, Telefon - speichern still;
        eine Rueckfrage bei jedem Feld waere nur laestig. Die Kontaktadresse ist
@@ -7022,8 +7033,8 @@ function ProfileDataSettings({ user, setMembers, saveRef }) {
     if (neueMails !== alteMails) {
       const frage = neueMails
         ? `E-Mail-Adresse wirklich auf "${neueMails}" ändern?\n\nAn diese Adresse gehen künftig deine Vereinsnachrichten.`
-        : "Alle E-Mail-Adressen entfernen? Du erhältst dann keine Vereinsnachrichten mehr per Mail.";
-      if (!window.confirm(frage)) { setMessage("Änderung verworfen — deine E-Mail-Adresse ist unverändert."); return; }
+        : t("pf.alleMailsEntfernen");
+      if (!window.confirm(frage)) { setMessage(t("konto.mailAenderungVerworfen")); return; }
     }
     const payload = { ...form, emails: form.emails.map((v)=>v.trim()).filter(Boolean), phones: form.phones.map((v)=>v.trim()).filter(Boolean) };
     if (supabase && user.authProfileId) {
@@ -7037,11 +7048,11 @@ function ProfileDataSettings({ user, setMembers, saveRef }) {
         new_auto_logout_days:user.autoLogoutDays || null, new_calendar_sync_interval:user.calendarSyncInterval || "never",
         new_show_birthday: form.showBirthday,
       });
-      if (error) { setMessage(error.message.includes("club_memberships_club_id_membership_number_key") ? "Diese Mitgliederausweisnummer wird bereits verwendet." : "Die Daten konnten nicht gespeichert werden."); return; }
+      if (error) { setMessage(error.message.includes("club_memberships_club_id_membership_number_key") ? t("mit.ausweisnummerVergeben") : t("allg.datenSpeichernFehler")); return; }
     }
     const name = `${payload.firstName} ${payload.lastName}`.trim();
     setMembers((items)=>items.map((item)=>item.id===user.id?{...item,...payload,name,contactEmails:payload.emails,contactPhones:payload.phones}:item));
-    setMessage((OK_ZEICHEN + "Persönliche Daten gespeichert."));
+    setMessage((OK_ZEICHEN + t("pf.datenGespeichert")));
   };
   useEffect(() => { saveRef.current = save; });
   const updateList = (key,index,value) => setForm((old)=>({...old,[key]:old[key].map((v,i)=>i===index?value:v)}));
@@ -7049,7 +7060,7 @@ function ProfileDataSettings({ user, setMembers, saveRef }) {
   const section = (title, children) => <div className="rounded-2xl p-4 mb-4 space-y-2" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-2">{title}</div>{children}</div>;
   return <div>
     {message&&<div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{background:istErfolg(message)?C.erfolgFlaeche:C.fehlerFlaeche,color:istErfolg(message)?C.erfolg:C.fehler}}>{meldungstext(message)}</div>}
-    {section("Persönliche Daten", <><input value={form.membershipNumber} onChange={(e)=>setForm({...form,membershipNumber:e.target.value})} placeholder={t("ph.ausweisnummer")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><input value={form.academicTitle} onChange={(e)=>setForm({...form,academicTitle:e.target.value})} placeholder={t("ph.akadTitel")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><div className="grid grid-cols-2 gap-2"><input value={form.firstName} onChange={(e)=>setForm({...form,firstName:e.target.value})} placeholder={t("reg.vorname")} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><input value={form.lastName} onChange={(e)=>setForm({...form,lastName:e.target.value})} placeholder={t("reg.nachname")} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/></div></>)}
+    {section(t("pf.persoenlich2"), <><input value={form.membershipNumber} onChange={(e)=>setForm({...form,membershipNumber:e.target.value})} placeholder={t("ph.ausweisnummer")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><input value={form.academicTitle} onChange={(e)=>setForm({...form,academicTitle:e.target.value})} placeholder={t("ph.akadTitel")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><div className="grid grid-cols-2 gap-2"><input value={form.firstName} onChange={(e)=>setForm({...form,firstName:e.target.value})} placeholder={t("reg.vorname")} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><input value={form.lastName} onChange={(e)=>setForm({...form,lastName:e.target.value})} placeholder={t("reg.nachname")} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/></div></>)}
     {section("Kontaktdaten", <><div className="text-[10px] font-bold" style={{color:C.textDim}}>E-Mail-Adressen</div>{form.emails.map((value,index)=><div key={`e-${index}`} className="flex gap-2"><input type="email" value={value} onChange={(e)=>updateList("emails",index,e.target.value)} placeholder={t("login.email")} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/>{index>0&&<button onClick={()=>setForm({...form,emails:form.emails.filter((_,i)=>i!==index)})}><X size={15}/></button>}</div>)}<button onClick={()=>addList("emails")} className="flex items-center gap-1 text-[11px] font-bold" style={{color:C.red}}><Plus size={13}/> Weitere E-Mail</button><div className="text-[10px] font-bold pt-2" style={{color:C.textDim}}>{t("feld.telefonnummern")}</div>{form.phones.map((value,index)=><div key={`p-${index}`} className="flex gap-2"><input type="tel" value={value} onChange={(e)=>updateList("phones",index,e.target.value)} placeholder={t("ph.telefonnummer")} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/>{index>0&&<button onClick={()=>setForm({...form,phones:form.phones.filter((_,i)=>i!==index)})}><X size={15}/></button>}</div>)}<button onClick={()=>addList("phones")} className="flex items-center gap-1 text-[11px] font-bold" style={{color:C.red}}><Plus size={13}/> Weitere Telefonnummer</button></>)}
     {section("Weitere Angaben", <><input type="date" value={form.birthdate} onChange={(e)=>setForm({...form,birthdate:e.target.value})} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><label className="flex items-center justify-between gap-3 px-0.5 py-1"><span className="text-xs" style={{color:C.ink}}>{t("feld.geburtstagZeigen")}</span><button type="button" onClick={()=>setForm({...form,showBirthday:!form.showBirthday})} className="w-10 h-6 rounded-full flex items-center px-0.5" style={{background:form.showBirthday?C.secondary:C.line,justifyContent:form.showBirthday?"flex-end":"flex-start"}}><span className="w-5 h-5 rounded-full" style={{background:C.glass}}/></button></label><select value={form.gender} onChange={(e)=>setForm({...form,gender:e.target.value})} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}><option value="weiblich">{t("gesch.w")}</option><option value="maennlich">{t("gesch.m")}</option><option value="divers">{t("gesch.d")}</option><option value="keine_angabe">{t("gesch.k")}</option></select><input value={form.nationality} onChange={(e)=>setForm({...form,nationality:e.target.value})} placeholder={t("ph.nationalitaet")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/></>)}
     {section("Adresse", <><input value={form.street} onChange={(e)=>setForm({...form,street:e.target.value})} placeholder={t("ph.strasse")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><div className="grid grid-cols-2 gap-2"><input value={form.postalCode} onChange={(e)=>setForm({...form,postalCode:e.target.value})} placeholder="PLZ" className="px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><input value={form.city} onChange={(e)=>setForm({...form,city:e.target.value})} placeholder={t("feld.stadt")} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/></div><div className="relative"><input value={countryQuery || countryNames.find((c)=>c.code===form.countryCode)?.name || form.countryCode} onChange={(e)=>setCountryQuery(e.target.value)} onFocus={()=>setCountryQuery("")} placeholder={t("ph.landSuchen")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/>{countryQuery&&<div className="absolute z-10 left-0 right-0 top-full mt-1 rounded-xl overflow-hidden shadow-xl" style={{background:C.glass,border:`1px solid ${C.line}`}}>{matches.map((item)=><button key={item.code} onClick={()=>{setForm({...form,countryCode:item.code});setCountryQuery("");}} className="w-full px-3 py-2 text-left text-xs hover:bg-gray-50">{item.name} <span style={{color:C.textDim}}>({item.code})</span></button>)}</div>}</div></>)}
@@ -7068,15 +7079,15 @@ function NotificationSettings({ user, setMembers, saveRef }) {
     setPushStatus("working");
     const result = await enablePushNotifications(user.id);
     if (result.error) {
-      const messages = { unsupported: "Push wird auf diesem Gerät/Browser nicht unterstützt.", denied: "Berechtigung wurde nicht erteilt.", save_failed: "Token konnte nicht gespeichert werden.", setup_failed: "Push konnte nicht eingerichtet werden.", no_token: "Kein Push-Token erhalten.", not_browser: "Nur im Browser verfügbar." };
-      setPushStatus("error"); setMessage(messages[result.error] || "Push konnte nicht aktiviert werden."); return;
+      const messages = { unsupported: t("push.nichtUnterstuetzt"), denied: t("push.nichtErteilt"), save_failed: t("push.tokenFehler"), setup_failed: t("push.einrichtenFehler"), no_token: t("push.keinToken"), not_browser: t("sys.nurImBrowser") };
+      setPushStatus("error"); setMessage(messages[result.error] || t("push.aktivierenFehler")); return;
     }
-    setPushStatus("active"); setMessage("Push-Benachrichtigungen sind jetzt aktiv.");
+    setPushStatus("active"); setMessage(t("push.jetztAktiv"));
   };
   const deactivatePush = async () => {
     setPushStatus("working");
     const result = await disablePushNotifications(user.id);
-    if (result.error) { setPushStatus("active"); setMessage("Push konnte nicht deaktiviert werden."); return; }
+    if (result.error) { setPushStatus("active"); setMessage(t("push.deaktivierenFehler")); return; }
     setPushStatus("idle"); setMessage("Push-Benachrichtigungen wurden deaktiviert.");
   };
   const save = async()=>{ if(supabase&&user.authProfileId){const {error}=await supabase.from("profiles").update({notification_master:master,notification_preferences:prefs}).eq("id",user.authProfileId);if(error){setMessage("Benachrichtigungen konnten nicht gespeichert werden.");return;}} setMembers((items)=>items.map((item)=>item.id===user.id?{...item,notificationMaster:master,notificationPreferences:prefs}:item));setMessage("Benachrichtigungen gespeichert.");};
@@ -7086,7 +7097,7 @@ function NotificationSettings({ user, setMembers, saveRef }) {
       weder Notification noch serviceWorker - enablePushNotifications kehrte
       sofort mit "unsupported" zurueck. Der Knopf oeffnete also nie einen
       Berechtigungsdialog, sondern zeigte zuverlaessig eine Fehlermeldung.
-      Der erklaerende Satz verwies zudem auf "Zum Home-Bildschirm hinzufuegen",
+      Der erklaerende Satz verwies zudem auf t("sys.homeBildschirm"),
       also auf eine Installation ausserhalb des App Store - mitten in der
       App-Store-App. Benachrichtigungen innerhalb der App sind davon unberuehrt,
       die laufen ueber die Datenbank. */}
@@ -7096,12 +7107,13 @@ function NotificationSettings({ user, setMembers, saveRef }) {
         Geraet ueberhaupt fuer Push anmelden. Kein Nutzer konnte Push je
         einschalten. Seit lib/firebase-push.ts einen nativen Weg hat
         (@capacitor-firebase/messaging), gehoert der Schalter genau hierhin. */}
-    {databaseMembership && <div className="rounded-2xl p-4 mb-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1" style={{color:C.ink}}>{t("push.aufGeraet")}</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>Aktiviere Push, um Benachrichtigungen auch dann zu bekommen, wenn die App geschlossen ist. Du kannst weiter unten einzeln festlegen, worüber.</div><button onClick={pushStatus==="active"?deactivatePush:activatePush} disabled={pushStatus==="working"} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{background:pushStatus==="active"?C.fehlerFlaeche:C.ink,color:pushStatus==="active"?C.red:C.white}}>{pushStatus==="working"?"Wird bearbeitet …":pushStatus==="active"?"Push deaktivieren":"Push aktivieren"}</button></div>}<ToggleCard title="Benachrichtigungen auf diesem Gerät" desc="Master-Schalter für alle App-Benachrichtigungen" value={master} onChange={setMaster}/><div className="mt-4 rounded-2xl p-4space-y-3" style={{background:C.glass,border:`1px solid ${C.line}`}}>{NOTIFICATION_OPTIONS.filter(([key])=>BEITRAGSVERWALTUNG_SICHTBAR||key!=="payments").map(([key,label])=><label key={key} className="flex items-center justify-between gap-3"><span className="text-xsfont-bold">{label}</span><select disabled={!master} value={prefs[key]?"ja":"nein"} onChange={(e)=>setPrefs({...prefs,[key]:e.target.value==="ja"})} className="px-3 py-2 rounded-xl text-xs" style={{background:C.paperDim,opacity:master?1:.45}}><option value="ja">Ja</option><option value="nein">Nein</option></select></label>)}</div></div>;
+    {databaseMembership && <div className="rounded-2xl p-4 mb-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1" style={{color:C.ink}}>{t("push.aufGeraet")}</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>Aktiviere Push, um Benachrichtigungen auch dann zu bekommen, wenn die App geschlossen ist. Du kannst weiter unten einzeln festlegen, worüber.</div><button onClick={pushStatus==="active"?deactivatePush:activatePush} disabled={pushStatus==="working"} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{background:pushStatus==="active"?C.fehlerFlaeche:C.ink,color:pushStatus==="active"?C.red:C.white}}>{pushStatus==="working"?t("allg.wirdBearbeitet"):pushStatus==="active"?"Push deaktivieren":"Push aktivieren"}</button></div>}<ToggleCard title="Benachrichtigungen auf diesem Gerät" desc="Master-Schalter für alle App-Benachrichtigungen" value={master} onChange={setMaster}/><div className="mt-4 rounded-2xl p-4space-y-3" style={{background:C.glass,border:`1px solid ${C.line}`}}>{NOTIFICATION_OPTIONS.filter(([key])=>BEITRAGSVERWALTUNG_SICHTBAR||key!=="payments").map(([key,label])=><label key={key} className="flex items-center justify-between gap-3"><span className="text-xsfont-bold">{label}</span><select disabled={!master} value={prefs[key]?"ja":"nein"} onChange={(e)=>setPrefs({...prefs,[key]:e.target.value==="ja"})} className="px-3 py-2 rounded-xl text-xs" style={{background:C.paperDim,opacity:master?1:.45}}><option value="ja">Ja</option><option value="nein">Nein</option></select></label>)}</div></div>;
 }
 
 function PasswordSettings({ user, onLogout, saveRef }) {
+  const t = useT();
   const [form,setForm]=useState({old:"",next:"",repeat:"",logoutAll:false}); const [message,setMessage]=useState("");
-  const save=async()=>{if(!supabase){setMessage("Passwortänderung ist nur mit einem echten Konto möglich.");return;}if(form.next.length<8||form.next!==form.repeat){setMessage("Das neue Passwort muss mindestens 8 Zeichen haben und übereinstimmen.");return;}const {error:loginError}=await supabase.auth.signInWithPassword({email:user.email,password:form.old});if(loginError){/* Nur der Fall "Passwort stimmt nicht" darf so heissen. Ein Netzfehler oder eine Bremse wegen zu vieler Versuche haben nichts mit dem alten Passwort zu tun; hier ist die Verwechslung besonders aergerlich, weil man dann das eine Passwort sucht, das man sicher kennt. Eine Preisgabe ist das nicht: Wer hier steht, ist bereits angemeldet und kennt seine eigene Adresse. */const falschesPasswort=loginError.code==="invalid_credentials"||/invalid login credentials/i.test(String(loginError.message||""));/* Hier darf die Sperre beim Namen genannt werden: Wer bis hierher kommt, ist angemeldet und kennt seine eigene Adresse - es gibt nichts zu verraten. */const gesperrt=loginError.code==="user_banned"||/user is banned/i.test(String(loginError.message||""));setMessage(gesperrt?"Dieses Konto ist gesperrt. Bitte wende dich an die Vereinsleitung.":falschesPasswort?"Das bisherige Passwort ist nicht korrekt.":anmeldeFehlerText(loginError));return;}const {error}=await supabase.auth.updateUser({password:form.next});if(error){const zuSchwach=error.code==="weak_password"||/password/i.test(String(error.message||""))&&/short|weak|least/i.test(String(error.message||""));setMessage(zuSchwach?"Das neue Passwort ist zu schwach. Nimm ein längeres oder ungewöhnlicheres.":"Das Passwort konnte nicht geändert werden. "+anmeldeFehlerText(error));return;}if(form.logoutAll){await supabase.auth.signOut({scope:"global"});await onLogout();return;}setForm({old:"",next:"",repeat:"",logoutAll:false});setMessage((OK_ZEICHEN + "Passwort erfolgreich geändert."));}; useEffect(() => { saveRef.current = save; });
+  const save=async()=>{if(!supabase){setMessage(t("sich.passwortNurEchtesKonto"));return;}if(form.next.length<8||form.next!==form.repeat){setMessage(t("sich.neuesPasswortRegeln"));return;}const {error:loginError}=await supabase.auth.signInWithPassword({email:user.email,password:form.old});if(loginError){/* Nur der Fall t("login.passwortFalsch") darf so heissen. Ein Netzfehler oder eine Bremse wegen zu vieler Versuche haben nichts mit dem alten Passwort zu tun; hier ist die Verwechslung besonders aergerlich, weil man dann das eine Passwort sucht, das man sicher kennt. Eine Preisgabe ist das nicht: Wer hier steht, ist bereits angemeldet und kennt seine eigene Adresse. */const falschesPasswort=loginError.code==="invalid_credentials"||/invalid login credentials/i.test(String(loginError.message||""));/* Hier darf die Sperre beim Namen genannt werden: Wer bis hierher kommt, ist angemeldet und kennt seine eigene Adresse - es gibt nichts zu verraten. */const gesperrt=loginError.code==="user_banned"||/user is banned/i.test(String(loginError.message||""));setMessage(gesperrt?"Dieses Konto ist gesperrt. Bitte wende dich an die Vereinsleitung.":falschesPasswort?"Das bisherige Passwort ist nicht korrekt.":anmeldeFehlerText(loginError));return;}const {error}=await supabase.auth.updateUser({password:form.next});if(error){const zuSchwach=error.code==="weak_password"||/password/i.test(String(error.message||""))&&/short|weak|least/i.test(String(error.message||""));setMessage(zuSchwach?"Das neue Passwort ist zu schwach. Nimm ein längeres oder ungewöhnlicheres.":t("sich.passwortAendernFehler")+anmeldeFehlerText(error));return;}if(form.logoutAll){await supabase.auth.signOut({scope:"global"});await onLogout();return;}setForm({old:"",next:"",repeat:"",logoutAll:false});setMessage((OK_ZEICHEN + "Passwort erfolgreich geändert."));}; useEffect(() => { saveRef.current = save; });
   return <div className="rounded-2xl p-4 space-y-3" style={{background:C.glass,border:`1px solid ${C.line}`}}><input type="password" value={form.old} onChange={(e)=>setForm({...form,old:e.target.value})} placeholder={t("ph.altesPasswort")} className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><input type="password" value={form.next} onChange={(e)=>setForm({...form,next:e.target.value})} placeholder={t("ph.neuesPasswort")} className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><input type="password" value={form.repeat} onChange={(e)=>setForm({...form,repeat:e.target.value})} placeholder={t("ph.neuesPasswortWdh")} className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><ToggleCard title="Von allen Geräten ausloggen" desc="Nach der Änderung werden alle bestehenden Sitzungen beendet." value={form.logoutAll} onChange={(v)=>setForm((old)=>({...old,logoutAll:typeof v==="function"?v(old.logoutAll):v}))}/>{message&&<div className="text-[11px]" style={{color:istErfolg(message)?C.erfolg:C.fehler}}>{meldungstext(message)}</div>}</div>;
 }
 
@@ -7116,9 +7128,9 @@ function ReferralSettings({user,club}) { const t = useT(); const [code,setCode]=
    garantiert auf zwei tote Bedienelemente.
    Jetzt erscheint nur, was auch wirklich irgendwohin fuehrt; fehlen beide,
    steht dort nur der erklaerende Satz. */
-function FeedbackSettings() { const apple=process.env.NEXT_PUBLIC_APP_STORE_REVIEW_URL;const google=process.env.NEXT_PUBLIC_PLAY_STORE_REVIEW_URL;const stores=[[apple,"Im Apple App Store bewerten"],[google,"Im Google Play Store bewerten"]].filter(([url])=>!!url);return <div><div className="text-[11px] mb-4" style={{color:C.textDim}}>{stores.length?"Danke, dass du CMO bewertest. Wähle den Store deines Geräts.":"Danke, dass du CMO bewerten möchtest."}</div>{stores.length>0&&<div className="space-y-2">{stores.map(([url,label])=><a key={label} href={url} target="_blank" rel="noreferrer" className="flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-bold" style={{background:C.glass,border:`1px solid ${C.line}`,color:C.ink}}>{label}<ExternalLink size={14}/></a>)}</div>}{stores.length===0&&<div className="text-[11px] rounded-2xl p-4" style={{background:C.paperDim,color:C.textDim}}>Die Bewertungslinks werden freigeschaltet, sobald die App im jeweiligen Store verfügbar ist.</div>}</div>; }
+function FeedbackSettings() { const t = useT(); const apple=process.env.NEXT_PUBLIC_APP_STORE_REVIEW_URL;const google=process.env.NEXT_PUBLIC_PLAY_STORE_REVIEW_URL;const stores=[[apple,"Im Apple App Store bewerten"],[google,"Im Google Play Store bewerten"]].filter(([url])=>!!url);return <div><div className="text-[11px] mb-4" style={{color:C.textDim}}>{stores.length?t("sys.bewertenStore"):t("sys.dankeBewertung")}</div>{stores.length>0&&<div className="space-y-2">{stores.map(([url,label])=><a key={label} href={url} target="_blank" rel="noreferrer" className="flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-bold" style={{background:C.glass,border:`1px solid ${C.line}`,color:C.ink}}>{label}<ExternalLink size={14}/></a>)}</div>}{stores.length===0&&<div className="text-[11px] rounded-2xl p-4" style={{background:C.paperDim,color:C.textDim}}>Die Bewertungslinks werden freigeschaltet, sobald die App im jeweiligen Store verfügbar ist.</div>}</div>; }
 
-function BugReportSettings({user}) { const [busy,setBusy]=useState(false);const report=async()=>{setBusy(true);let number=`CMO-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`;if(supabase&&user.authProfileId){const {data}=await supabase.rpc("create_support_ticket",{target_club:user.clubId});if(data)number=data;}const subject=encodeURIComponent(`Fehlermeldung - CMO App #${number}`);const body=encodeURIComponent(`Hallo CMO-Team,\n\nfolgender Fehler ist aufgetreten:\n\n\nApp-Ticket: ${number}\nNutzer: ${user.name}\n`);window.location.href=`mailto:info@idbranding.de?subject=${subject}&body=${body}`;setBusy(false);};return <div className="rounded-2xl p-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-[11px] mb-4" style={{color:C.textDim}}>Wir erzeugen eine eindeutige Bearbeitungsnummer und öffnen anschließend die E-Mail-App deines Geräts.</div><button onClick={report} disabled={busy} className="w-full py-3 rounded-xl text-xs font-bold" style={{background: C.red, color: C.aufPrimaer}}>{busy?"Nummer wird erstellt …":"Fehler per E-Mail melden"}</button></div>; }
+function BugReportSettings({user}) { const t = useT(); const [busy,setBusy]=useState(false);const report=async()=>{setBusy(true);let number=`CMO-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`;if(supabase&&user.authProfileId){const {data}=await supabase.rpc("create_support_ticket",{target_club:user.clubId});if(data)number=data;}const subject=encodeURIComponent(`Fehlermeldung - CMO App #${number}`);const body=encodeURIComponent(`Hallo CMO-Team,\n\nfolgender Fehler ist aufgetreten:\n\n\nApp-Ticket: ${number}\nNutzer: ${user.name}\n`);window.location.href=`mailto:info@idbranding.de?subject=${subject}&body=${body}`;setBusy(false);};return <div className="rounded-2xl p-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-[11px] mb-4" style={{color:C.textDim}}>Wir erzeugen eine eindeutige Bearbeitungsnummer und öffnen anschließend die E-Mail-App deines Geräts.</div><button onClick={report} disabled={busy} className="w-full py-3 rounded-xl text-xs font-bold" style={{background: C.red, color: C.aufPrimaer}}>{busy?t("sys.nummerWirdErstellt"):"Fehler per E-Mail melden"}</button></div>; }
 
 /* Kalender-Abo. Vor dem Abonnieren wird ausgewählt, welche Terminarten in den
    privaten Gerätekalender übertragen werden — jede Person plant anders, und ein
@@ -7173,8 +7185,8 @@ function CalendarSyncSettings({ user, saveRef }) {
   };
 
   const sync = async () => {
-    if (!supabase) { setMessage("Kalendersynchronisierung benötigt ein echtes Konto."); return; }
-    if (!types.length) { setMessage("Bitte wähle mindestens eine Terminart aus."); return; }
+    if (!supabase) { setMessage(t("kal.echtesKontoNoetig")); return; }
+    if (!types.length) { setMessage(t("ev.mindestensEineTerminart")); return; }
     setSaving(true);
     const { data, error } = await supabase.rpc("configure_calendar_subscription", {
       target_club: user.clubId,
@@ -7183,7 +7195,7 @@ function CalendarSyncSettings({ user, saveRef }) {
       requested_teams: teams,
     });
     setSaving(false);
-    if (error) { setMessage("Kalender konnte nicht verbunden werden."); return; }
+    if (error) { setMessage(t("kal.verbindenFehler")); return; }
     const row = data?.[0];
     setToken(row?.token || "");
     setMessage((OK_ZEICHEN + "Kalenderverbindung aktualisiert."));
@@ -7220,8 +7232,8 @@ function CalendarSyncSettings({ user, saveRef }) {
         <div className="text-[10px] font-bold uppercase tracking-widest mb-1.5" style={{ color: C.textDim }}>{t("tm.mannschaften")}</div>
         <div className="text-[10px] mb-2 leading-snug" style={{ color: C.textDim }}>
           {teams.length === 0
-            ? "Ohne Auswahl kommen die Mannschaften, in denen du oder deine Kinder stehen — dazu alle vereinsweiten Termine."
-            : "Nur die gewählten Mannschaften, dazu alle vereinsweiten Termine."}
+            ? t("kal.ohneAuswahl")
+            : t("kal.nurGewaehlteTeams")}
         </div>
         <div className="space-y-1.5 mb-3">
           {alleTeams.map((mannschaft) => {
@@ -7247,7 +7259,7 @@ function CalendarSyncSettings({ user, saveRef }) {
         <option value="monthly">{t("kal.monatlich")}</option>
       </select>
 
-      <button onClick={sync} disabled={saving || !types.length} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white, opacity: saving || !types.length ? .5 : 1 }}><RefreshCw size={14}/> {saving ? "Wird gespeichert …" : token ? "Auswahl übernehmen" : "Abonnement erstellen"}</button>
+      <button onClick={sync} disabled={saving || !types.length} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white, opacity: saving || !types.length ? .5 : 1 }}><RefreshCw size={14}/> {saving ? t("allg.wirdGespeichert") : token ? t("allg.auswahlUebernehmen") : "Abonnement erstellen"}</button>
 
       {url && <>
         <a href={url.replace(/^https?:/, "webcal:")} className="block w-full text-center mt-2 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.erfolgFlaeche, color: C.erfolg }}>{t("kal.verbinden")}</a>
@@ -7283,7 +7295,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
      "Kalender synchronisieren", konnte in dem kurzen Moment, bevor der neue
      Bereich stand, mit Speichern die Funktion des alten ausloesen: Ein Klick
      auf "Kalender speichern" schrieb die persoenlichen Daten.
-     null heisst "noch keine Funktion da" - der Aufruf ist mit ?.() gesichert
+     null heisst t("allg.nochKeineFunktion") - der Aufruf ist mit ?.() gesichert
      und tut dann schlicht nichts, statt das Falsche zu tun.
      Geraeumt wird in der AUFRAEUMFUNKTION, nicht im Effektkoerper: React
      fuehrt Effekte von innen nach aussen aus. Stuende die Zuweisung im
@@ -7307,13 +7319,13 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
       .then(({ data }) => setReferralAlreadyUsed(Boolean(data?.redeemed_at)));
   }, [currentClub?.id, user.authProfileId]);
   const deleteAccount = async () => {
-    if (!supabase) { setDeleteError("Im Demo-Modus kann kein echtes Konto gelöscht werden."); return; }
+    if (!supabase) { setDeleteError(t("konto.demoLoeschen")); return; }
     setDeleting(true); setDeleteError("");
     const { data } = await supabase.auth.getSession();
     const token = data.session?.access_token;
-    if (!token) { setDeleteError("Bitte melde dich erneut an."); setDeleting(false); return; }
+    if (!token) { setDeleteError(t("sich.erneutAnmelden")); setDeleting(false); return; }
     const response = await fetch("/api/account/delete", { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
-    if (!response.ok) { setDeleteError("Das Konto konnte nicht vollständig gelöscht werden. Bitte kontaktiere den Support."); setDeleting(false); return; }
+    if (!response.ok) { setDeleteError(t("konto.loeschenUnvollstaendig")); setDeleting(false); return; }
     await onLogout();
   };
   return (
@@ -7366,7 +7378,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
           try {
             if (navigator.share) { await navigator.share({ title: currentClub?.name || "Vereins-App", text, url: link }); return; }
             await navigator.clipboard.writeText(`${text} ${link}`);
-            window.alert("Einladungslink kopiert — jetzt einfügen und verschicken.");
+            window.alert(t("zug.einladungslinkKopiert"));
           } catch {
             /* Teilen abgebrochen oder nicht erlaubt: Dann wenigstens den Link
                zeigen, damit man ihn von Hand kopieren kann. */
@@ -7479,7 +7491,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
           </div>
         </div>
       </div>
-      {/* Hier standen "Deine Badges" samt Erklaertext.
+      {/* Hier standen t("pf.badges") samt Erklaertext.
           Entfernt, weil die Auszeichnungen nichts steuern und nichts
           freischalten - sie waren Zierde, die Platz auf dem wichtigsten
           Bildschirm des Profils einnahm. Wer sie zurueckwill, findet sie in
@@ -7552,7 +7564,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
         <SectionTitle eyebrow="Gefahrenbereich" title="Account-Löschung"/>
         <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Die Löschung entfernt dein Konto und alle personenbezogenen Daten dauerhaft.</div>
         {!deleteConfirm ? <button onClick={() => setDeleteConfirm(true)} className="w-full py-2.5 rounded-2xl text-xs" style={{ background: C.glass, border: `1px solid ${C.fehlerRand}`, color: C.red, fontWeight: 700 }}>{t("konto.loeschenLang")}</button> :
-          <div className="rounded-2xl p-3" style={{ background: C.fehlerFlaeche, border: `1px solid ${C.fehlerRand}` }}><div className="flex items-center gap-2 text-xs font-bold mb-2" style={{ color: C.fehler }}><AlertCircle size={15}/> Endgültige Löschung bestätigen</div><div className="text-xs mb-3" style={{ color: C.ink }}>Das Konto, Vereinsprofile und persönliche Inhalte werden dauerhaft gelöscht. Dieser Schritt kann nicht rückgängig gemacht werden.</div>{deleteError && <div className="text-xs mb-2" style={{ color: C.fehler }}>{deleteError}</div>}<div className="flex gap-2"><button disabled={deleting} onClick={deleteAccount} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: C.red, color: C.aufPrimaer }}>{deleting ? "Wird gelöscht …" : "Endgültig löschen"}</button><button onClick={() => { setDeleteConfirm(false); setDeleteError(""); }} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>{t("allg.abbrechen")}</button></div></div>}
+          <div className="rounded-2xl p-3" style={{ background: C.fehlerFlaeche, border: `1px solid ${C.fehlerRand}` }}><div className="flex items-center gap-2 text-xs font-bold mb-2" style={{ color: C.fehler }}><AlertCircle size={15}/> Endgültige Löschung bestätigen</div><div className="text-xs mb-3" style={{ color: C.ink }}>Das Konto, Vereinsprofile und persönliche Inhalte werden dauerhaft gelöscht. Dieser Schritt kann nicht rückgängig gemacht werden.</div>{deleteError && <div className="text-xs mb-2" style={{ color: C.fehler }}>{deleteError}</div>}<div className="flex gap-2"><button disabled={deleting} onClick={deleteAccount} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: C.red, color: C.aufPrimaer }}>{deleting ? t("allg.wirdGeloescht") : t("allg.endgueltigLoeschen")}</button><button onClick={() => { setDeleteConfirm(false); setDeleteError(""); }} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>{t("allg.abbrechen")}</button></div></div>}
       </ProfileUnderlay>}
     </div>
   );
@@ -7655,7 +7667,7 @@ function TippRundenPanel({ currentClub }) {
     if (!supabase || !isDbId(currentClub?.id)) { setLaedt(false); return; }
     const { data, error } = await supabase.rpc("tipprunden_fuer_verein", { target_club: currentClub.id });
     setLaedt(false);
-    if (error) { setFehler("Die Mannschaften konnten nicht geladen werden."); return; }
+    if (error) { setFehler(t("tm.ladenFehler")); return; }
     setZeilen(data || []);
   }, [currentClub?.id]);
   useEffect(() => { laden(); }, [laden]);
@@ -7664,7 +7676,7 @@ function TippRundenPanel({ currentClub }) {
     setFehler("");
     const { error } = await supabase.rpc("tipprunde_setzen",
       { target_club: currentClub.id, target_team: zeile.team_id, an: !zeile.aktiv });
-    if (error) { setFehler("Die Änderung konnte nicht gespeichert werden."); return; }
+    if (error) { setFehler(t("allg.aenderungSpeichernFehler")); return; }
     await laden();
   };
 
@@ -7685,7 +7697,7 @@ function TippRundenPanel({ currentClub }) {
               <div className="min-w-0">
                 <div className="text-xs font-bold truncate" style={{ color: C.ink }}>{z.team_name}</div>
                 <div className="text-[10px]" style={{ color: C.textDim }}>
-                  {z.aktiv ? `${z.teilnehmer} ${z.teilnehmer === 1 ? "Teilnehmer" : "Teilnehmende"}` : "Kein Tippspiel"}
+                  {z.aktiv ? `${z.teilnehmer} ${z.teilnehmer === 1 ? "Teilnehmer" : "Teilnehmende"}` : t("tipp.keines")}
                 </div>
               </div>
               <button onClick={() => umschalten(z)}
@@ -7733,7 +7745,7 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
   const rundenLaden = useCallback(async () => {
     if (!supabase || !isDbId(currentUser.clubId)) return;
     const { data, error } = await supabase.rpc("tipprunden_fuer_verein", { target_club: currentUser.clubId });
-    if (error) { setRundenFehler("Die Tipprunden konnten nicht geladen werden."); return; }
+    if (error) { setRundenFehler(t("tipp.rundenLadenFehler")); return; }
     const aktive = (data || []).filter((r) => r.aktiv);
     setRunden(aktive);
     setRundeId((bisher) => bisher || aktive[0]?.runde_id || "");
@@ -7753,7 +7765,7 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
     const { error } = dabei
       ? await supabase.from("tipp_teilnehmer").delete().eq("runde_id", rundeId).eq("membership_id", currentUser.id)
       : await supabase.from("tipp_teilnehmer").insert({ runde_id: rundeId, membership_id: currentUser.id });
-    if (error) { setRundenFehler(dabei ? "Austritt nicht möglich." : "Beitritt nicht möglich."); return; }
+    if (error) { setRundenFehler(dabei ? t("tipp.austrittNichtMoeglich") : t("verein.beitrittFehler")); return; }
     await rundenLaden(); await tabelleLaden();
   };
 
@@ -7836,7 +7848,7 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
         {(tabelle || []).map((m, i) => (
           <div key={m.membership_id} className="flex items-center gap-3 px-4 py-2.5" style={{ background: m.membership_id === currentUser.id ? C.fehlerFlaeche : C.white, borderBottom: i < (tabelle || []).length - 1 ? `1px solid ${C.line}` : "none" }}>
             <div className="w-6 text-center text-sm" style={{ fontFamily: "JetBrains Mono", fontWeight: 700, color: i === 0 ? C.secondary : C.textDim }}>{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}</div>
-            <div className="flex-1 text-sm truncate" style={{ fontFamily: "Inter", fontWeight: 600, color: C.ink }}>{m.name}{m.membership_id === currentUser.id ? " (Du)" : ""}</div>
+            <div className="flex-1 text-sm truncate" style={{ fontFamily: "Inter", fontWeight: 600, color: C.ink }}>{m.name}{m.membership_id === currentUser.id ? t("allg.duSuffix") : ""}</div>
             <div className="text-sm" style={{ fontFamily: "JetBrains Mono", fontWeight: 700, color: C.ink }}>{m.punkte} P</div>
           </div>
         ))}
@@ -7883,7 +7895,7 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
                   className="flex-1 py-2 rounded-lg text-xs font-bold"
                   style={{ background: entwurfVollstaendig && hatAenderung ? C.ink : C.paperDim,
                            color: entwurfVollstaendig && hatAenderung ? C.white : C.textDim }}>
-                  {abgegeben ? "Tipp ändern" : "Tipp abgeben"}
+                  {abgegeben ? t("tipp.tippAendern") : "Tipp abgeben"}
                 </button>
                 {abgegeben && (
                   <button onClick={() => { if (window.confirm(`Deinen Tipp ${pred.home}:${pred.away} für "${match.titel}" löschen?`)) tippLoeschen(match.id); }}
@@ -8276,7 +8288,7 @@ function TodoBoard({ currentClub, goPanel, goFahrzeuge, goAufgaben }) {
   const laden = useCallback(async () => {
     if (!supabase || !isDbId(currentClub?.id)) { setPunkte([]); return; }
     const { data, error } = await supabase.rpc("offene_punkte_fuer_verein", { target_club: currentClub.id });
-    if (error) { setFehler("Die offenen Punkte konnten nicht geladen werden."); setPunkte([]); return; }
+    if (error) { setFehler(t("auf.offenePunkteFehler")); setPunkte([]); return; }
     setPunkte(data || []);
   }, [currentClub?.id]);
   useEffect(() => { laden(); }, [laden]);
@@ -8415,12 +8427,12 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
 
   const bildHochladen = async (datei) => {
     if (!datei || !supabase || !currentClub?.id) return;
-    if (!datei.type.startsWith("image/")) { setFehler("Bitte ein Bild auswählen."); return; }
-    if (datei.size > 2 * 1024 * 1024) { setFehler("Das Bild darf höchstens 2 MB groß sein."); return; }
+    if (!datei.type.startsWith("image/")) { setFehler(t("allg.bildWaehlen")); return; }
+    if (datei.size > 2 * 1024 * 1024) { setFehler(t("allg.bildMaxGroesse")); return; }
     setFehler("");
     const pfad = `${currentClub.id}/${entwurf.platz}-${Date.now()}.${(datei.name.split(".").pop() || "jpg").toLowerCase()}`;
     const { error } = await supabase.storage.from("sponsor-bilder").upload(pfad, datei, { contentType: datei.type, upsert: false });
-    if (error) { setFehler("Das Bild konnte nicht hochgeladen werden."); return; }
+    if (error) { setFehler(t("allg.bildUploadFehler")); return; }
     setzen("bild_pfad", pfad);
   };
 
@@ -8434,14 +8446,14 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
 
   const speichern = async () => {
     if (!supabase || !currentClub?.id || !entwurf) return;
-    if (!entwurf.titel.trim()) { setFehler("Ohne Namen des Sponsors geht es nicht."); return; }
+    if (!entwurf.titel.trim()) { setFehler(t("sp.nameFehlt")); return; }
     /* Vor dem Speichern pruefen, was die Datenbank ohnehin verlangt - der
        Hinweis hier ist verstaendlich, die Fehlermeldung von dort nicht. */
     /* Laufzeit ist jetzt Pflicht - mit Uhrzeit. Vorher war das Ende
        freiwillig, und ein Sponsor ohne Ende stand fuer immer. */
-    if (!entwurf.laeuft_von) { setFehler("Wann soll der Sponsor erscheinen? Bitte Startzeitpunkt angeben."); return; }
-    if (!entwurf.laeuft_bis) { setFehler("Bis wann soll der Sponsor erscheinen? Bitte Endzeitpunkt angeben."); return; }
-    if (entwurf.laeuft_bis && entwurf.laeuft_von && new Date(entwurf.laeuft_bis) <= new Date(entwurf.laeuft_von)) { setFehler("Der Sponsor kann nicht enden, bevor er beginnt."); return; }
+    if (!entwurf.laeuft_von) { setFehler(t("sp.startzeitpunkt")); return; }
+    if (!entwurf.laeuft_bis) { setFehler(t("sp.endzeitpunktFehlt")); return; }
+    if (entwurf.laeuft_bis && entwurf.laeuft_von && new Date(entwurf.laeuft_bis) <= new Date(entwurf.laeuft_von)) { setFehler(t("sp.endeVorBeginn")); return; }
     setSpeichert(true); setFehler("");
     const satz = {
       club_id: currentClub.id, platz: entwurf.platz,
@@ -8480,7 +8492,7 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
     } finally {
       setSpeichert(false);
     }
-    if (error) { setFehler("Konnte nicht gespeichert werden."); return; }
+    if (error) { setFehler(t("allg.speichernFehler")); return; }
     setOffen(""); setEntwurf(null);
     await ladeEigene(); onChanged?.();
   };
@@ -8490,7 +8502,7 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
     setSpeichert(true);
     const { error } = await supabase.from("anzeigen").delete().eq("id", id);
     setSpeichert(false);
-    if (error) { setFehler("Konnte nicht entfernt werden."); return; }
+    if (error) { setFehler(t("allg.entfernenFehler")); return; }
     setOffen(""); setEntwurf(null);
     await ladeEigene(); onChanged?.();
   };
@@ -8500,7 +8512,7 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
     setSavingSlot(slotKey); setFehler("");
     const { error } = await supabase.from("club_feature_toggles").upsert({ club_id: currentClub.id, feature_key: `sponsor_${slotKey}`, enabled: value });
     setSavingSlot("");
-    if (error) { setFehler("Konnte nicht gespeichert werden."); return; }
+    if (error) { setFehler(t("allg.speichernFehler")); return; }
     onFeaturesChanged?.();
   };
 
@@ -8541,13 +8553,13 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
             </div>
 
             <div className="text-[11px] mb-2.5" style={{ color: C.textDim }}>
-              {!on ? "Der Platz ist ausgeblendet — hier sieht niemand etwas."
+              {!on ? t("sp.platzAusgeblendet")
                 : sichtbar ? <>Zu sehen: <span style={{ color: C.ink, fontWeight: 600 }}>{sichtbar.titel}</span></>
-                : "Der Platz ist gerade leer."}
+                : t("allg.platzLeer")}
             </div>
 
             <button onClick={() => savingSlot !== slot.key && toggleVisible(slot.key, !on)} className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl mb-2.5" style={{ background: C.paperDim, border: `1px solid ${C.line}`, opacity: savingSlot === slot.key ? .6 : 1 }}>
-              <span className="text-xs text-left" style={{ fontFamily: "Inter", fontWeight: 600, color: C.ink }}>{on ? "Werbefläche eingeblendet" : "Werbefläche ausgeblendet"}</span>
+              <span className="text-xs text-left" style={{ fontFamily: "Inter", fontWeight: 600, color: C.ink }}>{on ? t("sp.werbeflaecheEingeblendet") : t("sp.werbungAusgeblendet")}</span>
               <span className="w-10 h-6 rounded-full relative flex-shrink-0" style={{ background: on ? C.secondary : C.line }}>
                 <span className="absolute top-0.5 w-5 h-5 rounded-full" style={{ background: "#fff", left: on ? 18 : 2, transition: "left .2s" }} />
               </span>
@@ -8677,7 +8689,7 @@ function MatchResultsPanel({ results, onSave, onDelete, events }) {
           return (
             <div key={match.id} className="rounded-2xl p-4" style={{ background: C.glass, border: `1px solid ${results[match.id] ? C.erfolgRand : C.line}` }}>
               <div className="flex items-center justify-between mb-3">
-                <div><div className="text-xs font-bold" style={{ color: C.ink }}>{match.titel}</div><span className="text-[11px]" style={{ color: C.textDim }}>{formatDate(match.date)} · {formatTime(match.date)} · {match.heim ? t("ev.heimspiel") : "Auswärtsspiel"}</span></div>
+                <div><div className="text-xs font-bold" style={{ color: C.ink }}>{match.titel}</div><span className="text-[11px]" style={{ color: C.textDim }}>{formatDate(match.date)} · {formatTime(match.date)} · {match.heim ? t("ev.heimspiel") : t("ev.auswaertsspiel")}</span></div>
                 {results[match.id] && <Pill bg={C.secondary}>ausgewertet</Pill>}
               </div>
               {/* Links stehen IMMER unsere Tore, rechts die des Gegners - unabhaengig
@@ -8785,11 +8797,11 @@ function RolesPanel({ members, setMembers }) {
       const grantedBy = (await supabase.auth.getUser()).data.user?.id || null;
       for (const role of toAdd) {
         const { error } = await supabase.from("membership_roles").insert({ membership_id: memberId, role, granted_by: grantedBy });
-        if (error) { setMessage("Die Rollenänderung konnte nicht gespeichert werden."); setSaving(false); return; }
+        if (error) { setMessage(t("mit.rollenaenderungFehler")); setSaving(false); return; }
       }
       for (const role of toRemove) {
         const { error } = await supabase.from("membership_roles").delete().eq("membership_id", memberId).eq("role", role);
-        if (error) { setMessage("Die Rollenänderung konnte nicht gespeichert werden."); setSaving(false); return; }
+        if (error) { setMessage(t("mit.rollenaenderungFehler")); setSaving(false); return; }
       }
     }
     setMembers((ms) => ms.map((m) => (m.id === memberId
@@ -8808,20 +8820,20 @@ function RolesPanel({ members, setMembers }) {
       let teamId = null;
       if (team) {
         const { data: teamRow, error: teamError } = await supabase.from("teams").select("id").eq("club_id", member.clubId).eq("name", team).maybeSingle();
-        if (teamError || !teamRow) { setMessage("Die Mannschaft des Teammanagers konnte nicht gespeichert werden."); return; }
+        if (teamError || !teamRow) { setMessage(t("tm.managerMannschaftFehler")); return; }
         teamId = teamRow.id;
         const { data: existingManager } = await supabase.from("team_members").select("membership_id").eq("team_id", teamId).eq("function", "teammanager").neq("membership_id", memberId).maybeSingle();
         displacedMemberId = existingManager?.membership_id || null;
       }
       const { error: clearError } = await supabase.from("team_members").delete().eq("membership_id", memberId).eq("function", "teammanager");
-      if (clearError) { setMessage("Die Mannschaft des Teammanagers konnte nicht gespeichert werden."); return; }
+      if (clearError) { setMessage(t("tm.managerMannschaftFehler")); return; }
       if (displacedMemberId) {
         await supabase.from("team_members").delete().eq("membership_id", displacedMemberId).eq("function", "teammanager");
         await supabase.from("membership_roles").delete().eq("membership_id", displacedMemberId).eq("role", "teammanager");
       }
       if (teamId) {
         const { error: insertError } = await supabase.from("team_members").insert({ team_id: teamId, membership_id: memberId, function: "teammanager" });
-        if (insertError) { setMessage("Die Mannschaft des Teammanagers konnte nicht gespeichert werden."); return; }
+        if (insertError) { setMessage(t("tm.managerMannschaftFehler")); return; }
       }
     }
     setMembers((all) => all.map((m) => {
@@ -8837,7 +8849,7 @@ function RolesPanel({ members, setMembers }) {
     if (supabase && isDbId(memberId)) {
       setMessage("");
       const { error } = await supabase.rpc("set_trainer_teams", { target_membership: memberId, target_team_names: nextTeams });
-      if (error) { setMessage("Die Trainer-Mannschaften konnten nicht gespeichert werden."); return; }
+      if (error) { setMessage(t("tm.trainerTeamsNichtGespeichert")); return; }
     }
     setMembers((all) => all.map((item) => item.id === memberId ? { ...item, trainerTeams: nextTeams } : item));
   };
@@ -8970,16 +8982,16 @@ function ClubLogoPanel({ club, onLogoUpdated }) {
     event.target.value = "";
     if (!file) return;
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      setMessage("Bitte JPG, PNG oder WebP auswählen."); return;
+      setMessage(t("allg.bildFormatWaehlen")); return;
     }
     if (file.size > 2 * 1024 * 1024) {
-      setMessage("Das Vereinslogo darf höchstens 2 MB groß sein."); return;
+      setMessage(t("verein.logoGroesse")); return;
     }
     setBusy(true); setMessage("");
     if (!supabase) {
       const reader = new FileReader();
       reader.onload = () => { onLogoUpdated(String(reader.result)); setMessage((OK_ZEICHEN + "Vereinslogo gespeichert.")); setBusy(false); };
-      reader.onerror = () => { setMessage("Das Bild konnte nicht gelesen werden."); setBusy(false); };
+      reader.onerror = () => { setMessage(t("allg.bildLesenFehler")); setBusy(false); };
       reader.readAsDataURL(file);
       return;
     }
@@ -8989,13 +9001,13 @@ function ClubLogoPanel({ club, onLogoUpdated }) {
     const { data: existing } = await supabase.storage.from("club-logos").list(folder);
     const oldPaths = (existing || []).map((item) => `${folder}/${item.name}`);
     const { error: uploadError } = await supabase.storage.from("club-logos").upload(path, file, { contentType: file.type, upsert: false });
-    if (uploadError) { setMessage("Das Vereinslogo konnte nicht hochgeladen werden."); setBusy(false); return; }
+    if (uploadError) { setMessage(t("verein.logoUploadFehler")); setBusy(false); return; }
     const { data: publicFile } = supabase.storage.from("club-logos").getPublicUrl(path);
     const logoUrl = publicFile.publicUrl;
     const { error: updateError } = await supabase.from("clubs").update({ logo_url: logoUrl }).eq("id", club.id);
     if (updateError) {
       await supabase.storage.from("club-logos").remove([path]);
-      setMessage("Das Vereinsprofil konnte nicht aktualisiert werden."); setBusy(false); return;
+      setMessage(t("verein.profilAktualisierenFehler")); setBusy(false); return;
     }
     if (oldPaths.length) await supabase.storage.from("club-logos").remove(oldPaths);
     onLogoUpdated(logoUrl); setMessage((OK_ZEICHEN + "Vereinslogo gespeichert.")); setBusy(false);
@@ -9007,7 +9019,7 @@ function ClubLogoPanel({ club, onLogoUpdated }) {
       <div><div className="text-sm font-bold" style={{ color: C.ink }}>{t("verein.logo")}</div><div className="text-[11px]" style={{ color: C.textDim }}>{t("verein.logoHinweis")}</div></div>
     </div>
     <label className="w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer" style={{ background: C.ink, color: C.white, opacity: busy ? .6 : 1 }}>
-      <ImageIcon size={15} /> {busy ? "Wird gespeichert …" : "Vereinslogo auswählen"}
+      <ImageIcon size={15} /> {busy ? t("allg.wirdGespeichert") : t("verein.logoWaehlen")}
       <input type="file" accept="image/jpeg,image/png,image/webp" onChange={uploadLogo} disabled={busy} className="hidden" />
     </label>
     {message && <div className="text-[11px] mt-2" role="status" style={{ color: istErfolg(message) ? C.erfolg : C.fehler }}>{meldungstext(message)}</div>}
@@ -9027,7 +9039,7 @@ function ClubColorPanel({ club, onColorsUpdated }) {
     if (!supabase) { onColorsUpdated(primary, secondary); setMessage((OK_ZEICHEN + "Vereinsfarben gespeichert.")); setSaving(false); return; }
     const { error } = await supabase.from("clubs").update({ primary_color: primary, secondary_color: secondary }).eq("id", club.id);
     setSaving(false);
-    if (error) { setMessage("Die Vereinsfarben konnten nicht gespeichert werden."); return; }
+    if (error) { setMessage(t("verein.farbenSpeichernFehler")); return; }
     onColorsUpdated(primary, secondary);
     setMessage((OK_ZEICHEN + "Vereinsfarben gespeichert."));
   };
@@ -9035,7 +9047,7 @@ function ClubColorPanel({ club, onColorsUpdated }) {
   return <div className="rounded-2xl p-4 mt-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
     <div className="text-sm font-bold mb-3" style={{ color: C.ink }}>{t("verein.farben")}</div>
     <ClubColorPicker primary={primary} secondary={secondary} onChange={(p, s) => { setPrimary(p); setSecondary(s); setMessage(""); }} />
-    <button onClick={save} disabled={saving || !dirty} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: dirty ? C.ink : C.paperDim, color: dirty ? C.white : C.textDim, opacity: saving ? .6 : 1 }}>{saving ? "Wird gespeichert …" : "Farben speichern"}</button>
+    <button onClick={save} disabled={saving || !dirty} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: dirty ? C.ink : C.paperDim, color: dirty ? C.white : C.textDim, opacity: saving ? .6 : 1 }}>{saving ? t("allg.wirdGespeichert") : "Farben speichern"}</button>
     {message && <div className="text-[11px] mt-2" role="status" style={{ color: istErfolg(message) ? C.erfolg : C.fehler }}>{meldungstext(message)}</div>}
   </div>;
 }
@@ -9082,7 +9094,7 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
     if (!window.confirm(`${member.display_name} für den Verein sperren?\n\nDie Person verliert den Zugang und kann keine neue Beitrittsanfrage stellen, bis du sie wieder entsperrst. Sie erscheint so lange in der Sperrliste.`)) return;
     setWorkingId(member.id); setMessage("");
     const { error } = await supabase.from("club_memberships").update({ status: "blocked" }).eq("id", member.id).eq("club_id", club.id);
-    if (error) { setMessage("Die Sperre konnte nicht gesetzt werden."); setWorkingId(null); return; }
+    if (error) { setMessage(t("mit.sperreNichtGesetzt")); setWorkingId(null); return; }
     setActiveMembers((items) => items.map((item) => item.id === member.id ? { ...item, status: "blocked" } : item));
     setMembers((items) => items.map((item) => item.id === member.id ? { ...item, status: "blocked", accountPending: false } : item));
     setMessage(`${member.display_name} ist jetzt gesperrt.`);
@@ -9097,7 +9109,7 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
        die Vereinsleitung erneut. blocked_until wird mitgeleert, damit keine alte
        Frist nachwirkt. */
     const { error } = await supabase.from("club_memberships").update({ status: "inactive", blocked_until: null }).eq("id", member.id).eq("club_id", club.id);
-    if (error) { setMessage("Die Sperre konnte nicht aufgehoben werden."); setWorkingId(null); return; }
+    if (error) { setMessage(t("mit.entsperrenFehler")); setWorkingId(null); return; }
     setActiveMembers((items) => items.map((item) => item.id === member.id ? { ...item, status: "inactive" } : item));
     setMembers((items) => items.map((item) => item.id === member.id ? { ...item, status: "inactive" } : item));
     setMessage(`${member.display_name} ist entsperrt und kann sich wieder bewerben.`);
@@ -9109,7 +9121,7 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
     if (nextStatus === "inactive" && !window.confirm(`Mitgliedschaft von ${member.display_name} wirklich beenden? Das Mitglied kann sich danach nicht mehr anmelden, bleibt aber in der Historie erhalten.`)) return;
     setWorkingId(member.id); setMessage("");
     const { error } = await supabase.from("club_memberships").update({ status: nextStatus }).eq("id", member.id).eq("club_id", club.id);
-    if (error) { setMessage("Der Status konnte nicht geändert werden."); setWorkingId(null); return; }
+    if (error) { setMessage(t("allg.statusAendernFehler")); setWorkingId(null); return; }
     setActiveMembers((items) => items.map((item) => item.id === member.id ? { ...item, status: nextStatus } : item));
     setMembers((items) => items.map((item) => item.id === member.id ? { ...item, status: nextStatus, accountPending: false } : item));
     setMessage(nextStatus === "inactive" ? (OK_ZEICHEN + "Mitgliedschaft wurde beendet.") : (OK_ZEICHEN + "Mitgliedschaft wurde reaktiviert."));
@@ -9140,8 +9152,8 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
          eine neue Tabelle ohne cascade hinzukommt. Dann soll dastehen, was los
          ist, statt nur "ging nicht". */
       setMessage(/foreign key|violates|constraint/i.test(error.message || "")
-        ? "Die Person kann nicht entfernt werden, weil noch Einträge an ihr hängen. Beende die Mitgliedschaft stattdessen."
-        : "Die Person konnte nicht entfernt werden.");
+        ? t("mit.personNichtEntfernbar")
+        : t("mit.personEntfernenFehler"));
       setWorkingId(null); return;
     }
     setActiveMembers((items) => items.filter((item) => item.id !== member.id));
@@ -9163,7 +9175,7 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
     const { data, error } = await supabase.from("club_memberships")
       .select("id,display_name,email,member_since,requested_team,created_at,rejection_count,membership_roles(role)")
       .eq("club_id", club.id).eq("status", "pending").order("created_at", { ascending: true });
-    if (error) setMessage("Die offenen Mitgliedsanträge konnten nicht geladen werden.");
+    if (error) setMessage(t("mit.antraegeLadenFehler"));
     setRequests(data || []); setLoading(false);
   };
 
@@ -9216,8 +9228,8 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
            seit dem Umbau nicht mehr gibt, und versprach dort eine Tarifliste,
            die dort bewusst nicht steht. Das kaufmaennische Und stand
            ausserdem als "&amp;" im Klartext auf dem Bildschirm. */
-        ? "Die Zahl der Zugänge deines Vereins ist ausgeschöpft. Unter Profil → Einstellungen → Zugang & Empfehlungen kann die Vereinsleitung mehr Zugänge anfragen."
-        : "Die Entscheidung konnte nicht gespeichert werden.");
+        ? t("zug.ausgeschoepft")
+        : t("allg.entscheidungNichtGespeichert"));
       setWorkingId(null); return;
     }
 
@@ -9229,7 +9241,7 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
     setRequests((items) => items.filter((item) => item.id !== request.id));
     setMessage(nextStatus === "active"
       ? "Mitgliedschaft wurde freigegeben."
-      : "Mitgliedschaft wurde abgelehnt. Eine neue Anfrage ist jederzeit möglich.");
+      : t("mit.abgelehnt"));
     setWorkingId(null);
   };
 
@@ -9246,7 +9258,7 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
       <div className="space-y-3">{requests.map((request) => {
         const roles = (request.membership_roles || []).map((entry) => ROLE_META[entry.role]?.label || entry.role);
         return <div key={request.id} className="rounded-2xl p-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
-          <div className="flex items-start gap-3 mb-3"><div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: C.red, color: C.aufPrimaer }}>{initialsOf(request.display_name)}</div><div className="min-w-0"><div className="text-sm font-bold truncate" style={{ color: C.ink }}>{request.display_name}</div><div className="text-[11px] truncate" style={{ color: C.textDim }}>{request.email || "Keine E-Mail hinterlegt"}</div></div></div>
+          <div className="flex items-start gap-3 mb-3"><div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: C.red, color: C.aufPrimaer }}>{initialsOf(request.display_name)}</div><div className="min-w-0"><div className="text-sm font-bold truncate" style={{ color: C.ink }}>{request.display_name}</div><div className="text-[11px] truncate" style={{ color: C.textDim }}>{request.email || t("pf.keineEmail")}</div></div></div>
           <div className="grid grid-cols-2 gap-2 mb-3"><div className="rounded-xl px-3 py-2" style={{ background: C.paperDim }}><div className="text-[9px] uppercase tracking-wider" style={{ color: C.textDim }}>{t("mit.registrierung")}</div><div className="text-xs font-bold mt-0.5">{roles.filter((role) => role !== "Mitglied").join(", ") || "Mitglied"}</div></div><div className="rounded-xl px-3 py-2" style={{ background: C.paperDim }}><div className="text-[9px] uppercase tracking-wider" style={{ color: C.textDim }}>{t("tm.mannschaft")}</div><div className="text-xs font-bold mt-0.5">{request.requested_team || "Noch offen"}</div></div></div>
           <div className="flex gap-2"><button disabled={workingId === request.id} onClick={() => decide(request, "active")} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.secondary, color: C.aufSekundaer, opacity: workingId === request.id ? .6 : 1 }}>{t("mit.freigeben")}</button><button disabled={workingId === request.id} onClick={() => decide(request, "blocked")} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.fehlerFlaeche, color: C.fehler, opacity: workingId === request.id ? .6 : 1 }}>{t("allg.ablehnen")}</button></div>
         </div>;
@@ -9263,7 +9275,7 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
           <div key={member.id} className="flex items-center gap-2 flex-wrap rounded-xl px-3 py-2.5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
             <div className="flex-1 min-w-0" style={{ minWidth: 140 }}>
               <div className="text-xs font-bold truncate" style={{ color: C.ink }}>{member.display_name}</div>
-              <div className="text-[10px] truncate" style={{ color: C.textDim }}>{member.email || "Keine E-Mail hinterlegt"}</div>
+              <div className="text-[10px] truncate" style={{ color: C.textDim }}>{member.email || t("pf.keineEmail")}</div>
             </div>
             <span className="text-[9px] font-bold px-2 py-1 rounded-full flex-shrink-0" style={{ background: member.status === "active" ? C.erfolgFlaeche : C.fehlerFlaeche, color: member.status === "active" ? C.erfolg : C.fehler }}>{member.status === "active" ? t("status.aktiv") : member.status === "blocked" ? t("status.gesperrt") : t("status.inaktiv")}</span>
             {/* Gesperrte bekommen nur den Weg zurueck. Fuer alle anderen steht
@@ -9307,7 +9319,7 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
             <div key={member.id} className="flex items-center gap-2 flex-wrap rounded-xl px-3 py-2.5" style={{ background: C.fehlerFlaeche, border: `1px solid ${C.line}` }}>
               <div className="flex-1 min-w-0" style={{ minWidth: 140 }}>
                 <div className="text-xs font-bold truncate" style={{ color: C.ink }}>{member.display_name}</div>
-                <div className="text-[10px] truncate" style={{ color: C.textDim }}>{member.email || "Keine E-Mail hinterlegt"}</div>
+                <div className="text-[10px] truncate" style={{ color: C.textDim }}>{member.email || t("pf.keineEmail")}</div>
               </div>
               <button disabled={workingId === member.id} onClick={() => unblockMember(member)} className="px-3 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: C.erfolgFlaeche, color: C.erfolg, opacity: workingId === member.id ? .6 : 1 }}>{t("allg.entsperren")}</button>
               <button disabled={workingId === member.id} onClick={() => removeMember(member)} title="Endgültig aus dem Verein entfernen" className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: C.paperDim, color: C.textDim, opacity: workingId === member.id ? .6 : 1 }}>{t("allg.entfernen")}</button>
@@ -9340,7 +9352,7 @@ function ClubFeatureOnboarding({ club, onDone }) {
       );
       if (error) {
         setSaving(false);
-        setFehler("Die Auswahl konnte nicht gespeichert werden. Prüfe deine Verbindung und versuche es noch einmal.");
+        setFehler(t("verein.auswahlNichtGespeichert"));
         return;
       }
     }
@@ -9432,7 +9444,7 @@ function ClubFeatureSettingsPanel({ currentClub, clubFeatures, onFeaturesChanged
     setSaving(key); setMessage("");
     const { error } = await supabase.from("club_feature_toggles").upsert({ club_id: currentClub.id, feature_key: key, enabled: value });
     setSaving("");
-    if (error) { setMessage("Konnte nicht gespeichert werden."); return; }
+    if (error) { setMessage(t("allg.speichernFehler")); return; }
     onFeaturesChanged();
   };
   const order = resolveDashboardTileOrder(dashboardTileOrder);
@@ -9460,7 +9472,7 @@ function ClubFeatureSettingsPanel({ currentClub, clubFeatures, onFeaturesChanged
           const feature = featureByKey[key];
           const abschaltbar = !!feature;
           const an = abschaltbar ? clubFeatures[key] !== false : true;
-          const beschreibung = abschaltbar ? feature.settingsDesc(sport) : "Aufgaben für den Verein verteilen und abhaken.";
+          const beschreibung = abschaltbar ? feature.settingsDesc(sport) : t("auf.beschreibung");
           return (
             <div key={key} className="rounded-2xl px-3.5 py-3" style={{ background: C.glass, border: `1px solid ${C.edge}`, boxShadow: "0 10px 26px rgba(60,30,45,0.06)", opacity: an ? 1 : 0.66 }}>
               <div className="flex items-center gap-3">
@@ -9509,7 +9521,7 @@ function ClaimManagedPlayerPanel({ members, setMembers, currentUser }) {
       const { error } = await supabase.rpc("claim_managed_membership", {
         target_club: currentUser.clubId, managed_membership_id: managedId, new_membership_id: realId,
       });
-      if (error) { setMessage("Die Profile konnten nicht zusammengeführt werden."); setSaving(false); return; }
+      if (error) { setMessage(t("sys.profileZusammenfuehrenFehler")); setSaving(false); return; }
     }
     setMembers((ms) => {
       const src = ms.find((m) => m.id === managedId);
@@ -9539,7 +9551,7 @@ function ClaimManagedPlayerPanel({ members, setMembers, currentUser }) {
         <NutzerWahl personen={realCandidates} wert={realId} onWaehlen={setRealId}
           leerLabel="Echtes Konto auswählen …" vorschlaege={suggestions.map((m) => m.id)} />
       )}
-      <button type="button" disabled={!managedId || !realId || saving} onClick={merge} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: (managedId && realId) ? C.ink : C.line, color: C.white }}>{saving ? "Wird zusammengeführt …" : "Zusammenführen"}</button>
+      <button type="button" disabled={!managedId || !realId || saving} onClick={merge} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: (managedId && realId) ? C.ink : C.line, color: C.white }}>{saving ? t("sys.wirdZusammengefuehrt") : t("mit.zusammenfuehren")}</button>
     </div>
   );
 }
@@ -9556,6 +9568,7 @@ function AdminView({
   onEinstellung, onErinnerung,
   currentClub, onClubLogoUpdated, onClubColorsUpdated, clubFeatures, onClubFeaturesChanged,
 }) {
+  const t = useT();
   const canManageClubFeatures = currentUser.roles.some((role) => ["vereinsadmin", "vorstand", "sysadmin"].includes(role));
   const dutyFeatureOn = clubFeatures?.duty_roster !== false;
   const dutyCfg = sportConfig(currentClub?.sport);
@@ -9571,9 +9584,9 @@ function AdminView({
   ];
   const [panel, setPanel] = useState(restrictedOnly ? restrictedPanels[0][0] : "overview");
   const openCount = members.filter((m) => !feePaid[m.id]).length;
-  const panels = restrictedOnly ? restrictedPanels : [["overview", "Übersicht"], ["automation", "Automatisierung"], ...(dutyFeatureOn ? [["duty", "Helferplanung"], ["duty-templates", `${dutyCfg.dutyTabLabel}-Sätze`]] : []), ["protokolle", "Protokolle"], ["polls", "Umfragen"], ...(SPONSOREN_VERWALTUNG_SICHTBAR ? [["sponsoring", "Sponsoring"]] : []), ["season", "Athlet/in der Saison"]];
+  const panels = restrictedOnly ? restrictedPanels : [["overview", t("allg.uebersicht")], ["automation", "Automatisierung"], ...(dutyFeatureOn ? [["duty", "Helferplanung"], ["duty-templates", `${dutyCfg.dutyTabLabel}-Sätze`]] : []), ["protokolle", "Protokolle"], ["polls", "Umfragen"], ...(SPONSOREN_VERWALTUNG_SICHTBAR ? [["sponsoring", "Sponsoring"]] : []), ["season", t("sais.athletDerSaison")]];
   if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.push(["roles", "Rollen"]);
-  if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.splice(1, 0, ["memberships", "Mitgliedsanträge"]);
+  if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.splice(1, 0, ["memberships", t("mit.antraege")]);
   if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.splice(1, 0, ["clubprofile", "Vereinsprofil"]);
   if (canManageClubFeatures) panels.splice(1, 0, ["functions", "Funktionen"]);
   if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.splice(1, 0, ["results", "Spielergebnisse"]);
@@ -9581,7 +9594,7 @@ function AdminView({
 
   return (
     <div className="px-4 pt-4 pb-24">
-      <SectionTitle title={restrictedOnly ? (sponsorOnly ? "Sponsorenmanager" : `${dutyCfg.dutyTabLabel}-Organisator`) : "Verwaltung"} eyebrow={restrictedOnly ? (sponsorOnly ? "Anzeigen & Kampagnen" : "Sätze & Stationen") : "Vorstand"} />
+      <SectionTitle title={restrictedOnly ? (sponsorOnly ? "Sponsorenmanager" : `${dutyCfg.dutyTabLabel}-Organisator`) : "Verwaltung"} eyebrow={restrictedOnly ? (sponsorOnly ? "Anzeigen & Kampagnen" : t("help.saetzeStationen")) : "Vorstand"} />
       {!restrictedOnly && <div className="rounded-2xl p-4 mb-5 flex items-center gap-3" style={{ background: C.ink }}>
         <ShieldCheck size={22} style={{ color: C.secondary }} />
         <div>
@@ -9591,7 +9604,7 @@ function AdminView({
       </div>}
 
       {/* Das To-Do-Board steht ueber der Reiterleiste, nicht in der Uebersicht.
-          Dort war es nur zu sehen, solange man auf "Übersicht" stand - wer in
+          Dort war es nur zu sehen, solange man auf t("allg.uebersicht") stand - wer in
           den Spielergebnissen arbeitete, wusste nicht, dass ein
           Mitgliedsantrag wartet. Was Handlung braucht, gehoert an die erste
           Stelle, nicht hinter einen Reiter. */}
@@ -9842,7 +9855,7 @@ export default function ClubMemberOrganisationApp() {
   /* null = laeuft noch, true = geladen, false = fehlgeschlagen.
      Ohne diese Unterscheidung sah ein fehlgeschlagener Ladevorgang genauso
      aus wie "es gibt keinen Verein": In beiden Faellen blieb clubs leer, und
-     der Suchbildschirm schrieb "Kein Verein gefunden." - direkt ueber dem
+     der Suchbildschirm schrieb t("verein.keinerGefunden") - direkt ueber dem
      Knopf t("verein.neuAnlegen"). Wer bei einem Netzhaenger dort landet,
      legt seinen Verein ein zweites Mal an. */
   const [vereineGeladen, setVereineGeladen] = useState(null);
@@ -10498,7 +10511,7 @@ export default function ClubMemberOrganisationApp() {
       event_id: eventId, profile_id: meinProfil(),
       home_score: zahl(heim), away_score: zahl(auswaerts),
     }, { onConflict: "event_id,profile_id" });
-    if (error) setSchreibFehler("Dein Tipp konnte nicht gespeichert werden. Steht das Ergebnis schon fest?");
+    if (error) setSchreibFehler(t("tipp.nichtGespeichert"));
   };
 
   const ergebnisSpeichern = async (eventId, ergebnis) => {
@@ -10508,7 +10521,7 @@ export default function ClubMemberOrganisationApp() {
       heim: Number(ergebnis.home), auswaerts: Number(ergebnis.away),
       erfasst_von: isDbId(meineMitgliedsId) ? meineMitgliedsId : null,
     }, { onConflict: "club_id,event_id" });
-    if (error) setSchreibFehler("Das Ergebnis konnte nicht gespeichert werden.");
+    if (error) setSchreibFehler(t("tipp.ergebnisFehler"));
   };
 
   /* Ein eingetragenes Ergebnis wieder entfernen.
@@ -10520,16 +10533,16 @@ export default function ClubMemberOrganisationApp() {
     if (!supabase || !selectedClubId || typeof eventId !== "string") return;
     const { error } = await supabase.from("event_results").delete()
       .eq("club_id", selectedClubId).eq("event_id", eventId);
-    if (error) setSchreibFehler("Das Ergebnis konnte nicht entfernt werden.");
+    if (error) setSchreibFehler(t("tipp.ergebnisEntfernenFehler"));
   };
 
   const stimmeAbgeben = async (pollId, optionId) => {
-    if (!supabase || !meinProfil() || typeof pollId !== "string") return { error: "Nicht moeglich." };
+    if (!supabase || !meinProfil() || typeof pollId !== "string") return { error: t("allg.nichtMoeglich") };
     const { error } = await supabase.from("poll_votes").upsert(
       { poll_id: pollId, option_id: optionId, profile_id: meinProfil() },
       { onConflict: "poll_id,profile_id" },
     );
-    return error ? { error: "Deine Stimme konnte nicht gespeichert werden." } : {};
+    return error ? { error: t("umf.stimmeFehler") } : {};
   };
 
   /* Stimme zuruecknehmen. Bisher war eine Umfrage eine Einbahnstrasse: einmal
@@ -10537,25 +10550,25 @@ export default function ClubMemberOrganisationApp() {
      Geloescht wird nur die eigene Zeile; RLS sorgt dafuer, dass niemand die
      Stimme eines anderen entfernt. */
   const stimmeZuruecknehmen = async (pollId) => {
-    if (!supabase || !meinProfil() || typeof pollId !== "string") return { error: "Nicht moeglich." };
+    if (!supabase || !meinProfil() || typeof pollId !== "string") return { error: t("allg.nichtMoeglich") };
     const { error } = await supabase.from("poll_votes").delete()
       .eq("poll_id", pollId).eq("profile_id", meinProfil());
-    return error ? { error: "Deine Stimme konnte nicht entfernt werden." } : {};
+    return error ? { error: t("umf.stimmeEntfernenFehler") } : {};
   };
 
   const umfrageAnlegen = async (titel, antworten) => {
-    if (!supabase || !selectedClubId) return { error: "Nicht moeglich." };
+    if (!supabase || !selectedClubId) return { error: t("allg.nichtMoeglich") };
     const { data: umfrage, error } = await supabase.from("polls")
       .insert({ club_id: selectedClubId, title: titel, active: true, created_by: meinProfil() })
       .select("id").single();
-    if (error || !umfrage) return { error: "Die Umfrage konnte nicht angelegt werden." };
+    if (error || !umfrage) return { error: t("umf.anlegenFehler") };
     const { error: antwortFehler } = await supabase.from("poll_options")
       .insert(antworten.map((label, i) => ({ poll_id: umfrage.id, label, position: i })));
     if (antwortFehler) {
       /* Eine Umfrage ohne Antworten waere unbenutzbar und liesse sich in der
          Oberflaeche nicht mehr loswerden. Also zurueck. */
       await supabase.from("polls").delete().eq("id", umfrage.id);
-      return { error: "Die Antworten konnten nicht gespeichert werden." };
+      return { error: t("umf.antwortenSpeichernFehler") };
     }
     return { id: umfrage.id };
   };
@@ -10563,16 +10576,16 @@ export default function ClubMemberOrganisationApp() {
   const umfrageUmschalten = async (pollId, aktiv) => {
     if (!supabase || typeof pollId !== "string") return;
     const { error } = await supabase.from("polls").update({ active: aktiv }).eq("id", pollId);
-    if (error) setSchreibFehler("Die Umfrage konnte nicht umgeschaltet werden.");
+    if (error) setSchreibFehler(t("umf.umschaltenFehler"));
   };
 
   const saisonStimmeAbgeben = async (kandidatMitgliedsId) => {
-    if (!supabase || !selectedClubId || !meinProfil()) return { error: "Nicht moeglich." };
+    if (!supabase || !selectedClubId || !meinProfil()) return { error: t("allg.nichtMoeglich") };
     const { error } = await supabase.from("season_votes").upsert({
       club_id: selectedClubId, season: SAISON_KENNUNG,
       voter_profile_id: meinProfil(), candidate_membership_id: kandidatMitgliedsId,
     }, { onConflict: "club_id,season,voter_profile_id" });
-    return error ? { error: "Deine Stimme konnte nicht gespeichert werden." } : {};
+    return error ? { error: t("umf.stimmeFehler") } : {};
   };
 
   const dienstSetzen = async (eventId, station, mitgliedsId, eintragen) => {
@@ -10587,21 +10600,21 @@ export default function ClubMemberOrganisationApp() {
           .eq("event_id", eventId).eq("station", station).eq("membership_id", mitgliedsId);
     if (error) {
       setSchreibFehler(eintragen
-        ? "Die Einteilung konnte nicht gespeichert werden. Fremde Personen darf nur die Vereinsleitung einteilen."
-        : "Die Einteilung konnte nicht entfernt werden.");
+        ? t("help.einteilungSpeichernFehler")
+        : t("help.einteilungNichtEntfernt"));
       return { error: true };
     }
     return {};
   };
 
   const protokollSpeichern = async (entwurf) => {
-    if (!supabase || !selectedClubId) return { error: "Nicht moeglich." };
+    if (!supabase || !selectedClubId) return { error: t("allg.nichtMoeglich") };
     const { data: protokoll, error } = await supabase.from("protocols").insert({
       club_id: selectedClubId, title: entwurf.title, meeting_date: entwurf.date,
       raw_text: entwurf.rawText, attendee_membership_ids: (entwurf.attendees || []).filter(isDbId),
       created_by: meinProfil(),
     }).select("id").single();
-    if (error || !protokoll) return { error: "Das Protokoll konnte nicht gespeichert werden." };
+    if (error || !protokoll) return { error: t("prot.speichernFehler") };
     const aufgaben = (entwurf.tasks || []).filter((t) => t.text.trim());
     if (aufgaben.length) {
       /* Auch hier wurde das Ergebnis verworfen. Das Protokoll selbst war dann
@@ -10615,7 +10628,7 @@ export default function ClubMemberOrganisationApp() {
         due_date: t.due || null, done: false,
       })));
       if (aufgabenFehler) {
-        return { id: protokoll.id, warnung: "Das Protokoll ist gespeichert, die Aufgaben darin konnten aber nicht angelegt werden. Bitte trage sie noch einmal ein." };
+        return { id: protokoll.id, warnung: t("prot.aufgabenNichtAngelegt") };
       }
     }
     return { id: protokoll.id };
@@ -10624,7 +10637,7 @@ export default function ClubMemberOrganisationApp() {
   const aufgabeUmschalten = async (taskId, erledigt) => {
     if (!supabase || typeof taskId !== "string") return;
     const { error } = await supabase.from("protocol_tasks").update({ done: erledigt }).eq("id", taskId);
-    if (error) setSchreibFehler("Der Haken an der Aufgabe konnte nicht gespeichert werden.");
+    if (error) setSchreibFehler(t("auf.hakenSpeichernFehler"));
   };
 
   const vereinseinstellungSetzen = async (feld, wert) => {
@@ -10633,7 +10646,7 @@ export default function ClubMemberOrganisationApp() {
       { club_id: selectedClubId, [feld]: wert, updated_at: new Date().toISOString() },
       { onConflict: "club_id" },
     );
-    if (error) setSchreibFehler("Die Einstellung konnte nicht gespeichert werden.");
+    if (error) setSchreibFehler(t("sys.einstellungFehler"));
   };
 
   const erinnerungVermerken = async (mitgliedsId) => {
@@ -10643,7 +10656,7 @@ export default function ClubMemberOrganisationApp() {
       gesendet_am: new Date().toISOString(),
       gesendet_von: isDbId(meineMitgliedsId) ? meineMitgliedsId : null,
     }, { onConflict: "membership_id,jahr" });
-    if (error) setSchreibFehler("Die Erinnerung wurde verschickt, aber nicht vermerkt — sie könnte doppelt kommen.");
+    if (error) setSchreibFehler(t("bei.erinnerungNichtVermerkt"));
   };
 
   const ungelesenZaehlen = useCallback(async () => {
@@ -10667,7 +10680,7 @@ export default function ClubMemberOrganisationApp() {
       .order("created_at", { ascending: false })
       .limit(100);
     setPostfachLaedt(false);
-    if (error) { setSchreibFehler("Die Benachrichtigungen konnten nicht geladen werden."); return; }
+    if (error) { setSchreibFehler(t("push.ladenFehler")); return; }
     setPostfach(data || []);
     setUngelesen((data || []).filter((e) => !e.read_at).length);
   };
@@ -10678,7 +10691,7 @@ export default function ClubMemberOrganisationApp() {
     setPostfach((alle) => alle.map((e) => (e.read_at ? e : { ...e, read_at: jetzt })));
     setUngelesen(0);
     const { error } = await supabase.rpc("benachrichtigungen_gelesen", { target_club: selectedClubId });
-    if (error) { setSchreibFehler("Konnte nicht als gelesen vermerkt werden."); postfachLaden(); }
+    if (error) { setSchreibFehler(t("news.gelesenFehler")); postfachLaden(); }
   };
 
   const postfachLoeschen = async (id) => {
@@ -10686,7 +10699,7 @@ export default function ClubMemberOrganisationApp() {
     setPostfach((alle) => alle.filter((e) => e.id !== id));
     setUngelesen((n) => Math.max(0, n - (vorher.find((e) => e.id === id)?.read_at ? 0 : 1)));
     const { error } = await supabase.from("user_notifications").delete().eq("id", id);
-    if (error) { setSchreibFehler("Die Benachrichtigung konnte nicht entfernt werden."); setPostfach(vorher); }
+    if (error) { setSchreibFehler(t("push.benachrichtigungNichtEntfernt")); setPostfach(vorher); }
   };
 
   const postfachAlleLoeschen = async () => {
@@ -10694,13 +10707,13 @@ export default function ClubMemberOrganisationApp() {
     const vorher = postfach;
     setPostfach([]); setUngelesen(0);
     const { error } = await supabase.from("user_notifications").delete().eq("profile_id", meinProfil());
-    if (error) { setSchreibFehler("Die Benachrichtigungen konnten nicht entfernt werden."); setPostfach(vorher); }
+    if (error) { setSchreibFehler(t("push.entfernenFehler")); setPostfach(vorher); }
   };
 
   const kachelreihenfolgeSpeichern = async (reihenfolge) => {
     if (!supabase || !meinProfil()) return;
     const { error } = await supabase.from("profiles").update({ dashboard_tile_order: reihenfolge }).eq("id", meinProfil());
-    if (error) setSchreibFehler("Die Reihenfolge konnte nicht gespeichert werden.");
+    if (error) setSchreibFehler(t("allg.reihenfolgeFehler"));
   };
 
   /* Wer schon angemeldet ist, soll sich nicht erneut anmelden muessen, nur weil
@@ -10727,7 +10740,7 @@ export default function ClubMemberOrganisationApp() {
 
     const { data: sitzung } = await supabase.auth.getUser();
     const profileId = sitzung?.user?.id;
-    if (!profileId) return { error: "Die Sitzung ist abgelaufen. Bitte melde dich erneut an." };
+    if (!profileId) return { error: t("login.sitzungAbgelaufen") };
 
     const { data: angelegt, error } = await supabase.rpc("register_new_club", {
       club_name: club.name, club_short_name: club.shortName, club_city: club.city || "",
@@ -10739,10 +10752,10 @@ export default function ClubMemberOrganisationApp() {
       club_primary_color: club.primaryColor || DEFAULT_CLUB_COLORS.primary,
       club_secondary_color: club.secondaryColor || DEFAULT_CLUB_COLORS.secondary,
     });
-    if (error) return { error: "Der Verein konnte nicht angelegt werden. Bitte pruefe die Angaben." };
+    if (error) return { error: t("verein.anlegenFehler") };
 
     const neueId = angelegt?.[0]?.club_id;
-    if (!neueId) return { error: "Der Verein konnte nicht angelegt werden." };
+    if (!neueId) return { error: t("verein.anlegenFehler2") };
 
     if (club.logoDataUrl) {
       try {
@@ -10787,25 +10800,25 @@ export default function ClubMemberOrganisationApp() {
   const loadSupabaseMembership = async (profileId, clubId) => {
     /* Ohne Verein gibt es nichts zu laden. Ohne diese Zeile ging die Abfrage
        mit club_id=eq.null an eine uuid-Spalte, PostgREST antwortete mit 400,
-       und der Nutzer bekam "Das Vereinsprofil konnte nicht geladen werden" zu
+       und der Nutzer bekam t("verein.profilNichtGeladen") zu
        lesen - eine Meldung, aus der niemand schliessen kann, dass er schlicht
        noch keinem Verein angehoert. */
-    if (!clubId) return { error: "Für dieses Konto besteht noch keine Mitgliedschaft in einem Verein.", code: "membership_missing" };
+    if (!clubId) return { error: t("konto.keineMitgliedschaft"), code: "membership_missing" };
     const { data, error } = await supabase.from("club_memberships")
       .select("id,club_id,display_name,email,member_since,membership_number,status,team_filter,is_managed_profile,membership_roles(role),team_members(function,teams(name)),profiles!club_memberships_profile_id_fkey(birthdate,academic_title,first_name,last_name,contact_emails,contact_phones,gender,nationality,street,postal_code,city,country_code,notification_master,notification_preferences,auto_logout_days,calendar_sync_interval,show_birthday)")
       .eq("profile_id", profileId).eq("club_id", clubId).maybeSingle();
-    if (error) return { error: "Das Vereinsprofil konnte nicht geladen werden." };
-    if (!data) return { error: "Für dieses Konto besteht noch keine Mitgliedschaft in diesem Verein.", code: "membership_missing" };
-    if (data.status === "pending") return { error: "Deine Registrierung wartet noch auf die Freigabe durch den Vereins-Administrator.", code: "membership_pending" };
-    if (data.status !== "active") return { error: "Dieses Vereinsprofil ist derzeit nicht aktiv." };
+    if (error) return { error: t("verein.profilLadenFehler") };
+    if (!data) return { error: t("mit.keineMitgliedschaft"), code: "membership_missing" };
+    if (data.status === "pending") return { error: t("reg.wartetFreigabe"), code: "membership_pending" };
+    if (data.status !== "active") return { error: t("verein.profilInaktiv") };
     const { data: rosterData, error: rosterError } = await supabase.from("club_memberships")
       .select("id,profile_id,club_id,display_name,email,member_since,membership_number,status,team_filter,is_managed_profile,membership_roles(role),team_members(function,teams(name)),profiles!club_memberships_profile_id_fkey(birthdate,academic_title,first_name,last_name,contact_emails,contact_phones,gender,nationality,street,postal_code,city,country_code,notification_master,notification_preferences,auto_logout_days,calendar_sync_interval,show_birthday)")
       .eq("club_id", clubId).in("status", ["active", "pending"]);
-    if (rosterError) return { error: "Die Mitgliederliste konnte nicht geladen werden." };
+    if (rosterError) return { error: t("mit.listeFehler") };
     const { data: familyData, error: familyError } = await supabase.from("family_links")
       .select("id,first_membership_id,second_membership_id,first_to_second,second_to_first")
       .eq("club_id", clubId);
-    if (familyError) return { error: "Die Familienverknüpfungen konnten nicht geladen werden." };
+    if (familyError) return { error: t("fam.verknuepfungenLadenFehler") };
     const roster = (rosterData || []).map((record, index) => {
       const assignments = record.team_members || [];
       const teamNames = [...new Set(assignments.map((entry) => entry.teams?.name).filter(Boolean))];
@@ -10839,12 +10852,12 @@ export default function ClubMemberOrganisationApp() {
     });
     const hydratedRoster = hydrateFamilyLinks(roster, familyData || []);
     const member = hydratedRoster.find((item) => item.id === data.id);
-    if (!member) return { error: "Das Vereinsprofil konnte nicht geladen werden." };
+    if (!member) return { error: t("verein.profilLadenFehler") };
     if (canManageFees(member)) {
       const { data: feesData, error: feesError } = await supabase.from("fee_records")
         .select("id,membership_id,year,type,amount,payment_status,invoice_number,person_count,fee_people(membership_id,manual_name)")
         .eq("club_id", clubId).order("year", { ascending: false }).order("created_at", { ascending: false });
-      if (feesError) return { error: "Die Beitragsverwaltung konnte nicht geladen werden." };
+      if (feesError) return { error: t("bei.verwaltungLadenFehler") };
       const loadedFees = (feesData || []).map((record) => ({
         id: record.id,
         memberId: record.membership_id,
@@ -10866,7 +10879,7 @@ export default function ClubMemberOrganisationApp() {
     const { data: newsData, error: newsError } = await supabase.from("news_posts")
       .select("id,title,body,image_path,author_name,created_at")
       .eq("club_id", clubId).order("created_at", { ascending: true }).limit(100);
-    if (newsError) return { error: "Die Vereins-News konnten nicht geladen werden." };
+    if (newsError) return { error: t("news.ladenFehler") };
     const loadedNews = await Promise.all((newsData || []).map(async (post) => {
       let signedUrl;
       if (post.image_path) {
@@ -11050,11 +11063,11 @@ export default function ClubMemberOrganisationApp() {
          gleich doppelt irrefuehrend: Es ist kein Anmeldefehler, sondern eine
          fehlende Einrichtung, und niemand findet den Grund, indem er sein
          Passwort noch einmal tippt. */
-      return { error: "Die App ist nicht mit der Datenbank verbunden. Bitte melde das dem Verein." };
+      return { error: t("sys.keineDatenbank") };
     }
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return { error: anmeldeFehlerText(error) };
-    if (!data.user) return { error: "Die Anmeldung hat nicht geklappt. Bitte versuche es noch einmal." };
+    if (!data.user) return { error: t("login.fehlgeschlagen") };
     /* Ab hier gibt es eine Sitzung. Sie muss bekannt sein, damit der Beitritt
        zu einem weiteren Verein ohne erneute Anmeldung funktioniert. */
     setOffeneSitzung({ profileId: data.user.id, email: data.user.email, mitgliedschaften: [] });
@@ -11093,10 +11106,10 @@ export default function ClubMemberOrganisationApp() {
         club_primary_color: pending.primary_color || DEFAULT_CLUB_COLORS.primary,
         club_secondary_color: pending.secondary_color || DEFAULT_CLUB_COLORS.secondary,
       });
-      if (newClubError) return { error: "Die Vereinsregistrierung konnte nicht fertiggestellt werden." };
+      if (newClubError) return { error: t("verein.registrierungFehler") };
       const newClubId = registration?.[0]?.club_id;
       await supabase.auth.updateUser({ data: { ...metadata, pending_new_club: null } });
-      if (!newClubId) return { error: "Der neue Verein konnte nicht geladen werden." };
+      if (!newClubId) return { error: t("verein.neuLadenFehler") };
       if (pending.logo) {
         try {
           const blob = await (await fetch(pending.logo)).blob();
@@ -11133,7 +11146,7 @@ export default function ClubMemberOrganisationApp() {
       member_birthdate: metadata.birthdate || null,
       member_team: metadata.requested_team || null,
     });
-    if (registrationError) return { error: "Das Vereinsprofil konnte nicht fertiggestellt werden." };
+    if (registrationError) return { error: t("verein.profilNichtFertig") };
     setSelectedClubId(zielClub);
     return loadSupabaseMembership(data.user.id, zielClub);
   };
@@ -11180,10 +11193,10 @@ export default function ClubMemberOrganisationApp() {
 
   /* Beitritt mit einem Konto, das es schon gibt. */
   const vereinBeitreten = async ({ name, art, team }) => {
-    if (!supabase || !selectedClubId) return { error: "Bitte wähle zuerst einen Verein aus." };
+    if (!supabase || !selectedClubId) return { error: t("verein.zuerstWaehlen") };
     const { data: sitzung } = await supabase.auth.getUser();
     const profileId = sitzung?.user?.id;
-    if (!profileId) return { error: "Die Sitzung ist abgelaufen. Bitte melde dich erneut an." };
+    if (!profileId) return { error: t("login.sitzungAbgelaufen") };
 
     const { data, error } = await supabase.rpc("register_for_club", {
       target_club: selectedClubId, member_name: name,
@@ -11191,8 +11204,8 @@ export default function ClubMemberOrganisationApp() {
     });
     if (error) {
       return { error: /blocked/i.test(error.message || "")
-        ? "Dieser Verein hat dich gesperrt. Ein Beitritt ist nicht möglich."
-        : "Die Anfrage konnte nicht gesendet werden. Bitte versuche es später noch einmal." };
+        ? t("verein.gesperrtKeinBeitritt")
+        : t("zug.anfrageSendenFehler") };
     }
     if (data?.[0]?.membership_status === "active") return loadSupabaseMembership(profileId, selectedClubId);
     await mitgliedschaftenLaden(profileId);
@@ -11303,12 +11316,12 @@ export default function ClubMemberOrganisationApp() {
     setAuthScreen("login");
   };
   const deletePendingAccount = async () => {
-    if (!supabase) return { error: "Löschen ist nur mit einem echten Konto möglich." };
+    if (!supabase) return { error: t("konto.loeschenNurEcht") };
     const { data } = await supabase.auth.getSession();
     const token = data.session?.access_token;
-    if (!token) return { error: "Die Sitzung ist abgelaufen. Bitte melde dich erneut an." };
+    if (!token) return { error: t("login.sitzungAbgelaufen") };
     const response = await fetch("/api/account/delete", { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
-    if (!response.ok) return { error: "Das Konto konnte nicht vollständig gelöscht werden. Bitte wende dich an den Support." };
+    if (!response.ok) return { error: t("konto.loeschenFehler") };
     await leavePendingAccount();
     /* Beim blossen Abmelden bleibt der gewaehlte Verein absichtlich stehen -
        wer auf die Freigabe wartet, findet ihn beim naechsten Anmelden wieder.
@@ -11348,8 +11361,8 @@ export default function ClubMemberOrganisationApp() {
       if (error) return { error: registrierFehlerText(error) };
       if (!data.session || !data.user) {
         return { ok: true, message: nurKonto
-          ? "Dein Konto ist angelegt. Bitte bestätige jetzt die E-Mail — danach meldest du dich an und suchst deinen Verein."
-          : "Bitte bestätige jetzt die E-Mail. Danach kannst du dich anmelden und die Vereinsregistrierung abschließen." };
+          ? t("reg.kontoAngelegt")
+          : t("reg.mailBestaetigenDannAnmelden") };
       }
       /* Wer sich hier anmeldet, ist angemeldet - und muss deshalb als Geraet
          eingetragen sein. Ohne das haette das neue Konto null Eintraege, und
@@ -11390,10 +11403,10 @@ export default function ClubMemberOrganisationApp() {
         const result = await supabase.rpc("register_for_club", { target_club:draft.clubId, member_name:draft.name, account_role:familySetup?.accountType||"mitglied", member_birthdate:draft.birthdate||null, member_team:draft.team||null });
         registration=result.data; registrationError=result.error;
       }
-      if (registrationError) return { error: "Das Konto wurde erstellt, aber das Vereinsprofil konnte nicht angelegt werden." };
+      if (registrationError) return { error: t("reg.kontoOhneVereinsprofil") };
       if (registration?.[0]?.membership_status === "pending") {
         await supabase.auth.signOut();
-        return { ok: true, message: "Dein Konto wurde erstellt. Der Vereins-Administrator muss deine Mitgliedschaft noch freigeben." };
+        return { ok: true, message: t("reg.freigabeNoetig") };
       }
       return loadSupabaseMembership(data.user.id, draft.clubId);
     }
@@ -11528,7 +11541,7 @@ export default function ClubMemberOrganisationApp() {
      Unterschieben fremder Inhalte. Deshalb tut er das nur noch da, wo es
      stimmt: im Demo-Betrieb ohne Datenbank. */
   const resetDemoData = () => {
-    if (supabase) return { error: "Im laufenden Betrieb gibt es nichts zurückzusetzen. Einzelne Termine, News und Umfragen lassen sich dort löschen, wo sie stehen." };
+    if (supabase) return { error: t("sys.nichtsZurueckzusetzen") };
     setCarpools({}); setSeasonVotes({}); setTippPredictions({}); setTippResults({});
     setRemindersSent({});
     setFeePaid(INITIAL_FEE_PAID); setFeeRecords(INITIAL_FEE_RECORDS); setEvents(EVENTS); setDutyPlan(INITIAL_DUTY_PLAN); setChannels(INITIAL_CHANNELS);
@@ -11570,7 +11583,7 @@ export default function ClubMemberOrganisationApp() {
     setMembers((liste) => liste.map((m) => (m.id === currentUser?.id ? { ...m, teamFilter: mannschaft } : m)));
     if (!supabase || !isDbId(currentUser?.id)) return;
     const { error } = await supabase.from("club_memberships").update({ team_filter: mannschaft }).eq("id", currentUser.id);
-    if (error) setSchreibFehler("Die Startansicht konnte nicht gespeichert werden.");
+    if (error) setSchreibFehler(t("pf.startansichtFehler"));
   };
 
   const currentUserIsAdmin = isAdmin(currentUser);
