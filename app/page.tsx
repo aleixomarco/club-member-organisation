@@ -7181,14 +7181,14 @@ function CalendarSyncSettings({ user, saveRef }) {
       <select value={interval} onChange={(e) => setInterval(e.target.value)} className="w-full px-3 py-3 rounded-xl text-xs mb-3" style={inputStyle}>
         <option value="never">{t("kal.nie")}</option>
         <option value="daily">{t("kal.taeglich")}</option>
-        <option value="weekly">Wöchentlich · Sonntagabend</option>
-        <option value="monthly">Monatlich</option>
+        <option value="weekly">{t("kal.woechentlich")}</option>
+        <option value="monthly">{t("kal.monatlich")}</option>
       </select>
 
       <button onClick={sync} disabled={saving || !types.length} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white, opacity: saving || !types.length ? .5 : 1 }}><RefreshCw size={14}/> {saving ? "Wird gespeichert …" : token ? "Auswahl übernehmen" : "Abonnement erstellen"}</button>
 
       {url && <>
-        <a href={url.replace(/^https?:/, "webcal:")} className="block w-full text-center mt-2 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.erfolgFlaeche, color: C.erfolg }}>Mit Gerätekalender verbinden</a>
+        <a href={url.replace(/^https?:/, "webcal:")} className="block w-full text-center mt-2 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.erfolgFlaeche, color: C.erfolg }}>{t("kal.verbinden")}</a>
         <div className="text-[10px] mt-2 leading-snug" style={{ color: C.textDim }}>Abonniert: {selectedLabel || "nichts"}. Änderst du die Auswahl, übernimmt dein Gerätekalender sie beim nächsten Abruf — ohne erneutes Einrichten.</div>
       </>}
     </div>
@@ -7451,7 +7451,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
       <div className="grid grid-cols-3 gap-2 mb-4 text-center">
         <a href="/datenschutz" className="py-2 rounded-xl text-[10px] font-bold" style={{ background: C.glass, border: `1px solid ${C.line}`, color: C.textDim }}>{t("recht.datenschutz")}</a>
         <a href="/impressum" className="py-2 rounded-xl text-[10px] font-bold" style={{ background: C.glass, border: `1px solid ${C.line}`, color: C.textDim }}>{t("recht.impressum")}</a>
-        <a href="/nutzungsbedingungen" className="py-2 rounded-xl text-[10px] font-bold" style={{ background: C.glass, border: `1px solid ${C.line}`, color: C.textDim }}>Bedingungen</a>
+        <a href="/nutzungsbedingungen" className="py-2 rounded-xl text-[10px] font-bold" style={{ background: C.glass, border: `1px solid ${C.line}`, color: C.textDim }}>{t("recht.bedingungen")}</a>
       </div>
 
       <button onClick={onLogout} className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm" style={{ background: C.paperDim, color: C.red, fontFamily: "Inter", fontWeight: 700 }}>
@@ -7489,7 +7489,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
         <div className="rounded-2xl p-4 mb-6" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="flex items-center gap-2 text-sm font-bold mb-1" style={{ color: C.ink }}><Mail size={15}/> Hinterlegte E-Mail</div><div className="text-xs" style={{ color: C.textDim }}>{user.email}</div></div>
         <SectionTitle eyebrow="Gefahrenbereich" title="Account-Löschung"/>
         <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Die Löschung entfernt dein Konto und alle personenbezogenen Daten dauerhaft.</div>
-        {!deleteConfirm ? <button onClick={() => setDeleteConfirm(true)} className="w-full py-2.5 rounded-2xl text-xs" style={{ background: C.glass, border: `1px solid ${C.fehlerRand}`, color: C.red, fontWeight: 700 }}>Konto und persönliche Daten löschen</button> :
+        {!deleteConfirm ? <button onClick={() => setDeleteConfirm(true)} className="w-full py-2.5 rounded-2xl text-xs" style={{ background: C.glass, border: `1px solid ${C.fehlerRand}`, color: C.red, fontWeight: 700 }}>{t("konto.loeschenLang")}</button> :
           <div className="rounded-2xl p-3" style={{ background: C.fehlerFlaeche, border: `1px solid ${C.fehlerRand}` }}><div className="flex items-center gap-2 text-xs font-bold mb-2" style={{ color: C.fehler }}><AlertCircle size={15}/> Endgültige Löschung bestätigen</div><div className="text-xs mb-3" style={{ color: C.ink }}>Das Konto, Vereinsprofile und persönliche Inhalte werden dauerhaft gelöscht. Dieser Schritt kann nicht rückgängig gemacht werden.</div>{deleteError && <div className="text-xs mb-2" style={{ color: C.fehler }}>{deleteError}</div>}<div className="flex gap-2"><button disabled={deleting} onClick={deleteAccount} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: C.red, color: C.aufPrimaer }}>{deleting ? "Wird gelöscht …" : "Endgültig löschen"}</button><button onClick={() => { setDeleteConfirm(false); setDeleteError(""); }} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>{t("allg.abbrechen")}</button></div></div>}
       </ProfileUnderlay>}
     </div>
@@ -7500,6 +7500,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
 /* Athlet/in der Saison — Wahl                                            */
 /* ------------------------------------------------------------------ */
 function SeasonVoteView({ currentUser, members, seasonVotes, setSeasonVotes, onVote }) {
+  const t = useT();
   const closed = new Date() > new Date(SEASON_VOTE_DEADLINE);
   const { d, h, m } = useCountdown(SEASON_VOTE_DEADLINE);
   const myVote = seasonVotes[currentUser.id];
@@ -7526,7 +7527,7 @@ function SeasonVoteView({ currentUser, members, seasonVotes, setSeasonVotes, onV
         {!closed ? (
           <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>Abstimmung endet am 31.08.2026 · noch {d}T {h}Std {m}Min</div>
         ) : (
-          <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>Abstimmung beendet — Ergebnis final</div>
+          <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("sais.beendet")}</div>
         )}
       </div>
 
@@ -7537,7 +7538,7 @@ function SeasonVoteView({ currentUser, members, seasonVotes, setSeasonVotes, onV
           <Trophy size={22} style={{ color: C.secondary }} />
           <div>
             <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>🏆 {sorted[0].name}</div>
-            <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>Athlet/in der Saison — Ehrung beim Sommerfest</div>
+            <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("sais.ehrung")}</div>
           </div>
         </div>
       )}
@@ -7608,7 +7609,7 @@ function TippRundenPanel({ currentClub }) {
   if (!supabase) return null;
   return (
     <div className="rounded-2xl p-4 mt-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
-      <div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Tippspiel je Mannschaft</div>
+      <div className="text-sm font-bold mb-1" style={{ color: C.ink }}>{t("tipp.jeTeam")}</div>
       <div className="text-[11px] mb-3" style={{ color: C.textDim }}>
         Jede freigegebene Mannschaft bekommt eine eigene Tipprunde mit eigener Tabelle. Die Runden lassen sich nicht mischen — wie bei den Chatkanälen.
       </div>
@@ -7769,7 +7770,7 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
       {aktuelleRunde?.ich_dabei && (<>
       <SectionTitle eyebrow="Rangliste" title={`Tabelle ${aktuelleRunde.team_name}`} />
       <div className="rounded-2xl overflow-hidden mb-6" style={{ border: `1px solid ${C.line}` }}>
-        {(tabelle || []).length === 0 && <div className="px-4 py-3 text-xs" style={{ color: C.textDim }}>Noch niemand in dieser Runde.</div>}
+        {(tabelle || []).length === 0 && <div className="px-4 py-3 text-xs" style={{ color: C.textDim }}>{t("tipp.niemand")}</div>}
         {(tabelle || []).map((m, i) => (
           <div key={m.membership_id} className="flex items-center gap-3 px-4 py-2.5" style={{ background: m.membership_id === currentUser.id ? C.fehlerFlaeche : C.white, borderBottom: i < (tabelle || []).length - 1 ? `1px solid ${C.line}` : "none" }}>
             <div className="w-6 text-center text-sm" style={{ fontFamily: "JetBrains Mono", fontWeight: 700, color: i === 0 ? C.secondary : C.textDim }}>{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}</div>
@@ -7803,7 +7804,7 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
           <div key={match.id} className="rounded-2xl p-4 mb-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
             <div className="flex items-center justify-between mb-3">
               <div><div className="text-sm font-bold" style={{ color: C.ink, fontFamily: "Inter" }}>{match.titel}</div><div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{formatDate(match.date)} · {formatTime(match.date)}{match.team ? ` · ${match.team}` : ""}</div></div>
-              {result ? <Pill bg={C.secondary}>Endstand {result.home}:{result.away} · +{earned} P</Pill> : locked ? <Pill bg={C.textDim}>Wartet auf Ergebnis</Pill> : null}
+              {result ? <Pill bg={C.secondary}>Endstand {result.home}:{result.away} · +{earned} P</Pill> : locked ? <Pill bg={C.textDim}>{t("tipp.wartet")}</Pill> : null}
             </div>
             <div className="flex items-center justify-center gap-3">
               <span className="text-sm flex-1 text-right" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Wir</span>
@@ -8000,6 +8001,7 @@ function ProtocolCard({ protocol, members, onToggleTask }) {
   );
 }
 function ProtokollePanel({ members, protocols, setProtocols, clubId, onSpeichern, onAufgabe }) {
+  const t = useT();
   const [title, setTitle] = useState("");
   const [date, setDate] = useState(alsDatum(new Date()));
   const [attendees, setAttendees] = useState([]);
@@ -8048,7 +8050,7 @@ function ProtokollePanel({ members, protocols, setProtocols, clubId, onSpeichern
       <div>
         <div className="text-sm mb-2" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Offene Aufgaben ({openTasks.length})</div>
         {openTasks.length === 0 ? (
-          <div className="rounded-2xl p-3 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>Keine offenen Aufgaben — sehr gut! 🎉</div>
+          <div className="rounded-2xl p-3 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>{t("prot.keineAufgaben")}</div>
         ) : (
           <div className="space-y-1.5">
             {openTasks.map((t) => {
@@ -8068,14 +8070,14 @@ function ProtokollePanel({ members, protocols, setProtocols, clubId, onSpeichern
       </div>
 
       <div>
-        <div className="text-sm mb-2" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Neues Protokoll erfassen</div>
+        <div className="text-sm mb-2" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{t("prot.neu")}</div>
         <div className="rounded-2xl p-3 space-y-2.5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
           <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Titel, z. B. Vorstandssitzung August"
             className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={{ background: C.paperDim, fontFamily: "Inter", color: C.ink }} />
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)}
             className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={{ background: C.paperDim, fontFamily: "Inter", color: C.ink }} />
           <div>
-            <div className="text-[11px] mb-1.5" style={{ color: C.textDim, fontFamily: "Inter" }}>Teilnehmer:innen</div>
+            <div className="text-[11px] mb-1.5" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("prot.teilnehmer")}</div>
             <div className="flex flex-wrap gap-1.5">
               {members.map((m) => {
                 const active = attendees.includes(m.id);
@@ -8122,17 +8124,17 @@ function ProtokollePanel({ members, protocols, setProtocols, clubId, onSpeichern
           </div>
         )}
 
-        <button onClick={saveProtocol} disabled={!title.trim() || !rawText.trim()} className="w-full py-2.5 rounded-lg text-xs" style={{ background: C.red, color: C.aufPrimaer, fontFamily: "Inter", fontWeight: 700, opacity: (!title.trim() || !rawText.trim()) ? 0.5 : 1 }}>Protokoll & Aufgaben speichern</button>
+        <button onClick={saveProtocol} disabled={!title.trim() || !rawText.trim()} className="w-full py-2.5 rounded-lg text-xs" style={{ background: C.red, color: C.aufPrimaer, fontFamily: "Inter", fontWeight: 700, opacity: (!title.trim() || !rawText.trim()) ? 0.5 : 1 }}>{t("prot.speichern")}</button>
         {/* Diese Meldung wurde gesetzt und nirgends angezeigt: Scheiterte das
             Speichern, passierte fuer den Nutzer sichtbar gar nichts - das
             Formular blieb stehen, das Protokoll fehlte, und niemand sagte
             warum. */}
         {speicherFehler && <div role="alert" className="text-[11px] mt-2 rounded-xl px-3 py-2" style={{ background: C.fehlerFlaeche, color: C.fehler, fontFamily: "Inter" }}>{speicherFehler}</div>}
-        {(!title.trim() || !rawText.trim()) && <div className="text-[11px] mt-1.5 text-center" style={{ color: C.textDim, fontFamily: "Inter" }}>Bitte Titel und Protokolltext ausfüllen.</div>}
+        {(!title.trim() || !rawText.trim()) && <div className="text-[11px] mt-1.5 text-center" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("prot.pflicht")}</div>}
       </div>
 
       <div>
-        <div className="text-sm mb-2" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Vergangene Protokolle</div>
+        <div className="text-sm mb-2" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{t("prot.vergangene")}</div>
         <div className="space-y-2">
           {protocols.map((p) => <ProtocolCard key={p.id} protocol={p} members={members} onToggleTask={toggleTaskDone} />)}
         </div>
@@ -8145,6 +8147,7 @@ function ProtokollePanel({ members, protocols, setProtocols, clubId, onSpeichern
 /* Automatisierungen                                                    */
 /* ------------------------------------------------------------------ */
 function AutomationsPanel({ members, feePaid, remindersSent, setRemindersSent, welcomeAutomation, setWelcomeAutomation, billingAutomation, setBillingAutomation, onEinstellung, onErinnerung }) {
+  const t = useT();
   const openMembers = members.filter((m) => isFormalMember(m) && !feePaid[m.id]);
   /* Der Vermerk gehoert in die Datenbank: Vorher stand er im Zustandsblock und
      ging verloren, sobald ein anderer Administrator speicherte - dann wurde
@@ -8154,10 +8157,10 @@ function AutomationsPanel({ members, feePaid, remindersSent, setRemindersSent, w
   return (
     <div className="space-y-6">
       {BEITRAGSVERWALTUNG_SICHTBAR && <div>
-        <div className="text-sm mb-2" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Automatische Zahlungserinnerungen</div>
+        <div className="text-sm mb-2" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{t("bei.erinnerungen")}</div>
         <div className="text-[11px] mb-2" style={{ color: C.textDim, fontFamily: "Inter" }}>Stufe 1 ab 3 Tagen · Stufe 2 (Mahnung) ab 10 Tagen · Stufe 3 (Vorstand informiert) ab 20 Tagen überfällig.</div>
         {openMembers.length === 0 ? (
-          <div className="rounded-2xl p-3 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>Aktuell keine offenen Beiträge. 🎉</div>
+          <div className="rounded-2xl p-3 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>{t("bei.keineOffenen")}</div>
         ) : (
           <div className="space-y-1.5">
             {openMembers.map((m) => {
@@ -8449,7 +8452,7 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
           gezeigt. Das gehoert an den Anfang und nicht in eine Fussnote. */}
       {!frei && (
         <div className="rounded-2xl p-3.5" style={{ background: C.sekundaerWeich, border: `1px solid ${C.edge}` }}>
-          <div className="text-xs font-bold mb-1" style={{ color: C.ink }}>Eigene Sponsoren sind noch nicht freigeschaltet</div>
+          <div className="text-xs font-bold mb-1" style={{ color: C.ink }}>{t("sp.nichtFrei")}</div>
           <div className="text-[11px] leading-relaxed" style={{ color: C.textDim }}>
             Sie können hier alles vorbereiten — angezeigt wird es erst, wenn der Verein dafür freigeschaltet ist. Die Vereinsleitung kann den Zusatz zusammen mit dem Vollzugang anfragen.
           </div>
@@ -8505,7 +8508,7 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
 
             {imBearbeiten && (
               <div className="space-y-2 pt-1">
-                <div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.textDim }}>Der Sponsor</div>
+                <div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.textDim }}>{t("sp.derSponsor")}</div>
                 <input value={entwurf.titel} onChange={(e) => setzen("titel", e.target.value)} placeholder="Name des Sponsors" maxLength={120} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} />
                 <textarea value={entwurf.text} onChange={(e) => setzen("text", e.target.value)} placeholder="Kurzer Text (optional)" rows={2} maxLength={400} className="w-full px-3 py-2 rounded-lg text-xs outline-none resize-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} />
                 <input type="url" inputMode="url" value={entwurf.ziel_url} onChange={(e) => setzen("ziel_url", e.target.value)} placeholder="https://website-des-sponsors.de" className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} />
@@ -8518,7 +8521,7 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
                   <button onClick={() => setzen("bild_pfad", "")} aria-label="Bild entfernen" className="absolute top-1 right-1 w-7 h-7 rounded-full flex items-center justify-center" style={{ background: "rgba(20,21,26,.8)", color: "white" }}><X size={13} /></button>
                 </div>}
 
-                <div className="text-[10px] uppercase tracking-widest font-bold pt-1" style={{ color: C.textDim }}>Die Aktion (optional)</div>
+                <div className="text-[10px] uppercase tracking-widest font-bold pt-1" style={{ color: C.textDim }}>{t("sp.dieAktion")}</div>
                 <input value={entwurf.aktion_titel} onChange={(e) => setzen("aktion_titel", e.target.value)} placeholder="z. B. 10 % für alle Mitglieder" maxLength={120} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} />
                 <textarea value={entwurf.aktion_text} onChange={(e) => setzen("aktion_text", e.target.value)} placeholder="Was genau bekommt man, und wie?" rows={3} maxLength={600} className="w-full px-3 py-2 rounded-lg text-xs outline-none resize-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} />
                 <input type="url" inputMode="url" value={entwurf.aktion_url} onChange={(e) => setzen("aktion_url", e.target.value)} placeholder="https://link-zur-aktion.de (optional)" className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} />
@@ -8534,7 +8537,7 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
                     Die Aktion uebernimmt jetzt die Laufzeit des Sponsors -
                     gesetzt wird das beim Speichern. */}
 
-                <div className="text-[10px] uppercase tracking-widest font-bold pt-1" style={{ color: C.textDim }}>Der Sponsor steht auf dem Platz</div>
+                <div className="text-[10px] uppercase tracking-widest font-bold pt-1" style={{ color: C.textDim }}>{t("sp.stehtAufPlatz")}</div>
                 <div className="flex gap-2">
                   <label className="flex-1"><span className="text-[10px] block mb-1" style={{ color: C.textDim }}>Von</span>
                     <input type="datetime-local" value={entwurf.laeuft_von} onChange={(e) => setzen("laeuft_von", e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} /></label>
@@ -8547,7 +8550,7 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
                   <button onClick={() => { setOffen(""); setEntwurf(null); setFehler(""); }} className="flex-1 px-3 py-2.5 rounded-xl text-xs" style={{ background: C.paperDim, color: C.ink, fontWeight: 600, border: `1px solid ${C.line}` }}>{t("allg.abbrechen")}</button>
                   <button onClick={speichern} disabled={speichert} className="flex-1 px-3 py-2.5 rounded-xl text-xs" style={{ background: C.ink, color: C.white, fontWeight: 700, opacity: speichert ? .6 : 1 }}>{speichert ? "…" : "Speichern"}</button>
                 </div>
-                {entwurf.id && <button onClick={() => entfernen(entwurf.id)} disabled={speichert} className="w-full text-[11px] pt-1" style={{ color: C.red, fontWeight: 600 }}>Sponsor von diesem Platz entfernen</button>}
+                {entwurf.id && <button onClick={() => entfernen(entwurf.id)} disabled={speichert} className="w-full text-[11px] pt-1" style={{ color: C.red, fontWeight: 600 }}>{t("sp.entfernen")}</button>}
               </div>
             )}
           </div>
@@ -8558,6 +8561,7 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
 }
 
 function PollManagerPanel({ polls, setPolls, clubId, onAnlegen, onUmschalten }) {
+  const t = useT();
   const [title, setTitle] = useState("");
   const [options, setOptions] = useState(["", ""]);
   const [fehler, setFehler] = useState("");
@@ -8573,7 +8577,7 @@ function PollManagerPanel({ polls, setPolls, clubId, onAnlegen, onUmschalten }) 
     if (supabase && clubId) supabase.rpc("notify_club", { target_club: clubId, p_notif_type: "polls", p_title: "Neue Umfrage", p_body: title.trim() });
     setTitle(""); setOptions(["",""]);
   };
-  return <div className="space-y-4"><div className="rounded-2xl p-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">Neue Mitmach-Umfrage</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>Mindestens zwei Antwortmöglichkeiten eintragen.</div><input value={title} onChange={(e)=>setTitle(e.target.value)} placeholder="Frage oder Titel" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim}}/>{options.map((o,i)=><input key={i} value={o} onChange={(e)=>setOptions((all)=>all.map((x,idx)=>idx===i?e.target.value:x))} placeholder={`Antwort ${i+1}`} className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2" style={{background:C.paperDim}}/>)}<div className="flex gap-2"><button onClick={()=>setOptions((o)=>[...o,""])} className="px-3 py-2 rounded-lg text-xs font-bold" style={{background:C.paperDim,color:C.ink}}>＋ Antwort</button><button onClick={create} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{background: C.red, color: C.aufPrimaer}}>Veröffentlichen</button></div>{fehler&&<div role="status" className="text-[11px] rounded-xl px-3 py-2 mt-2" style={{background:C.fehlerFlaeche,color:C.fehler}}>{fehler}</div>}</div><div className="space-y-2">{polls.map((poll)=><div key={poll.id} className="rounded-xl p-3 flex items-center gap-3" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="flex-1"><div className="text-xs font-bold">{poll.title}</div><div className="text-[10px] mt-1" style={{color:C.textDim}}>{poll.options.length} Antworten · {poll.options.reduce((n,o)=>n+o.votes,0)} Stimmen</div></div><button onClick={()=>{onUmschalten?.(poll.id,!poll.active);setPolls((ps)=>ps.map((p)=>p.id===poll.id?{...p,active:!p.active}:p));}} className="px-2.5 py-1.5 rounded-full text-[10px] font-bold" style={{background:poll.active?C.erfolgFlaeche:C.paperDim,color:poll.active?C.secondary:C.textDim}}>{poll.active?"Aktiv":"Inaktiv"}</button></div>)}</div></div>;
+  return <div className="space-y-4"><div className="rounded-2xl p-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">{t("umf.neu")}</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>{t("umf.mindestens")}</div><input value={title} onChange={(e)=>setTitle(e.target.value)} placeholder="Frage oder Titel" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim}}/>{options.map((o,i)=><input key={i} value={o} onChange={(e)=>setOptions((all)=>all.map((x,idx)=>idx===i?e.target.value:x))} placeholder={`Antwort ${i+1}`} className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2" style={{background:C.paperDim}}/>)}<div className="flex gap-2"><button onClick={()=>setOptions((o)=>[...o,""])} className="px-3 py-2 rounded-lg text-xs font-bold" style={{background:C.paperDim,color:C.ink}}>＋ Antwort</button><button onClick={create} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{background: C.red, color: C.aufPrimaer}}>{t("allg.veroeffentlichen")}</button></div>{fehler&&<div role="status" className="text-[11px] rounded-xl px-3 py-2 mt-2" style={{background:C.fehlerFlaeche,color:C.fehler}}>{fehler}</div>}</div><div className="space-y-2">{polls.map((poll)=><div key={poll.id} className="rounded-xl p-3 flex items-center gap-3" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="flex-1"><div className="text-xs font-bold">{poll.title}</div><div className="text-[10px] mt-1" style={{color:C.textDim}}>{poll.options.length} Antworten · {poll.options.reduce((n,o)=>n+o.votes,0)} Stimmen</div></div><button onClick={()=>{onUmschalten?.(poll.id,!poll.active);setPolls((ps)=>ps.map((p)=>p.id===poll.id?{...p,active:!p.active}:p));}} className="px-2.5 py-1.5 rounded-full text-[10px] font-bold" style={{background:poll.active?C.erfolgFlaeche:C.paperDim,color:poll.active?C.secondary:C.textDim}}>{poll.active?"Aktiv":"Inaktiv"}</button></div>)}</div></div>;
 }
 
 function MatchResultsPanel({ results, onSave, onDelete, events }) {
@@ -8595,7 +8599,7 @@ function MatchResultsPanel({ results, onSave, onDelete, events }) {
   return (
     <div>
       <div className="rounded-2xl p-4 mb-4" style={{ background: C.erfolgFlaeche, border: `1px solid ${C.erfolgRand}` }}>
-        <div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Ergebnisse & Punkte</div>
+        <div className="text-sm font-bold mb-1" style={{ color: C.ink }}>{t("tipp.ergebnisse")}</div>
         <div className="text-xs" style={{ color: C.textDim }}>Endstand nach dem Spiel eintragen. Das System wertet danach alle Tipps aus: exakt 3 Punkte, richtige Tendenz 1 Punkt.</div>
       </div>
       {begegnungen.length === 0 && (
@@ -8809,7 +8813,7 @@ function RolesPanel({ members, setMembers }) {
                   })}
                 </div>
                 {m.roles.includes("trainer")&&<div className="mt-2.5 pt-2.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] mb-2 font-bold" style={{color:C.textDim}}>TRAINER FÜR · MEHRERE MANNSCHAFTEN MÖGLICH</div><div className="flex flex-wrap gap-1.5">{waehlbareMannschaften.length===0&&<span className="text-[11px]" style={{color:C.textDim}}>Noch keine Mannschaften angelegt — das geht im Reiter „Mannschaften“.</span>}{waehlbareMannschaften.map((team)=>{const active=(m.trainerTeams||[]).includes(team.name);return <button type="button" key={team.name} onClick={()=>toggleTrainerTeam(m.id,team.name)} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?ROLE_META.trainer.color:C.paperDim,color:active?C.white:C.textDim}}>{active?"✓ ":""}{team.name}</button>})}</div></div>}
-                {m.roles.includes("teammanager")&&<div className="mt-2.5 pt-2.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] mb-1 font-bold" style={{color:C.textDim}}>Betreute Mannschaft · maximal ein Teammanager je Mannschaft</div><select value={m.managedTeam||""} onChange={(e)=>assignManagedTeam(m.id,e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{background:C.paperDim}}><option value="">Mannschaft auswählen …</option>{waehlbareMannschaften.map((team)=><option key={team.name} value={team.name}>{team.name}</option>)}</select></div>}
+                {m.roles.includes("teammanager")&&<div className="mt-2.5 pt-2.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] mb-1 font-bold" style={{color:C.textDim}}>Betreute Mannschaft · maximal ein Teammanager je Mannschaft</div><select value={m.managedTeam||""} onChange={(e)=>assignManagedTeam(m.id,e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{background:C.paperDim}}><option value="">{t("tm.mannschaftWaehlen2")}</option>{waehlbareMannschaften.map((team)=><option key={team.name} value={team.name}>{team.name}</option>)}</select></div>}
                 <div className="flex gap-2 mt-3 pt-3" style={{ borderTop: `1px solid ${C.line}` }}>
                   <button type="button" onClick={closeMember} disabled={saving} className="flex-1 py-2 rounded-lg text-xs" style={{ background: C.paperDim, color: C.ink, fontFamily: "Inter", fontWeight: 700 }}>{t("allg.abbrechen")}</button>
                   <button type="button" onClick={() => saveMemberRoles(m.id)} disabled={saving} className="flex-1 py-2 rounded-lg text-xs" style={{ background: C.ink, color: "#fff", fontFamily: "Inter", fontWeight: 700, opacity: saving ? 0.6 : 1 }}>{saving ? "Speichert …" : "Speichern"}</button>
@@ -8839,7 +8843,7 @@ function SystemPanel({ members, channels, setChannels, maintenanceMode, setMaint
       <ToggleCard title="Wartungsmodus" desc="Hinweis-Banner für alle Nutzer:innen einblenden." value={maintenanceMode} onChange={(w)=>{onEinstellung?.("maintenance_mode",w);setMaintenanceMode(w);}} />
 
         <div className="rounded-2xl p-3 mb-3" style={{ background: C.paperDim }}>
-          <div className="text-sm mb-1" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Chat-Kanäle</div>
+          <div className="text-sm mb-1" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{t("chat.kanaele")}</div>
           <div className="text-[11px] leading-snug" style={{ color: C.textDim }}>
             Kanäle entstehen automatisch: Jede Mannschaft hat genau einen. Sichtbar ist er
             für ihre Mitglieder und deren Eltern, schreiben dürfen Trainer, Kapitäne,
@@ -8849,7 +8853,7 @@ function SystemPanel({ members, channels, setChannels, maintenanceMode, setMaint
         </div>
 
       <div>
-        <div className="text-sm mb-2" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Konten-Übersicht</div>
+        <div className="text-sm mb-2" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{t("sys.konten")}</div>
         <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${C.line}` }}>
           {members.map((m, i) => (
             <div key={m.id} className="px-4 py-2.5" style={{ background: C.glass, borderBottom: i < members.length - 1 ? `1px solid ${C.line}` : "none" }}>
