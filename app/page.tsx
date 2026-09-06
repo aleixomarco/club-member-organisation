@@ -3317,6 +3317,8 @@ function CarpoolSection({ ev, currentUser }) {
    dort wird die Karte aufgeklappt gezeigt, statt noch einmal tippen zu lassen. */
 function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser, dutyPlan, setDutyPlan, onDienstSetzen, canCancelTraining, onCancelTraining, onDeleteTraining, currentClub, featureEnabled, onNeuLaden, initialOpen = false }) {
   const [open, setOpen] = useState(initialOpen);
+  const [absageOffen, setAbsageOffen] = useState(false);
+  const [absageGrund, setAbsageGrund] = useState("");
   const meta = typeMeta[ev.type];
 
   const helperEligible = ev.helperSlots ? (isFormalMember(currentUser) && (ev.type !== "spiel" || age(currentUser.birthdate) >= 16)) : false;
@@ -3357,7 +3359,34 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
           {ev.cancelled&&<div className="rounded-xl p-3 mb-3 text-xs font-bold" style={{background:C.fehlerFlaeche,color:C.fehler,border: `1px solid ${C.fehlerRand}`}}>Dieses {meta.label} wurde{ev.team?` für ${ev.team}`:""} abgesagt.</div>}
           <p className="text-sm mb-3" style={{ color: C.textDim, fontFamily: "Inter" }}>{ev.desc}</p>
           {!ev.cancelled && <TerminZusage ev={ev} currentUser={currentUser} />}
-          {canCancelTraining&&!ev.cancelled&&<button onClick={()=>onCancelTraining(ev.id)} className="w-full py-2.5 rounded-xl text-xs font-bold mb-3" style={{background:C.fehlerFlaeche,color:C.fehler,border: `1px solid ${C.fehlerRand}`}}>{meta.label}{ev.team?` für ${ev.team}`:""} absagen</button>}{canCancelTraining&&<button onClick={()=>onDeleteTraining(ev.id, ev.team, ev.seriesId)} className="w-full py-2.5 rounded-xl text-xs font-bold mb-3" style={{background:C.paperDim,color:C.fehler}}>{meta.label} endgültig löschen</button>}
+          {/* Absagen in zwei Schritten: erst der Grund, dann die Absage.
+              Vorher verschwand ein Training mit einem Klick und ohne
+              Erklaerung - die Mannschaft las "wurde abgesagt" und fragte im
+              Chat nach, warum. Der Grund geht in dieselbe Meldung, die die
+              Absage ohnehin verschickt: "Training abgesagt. Grund: Halle
+              gesperrt." spart der Vereinsleitung fuenf Rueckfragen.
+              Das Feld ist Pflicht - ein leerer Grund ist kein Grund. */}
+          {canCancelTraining && !ev.cancelled && (absageOffen ? (
+            <div className="rounded-xl p-3 mb-3" style={{ background: C.fehlerFlaeche, border: `1px solid ${C.fehlerRand}` }}>
+              <div className="text-[11px] font-bold mb-1.5" style={{ color: C.ink, fontFamily: "Inter" }}>Warum wird abgesagt?</div>
+              <input value={absageGrund} onChange={(e) => setAbsageGrund(e.target.value)} maxLength={140}
+                autoFocus placeholder="z. B. Halle gesperrt, zu wenige Zusagen"
+                className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2"
+                style={{ background: C.white, border: `1px solid ${C.line}`, color: C.ink, fontFamily: "Inter" }} />
+              <div className="flex gap-2">
+                <button onClick={() => { if (absageGrund.trim()) { onCancelTraining(ev.id, absageGrund.trim()); setAbsageOffen(false); setAbsageGrund(""); } }}
+                  disabled={!absageGrund.trim()}
+                  className="flex-1 py-2 rounded-lg text-xs font-bold"
+                  style={{ background: absageGrund.trim() ? C.fehler : C.line, color: absageGrund.trim() ? C.white : C.textDim }}>
+                  Jetzt absagen
+                </button>
+                <button onClick={() => { setAbsageOffen(false); setAbsageGrund(""); }}
+                  className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>
+                  Abbrechen
+                </button>
+              </div>
+            </div>
+          ) :           <button onClick={()=>setAbsageOffen(true)} className="w-full py-2.5 rounded-xl text-xs font-bold mb-3" style={{background:C.fehlerFlaeche,color:C.fehler,border: `1px solid ${C.fehlerRand}`}}>{meta.label}{ev.team?` für ${ev.team}`:""} absagen</button>)}{canCancelTraining&&<button onClick={()=>onDeleteTraining(ev.id, ev.team, ev.seriesId)} className="w-full py-2.5 rounded-xl text-xs font-bold mb-3" style={{background:C.paperDim,color:C.fehler}}>{meta.label} endgültig löschen</button>}
 
           {ev.home !== true && (
             eventIsReal ? <CarpoolSection ev={ev} currentUser={currentUser} /> : ev.carpool && (
@@ -3675,10 +3704,12 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
      naechsten Laden war er auch beim Absagenden wieder da. Ein stummer
      Fehlschlag ist schlimmer als eine Fehlermeldung. */
   const [terminFehler, setTerminFehler] = useState("");
-  const cancelTraining = async (eventId) => {
+  const cancelTraining = async (eventId, grund) => {
     if (supabase && typeof eventId === "string") {
       const { data, error } = await supabase.from("events")
-        .update({ status: "cancelled", cancelled_at: new Date().toISOString(), cancelled_by: currentUser.authProfileId || null })
+        .update({ status: "cancelled", cancelled_at: new Date().toISOString(),
+                  cancelled_by: currentUser.authProfileId || null,
+                  cancel_reason: (grund || "").trim() || null })
         .eq("id", eventId).select("id");
       /* Zwei verschiedene Ursachen, zwei verschiedene Meldungen. error deckt
          auch Verbindungsabbruch, Zeitueberschreitung und abgelaufene Anmeldung
