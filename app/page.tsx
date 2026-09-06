@@ -5116,15 +5116,78 @@ function TeamPenaltyCatalog({ user }) {
     {message && <div role="status" className="text-[11px] mt-2" style={{ color: message.includes("gespeichert") || message.includes("gelöscht") || message.includes("zugewiesen") || message.includes("markiert") || message.includes("abgeschlossen") ? C.erfolg : C.fehler }}>{message}</div>}
   </div>;
 }
-function TaskCreateForm({ form, setForm, onSubmit, onCancel, editing = false }) {
+/* Mannschaft und Verantwortliche.
+   Die Mannschaft ergab sich vorher daraus, ueber welchen Knopf man anlegte -
+   waehlen konnte man sie nicht, und eine einmal falsch angelegte Aufgabe liess
+   sich nicht umhaengen.
+   Verantwortliche gab es gar nicht: club_task_signups sind FREIWILLIGE
+   Eintragungen. Wer sich eintraegt, hilft mit - das ist etwas anderes als
+   jemand, der die Aufgabe verantwortet. Beides nebeneinander ist richtig:
+   "Kuchenverkauf" hat eine Verantwortliche und braucht drei Helfer. */
+function TaskCreateForm({ form, setForm, onSubmit, onCancel, editing = false, teams = [], members = [] }) {
+  const verantwortliche = form.verantwortliche || [];
+  const hinzufuegen = (id) => { if (id && !verantwortliche.includes(id)) setForm({ ...form, verantwortliche: [...verantwortliche, id] }); };
+  const entfernen = (id) => setForm({ ...form, verantwortliche: verantwortliche.filter((v) => v !== id) });
   return (
     <div className="rounded-2xl p-3.5 mb-3" style={{ background: C.paperDim }}>
       <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} maxLength={120} placeholder="Titel, z. B. Kuchen backen" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.glass, color: C.ink }}/>
       <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} maxLength={300} placeholder="Beschreibung (optional)" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.glass, color: C.ink }}/>
+      {/* Beschriftete Felder statt nackter Kaesten: Ein leeres Datumsfeld
+          sieht auf dem iPhone aus wie ein grauer Balken - man sieht nicht, ob
+          dort Beginn oder Ende hingehoert. */}
       <div className="flex gap-2 mb-2">
-        <input type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.glass, color: C.ink }}/>
-        <input type="number" min="1" value={form.slots} onChange={(e) => setForm({ ...form, slots: e.target.value })} placeholder="Personen" className="w-24 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.glass, color: C.ink }}/>
+        <label className="flex-1">
+          <span className="block text-[10px] font-bold mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>Datum</span>
+          <input type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
+            className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.white, border: `1px solid ${C.line}`, color: C.ink }} />
+        </label>
+        <label className="w-24">
+          <span className="block text-[10px] font-bold mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>Personen</span>
+          <input type="number" min="1" value={form.slots} onChange={(e) => setForm({ ...form, slots: e.target.value })}
+            className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.white, border: `1px solid ${C.line}`, color: C.ink }} />
+        </label>
       </div>
+      <div className="flex gap-2 mb-2">
+        <label className="flex-1">
+          <span className="block text-[10px] font-bold mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>Startzeit</span>
+          <input type="time" value={form.startTime || ""} onChange={(e) => setForm({ ...form, startTime: e.target.value })}
+            className="erg-datetime w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.white, border: `1px solid ${C.line}`, color: C.ink }} />
+        </label>
+        <label className="flex-1">
+          <span className="block text-[10px] font-bold mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>Endzeit</span>
+          <input type="time" value={form.endTime || ""} onChange={(e) => setForm({ ...form, endTime: e.target.value })}
+            className="erg-datetime w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.white, border: `1px solid ${C.line}`, color: C.ink }} />
+        </label>
+      </div>
+      {teams.length > 0 && (
+        <select value={form.teamId || ""} onChange={(e) => setForm({ ...form, teamId: e.target.value })}
+          aria-label="Mannschaft" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2"
+          style={{ background: C.white, border: `1px solid ${C.line}`, color: C.ink, fontFamily: "Inter" }}>
+          <option value="">Ganzer Verein</option>
+          {teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+        </select>
+      )}
+
+      <div className="rounded-xl p-2 mb-2" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+        <div className="text-[10px] font-bold mb-1.5" style={{ color: C.textDim, fontFamily: "Inter" }}>Verantwortlich (mehrere möglich)</div>
+        {verantwortliche.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-1.5">
+            {verantwortliche.map((id) => {
+              const person = members.find((m) => m.id === id);
+              return (
+                <button key={id} onClick={() => entfernen(id)} aria-label={`${person?.name || "Person"} entfernen`}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px]"
+                  style={{ background: C.paperDim, color: C.ink, fontWeight: 600 }}>
+                  {person?.name || "Unbekannt"} <X size={9} style={{ color: C.fehler }} />
+                </button>
+              );
+            })}
+          </div>
+        )}
+        <NutzerWahl personen={members.filter((m) => !verantwortliche.includes(m.id))} wert=""
+          onWaehlen={hinzufuegen} leerLabel="Person hinzufügen …" klein />
+      </div>
+
       <div className="flex gap-2">
         <button onClick={onSubmit} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{editing ? "Änderungen speichern" : "Anlegen"}</button>
         <button onClick={onCancel} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>Abbrechen</button>
@@ -5143,7 +5206,7 @@ function TasksView({ currentUser, members }) {
   const [showCreateClub, setShowCreateClub] = useState(false);
   const [showCreateTeamId, setShowCreateTeamId] = useState("");
   const [editingTaskId, setEditingTaskId] = useState(null);
-  const [form, setForm] = useState({ title: "", description: "", dueDate: "", slots: "1" });
+  const [form, setForm] = useState({ title: "", description: "", dueDate: "", slots: "1", teamId: "", verantwortliche: [], startTime: "", endTime: "" });
   const canCreateClubTask = currentUser.roles.some((r) => !["spieler", "mitglied"].includes(r));
   const loadAll = useCallback(async () => {
     if (!databaseMembership) { setLoading(false); return; }
@@ -5179,7 +5242,7 @@ function TasksView({ currentUser, members }) {
     setLoading(false);
   }, [databaseMembership, currentUser.id, currentUser.clubId]);
   useEffect(() => { loadAll(); }, [loadAll]);
-  const resetForm = () => setForm({ title: "", description: "", dueDate: "", slots: "1" });
+  const resetForm = () => setForm({ title: "", description: "", dueDate: "", slots: "1", teamId: "", verantwortliche: [], startTime: "", endTime: "" });
   const createTask = async (teamId) => {
     if (!form.title.trim()) { setMessage("Bitte einen Titel eingeben."); return; }
     const slotsNeeded = Math.max(1, Number(form.slots) || 1);
@@ -5193,12 +5256,22 @@ function TasksView({ currentUser, members }) {
       await loadAll();
       return;
     }
-    const { error } = await supabase.from("club_tasks").insert({
-      club_id: currentUser.clubId, team_id: teamId || null, title: form.title.trim(),
+    /* Die im Formular gewaehlte Mannschaft hat Vorrang vor der, ueber deren
+       Knopf man angelegt hat - sonst waere die Auswahl wirkungslos. */
+    const { data: angelegt, error } = await supabase.from("club_tasks").insert({
+      club_id: currentUser.clubId, team_id: (form.teamId || teamId) || null, title: form.title.trim(),
       description: form.description.trim() || null, due_date: form.dueDate || null,
       slots_needed: slotsNeeded, created_by: currentUser.id,
-    });
+      start_time: form.startTime || null, end_time: form.endTime || null,
+    }).select("id").single();
     if (error) { setMessage("Aufgabe konnte nicht angelegt werden."); return; }
+    if (angelegt?.id && (form.verantwortliche || []).length) {
+      const { error: zuFehler } = await supabase.from("club_task_assignees")
+        .insert(form.verantwortliche.map((mid) => ({ task_id: angelegt.id, membership_id: mid })));
+      /* Die Aufgabe steht schon - eine misslungene Zuweisung darf sie nicht
+         zurueckziehen, aber verschweigen darf man sie auch nicht. */
+      if (zuFehler) { setMessage("Aufgabe angelegt, aber die Verantwortlichen konnten nicht gesetzt werden."); await loadAll(); return; }
+    }
     resetForm(); setShowCreateClub(false); setShowCreateTeamId(""); setMessage("Aufgabe wurde angelegt.");
     await loadAll();
   };
@@ -5259,7 +5332,7 @@ function TasksView({ currentUser, members }) {
       {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: (message.includes("angelegt")||message.includes("geändert")) ? C.erfolgFlaeche : C.fehlerFlaeche, color: (message.includes("angelegt")||message.includes("geändert")) ? C.erfolg : C.fehler }}>{message}</div>}
       {loading ? <div className="text-xs py-4" style={{ color: C.textDim }}>Aufgaben werden geladen …</div> : <>
         <SectionTitle eyebrow="Vereinsweit" title="Vereinsaufgaben"/>
-        {showCreateClub && <TaskCreateForm form={form} setForm={setForm} editing={!!editingTaskId} onSubmit={() => createTask(null)} onCancel={() => { setShowCreateClub(false); resetForm(); setEditingTaskId(null); }}/>}
+        {showCreateClub && <TaskCreateForm teams={myTeams} members={members} form={form} setForm={setForm} editing={!!editingTaskId} onSubmit={() => createTask(null)} onCancel={() => { setShowCreateClub(false); resetForm(); setEditingTaskId(null); }}/>}
         {clubTasks.length === 0 ? <div className="text-xs rounded-xl p-3 mb-5" style={{ background: C.paperDim, color: C.textDim }}>Aktuell keine offenen Vereinsaufgaben.</div> : <div className="mb-5">{clubTasks.map((t) => <TaskCard key={t.id} task={t} canManage={canCreateClubTask} onEdit={openEditTask}/>)}</div>}
         {myTeams.map((team) => {
           const tasks = teamTasks.filter((t) => t.teamId === team.id);
@@ -5267,7 +5340,7 @@ function TasksView({ currentUser, members }) {
           return (
             <div key={team.id} className="mb-5">
               <SectionTitle eyebrow="Mannschaft" title={`Aufgaben · ${team.name}`} right={canManage ? <button onClick={() => { if (showCreateTeamId === team.id) { setEditingTaskId(null); resetForm(); } setShowCreateTeamId((v) => v === team.id ? "" : team.id); }} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showCreateTeamId === team.id ? "Schließen" : "+ Aufgabe"}</button> : null}/>
-              {showCreateTeamId === team.id && <TaskCreateForm form={form} setForm={setForm} editing={!!editingTaskId} onSubmit={() => createTask(team.id)} onCancel={() => { setShowCreateTeamId(""); resetForm(); setEditingTaskId(null); }}/>}
+              {showCreateTeamId === team.id && <TaskCreateForm teams={myTeams} members={members} form={form} setForm={setForm} editing={!!editingTaskId} onSubmit={() => createTask(team.id)} onCancel={() => { setShowCreateTeamId(""); resetForm(); setEditingTaskId(null); }}/>}
               {tasks.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Aktuell keine Aufgaben für {team.name}.</div> : tasks.map((t) => <TaskCard key={t.id} task={t} canManage={canManage} onEdit={openEditTask}/>)}
             </div>
           );
