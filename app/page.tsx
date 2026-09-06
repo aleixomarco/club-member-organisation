@@ -1690,9 +1690,10 @@ function ClubSelectScreen({ clubs, onSelect, goNewClub, goBack, onAbmelden, onKo
         </div>
       )}
 
-      <div className="mt-auto pt-2 text-center">
-        {goBack && <button onClick={goBack} className="text-xs font-bold" style={{ color: C.textDim, fontFamily: "Inter" }}>Zurück</button>}
-      </div>
+      {/* Kein "Zurück" mehr. Wer hier steht, ist angemeldet und hat noch keinen
+          Verein - zurueck gibt es nichts: Die Anmeldeseite liegt hinter einer
+          bestehenden Sitzung und haette nur zu sich selbst zurueckgefuehrt.
+          Der einzige echte Ausweg ist "Abmelden", und der steht oben. */}
     </div>
   );
 }
@@ -1820,10 +1821,17 @@ function KontoLoeschenBlock({ onDelete }) {
     if (result?.error) { setError(result.error); setBusy(false); }
   };
 
+        /* Zurueckhaltend, aber auffindbar. Apple verlangt einen Weg zur
+            Kontoloeschung, den ein Pruefer ohne Anleitung findet - deshalb
+            steht er hier und nicht drei Ebenen tief. Er muss aber nicht laut
+            sein: Ein roter Kasten neben "Abmelden" laesst zwei harmlose
+            Handlungen gleich schwer aussehen. Als Textlink bleibt er
+            erreichbar, ohne sich anzubieten. Die Rueckfrage danach ist
+            unveraendert deutlich. */
   return (
     <>
       {!confirming ? (
-        <button onClick={() => setConfirming(true)} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.red }}>Konto und persönliche Daten löschen</button>
+        <button onClick={() => setConfirming(true)} className="w-full py-2 text-[11px] underline" style={{ color: C.textDim, fontFamily: "Inter" }}>Konto löschen</button>
       ) : (
         <div className="rounded-2xl p-4" style={{ background: C.fehlerFlaeche, border: `1px solid ${C.fehlerRand}` }}>
           <div className="text-xs font-bold mb-1.5" style={{ color: C.ink }}>Konto endgültig löschen?</div>
