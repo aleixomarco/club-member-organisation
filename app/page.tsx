@@ -7886,7 +7886,7 @@ function TodoBoard({ currentClub, goPanel, goFahrzeuge, goAufgaben }) {
   );
 }
 
-function OverviewPanel({ members, events, feePaid, protocols, dutyPlan, seasonVotes, goPanel, showFees, currentClub, goFahrzeuge, goAufgaben }) {
+function OverviewPanel({ members, events, feePaid, protocols, dutyPlan, seasonVotes, goPanel, showFees }) {
   const paidCount = members.filter((m) => feePaid[m.id]).length;
   const feeRate = members.length ? Math.round((paidCount / members.length) * 100) : 100;
   const openTasks = protocols.flatMap((p) => p.tasks.filter((t) => !t.done)).length;
@@ -7905,10 +7905,6 @@ function OverviewPanel({ members, events, feePaid, protocols, dutyPlan, seasonVo
     .sort((a, b) => new Date(a.date) - new Date(b.date))[0];
 
   return (
-    <>
-    {/* Zuerst das, was Handlung braucht - dann die Zahlen. Ein Kennwert sagt,
-        wie es steht; ein offener Punkt sagt, was zu tun ist. */}
-    <TodoBoard currentClub={currentClub} goPanel={goPanel} goFahrzeuge={goFahrzeuge} goAufgaben={goAufgaben} />
     <div className="grid grid-cols-2 gap-3">
       <StatCard icon={Users} label="Mitglieder" value={members.length} sub="alle formale Mitglieder" accent={C.ink} />
       {showFees && <StatCard icon={Euro} label="Beitragsquote" value={`${feeRate}%`} sub={`${members.length - paidCount} offen`} accent={C.secondary} />}
@@ -7917,7 +7913,6 @@ function OverviewPanel({ members, events, feePaid, protocols, dutyPlan, seasonVo
       <StatCard icon={Trophy} label="Saison-Stimmen" value={seasonTotal} sub="Athlet/in der Saison" accent={C.secondary} onClick={() => goPanel("season")} />
       <StatCard icon={CalendarDays} label="Nächstes Event" value={nextEvent ? formatDate(nextEvent.date) : "—"} sub={nextEvent ? nextEvent.title : "Kein Termin geplant"} accent={C.red} />
     </div>
-    </>
   );
 }
 
@@ -7997,6 +7992,14 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
     setzen("bild_pfad", pfad);
   };
 
+  /* Ein ungueltiger Wert darf niemals eine Ausnahme werfen - sonst haengt der
+     Knopf. Lieber null speichern und die Pruefung davor greifen lassen. */
+  const zeitOderNull = (wert) => {
+    if (!wert) return null;
+    const d = new Date(wert);
+    return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  };
+
   const speichern = async () => {
     if (!supabase || !currentClub?.id || !entwurf) return;
     if (!entwurf.titel.trim()) { setFehler("Ohne Namen des Sponsors geht es nicht."); return; }
@@ -8017,18 +8020,32 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
       aktion_titel: entwurf.aktion_titel.trim() || null,
       aktion_text: entwurf.aktion_text.trim() || null,
       aktion_url: entwurf.aktion_url.trim() || null,
-      laeuft_von: entwurf.laeuft_von ? new Date(entwurf.laeuft_von).toISOString() : new Date().toISOString(),
-      /* Bis zum Ende des gewaehlten Tages, nicht bis zu seinem Beginn: Wer
-         "bis 30.09." eintraegt, meint den 30. mit. */
-      laeuft_bis: entwurf.laeuft_bis ? new Date(`${entwurf.laeuft_bis}T23:59:59`).toISOString() : null,
-      aktion_von: entwurf.aktion_titel.trim() && entwurf.aktion_von ? new Date(entwurf.aktion_von).toISOString() : null,
-      aktion_bis: entwurf.aktion_titel.trim() && entwurf.aktion_bis ? new Date(`${entwurf.aktion_bis}T23:59:59`).toISOString() : null,
+      /* Die Felder liefern seit der Umstellung auf datetime-local bereits eine
+         Uhrzeit ("2026-09-12T14:30"). Frueher stand hier ein reines Datum, und
+         der Code haengte "T23:59:59" an, um den letzten Tag mitzunehmen. Auf
+         einen Wert MIT Uhrzeit angewendet ergibt das
+         "2026-09-12T14:30T23:59:59" - ein ungueltiges Datum, und
+         toISOString() wirft. Der Fehler flog nach setSpeichert(true), also
+         blieb der Knopf fuer immer im Ladezustand: "speichert ..." ohne Ende.
+         Jetzt wird gelesen, was dasteht - die Uhrzeit gibt der Nutzer an. */
+      laeuft_von: zeitOderNull(entwurf.laeuft_von) || new Date().toISOString(),
+      laeuft_bis: zeitOderNull(entwurf.laeuft_bis),
+      aktion_von: entwurf.aktion_titel.trim() ? zeitOderNull(entwurf.aktion_von) : null,
+      aktion_bis: entwurf.aktion_titel.trim() ? zeitOderNull(entwurf.aktion_bis) : null,
       aktiv: entwurf.aktiv !== false,
     };
-    const { error } = entwurf.id
-      ? await supabase.from("anzeigen").update(satz).eq("id", entwurf.id)
-      : await supabase.from("anzeigen").insert(satz);
-    setSpeichert(false);
+    /* try/finally, damit der Ladezustand IMMER endet - auch wenn irgendwo
+       darunter etwas wirft. Genau daran hing dieser Fehler. */
+    let error = null;
+    try {
+      ({ error } = entwurf.id
+        ? await supabase.from("anzeigen").update(satz).eq("id", entwurf.id)
+        : await supabase.from("anzeigen").insert(satz));
+    } catch (e) {
+      error = e;
+    } finally {
+      setSpeichert(false);
+    }
     if (error) { setFehler("Konnte nicht gespeichert werden."); return; }
     setOffen(""); setEntwurf(null);
     await ladeEigene(); onChanged?.();
@@ -9129,6 +9146,13 @@ function AdminView({
         </div>
       </div>}
 
+      {/* Das To-Do-Board steht ueber der Reiterleiste, nicht in der Uebersicht.
+          Dort war es nur zu sehen, solange man auf "Übersicht" stand - wer in
+          den Spielergebnissen arbeitete, wusste nicht, dass ein
+          Mitgliedsantrag wartet. Was Handlung braucht, gehoert an die erste
+          Stelle, nicht hinter einen Reiter. */}
+      <TodoBoard currentClub={currentClub} goPanel={setPanel} goFahrzeuge={goFahrzeuge} goAufgaben={goAufgaben} />
+
       {/* Zwei Spalten statt waagerecht scrollend.
           Als Pillenleiste passten drei Eintraege auf den Bildschirm, der Rest
           lag hinter dem Rand - ein Vereinsadmin hat bis zu elf. Wer
@@ -9150,7 +9174,7 @@ function AdminView({
         ))}
       </div>
 
-      {panel === "overview" && <OverviewPanel members={members} events={events} feePaid={feePaid} protocols={protocols} dutyPlan={dutyPlan} seasonVotes={seasonVotes} goPanel={setPanel} goFahrzeuge={goFahrzeuge} goAufgaben={goAufgaben} currentClub={currentClub} showFees={canSeeFees} />}
+      {panel === "overview" && <OverviewPanel members={members} events={events} feePaid={feePaid} protocols={protocols} dutyPlan={dutyPlan} seasonVotes={seasonVotes} goPanel={setPanel} showFees={canSeeFees} />}
       {panel === "memberships" && currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role)) && <MembershipApprovalsPanel club={currentClub} members={members} setMembers={setMembers} />}
       {panel === "clubprofile" && currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role)) && <><ClubLogoPanel club={currentClub} onLogoUpdated={onClubLogoUpdated} /><ClubColorPanel club={currentClub} onColorsUpdated={onClubColorsUpdated} /></>}
 
