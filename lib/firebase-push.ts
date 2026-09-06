@@ -47,6 +47,67 @@ const VAPID_KEY = "BJUz40s_jQFx67i9o2h-hkLyFMY9Q9hWWxUekLYavTcz9LImbdHqPYkfa-OCf
 
 export type EnablePushResult = { token?: string; error?: string };
 
+/* Den Token stillschweigend auffrischen - bei jedem Start.
+ *
+ * WARUM DAS NOETIG IST
+ * Bisher wurde der Token NUR geholt, wenn jemand im Profil auf "Push
+ * aktivieren" tippte. Das hat zwei Folgen, und beide sind still:
+ *
+ * 1. Wer die Erlaubnis laengst erteilt hat, aber den Schalter nie gefunden
+ *    hat, bekommt nie einen Push. Die App fragt nicht nach.
+ * 2. FCM-Token bleiben nicht. Sie wechseln bei einer Neuinstallation, beim
+ *    Zurueckspielen eines Backups, nach langer Untaetigkeit - und mit jedem
+ *    App-Update kann ein neuer kommen. Der gespeicherte Token ist dann tot,
+ *    der Versand laeuft ins Leere, und niemand merkt es: In der Glocke steht
+ *    die Meldung ja, sie kommt nur nicht auf dem Sperrbildschirm an.
+ *
+ * Genau das ist passiert: Ein abgesagtes Spiel erzeugte die Benachrichtigung
+ * korrekt, aber push_subscriptions war leer - kein einziges Geraet.
+ *
+ * WAS DIESE FUNKTION TUT UND WAS NICHT
+ * Sie fragt NIE nach der Erlaubnis. Ist sie nicht erteilt, tut sie nichts -
+ * ein Erlaubnisdialog beim Start ist eine Zumutung und wird weggeklickt.
+ * Ist sie erteilt, holt sie den aktuellen Token und schreibt ihn weg. Damit
+ * heilt sich ein gewechselter Token beim naechsten Oeffnen von selbst.
+ */
+export async function pushTokenAuffrischen(membershipId: string): Promise<boolean> {
+  if (typeof window === "undefined" || !supabase || !membershipId) return false;
+
+  try {
+    if (imGeraet()) {
+      const stand = await FirebaseMessaging.checkPermissions();
+      if (stand.receive !== "granted") return false;
+      const { token } = await FirebaseMessaging.getToken();
+      if (!token) return false;
+      return await tokenSpeichern(membershipId, token);
+    }
+
+    /* Im Browser dasselbe, nur ueber den Service Worker. Notification.permission
+       zu LESEN oeffnet keinen Dialog - im Gegensatz zu requestPermission(). */
+    if (!("Notification" in window) || !("serviceWorker" in navigator)) return false;
+    if (Notification.permission !== "granted") return false;
+    if (!(await isSupported().catch(() => false))) return false;
+
+    const registration = await navigator.serviceWorker.getRegistration("/firebase-messaging-sw.js")
+      ?? await navigator.serviceWorker.register("/firebase-messaging-sw.js");
+    const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
+    const token = await getToken(getMessaging(app), { vapidKey: VAPID_KEY, serviceWorkerRegistration: registration });
+    if (!token) return false;
+
+    const ua = navigator.userAgent || "";
+    const platform = /iphone|ipad|ipod/i.test(ua) ? "ios" : /android/i.test(ua) ? "android" : "web";
+    const { error } = await supabase.from("push_subscriptions").upsert(
+      { membership_id: membershipId, fcm_token: token, platform, last_seen_at: new Date().toISOString() },
+      { onConflict: "membership_id,fcm_token" },
+    );
+    return !error;
+  } catch {
+    /* Still. Das hier laeuft im Hintergrund beim Start; ein Fehler darf den
+       Start nicht stoeren und niemanden mit einer Meldung behelligen. */
+    return false;
+  }
+}
+
 export async function enablePushNotifications(membershipId: string): Promise<EnablePushResult> {
   if (typeof window === "undefined") return { error: "not_browser" };
 

@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { SPRACHEN, gespeicherteSprache, spracheMerken, uebersetze } from "@/lib/sprachen";
-import { enablePushNotifications, disablePushNotifications, listenForForegroundMessages } from "@/lib/firebase-push";
+import { enablePushNotifications, disablePushNotifications, listenForForegroundMessages, pushTokenAuffrischen } from "@/lib/firebase-push";
 import { Capacitor } from "@capacitor/core";
 import { legal } from "./legal-shell";
 /* Preise werden in der App nicht mehr angezeigt - siehe SubscriptionPanel.
@@ -10448,6 +10448,14 @@ export default function ClubMemberOrganisationApp() {
   useEffect(() => {
     if (!currentUser) return;
     listenForForegroundMessages();
+    /* Den Push-Token bei jedem Start auffrischen.
+       Er wurde bisher nur geholt, wenn jemand im Profil den Schalter fand -
+       und FCM-Token wechseln von selbst: bei Neuinstallation, beim
+       Zurueckspielen eines Backups, nach langer Untaetigkeit. Danach lief
+       der Versand ins Leere, und niemand merkte es, weil die Meldung in der
+       Glocke ja trotzdem stand.
+       Ohne Erlaubnis passiert hier nichts - es wird nicht gefragt. */
+    if (isDbId(currentUser.id)) pushTokenAuffrischen(currentUser.id);
   }, [currentUser?.id]);
   useEffect(() => {
     const isRealAccount = !!supabase && isDbId(currentUser?.id || "");
