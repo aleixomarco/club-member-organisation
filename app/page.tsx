@@ -860,6 +860,14 @@ const notifyClubAdmins = async (clubId, notifType, title, body, excludeMembershi
     .map((m) => m.id);
   if (recipients.length) await supabase.rpc("notify_many", { target_memberships: recipients, p_notif_type: notifType, p_title: title, p_body: body });
 };
+/* Der angezeigte Name einer Rolle.
+   ROLE_META steht auf Modulebene und kann deshalb kein t() benutzen - dort
+   liegt weiterhin das deutsche Wort als Rueckfall. Angezeigt wird aber die
+   Uebersetzung: Wer die App auf Tuerkisch stellt, soll nicht "Kapitaen/in"
+   lesen. Kennt ROLE_META den Schluessel nicht (eine abgeschaffte Rolle in
+   alten Daten), wird der Schluessel selbst gezeigt statt gar nichts. */
+const rollenLabel = (t, schluessel) => (ROLE_META[schluessel] ? t(`rolle.${schluessel}`) : schluessel);
+
 const isAdmin = (m) => !!m && m.roles.some((r) => ROLE_META[r]?.admin);
 /* Wer die Beitraege verwaltet.
  *
@@ -2232,7 +2240,7 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub, offeneS
               <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0" style={{ background: m.color, color: "#fff", fontFamily: "Inter" }}>{initialsOf(m.name)}</div>
               <div className="text-left flex-1">
                 <div className="text-xs" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{m.name}</div>
-                <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{m.roles.map((r) => ROLE_META[r]?.label || r).join(" · ")}</div>
+                <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{m.roles.map((r) => rollenLabel(t, r)).join(" · ")}</div>
               </div>
               {isAdmin(m) && <ShieldCheck size={14} style={{ color: C.red }} />}
             </button>
@@ -6806,7 +6814,7 @@ function BoardMemberOverview({ members, currentUser }) {
           <ChevronRight size={14} style={{ color: C.textDim }}/>
         </div>
         <div className="flex flex-wrap gap-1">
-          {m.roles.map((r) => <Pill key={r} bg={ROLE_META[r]?.color || C.textDim}>{ROLE_META[r]?.label || r}</Pill>)}
+          {m.roles.map((r) => <Pill key={r} bg={ROLE_META[r]?.color || C.textDim}>{rollenLabel(t, r)}</Pill>)}
         </div>
         {memberPlayerTeams(m).length > 0 && <div className="text-[10px] mt-1.5" style={{ color: C.textDim }}>{memberPlayerTeams(m).join(" · ")}</div>}
       </div>)}
@@ -6958,9 +6966,9 @@ function JoinRequestsManager({ currentUser }) {
     {loading ? <div className="text-xs py-3" style={{ color: C.textDim }}>{t("allg.laedt")}</div> : requests.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{t("mit.keineAnfragen")}</div> : <div className="space-y-2">
       {requests.map((r) => <div key={r.id} className="rounded-2xl p-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
         <div className="text-xs font-bold mb-0.5" style={{ color: C.ink }}>{r.display_name}</div>
-        <div className="text-[10px] mb-2" style={{ color: C.textDim }}>{r.email} · angefragte Rolle: {ROLE_META[r.requested_role]?.label || r.requested_role || t("rol.mitgliedLabel")}</div>
+        <div className="text-[10px] mb-2" style={{ color: C.textDim }}>{r.email} · angefragte Rolle: {rollenLabel(t, r.requested_role) || t("rol.mitgliedLabel")}</div>
         <select value={roleChoice[r.id] || r.requested_role || "mitglied"} onChange={(e) => setRoleChoice({ ...roleChoice, [r.id]: e.target.value })} className="w-full px-3 py-2 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim, color: C.ink }}>
-          {ROLE_OPTIONS.map((role) => <option key={role} value={role}>{ROLE_META[role]?.label || role}</option>)}
+          {ROLE_OPTIONS.map((role) => <option key={role} value={role}>{rollenLabel(t, role)}</option>)}
         </select>
         <div className="flex gap-2">
           <button disabled={busyId === r.id} onClick={() => respond(r, false)} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.red }}>{t("allg.ablehnen")}</button>
@@ -7060,7 +7068,7 @@ function SysAdminUserManager({ members, setMembers }) {
         const treffer = members.slice()
           .sort((a, b) => String(a.name || "").trim().localeCompare(String(b.name || "").trim(), "de", { sensitivity: "base" }))
           .filter((m) => !q || String(m.name || "").toLowerCase().includes(q)
-            || m.roles.some((r) => (ROLE_META[r]?.label || r).toLowerCase().includes(q)));
+            || m.roles.some((r) => (rollenLabel(t, r)).toLowerCase().includes(q)));
         return (
           <div className="mt-2 rounded-xl overflow-hidden" style={{ border: `1px solid ${C.line}`, background: C.glass, maxHeight: 260, overflowY: "auto" }}>
             {treffer.length === 0 ? (
@@ -7224,7 +7232,7 @@ function NotificationSettings({ user, setMembers, saveRef }) {
         Geraet ueberhaupt fuer Push anmelden. Kein Nutzer konnte Push je
         einschalten. Seit lib/firebase-push.ts einen nativen Weg hat
         (@capacitor-firebase/messaging), gehoert der Schalter genau hierhin. */}
-    {databaseMembership && <div className="rounded-2xl p-4 mb-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1" style={{color:C.ink}}>{t("push.aufGeraet")}</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>Aktiviere Push, um Benachrichtigungen auch dann zu bekommen, wenn die App geschlossen ist. Du kannst weiter unten einzeln festlegen, worüber.</div><button onClick={pushStatus==="active"?deactivatePush:activatePush} disabled={pushStatus==="working"} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{background:pushStatus==="active"?C.fehlerFlaeche:C.ink,color:pushStatus==="active"?C.red:C.white}}>{pushStatus==="working"?t("allg.wirdBearbeitet"):pushStatus==="active"?t("push.deaktivieren"):t("push.aktivieren")}</button></div>}<ToggleCard title="Benachrichtigungen auf diesem Gerät" desc="Master-Schalter für alle App-Benachrichtigungen" value={master} onChange={setMaster}/><div className="mt-4 rounded-2xl p-4space-y-3" style={{background:C.glass,border:`1px solid ${C.line}`}}>{NOTIFICATION_OPTIONS.filter(([key])=>BEITRAGSVERWALTUNG_SICHTBAR||key!=="payments").map(([key,label])=><label key={key} className="flex items-center justify-between gap-3"><span className="text-xsfont-bold">{label}</span><select disabled={!master} value={prefs[key]?"ja":"nein"} onChange={(e)=>setPrefs({...prefs,[key]:e.target.value==="ja"})} className="px-3 py-2 rounded-xl text-xs" style={{background:C.paperDim,opacity:master?1:.45}}><option value="ja">Ja</option><option value="nein">{t("allg.nein")}</option></select></label>)}</div></div>;
+    {databaseMembership && <div className="rounded-2xl p-4 mb-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1" style={{color:C.ink}}>{t("push.aufGeraet")}</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>Aktiviere Push, um Benachrichtigungen auch dann zu bekommen, wenn die App geschlossen ist. Du kannst weiter unten einzeln festlegen, worüber.</div><button onClick={pushStatus==="active"?deactivatePush:activatePush} disabled={pushStatus==="working"} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{background:pushStatus==="active"?C.fehlerFlaeche:C.ink,color:pushStatus==="active"?C.red:C.white}}>{pushStatus==="working"?t("allg.wirdBearbeitet"):pushStatus==="active"?t("push.deaktivieren"):t("push.aktivieren")}</button></div>}<ToggleCard title="Benachrichtigungen auf diesem Gerät" desc="Master-Schalter für alle App-Benachrichtigungen" value={master} onChange={setMaster}/><div className="mt-4 rounded-2xl p-4space-y-3" style={{background:C.glass,border:`1px solid ${C.line}`}}>{NOTIFICATION_OPTIONS.filter(([key])=>BEITRAGSVERWALTUNG_SICHTBAR||key!=="payments").map(([key,label])=><label key={key} className="flex items-center justify-between gap-3"><span className="text-xs font-bold">{t(`benach.${key}`)}</span><select disabled={!master} value={prefs[key]?"ja":"nein"} onChange={(e)=>setPrefs({...prefs,[key]:e.target.value==="ja"})} className="px-3 py-2 rounded-xl text-xs" style={{background:C.paperDim,opacity:master?1:.45}}><option value="ja">Ja</option><option value="nein">{t("allg.nein")}</option></select></label>)}</div></div>;
 }
 
 function PasswordSettings({ user, onLogout, saveRef }) {
@@ -7459,7 +7467,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
           <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{nachRangSortiert(memberAllTeams(user)).join(" · ") || user.team}{user.number ? ` · Rückennummer ${user.number}` : ""}</div>
           <div className="text-xs mt-0.5 mb-2" style={{ color: C.textDim, fontFamily: "Inter" }}>Dabei seit {user.since} · {age(user.birthdate)} Jahre</div>
           <div className="flex flex-wrap gap-1.5">
-            {user.roles.filter((r) => ROLE_META[r]).map((r) => <Pill key={r} bg={ROLE_META[r].color}>{ROLE_META[r].label}</Pill>)}
+            {user.roles.filter((r) => ROLE_META[r]).map((r) => <Pill key={r} bg={ROLE_META[r].color}>{rollenLabel(t, r)}</Pill>)}
           </div>
         </div>
       </div>
@@ -7702,6 +7710,12 @@ function SeasonVoteView({ currentUser, members, seasonVotes, setSeasonVotes, onV
      Vereinsleitung, und auch die nur bis zum naechsten Neuladen. */
   const vote = async (id) => {
     if (closed) return;
+    /* Noch einmal auf den Gewaehlten tippen nimmt die Stimme zurueck.
+       Das ist der Weg, den man von selbst probiert - der Knopf darunter
+       bleibt fuer die, die ihn suchen. Wer stattdessen jemand anderen
+       antippt, verschiebt die Markierung einfach; auch dafuer braucht es
+       kein Zuruecknehmen vorher. */
+    if (myVote === id) { await zuruecknehmen(); return; }
     const vorher = seasonVotes[currentUser.id];
     setSeasonVotes((v) => ({ ...v, [currentUser.id]: id }));
     const ergebnis = await onVote?.(id);
@@ -9019,7 +9033,7 @@ function RolesPanel({ members, setMembers }) {
                 {!expanded && (
                   <div className="flex flex-wrap gap-1 mt-1">
                     {m.roles.filter((r) => ASSIGNABLE_ROLES.includes(r)).map((r) => (
-                      <span key={r} className="px-2 py-0.5 rounded-full text-[10px]" style={{ fontFamily: "Inter", fontWeight: 700, background: C.paperDim, color: C.textDim }}>{ROLE_META[r]?.label || r}</span>
+                      <span key={r} className="px-2 py-0.5 rounded-full text-[10px]" style={{ fontFamily: "Inter", fontWeight: 700, background: C.paperDim, color: C.textDim }}>{rollenLabel(t, r)}</span>
                     ))}
                   </div>
                 )}
@@ -9034,7 +9048,7 @@ function RolesPanel({ members, setMembers }) {
                     return (
                       <button key={r} type="button" onClick={() => toggleDraftRole(r)} className="px-2.5 py-1 rounded-full text-[11px]"
                         style={{ fontFamily: "Inter", fontWeight: 700, background: active ? (ROLE_META[r]?.color || C.paperDim) : C.paperDim, color: active ? "#fff" : C.textDim }}>
-                        {ROLE_META[r]?.label || r}
+                        {rollenLabel(t, r)}
                       </button>
                     );
                   })}
@@ -9088,7 +9102,7 @@ function SystemPanel({ members, channels, setChannels, maintenanceMode, setMaint
                 <span className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{m.name}</span>
                 <span className="text-[10px]" style={{ fontFamily: "JetBrains Mono", color: C.textDim }}>{m.id}</span>
               </div>
-              <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{m.email} · {m.roles.map((r) => ROLE_META[r]?.label || r).join(", ")}</div>
+              <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{m.email} · {m.roles.map((r) => rollenLabel(t, r)).join(", ")}</div>
             </div>
           ))}
         </div>
@@ -9407,7 +9421,7 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
     {loading ? <div className="text-xs py-5 text-center" style={{ color: C.textDim }}>{t("mit.antraegeLaden")}</div> : requests.length === 0 ?
       <div className="rounded-2xl p-5 text-center" style={{ background: C.glass, border: `1px solid ${C.line}` }}><CheckCircle2 size={24} className="mx-auto mb-2" style={{ color: C.sekundaerAufHell }}/><div className="text-sm font-bold">{t("mit.keineAntraegeKurz")}</div><div className="text-[11px] mt-1" style={{ color: C.textDim }}>{t("mit.neueAutomatisch")}</div></div> :
       <div className="space-y-3">{requests.map((request) => {
-        const roles = (request.membership_roles || []).map((entry) => ROLE_META[entry.role]?.label || entry.role);
+        const roles = (request.membership_roles || []).map((entry) => rollenLabel(t, entry.role));
         return <div key={request.id} className="rounded-2xl p-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
           <div className="flex items-start gap-3 mb-3"><div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: C.red, color: C.aufPrimaer }}>{initialsOf(request.display_name)}</div><div className="min-w-0"><div className="text-sm font-bold truncate" style={{ color: C.ink }}>{request.display_name}</div><div className="text-[11px] truncate" style={{ color: C.textDim }}>{request.email || t("pf.keineEmail")}</div></div></div>
           <div className="grid grid-cols-2 gap-2 mb-3"><div className="rounded-xl px-3 py-2" style={{ background: C.paperDim }}><div className="text-[9px] uppercase tracking-wider" style={{ color: C.textDim }}>{t("mit.registrierung")}</div><div className="text-xs font-bold mt-0.5">{roles.filter((role) => role !== "Mitglied").join(", ") || t("rol.mitgliedLabel")}</div></div><div className="rounded-xl px-3 py-2" style={{ background: C.paperDim }}><div className="text-[9px] uppercase tracking-wider" style={{ color: C.textDim }}>{t("tm.mannschaft")}</div><div className="text-xs font-bold mt-0.5">{request.requested_team || t("bei.nochOffen")}</div></div></div>
@@ -9554,7 +9568,7 @@ function ClubRoleOverviewPanel({ members }) {
             <div key={roleKey} className="rounded-2xl overflow-hidden" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
               <button className="w-full text-left px-3.5 py-3 flex items-center justify-between" onClick={() => setExpandedRole(open ? null : roleKey)}>
                 <div className="flex items-center gap-2">
-                  <Pill bg={ROLE_META[roleKey]?.color}>{ROLE_META[roleKey]?.label}</Pill>
+                  <Pill bg={ROLE_META[roleKey]?.color}>{rollenLabel(t, roleKey)}</Pill>
                   <span className="text-[11px] font-bold" style={{ color: C.textDim }}>{holders.length}</span>
                 </div>
                 <ChevronDown size={15} style={{ color: C.textDim, transform: open ? "rotate(180deg)" : "none", transition: "transform .2s" }} />
