@@ -10456,6 +10456,14 @@ export default function ClubMemberOrganisationApp() {
       const { data, error } = await supabase.from("events")
         .select("id,type,status,title,description,starts_at,location,home_away,series_id,helper_slots,created_by,created_at,teams(name,zusagen_aktiv)")
         .eq("club_id", currentUser.clubId)
+        /* Zwei Jahre zurueck, nach vorn unbegrenzt.
+           Vorher kam die gesamte Geschichte mit - bei einem Verein mit fuenf
+           Jahren Spielplan sind das ein paar tausend Zeilen, und zwar bei
+           jedem Oeffnen der App, auf jedem Telefon, auch im Zug. Zwei
+           Spielzeiten sind mehr, als in dieser App jemand zurueckblaettert;
+           aeltere Termine bleiben in der Datenbank und lassen sich jederzeit
+           wieder hereinholen, indem man diese Zahl erhoeht. */
+        .gte("starts_at", new Date(Date.now() - 730 * 24 * 60 * 60 * 1000).toISOString())
         .order("starts_at", { ascending: true });
       /* Vorher stand hier ein blosses return. Der Anfangszustand von events sind
          aber die zehn erfundenen Demo-Termine - bei einem Ladefehler blieben sie
@@ -10553,15 +10561,15 @@ export default function ClubMemberOrganisationApp() {
     const profilZuMitglied = Object.fromEntries((roster || []).filter((m) => m.authProfileId).map((m) => [m.authProfileId, m.id]));
 
     const [tipps, ergebnisse, umfragen, antworten, stimmen, wahl, dienste, protokolle, aufgaben, einstellungen, erinnerungen, eigenesProfil] = await Promise.all([
-      supabase.from("predictions").select("event_id,profile_id,home_score,away_score"),
+      supabase.from("predictions").select("event_id,profile_id,home_score,away_score").eq("club_id", clubId),
       supabase.from("event_results").select("event_id,heim,auswaerts,erfasst_von,created_at").eq("club_id", clubId),
       supabase.from("polls").select("id,title,active,created_at,created_by").eq("club_id", clubId).order("created_at", { ascending: false }),
-      supabase.from("poll_options").select("id,poll_id,label,position,legacy_votes"),
-      supabase.from("poll_votes").select("poll_id,option_id,profile_id"),
+      supabase.from("poll_options").select("id,poll_id,label,position,legacy_votes").eq("club_id", clubId),
+      supabase.from("poll_votes").select("poll_id,option_id,profile_id").eq("club_id", clubId),
       supabase.from("season_votes").select("voter_profile_id,candidate_membership_id").eq("club_id", clubId).eq("season", SAISON_KENNUNG),
-      supabase.from("duty_assignments").select("event_id,station,membership_id"),
+      supabase.from("duty_assignments").select("event_id,station,membership_id").eq("club_id", clubId),
       supabase.from("protocols").select("id,title,meeting_date,raw_text,attendee_membership_ids,created_at,created_by").eq("club_id", clubId).order("meeting_date", { ascending: false }),
-      supabase.from("protocol_tasks").select("id,protocol_id,text,assignee_membership_id,due_date,done"),
+      supabase.from("protocol_tasks").select("id,protocol_id,text,assignee_membership_id,due_date,done").eq("club_id", clubId),
       supabase.from("club_settings").select("maintenance_mode,welcome_automation,billing_automation,punkte_ziel,punkte_praemie").eq("club_id", clubId).maybeSingle(),
       supabase.from("fee_reminders").select("membership_id,gesendet_am").eq("club_id", clubId).eq("jahr", new Date().getFullYear()),
       profileId ? supabase.from("profiles").select("dashboard_tile_order").eq("id", profileId).maybeSingle() : Promise.resolve({ data: null }),
