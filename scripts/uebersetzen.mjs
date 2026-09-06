@@ -190,6 +190,42 @@ const ERSETZUNGEN = {
   "Tippe einen Namen an, um die Person wieder anzuzeigen.": "chat.wiederAnzeigen",
   "Anschließend kannst du dich anmelden.": "reg.danach",
   "Ich akzeptiere die": "reg.akzeptiere",
+  "Strafen": "straf.titel",
+  "Keine aktiven Strafen.": "straf.keineAktiven",
+  "Strafen-Historie": "straf.historie",
+  "Aufgaben": "auf.titel",
+  "Für keine Aufgabe eingetragen.": "auf.keineEingetragen",
+  "Fahrgemeinschaften": "fahr.titel",
+  "Keine Fahrgemeinschaften.": "fahr.keineKurz",
+  "Aktuell keine offenen Beitrittsanfragen.": "mit.keineAnfragen",
+  "Vereinsprofil bearbeiten": "verein.profilBearbeiten",
+  "Aktiv": "status.aktiv",
+  "Ausstehend": "status.ausstehend",
+  "Inaktiv": "status.inaktiv",
+  "Gesperrt": "status.gesperrt",
+  "Athleten-Mannschaften": "tm.athletenTeams",
+  "Telefonnummern": "feld.telefonnummern",
+  "Geburtstag im Verein anzeigen": "feld.geburtstagZeigen",
+  "Weiblich": "gesch.w",
+  "Männlich": "gesch.m",
+  "Divers": "gesch.d",
+  "Keine Angabe": "gesch.k",
+  "Push-Benachrichtigungen auf diesem Gerät": "push.aufGeraet",
+  "Automatischer Logout": "sich.autoLogout",
+  "Nach 30 Tagen": "sich.tage30",
+  "Nach 60 Tagen": "sich.tage60",
+  "Nach 90 Tagen": "sich.tage90",
+  "Vereine werben Vereine": "zug.werben",
+  "Code kopieren": "zug.codeKopieren",
+  "Termine abonnieren": "kal.abonnieren",
+  "Aktualisierung": "kal.aktualisierung",
+  "Nie automatisch": "kal.nie",
+  "Täglich": "kal.taeglich",
+  "Auswahl aufheben — meine Mannschaften verwenden": "kal.auswahlAufheben",
+  "Zur Aktion": "sp.zurAktion",
+  "Website ansehen": "sp.website",
+  "Konto löschen": "pf.kontoLoeschen",
+  "Verein anlegen": "verein.anlegen",
 };
 
 let quelle = readFileSync(DATEI, "utf8");
@@ -247,7 +283,20 @@ for (const name of zuErgaenzen) {
   let ende = start;
   while (ende < neuZeilen.length && !neuZeilen[ende].includes(") {")) ende++;
   if (ende >= neuZeilen.length) { berichte.push(`  ? ${name}: Funktionskopf nicht gefunden`); continue; }
-  neuZeilen.splice(ende + 1, 0, "  const t = useT();");
+  /* EINZEILIGE KOMPONENTEN. Manche stehen komplett in einer Zeile:
+     function X({...}) { const [a,b]=useState(); ... }
+     Eine Zeile DANACH einzufuegen landet ausserhalb der Funktion - der Haken
+     stuende dann auf oberster Ebene, was React verbietet. Genau das ist bei
+     SecuritySettings und ReferralSettings passiert; der Linter hat es
+     gemeldet ("React Hook cannot be called at the top level").
+     Bei einer Zeile, die nach "{" noch Code enthaelt, wird deshalb DIREKT
+     hinter der Klammer eingesetzt statt in einer neuen Zeile. */
+  const nachKlammer = neuZeilen[ende].slice(neuZeilen[ende].indexOf(") {") + 3).trim();
+  if (nachKlammer.length > 0) {
+    neuZeilen[ende] = neuZeilen[ende].replace(") {", ") { const t = useT();");
+  } else {
+    neuZeilen.splice(ende + 1, 0, "  const t = useT();");
+  }
   ergaenzt++;
 }
 
