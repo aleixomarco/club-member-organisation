@@ -10909,7 +10909,7 @@ export default function ClubMemberOrganisationApp() {
     if (!supabase || !clubId) return;
     const profilZuMitglied = Object.fromEntries((roster || []).filter((m) => m.authProfileId).map((m) => [m.authProfileId, m.id]));
 
-    const [tipps, ergebnisse, umfragen, antworten, stimmen, wahl, dienste, protokolle, aufgaben, einstellungen, erinnerungen, eigenesProfil] = await Promise.all([
+    const [tipps, ergebnisse, umfragen, antworten, stimmen, wahl, dienste, protokolle, aufgaben, einstellungen, eigenesProfil] = await Promise.all([
       supabase.from("predictions").select("event_id,profile_id,home_score,away_score").eq("club_id", clubId),
       supabase.from("event_results").select("event_id,heim,auswaerts,erfasst_von,created_at").eq("club_id", clubId),
       supabase.from("polls").select("id,title,active,created_at,created_by").eq("club_id", clubId).order("created_at", { ascending: false }),
@@ -10920,7 +10920,6 @@ export default function ClubMemberOrganisationApp() {
       supabase.from("protocols").select("id,title,meeting_date,raw_text,attendee_membership_ids,created_at,created_by").eq("club_id", clubId).order("meeting_date", { ascending: false }),
       supabase.from("protocol_tasks").select("id,protocol_id,text,assignee_membership_id,due_date,done").eq("club_id", clubId),
       supabase.from("club_settings").select("maintenance_mode,welcome_automation,billing_automation,punkte_ziel,punkte_praemie").eq("club_id", clubId).maybeSingle(),
-      supabase.from("fee_reminders").select("membership_id,gesendet_am").eq("club_id", clubId).eq("jahr", new Date().getFullYear()),
       profileId ? supabase.from("profiles").select("dashboard_tile_order").eq("id", profileId).maybeSingle() : Promise.resolve({ data: null }),
     ]);
 
@@ -10991,7 +10990,6 @@ export default function ClubMemberOrganisationApp() {
     setMaintenanceMode(einstellungen.data?.maintenance_mode === true);
     setWelcomeAutomation(einstellungen.data?.welcome_automation !== false);
     setBillingAutomation(einstellungen.data?.billing_automation !== false);
-    setRemindersSent(Object.fromEntries((erinnerungen.data || []).map((r) => [r.membership_id, r.gesendet_am])));
     if (Array.isArray(eigenesProfil?.data?.dashboard_tile_order) && eigenesProfil.data.dashboard_tile_order.length) {
       setDashboardTileOrderIntern(eigenesProfil.data.dashboard_tile_order);
     }
@@ -11005,7 +11003,7 @@ export default function ClubMemberOrganisationApp() {
       [umfragen.error, t("umf.umfragen")], [antworten.error, t("umf.antworten")], [stimmen.error, t("umf.stimmen")],
       [wahl.error, t("sais.athletenwahl")], [dienste.error, t("help.helferplan")],
       [protokolle.error, t("prot.protokolle")], [aufgaben.error, t("prot.aufgaben")],
-      [einstellungen.error, t("verein.einstellungen")], [erinnerungen.error, t("bei.zahlungserinnerungen")],
+      [einstellungen.error, t("verein.einstellungen")],
     ].filter(([fehler]) => !!fehler).map(([, name]) => name);
     setDatenFehler(fehlgeschlagen.length ? fehlgeschlagen : null);
   };
@@ -11188,15 +11186,10 @@ export default function ClubMemberOrganisationApp() {
     if (error) setSchreibFehler(t("sys.einstellungFehler"));
   };
 
-  const erinnerungVermerken = async (mitgliedsId) => {
-    if (!supabase || !selectedClubId || !isDbId(mitgliedsId)) return;
-    const { error } = await supabase.from("fee_reminders").upsert({
-      club_id: selectedClubId, membership_id: mitgliedsId, jahr: new Date().getFullYear(),
-      gesendet_am: new Date().toISOString(),
-      gesendet_von: isDbId(meineMitgliedsId) ? meineMitgliedsId : null,
-    }, { onConflict: "membership_id,jahr" });
-    if (error) setSchreibFehler(t("bei.erinnerungNichtVermerkt"));
-  };
+  /* erinnerungVermerken ist entfallen - die Tabelle fee_reminders gibt es
+     nicht mehr. Der Knopf dazu steht ohnehin hinter
+     BEITRAGSVERWALTUNG_SICHTBAR und ist seit Wochen unsichtbar. */
+  const erinnerungVermerken = async () => {};
 
   const ungelesenZaehlen = useCallback(async () => {
     if (!supabase || !selectedClubId || !meinProfil()) return;
