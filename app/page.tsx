@@ -9549,20 +9549,25 @@ function AdminView({
 /* ------------------------------------------------------------------ */
 /* App shell                                                            */
 /* ------------------------------------------------------------------ */
-function baseTabs(isAdminUser, canEditNews, canEditSponsors, canManageFees, canManageDutyUser) {
+/* Uebersetzt wird beim AUFBAU der Leiste, nicht beim Zeichnen: Die
+   Zeichenschleife benutzt bereits "t" als Namen fuer den einzelnen Reiter
+   (TABS.map((t) => ...)). Ein zweites "t" fuer die Uebersetzung darin waere
+   dasselbe Wort fuer zwei verschiedene Dinge - der haeufigste Weg, sich in
+   einer Datei dieser Groesse zu vertun. */
+function baseTabs(t, isAdminUser, canEditNews, canEditSponsors, canManageFees, canManageDutyUser) {
   const tabs = [
-    { id: "home", label: "Home", icon: Home },
-    { id: "events", label: "Termine", icon: CalendarDays },
-    { id: "teams", label: "Teams", icon: Users },
-    { id: "chat", label: "Chat", icon: MessageCircle },
-    { id: "profile", label: "Profil", icon: User },
+    { id: "home", label: t("nav.home"), icon: Home },
+    { id: "events", label: t("nav.events"), icon: CalendarDays },
+    { id: "teams", label: t("nav.teams"), icon: Users },
+    { id: "chat", label: t("nav.chat"), icon: MessageCircle },
+    { id: "profile", label: t("nav.profile"), icon: User },
   ];
-  if (canManageFees) tabs.splice(tabs.findIndex((tab) => tab.id === "chat"), 0, { id: "fees", label: "Beiträge", icon: Wallet });
-  if (canEditNews) tabs.splice(tabs.findIndex((tab) => tab.id === "chat"), 0, { id: "redaktion", label: "Redaktion", icon: Newspaper });
-  if (isAdminUser || canEditSponsors || canManageDutyUser) tabs.splice(tabs.findIndex((tab) => tab.id === "profile"), 0, { id: "admin", label: canEditSponsors && !isAdminUser ? "Sponsoren" : "Verwaltung", icon: ShieldCheck });
+  if (canManageFees) tabs.splice(tabs.findIndex((tab) => tab.id === "chat"), 0, { id: "fees", label: t("nav.fees"), icon: Wallet });
+  if (canEditNews) tabs.splice(tabs.findIndex((tab) => tab.id === "chat"), 0, { id: "redaktion", label: t("nav.news"), icon: Newspaper });
+  if (isAdminUser || canEditSponsors || canManageDutyUser) tabs.splice(tabs.findIndex((tab) => tab.id === "profile"), 0, { id: "admin", label: canEditSponsors && !isAdminUser ? t("nav.sponsors") : t("nav.admin"), icon: ShieldCheck });
   return tabs;
 }
-const SUBVIEW_TITLES = { season: "Athlet/in der Saison", tipp: "Tippspiel", duty: "Helferplanung", postfach: "Benachrichtigungen" };
+const subviewTitel = (t) => ({ season: t("sub.season"), tipp: t("sub.tipp"), duty: t("sub.duty"), postfach: t("sub.postfach") });
 
 /* Das Postfach.
  *
@@ -11423,7 +11428,7 @@ export default function ClubMemberOrganisationApp() {
   const currentUserCanEditSponsors = canManageSponsors(currentUser);
   const currentUserCanManageDuty = canManageDuty(currentUser);
   const currentUserCanManageFees = canManageFees(currentUser);
-  const TABS = baseTabs(currentUserIsAdmin, currentUserCanEditNews, currentUserCanEditSponsors, currentUserCanManageFees, currentUserCanManageDuty);
+  const TABS = baseTabs(t, currentUserIsAdmin, currentUserCanEditNews, currentUserCanEditSponsors, currentUserCanManageFees, currentUserCanManageDuty);
   const clubPrimary = currentClub?.primaryColor || DEFAULT_CLUB_COLORS.primary;
   const clubSecondary = currentClub?.secondaryColor || DEFAULT_CLUB_COLORS.secondary;
   /* Alle abgeleiteten Toene werden hier einmal ausgerechnet und als Variablen
@@ -11560,7 +11565,7 @@ export default function ClubMemberOrganisationApp() {
                 <button onClick={() => setSubView(null)} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
                   <ArrowLeft size={15} style={{ color: C.ink }} />
                 </button>
-                <div className="text-sm" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>{SUBVIEW_TITLES[subView]}</div>
+                <div className="text-sm" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>{subviewTitel(t)[subView]}</div>
               </div>
             ) : (
               <div className="erg-topbar flex items-center px-4 pt-3 pb-2 flex-shrink-0">

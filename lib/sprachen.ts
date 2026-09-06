@@ -33,6 +33,19 @@ export type Sprachcode = (typeof SPRACHEN)[number]["code"];
 type Woerterbuch = Record<string, string>;
 
 const de: Woerterbuch = {
+  "nav.home": "Home",
+  "nav.events": "Termine",
+  "nav.teams": "Teams",
+  "nav.chat": "Chat",
+  "nav.profile": "Profil",
+  "nav.fees": "Beiträge",
+  "nav.news": "Redaktion",
+  "nav.admin": "Verwaltung",
+  "nav.sponsors": "Sponsoren",
+  "sub.season": "Athlet/in der Saison",
+  "sub.tipp": "Tippspiel",
+  "sub.duty": "Helferplanung",
+  "sub.postfach": "Benachrichtigungen",
   "sprache.titel": "Sprache wählen",
   "sprache.hinweis": "In welcher Sprache möchtest du die App nutzen? Du kannst das später im Profil ändern.",
   "sprache.weiter": "Weiter",
@@ -61,6 +74,19 @@ const de: Woerterbuch = {
 };
 
 const en: Woerterbuch = {
+  "nav.home": "Home",
+  "nav.events": "Schedule",
+  "nav.teams": "Teams",
+  "nav.chat": "Chat",
+  "nav.profile": "Profile",
+  "nav.fees": "Fees",
+  "nav.news": "News desk",
+  "nav.admin": "Admin",
+  "nav.sponsors": "Sponsors",
+  "sub.season": "Athlete of the season",
+  "sub.tipp": "Prediction game",
+  "sub.duty": "Volunteer roster",
+  "sub.postfach": "Notifications",
   "sprache.titel": "Choose your language",
   "sprache.hinweis": "Which language would you like to use? You can change this later in your profile.",
   "sprache.weiter": "Continue",
@@ -86,6 +112,19 @@ const en: Woerterbuch = {
 };
 
 const es: Woerterbuch = {
+  "nav.home": "Inicio",
+  "nav.events": "Agenda",
+  "nav.teams": "Equipos",
+  "nav.chat": "Chat",
+  "nav.profile": "Perfil",
+  "nav.fees": "Cuotas",
+  "nav.news": "Redacción",
+  "nav.admin": "Administración",
+  "nav.sponsors": "Patrocinadores",
+  "sub.season": "Atleta de la temporada",
+  "sub.tipp": "Quiniela",
+  "sub.duty": "Turnos de voluntarios",
+  "sub.postfach": "Notificaciones",
   "sprache.titel": "Elige tu idioma",
   "sprache.hinweis": "¿En qué idioma quieres usar la aplicación? Puedes cambiarlo más tarde en tu perfil.",
   "sprache.weiter": "Continuar",
@@ -111,6 +150,19 @@ const es: Woerterbuch = {
 };
 
 const pt: Woerterbuch = {
+  "nav.home": "Início",
+  "nav.events": "Agenda",
+  "nav.teams": "Equipas",
+  "nav.chat": "Chat",
+  "nav.profile": "Perfil",
+  "nav.fees": "Quotas",
+  "nav.news": "Redação",
+  "nav.admin": "Administração",
+  "nav.sponsors": "Patrocinadores",
+  "sub.season": "Atleta da época",
+  "sub.tipp": "Bolão",
+  "sub.duty": "Escala de voluntários",
+  "sub.postfach": "Notificações",
   "sprache.titel": "Escolhe o teu idioma",
   "sprache.hinweis": "Em que idioma queres usar a aplicação? Podes alterar mais tarde no teu perfil.",
   "sprache.weiter": "Continuar",
@@ -136,6 +188,19 @@ const pt: Woerterbuch = {
 };
 
 const it: Woerterbuch = {
+  "nav.home": "Home",
+  "nav.events": "Calendario",
+  "nav.teams": "Squadre",
+  "nav.chat": "Chat",
+  "nav.profile": "Profilo",
+  "nav.fees": "Quote",
+  "nav.news": "Redazione",
+  "nav.admin": "Amministrazione",
+  "nav.sponsors": "Sponsor",
+  "sub.season": "Atleta della stagione",
+  "sub.tipp": "Pronostici",
+  "sub.duty": "Turni volontari",
+  "sub.postfach": "Notifiche",
   "sprache.titel": "Scegli la lingua",
   "sprache.hinweis": "In quale lingua vuoi usare l'app? Puoi cambiarla più tardi nel profilo.",
   "sprache.weiter": "Avanti",
@@ -161,6 +226,19 @@ const it: Woerterbuch = {
 };
 
 const tr: Woerterbuch = {
+  "nav.home": "Ana sayfa",
+  "nav.events": "Takvim",
+  "nav.teams": "Takımlar",
+  "nav.chat": "Sohbet",
+  "nav.profile": "Profil",
+  "nav.fees": "Aidatlar",
+  "nav.news": "Haberler",
+  "nav.admin": "Yönetim",
+  "nav.sponsors": "Sponsorlar",
+  "sub.season": "Sezonun sporcusu",
+  "sub.tipp": "Tahmin oyunu",
+  "sub.duty": "Gönüllü görevleri",
+  "sub.postfach": "Bildirimler",
   "sprache.titel": "Dilini seç",
   "sprache.hinweis": "Uygulamayı hangi dilde kullanmak istersin? Bunu daha sonra profilinden değiştirebilirsin.",
   "sprache.weiter": "Devam",
@@ -186,6 +264,19 @@ const tr: Woerterbuch = {
 };
 
 const fr: Woerterbuch = {
+  "nav.home": "Accueil",
+  "nav.events": "Agenda",
+  "nav.teams": "Équipes",
+  "nav.chat": "Chat",
+  "nav.profile": "Profil",
+  "nav.fees": "Cotisations",
+  "nav.news": "Rédaction",
+  "nav.admin": "Administration",
+  "nav.sponsors": "Sponsors",
+  "sub.season": "Athlète de la saison",
+  "sub.tipp": "Pronostics",
+  "sub.duty": "Bénévoles",
+  "sub.postfach": "Notifications",
   "sprache.titel": "Choisis ta langue",
   "sprache.hinweis": "Dans quelle langue veux-tu utiliser l'application ? Tu pourras la changer plus tard dans ton profil.",
   "sprache.weiter": "Continuer",
