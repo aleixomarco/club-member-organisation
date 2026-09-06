@@ -2137,7 +2137,7 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub, offeneS
 
       {eigeneMitgliedschaft && (
         <div className="mb-5">
-          <div className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: C.textDim, fontFamily: "Inter" }}>Angemeldet bleiben</div>
+          <div className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("login.bleiben")}</div>
           <button
             onClick={async () => {
               setUebernahmeLaeuft(true); setError("");
@@ -2170,7 +2170,7 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub, offeneS
           <button type="button" onClick={() => setShowPw((s) => !s)}>{showPw ? <EyeOff size={15} style={{ color: C.textDim }} /> : <Eye size={15} style={{ color: C.textDim }} />}</button>
         </div>
         {error && <div className="flex items-center gap-1.5 text-xs mb-3" style={{ color: C.red, fontFamily: "Inter" }}><AlertCircle size={13} /> {error}</div>}
-        <button type="button" onClick={requestReset} disabled={busy} className="text-xs mb-2 underline" style={{ color: C.textDim, fontFamily: "Inter" }}>Passwort vergessen?</button>
+        <button type="button" onClick={requestReset} disabled={busy} className="text-xs mb-2 underline" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("login.vergessen")}</button>
         {resetNote && <div role="status" className="text-[11px] mb-3 rounded-xl px-3 py-2" style={{ background: C.erfolgFlaeche, color: C.erfolg, fontFamily: "Inter" }}>{resetNote}</div>}
         <button type="submit" disabled={busy} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm" style={{ background: C.ink, color: "#fff", fontFamily: "Inter", fontWeight: 700, opacity: busy ? 0.65 : 1 }}>
           {busy ? "Anmeldung läuft …" : "Anmelden"} {!busy && <ArrowRight size={15} />}
@@ -2310,7 +2310,7 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
   if (notice) {
     return (
       <AuthShell club={club}>
-        <div className="text-xl mb-3" style={{ fontFamily: "Oswald", fontWeight: 600, color: C.ink }}>Fast geschafft</div>
+        <div className="text-xl mb-3" style={{ fontFamily: "Oswald", fontWeight: 600, color: C.ink }}>{t("reg.fastGeschafft")}</div>
         <div className="rounded-2xl p-4 mb-5" style={{ background: C.erfolgFlaeche, border: `1px solid ${C.erfolgRand}` }}>
           <div className="flex items-start gap-2">
             <CheckCircle2 size={16} style={{ color: C.erfolg, flexShrink: 0, marginTop: 1 }} />
@@ -2334,9 +2334,9 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
   return (
     <AuthShell
       club={club}
-      footer={<div className="text-center text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>Schon Mitglied?{" "}<button onClick={goLogin} className="font-bold" style={{ color: C.red }}>Zum Login</button></div>}
+      footer={<div className="text-center text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>Schon Mitglied?{" "}<button onClick={goLogin} className="font-bold" style={{ color: C.red }}>{t("reg.jetztAnmelden")}</button></div>}
     >
-      <div className="text-xl mb-1" style={{ fontFamily: "Oswald", fontWeight: 600, color: C.ink }}>Konto erstellen</div>
+      <div className="text-xl mb-1" style={{ fontFamily: "Oswald", fontWeight: 600, color: C.ink }}>{t("reg.titel")}</div>
       <div className="text-xs mb-5" style={{ color: C.textDim, fontFamily: "Inter" }}>
         {ohneVerein
           ? "Zuerst dein Konto. Deinen Verein suchst du gleich danach aus — oder legst einen neuen an."
@@ -2358,7 +2358,7 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
         {/* Rolle, Mannschaft und Familienverknuepfung ergeben ohne Verein
             keinen Sinn - danach wird beim Beitritt gefragt. */}
         {!ohneVerein && <>
-        <div className="text-xs font-semibold mb-2" style={{ color: C.ink, fontFamily: "Inter" }}>Ich registriere mich als</div>
+        <div className="text-xs font-semibold mb-2" style={{ color: C.ink, fontFamily: "Inter" }}>{t("reg.alsWas")}</div>
         <div className="grid grid-cols-3 gap-2 mb-4">
           {[{ id: "mitglied", label: "Mitglied", icon: User }, { id: "spieler", label: "Athlet/in", icon: Trophy }, { id: "fan", label: "Fan", icon: Star }].map((type) => {
             const Icon = type.icon; const active = form.accountType === type.id;
@@ -2395,7 +2395,7 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
         <Field icon={Lock} type="password" placeholder={t("login.passwort")} value={form.password} onChange={set("password")} />
         <Field icon={Lock} type="password" placeholder="Passwort bestätigen" value={form.password2} onChange={set("password2")} />
 
-        <label className="flex items-start gap-2 mb-3"><input type="checkbox" checked={legalAccepted} onChange={(e) => setLegalAccepted(e.target.checked)} className="mt-0.5"/><span className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>Ich akzeptiere die <a href="/nutzungsbedingungen" target="_blank" rel="noreferrer" style={{ color: C.red, fontWeight: 700 }}>{t("recht.nutzung")}</a> und die <a href="/datenschutz" target="_blank" rel="noreferrer" style={{ color: C.red, fontWeight: 700 }}>Datenschutzerklärung</a>.</span></label>
+        <label className="flex items-start gap-2 mb-3"><input type="checkbox" checked={legalAccepted} onChange={(e) => setLegalAccepted(e.target.checked)} className="mt-0.5"/><span className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>Ich akzeptiere die <a href="/nutzungsbedingungen" target="_blank" rel="noreferrer" style={{ color: C.red, fontWeight: 700 }}>{t("recht.nutzung")}</a> und die <a href="/datenschutz" target="_blank" rel="noreferrer" style={{ color: C.red, fontWeight: 700 }}>{t("recht.datenschutzerklaerung")}</a>.</span></label>
 
         {error && <div className="flex items-center gap-1.5 text-xs mb-3" style={{ color: C.red, fontFamily: "Inter" }}><AlertCircle size={13} /> {error}</div>}
         {notice && <div className="flex items-center gap-1.5 text-xs mb-3" style={{ color: C.erfolg, fontFamily: "Inter" }}><CheckCircle2 size={13} /> {notice}</div>}
@@ -2465,7 +2465,7 @@ function NutzerWahl({ personen, wert, onWaehlen, leerLabel = "nicht zugewiesen",
                     {p.name}
                   </button>
                 ))}
-                <div className="px-2 py-1 text-[10px] font-bold" style={{ color: C.textDim, background: C.paperDim }}>Alle Mitglieder</div>
+                <div className="px-2 py-1 text-[10px] font-bold" style={{ color: C.textDim, background: C.paperDim }}>{t("mit.alle")}</div>
               </>
             )}
             {treffer.length === 0 ? (
@@ -2631,6 +2631,7 @@ function ZumAktualisierenZiehen({ onAktualisieren, className, style, children })
   );
 }
 function Scoreboard({ nextEvent, goTo, auswahlVorhanden = false }) {
+  const t = useT();
   const { d, h, m } = useCountdown(nextEvent ? nextEvent.date : "2099-01-01T00:00:00");
   const digit = (n) => String(n).padStart(2, "0");
   /* Ohne Auswahl verschwindet die Kachel, wenn kein Spiel ansteht - ein Hinweis
@@ -2645,7 +2646,7 @@ function Scoreboard({ nextEvent, goTo, auswahlVorhanden = false }) {
     return (
       <div className="rounded-3xl p-5 mb-6 relative overflow-hidden" style={{ background: `linear-gradient(160deg, color-mix(in srgb, ${C.red} 82%, #fff) 0%, ${C.red} 100%)` }}>
         <div className="relative flex items-center justify-between mb-4">
-          <span className="text-[10px] font-extrabold uppercase px-3.5 py-1.5 rounded-full" style={{ fontFamily: "Inter", letterSpacing: "0.14em", color: "#fff", background: "rgba(255,255,255,0.18)" }}>Nächstes Spiel</span>
+          <span className="text-[10px] font-extrabold uppercase px-3.5 py-1.5 rounded-full" style={{ fontFamily: "Inter", letterSpacing: "0.14em", color: "#fff", background: "rgba(255,255,255,0.18)" }}>{t("home.naechstesSpiel")}</span>
         </div>
         <div className="relative text-white text-sm" style={{ fontFamily: "Inter" }}>Für diese Mannschaft ist derzeit kein Spiel geplant.</div>
       </div>
@@ -2656,7 +2657,7 @@ function Scoreboard({ nextEvent, goTo, auswahlVorhanden = false }) {
     <div className="rounded-3xl p-5 mb-6 relative overflow-hidden cursor-pointer" style={{ background: `linear-gradient(160deg, color-mix(in srgb, ${C.red} 82%, #fff) 0%, ${C.red} 55%, ${C.redDark} 100%)`, boxShadow: `0 22px 46px color-mix(in srgb, ${C.red} 34%, transparent), inset 0 1px 0 rgba(255,255,255,0.35)` }} onClick={goTo}>
       <div className="absolute pointer-events-none" style={{ top: "-40%", left: "-10%", width: "80%", height: "100%", background: "radial-gradient(circle, rgba(255,255,255,0.28), transparent 65%)" }} />
       <div className="relative flex items-center justify-between mb-4">
-        <span className="text-[10px] font-extrabold uppercase px-3.5 py-1.5 rounded-full" style={{ fontFamily: "Inter", letterSpacing: "0.14em", color: "#fff", background: "rgba(255,255,255,0.22)", border: "1px solid rgba(255,255,255,0.3)" }}>Nächstes Spiel</span>
+        <span className="text-[10px] font-extrabold uppercase px-3.5 py-1.5 rounded-full" style={{ fontFamily: "Inter", letterSpacing: "0.14em", color: "#fff", background: "rgba(255,255,255,0.22)", border: "1px solid rgba(255,255,255,0.3)" }}>{t("home.naechstesSpiel")}</span>
         <span className="text-xs" style={{ color: "rgba(255,255,255,0.85)", fontFamily: "Inter" }}>{formatDate(nextEvent.date)} · {formatTime(nextEvent.date)}</span>
       </div>
       <div className="relative text-white text-xl mb-1.5" style={{ fontFamily: "Oswald", fontWeight: 700, letterSpacing: "-0.01em" }}>{nextEvent.title}</div>
@@ -2676,6 +2677,7 @@ function Scoreboard({ nextEvent, goTo, auswahlVorhanden = false }) {
   );
 }
 function PollWidget({ poll, userId, setPolls, onVote, onUnvote }) {
+  const t = useT();
   const options = poll.options;
   const voted = poll.voterIds?.includes(userId);
   const total = options.reduce((a, o) => a + o.votes, 0);
@@ -2725,7 +2727,7 @@ function PollWidget({ poll, userId, setPolls, onVote, onUnvote }) {
           );
         })}
       </div>
-      {!voted && <div className="text-xs mt-2" style={{ color: C.textDim, fontFamily: "Inter" }}>Tippe, um abzustimmen</div>}
+      {!voted && <div className="text-xs mt-2" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("umf.tippen")}</div>}
       {/* Auswahl zuruecknehmen. Eine Umfrage war bisher eine Einbahnstrasse:
           einmal getippt, fuer immer festgelegt - auch wer danebengriff, blieb
           bei der falschen Antwort. */}
@@ -2913,7 +2915,7 @@ function Dashboard({ user, members, events, feePaid, channels, news, dutyPlan, s
       {taskReminder !== null && (
         <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 mb-5" style={{ background: C.primaerWeich, border: `1px solid ${C.edge}` }}>
           <ClipboardList size={16} style={{ color: C.red }} />
-          <div className="text-sm flex-1" style={{ fontFamily: "Inter", color: C.ink }}>Schon <b>{taskReminder}%</b> haben sich für Aufgaben eingetragen. Hilf mit! <button onClick={goTasks} className="underline font-bold">Jetzt eintragen</button></div>
+          <div className="text-sm flex-1" style={{ fontFamily: "Inter", color: C.ink }}>Schon <b>{taskReminder}%</b> haben sich für Aufgaben eingetragen. Hilf mit! <button onClick={goTasks} className="underline font-bold">{t("allg.jetztEintragen")}</button></div>
         </div>
       )}
       {geburtstageHeute.length > 0 && (
@@ -2946,10 +2948,10 @@ function Dashboard({ user, members, events, feePaid, channels, news, dutyPlan, s
       </DashboardSection>
 
       <DashboardSection accent={C.red} background={C.primaerWeich}>
-        <SectionTitle eyebrow="Vereins-News" title="Neueste Nachrichten" right={goNews ? <button onClick={goNews} className="text-xs font-bold" style={{ color: C.red, fontFamily: "Inter" }}>Alle ansehen</button> : null} />
+        <SectionTitle eyebrow="Vereins-News" title="Neueste Nachrichten" right={goNews ? <button onClick={goNews} className="text-xs font-bold" style={{ color: C.red, fontFamily: "Inter" }}>{t("allg.alleAnsehen")}</button> : null} />
         <div className="rounded-2xl px-3" style={{ background: "rgba(255,255,255,0.82)", border: `1px solid ${C.white}` }}>
         {newsMsgs.length === 0 ? (
-          <div className="text-xs py-3" style={{ color: C.textDim, fontFamily: "Inter" }}>Noch keine News.</div>
+          <div className="text-xs py-3" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("news.keine")}</div>
         ) : newsMsgs.map((m, i) => (
           <div key={i} className="py-3" style={{ borderBottom: i < newsMsgs.length - 1 ? `1px solid ${C.line}` : "none" }}>
             <div className="text-[11px] mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>{m.who} · {m.time}</div>
@@ -3090,7 +3092,7 @@ function TerminZusage({ ev, currentUser }) {
 
       {offen && darfListeSehen && (
         <div className="rounded-xl overflow-hidden mb-2" style={{ border: `1px solid ${C.line}` }}>
-          {laedt && <div className="px-3 py-2.5 text-[11px]" style={{ color: C.textDim }}>Liste wird geladen …</div>}
+          {laedt && <div className="px-3 py-2.5 text-[11px]" style={{ color: C.textDim }}>{t("allg.listeLaedt")}</div>}
           {!laedt && (liste || []).length === 0 && (
             <div className="px-3 py-2.5 text-[11px]" style={{ color: C.textDim }}>Für diesen Termin ist niemand eingeteilt.</div>
           )}
@@ -3118,6 +3120,7 @@ function TerminZusage({ ev, currentUser }) {
    es fehlte nur die Bedienung. Wer eingeteilt war und absagte, musste bisher
    selbst in die App, sonst stand sein Name weiter im Plan. */
 function HelperSlots({ ev, members, currentUser, dutyPlan, setDutyPlan, eligible, onSetzen, darfVerwalten }) {
+  const t = useT();
   const plan = dutyPlan[ev.id] || {};
   const [eintragPerson, setEintragPerson] = useState("");
   const [eintragStation, setEintragStation] = useState("");
@@ -3134,7 +3137,7 @@ function HelperSlots({ ev, members, currentUser, dutyPlan, setDutyPlan, eligible
               <div className="text-xs" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{station}</div>
               {darfVerwalten ? (
                 <div className="text-[11px] flex flex-wrap items-center gap-1 mt-0.5" style={{ color: C.textDim, fontFamily: "Inter" }}>
-                  {list.length === 0 ? <span>Noch niemand eingetragen</span> : list.map((id) => {
+                  {list.length === 0 ? <span>{t("helf.niemand")}</span> : list.map((id) => {
                     const person = members.find((m) => m.id === id);
                     return (
                       <button key={id} onClick={() => {
@@ -3176,7 +3179,7 @@ function HelperSlots({ ev, members, currentUser, dutyPlan, setDutyPlan, eligible
           zu finden ist. */}
       {darfVerwalten && ev.helperSlots?.length > 0 && (
         <div className="rounded-lg p-2 mt-1" style={{ background: C.paperDim }}>
-          <div className="text-[10px] font-bold mb-1.5" style={{ color: C.textDim, fontFamily: "Inter" }}>Jemanden eintragen</div>
+          <div className="text-[10px] font-bold mb-1.5" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("helf.jemanden")}</div>
           <div className="flex gap-1.5 items-start">
             <NutzerWahl personen={members} wert={eintragPerson} onWaehlen={setEintragPerson} leerLabel="Person wählen …" klein />
             <select value={eintragStation} onChange={(e) => setEintragStation(e.target.value)}
@@ -3301,9 +3304,9 @@ function CarpoolSection({ ev, currentUser }) {
                 {c.note && <div className="text-[10px] mb-1" style={{ color: C.textDim }}>{c.note}</div>}
                 {c.passengers.length > 0 && <div className="text-[10px] mb-1.5" style={{ color: C.textDim }}>Mitfahrer: {c.passengers.map((p) => p.name).join(", ")}</div>}
                 <div className="flex gap-2">
-                  {!isDriver && !isPassenger && free > 0 && <button onClick={() => join(c.id)} className="flex-1 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: C.ink, color: C.white }}>Mitfahren</button>}
+                  {!isDriver && !isPassenger && free > 0 && <button onClick={() => join(c.id)} className="flex-1 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: C.ink, color: C.white }}>{t("fahr.mitfahren")}</button>}
                   {!isDriver && isPassenger && <button onClick={() => leave(c.id)} className="flex-1 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: C.glass, color: C.red }}>{t("allg.austragen")}</button>}
-                  {isDriver && <button onClick={() => removeCarpool(c.id)} className="flex-1 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: C.glass, color: C.red }}>Fahrgemeinschaft löschen</button>}
+                  {isDriver && <button onClick={() => removeCarpool(c.id)} className="flex-1 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: C.glass, color: C.red }}>{t("fahr.loeschen")}</button>}
                 </div>
               </div>
             );
@@ -3311,7 +3314,7 @@ function CarpoolSection({ ev, currentUser }) {
           {carpools.length === 0 && <div className="text-[11px] rounded-xl p-2.5" style={{ background: C.paperDim, color: C.textDim }}>Noch keine Fahrgemeinschaft für diesen Termin.</div>}
         </div>
         {!showCreate ? (
-          <button onClick={() => setShowCreate(true)} className="w-full py-2 rounded-lg text-xs font-bold" style={{ background: C.ink, color: C.white }}>Platz anbieten</button>
+          <button onClick={() => setShowCreate(true)} className="w-full py-2 rounded-lg text-xs font-bold" style={{ background: C.ink, color: C.white }}>{t("fahr.anbieten")}</button>
         ) : (
           <div className="rounded-xl p-2.5" style={{ background: C.paperDim }}>
             <input value={seats} onChange={(e) => setSeats(e.target.value)} inputMode="numeric" placeholder="Freie Plätze, z. B. 3" className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-1.5" style={{ background: C.glass, color: C.ink }}/>
@@ -3415,7 +3418,7 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
 
           {ev.helperSlots && featureEnabled("duty_roster") && (
             <div className="mt-3">
-              <div className="text-xs font-semibold mb-2" style={{ fontFamily: "Inter", color: C.ink }}>Helfer:innen gesucht</div>
+              <div className="text-xs font-semibold mb-2" style={{ fontFamily: "Inter", color: C.ink }}>{t("helf.gesucht")}</div>
               <HelperSlots ev={ev} members={members} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} eligible={helperEligible} onSetzen={onDienstSetzen} darfVerwalten={canManageDuty(currentUser)} />
             </div>
           )}
@@ -3865,7 +3868,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
   return (
     <div className="px-4 pt-4 pb-24">
       <div className="flex items-start justify-between gap-3"><SectionTitle title="Termine" />{(canCreateSportEvent||canCreateClubEvent)&&<button onClick={openCreate} className="px-3 py-1.5 rounded-full text-xs flex-shrink-0" style={{background: C.red, color: C.aufPrimaer,fontWeight:700}}>＋ Eintragen</button>}</div>
-      {showCreate&&<form onSubmit={createSportEvent} className="rounded-2xl p-4 mb-4 space-y-2.5" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold">Termin eintragen</div><div className="text-[10px]" style={{color:C.textDim}}>{eventDraft.type==="event"?"Vereins-Events sind für alle Mitglieder sichtbar, unabhängig von Mannschaft.":isSysAdmin(currentUser)?"Als Vereins-Sysadmin kannst du jede Mannschaft auswählen.":currentUser.roles.includes("trainer")?"Du kannst nur deine im Profil hinterlegten Mannschaften auswählen.":"Als Kapitän oder Teammanager kannst du nur für deine hinterlegte Mannschaft eintragen."}</div><div className="text-[10px] font-bold" style={{color:C.red}}>* Pflichtfeld</div><div className="grid grid-cols-2 gap-2"><select value={eventDraft.type} onChange={(e)=>setEventDraft({...eventDraft,type:e.target.value,team:e.target.value==="event"?"":eventDraft.team})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}>{canCreateSportEvent&&<option value="training">Training</option>}{canCreateSportEvent&&<option value="spiel">Spiel</option>}{canCreateClubEvent&&<option value="event">Vereins-Event</option>}</select>{eventDraft.type!=="event"&&<select value={eventDraft.team} onChange={(e)=>setEventDraft({...eventDraft,team:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}>{allowedEventTeams.map((team)=><option key={team} value={team}>{team}</option>)}</select>}</div><input value={eventDraft.title} onChange={(e)=>setEventDraft({...eventDraft,title:e.target.value})} placeholder={eventDraft.type==="training"?"Titel des Trainings *":eventDraft.type==="event"?"Titel des Events *":"Titel des Spiels *"} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/>{eventDraft.type === "spiel" && <label className="flex items-center gap-2 px-0.5"><input type="checkbox" checked={eventDraft.isHome} onChange={(e)=>setEventDraft({...eventDraft,isHome:e.target.checked})}/><span className="text-xs font-bold" style={{color:C.ink}}>Heimspiel</span></label>}{eventDraft.type === "training" && <label className="flex items-center gap-2 px-0.5"><input type="checkbox" checked={eventDraft.recurring} onChange={(e)=>setEventDraft({...eventDraft,recurring:e.target.checked})}/><span className="text-xs font-bold" style={{color:C.ink}}>Wiederholend</span></label>}{!eventDraft.recurring ? <div className="space-y-2">
+      {showCreate&&<form onSubmit={createSportEvent} className="rounded-2xl p-4 mb-4 space-y-2.5" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold">{t("ev.eintragen")}</div><div className="text-[10px]" style={{color:C.textDim}}>{eventDraft.type==="event"?"Vereins-Events sind für alle Mitglieder sichtbar, unabhängig von Mannschaft.":isSysAdmin(currentUser)?"Als Vereins-Sysadmin kannst du jede Mannschaft auswählen.":currentUser.roles.includes("trainer")?"Du kannst nur deine im Profil hinterlegten Mannschaften auswählen.":"Als Kapitän oder Teammanager kannst du nur für deine hinterlegte Mannschaft eintragen."}</div><div className="text-[10px] font-bold" style={{color:C.red}}>* Pflichtfeld</div><div className="grid grid-cols-2 gap-2"><select value={eventDraft.type} onChange={(e)=>setEventDraft({...eventDraft,type:e.target.value,team:e.target.value==="event"?"":eventDraft.team})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}>{canCreateSportEvent&&<option value="training">{t("ev.training")}</option>}{canCreateSportEvent&&<option value="spiel">{t("ev.spiel")}</option>}{canCreateClubEvent&&<option value="event">{t("ev.vereinsevent")}</option>}</select>{eventDraft.type!=="event"&&<select value={eventDraft.team} onChange={(e)=>setEventDraft({...eventDraft,team:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}>{allowedEventTeams.map((team)=><option key={team} value={team}>{team}</option>)}</select>}</div><input value={eventDraft.title} onChange={(e)=>setEventDraft({...eventDraft,title:e.target.value})} placeholder={eventDraft.type==="training"?"Titel des Trainings *":eventDraft.type==="event"?"Titel des Events *":"Titel des Spiels *"} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/>{eventDraft.type === "spiel" && <label className="flex items-center gap-2 px-0.5"><input type="checkbox" checked={eventDraft.isHome} onChange={(e)=>setEventDraft({...eventDraft,isHome:e.target.checked})}/><span className="text-xs font-bold" style={{color:C.ink}}>{t("ev.heimspiel")}</span></label>}{eventDraft.type === "training" && <label className="flex items-center gap-2 px-0.5"><input type="checkbox" checked={eventDraft.recurring} onChange={(e)=>setEventDraft({...eventDraft,recurring:e.target.checked})}/><span className="text-xs font-bold" style={{color:C.ink}}>{t("ev.wiederholend")}</span></label>}{!eventDraft.recurring ? <div className="space-y-2">
         <label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>Datum *</span><input type="date" value={eventDraft.day} onChange={(e)=>setEventDraft({...eventDraft,day:e.target.value})} className="erg-datetime w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim,color:C.ink}}/></label>
         <div className="grid grid-cols-2 gap-2">
           <label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>Beginn *</span><input type="time" value={eventDraft.startTime} onChange={(e)=>setEventDraft({...eventDraft,startTime:e.target.value})} className="erg-datetime w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim,color:C.ink}}/></label>
@@ -3898,7 +3901,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
       {teamFilterActive && <div className="flex items-center gap-2 mb-4 px-2.5 py-2 rounded-xl" style={{background:C.glass,border:`1px solid ${C.line}`}}>
         <Users size={13} style={{color:C.textDim,flexShrink:0}}/>
         <select aria-label={t("feld.mannschaftFiltern")} value={teamFilter} onChange={(e)=>setTeamFilter(e.target.value)} className="flex-1 min-w-0 bg-transparent text-[11px] font-bold outline-none" style={{color:C.ink}}>
-          <option value="alle">Alle Mannschaften</option>{filterTeams.map((team)=><option key={team} value={team}>{team}</option>)}
+          <option value="alle">{t("ev.alleTeams")}</option>{filterTeams.map((team)=><option key={team} value={team}>{team}</option>)}
         </select>
         <button aria-label="Als Standardansicht speichern" title="Als Standard speichern" onClick={saveDefaultTeam} disabled={savedTeam===teamFilter} className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{background:savedTeam===teamFilter?C.erfolgFlaeche:C.paperDim,color:savedTeam===teamFilter?C.secondary:C.textDim}}><Star size={13} fill={savedTeam===teamFilter?C.secondary:"none"}/></button>
       </div>}
@@ -3945,7 +3948,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
           </div>
         </div>
       )}
-      {deleteRequest && <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => { setDeleteRequest(null); setTerminFehler(""); }}><div role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()} className="w-full max-w-sm rounded-2xl p-5" style={{ background: C.glass }}>{deleteRequest.seriesId ? <><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Nur diesen Termin oder die ganze Reihe?</div><div className="text-xs mb-4" style={{ color: C.textDim }}>Dieses Training wiederholt sich. Du kannst nur diesen einen Termin entfernen und die Reihe bestehen lassen — oder die ganze Reihe löschen. Die ganze Reihe schließt bereits vergangene Termine mit ein.</div><button onClick={performSingleDelete} className="w-full py-2.5 rounded-xl text-xs font-bold mb-2" style={{ background: C.ink, color: C.white }}>Nur diesen Termin</button><button onClick={performSeriesDelete} className="w-full py-2.5 rounded-xl text-xs font-bold mb-2" style={{ background: C.fehlerFlaeche, color: C.fehler, border: `1px solid ${C.fehlerRand}` }}>Ganze Reihe löschen</button><button onClick={() => { setDeleteRequest(null); setTerminFehler(""); }} className="w-full py-2 text-xs font-bold" style={{ color: C.textDim }}>{t("allg.abbrechen")}</button></> : <><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Diesen Termin wirklich löschen?</div><div className="text-xs" style={{ color: C.textDim }}>Er verschwindet für alle. Rückgängig machen lässt sich das nicht.</div><div className="flex gap-2 mt-4"><button onClick={() => { setDeleteRequest(null); setTerminFehler(""); }} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>{t("allg.abbrechen")}</button><button onClick={performSingleDelete} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.red, color: C.aufPrimaer }}>{t("allg.loeschen")}</button></div></>}</div></div>}
+      {deleteRequest && <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => { setDeleteRequest(null); setTerminFehler(""); }}><div role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()} className="w-full max-w-sm rounded-2xl p-5" style={{ background: C.glass }}>{deleteRequest.seriesId ? <><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Nur diesen Termin oder die ganze Reihe?</div><div className="text-xs mb-4" style={{ color: C.textDim }}>Dieses Training wiederholt sich. Du kannst nur diesen einen Termin entfernen und die Reihe bestehen lassen — oder die ganze Reihe löschen. Die ganze Reihe schließt bereits vergangene Termine mit ein.</div><button onClick={performSingleDelete} className="w-full py-2.5 rounded-xl text-xs font-bold mb-2" style={{ background: C.ink, color: C.white }}>{t("ev.nurDiesen")}</button><button onClick={performSeriesDelete} className="w-full py-2.5 rounded-xl text-xs font-bold mb-2" style={{ background: C.fehlerFlaeche, color: C.fehler, border: `1px solid ${C.fehlerRand}` }}>{t("ev.ganzeReihe")}</button><button onClick={() => { setDeleteRequest(null); setTerminFehler(""); }} className="w-full py-2 text-xs font-bold" style={{ color: C.textDim }}>{t("allg.abbrechen")}</button></> : <><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>{t("ev.wirklichLoeschen")}</div><div className="text-xs" style={{ color: C.textDim }}>Er verschwindet für alle. Rückgängig machen lässt sich das nicht.</div><div className="flex gap-2 mt-4"><button onClick={() => { setDeleteRequest(null); setTerminFehler(""); }} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>{t("allg.abbrechen")}</button><button onClick={performSingleDelete} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.red, color: C.aufPrimaer }}>{t("allg.loeschen")}</button></div></>}</div></div>}
     </div>
   );
 }
@@ -4069,13 +4072,13 @@ function FeesView({ members, records, setRecords }) {
           <input value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder="Beitragshöhe €" inputMode="decimal" className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }} />
         </div>
         <div>
-          <label className="block text-[10px] mb-1" style={{ color: C.textDim, fontWeight: 700 }}>Beitragsart</label>
-          <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value, linkedMemberIds: [], manualNames: "", personCount: e.target.value === "Familienbeitrag" ? "2" : "1" })} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}><option value="Mitgliedsbeitrag">Mitgliedsbeitrag</option><option value="Familienbeitrag">Familienbeitrag</option></select>
+          <label className="block text-[10px] mb-1" style={{ color: C.textDim, fontWeight: 700 }}>{t("bei.art")}</label>
+          <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value, linkedMemberIds: [], manualNames: "", personCount: e.target.value === "Familienbeitrag" ? "2" : "1" })} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}><option value="Mitgliedsbeitrag">{t("bei.mitglied")}</option><option value="Familienbeitrag">{t("bei.familie")}</option></select>
         </div>
         {form.type === "Familienbeitrag" && (
           <div className="rounded-xl p-3 space-y-3" style={{ background: C.paperDim, border: `1px solid ${C.line}` }}>
             <div>
-              <div className="text-xs" style={{ fontWeight: 700, color: C.ink }}>Weitere Vereinsmitglieder</div>
+              <div className="text-xs" style={{ fontWeight: 700, color: C.ink }}>{t("mit.weitere")}</div>
               <div className="text-[10px] mt-0.5 mb-2" style={{ color: C.textDim }}>Alle Personen auswählen, die ebenfalls zu diesem Familienbeitrag gehören.</div>
               <div className="space-y-1.5 max-h-32 overflow-y-auto">
                 {members.filter((member) => member.id !== selectedMemberId).map((member) => (
