@@ -8325,9 +8325,7 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
        freiwillig, und ein Sponsor ohne Ende stand fuer immer. */
     if (!entwurf.laeuft_von) { setFehler("Wann soll der Sponsor erscheinen? Bitte Startzeitpunkt angeben."); return; }
     if (!entwurf.laeuft_bis) { setFehler("Bis wann soll der Sponsor erscheinen? Bitte Endzeitpunkt angeben."); return; }
-    if (entwurf.aktion_titel.trim() && !entwurf.aktion_bis) { setFehler("Eine Aktion braucht einen Endzeitpunkt. Bis wann läuft sie?"); return; }
     if (entwurf.laeuft_bis && entwurf.laeuft_von && new Date(entwurf.laeuft_bis) <= new Date(entwurf.laeuft_von)) { setFehler("Der Sponsor kann nicht enden, bevor er beginnt."); return; }
-    if (entwurf.aktion_bis && entwurf.aktion_von && new Date(entwurf.aktion_bis) <= new Date(entwurf.aktion_von)) { setFehler("Die Aktion kann nicht enden, bevor sie beginnt."); return; }
     setSpeichert(true); setFehler("");
     const satz = {
       club_id: currentClub.id, platz: entwurf.platz,
@@ -8346,8 +8344,12 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
          Jetzt wird gelesen, was dasteht - die Uhrzeit gibt der Nutzer an. */
       laeuft_von: zeitOderNull(entwurf.laeuft_von) || new Date().toISOString(),
       laeuft_bis: zeitOderNull(entwurf.laeuft_bis),
-      aktion_von: entwurf.aktion_titel.trim() ? zeitOderNull(entwurf.aktion_von) : null,
-      aktion_bis: entwurf.aktion_titel.trim() ? zeitOderNull(entwurf.aktion_bis) : null,
+      /* Die Aktion laeuft genau so lange wie der Sponsor. Ein eigener
+         Zeitraum stand frueher als zweites Feldpaar im Formular und war in
+         der Praxis immer derselbe - beim Verlaengern musste man ihn doppelt
+         pflegen und merkte nicht, wenn eines vergessen wurde. */
+      aktion_von: entwurf.aktion_titel.trim() ? zeitOderNull(entwurf.laeuft_von) : null,
+      aktion_bis: entwurf.aktion_titel.trim() ? zeitOderNull(entwurf.laeuft_bis) : null,
       aktiv: entwurf.aktiv !== false,
     };
     /* try/finally, damit der Ladezustand IMMER endet - auch wenn irgendwo
@@ -8472,26 +8474,25 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
                 <textarea value={entwurf.aktion_text} onChange={(e) => setzen("aktion_text", e.target.value)} placeholder="Was genau bekommt man, und wie?" rows={3} maxLength={600} className="w-full px-3 py-2 rounded-lg text-xs outline-none resize-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} />
                 <input type="url" inputMode="url" value={entwurf.aktion_url} onChange={(e) => setzen("aktion_url", e.target.value)} placeholder="https://link-zur-aktion.de (optional)" className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} />
 
-                {/* Der Aktionszeitraum erscheint erst, wenn es eine Aktion
-                    gibt - vier Datumsfelder auf einmal fragt niemand gern aus. */}
-                {entwurf.aktion_titel.trim() ? <>
-                  <div className="flex gap-2">
-                    <label className="flex-1"><span className="text-[10px] block mb-1" style={{ color: C.textDim }}>Aktion von</span>
-                      <input type="datetime-local" value={entwurf.aktion_von} onChange={(e) => setzen("aktion_von", e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} /></label>
-                    <label className="flex-1"><span className="text-[10px] block mb-1" style={{ color: C.textDim }}>Aktion bis *</span>
-                      <input type="datetime-local" value={entwurf.aktion_bis} onChange={(e) => setzen("aktion_bis", e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} /></label>
-                  </div>
-                  <div className="text-[10px]" style={{ color: C.textDim }}>Der Aktionsknopf erscheint nur in diesem Zeitraum. Danach bleibt der Sponsor stehen, die Aktion verschwindet von selbst.</div>
-                </> : null}
+                {/* Der eigene Aktionszeitraum ist entfallen.
+                    Vorher gab es VIER Datumsfelder: Laufzeit von/bis fuer den
+                    Sponsor und noch einmal von/bis fuer die Aktion. In der
+                    Praxis waren beide gleich - wer eine Rabattaktion eintraegt,
+                    laesst sie genau so lange laufen wie den Sponsor. Zwei
+                    Paare, die dasselbe sagen, sind ein Paar zu viel: Man muss
+                    sie beim Verlaengern doppelt pflegen und merkt es nicht,
+                    wenn eines vergessen wird.
+                    Die Aktion uebernimmt jetzt die Laufzeit des Sponsors -
+                    gesetzt wird das beim Speichern. */}
 
                 <div className="text-[10px] uppercase tracking-widest font-bold pt-1" style={{ color: C.textDim }}>Der Sponsor steht auf dem Platz</div>
                 <div className="flex gap-2">
                   <label className="flex-1"><span className="text-[10px] block mb-1" style={{ color: C.textDim }}>Von</span>
                     <input type="datetime-local" value={entwurf.laeuft_von} onChange={(e) => setzen("laeuft_von", e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} /></label>
-                  <label className="flex-1"><span className="text-[10px] block mb-1" style={{ color: C.textDim }}>Bis (optional)</span>
+                  <label className="flex-1"><span className="text-[10px] block mb-1" style={{ color: C.textDim }}>Bis</span>
                     <input type="datetime-local" value={entwurf.laeuft_bis} onChange={(e) => setzen("laeuft_bis", e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} /></label>
                 </div>
-                <div className="text-[10px]" style={{ color: C.textDim }}>Ohne Enddatum bleibt der Sponsor stehen, bis Sie ihn entfernen.</div>
+                <div className="text-[10px]" style={{ color: C.textDim }}>In diesem Zeitraum wird der Sponsor angezeigt — und, falls eine Aktion hinterlegt ist, auch ihr Knopf.</div>
 
                 <div className="flex gap-2 pt-1">
                   <button onClick={() => { setOffen(""); setEntwurf(null); setFehler(""); }} className="flex-1 px-3 py-2.5 rounded-xl text-xs" style={{ background: C.paperDim, color: C.ink, fontWeight: 600, border: `1px solid ${C.line}` }}>Abbrechen</button>
