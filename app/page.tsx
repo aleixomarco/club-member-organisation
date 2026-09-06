@@ -617,6 +617,11 @@ const ROLE_META = {
   teammanager: { label: "Teammanager/in", color: C.secondary, admin: false, formalMember: true, selfService: false },
   spieler: { label: "Athlet/in", color: C.secondary, admin: false, formalMember: true, selfService: true },
   mitglied: { label: "Mitglied", color: C.textDim, admin: false, formalMember: true, selfService: true, alwaysOn: true },
+  /* Ein Fan folgt dem Verein, ist aber KEIN formales Mitglied: formalMember
+     false haelt ihn aus Mitgliederzahl, Beitragslisten und Helferpflicht
+     heraus. Wuerde hier true stehen, taeuchte er ueberall auf, wo es um
+     Pflichten geht - und der Verein wuerde ihm Beitraege berechnen. */
+  fan: { label: "Fan", color: C.secondary, admin: false, formalMember: false, selfService: true },
   organisator: { label: "Organisator/in", color: C.secondary, admin: false, formalMember: true, selfService: false },
 };
 const ROLE_OVERVIEW_KEYS = ["vereinsadmin", "organisator", "trainer", "teammanager", "kapitaen", "spieler"];
@@ -1583,8 +1588,8 @@ function BeitrittsScreen({ club, vorschlagName, onBeitreten, goBack }) {
         <Field icon={User} placeholder="Vor- und Nachname" value={name} onChange={(e) => setName(e.target.value)} />
 
         <div className="text-xs font-semibold mb-2" style={{ color: C.ink, fontFamily: "Inter" }}>Ich trete bei als</div>
-        <div className="grid grid-cols-2 gap-2 mb-4">
-          {[{ id: "mitglied", label: "Mitglied", icon: User }, { id: "spieler", label: "Athlet/in", icon: Trophy }].map((typ) => {
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          {[{ id: "mitglied", label: "Mitglied", icon: User }, { id: "spieler", label: "Athlet/in", icon: Trophy }, { id: "fan", label: "Fan", icon: Star }].map((typ) => {
             const Icon = typ.icon; const aktiv = art === typ.id;
             return <button type="button" key={typ.id} onClick={() => setArt(typ.id)} className="rounded-xl py-3 px-1 flex flex-col items-center gap-1.5"
               style={{ background: aktiv ? C.fehlerFlaeche : C.paperDim, border: aktiv ? `1px solid ${C.red}` : "1px solid transparent", color: aktiv ? C.red : C.textDim }}><Icon size={17}/><span className="text-[11px] font-bold">{typ.label}</span></button>;
@@ -2086,7 +2091,13 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
     if (!ohneVerein && members.some((m) => m.email.toLowerCase() === form.email.trim().toLowerCase())) { setError("Für diese E-Mail existiert bei diesem Verein bereits ein Konto."); return; }
     if (!legalAccepted) { setError("Bitte akzeptiere die Nutzungsbedingungen und die Datenschutzerklärung."); return; }
     setError("");
-    const typeRoles = form.accountType === "spieler" ? ["mitglied", "spieler"] : form.accountType === "eltern" ? ["mitglied", "eltern"] : ["mitglied"];
+    /* Ein Fan bekommt NUR die Fan-Rolle, nicht zusaetzlich "mitglied" - sonst
+       zaehlte er als formales Mitglied und der Verein wuerde ihm Beitraege
+       berechnen. Der Zweig "eltern" ist Altbestand: Die Rolle gibt es nicht
+       mehr, die Auswahl auch nicht; er faellt beim naechsten Aufraeumen weg. */
+    const typeRoles = form.accountType === "spieler" ? ["mitglied", "spieler"]
+      : form.accountType === "fan" ? ["fan"]
+      : ["mitglied"];
     setBusy(true);
     const result = await onRegister({
       id: "m" + Date.now(),
@@ -2143,8 +2154,8 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
             keinen Sinn - danach wird beim Beitritt gefragt. */}
         {!ohneVerein && <>
         <div className="text-xs font-semibold mb-2" style={{ color: C.ink, fontFamily: "Inter" }}>Ich registriere mich als</div>
-        <div className="grid grid-cols-2 gap-2 mb-4">
-          {[{ id: "mitglied", label: "Mitglied", icon: User }, { id: "spieler", label: "Athlet/in", icon: Trophy }].map((type) => {
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          {[{ id: "mitglied", label: "Mitglied", icon: User }, { id: "spieler", label: "Athlet/in", icon: Trophy }, { id: "fan", label: "Fan", icon: Star }].map((type) => {
             const Icon = type.icon; const active = form.accountType === type.id;
             return <button type="button" key={type.id} onClick={() => setForm((f) => ({ ...f, accountType: type.id, relativeId: "" }))} className="rounded-xl py-3 px-1 flex flex-col items-center gap-1.5"
               style={{ background: active ? C.fehlerFlaeche : C.paperDim, border: active ? `1px solid ${C.red}` : "1px solid transparent", color: active ? C.red : C.textDim }}><Icon size={17}/><span className="text-[11px] font-bold">{type.label}</span></button>;
@@ -9454,6 +9465,47 @@ export default function ClubMemberOrganisationApp() {
      erhoeht, laden alle noch einmal. */
   const [datenStand, setDatenStand] = useState(0);
   const datenNeuLaden = useCallback(() => setDatenStand((n) => n + 1), []);
+
+  /* Die Mitgliederliste beim Aktualisieren nachladen.
+     Sie wurde bisher AUSSCHLIESSLICH bei der Anmeldung geholt (enterApp mit
+     hydratedRoster). Wer danach dem Verein beitrat, existierte fuer alle
+     bereits Angemeldeten nicht - in Auswahlfeldern stand dann nur, wer beim
+     eigenen Login schon da war. Bei einem Verein, der gerade waechst, sieht
+     das aus, als sei die Datenbank leer.
+     Abmelden und neu anmelden half, aber darauf kommt niemand. */
+  useEffect(() => {
+    if (!supabase || !isDbId(selectedClubId)) return;
+    let abgebrochen = false;
+    (async () => {
+      const { data, error } = await supabase.from("club_memberships")
+        .select("id,profile_id,club_id,display_name,email,member_since,membership_number,status,team_filter,is_managed_profile,membership_roles(role),team_members(function,teams(name))")
+        .eq("club_id", selectedClubId).in("status", ["active", "pending"]);
+      if (abgebrochen || error || !data) return;
+      setMembers((bisher) => {
+        const bekannt = new Map(bisher.map((m) => [m.id, m]));
+        /* Bestehende Eintraege behalten ihre im Geraet berechneten Felder
+           (Punkte, Familienverknuepfungen); neue kommen dazu. Ein blosses
+           Ersetzen wuerde diese Felder bei jedem Aktualisieren wegwerfen. */
+        const aktualisiert = data.map((row) => {
+          const rollen = (row.membership_roles || []).map((r) => r.role);
+          const funktionen = row.team_members || [];
+          const teams = [...new Set(funktionen.map((f) => f.teams?.name).filter(Boolean))];
+          const alt = bekannt.get(row.id);
+          return {
+            ...(alt || {}),
+            id: row.id, authProfileId: row.profile_id, clubId: row.club_id,
+            name: row.display_name, email: row.email || alt?.email || "",
+            status: row.status, roles: rollen.length ? rollen : (alt?.roles || ["mitglied"]),
+            team: teams[0] || alt?.team || null, teams,
+            teamFilter: row.team_filter || "alle",
+          };
+        });
+        const fremde = bisher.filter((m) => m.clubId !== selectedClubId);
+        return [...fremde, ...aktualisiert];
+      });
+    })();
+    return () => { abgebrochen = true; };
+  }, [selectedClubId, datenStand]);
   /* Neu laden, sobald die App wieder im Vordergrund ist.
      Das ist der Fall, den man als Nutzer merkt: Man legt das Telefon weg,
      nimmt es wieder zur Hand - und liest den Stand von vorhin. Ein
