@@ -24,13 +24,18 @@ export async function GET() {
     return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
   }
 
-  const [vereine, anfragen, anzeigen] = await Promise.all([
+  const [vereine, anfragen, anzeigen, kennzahlen] = await Promise.all([
     admin.from("betreiber_uebersicht").select("*").order("name"),
     admin.from("offene_freischaltungen").select("*"),
     /* Die eigenen Werbeplaetze: club_id null heisst "gilt in jedem Verein".
        Sie liessen sich bisher nur von Hand im SQL-Editor anlegen. */
     admin.from("anzeigen").select("id,platz,titel,text,ziel_url,aktion_titel,aktion_bis,laeuft_bis,aktiv,impressionen,klicks")
       .is("club_id", null).order("platz"),
+    /* Die Zahlen ueber alle Vereine hinweg. Sie liessen sich auch aus der
+       Vereinsliste rechnen - aber nur die, die schon geladen ist. Wer
+       spaeter nach Vereinen sucht, wuerde eine gefilterte Gesamtsumme
+       sehen, und das waere schlimmer als gar keine. */
+    admin.rpc("betreiber_kennzahlen"),
   ]);
 
   if (vereine.error || anfragen.error || anzeigen.error) {
@@ -38,9 +43,15 @@ export async function GET() {
     return NextResponse.json({ error: "Die Übersicht konnte nicht geladen werden." }, { status: 500 });
   }
 
+  /* Die Kennzahlen duerfen fehlen, ohne dass die Seite leer bleibt: Sie sind
+     eine Zusammenfassung dessen, was daneben ohnehin steht. Ein Fehler dort
+     kostet die Kopfzeile, nicht die Uebersicht. */
+  if (kennzahlen.error) console.error("Kennzahlen konnten nicht geladen werden", kennzahlen.error);
+
   return NextResponse.json({
     vereine: vereine.data || [],
     anfragen: anfragen.data || [],
     anzeigen: anzeigen.data || [],
+    kennzahlen: kennzahlen.error ? null : (kennzahlen.data?.[0] ?? null),
   });
 }

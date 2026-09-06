@@ -122,6 +122,39 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, ergebnis: data?.[0] || null });
   }
 
+  /* Eine Nachricht an den Verein.
+     Bisher gab es genau zwei Wege, auf einen Verein einzuwirken:
+     freischalten oder sperren. Sperren ist der Holzhammer - der Verein
+     steht still und weiss nicht warum. Meistens will man vorher etwas
+     sagen: "Eure Zugaenge sind fast voll", "die Rechnung ist offen".
+
+     Die Nachricht landet in derselben Glocke wie jede andere und loest
+     dieselbe Push-Meldung aus. Es gibt keinen zweiten Kanal. */
+  if (daten.art === "nachricht") {
+    if (!istUuid(daten.verein)) return NextResponse.json({ error: "Kein Verein gewählt." }, { status: 400 });
+    const titel = typeof daten.titel === "string" ? daten.titel.trim().slice(0, 120) : "";
+    const text = typeof daten.text === "string" ? daten.text.trim().slice(0, 1000) : "";
+    if (!titel || !text) {
+      return NextResponse.json({ error: "Titel und Text dürfen nicht leer sein." }, { status: 400 });
+    }
+    const { data, error } = await admin.rpc("betreiber_nachricht_senden", {
+      target_club: daten.verein,
+      p_titel: titel,
+      p_text: text,
+      /* Der Vorgabewert ist "nur die Leitung". Eine Nachricht an ALLE
+         Mitglieder eines fremden Vereins ist etwas, das man ausdruecklich
+         wollen muss - nicht etwas, das durch ein vergessenes Haekchen
+         passiert. */
+      p_nur_leitung: daten.alle === true ? false : true,
+    });
+    if (error) {
+      console.error("Nachricht fehlgeschlagen", error);
+      return NextResponse.json({ error: "Die Nachricht konnte nicht gesendet werden." }, { status: 500 });
+    }
+    await protokollieren("nachricht", daten.verein, { titel, alle: daten.alle === true, empfaenger: data ?? 0 });
+    return NextResponse.json({ ok: true, empfaenger: data ?? 0 });
+  }
+
   /* Eigene Werbung des Betreibers. club_id bleibt null - solche Anzeigen
      gelten in jedem Verein und treten zurueck, sobald ein Verein einen eigenen
      Sponsor auf denselben Platz setzt. */

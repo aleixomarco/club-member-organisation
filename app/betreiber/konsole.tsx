@@ -16,6 +16,17 @@ type Verein = {
   tarif: string; grenze: number; konten: number; laeuft_bis: string | null; beleg: string | null;
   referral_credit_months: number;
   mitglieder: number; offene_aufnahmen: number; eigene_sponsoren: number; ansprechpartner: string | null;
+  /* Lebenszeichen. Ein Verein kann bezahlen und trotzdem still sein - das
+     sieht man an keiner der Zahlen darueber. */
+  hidden: boolean;
+  letzte_aktivitaet: string | null; aktive_30: number; termine_30: number; nachrichten_30: number;
+};
+
+type Kennzahlen = {
+  vereine: number; freigeschaltet: number; gesperrt: number; neu_30: number;
+  konten: number; mitglieder: number;
+  basic: number; plus: number; pro: number; ohne_tarif: number;
+  still_30: number; fast_voll: number;
 };
 
 type Anzeige = {
@@ -76,6 +87,25 @@ const TARIF_NAMEN: Record<string, string> = {
   none: "kostenlos", basic: "Basic", plus: "Plus", pro: "Pro", premium: "Premium",
 };
 
+/* Wie lebendig ist der Verein?
+ *
+ * Drei Stufen, keine Punktzahl. Eine Zahl von 0 bis 100 sieht praeziser aus,
+ * als sie ist - was der Betreiber wissen will, ist "muss ich hier anrufen?".
+ *
+ * still   Seit 30 Tagen hat niemand etwas getan. Das ist der Verein, der
+ *         kuendigt, bevor jemand mit ihm geredet hat.
+ * ruhig   Zwei Wochen nichts. Kann Sommerpause sein, kann der Anfang vom
+ *         Ende sein - einmal hinsehen lohnt.
+ * aktiv   Es passiert etwas.
+ */
+function zustand(v: Verein): { still: boolean; label: string; farbe: string } {
+  if (!v.letzte_aktivitaet) return { still: true, label: "nie", farbe: "#B3261E" };
+  const tage = Math.floor((Date.now() - new Date(v.letzte_aktivitaet).getTime()) / 86400000);
+  if (tage > 30) return { still: true, label: `${tage} Tage still`, farbe: "#B3261E" };
+  if (tage > 14) return { still: false, label: `${tage} Tage her`, farbe: "#8A5A00" };
+  return { still: false, label: tage <= 1 ? "heute" : `vor ${tage} Tagen`, farbe: "#1E6B3A" };
+}
+
 const datum = (wert: string | null) =>
   wert ? new Date(wert).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
 
@@ -92,6 +122,9 @@ export default function BetreiberKonsole() {
   const [suche, setSuche] = useState("");
   const [offen, setOffen] = useState<Verein | null>(null);
   const [meldung, setMeldung] = useState("");
+  const [kennzahlen, setKennzahlen] = useState<Kennzahlen | null>(null);
+  const [nurStille, setNurStille] = useState(false);
+  const [nachricht, setNachricht] = useState<Verein | null>(null);
 
   const laden = useCallback(async () => {
     const antwort = await fetch("/api/betreiber/daten").catch(() => null);
@@ -103,7 +136,8 @@ export default function BetreiberKonsole() {
     setAngemeldet(true);
     const inhalt = await antwort.json().catch(() => ({}));
     if (!antwort.ok) { setFehler(inhalt.error || "Die Übersicht konnte nicht geladen werden."); return; }
-    setVereine(inhalt.vereine || []); setAnfragen(inhalt.anfragen || []); setAnzeigen(inhalt.anzeigen || []); setFehler("");
+    setVereine(inhalt.vereine || []); setAnfragen(inhalt.anfragen || []); setAnzeigen(inhalt.anzeigen || []);
+    setKennzahlen(inhalt.kennzahlen || null); setFehler("");
   }, []);
 
   useEffect(() => { laden(); }, [laden]);
@@ -123,7 +157,7 @@ export default function BetreiberKonsole() {
 
   const abmelden = async () => {
     await fetch("/api/betreiber/abmelden", { method: "POST" });
-    setAngemeldet(false); setVereine([]); setAnfragen([]); setAnzeigen([]);
+    setAngemeldet(false); setVereine([]); setAnfragen([]); setAnzeigen([]); setKennzahlen(null);
   };
 
   const vereinOeffnen = async (v: Verein) => {
@@ -182,9 +216,10 @@ export default function BetreiberKonsole() {
     );
   }
 
-  const gefiltert = suche.trim()
+  const gesucht = suche.trim()
     ? vereine.filter((v) => `${v.name} ${v.short_name || ""} ${v.city || ""}`.toLowerCase().includes(suche.trim().toLowerCase()))
     : vereine;
+  const gefiltert = nurStille ? gesucht.filter((v) => zustand(v).still) : gesucht;
   const freigeschaltet = vereine.filter((v) => v.tarif !== "none").length;
   const amLimit = vereine.filter((v) => v.konten >= v.grenze).length;
 
@@ -198,6 +233,29 @@ export default function BetreiberKonsole() {
         </span>
         <button onClick={abmelden} style={{ ...knopfLeise, marginLeft: "auto" }}>Abmelden</button>
       </header>
+
+      {/* Die Zahlen ueber alle Vereine. Sie stehen bewusst VOR den Anfragen:
+          Die Anfragen sagen, was heute zu tun ist - diese Zeile sagt, wie es
+          um das Ganze steht. */}
+      {kennzahlen && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(132px, 1fr))", gap: 10, marginBottom: 24 }}>
+          {[
+            { wert: kennzahlen.vereine, titel: "Vereine", unten: `${kennzahlen.neu_30} neu in 30 Tagen`, warnung: false },
+            { wert: kennzahlen.freigeschaltet, titel: "Freigeschaltet",
+              unten: `${kennzahlen.basic} Basic · ${kennzahlen.plus} Plus · ${kennzahlen.pro} Pro`, warnung: false },
+            { wert: kennzahlen.konten, titel: "Konten", unten: `bei ${kennzahlen.mitglieder} Mitgliedern`, warnung: false },
+            { wert: kennzahlen.still_30, titel: "Still", unten: "30 Tage ohne Regung", warnung: kennzahlen.still_30 > 0 },
+            { wert: kennzahlen.fast_voll, titel: "Fast voll", unten: "90 % der Zugänge belegt", warnung: kennzahlen.fast_voll > 0 },
+            { wert: kennzahlen.gesperrt, titel: "Gesperrt", unten: `${kennzahlen.ohne_tarif} ohne Tarif`, warnung: false },
+          ].map((k) => (
+            <div key={k.titel} style={{ ...karte, padding: "12px 14px" }}>
+              <div style={{ fontSize: 24, fontWeight: 700, lineHeight: 1.1, color: k.warnung ? "#B3261E" : "#2A2028" }}>{k.wert}</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#4A424A", marginTop: 2 }}>{k.titel}</div>
+              <div style={{ fontSize: 11, color: "#8A7F85", marginTop: 2 }}>{k.unten}</div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {fehler && <p role="status" style={fehlerText}>{fehler}</p>}
       {meldung && <p role="status" style={{ ...fehlerText, background: "rgba(231,243,236,0.72)", color: "#1E6B3A" }}>{meldung}</p>}
@@ -235,6 +293,10 @@ export default function BetreiberKonsole() {
           <h2 style={{ ...ueberschrift, marginBottom: 0 }}>Vereine</h2>
           <input value={suche} onChange={(e) => setSuche(e.target.value)} placeholder="Suchen …"
             style={{ ...feld, width: 200, marginBottom: 0, padding: "8px 10px" }} />
+          <label style={{ fontSize: 12, color: "#4A424A", display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+            <input type="checkbox" checked={nurStille} onChange={(e) => setNurStille(e.target.checked)} />
+            nur stille Vereine
+          </label>
         </div>
 
         <div style={{ overflowX: "auto" }}>
@@ -242,6 +304,7 @@ export default function BetreiberKonsole() {
             <thead>
               <tr style={{ textAlign: "left", color: "#8A7F85", fontSize: 11, textTransform: "uppercase", letterSpacing: ".06em" }}>
                 <th style={zelle}>Verein</th><th style={zelle}>Tarif</th><th style={zelle}>Zugänge</th>
+                <th style={zelle}>Leben</th>
                 <th style={zelle}>Sponsoren</th><th style={zelle}>Läuft bis</th><th style={zelle}>Guthaben</th><th style={zelle}>Ansprechpartner</th><th style={zelle} />
               </tr>
             </thead>
@@ -264,6 +327,16 @@ export default function BetreiberKonsole() {
                       {v.konten} / {v.grenze}
                       {v.vereinbarte_zugaenge != null && <div style={{ fontSize: 11, color: "#8A7F85" }}>vereinbart</div>}
                     </td>
+                    {/* Was hier steht, sagt mehr als der Tarif daneben: Ein
+                        Verein mit 80 Mitgliedern und drei aktiven Nutzern ist
+                        ein anderer Fall als einer mit 80 und 60 - auch wenn
+                        beide dasselbe zahlen. */}
+                    <td style={zelle}>
+                      <div style={{ fontWeight: 700, color: zustand(v).farbe }}>{zustand(v).label}</div>
+                      <div style={{ fontSize: 11, color: "#8A7F85" }}>
+                        {v.aktive_30} von {v.mitglieder} aktiv · {v.termine_30} Term. · {v.nachrichten_30} Nachr.
+                      </div>
+                    </td>
                     <td style={zelle}>{v.sponsoring_freigeschaltet ? `ja (${v.eigene_sponsoren})` : "—"}</td>
                     <td style={zelle}>{datum(v.laeuft_bis)}</td>
                     {/* Offenes Empfehlungsguthaben. Es stand bisher in keiner
@@ -285,6 +358,7 @@ export default function BetreiberKonsole() {
                     <td style={{ ...zelle, color: "#8A7F85", fontSize: 12 }}>{v.ansprechpartner || "—"}</td>
                     <td style={{ ...zelle, whiteSpace: "nowrap" }}>
                       <button style={knopfLeise} disabled={laeuft} onClick={() => setOffen(v)}>Freischalten …</button>
+                      <button style={knopfLeise} disabled={laeuft} onClick={() => setNachricht(v)}>Nachricht …</button>
                       {v.tarif !== "none" && (
                         <button style={{ ...knopfLeise, color: "#B3261E" }} disabled={laeuft}
                           onClick={async () => {
@@ -346,6 +420,21 @@ export default function BetreiberKonsole() {
             if (!anzeigeOffen.id || !window.confirm(`Anzeige \u201e${anzeigeOffen.titel}\u201c entfernen?`)) return;
             const ok = await aktion({ art: "anzeige", anzeige: anzeigeOffen.id, entfernen: true });
             if (ok) { setAnzeigeOffen(null); setMeldung("Anzeige entfernt."); }
+          }}
+        />
+      )}
+
+      {nachricht && (
+        <NachrichtDialog
+          verein={nachricht}
+          laeuft={laeuft}
+          onAbbrechen={() => setNachricht(null)}
+          onSenden={async (werte) => {
+            const ergebnis = await aktion({ art: "nachricht", verein: nachricht.id, ...werte });
+            if (ergebnis) {
+              setMeldung(`An ${ergebnis.empfaenger ?? 0} Person(en) in ${nachricht.name} verschickt.`);
+              setNachricht(null);
+            }
           }}
         />
       )}
@@ -746,6 +835,73 @@ function AnzeigeDialog({ anzeige, laeuft, onAbbrechen, onSpeichern, onEntfernen 
           <button onClick={onEntfernen} disabled={laeuft}
             style={{ ...knopfLeise, width: "100%", marginTop: 8, marginRight: 0, color: "#B3261E" }}>Anzeige entfernen</button>
         )}
+      </div>
+    </div>
+  );
+}
+
+/* Eine Nachricht an einen Verein.
+ *
+ * Sie geht standardmaessig nur an die Vereinsleitung. Das ist die
+ * vorsichtige Voreinstellung, und sie ist mit Absicht so: Eine Nachricht
+ * vom Betreiber an ALLE Mitglieder eines fremden Vereins ist etwas, das man
+ * ausdruecklich wollen muss. Wer den Haken setzt, sieht daneben, wie viele
+ * Menschen das sind. */
+function NachrichtDialog({ verein, laeuft, onAbbrechen, onSenden }: {
+  verein: Verein; laeuft: boolean;
+  onAbbrechen: () => void;
+  onSenden: (werte: Record<string, unknown>) => void;
+}) {
+  const [titel, setTitel] = useState("");
+  const [text, setText] = useState("");
+  const [alle, setAlle] = useState(false);
+  const [fehler, setFehler] = useState("");
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(20,21,26,.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+         onClick={onAbbrechen}>
+      <div role="dialog" aria-modal="true" aria-label={`Nachricht an ${verein.name}`}
+           onClick={(e) => e.stopPropagation()}
+           style={{ ...karte, width: "100%", maxWidth: 460, maxHeight: "88vh", overflowY: "auto" }}>
+        <h2 style={{ fontSize: 17, fontWeight: 700, margin: "0 0 4px" }}>Nachricht an {verein.name}</h2>
+        <p style={{ fontSize: 12, color: "#8A7F85", margin: "0 0 16px", lineHeight: 1.5 }}>
+          Landet in der Glocke der App und löst dieselbe Push-Meldung aus wie
+          jede andere Nachricht. Der Vereinsname steht automatisch davor.
+        </p>
+
+        <label style={beschriftung}>Titel</label>
+        <input value={titel} onChange={(e) => setTitel(e.target.value)} maxLength={120}
+               placeholder="z. B. Eure Zugänge sind fast voll" style={feld} autoFocus />
+
+        <label style={beschriftung}>Text</label>
+        <textarea value={text} onChange={(e) => setText(e.target.value)} maxLength={1000} rows={5}
+                  placeholder="Was der Verein wissen soll."
+                  style={{ ...feld, resize: "vertical" as const, fontFamily: "inherit" }} />
+
+        <label style={{ fontSize: 13, color: "#4A424A", display: "flex", alignItems: "flex-start", gap: 8, margin: "4px 0 16px", cursor: "pointer" }}>
+          <input type="checkbox" checked={alle} onChange={(e) => setAlle(e.target.checked)} style={{ marginTop: 3 }} />
+          <span>
+            An alle {verein.mitglieder} Mitglieder statt nur an die Vereinsleitung
+            <span style={{ display: "block", fontSize: 11, color: "#8A7F85" }}>
+              Ohne Haken geht die Nachricht nur an die Vereinsadministration.
+            </span>
+          </span>
+        </label>
+
+        {fehler && <p role="status" style={fehlerText}>{fehler}</p>}
+
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+          <button style={knopfLeise} onClick={onAbbrechen} disabled={laeuft}>Abbrechen</button>
+          <button style={knopf} disabled={laeuft}
+            onClick={() => {
+              if (!titel.trim() || !text.trim()) { setFehler("Titel und Text dürfen nicht leer sein."); return; }
+              if (alle && !window.confirm(`Die Nachricht geht an alle ${verein.mitglieder} Mitglieder von „${verein.name}". Wirklich senden?`)) return;
+              setFehler("");
+              onSenden({ titel: titel.trim(), text: text.trim(), alle });
+            }}>
+            {laeuft ? "Wird gesendet …" : "Senden"}
+          </button>
+        </div>
       </div>
     </div>
   );
