@@ -7149,19 +7149,25 @@ function NotificationSettings({ user, setMembers, saveRef }) {
     const result = await enablePushNotifications(user.id);
     if (result.error) {
       const messages = { unsupported: t("push.nichtUnterstuetzt"), denied: t("push.nichtErteilt"), save_failed: t("push.tokenFehler"), setup_failed: t("push.einrichtenFehler"), no_token: t("push.keinToken"), not_browser: t("sys.nurImBrowser") };
-      setPushStatus("error"); setMessage(messages[result.error] || t("push.aktivierenFehler")); return;
+      /* Den Originalgrund mitzeigen. "Push konnte nicht eingerichtet werden"
+         allein hilft niemandem weiter - ob das Plugin fehlt, die Erlaubnis
+         verweigert wurde oder Firebase keinen Token liefert, sind drei
+         verschiedene Ursachen mit drei verschiedenen Loesungen. */
+      setPushStatus("error");
+      setMessage((messages[result.error] || t("push.aktivierenFehler")) + (result.grund ? ` (${result.grund})` : ""));
+      return;
     }
-    setPushStatus("active"); setMessage(t("push.jetztAktiv"));
+    setPushStatus("active"); setMessage(OK_ZEICHEN + t("push.jetztAktiv"));
   };
   const deactivatePush = async () => {
     setPushStatus("working");
     const result = await disablePushNotifications(user.id);
     if (result.error) { setPushStatus("active"); setMessage(t("push.deaktivierenFehler")); return; }
-    setPushStatus("idle"); setMessage(t("push.wurdenDeaktiviert"));
+    setPushStatus("idle"); setMessage(OK_ZEICHEN + t("push.wurdenDeaktiviert"));
   };
   const save = async()=>{ if(supabase&&user.authProfileId){const {error}=await supabase.from("profiles").update({notification_master:master,notification_preferences:prefs}).eq("id",user.authProfileId);if(error){setMessage("Benachrichtigungen konnten nicht gespeichert werden.");return;}} setMembers((items)=>items.map((item)=>item.id===user.id?{...item,notificationMaster:master,notificationPreferences:prefs}:item));setMessage("Benachrichtigungen gespeichert.");};
   useEffect(() => { saveRef.current = save; });
-  return <div>{message&&<div className="mb-4 text-[11px] rounded-xl px-3 py-2" style={{background:C.erfolgFlaeche,color:C.erfolg}}>{meldungstext(message)}</div>}{/* Die Push-Karte erscheint nur ausserhalb der nativen App. In der
+  return <div>{message&&<div role="status" className="mb-4 text-[11px] rounded-xl px-3 py-2" style={{background:istErfolg(message)?C.erfolgFlaeche:C.fehlerFlaeche,color:istErfolg(message)?C.erfolg:C.fehler}}>{meldungstext(message)}</div>}{/* Die Push-Karte erscheint nur ausserhalb der nativen App. In der
       nativen Huelle laeuft die Oberflaeche in einem WKWebView, und dort gibt es
       weder Notification noch serviceWorker - enablePushNotifications kehrte
       sofort mit "unsupported" zurueck. Der Knopf oeffnete also nie einen

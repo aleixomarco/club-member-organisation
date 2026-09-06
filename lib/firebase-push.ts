@@ -45,7 +45,13 @@ const firebaseConfig = {
 
 const VAPID_KEY = "BJUz40s_jQFx67i9o2h-hkLyFMY9Q9hWWxUekLYavTcz9LImbdHqPYkfa-OCfPC7safypanAE-8gYv2UzSyElhI";
 
-export type EnablePushResult = { token?: string; error?: string };
+/* grund traegt die Originalmeldung der Laufzeitumgebung mit.
+   Bisher endete jeder Fehler im nativen Zweig als blosses "setup_failed" -
+   die Oberflaeche sagte "Push konnte nicht eingerichtet werden" und sonst
+   nichts. Damit laesst sich nicht arbeiten: Ob das Plugin fehlt, die
+   Erlaubnis verweigert wurde oder Firebase keinen Token liefert, sind drei
+   voellig verschiedene Ursachen mit drei verschiedenen Loesungen. */
+export type EnablePushResult = { token?: string; error?: string; grund?: string };
 
 /* Den Token stillschweigend auffrischen - bei jedem Start.
  *
@@ -127,8 +133,8 @@ export async function enablePushNotifications(membershipId: string): Promise<Ena
       if (!token) return { error: "no_token" };
       if (!(await tokenSpeichern(membershipId, token))) return { error: "save_failed" };
       return { token };
-    } catch {
-      return { error: "setup_failed" };
+    } catch (fehler) {
+      return { error: "setup_failed", grund: String((fehler as Error)?.message ?? fehler) };
     }
   }
 
