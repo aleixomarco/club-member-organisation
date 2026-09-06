@@ -3122,7 +3122,15 @@ function HelperSlots({ ev, members, currentUser, dutyPlan, setDutyPlan, eligible
                   {list.length === 0 ? <span>Noch niemand eingetragen</span> : list.map((id) => {
                     const person = members.find((m) => m.id === id);
                     return (
-                      <button key={id} onClick={() => onSetzen?.(ev.id, station, id, false)}
+                      <button key={id} onClick={() => {
+                        /* Auch hier: erst die Anzeige, dann schreiben - und
+                           bei einem Fehler zurueck. */
+                        const vorher = plan[station] || [];
+                        setDutyPlan((dp) => ({ ...dp, [ev.id]: { ...(dp[ev.id] || {}), [station]: vorher.filter((x) => x !== id) } }));
+                        Promise.resolve(onSetzen?.(ev.id, station, id, false)).then((r) => {
+                          if (r?.error) setDutyPlan((jetzt) => ({ ...jetzt, [ev.id]: { ...(jetzt[ev.id] || {}), [station]: vorher } }));
+                        });
+                      }}
                         aria-label={`${person?.name || "Eintrag"} von ${station} entfernen`}
                         className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
                         style={{ background: C.paperDim, color: C.ink, fontWeight: 600 }}>
@@ -3163,7 +3171,25 @@ function HelperSlots({ ev, members, currentUser, dutyPlan, setDutyPlan, eligible
               <option value="">Station …</option>
               {ev.helperSlots.map((st) => <option key={st} value={st}>{st}</option>)}
             </select>
-            <button onClick={() => { if (eintragPerson && eintragStation) { onSetzen?.(ev.id, eintragStation, eintragPerson, true); setEintragPerson(""); setEintragStation(""); } }}
+            <button onClick={() => {
+                if (!eintragPerson || !eintragStation) return;
+                /* Die Anzeige muss mit. dienstSetzen schreibt nur in die
+                   Datenbank - die Liste im Geraet erfaehrt davon nichts.
+                   Ohne diese Zeilen leerten sich die Felder, und die Person
+                   erschien erst nach einem Neuladen; es sah aus, als sei
+                   nichts passiert. Bei einem Fehler wird die Anzeige wieder
+                   zurueckgenommen, damit dort kein Name steht, den die
+                   Datenbank nie angenommen hat. */
+                const vorher = dutyPlan[ev.id]?.[eintragStation] || [];
+                if (vorher.includes(eintragPerson)) { setEintragPerson(""); setEintragStation(""); return; }
+                if (vorher.length >= STATION_CAP) return;
+                setDutyPlan((dp) => ({ ...dp, [ev.id]: { ...(dp[ev.id] || {}), [eintragStation]: [...vorher, eintragPerson] } }));
+                const station = eintragStation;
+                Promise.resolve(onSetzen?.(ev.id, station, eintragPerson, true)).then((r) => {
+                  if (r?.error) setDutyPlan((jetzt) => ({ ...jetzt, [ev.id]: { ...(jetzt[ev.id] || {}), [station]: vorher } }));
+                });
+                setEintragPerson(""); setEintragStation("");
+              }}
               disabled={!eintragPerson || !eintragStation}
               className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold flex-shrink-0"
               style={{ background: eintragPerson && eintragStation ? C.ink : C.line, color: eintragPerson && eintragStation ? C.white : C.textDim }}>
