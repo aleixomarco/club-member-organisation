@@ -12,6 +12,7 @@ import {
 , ListFilter,
 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { SPRACHEN, gespeicherteSprache, spracheMerken, uebersetze } from "@/lib/sprachen";
 import { enablePushNotifications, disablePushNotifications, listenForForegroundMessages } from "@/lib/firebase-push";
 import { Capacitor } from "@capacitor/core";
 import { legal } from "./legal-shell";
@@ -1497,6 +1498,54 @@ function SponsorSlot({ slotKey, bookings, onImpression, onClick, visible = true 
 /* ------------------------------------------------------------------ */
 /* Auth: Login & Register                                              */
 /* ------------------------------------------------------------------ */
+/* Sprachwahl beim ersten Oeffnen.
+ *
+ * Steht VOR der Anmeldung: Wer die App zum ersten Mal oeffnet, soll nicht erst
+ * einen deutschen Anmeldebildschirm lesen muessen, um die Sprache umstellen zu
+ * koennen.
+ *
+ * Die Wahl liegt im Geraet UND spaeter am Konto. Im Geraet, weil es zu diesem
+ * Zeitpunkt noch kein Konto gibt; am Konto, damit ein zweites Geraet nicht
+ * erneut fragt.
+ *
+ * Kein "Ueberspringen": Ein Knopf, der die Frage wegdrueckt, fuehrt dazu, dass
+ * die Haelfte der Nutzer eine Sprache benutzt, die sie nicht gewaehlt hat.
+ * Deutsch steht oben und ist mit einem Tipp erledigt. */
+function SprachwahlScreen({ onWaehlen }) {
+  const [gewaehlt, setGewaehlt] = useState("de");
+  const t = (k) => uebersetze(gewaehlt, k);
+  return (
+    <div className="erg-auth flex flex-col h-full px-6 pt-10 pb-6 overflow-y-auto" style={{ background: C.paper }}>
+      <div className="flex flex-col items-center mb-8">
+        <div className="mb-3"><AppBrandMark size={46} /></div>
+        <div className="text-sm tracking-widest" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>VEREINS-APP</div>
+      </div>
+      <div className="text-xl mb-2" style={{ fontFamily: "Oswald", fontWeight: 600, color: C.ink }}>{t("sprache.titel")}</div>
+      <div className="text-xs mb-5 leading-relaxed" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("sprache.hinweis")}</div>
+
+      <div className="rounded-2xl overflow-hidden mb-5" style={{ border: `1px solid ${C.line}` }}>
+        {SPRACHEN.map((sprache, i) => (
+          <button key={sprache.code} onClick={() => setGewaehlt(sprache.code)}
+            aria-pressed={gewaehlt === sprache.code}
+            className="w-full flex items-center gap-3 px-4 py-3 text-left"
+            style={{ background: gewaehlt === sprache.code ? C.paperDim : C.white,
+                     borderTop: i ? `1px solid ${C.line}` : "none" }}>
+            <span style={{ fontSize: 20, lineHeight: 1 }}>{sprache.flagge}</span>
+            <span className="flex-1 text-sm" style={{ color: C.ink, fontFamily: "Inter",
+                    fontWeight: gewaehlt === sprache.code ? 700 : 500 }}>{sprache.name}</span>
+            {gewaehlt === sprache.code && <Check size={16} style={{ color: C.erfolg }} />}
+          </button>
+        ))}
+      </div>
+
+      <button onClick={() => onWaehlen(gewaehlt)} className="w-full py-3 rounded-xl text-sm font-bold"
+        style={{ background: C.ink, color: C.aufPrimaer, fontFamily: "Inter" }}>
+        {t("sprache.weiter")}
+      </button>
+    </div>
+  );
+}
+
 function AuthShell({ children, footer, club }) {
   return (
     <div className="erg-auth flex flex-col h-full px-6 pt-8 pb-6 overflow-y-auto" style={{ background: C.paper }}>
@@ -9461,6 +9510,22 @@ export default function ClubMemberOrganisationApp() {
      Capacitor. Bis dahin gilt "noch unbekannt" - so blitzt weder die
      Hinweisseite in der App auf noch die App im Browser. */
   const [imGeraet, setImGeraet] = useState(null);
+  /* null = noch nicht gelesen, "" = noch nie gewaehlt (dann fragen wir).
+     Getrennt vom Wert selbst, damit die Sprachwahl nicht kurz aufblitzt,
+     bevor der gespeicherte Wert da ist. */
+  const [sprache, setSprache] = useState(null);
+  useEffect(() => { setSprache(gespeicherteSprache() || ""); }, []);
+  const t = useCallback((schluessel) => uebersetze(sprache || "de", schluessel), [sprache]);
+
+  /* Die Wahl merken - im Geraet sofort, am Konto sobald eines da ist. */
+  const spracheWaehlen = useCallback(async (code) => {
+    setSprache(code);
+    spracheMerken(code);
+    if (supabase) {
+      const { data } = await supabase.auth.getUser();
+      if (data?.user) await supabase.rpc("sprache_setzen", { neue_sprache: code });
+    }
+  }, []);
   useEffect(() => { setImGeraet(Capacitor.isNativePlatform()); }, []);
 
   /* Tastatur offen? Nur fuer die Anzeige - die Groesse der Webansicht regelt
@@ -11190,7 +11255,16 @@ export default function ClubMemberOrganisationApp() {
    * Bewusst ohne Schalter: Die Nutzung soll ausschliesslich ueber die
    * installierte App laufen. Wer die Adresse im Browser oeffnet, bekommt den
    * Weg in den Store gezeigt - keine Anmeldung, kein Zugang. */
-  if (imGeraet === null) return <div style={{ minHeight: "100vh", background: C.paper }} />;
+  if (imGeraet === null || sprache === null) return <div style={{ minHeight: "100vh", background: C.paper }} />;
+  /* Beim allerersten Oeffnen zuerst die Sprache. Danach nie wieder - die Wahl
+     steht im Geraet, und im Profil laesst sie sich aendern. */
+  if (sprache === "") return (
+    <div className="erg-shell flex items-center justify-center">
+      <div className="erg-frame w-full overflow-hidden relative" style={{ background: C.paper }}>
+        <SprachwahlScreen onWaehlen={spracheWaehlen} />
+      </div>
+    </div>
+  );
   /* Die Web-Fassung ist wieder offen.
      Vorher endete JEDER Browserbesuch auf der Hinweisseite "gibt es als App
      fuers Smartphone" - auch der Klick auf einen Bestaetigungslink aus einer
