@@ -426,6 +426,13 @@ const de: Woerterbuch = {
   "aria.nachUnten": "Nach unten verschieben",
   "label.unsereTore": "Unsere Tore",
   "label.gegnerTore": "Tore des Gegners",
+
+  "tm.wasDieMannschaftSieht": "WAS DIESE MANNSCHAFT SIEHT",
+  "tm.zusagenErlauben": "Zu- und Absagen",
+  "tm.zusagenErlaubenHinweis": "Mitglieder sagen zu Terminen zu oder ab",
+  "tm.strafenZeigen": "Strafenkatalog",
+  "tm.strafenZeigenHinweis": "Regeln und Kosten für alle sichtbar",
+  "straf.ausgeblendet": "Der Trainer zeigt für diese Mannschaft keinen Strafenkatalog.",
 };
 
 const en: Woerterbuch = {
@@ -819,6 +826,13 @@ const en: Woerterbuch = {
   "aria.nachUnten": "Move down",
   "label.unsereTore": "Our goals",
   "label.gegnerTore": "Opponent's goals",
+
+  "tm.wasDieMannschaftSieht": "WHAT THIS TEAM SEES",
+  "tm.zusagenErlauben": "Attendance",
+  "tm.zusagenErlaubenHinweis": "Members accept or decline events",
+  "tm.strafenZeigen": "Penalty list",
+  "tm.strafenZeigenHinweis": "Rules and amounts visible to everyone",
+  "straf.ausgeblendet": "The coach does not show a penalty list for this team.",
 };
 
 const es: Woerterbuch = {
@@ -1212,6 +1226,13 @@ const es: Woerterbuch = {
   "aria.nachUnten": "Mover abajo",
   "label.unsereTore": "Nuestros goles",
   "label.gegnerTore": "Goles del rival",
+
+  "tm.wasDieMannschaftSieht": "LO QUE VE ESTE EQUIPO",
+  "tm.zusagenErlauben": "Confirmaciones",
+  "tm.zusagenErlaubenHinweis": "Los miembros confirman o cancelan su asistencia",
+  "tm.strafenZeigen": "Catálogo de sanciones",
+  "tm.strafenZeigenHinweis": "Reglas e importes visibles para todos",
+  "straf.ausgeblendet": "El entrenador no muestra un catálogo de sanciones para este equipo.",
 };
 
 const pt: Woerterbuch = {
@@ -1605,6 +1626,13 @@ const pt: Woerterbuch = {
   "aria.nachUnten": "Mover para baixo",
   "label.unsereTore": "Os nossos golos",
   "label.gegnerTore": "Golos do adversário",
+
+  "tm.wasDieMannschaftSieht": "O QUE ESTA EQUIPA VÊ",
+  "tm.zusagenErlauben": "Confirmações",
+  "tm.zusagenErlaubenHinweis": "Os membros confirmam ou recusam a presença",
+  "tm.strafenZeigen": "Catálogo de sanções",
+  "tm.strafenZeigenHinweis": "Regras e valores visíveis para todos",
+  "straf.ausgeblendet": "O treinador não mostra um catálogo de sanções para esta equipa.",
 };
 
 const it: Woerterbuch = {
@@ -1998,6 +2026,13 @@ const it: Woerterbuch = {
   "aria.nachUnten": "Sposta giù",
   "label.unsereTore": "I nostri gol",
   "label.gegnerTore": "Gol dell'avversario",
+
+  "tm.wasDieMannschaftSieht": "CHE COSA VEDE QUESTA SQUADRA",
+  "tm.zusagenErlauben": "Adesioni",
+  "tm.zusagenErlaubenHinweis": "I membri confermano o rifiutano la presenza",
+  "tm.strafenZeigen": "Catalogo delle sanzioni",
+  "tm.strafenZeigenHinweis": "Regole e importi visibili a tutti",
+  "straf.ausgeblendet": "L'allenatore non mostra un catalogo delle sanzioni per questa squadra.",
 };
 
 const tr: Woerterbuch = {
@@ -2391,6 +2426,13 @@ const tr: Woerterbuch = {
   "aria.nachUnten": "Aşağı taşı",
   "label.unsereTore": "Bizim goller",
   "label.gegnerTore": "Rakibin golleri",
+
+  "tm.wasDieMannschaftSieht": "BU TAKIM NE GÖRÜR",
+  "tm.zusagenErlauben": "Katılım bildirimi",
+  "tm.zusagenErlaubenHinweis": "Üyeler etkinliklere katılım bildirir",
+  "tm.strafenZeigen": "Ceza listesi",
+  "tm.strafenZeigenHinweis": "Kurallar ve tutarlar herkese açık",
+  "straf.ausgeblendet": "Antrenör bu takım için ceza listesi göstermiyor.",
 };
 
 const fr: Woerterbuch = {
@@ -2784,6 +2826,13 @@ const fr: Woerterbuch = {
   "aria.nachUnten": "Déplacer vers le bas",
   "label.unsereTore": "Nos buts",
   "label.gegnerTore": "Buts de l'adversaire",
+
+  "tm.wasDieMannschaftSieht": "CE QUE VOIT CETTE ÉQUIPE",
+  "tm.zusagenErlauben": "Présences",
+  "tm.zusagenErlaubenHinweis": "Les membres confirment ou déclinent leur présence",
+  "tm.strafenZeigen": "Barème d'amendes",
+  "tm.strafenZeigenHinweis": "Règles et montants visibles par tous",
+  "straf.ausgeblendet": "L'entraîneur n'affiche pas de barème d'amendes pour cette équipe.",
 };
 
 const WOERTERBUECHER: Record<string, Woerterbuch> = { de, en, es, pt, it, tr, fr };

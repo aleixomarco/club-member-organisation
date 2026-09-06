@@ -3393,7 +3393,7 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
         <div className="px-4 pb-4">
           {ev.cancelled&&<div className="rounded-xl p-3 mb-3 text-xs font-bold" style={{background:C.fehlerFlaeche,color:C.fehler,border: `1px solid ${C.fehlerRand}`}}>Dieses {meta.label} wurde{ev.team?` für ${ev.team}`:""} abgesagt.</div>}
           <p className="text-sm mb-3" style={{ color: C.textDim, fontFamily: "Inter" }}>{ev.desc}</p>
-          {!ev.cancelled && <TerminZusage ev={ev} currentUser={currentUser} />}
+          {!ev.cancelled && ev.zusagenAktiv !== false && <TerminZusage ev={ev} currentUser={currentUser} />}
           {/* Absagen in zwei Schritten: erst der Grund, dann die Absage.
               Vorher verschwand ein Training mit einem Klick und ohne
               Erklaerung - die Mannschaft las "wurde abgesagt" und fragte im
@@ -5120,7 +5120,31 @@ function TeamPenaltyCatalog({ user }) {
   const [seasonLabel, setSeasonLabel] = useState("");
   const [resettingSeason, setResettingSeason] = useState(false);
   const databaseMembership = !!supabase && isDbId(user.id);
-  const canManageSelectedTeam = !!teams.find((team) => team.id === selectedTeamId)?.canManage;
+  const gewaehlteMannschaft = teams.find((team) => team.id === selectedTeamId);
+  const canManageSelectedTeam = !!gewaehlteMannschaft?.canManage;
+  const [schaltet, setSchaltet] = useState("");
+  /* Wer die Mannschaft fuehrt, sieht den Katalog immer - sonst koennte er
+     ihn ausschalten und danach nicht wieder an. */
+  const strafenSichtbar = canManageSelectedTeam || gewaehlteMannschaft?.strafen_aktiv !== false;
+
+  /* Was diese Mannschaft sieht, entscheidet ihr Trainer.
+     Erst im Bild aendern, dann schreiben: Ein Schalter, der eine halbe
+     Sekunde auf der alten Stellung stehen bleibt, wird ein zweites Mal
+     gedrueckt - und steht danach wieder da, wo er vorher war. */
+  const funktionSchalten = async (feld, wert) => {
+    if (!selectedTeamId) return;
+    const vorher = teams;
+    setTeams((liste) => liste.map((team) => (team.id === selectedTeamId ? { ...team, [feld]: wert } : team)));
+    if (!supabase || !databaseMembership) return;
+    setSchaltet(feld);
+    const { error } = await supabase.rpc("mannschaft_funktionen_setzen", {
+      target_team: selectedTeamId,
+      p_zusagen: feld === "zusagen_aktiv" ? wert : null,
+      p_strafen: feld === "strafen_aktiv" ? wert : null,
+    });
+    setSchaltet("");
+    if (error) { setTeams(vorher); setMessage("Die Einstellung konnte nicht gespeichert werden."); }
+  };
   const canManageSeasons = databaseMembership && user.roles.some((role) => ["vorstand", "finanzmanager", "sysadmin", "vereinsadmin"].includes(role));
   useEffect(() => {
     const loadTeams = async () => {
@@ -5146,7 +5170,7 @@ function TeamPenaltyCatalog({ user }) {
         return;
       }
       const { data, error } = await supabase.from("team_members")
-        .select("team_id,function,teams(id,name,is_adult)")
+        .select("team_id,function,teams(id,name,is_adult,zusagen_aktiv,strafen_aktiv)")
         .eq("membership_id", user.id)
         .in("function", ["spieler", "trainer", "teammanager", "kapitaen"]);
       if (error) { setMessage("Die Mannschaften konnten nicht geladen werden."); setLoading(false); return; }
@@ -5347,7 +5371,29 @@ function TeamPenaltyCatalog({ user }) {
     {loading ? <div className="text-xs py-3" style={{ color: C.textDim }}>{t("tm.laden")}</div> : teams.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Der Strafenkatalog ist nur für Erwachsenenmannschaften verfügbar. Dir ist aktuell keine Erwachsenenmannschaft als Athlet/in, Kapitän/in, Trainer/in oder Teammanager/in zugeordnet.</div> : <>
       <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>MANNSCHAFT</div>
       <select value={selectedTeamId} onChange={(event) => { setSelectedTeamId(event.target.value); setMessage(""); setShowHistory(false); }} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-3" style={{ background: C.paperDim, color: C.ink }}>{teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select>
-      <div className="space-y-2 mb-3">
+      {canManageSelectedTeam && (
+        <div className="rounded-xl p-3 mb-3" style={{ background: C.paperDim }}>
+          <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>{t("tm.wasDieMannschaftSieht")}</div>
+          {[["zusagen_aktiv", t("tm.zusagenErlauben"), t("tm.zusagenErlaubenHinweis")],
+            ["strafen_aktiv", t("tm.strafenZeigen"), t("tm.strafenZeigenHinweis")]].map(([feld, titel, hinweis]) => {
+            const an = gewaehlteMannschaft?.[feld] === true;
+            return (
+              <button key={feld} type="button" onClick={() => funktionSchalten(feld, !an)} disabled={schaltet === feld}
+                className="w-full flex items-center justify-between gap-3 py-2 text-left">
+                <span className="min-w-0">
+                  <span className="block text-xs font-bold" style={{ color: C.ink }}>{titel}</span>
+                  <span className="block text-[10px]" style={{ color: C.textDim }}>{hinweis}</span>
+                </span>
+                <span className="w-10 h-6 rounded-full relative flex-shrink-0" style={{ background: an ? C.secondary : C.line }}>
+                  <span className="absolute top-0.5 w-5 h-5 rounded-full" style={{ background: "#fff", left: an ? 18 : 2, transition: "left .2s" }} />
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {!strafenSichtbar && <div className="text-[11px] rounded-xl p-3 mb-3" style={{ background: C.paperDim, color: C.textDim }}>{t("straf.ausgeblendet")}</div>}
+      <div className="space-y-2 mb-3" hidden={!strafenSichtbar}>
         {rules.map((rule) => <div key={rule.id} className="flex items-center gap-2 px-3 py-2.5 rounded-xl" style={{ background: C.paperDim }}><div className="flex-1 min-w-0"><div className="text-xs font-bold truncate" style={{ color: C.ink }}>{rule.title}</div></div><div className="text-xs font-bold whitespace-nowrap" style={{ color: C.red, fontFamily: "JetBrains Mono" }}>{rule.amount.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</div>{canManageSelectedTeam && <><button type="button" disabled={saving} onClick={() => editRule(rule)} className="px-2 py-1.5 rounded-lg text-[10px] font-bold" style={{ background: C.glass, color: C.ink }}>{t("allg.aendern")}</button><button type="button" disabled={saving} onClick={() => removeRule(rule)} aria-label={`${rule.title} löschen`} className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: C.glass, color: C.red }}><X size={14}/></button></>}</div>)}
         {rules.length === 0 && <div className="text-[11px] rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Für diese Mannschaft sind noch keine Regeln hinterlegt.</div>}
       </div>
@@ -6082,7 +6128,7 @@ function DutyTasksSection({ ev, currentUser, sport, onNeuLaden, dutyPlan, member
     if (error) { setMessage("Vorlage konnte nicht angewendet werden."); return; }
     if (!uebernommen) { setMessage("Dieser Satz enthält noch keine Stationen. Trage sie unter Verwaltung → Helferdienst-Sätze ein."); return; }
     setSelectedTemplate("");
-    setMessage(uebernommen === 1 ? (OK_ZEICHEN + "Eine Station wurde übernommen.") : `${uebernommen} Stationen wurden übernommen.`);
+    setMessage(OK_ZEICHEN + (uebernommen === 1 ? "Eine Station wurde übernommen." : `${uebernommen} Stationen wurden übernommen.`));
     await loadTasks();
     /* Die Stationen stehen jetzt am Termin selbst (events.helper_slots). Ohne
        diesen Aufruf zeigt die Karte weiter die alte Liste - loadTasks holt nur
@@ -6115,7 +6161,7 @@ function DutyTasksSection({ ev, currentUser, sport, onNeuLaden, dutyPlan, member
     setMessage("");
     const { data, error } = await supabase.rpc("remove_duty_station", { target_event: ev.id, station_name: station });
     if (error) { setMessage("Die Station konnte nicht entfernt werden."); return; }
-    setMessage(data ? `Station entfernt. ${data === 1 ? (OK_ZEICHEN + "Eine Eintragung wurde") : `${data} Eintragungen wurden`} gelöscht.` : "Station entfernt.");
+    setMessage(OK_ZEICHEN + (data ? `Station entfernt. ${data === 1 ? "Eine Eintragung wurde" : `${data} Eintragungen wurden`} gelöscht.` : "Station entfernt."));
     await loadTasks();
     onNeuLaden?.();
   };
@@ -10236,7 +10282,7 @@ export default function ClubMemberOrganisationApp() {
     if (!isRealAccount || !currentUser?.clubId) return;
     const loadEvents = async () => {
       const { data, error } = await supabase.from("events")
-        .select("id,type,status,title,description,starts_at,location,home_away,series_id,helper_slots,teams(name)")
+        .select("id,type,status,title,description,starts_at,location,home_away,series_id,helper_slots,teams(name,zusagen_aktiv)")
         .eq("club_id", currentUser.clubId)
         .order("starts_at", { ascending: true });
       /* Vorher stand hier ein blosses return. Der Anfangszustand von events sind
@@ -10246,11 +10292,16 @@ export default function ClubMemberOrganisationApp() {
       if (error) { setDatenFehler((v) => [...new Set([...(v || []), "Termine"])]); setEvents([]); return; }
       if (!data) { setEvents([]); return; }
       const mapped = data.map((row) => {
-        const teamName = Array.isArray(row.teams) ? row.teams[0]?.name : row.teams?.name;
+        const team = Array.isArray(row.teams) ? row.teams[0] : row.teams;
         return {
           id: row.id,
           type: row.type,
-          team: teamName || undefined,
+          team: team?.name || undefined,
+          /* Ob es hier Zu- und Absagen gibt, entscheidet der Trainer der
+             Mannschaft. Vereinsweite Termine haben keinen Trainer - dort
+             bleibt die Frage stehen, weil sonst niemand sie freigeben
+             koennte. */
+          zusagenAktiv: team ? team.zusagen_aktiv === true : true,
           title: row.title,
           date: row.starts_at,
           location: row.location || "",
