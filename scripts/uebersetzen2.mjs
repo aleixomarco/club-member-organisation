@@ -117,7 +117,13 @@ for (const name of zuErgaenzen) {
      bricht ab. Deshalb den gesamten Funktionsbereich pruefen. */
   const bereich = bereiche.find((b) => b.name === name);
   const bisZeile = bereich ? bereich.bis : start + 12;
-  if (zeilen.slice(start, bisZeile).some((z) => /^\s*const t = /.test(z))) continue;
+  /* "const t" kann MITTEN in der Zeile stehen: Bei einzeiligen
+     Komponenten setzt dieses Werkzeug den Haken hinter die Klammer,
+     nicht in eine eigene Zeile. Eine Suche, die nur den Zeilenanfang
+     ansieht, findet ihn dort nicht - und setzt einen zweiten daneben.
+     "const t = useT(); const t = useT();" ist ein doppelt vergebener
+     Name, und der Build bricht ab. */
+  if (zeilen.slice(start, bisZeile).some((z) => /\bconst t = /.test(z))) continue;
   let ende = start;
   while (ende < zeilen.length && !zeilen[ende].includes(") {")) ende++;
   if (ende >= zeilen.length) { uebersprungen.push(`  ? ${name}: Funktionskopf nicht gefunden`); continue; }

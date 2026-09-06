@@ -59,6 +59,7 @@ const AUSNAHMEN = new Map([
   ["Sponsor", "in allen Zielsprachen gleich"],
   ["Sponsoring", "in allen Zielsprachen gleich"],
   ["Browser", "in allen Zielsprachen gleich"],
+  ["Diese Funktion", "Vorgabewert im Funktionskopf von LockedFeature - dort steht t noch nicht zur Verfuegung, ein t() an dieser Stelle wuerde beim Laden abstuerzen"],
 ]);
 
 const quelle = readFileSync(DATEI, "utf8");
