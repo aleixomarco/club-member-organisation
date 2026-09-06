@@ -3275,7 +3275,7 @@ function CarpoolSection({ ev, currentUser }) {
   const load = useCallback(async () => {
     setLoading(true);
     const { data, error } = await supabase.from("carpools")
-      .select("id,seats_available,note,departure,driver_membership_id,club_memberships(display_name),carpool_passengers(membership_id,club_memberships(display_name))")
+      .select("id,seats_available,note,departure,driver_membership_id,created_at,club_memberships(display_name),carpool_passengers(membership_id,club_memberships(display_name))")
       .eq("event_id", ev.id)
       .order("created_at", { ascending: true });
     if (error) { setLoading(false); return; }
@@ -3285,7 +3285,7 @@ function CarpoolSection({ ev, currentUser }) {
         const m = Array.isArray(p.club_memberships) ? p.club_memberships[0] : p.club_memberships;
         return { membershipId: p.membership_id, name: m?.display_name || "—" };
       });
-      return { id: row.id, seats: row.seats_available, departure: row.departure, note: row.note, driverId: row.driver_membership_id, driverName: driver?.display_name || "—", passengers };
+      return { erstelltAm: row.created_at, id: row.id, seats: row.seats_available, departure: row.departure, note: row.note, driverId: row.driver_membership_id, driverName: driver?.display_name || "—", passengers };
     }));
     setLoading(false);
   }, [ev.id]);
@@ -3347,6 +3347,7 @@ function CarpoolSection({ ev, currentUser }) {
                   {!isDriver && isPassenger && <button onClick={() => leave(c.id)} className="flex-1 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: C.glass, color: C.red }}>{t("allg.austragen")}</button>}
                   {isDriver && <button onClick={() => removeCarpool(c.id)} className="flex-1 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: C.glass, color: C.red }}>{t("fahr.loeschen")}</button>}
                 </div>
+                <Erstellt von={c.driverId} am={c.erstelltAm} />
               </div>
             );
           })}
@@ -3462,6 +3463,7 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
             </div>
           )}
           {eventIsReal && ev.type === "spiel" && ev.home === true && featureEnabled("duty_roster") && <DutyTasksSection ev={ev} currentUser={currentUser} sport={currentClub?.sport} onNeuLaden={onNeuLaden} dutyPlan={dutyPlan} members={members} />}
+          <Erstellt von={ev.erstelltVon} am={ev.erstelltAm} />
         </div>
       )}
     </div>
@@ -4953,7 +4955,7 @@ function TeamsView({ currentUser, members, setMembers, currentClub }) {
     if (!databaseMembership || !selectedPlayerId || !selectedTeamId) { setPlayerPenalties([]); return; }
     const loadPlayerPenalties = async () => {
       const { data } = await supabase.from("team_penalty_assignments")
-        .select("id,assigned_at,paid_at,team_penalty_rules(title,amount)")
+        .select("id,assigned_at,paid_at,assigned_by,team_penalty_rules(title,amount)")
         .eq("team_id", selectedTeamId)
         .eq("membership_id", selectedPlayerId)
         .is("archived_season", null)
@@ -4969,7 +4971,7 @@ function TeamsView({ currentUser, members, setMembers, currentClub }) {
     if (!assignRuleId || !selectedPlayerId) return;
     setAssigningPenalty(true); setPenaltyMessage("");
     const { error } = await supabase.from("team_penalty_assignments")
-      .insert({ team_id: selectedTeamId, rule_id: assignRuleId, membership_id: selectedPlayerId });
+      .insert({ team_id: selectedTeamId, rule_id: assignRuleId, membership_id: selectedPlayerId, assigned_by: user.id });
     if (error) { setPenaltyMessage(t("straf.zuweisenFehler")); setAssigningPenalty(false); return; }
     setAssignRuleId(""); setPenaltyMessage(t("straf.wurdeZugewiesen")); setAssigningPenalty(false);
   };
@@ -5303,7 +5305,7 @@ function TeamPenaltyCatalog({ user }) {
     if (databaseMembership) {
       const request = editingId
         ? supabase.from("team_penalty_rules").update({ title: title.trim(), amount: normalizedAmount, updated_at: new Date().toISOString() }).eq("id", editingId)
-        : supabase.from("team_penalty_rules").insert({ team_id: selectedTeamId, title: title.trim(), amount: normalizedAmount });
+        : supabase.from("team_penalty_rules").insert({ team_id: selectedTeamId, title: title.trim(), amount: normalizedAmount, created_by: user.authProfileId || null });
       const { data, error } = await request
         .select("id,team_id,title,amount,created_at").single();
       if (error) { setMessage(t("straf.regelSpeichernFehler")); setSaving(false); return; }
@@ -5339,7 +5341,7 @@ function TeamPenaltyCatalog({ user }) {
     const rule = rules.find((r) => r.id === assignRuleId);
     if (databaseMembership) {
       const { error } = await supabase.from("team_penalty_assignments")
-        .insert({ team_id: selectedTeamId, rule_id: assignRuleId, membership_id: assignPlayerId });
+        .insert({ team_id: selectedTeamId, rule_id: assignRuleId, membership_id: assignPlayerId, assigned_by: user.id });
       if (error) { setMessage(t("straf.zuweisenFehler")); setAssigning(false); return; }
       setLocalAssignments((current) => [...current]);
     } else {
@@ -5624,7 +5626,7 @@ function TasksView({ currentUser, members }) {
     setMyTeams([...teamMap.entries()].map(([id, name]) => ({ id, name })));
     setManageableTeamIds([...new Set(manageIds)]);
     const { data: tasksData, error } = await supabase.from("club_tasks")
-      .select("id,team_id,title,description,due_date,slots_needed,created_by,teams(name),club_task_signups(membership_id,club_memberships(display_name))")
+      .select("id,team_id,title,description,due_date,slots_needed,created_by,created_at,teams(name),club_task_signups(membership_id,club_memberships(display_name))")
       .eq("club_id", currentUser.clubId)
       .order("created_at", { ascending: false });
     if (error) { setMessage(t("auf.ladenFehler")); setLoading(false); return; }
@@ -5634,7 +5636,7 @@ function TasksView({ currentUser, members }) {
         const m = Array.isArray(s.club_memberships) ? s.club_memberships[0] : s.club_memberships;
         return { membershipId: s.membership_id, name: m?.display_name || "—" };
       });
-      return { id: row.id, teamId: row.team_id, teamName: team?.name, title: row.title, description: row.description, dueDate: row.due_date, slots: row.slots_needed, createdBy: row.created_by, signups };
+      return { createdAt: row.created_at, id: row.id, teamId: row.team_id, teamName: team?.name, title: row.title, description: row.description, dueDate: row.due_date, slots: row.slots_needed, createdBy: row.created_by, signups };
     });
     setClubTasks(mapped.filter((t) => !t.teamId));
     setTeamTasks(mapped.filter((t) => t.teamId));
@@ -5720,6 +5722,7 @@ function TasksView({ currentUser, members }) {
           {(isCreator || canManage) && <button onClick={() => onEdit(task)} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.paperDim, color: C.textDim }}>{t("allg.bearbeiten")}</button>}
           {(isCreator || canManage) && <button onClick={() => removeTask(task)} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.paperDim, color: C.red }}>{t("allg.loeschen")}</button>}
         </div>
+        <Erstellt von={task.createdBy} am={task.createdAt} />
       </div>
     );
   };
@@ -5777,7 +5780,7 @@ function VehiclesView({ currentUser, currentClub }) {
   const HOURS = Array.from({ length: 24 }, (_, i) => i);
   const loadVehicles = useCallback(async () => {
     if (!databaseMembership) { setVehicles([]); return; }
-    const { data, error } = await supabase.from("club_vehicles").select("id,label,license_plate,seats").eq("club_id", currentUser.clubId).order("label");
+    const { data, error } = await supabase.from("club_vehicles").select("id,label,license_plate,seats,created_by,created_at").eq("club_id", currentUser.clubId).order("label");
     if (error) { setMessage(t("fzg.ladenFehler")); return; }
     setVehicles(data || []);
   }, [databaseMembership, currentUser.clubId]);
@@ -5792,7 +5795,7 @@ function VehiclesView({ currentUser, currentClub }) {
     const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
     const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 1);
     const { data, error } = await supabase.from("vehicle_bookings")
-      .select("id,vehicle_id,membership_id,team_id,private_label,starts_at,ends_at,status,club_vehicles(label),teams(name),club_memberships(display_name)")
+      .select("id,vehicle_id,membership_id,team_id,private_label,starts_at,ends_at,status,created_at,club_vehicles(label),teams(name),club_memberships(display_name)")
       .eq("club_id", currentUser.clubId)
       .lt("starts_at", monthEnd.toISOString())
       .gt("ends_at", monthStart.toISOString())
@@ -5802,7 +5805,7 @@ function VehiclesView({ currentUser, currentClub }) {
       const vehicle = Array.isArray(row.club_vehicles) ? row.club_vehicles[0] : row.club_vehicles;
       const team = Array.isArray(row.teams) ? row.teams[0] : row.teams;
       const member = Array.isArray(row.club_memberships) ? row.club_memberships[0] : row.club_memberships;
-      return { id: row.id, status: row.status || "bestaetigt", vehicleId: row.vehicle_id, membershipId: row.membership_id, teamId: row.team_id, privateLabel: row.private_label, vehicleLabel: vehicle?.label || "—", label: team?.name || row.private_label || t("fzg.privat"), bookedBy: member?.display_name || "—", startsAt: new Date(row.starts_at), endsAt: new Date(row.ends_at) };
+      return { erstelltAm: row.created_at, id: row.id, status: row.status || "bestaetigt", vehicleId: row.vehicle_id, membershipId: row.membership_id, teamId: row.team_id, privateLabel: row.private_label, vehicleLabel: vehicle?.label || "—", label: team?.name || row.private_label || t("fzg.privat"), bookedBy: member?.display_name || "—", startsAt: new Date(row.starts_at), endsAt: new Date(row.ends_at) };
     }));
     setLoading(false);
   }, [databaseMembership, currentUser.clubId, monthDate]);
@@ -5951,6 +5954,7 @@ function VehiclesView({ currentUser, currentClub }) {
             <button onClick={() => { if (!canBook) return; if (!hasPhone) { setMessage(t("fzg.telefonNoetig")); return; } openBooking(v); }} disabled={!canBook} className="flex-1 text-left">
               <div className="text-sm font-bold" style={{ color: C.ink }}>{v.label}</div>
               <div className="text-[11px]" style={{ color: C.textDim }}>{v.license_plate} · {v.seats} Plätze</div>
+              <Erstellt von={v.created_by} am={v.created_at} rahmenlos />
             </button>
             {canBook && <ChevronRight size={15} style={{ color: C.textDim }}/>}
             {canManageFleet && <button onClick={() => openEditVehicle(v)} aria-label={`${v.label} bearbeiten`} className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: C.paperDim, color: C.textDim }}>{t("allg.bearbeiten")}</button>}
@@ -5995,6 +5999,7 @@ function VehiclesView({ currentUser, currentClub }) {
             <button onClick={() => openBookingDetail(b)} className="flex-1 min-w-0 text-left">
               <div className="text-xs font-bold truncate" style={{ color: C.ink }}>{b.vehicleLabel} · {b.label}</div>
               <div className="text-[10px] truncate" style={{ color: C.textDim }}>{b.bookedBy} · {b.startsAt.toLocaleDateString("de-DE")} {String(b.startsAt.getHours()).padStart(2,"0")}:00 – {b.endsAt.toLocaleDateString("de-DE")} {String(b.endsAt.getHours()).padStart(2,"0")}:00</div>
+              <Erstellt von={b.membershipId} am={b.erstelltAm} rahmenlos />
             </button>
             {/* Eine Anfrage sieht aus wie eine Buchung - so war es gewuenscht -
                 und traegt fuer die Entscheider Haken und Kreuz. Fuer alle
@@ -6114,13 +6119,13 @@ function DutyTasksSection({ ev, currentUser, sport, onNeuLaden, dutyPlan, member
 
   const loadTasks = useCallback(async () => {
     const { data, error } = await supabase.from("duty_tasks")
-      .select("id,title,due_date,done,assignee_membership_id,club_memberships(display_name)")
+      .select("id,title,due_date,done,assignee_membership_id,created_by,created_at,club_memberships(display_name)")
       .eq("event_id", ev.id)
       .order("created_at", { ascending: true });
     if (!error) {
       setTasks((data || []).map((row) => {
         const assignee = Array.isArray(row.club_memberships) ? row.club_memberships[0] : row.club_memberships;
-        return { id: row.id, title: row.title, dueDate: row.due_date, done: row.done, assigneeId: row.assignee_membership_id, assigneeName: assignee?.display_name || null };
+        return { erstelltVon: row.created_by, erstelltAm: row.created_at, id: row.id, title: row.title, dueDate: row.due_date, done: row.done, assigneeId: row.assignee_membership_id, assigneeName: assignee?.display_name || null };
       }));
     }
     setLoading(false);
@@ -6137,7 +6142,7 @@ function DutyTasksSection({ ev, currentUser, sport, onNeuLaden, dutyPlan, member
     if (!canManage) return;
     (async () => {
       const [{ data: templateRows }, { data: memberRows }] = await Promise.all([
-        supabase.from("duty_task_templates").select("id,name").eq("club_id", currentUser.clubId).order("name"),
+        supabase.from("duty_task_templates").select("id,name,created_by,created_at").eq("club_id", currentUser.clubId).order("name"),
         supabase.from("club_memberships").select("id,display_name").eq("club_id", currentUser.clubId).eq("status", "active").order("display_name"),
       ]);
       setTemplates(templateRows || []);
@@ -6274,6 +6279,7 @@ function DutyTasksSection({ ev, currentUser, sport, onNeuLaden, dutyPlan, member
               )}
               {!canManage && !task.assigneeId && <button onClick={() => claimTask(task.id)} className="w-full py-1.5 rounded-lg text-[11px] font-bold" style={{ background: C.ink, color: C.white }}>{t("auf.uebernehmeIch")}</button>}
               {!canManage && task.assigneeId === currentUser.id && <button onClick={() => claimTask(task.id)} className="w-full py-1.5 rounded-lg text-[11px] font-bold" style={{ background: C.glass, color: C.red }}>{t("auf.zurueckziehen")}</button>}
+              <Erstellt von={task.erstelltVon} am={task.erstelltAm} />
             </div>
           ))}
         </div>
@@ -9729,6 +9735,61 @@ function useT() {
   const code = React.useContext(SprachKontext);
   return useCallback((schluessel) => uebersetze(code, schluessel), [code]);
 }
+function useSprache() {
+  return React.useContext(SprachKontext) || "de";
+}
+
+/* Wer hat das angelegt?
+ *
+ * Die Mitgliederliste liegt im Hauptzustand. Die Angabe "erstellt von" wird
+ * aber ganz unten gebraucht - in der Terminkarte, in der Aufgabenzeile, im
+ * Strafenkatalog. Sie durch zwanzig Ebenen durchzureichen hiesse, zwanzig
+ * Komponenten eine Eigenschaft zu geben, die sie selbst nicht brauchen.
+ * Deshalb ein Kontext, wie bei der Sprache.
+ */
+const MitgliederKontext = React.createContext([]);
+
+/* Die Tabellen halten den Ersteller unterschiedlich fest: mal als
+   Mitgliedschaft (club_memberships.id), mal als Konto (profiles.id).
+   Historisch gewachsen, und es lohnt nicht, das nachtraeglich zu
+   vereinheitlichen - die Mitgliederliste kennt beide Kennungen, also wird
+   hier einfach gegen beide geprueft. */
+function useErstellerName(id) {
+  const mitglieder = React.useContext(MitgliederKontext);
+  if (!id) return "";
+  const treffer = (mitglieder || []).find((m) => m.id === id || m.authProfileId === id);
+  return treffer?.name || "";
+}
+
+/* "Erstellt von … · Erstellt am …" - klein, unten, nicht bearbeitbar.
+ *
+ * Wenn ein Termin falsch steht oder eine Strafe ueberrascht, ist die erste
+ * Frage im Verein immer dieselbe: Wer war das? Bisher konnte das niemand
+ * beantworten.
+ *
+ * Fehlt der Name, wird nur das Datum gezeigt. Das ist der Normalfall bei
+ * allem, was vor September 2026 angelegt wurde - dort steht in der
+ * Datenbank niemand. Einen Namen zu raten waere schlimmer als keiner: Er
+ * saehe aus wie eine Tatsache. */
+function Erstellt({ von, am, rahmenlos = false }) {
+  const t = useT();
+  const sprache = useSprache();
+  const name = useErstellerName(von);
+  if (!name && !am) return null;
+  const datum = am
+    ? new Date(am).toLocaleDateString(sprache, { day: "2-digit", month: "2-digit", year: "numeric" })
+    : "";
+  return (
+    /* In engen Listenzeilen wuerde eine Trennlinie wie ein Fehler aussehen -
+       dort steht die Angabe rahmenlos als weitere Zeile. */
+    <div className={rahmenlos ? "text-[10px]" : "text-[10px] mt-2 pt-2"}
+         style={{ color: C.textDim, borderTop: rahmenlos ? "none" : `1px solid ${C.line}` }}>
+      {name && <>{t("meta.erstelltVon")} {name}</>}
+      {name && datum && " · "}
+      {datum && <>{t("meta.erstelltAm")} {datum}</>}
+    </div>
+  );
+}
 
 function baseTabs(t, isAdminUser, canEditNews, canEditSponsors, canManageFees, canManageDutyUser) {
   const tabs = [
@@ -10316,7 +10377,7 @@ export default function ClubMemberOrganisationApp() {
     if (!isRealAccount || !currentUser?.clubId) return;
     const loadEvents = async () => {
       const { data, error } = await supabase.from("events")
-        .select("id,type,status,title,description,starts_at,location,home_away,series_id,helper_slots,teams(name,zusagen_aktiv)")
+        .select("id,type,status,title,description,starts_at,location,home_away,series_id,helper_slots,created_by,created_at,teams(name,zusagen_aktiv)")
         .eq("club_id", currentUser.clubId)
         .order("starts_at", { ascending: true });
       /* Vorher stand hier ein blosses return. Der Anfangszustand von events sind
@@ -10336,6 +10397,8 @@ export default function ClubMemberOrganisationApp() {
              bleibt die Frage stehen, weil sonst niemand sie freigeben
              koennte. */
           zusagenAktiv: team ? team.zusagen_aktiv === true : true,
+          erstelltVon: row.created_by || null,
+          erstelltAm: row.created_at || null,
           title: row.title,
           date: row.starts_at,
           location: row.location || "",
@@ -10407,13 +10470,13 @@ export default function ClubMemberOrganisationApp() {
 
     const [tipps, ergebnisse, umfragen, antworten, stimmen, wahl, dienste, protokolle, aufgaben, einstellungen, erinnerungen, eigenesProfil] = await Promise.all([
       supabase.from("predictions").select("event_id,profile_id,home_score,away_score"),
-      supabase.from("event_results").select("event_id,heim,auswaerts").eq("club_id", clubId),
-      supabase.from("polls").select("id,title,active,created_at").eq("club_id", clubId).order("created_at", { ascending: false }),
+      supabase.from("event_results").select("event_id,heim,auswaerts,erfasst_von,created_at").eq("club_id", clubId),
+      supabase.from("polls").select("id,title,active,created_at,created_by").eq("club_id", clubId).order("created_at", { ascending: false }),
       supabase.from("poll_options").select("id,poll_id,label,position,legacy_votes"),
       supabase.from("poll_votes").select("poll_id,option_id,profile_id"),
       supabase.from("season_votes").select("voter_profile_id,candidate_membership_id").eq("club_id", clubId).eq("season", SAISON_KENNUNG),
       supabase.from("duty_assignments").select("event_id,station,membership_id"),
-      supabase.from("protocols").select("id,title,meeting_date,raw_text,attendee_membership_ids,created_at").eq("club_id", clubId).order("meeting_date", { ascending: false }),
+      supabase.from("protocols").select("id,title,meeting_date,raw_text,attendee_membership_ids,created_at,created_by").eq("club_id", clubId).order("meeting_date", { ascending: false }),
       supabase.from("protocol_tasks").select("id,protocol_id,text,assignee_membership_id,due_date,done"),
       supabase.from("club_settings").select("maintenance_mode,welcome_automation,billing_automation,punkte_ziel,punkte_praemie").eq("club_id", clubId).maybeSingle(),
       supabase.from("fee_reminders").select("membership_id,gesendet_am").eq("club_id", clubId).eq("jahr", new Date().getFullYear()),
@@ -10876,7 +10939,7 @@ export default function ClubMemberOrganisationApp() {
     if (!member) return { error: t("verein.profilLadenFehler") };
     if (canManageFees(member)) {
       const { data: feesData, error: feesError } = await supabase.from("fee_records")
-        .select("id,membership_id,year,type,amount,payment_status,invoice_number,person_count,fee_people(membership_id,manual_name)")
+        .select("id,membership_id,year,type,amount,payment_status,invoice_number,person_count,created_by,created_at,fee_people(membership_id,manual_name)")
         .eq("club_id", clubId).order("year", { ascending: false }).order("created_at", { ascending: false });
       if (feesError) return { error: t("bei.verwaltungLadenFehler") };
       const loadedFees = (feesData || []).map((record) => ({
@@ -10898,7 +10961,7 @@ export default function ClubMemberOrganisationApp() {
       })));
     }
     const { data: newsData, error: newsError } = await supabase.from("news_posts")
-      .select("id,title,body,image_path,author_name,created_at")
+      .select("id,title,body,image_path,author_name,author_id,created_at")
       .eq("club_id", clubId).order("created_at", { ascending: true }).limit(100);
     if (newsError) return { error: t("news.ladenFehler") };
     const loadedNews = await Promise.all((newsData || []).map(async (post) => {
@@ -11700,6 +11763,7 @@ export default function ClubMemberOrganisationApp() {
      dass sie durch jede Ebene gereicht werden muss. */
   return (
     <SprachKontext.Provider value={sprache || "de"}>
+    <MitgliederKontext.Provider value={members}>
     <div className="erg-app erg-shell w-full flex items-center justify-center" style={{ fontFamily: "Inter", ...themeVars }}>
       <style>{FONTS}</style>
       <div className="erg-canvas erg-frame relative w-full flex flex-col overflow-hidden">
@@ -11873,6 +11937,7 @@ export default function ClubMemberOrganisationApp() {
         )}
       </div>
     </div>
+    </MitgliederKontext.Provider>
     </SprachKontext.Provider>
   );
 }

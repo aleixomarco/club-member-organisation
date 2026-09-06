@@ -1010,6 +1010,9 @@ const de: Woerterbuch = {
 
   "chat.meldenBetreff": "Nachricht melden - ",
   "verein.mitPunktRaum": "Verein · ",
+
+  "meta.erstelltVon": "Erstellt von:",
+  "meta.erstelltAm": "Erstellt am:",
 };
 
 const en: Woerterbuch = {
@@ -1987,6 +1990,9 @@ const en: Woerterbuch = {
 
   "chat.meldenBetreff": "Report message - ",
   "verein.mitPunktRaum": "Club · ",
+
+  "meta.erstelltVon": "Created by:",
+  "meta.erstelltAm": "Created on:",
 };
 
 const es: Woerterbuch = {
@@ -2964,6 +2970,9 @@ const es: Woerterbuch = {
 
   "chat.meldenBetreff": "Denunciar mensaje - ",
   "verein.mitPunktRaum": "Club · ",
+
+  "meta.erstelltVon": "Creado por:",
+  "meta.erstelltAm": "Creado el:",
 };
 
 const pt: Woerterbuch = {
@@ -3941,6 +3950,9 @@ const pt: Woerterbuch = {
 
   "chat.meldenBetreff": "Denunciar mensagem - ",
   "verein.mitPunktRaum": "Clube · ",
+
+  "meta.erstelltVon": "Criado por:",
+  "meta.erstelltAm": "Criado a:",
 };
 
 const it: Woerterbuch = {
@@ -4918,6 +4930,9 @@ const it: Woerterbuch = {
 
   "chat.meldenBetreff": "Segnala messaggio - ",
   "verein.mitPunktRaum": "Società · ",
+
+  "meta.erstelltVon": "Creato da:",
+  "meta.erstelltAm": "Creato il:",
 };
 
 const tr: Woerterbuch = {
@@ -5895,6 +5910,9 @@ const tr: Woerterbuch = {
 
   "chat.meldenBetreff": "Mesajı bildir - ",
   "verein.mitPunktRaum": "Kulüp · ",
+
+  "meta.erstelltVon": "Oluşturan:",
+  "meta.erstelltAm": "Oluşturma tarihi:",
 };
 
 const fr: Woerterbuch = {
@@ -6872,6 +6890,9 @@ const fr: Woerterbuch = {
 
   "chat.meldenBetreff": "Signaler le message - ",
   "verein.mitPunktRaum": "Club · ",
+
+  "meta.erstelltVon": "Créé par :",
+  "meta.erstelltAm": "Créé le :",
 };
 
 const WOERTERBUECHER: Record<string, Woerterbuch> = { de, en, es, pt, it, tr, fr };
