@@ -850,7 +850,7 @@ function registrierFehlerText(error, t) {
 
 const isDbId = (id) => /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(id));
 const CLUB_ADMIN_ROLES = ["vereinsadmin", "sysadmin", "vorstand", "geschaeftsfuehrung"];
-const notifyClubAdmins = async (clubId, notifType, title, body, excludeMembershipId) => {
+const notifyClubAdmins = async (clubId, notifType, title, body, excludeMembershipId = null) => {
   if (!supabase || !isDbId(clubId)) return;
   const { data } = await supabase.from("club_memberships")
     .select("id,membership_roles(role)")
@@ -3999,7 +3999,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
               currentUser={currentUser} members={members} isAdminUser={isAdminUser}
               currentClub={currentClub} featureEnabled={featureEnabled} onNeuLaden={onNeuLaden}
               dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={onDienstSetzen}
-              canCancelTraining={canCancelFor(openEvent)} onCancelTraining={(id) => { cancelTraining(id); setSelectedEvent(null); }} onDeleteTraining={(...args) => { deleteTraining(...args); setSelectedEvent(null); }}
+              canCancelTraining={canCancelFor(openEvent)} onCancelTraining={(...args) => { cancelTraining(...args); setSelectedEvent(null); }} onDeleteTraining={(...args) => { deleteTraining(...args); setSelectedEvent(null); }}
             />
           </div>
         </div>
@@ -4988,7 +4988,7 @@ function TeamsView({ currentUser, members, setMembers, currentClub }) {
     if (!assignRuleId || !selectedPlayerId) return;
     setAssigningPenalty(true); setPenaltyMessage("");
     const { error } = await supabase.from("team_penalty_assignments")
-      .insert({ team_id: selectedTeamId, rule_id: assignRuleId, membership_id: selectedPlayerId, assigned_by: user.id });
+      .insert({ team_id: selectedTeamId, rule_id: assignRuleId, membership_id: selectedPlayerId, assigned_by: currentUser.id });
     if (error) { setPenaltyMessage(t("straf.zuweisenFehler")); setAssigningPenalty(false); return; }
     setAssignRuleId(""); setPenaltyMessage(t("straf.wurdeZugewiesen")); setAssigningPenalty(false);
   };
@@ -5277,7 +5277,7 @@ function TeamPenaltyCatalog({ user }) {
     }
     const loadAssignments = async () => {
       const { data, error } = await supabase.from("team_penalty_assignments")
-        .select("id,assigned_at,paid_at,rule_id,membership_id,team_penalty_rules(title,amount),club_memberships(display_name)")
+        .select("id,assigned_at,paid_at,assigned_by,rule_id,membership_id,team_penalty_rules(title,amount),club_memberships(display_name)")
         .eq("team_id", selectedTeamId)
         .is("archived_season", null)
         .order("assigned_at", { ascending: false });
@@ -5367,7 +5367,7 @@ function TeamPenaltyCatalog({ user }) {
     }
     if (databaseMembership) {
       const { data } = await supabase.from("team_penalty_assignments")
-        .select("id,assigned_at,paid_at,rule_id,membership_id,team_penalty_rules(title,amount),club_memberships(display_name)")
+        .select("id,assigned_at,paid_at,assigned_by,rule_id,membership_id,team_penalty_rules(title,amount),club_memberships(display_name)")
         .eq("team_id", selectedTeamId)
         .is("archived_season", null)
         .order("assigned_at", { ascending: false });
@@ -6641,11 +6641,16 @@ function SubscriptionPanel({ user }) {
 /* Der Vorgabewert fuer eyebrow darf NICHT im Funktionskopf stehen.
    Vorgabewerte werden ausgewertet, BEVOR der Rumpf laeuft - t entsteht aber
    erst dort. Der Zugriff darauf wirft dann sofort einen ReferenceError, und
-   zwar bei jedem Aufruf ohne eigenes eyebrow. Genau das war Profil >
-   Benachrichtigungen: Die Ansicht ist die einzige, die ProfileUnderlay ohne
-   eyebrow benutzt - sie stuerzte beim Oeffnen ab, waehrend alle anderen
-   Unterseiten liefen. Der Build merkt davon nichts; es ist ein
-   Laufzeitfehler. */
+   zwar bei jedem Aufruf ohne eigenes eyebrow. Zwoelf Unterseiten tun das:
+   Benachrichtigungen, Zugang des Vereins, Persoenliche Daten, Passwort,
+   Sicherheit, Kalender, App bewerten, Fehler melden, Athletenprofil,
+   Familie, Vereine werben Vereine, Kontoeinstellungen. Alle zwoelf
+   stuerzten beim Oeffnen ab; nur die beiden Seiten MIT eyebrow (Trainer,
+   Strafenkatalog) liefen weiter.
+
+   Der Build merkt davon nichts, weil next.config.ts Typfehler unterdrueckt -
+   tsc hat ihn sehr wohl gemeldet: "TS2304: Cannot find name 't'". Genau
+   dafuer gibt es jetzt scripts/pruefe-typen.mjs. */
 function ProfileUnderlay({ title, eyebrow, onClose, onSave, saving = false, saveDisabled = false, children }) {
   const t = useT();
   const rubrik = eyebrow ?? t("pf.einstellungen2");
@@ -7177,7 +7182,7 @@ function NotificationSettings({ user, setMembers, saveRef }) {
 function PasswordSettings({ user, onLogout, saveRef }) {
   const t = useT();
   const [form,setForm]=useState({old:"",next:"",repeat:"",logoutAll:false}); const [message,setMessage]=useState("");
-  const save=async()=>{if(!supabase){setMessage(t("sich.passwortNurEchtesKonto"));return;}if(form.next.length<8||form.next!==form.repeat){setMessage(t("sich.neuesPasswortRegeln"));return;}const {error:loginError}=await supabase.auth.signInWithPassword({email:user.email,password:form.old});if(loginError){/* Nur der Fall t("login.passwortFalsch") darf so heissen. Ein Netzfehler oder eine Bremse wegen zu vieler Versuche haben nichts mit dem alten Passwort zu tun; hier ist die Verwechslung besonders aergerlich, weil man dann das eine Passwort sucht, das man sicher kennt. Eine Preisgabe ist das nicht: Wer hier steht, ist bereits angemeldet und kennt seine eigene Adresse. */const falschesPasswort=loginError.code==="invalid_credentials"||/invalid login credentials/i.test(String(loginError.message||""));/* Hier darf die Sperre beim Namen genannt werden: Wer bis hierher kommt, ist angemeldet und kennt seine eigene Adresse - es gibt nichts zu verraten. */const gesperrt=loginError.code==="user_banned"||/user is banned/i.test(String(loginError.message||""));setMessage(gesperrt?t("login.kontoGesperrt"):falschesPasswort?t("sich.altesPasswortFalsch"):anmeldeFehlerText(loginError));return;}const {error}=await supabase.auth.updateUser({password:form.next});if(error){const zuSchwach=error.code==="weak_password"||/password/i.test(String(error.message||""))&&/short|weak|least/i.test(String(error.message||""));setMessage(zuSchwach?t("sich.passwortSchwach"):t("sich.passwortAendernFehler")+anmeldeFehlerText(error, t));return;}if(form.logoutAll){await supabase.auth.signOut({scope:"global"});await onLogout();return;}setForm({old:"",next:"",repeat:"",logoutAll:false});setMessage((OK_ZEICHEN + t("sich.passwortGeaendert")));}; useEffect(() => { saveRef.current = save; });
+  const save=async()=>{if(!supabase){setMessage(t("sich.passwortNurEchtesKonto"));return;}if(form.next.length<8||form.next!==form.repeat){setMessage(t("sich.neuesPasswortRegeln"));return;}const {error:loginError}=await supabase.auth.signInWithPassword({email:user.email,password:form.old});if(loginError){/* Nur der Fall t("login.passwortFalsch") darf so heissen. Ein Netzfehler oder eine Bremse wegen zu vieler Versuche haben nichts mit dem alten Passwort zu tun; hier ist die Verwechslung besonders aergerlich, weil man dann das eine Passwort sucht, das man sicher kennt. Eine Preisgabe ist das nicht: Wer hier steht, ist bereits angemeldet und kennt seine eigene Adresse. */const falschesPasswort=loginError.code==="invalid_credentials"||/invalid login credentials/i.test(String(loginError.message||""));/* Hier darf die Sperre beim Namen genannt werden: Wer bis hierher kommt, ist angemeldet und kennt seine eigene Adresse - es gibt nichts zu verraten. */const gesperrt=loginError.code==="user_banned"||/user is banned/i.test(String(loginError.message||""));setMessage(gesperrt?t("login.kontoGesperrt"):falschesPasswort?t("sich.altesPasswortFalsch"):anmeldeFehlerText(loginError, t));return;}const {error}=await supabase.auth.updateUser({password:form.next});if(error){const zuSchwach=error.code==="weak_password"||/password/i.test(String(error.message||""))&&/short|weak|least/i.test(String(error.message||""));setMessage(zuSchwach?t("sich.passwortSchwach"):t("sich.passwortAendernFehler")+anmeldeFehlerText(error, t));return;}if(form.logoutAll){await supabase.auth.signOut({scope:"global"});await onLogout();return;}setForm({old:"",next:"",repeat:"",logoutAll:false});setMessage((OK_ZEICHEN + t("sich.passwortGeaendert")));}; useEffect(() => { saveRef.current = save; });
   return <div className="rounded-2xl p-4 space-y-3" style={{background:C.glass,border:`1px solid ${C.line}`}}><input type="password" value={form.old} onChange={(e)=>setForm({...form,old:e.target.value})} placeholder={t("ph.altesPasswort")} className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><input type="password" value={form.next} onChange={(e)=>setForm({...form,next:e.target.value})} placeholder={t("ph.neuesPasswort")} className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><input type="password" value={form.repeat} onChange={(e)=>setForm({...form,repeat:e.target.value})} placeholder={t("ph.neuesPasswortWdh")} className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><ToggleCard title="Von allen Geräten ausloggen" desc="Nach der Änderung werden alle bestehenden Sitzungen beendet." value={form.logoutAll} onChange={(v)=>setForm((old)=>({...old,logoutAll:typeof v==="function"?v(old.logoutAll):v}))}/>{message&&<div className="text-[11px]" style={{color:istErfolg(message)?C.erfolg:C.fehler}}>{meldungstext(message)}</div>}</div>;
 }
 
