@@ -2775,6 +2775,7 @@ function PollWidget({ poll, userId, setPolls, onVote, onUnvote }) {
           Auswahl zurücknehmen
         </button>
       )}
+      <Erstellt von={poll.erstelltVon} am={poll.erstelltAm} />
     </div>
   );
 }
@@ -3602,7 +3603,14 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
   const userId = currentUser.id;
   const myCarpools = carpools[userId] || {};
   const isAdminUser = isAdmin(currentUser);
-  const canCreateSportEvent = isSysAdmin(currentUser) || currentUser.roles.some((role)=>["trainer","kapitaen","teammanager"].includes(role));
+  /* Wer darf ein Training oder Spiel anlegen?
+     Vereinsadministration und Organisator vereinsweit, Trainer, Kapitaen und
+     Teammanager fuer ihre Mannschaft. Hier stand vorher nur isSysAdmin - ein
+     Vereinsadministrator ohne Mannschaftsfunktion konnte also gar kein
+     Training eintragen, obwohl ihm die Datenbank es erlaubt haette. Der
+     Knopf war schlicht nicht da. */
+  const darfVereinsweitPlanen = isAdmin(currentUser) || currentUser.roles.includes("organisator");
+  const canCreateSportEvent = darfVereinsweitPlanen || currentUser.roles.some((role)=>["trainer","kapitaen","teammanager"].includes(role));
   const canCreateClubEvent = isAdminUser && entitlement?.tier !== "none";
   const [manageableTeams, setManageableTeams] = useState(null);
   useEffect(() => {
@@ -3645,7 +3653,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
     ? filterTeams
     : [...new Set([...clubTeams, ...filterTeams])].sort((a, b) => a.localeCompare(b, "de"));
 
-  const allowedEventTeams = isSysAdmin(currentUser)
+  const allowedEventTeams = darfVereinsweitPlanen
     ? waehlbareTeams
     : manageableTeams !== null
       ? manageableTeams.filter((team) => waehlbareTeams.includes(team))
@@ -4107,6 +4115,7 @@ function FeesView({ members, records, setRecords }) {
               </div>
             )}
             <div className="mt-2 flex items-center gap-2"><button onClick={() => togglePaid(record)} className="px-2.5 py-1 rounded-full text-[11px]" style={{ background: record.paid ? C.erfolgFlaeche : C.fehlerFlaeche, color: record.paid ? C.erfolg : C.fehler, fontWeight: 700 }}>{record.paid ? t("bei.bezahltHaken") : t("bei.offen")}</button><button onClick={() => deleteRecord(record)} className="px-2.5 py-1 rounded-full text-[11px]" style={{ background:C.paperDim,color:C.textDim,fontWeight:700 }}>{t("allg.loeschen")}</button></div>
+            <Erstellt von={record.erstelltVon} am={record.erstelltAm} />
           </div>
         ))}
         {memberRecords.length === 0 && <div className="rounded-2xl p-4 text-xs text-center" style={{ background: C.paperDim, color: C.textDim }}>{t("bei.keineDaten")}</div>}
@@ -4620,6 +4629,7 @@ function RedaktionView({ user, news, setNews }) {
               </div>
               {m.title ? <div className="text-sm mb-0.5" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>{m.title}</div> : null}
               <div className="text-xs" style={{ fontFamily: "Inter", color: C.textDim }}>{m.text}</div>
+              <Erstellt von={m.erstelltVon} am={m.erstelltAm} />
             </div>
           </div>
         ))}
@@ -5268,7 +5278,7 @@ function TeamPenaltyCatalog({ user }) {
       setAssignments((data || []).map((entry) => {
         const rule = Array.isArray(entry.team_penalty_rules) ? entry.team_penalty_rules[0] : entry.team_penalty_rules;
         const membership = Array.isArray(entry.club_memberships) ? entry.club_memberships[0] : entry.club_memberships;
-        return { id: entry.id, teamId: selectedTeamId, ruleId: entry.rule_id, ruleTitle: rule?.title || "—", amount: Number(rule?.amount || 0), membershipId: entry.membership_id, playerName: membership?.display_name || "—", assignedAt: entry.assigned_at, paidAt: entry.paid_at };
+        return { vergebenVon: entry.assigned_by, id: entry.id, teamId: selectedTeamId, ruleId: entry.rule_id, ruleTitle: rule?.title || "—", amount: Number(rule?.amount || 0), membershipId: entry.membership_id, playerName: membership?.display_name || "—", assignedAt: entry.assigned_at, paidAt: entry.paid_at };
       }));
     };
     loadAssignments();
@@ -5427,7 +5437,7 @@ function TeamPenaltyCatalog({ user }) {
       )}
       {!strafenSichtbar && <div className="text-[11px] rounded-xl p-3 mb-3" style={{ background: C.paperDim, color: C.textDim }}>{t("straf.ausgeblendet")}</div>}
       <div className="space-y-2 mb-3" hidden={!strafenSichtbar}>
-        {rules.map((rule) => <div key={rule.id} className="flex items-center gap-2 px-3 py-2.5 rounded-xl" style={{ background: C.paperDim }}><div className="flex-1 min-w-0"><div className="text-xs font-bold truncate" style={{ color: C.ink }}>{rule.title}</div></div><div className="text-xs font-bold whitespace-nowrap" style={{ color: C.red, fontFamily: "JetBrains Mono" }}>{rule.amount.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</div>{canManageSelectedTeam && <><button type="button" disabled={saving} onClick={() => editRule(rule)} className="px-2 py-1.5 rounded-lg text-[10px] font-bold" style={{ background: C.glass, color: C.ink }}>{t("allg.aendern")}</button><button type="button" disabled={saving} onClick={() => removeRule(rule)} aria-label={`${rule.title} löschen`} className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: C.glass, color: C.red }}><X size={14}/></button></>}</div>)}
+        {rules.map((rule) => <div key={rule.id} className="flex items-center gap-2 px-3 py-2.5 rounded-xl" style={{ background: C.paperDim }}><div className="flex-1 min-w-0"><div className="text-xs font-bold truncate" style={{ color: C.ink }}>{rule.title}</div><Erstellt von={rule.created_by} am={rule.created_at} rahmenlos /></div><div className="text-xs font-bold whitespace-nowrap" style={{ color: C.red, fontFamily: "JetBrains Mono" }}>{rule.amount.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</div>{canManageSelectedTeam && <><button type="button" disabled={saving} onClick={() => editRule(rule)} className="px-2 py-1.5 rounded-lg text-[10px] font-bold" style={{ background: C.glass, color: C.ink }}>{t("allg.aendern")}</button><button type="button" disabled={saving} onClick={() => removeRule(rule)} aria-label={`${rule.title} löschen`} className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: C.glass, color: C.red }}><X size={14}/></button></>}</div>)}
         {rules.length === 0 && <div className="text-[11px] rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{t("straf.keineRegelnTeam")}</div>}
       </div>
       {canManageSelectedTeam && <form onSubmit={addRule} className="pt-3" style={{ borderTop: `1px solid ${C.line}` }}><div className="flex items-center justify-between mb-2"><div className="text-[10px] font-bold" style={{ color: C.textDim }}>{editingId ? "REGEL BEARBEITEN" : "NEUE REGEL"}</div>{editingId && <button type="button" onClick={() => { setEditingId(""); setTitle(""); setAmount(""); }} className="text-[10px] font-bold" style={{ color: C.red }}>{t("allg.abbrechen")}</button>}</div><input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={120} placeholder={t("ph.strafeTitel")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim, color: C.ink }}/><div className="flex gap-2"><div className="relative flex-1"><input value={amount} onChange={(event) => setAmount(event.target.value)} inputMode="decimal" placeholder={t("ph.kosten")} className="w-full px-3 pr-8 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}/><span className="absolute right-3 top-2.5 text-xs" style={{ color: C.textDim }}>€</span></div><button type="submit" disabled={saving || !title.trim() || !amount.trim()} className="px-4 rounded-xl text-xs font-bold" style={{ background: title.trim() && amount.trim() ? C.ink : C.line, color: C.white }}>{saving ? "…" : editingId ? t("allg.speichern") : t("allg.hinzufuegen")}</button></div></form>}
@@ -5465,6 +5475,7 @@ function TeamPenaltyCatalog({ user }) {
                 <div className="flex-1 min-w-0">
                   <div className="text-xs font-bold truncate" style={{ color: C.ink }}>{a.playerName}</div>
                   <div className="text-[10px] truncate" style={{ color: C.textDim }}>{a.ruleTitle} · {new Date(a.assignedAt).toLocaleDateString("de-DE")}</div>
+                  <Erstellt von={a.vergebenVon} am={a.assignedAt} rahmenlos />
                 </div>
                 <div className="text-xs font-bold whitespace-nowrap" style={{ color: C.red, fontFamily: "JetBrains Mono" }}>{a.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</div>
                 <button type="button" onClick={() => toggleAssignmentPaid(a)} className="px-2 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: a.paidAt ? C.erfolgFlaeche : C.white, color: a.paidAt ? C.secondary : C.textDim }}>{a.paidAt ? t("bei.bezahlt") : t("bei.offen2")}</button>
@@ -6309,6 +6320,7 @@ function DutyTemplatesPanel({ currentUser, sport }) {
     if (error) { setMessage(t("help.saetzeLadenFehler")); setMessageOk(false); setLoading(false); return; }
     setTemplates((data || []).map((row) => ({
       id: row.id, name: row.name,
+      erstelltVon: row.created_by || null, erstelltAm: row.created_at || null,
       items: (row.duty_task_template_items || []).slice().sort((a, b) => a.sort_order - b.sort_order),
     })));
     setLoading(false);
@@ -6379,6 +6391,7 @@ function DutyTemplatesPanel({ currentUser, sport }) {
                   <button onClick={() => addItem(t.id)} disabled={!(newItemTitles[t.id] || "").trim()} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: (newItemTitles[t.id] || "").trim() ? C.ink : C.line, color: C.white }}>+ Station</button>
                 </div>
                 <button onClick={() => deleteTemplate(t.id)} className="w-full mt-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.paperDim, color: C.red }}>{t("helf.satzLoeschen")}</button>
+                <Erstellt von={t.erstelltVon} am={t.erstelltAm} />
               </div>
             )}
           </div>
@@ -7932,6 +7945,7 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
                 )}
               </div>
             )}
+            <Erstellt von={result?.erstelltVon} am={result?.erstelltAm} />
             {abgegeben && !hatAenderung && !locked && (
               <div className="mt-2 text-[11px]" style={{ color: C.erfolg, fontFamily: "Inter", fontWeight: 600 }}>
                 Tipp {pred.home}:{pred.away} abgegeben — änderbar bis zum Anpfiff.
@@ -8096,6 +8110,7 @@ function ProtocolCard({ protocol, members, onToggleTask }) {
               );
             })}
           </div>
+          <Erstellt von={protocol.erstelltVon} am={protocol.erstelltAm} />
         </div>
       )}
     </div>
@@ -9933,7 +9948,7 @@ function NurAlsAppHinweis() {
 }
 
 export default function ClubMemberOrganisationApp() {
-  const [clubs, setClubs] = useState(INITIAL_CLUBS);
+  const [clubs, setClubs] = useState(supabase ? [] : INITIAL_CLUBS);
   /* null = laeuft noch, true = geladen, false = fehlgeschlagen.
      Ohne diese Unterscheidung sah ein fehlgeschlagener Ladevorgang genauso
      aus wie "es gibt keinen Verein": In beiden Faellen blieb clubs leer, und
@@ -10010,7 +10025,7 @@ export default function ClubMemberOrganisationApp() {
   const [selectedClubId, setSelectedClubId] = useState(null);
   const [clubFeatures, setClubFeatures] = useState(DEFAULT_CLUB_FEATURES);
   const [featureOnboardingClubId, setFeatureOnboardingClubId] = useState(null);
-  const [members, setMembers] = useState(INITIAL_MEMBERS);
+  const [members, setMembers] = useState(supabase ? [] : INITIAL_MEMBERS);
   const [currentUserId, setCurrentUserId] = useState(null);
   /* Angemeldet wird zuerst, der Verein danach gewaehlt.
   
@@ -10166,11 +10181,26 @@ export default function ClubMemberOrganisationApp() {
     navBeobachter.current = beobachter;
   }, []);
 
-  const [feePaid, setFeePaid] = useState(INITIAL_FEE_PAID);
-  const [feeRecords, setFeeRecords] = useState(INITIAL_FEE_RECORDS);
-  const [events, setEvents] = useState(EVENTS);
+  const [feePaid, setFeePaid] = useState(supabase ? {} : INITIAL_FEE_PAID);
+  const [feeRecords, setFeeRecords] = useState(supabase ? [] : INITIAL_FEE_RECORDS);
+  /* DEMODATEN GEHOEREN NICHT IN EINEN ECHTEN VEREIN.
+   *
+   * Diese Zustaende starteten bisher IMMER mit den erfundenen Daten und
+   * wurden erst ersetzt, wenn das Laden aus der Datenbank durch war. Solange
+   * es lief - und erst recht, wenn es scheiterte - sah ein zahlender Verein
+   * "Training Herren 1 in der Hemberghalle" und "Heimspiel vs. Herringen"
+   * als seinen eigenen Spielplan. Genau das ist passiert: Ein Verein hielt
+   * seinen importierten Spielplan fuer geloescht, weil vor ihm zehn fremde
+   * Termine standen.
+   *
+   * Steht eine Datenbank zur Verfuegung, wird jetzt leer gestartet. Lieber
+   * eine Sekunde nichts als eine Sekunde etwas Falsches - und bei einem
+   * Ladefehler bleibt es leer, statt still auf Erfundenes zurueckzufallen.
+   * Die Demodaten gibt es nur noch dort, wo sie hingehoeren: im Betrieb
+   * ohne Datenbank. */
+  const [events, setEvents] = useState(supabase ? [] : EVENTS);
   const [carpools, setCarpools] = useState({});
-  const [channels, setChannels] = useState(INITIAL_CHANNELS);
+  const [channels, setChannels] = useState(supabase ? [] : INITIAL_CHANNELS);
 
   /* Chat aus der Datenbank.
    *
@@ -10286,9 +10316,9 @@ export default function ClubMemberOrganisationApp() {
   const [seasonVotes, setSeasonVotes] = useState({});
   const [tippPredictions, setTippPredictions] = useState({});
   const [tippResults, setTippResults] = useState({});
-  const [dutyPlan, setDutyPlan] = useState(INITIAL_DUTY_PLAN);
+  const [dutyPlan, setDutyPlan] = useState(supabase ? {} : INITIAL_DUTY_PLAN);
   const [maintenanceMode, setMaintenanceMode] = useState(false);
-  const [protocols, setProtocols] = useState(INITIAL_PROTOCOLS);
+  const [protocols, setProtocols] = useState(supabase ? [] : INITIAL_PROTOCOLS);
   const [remindersSent, setRemindersSent] = useState({});
   const [welcomeAutomation, setWelcomeAutomation] = useState(true);
   const [billingAutomation, setBillingAutomation] = useState(true);
@@ -10306,7 +10336,7 @@ export default function ClubMemberOrganisationApp() {
     if (Array.isArray(wert)) kachelreihenfolgeSpeichern(wert);
     setDashboardTileOrderIntern(wert);
   };
-  const [polls, setPolls] = useState(INITIAL_POLLS);
+  const [polls, setPolls] = useState(supabase ? [] : INITIAL_POLLS);
   /* Welche Vereinsdaten sich beim Anmelden nicht laden liessen. Null heisst:
      alles da. */
   const [datenFehler, setDatenFehler] = useState(null);
@@ -10408,7 +10438,14 @@ export default function ClubMemberOrganisationApp() {
           cancelled: row.status === "cancelled",
           seriesId: row.series_id || null,
           helperSlots: (row.helper_slots || []).length ? row.helper_slots : undefined,
-          ...(row.type === "training" && teamName ? { youthClassIds: [TEAM_TO_YOUTHCLASS[teamName]] } : {}),
+          /* Diese Zeile hiess frueher teamName. Beim Umbau auf den
+             Zu-/Absage-Schalter wurde die Variable zu team - hier aber nicht
+             mitgeaendert. Der Zugriff auf einen Namen, den es nicht gibt,
+             warf beim Abbilden der Termine, die Zuweisung wurde nie erreicht,
+             und die App zeigte weiter die zehn erfundenen Demo-Termine. Der
+             Verein sah "Training Herren 1 in der Hemberghalle" - und hielt
+             seinen ganzen importierten Spielplan fuer geloescht. */
+          ...(row.type === "training" && team?.name ? { youthClassIds: [TEAM_TO_YOUTHCLASS[team.name]] } : {}),
         };
       });
       setEvents(mapped);
@@ -10493,7 +10530,7 @@ export default function ClubMemberOrganisationApp() {
       (tippBlock[mid] ||= {})[t.event_id] = { home: String(t.home_score ?? ""), away: String(t.away_score ?? "") };
     }
     setTippPredictions(tippBlock);
-    setTippResults(Object.fromEntries((ergebnisse.data || []).map((r) => [r.event_id, { home: String(r.heim), away: String(r.auswaerts) }])));
+    setTippResults(Object.fromEntries((ergebnisse.data || []).map((r) => [r.event_id, { home: String(r.heim), away: String(r.auswaerts), erstelltVon: r.erfasst_von || null, erstelltAm: r.created_at || null }])));
 
     const antwortenJeUmfrage = {};
     for (const o of (antworten.data || []).sort((a, b) => a.position - b.position)) (antwortenJeUmfrage[o.poll_id] ||= []).push(o);
@@ -10503,6 +10540,7 @@ export default function ClubMemberOrganisationApp() {
       const meine = (stimmenJeUmfrage[p.id] || []).filter((v) => v.profile_id === profileId)[0];
       return {
         id: p.id, title: p.title, active: p.active,
+        erstelltVon: p.created_by || null, erstelltAm: p.created_at || null,
         options: (antwortenJeUmfrage[p.id] || []).map((o) => ({
           id: o.id, label: o.label,
           /* Die alten Summen aus dem Zustandsblock zaehlen mit. Dort stand nur,
@@ -10530,6 +10568,7 @@ export default function ClubMemberOrganisationApp() {
     setProtocols((protokolle.data || []).map((p) => ({
       id: p.id, title: p.title, date: p.meeting_date, attendees: p.attendee_membership_ids || [],
       rawText: p.raw_text || "", tasks: aufgabenJeProtokoll[p.id] || [],
+      erstelltVon: p.created_by || null, erstelltAm: p.created_at || null,
     })));
 
     setPunkteZiel(einstellungen.data?.punkte_ziel || 1000);
@@ -10951,6 +10990,8 @@ export default function ClubMemberOrganisationApp() {
         paid: record.payment_status === "bezahlt",
         invoiceNumber: record.invoice_number || "",
         personCount: record.person_count || 1,
+        erstelltVon: record.created_by || null,
+        erstelltAm: record.created_at || null,
         linkedMemberIds: (record.fee_people || []).map((person) => person.membership_id).filter(Boolean),
         manualNames: (record.fee_people || []).map((person) => person.manual_name).filter(Boolean),
       }));
@@ -10974,6 +11015,7 @@ export default function ClubMemberOrganisationApp() {
         id: post.id, who: post.author_name || t("verein.vereinLabel"), init: initialsOf(post.author_name || t("verein.vereinLabel")), color: C.ink,
         title: post.title, text: post.body, imageUrl: signedUrl, imagePath: post.image_path,
         time: new Date(post.created_at).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "2-digit" }),
+        erstelltVon: post.author_id || null, erstelltAm: post.created_at || null,
       };
     }));
     setVereinsNews(loadedNews);
