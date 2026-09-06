@@ -1019,6 +1019,11 @@ const de: Woerterbuch = {
   "tipp.nochNichtFreigegeben": "Zurzeit noch kein Tippspiel freigegeben",
   "tipp.freigabeHinweis": "Die Vereinsleitung legt unter „Vereinseinstellungen“ fest, welche Mannschaften eine eigene Tipprunde bekommen.",
   "tipp.zurueckUebersicht": "Zurück zur Übersicht",
+
+  "auf.erledigtAm": "Erledigt am",
+  "auf.wiederOeffnen": "Wieder öffnen",
+  "auf.erledigenFehler": "Die Aufgabe konnte nicht abgehakt werden.",
+  "help.eingetragenLabel": "Eingetragen",
 };
 
 const en: Woerterbuch = {
@@ -2005,6 +2010,11 @@ const en: Woerterbuch = {
   "tipp.nochNichtFreigegeben": "No prediction game enabled yet",
   "tipp.freigabeHinweis": "The club management decides under “Club settings” which teams get their own prediction round.",
   "tipp.zurueckUebersicht": "Back to overview",
+
+  "auf.erledigtAm": "Completed on",
+  "auf.wiederOeffnen": "Reopen",
+  "auf.erledigenFehler": "The task could not be marked as done.",
+  "help.eingetragenLabel": "Signed up",
 };
 
 const es: Woerterbuch = {
@@ -2991,6 +3001,11 @@ const es: Woerterbuch = {
   "tipp.nochNichtFreigegeben": "Todavía no hay ninguna quiniela activada",
   "tipp.freigabeHinweis": "La dirección del club decide en «Ajustes del club» qué equipos tienen su propia ronda.",
   "tipp.zurueckUebersicht": "Volver al resumen",
+
+  "auf.erledigtAm": "Hecho el",
+  "auf.wiederOeffnen": "Reabrir",
+  "auf.erledigenFehler": "No se ha podido marcar la tarea como hecha.",
+  "help.eingetragenLabel": "Apuntados",
 };
 
 const pt: Woerterbuch = {
@@ -3977,6 +3992,11 @@ const pt: Woerterbuch = {
   "tipp.nochNichtFreigegeben": "Ainda não há nenhum jogo de prognósticos ativado",
   "tipp.freigabeHinweis": "A direção do clube decide em «Definições do clube» que equipas têm a sua própria ronda.",
   "tipp.zurueckUebersicht": "Voltar ao resumo",
+
+  "auf.erledigtAm": "Concluído a",
+  "auf.wiederOeffnen": "Reabrir",
+  "auf.erledigenFehler": "Não foi possível marcar a tarefa como concluída.",
+  "help.eingetragenLabel": "Inscritos",
 };
 
 const it: Woerterbuch = {
@@ -4963,6 +4983,11 @@ const it: Woerterbuch = {
   "tipp.nochNichtFreigegeben": "Nessun gioco di pronostici ancora attivato",
   "tipp.freigabeHinweis": "La dirigenza decide in «Impostazioni della società» quali squadre hanno un proprio girone.",
   "tipp.zurueckUebersicht": "Torna alla panoramica",
+
+  "auf.erledigtAm": "Completato il",
+  "auf.wiederOeffnen": "Riapri",
+  "auf.erledigenFehler": "Non è stato possibile segnare il compito come fatto.",
+  "help.eingetragenLabel": "Iscritti",
 };
 
 const tr: Woerterbuch = {
@@ -5949,6 +5974,11 @@ const tr: Woerterbuch = {
   "tipp.nochNichtFreigegeben": "Şu anda etkin bir tahmin oyunu yok",
   "tipp.freigabeHinweis": "Kulüp yönetimi “Kulüp ayarları” altında hangi takımların kendi turu olacağını belirler.",
   "tipp.zurueckUebersicht": "Genel bakışa dön",
+
+  "auf.erledigtAm": "Tamamlanma tarihi",
+  "auf.wiederOeffnen": "Yeniden aç",
+  "auf.erledigenFehler": "Görev tamamlandı olarak işaretlenemedi.",
+  "help.eingetragenLabel": "Kaydolanlar",
 };
 
 const fr: Woerterbuch = {
@@ -6935,6 +6965,11 @@ const fr: Woerterbuch = {
   "tipp.nochNichtFreigegeben": "Aucun jeu de pronostics activé pour le moment",
   "tipp.freigabeHinweis": "La direction du club définit dans « Paramètres du club » quelles équipes ont leur propre tour.",
   "tipp.zurueckUebersicht": "Retour à la vue d'ensemble",
+
+  "auf.erledigtAm": "Terminé le",
+  "auf.wiederOeffnen": "Rouvrir",
+  "auf.erledigenFehler": "Impossible de marquer la tâche comme terminée.",
+  "help.eingetragenLabel": "Inscrits",
 };
 
 const WOERTERBUECHER: Record<string, Woerterbuch> = { de, en, es, pt, it, tr, fr };

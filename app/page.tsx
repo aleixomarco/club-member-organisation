@@ -5644,17 +5644,22 @@ function TasksView({ currentUser, members }) {
     setMyTeams([...teamMap.entries()].map(([id, name]) => ({ id, name })));
     setManageableTeamIds([...new Set(manageIds)]);
     const { data: tasksData, error } = await supabase.from("club_tasks")
-      .select("id,team_id,title,description,due_date,slots_needed,created_by,created_at,teams(name),club_task_signups(membership_id,club_memberships(display_name))")
+      .select("id,team_id,title,description,due_date,slots_needed,created_by,created_at,erledigt_am,erledigt_von,teams(name),club_task_signups(membership_id,club_memberships(display_name)),club_task_assignees(membership_id,club_memberships(display_name))")
       .eq("club_id", currentUser.clubId)
       .order("created_at", { ascending: false });
     if (error) { setMessage(t("auf.ladenFehler")); setLoading(false); return; }
     const mapped = (tasksData || []).map((row) => {
       const team = Array.isArray(row.teams) ? row.teams[0] : row.teams;
-      const signups = (row.club_task_signups || []).map((s) => {
-        const m = Array.isArray(s.club_memberships) ? s.club_memberships[0] : s.club_memberships;
-        return { membershipId: s.membership_id, name: m?.display_name || "—" };
-      });
-      return { createdAt: row.created_at, id: row.id, teamId: row.team_id, teamName: team?.name, title: row.title, description: row.description, dueDate: row.due_date, slots: row.slots_needed, createdBy: row.created_by, signups };
+      const namen = (eintrag) => {
+        const m = Array.isArray(eintrag.club_memberships) ? eintrag.club_memberships[0] : eintrag.club_memberships;
+        return { membershipId: eintrag.membership_id, name: m?.display_name || "—" };
+      };
+      const signups = (row.club_task_signups || []).map(namen);
+      /* Die Verantwortlichen kamen bisher gar nicht mit. Deshalb zaehlte die
+         Karte nur die Freiwilligen und zeigte "1 von 1 frei" fuer eine
+         Aufgabe, die laengst jemandem gehoerte - samt Knopf "Eintragen". */
+      const verantwortliche = (row.club_task_assignees || []).map(namen);
+      return { verantwortliche, erledigtAm: row.erledigt_am || null, erledigtVon: row.erledigt_von || null, createdAt: row.created_at, id: row.id, teamId: row.team_id, teamName: team?.name, title: row.title, description: row.description, dueDate: row.due_date, slots: row.slots_needed, createdBy: row.created_by, signups };
     });
     setClubTasks(mapped.filter((t) => !t.teamId));
     setTeamTasks(mapped.filter((t) => t.teamId));
@@ -5714,6 +5719,14 @@ function TasksView({ currentUser, members }) {
     if (error) { setMessage(t("allg.entfernenFehler")); return; }
     await loadAll();
   };
+  /* Abhaken. Die Datenbank entscheidet, wer das darf - der Verantwortliche,
+     wer sich eingetragen hat, der Ersteller oder die Vereinsleitung. */
+  const erledigenUmschalten = async (task) => {
+    setMessage("");
+    const { error } = await supabase.rpc("aufgabe_erledigen", { target_task: task.id, erledigt: !task.erledigtAm });
+    if (error) { setMessage(t("auf.erledigenFehler")); return; }
+    await loadAll();
+  };
   const removeTask = async (task) => {
     if (!window.confirm(`Aufgabe „${task.title}“ wirklich löschen?`)) return;
     const { error } = await supabase.from("club_tasks").delete().eq("id", task.id);
@@ -5721,22 +5734,37 @@ function TasksView({ currentUser, members }) {
     await loadAll();
   };
   const TaskCard = ({ task, canManage, onEdit }) => {
-    const taken = task.signups.length;
-    const free = task.slots - taken;
+    /* Belegt ist ein Platz durch BEIDES: durch einen Verantwortlichen, den
+       die Leitung eingetragen hat, und durch jemanden, der sich selbst
+       gemeldet hat. Wer beides ist, zaehlt einmal. */
+    const verantwortliche = task.verantwortliche || [];
+    const belegt = [...verantwortliche, ...task.signups]
+      .filter((p, i, alle) => alle.findIndex((x) => x.membershipId === p.membershipId) === i);
+    const taken = belegt.length;
+    const free = Math.max(0, task.slots - taken);
     const isSignedUp = task.signups.some((s) => s.membershipId === currentUser.id);
+    const binVerantwortlich = verantwortliche.some((v) => v.membershipId === currentUser.id);
+    const binDrin = isSignedUp || binVerantwortlich;
+    const erledigt = !!task.erledigtAm;
     const isCreator = task.createdBy === currentUser.id;
     return (
       <div className="rounded-2xl p-3.5 mb-2" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
         <div className="flex items-start justify-between gap-2 mb-1">
           <div className="text-sm font-bold" style={{ color: C.ink }}>{task.title}</div>
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={{ background: free > 0 ? C.erfolgFlaeche : C.fehlerFlaeche, color: free > 0 ? C.erfolg : C.fehler }}>{free > 0 ? `${free}/${task.slots} frei` : "voll"}</span>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={{ background: erledigt ? C.erfolgFlaeche : free > 0 ? C.paperDim : C.fehlerFlaeche, color: erledigt ? C.erfolg : free > 0 ? C.textDim : C.fehler }}>{erledigt ? t("auf.erledigt") : free > 0 ? `${free}/${task.slots} frei` : t("help.voll")}</span>
         </div>
         {task.description && <div className="text-xs mb-1.5" style={{ color: C.textDim }}>{task.description}</div>}
         <div className="text-[10px] mb-2" style={{ color: C.textDim }}>{task.teamName ? `${task.teamName} · ` : t("verein.mitPunktRaum")}{task.dueDate ? `Fällig bis ${new Date(task.dueDate).toLocaleDateString("de-DE")}` : t("auf.keinFaelligkeitsdatum")}</div>
-        {taken > 0 && <div className="text-[10px] mb-2" style={{ color: C.textDim }}>Eingetragen: {task.signups.map((s) => s.name).join(", ")}</div>}
+        {verantwortliche.length > 0 && <div className="text-[10px] mb-2" style={{ color: C.textDim }}>{t("auf.verantwortlich")} {verantwortliche.map((v) => v.name).join(", ")}</div>}
+        {task.signups.length > 0 && <div className="text-[10px] mb-2" style={{ color: C.textDim }}>{t("help.eingetragenLabel")}: {task.signups.map((s) => s.name).join(", ")}</div>}
+        {erledigt && <div className="text-[10px] mb-2" style={{ color: C.erfolg }}>{t("auf.erledigtAm")} {new Date(task.erledigtAm).toLocaleDateString("de-DE")}</div>}
         <div className="flex gap-2">
-          {!isSignedUp && free > 0 && <button onClick={() => signUp(task.id)} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: C.ink, color: C.white }}>{t("allg.eintragenKnopf")}</button>}
-          {isSignedUp && <button onClick={() => withdraw(task.id)} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: C.paperDim, color: C.red }}>{t("allg.austragen")}</button>}
+          {/* Wer schon drin ist, bekommt kein "Eintragen" mehr angeboten -
+              weder der Verantwortliche noch der Freiwillige. Er bekommt den
+              gruenen Haken. */}
+          {!binDrin && !erledigt && free > 0 && <button onClick={() => signUp(task.id)} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: C.ink, color: C.white }}>{t("allg.eintragenKnopf")}</button>}
+          {binDrin && <button onClick={() => erledigenUmschalten(task)} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: erledigt ? C.paperDim : C.erfolg, color: erledigt ? C.textDim : C.white }}>{erledigt ? t("auf.wiederOeffnen") : t("auf.erledigt")}</button>}
+          {isSignedUp && !erledigt && <button onClick={() => withdraw(task.id)} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: C.paperDim, color: C.red }}>{t("allg.austragen")}</button>}
           {(isCreator || canManage) && <button onClick={() => onEdit(task)} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.paperDim, color: C.textDim }}>{t("allg.bearbeiten")}</button>}
           {(isCreator || canManage) && <button onClick={() => removeTask(task)} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.paperDim, color: C.red }}>{t("allg.loeschen")}</button>}
         </div>
