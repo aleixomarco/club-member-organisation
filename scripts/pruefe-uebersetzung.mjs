@@ -131,6 +131,50 @@ for (let i = 0; i < zeilen.length; i++) {
   }
 }
 
+/* Zweite Frage, und die wichtigere:
+ * Gibt es zu JEDEM benutzten Schluessel auch in JEDER Sprache einen Eintrag?
+ *
+ * Der Teil oben findet nur deutschen Text, der noch fest im Code steht. Er
+ * sagt nichts darueber, ob t("tm.keineAthleten") auf Tuerkisch etwas
+ * zurueckgibt. Faellt ein Schluessel durch, liefert uebersetze() das
+ * deutsche Wort - unauffaellig, aber falsch. */
+const woerterbuch = readFileSync("lib/sprachen.ts", "utf8");
+const SPRACHCODES = ["de", "en", "es", "pt", "it", "tr", "fr"];
+const lies = (code) => {
+  const block = woerterbuch.match(new RegExp(`const ${code}: Woerterbuch = \\{([\\s\\S]*?)\\n\\};`));
+  const eintraege = new Map();
+  if (!block) return eintraege;
+  for (const [, k, v] of block[1].matchAll(/^\s*"([a-zA-Z0-9._]+)":\s*("(?:[^"\\]|\\.)*")/gm)) {
+    eintraege.set(k, JSON.parse(v));
+  }
+  return eintraege;
+};
+const buecher = Object.fromEntries(SPRACHCODES.map((c) => [c, lies(c)]));
+const benutzteSchluessel = new Set([...quelle.matchAll(/\bt\("([a-zA-Z0-9._]+)"\)/g)].map((m) => m[1]));
+const luecken = [];
+for (const code of SPRACHCODES) {
+  for (const schluessel of benutzteSchluessel) {
+    if (!buecher[code].has(schluessel)) luecken.push(`${code}: ${schluessel}`);
+  }
+}
+console.log(`  ${benutzteSchluessel.size} Schluessel in Gebrauch, ${buecher.de.size} im Woerterbuch`);
+console.log(`  ${luecken.length} Luecken in den sieben Sprachen`);
+if (luecken.length) luecken.slice(0, 20).forEach((l) => console.log(`  ! ${l}`));
+
+/* Und: Steht in einer Fremdsprache einfach der deutsche Satz?
+   Einzelne Woerter duerfen gleich sein - "Chat" heisst ueberall Chat.
+   Ein Satz mit Umlaut ist dagegen sicher nicht uebersetzt worden. */
+const undurchgereicht = [];
+for (const code of SPRACHCODES.slice(1)) {
+  for (const [schluessel, deutsch] of buecher.de) {
+    if (buecher[code].get(schluessel) === deutsch && /[äöüßÄÖÜ]/.test(deutsch)) {
+      undurchgereicht.push(`${code}: ${schluessel} = "${deutsch}"`);
+    }
+  }
+}
+console.log(`  ${undurchgereicht.length} Eintraege stehen unveraendert auf Deutsch`);
+undurchgereicht.slice(0, 20).forEach((l) => console.log(`  ! ${l}`));
+
 const uebersetzt = (quelle.match(/\bt\("[a-z]+\.[A-Za-z0-9_.]+"\)/g) || []).length;
 console.log(`  ${uebersetzt} uebersetzte Aufrufe`);
 console.log(`  ${funde.size} verdaechtige Texte (${AUSNAHMEN.size} bekannte Ausnahmen ausgenommen)`);
@@ -143,4 +187,4 @@ if (funde.size > 0 && zeigeListe) {
   console.log("  (mit 'liste' als Argument einzeln anzeigen)");
 }
 
-process.exit(funde.size === 0 ? 0 : 1);
+process.exit(funde.size === 0 && luecken.length === 0 && undurchgereicht.length === 0 ? 0 : 1);
