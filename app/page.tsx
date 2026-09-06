@@ -1804,7 +1804,7 @@ function ClubSelectScreen({ clubs, onSelect, goNewClub, goBack, onAbmelden, onKo
             Startanimation aufgebaut. Das Feld zog den Fokus, und iOS klappte
             die Tastatur ueber die noch laufende Animation. Die Tastatur soll
             erst erscheinen, wenn jemand wirklich tippen will. */}
-        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Verein auswählen …"
+        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("verein.waehlen")}
           className="flex-1 bg-transparent outline-none text-sm" style={{ fontFamily: "Inter", color: C.ink }} />
       </div>
 
@@ -1924,7 +1924,7 @@ function NewClubScreen({ onCreate, goBack }) {
       <div className="text-xl mb-1" style={{ fontFamily: "Oswald", fontWeight: 600, color: C.ink }}>{t("verein.neuAnlegen")}</div>
       <div className="text-xs mb-5" style={{ color: C.textDim, fontFamily: "Inter" }}>Danach legst du das erste Konto an — es wird automatisch Vereins-Administrator.</div>
       <form onSubmit={submit}>
-        <Field icon={Users} placeholder="Vereinsname, z. B. TuS Beispieldorf" value={form.name} onChange={set("name")} />
+        <Field icon={Users} placeholder={t("verein.namePlatzhalter")} value={form.name} onChange={set("name")} />
         <Field icon={ShieldCheck} placeholder="Kurzname, z. B. TUSB" value={form.shortName} onChange={set("shortName")} maxLength={6} />
         <div className="mb-3">
           <div className="text-[10px] font-bold mb-1.5 px-0.5" style={{ color: C.textDim }}>SPORTART</div>
@@ -8874,7 +8874,7 @@ function SystemPanel({ members, channels, setChannels, maintenanceMode, setMaint
           Geschrieben wurde dabei nichts; nach dem Neuladen war alles wieder
           da. */}
       {!supabase && <div>
-        <div className="text-sm mb-2" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Demo-Daten</div>
+        <div className="text-sm mb-2" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{t("sys.demoDaten")}</div>
         {!confirmReset ? (
           <button onClick={() => setConfirmReset(true)} className="w-full py-3 rounded-2xl text-sm" style={{ background: C.paperDim, color: C.red, fontFamily: "Inter", fontWeight: 700 }}>
             Tipps, Beiträge & Helfer zurücksetzen
@@ -8883,7 +8883,7 @@ function SystemPanel({ members, channels, setChannels, maintenanceMode, setMaint
           <div className="rounded-2xl p-3" style={{ background: C.fehlerFlaeche, border: `1px solid ${C.fehlerRand}` }}>
             <div className="text-xs mb-2" style={{ color: C.ink, fontFamily: "Inter" }}>Wirklich alle Aktivitätsdaten zurücksetzen? Konten, Rollen und Protokolle bleiben erhalten.</div>
             <div className="flex gap-2">
-              <button onClick={() => { onResetDemo(); setConfirmReset(false); }} className="flex-1 py-2 rounded-lg text-xs" style={{ background: C.red, color: C.aufPrimaer, fontFamily: "Inter", fontWeight: 700 }}>Ja, zurücksetzen</button>
+              <button onClick={() => { onResetDemo(); setConfirmReset(false); }} className="flex-1 py-2 rounded-lg text-xs" style={{ background: C.red, color: C.aufPrimaer, fontFamily: "Inter", fontWeight: 700 }}>{t("sys.jaZuruecksetzen")}</button>
               <button onClick={() => setConfirmReset(false)} className="flex-1 py-2 rounded-lg text-xs" style={{ background: C.glass, color: C.textDim, fontFamily: "Inter", fontWeight: 700, border: `1px solid ${C.line}` }}>{t("allg.abbrechen")}</button>
             </div>
           </div>
@@ -8897,6 +8897,7 @@ function SystemPanel({ members, channels, setChannels, maintenanceMode, setMaint
 /* Verwaltung (Vorstand / Geschäftsführung / Sys-Admin)                 */
 /* ------------------------------------------------------------------ */
 function ClubLogoPanel({ club, onLogoUpdated }) {
+  const t = useT();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -8939,7 +8940,7 @@ function ClubLogoPanel({ club, onLogoUpdated }) {
   return <div className="rounded-2xl p-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
     <div className="flex items-center gap-3 mb-3">
       <ClubLogo club={club} size={58} rounded={15} />
-      <div><div className="text-sm font-bold" style={{ color: C.ink }}>Profilbild des Vereins</div><div className="text-[11px]" style={{ color: C.textDim }}>JPG, PNG oder WebP · maximal 2 MB</div></div>
+      <div><div className="text-sm font-bold" style={{ color: C.ink }}>{t("verein.logo")}</div><div className="text-[11px]" style={{ color: C.textDim }}>{t("verein.logoHinweis")}</div></div>
     </div>
     <label className="w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer" style={{ background: C.ink, color: C.white, opacity: busy ? .6 : 1 }}>
       <ImageIcon size={15} /> {busy ? "Wird gespeichert …" : "Vereinslogo auswählen"}
@@ -8950,6 +8951,7 @@ function ClubLogoPanel({ club, onLogoUpdated }) {
 }
 
 function ClubColorPanel({ club, onColorsUpdated }) {
+  const t = useT();
   const [primary, setPrimary] = useState(club.primaryColor || DEFAULT_CLUB_COLORS.primary);
   const [secondary, setSecondary] = useState(club.secondaryColor || DEFAULT_CLUB_COLORS.secondary);
   const [saving, setSaving] = useState(false);
@@ -8967,7 +8969,7 @@ function ClubColorPanel({ club, onColorsUpdated }) {
   };
 
   return <div className="rounded-2xl p-4 mt-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
-    <div className="text-sm font-bold mb-3" style={{ color: C.ink }}>Vereinsfarben</div>
+    <div className="text-sm font-bold mb-3" style={{ color: C.ink }}>{t("verein.farben")}</div>
     <ClubColorPicker primary={primary} secondary={secondary} onChange={(p, s) => { setPrimary(p); setSecondary(s); setMessage(""); }} />
     <button onClick={save} disabled={saving || !dirty} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: dirty ? C.ink : C.paperDim, color: dirty ? C.white : C.textDim, opacity: saving ? .6 : 1 }}>{saving ? "Wird gespeichert …" : "Farben speichern"}</button>
     {message && <div className="text-[11px] mt-2" role="status" style={{ color: message.includes("gespeichert") ? C.erfolg : C.fehler }}>{message}</div>}
@@ -9170,28 +9172,28 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
   return <div>
     <div className="rounded-2xl p-4 mb-4" style={{ background: C.primaerWeich, border: `1px solid ${C.edge}` }}>
       <div className="flex items-center justify-between gap-3">
-        <div><div className="text-sm font-bold" style={{ color: C.ink }}>Offene Mitgliedsanträge</div><div className="text-[11px] mt-1" style={{ color: C.textDim }}>Nach der Freigabe kann sich das Mitglied sofort anmelden.</div></div>
+        <div><div className="text-sm font-bold" style={{ color: C.ink }}>{t("mit.offeneAntraege")}</div><div className="text-[11px] mt-1" style={{ color: C.textDim }}>Nach der Freigabe kann sich das Mitglied sofort anmelden.</div></div>
         <span className="min-w-8 h-8 px-2 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: C.glass, color: C.red }}>{requests.length}</span>
       </div>
     </div>
     {message && <div role="status" className="text-xs rounded-xl px-3 py-2.5 mb-3" style={{ background: message.includes("wurde") ? C.erfolgFlaeche : C.fehlerFlaeche, color: message.includes("wurde") ? C.erfolg : C.fehler }}>{message}</div>}
-    {loading ? <div className="text-xs py-5 text-center" style={{ color: C.textDim }}>Mitgliedsanträge werden geladen …</div> : requests.length === 0 ?
-      <div className="rounded-2xl p-5 text-center" style={{ background: C.glass, border: `1px solid ${C.line}` }}><CheckCircle2 size={24} className="mx-auto mb-2" style={{ color: C.sekundaerAufHell }}/><div className="text-sm font-bold">Keine offenen Anträge</div><div className="text-[11px] mt-1" style={{ color: C.textDim }}>Neue Registrierungen erscheinen automatisch hier.</div></div> :
+    {loading ? <div className="text-xs py-5 text-center" style={{ color: C.textDim }}>{t("mit.antraegeLaden")}</div> : requests.length === 0 ?
+      <div className="rounded-2xl p-5 text-center" style={{ background: C.glass, border: `1px solid ${C.line}` }}><CheckCircle2 size={24} className="mx-auto mb-2" style={{ color: C.sekundaerAufHell }}/><div className="text-sm font-bold">{t("mit.keineAntraegeKurz")}</div><div className="text-[11px] mt-1" style={{ color: C.textDim }}>Neue Registrierungen erscheinen automatisch hier.</div></div> :
       <div className="space-y-3">{requests.map((request) => {
         const roles = (request.membership_roles || []).map((entry) => ROLE_META[entry.role]?.label || entry.role);
         return <div key={request.id} className="rounded-2xl p-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
           <div className="flex items-start gap-3 mb-3"><div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: C.red, color: C.aufPrimaer }}>{initialsOf(request.display_name)}</div><div className="min-w-0"><div className="text-sm font-bold truncate" style={{ color: C.ink }}>{request.display_name}</div><div className="text-[11px] truncate" style={{ color: C.textDim }}>{request.email || "Keine E-Mail hinterlegt"}</div></div></div>
-          <div className="grid grid-cols-2 gap-2 mb-3"><div className="rounded-xl px-3 py-2" style={{ background: C.paperDim }}><div className="text-[9px] uppercase tracking-wider" style={{ color: C.textDim }}>Registrierung</div><div className="text-xs font-bold mt-0.5">{roles.filter((role) => role !== "Mitglied").join(", ") || "Mitglied"}</div></div><div className="rounded-xl px-3 py-2" style={{ background: C.paperDim }}><div className="text-[9px] uppercase tracking-wider" style={{ color: C.textDim }}>{t("tm.mannschaft")}</div><div className="text-xs font-bold mt-0.5">{request.requested_team || "Noch offen"}</div></div></div>
-          <div className="flex gap-2"><button disabled={workingId === request.id} onClick={() => decide(request, "active")} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.secondary, color: C.aufSekundaer, opacity: workingId === request.id ? .6 : 1 }}>Freigeben</button><button disabled={workingId === request.id} onClick={() => decide(request, "blocked")} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.fehlerFlaeche, color: C.fehler, opacity: workingId === request.id ? .6 : 1 }}>{t("allg.ablehnen")}</button></div>
+          <div className="grid grid-cols-2 gap-2 mb-3"><div className="rounded-xl px-3 py-2" style={{ background: C.paperDim }}><div className="text-[9px] uppercase tracking-wider" style={{ color: C.textDim }}>{t("mit.registrierung")}</div><div className="text-xs font-bold mt-0.5">{roles.filter((role) => role !== "Mitglied").join(", ") || "Mitglied"}</div></div><div className="rounded-xl px-3 py-2" style={{ background: C.paperDim }}><div className="text-[9px] uppercase tracking-wider" style={{ color: C.textDim }}>{t("tm.mannschaft")}</div><div className="text-xs font-bold mt-0.5">{request.requested_team || "Noch offen"}</div></div></div>
+          <div className="flex gap-2"><button disabled={workingId === request.id} onClick={() => decide(request, "active")} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.secondary, color: C.aufSekundaer, opacity: workingId === request.id ? .6 : 1 }}>{t("mit.freigeben")}</button><button disabled={workingId === request.id} onClick={() => decide(request, "blocked")} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.fehlerFlaeche, color: C.fehler, opacity: workingId === request.id ? .6 : 1 }}>{t("allg.ablehnen")}</button></div>
         </div>;
       })}</div>}
-    <button onClick={loadRequests} disabled={loading} className="w-full mt-3 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.textDim }}>Liste aktualisieren</button>
+    <button onClick={loadRequests} disabled={loading} className="w-full mt-3 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.textDim }}>{t("allg.listeAktualisieren")}</button>
 
     <button onClick={() => setShowActive((v) => !v)} className="w-full flex items-center justify-between mt-6 mb-3">
-      <div className="text-sm font-bold" style={{ color: C.ink }}>Mitgliedschaften verwalten</div>
+      <div className="text-sm font-bold" style={{ color: C.ink }}>{t("mit.verwalten")}</div>
       <ChevronRight size={15} style={{ color: C.textDim, transform: showActive ? "rotate(90deg)" : "none", transition: "transform .15s" }}/>
     </button>
-    {showActive && (loadingActive ? <div className="text-xs py-4 text-center" style={{ color: C.textDim }}>Mitglieder werden geladen …</div> : (
+    {showActive && (loadingActive ? <div className="text-xs py-4 text-center" style={{ color: C.textDim }}>{t("mit.laden")}</div> : (
       <div className="space-y-2">
         {nichtGesperrte.map((member) => (
           <div key={member.id} className="flex items-center gap-2 flex-wrap rounded-xl px-3 py-2.5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
@@ -9207,7 +9209,7 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
               ? <button disabled={workingId === member.id} onClick={() => unblockMember(member)} className="px-3 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: C.erfolgFlaeche, color: C.erfolg, opacity: workingId === member.id ? .6 : 1 }}>{t("allg.entsperren")}</button>
               : <>
                   <button disabled={workingId === member.id} onClick={() => toggleMemberActive(member)} className="px-3 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: member.status === "active" ? C.fehlerFlaeche : C.erfolgFlaeche, color: member.status === "active" ? C.fehler : C.erfolg, opacity: workingId === member.id ? .6 : 1 }}>{member.status === "active" ? "Beenden" : "Reaktivieren"}</button>
-                  <button disabled={workingId === member.id} onClick={() => blockMember(member)} title="Sperren — kann sich nicht mehr bewerben" className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: C.fehlerFlaeche, color: C.fehler, opacity: workingId === member.id ? .6 : 1 }}>Sperren</button>
+                  <button disabled={workingId === member.id} onClick={() => blockMember(member)} title="Sperren — kann sich nicht mehr bewerben" className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: C.fehlerFlaeche, color: C.fehler, opacity: workingId === member.id ? .6 : 1 }}>{t("mit.sperren")}</button>
                 </>}
             {/* Zwei getrennte Wege, bewusst unterschiedlich gewichtet:
                 "Beenden" legt die Mitgliedschaft still und laesst sie in der
@@ -9216,7 +9218,7 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
             <button disabled={workingId === member.id} onClick={() => removeMember(member)} title="Endgültig aus dem Verein entfernen" className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: C.paperDim, color: C.textDim, opacity: workingId === member.id ? .6 : 1 }}>{t("allg.entfernen")}</button>
           </div>
         ))}
-        {nichtGesperrte.length === 0 && <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Keine Mitgliedschaften vorhanden.</div>}
+        {nichtGesperrte.length === 0 && <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{t("mit.keineVorhanden")}</div>}
       </div>
     ))}
 
@@ -9230,7 +9232,7 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
       <div className="mt-6">
         <div className="flex items-center gap-2 mb-1">
           <Lock size={14} style={{ color: C.red }} />
-          <div className="text-sm font-bold" style={{ color: C.ink }}>Sperrliste</div>
+          <div className="text-sm font-bold" style={{ color: C.ink }}>{t("mit.sperrliste")}</div>
           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{gesperrte.length}</span>
         </div>
         <div className="text-[11px] mb-3" style={{ color: C.textDim }}>
@@ -9254,6 +9256,7 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
 }
 
 function ClubFeatureOnboarding({ club, onDone }) {
+  const t = useT();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [fehler, setFehler] = useState("");
@@ -9289,7 +9292,7 @@ function ClubFeatureOnboarding({ club, onDone }) {
     <div className="flex flex-col h-full items-center justify-center p-5" style={{ background: C.paper }}>
       <div className="w-full max-w-sm">
         <div className="text-[10px] uppercase tracking-widest font-bold mb-1" style={{ color: C.red, fontFamily: "Inter" }}>Verein einrichten · {cfg.label}</div>
-        <div className="text-xl mb-1" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>Welche Funktionen braucht ihr?</div>
+        <div className="text-xl mb-1" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>{t("verein.funktionenFrage")}</div>
         {fehler && <div role="alert" className="text-[11px] rounded-xl px-3 py-2 mb-3" style={{ background: C.fehlerFlaeche, color: C.fehler, fontFamily: "Inter" }}>{fehler}</div>}
         <div className="text-xs mb-6" style={{ color: C.textDim, fontFamily: "Inter" }}>Frage {step + 1} von {CLUB_FEATURES.length} — lässt sich jederzeit in den Vereinseinstellungen unter „Funktionen“ ändern.</div>
         <div className="rounded-2xl p-5 mb-5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
@@ -9309,6 +9312,7 @@ function ClubFeatureOnboarding({ club, onDone }) {
 }
 
 function ClubRoleOverviewPanel({ members }) {
+  const t = useT();
   const [expandedRole, setExpandedRole] = useState(null);
   const [selectedMember, setSelectedMember] = useState(null);
   return (
@@ -9331,7 +9335,7 @@ function ClubRoleOverviewPanel({ members }) {
               {open && (
                 <div className="px-3.5 pb-3.5">
                   {holders.length === 0 ? (
-                    <div className="text-[11px]" style={{ color: C.textDim }}>Niemand hat aktuell diese Rolle.</div>
+                    <div className="text-[11px]" style={{ color: C.textDim }}>{t("rol.niemand")}</div>
                   ) : (
                     <div className="space-y-1.5">
                       {holders.map((m) => (
@@ -9423,6 +9427,7 @@ function ClubFeatureSettingsPanel({ currentClub, clubFeatures, onFeaturesChanged
    wandern über, das Platzhalter-Profil wird danach entfernt. Siehe
    claim_managed_membership() in Supabase. */
 function ClaimManagedPlayerPanel({ members, setMembers, currentUser }) {
+  const t = useT();
   const [managedId, setManagedId] = useState("");
   const [realId, setRealId] = useState("");
   const [message, setMessage] = useState("");
@@ -9458,11 +9463,11 @@ function ClaimManagedPlayerPanel({ members, setMembers, currentUser }) {
 
   return (
     <div className="rounded-2xl p-3.5 mt-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
-      <div className="text-sm mb-1" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Profile ohne Konto zusammenführen</div>
+      <div className="text-sm mb-1" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{t("sys.profileZusammen")}</div>
       <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Wenn ein ohne Konto angelegter Spieler (z. B. aus einer Kindermannschaft) später sein eigenes Konto registriert, hier das Platzhalter-Profil mit dem neuen echten Konto verknüpfen.</div>
       {message && <div className="rounded-xl px-3 py-2 text-[11px] font-semibold mb-2" style={{ background: message.includes("nicht") ? C.fehlerFlaeche : C.erfolgFlaeche, color: message.includes("nicht") ? C.fehler : C.erfolg }}>{message}</div>}
       <select value={managedId} onChange={(e) => { setManagedId(e.target.value); setRealId(""); setMessage(""); }} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}>
-        <option value="">Platzhalter-Profil (ohne Konto) …</option>
+        <option value="">{t("sys.platzhalter")}</option>
         {managedCandidates.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
       </select>
       {managed && (
@@ -9686,7 +9691,7 @@ function PostfachView({ eintraege, laedt, onGelesen, onLoeschen, onAlleLoeschen 
       {eintraege.length === 0 ? (
         <div className="rounded-2xl p-5 text-center" style={{ background: C.paperDim }}>
           <Bell size={22} style={{ color: C.textDim, margin: "0 auto 10px" }} />
-          <div className="text-sm font-bold mb-1" style={{ color: C.ink, fontFamily: "Inter" }}>Noch nichts da</div>
+          <div className="text-sm font-bold mb-1" style={{ color: C.ink, fontFamily: "Inter" }}>{t("allg.nochNichts")}</div>
           <div className="text-[11px] leading-snug" style={{ color: C.textDim, fontFamily: "Inter" }}>
             Hier landen neue Termine, News, Umfragen und alles, wofür du in den Einstellungen
             Benachrichtigungen eingeschaltet hast.
@@ -9722,11 +9727,12 @@ function PostfachView({ eintraege, laedt, onGelesen, onLoeschen, onAlleLoeschen 
    Bewusst nuechtern und ohne Anmeldung: Hier ist nichts zu bedienen, hier ist
    etwas zu reparieren. */
 function KonfigurationFehlt() {
+  const t = useT();
   return (
     <div className="min-h-screen w-full flex items-center justify-center px-6" style={{ background: C.paper, fontFamily: "Inter" }}>
       <div className="w-full max-w-sm text-center">
         <AppBrandMark size={56} />
-        <div className="text-lg mt-5 mb-2" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>Die App ist nicht einsatzbereit</div>
+        <div className="text-lg mt-5 mb-2" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>{t("sys.nichtBereit")}</div>
         <p className="text-sm leading-relaxed" style={{ color: C.textDim }}>
           Die Verbindung zur Vereinsdatenbank fehlt. Es werden keine Daten angezeigt und keine
           gespeichert. Bitte später noch einmal versuchen — wir sind informiert.
@@ -9752,8 +9758,8 @@ function NurAlsAppHinweis() {
           melde dich dort an, und dein Verein ist sofort verfügbar.
         </p>
         <div className="space-y-2 mb-8">
-          {appStore && <a href={appStore} className="block py-3 rounded-2xl text-sm font-bold" style={{ background: C.ink, color: C.white }}>Im App Store laden</a>}
-          {playStore && <a href={playStore} className="block py-3 rounded-2xl text-sm font-bold" style={{ background: C.glass, border: `1px solid ${C.edge}`, color: C.ink }}>Bei Google Play laden</a>}
+          {appStore && <a href={appStore} className="block py-3 rounded-2xl text-sm font-bold" style={{ background: C.ink, color: C.white }}>{t("store.apple")}</a>}
+          {playStore && <a href={playStore} className="block py-3 rounded-2xl text-sm font-bold" style={{ background: C.glass, border: `1px solid ${C.edge}`, color: C.ink }}>{t("store.google")}</a>}
           {!appStore && !playStore && <div className="text-[11px] rounded-2xl px-4 py-3" style={{ background: C.paperDim, color: C.textDim }}>Die App wird gerade veröffentlicht. Die Store-Links erscheinen hier, sobald sie verfügbar sind.</div>}
         </div>
         <div className="flex items-center justify-center gap-4 text-[11px]" style={{ color: C.textDim }}>
