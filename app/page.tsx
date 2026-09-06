@@ -3008,6 +3008,7 @@ function toggleHelperSelf(setDutyPlan, eventId, station, userId, onSetzen) {
  * zusammen. Ohne sie muesste die App die ganze Mitgliederliste laden - auch
  * fuer jemanden, den sie nichts angeht. */
 function TerminZusage({ ev, currentUser }) {
+  const t = useT();
   const [meinStatus, setMeinStatus] = useState("zugesagt");
   const [liste, setListe] = useState(null);
   const [offen, setOffen] = useState(false);
@@ -3053,7 +3054,7 @@ function TerminZusage({ ev, currentUser }) {
   return (
     <div className="mb-3">
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-[11px] font-bold flex-shrink-0" style={{ color: C.textDim, fontFamily: "Inter" }}>Bist du dabei?</span>
+        <span className="text-[11px] font-bold flex-shrink-0" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("ev.bistDuDabei")}</span>
         <select value={meinStatus} onChange={(e) => setzen(e.target.value)}
           aria-label="Deine Zu- oder Absage"
           className="flex-1 text-xs px-3 py-2 rounded-lg outline-none font-bold"
@@ -3061,8 +3062,8 @@ function TerminZusage({ ev, currentUser }) {
                    color: meinStatus === "zugesagt" ? C.erfolg : C.fehler,
                    border: `1px solid ${meinStatus === "zugesagt" ? C.erfolgRand : C.fehler}`,
                    fontFamily: "Inter" }}>
-          <option value="zugesagt">Zugesagt</option>
-          <option value="abgesagt">Abgesagt</option>
+          <option value="zugesagt">{t("ev.zugesagt")}</option>
+          <option value="abgesagt">{t("ev.abgesagt")}</option>
         </select>
       </div>
 
@@ -3070,7 +3071,7 @@ function TerminZusage({ ev, currentUser }) {
         <button onClick={() => { const n = !offen; setOffen(n); if (n && liste === null) listeLaden(); }}
           className="w-full py-2.5 rounded-xl text-xs font-bold mb-2"
           style={{ background: C.paperDim, color: C.ink, border: `1px solid ${C.line}` }}>
-          {offen ? "Spielerliste ausblenden" : "Wer ist dabei?"}
+          {offen ? t("allg.schliessen") : t("ev.werDabei")}
           {liste && !offen ? ` · ${zugesagt} von ${liste.length}` : ""}
         </button>
       )}
@@ -3318,6 +3319,7 @@ function CarpoolSection({ ev, currentUser }) {
 /* initialOpen: Im Kalender-Overlay ist bereits klar, welcher Termin gemeint ist —
    dort wird die Karte aufgeklappt gezeigt, statt noch einmal tippen zu lassen. */
 function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser, dutyPlan, setDutyPlan, onDienstSetzen, canCancelTraining, onCancelTraining, onDeleteTraining, currentClub, featureEnabled, onNeuLaden, initialOpen = false }) {
+  const t = useT();
   const [open, setOpen] = useState(initialOpen);
   const [absageOffen, setAbsageOffen] = useState(false);
   const [absageGrund, setAbsageGrund] = useState("");
@@ -3370,7 +3372,7 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
               Das Feld ist Pflicht - ein leerer Grund ist kein Grund. */}
           {canCancelTraining && !ev.cancelled && (absageOffen ? (
             <div className="rounded-xl p-3 mb-3" style={{ background: C.fehlerFlaeche, border: `1px solid ${C.fehlerRand}` }}>
-              <div className="text-[11px] font-bold mb-1.5" style={{ color: C.ink, fontFamily: "Inter" }}>Warum wird abgesagt?</div>
+              <div className="text-[11px] font-bold mb-1.5" style={{ color: C.ink, fontFamily: "Inter" }}>{t("ev.absageGrund")}</div>
               <input value={absageGrund} onChange={(e) => setAbsageGrund(e.target.value)} maxLength={140}
                 autoFocus placeholder="z. B. Halle gesperrt, zu wenige Zusagen"
                 className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2"
@@ -3380,7 +3382,7 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
                   disabled={!absageGrund.trim()}
                   className="flex-1 py-2 rounded-lg text-xs font-bold"
                   style={{ background: absageGrund.trim() ? C.fehler : C.line, color: absageGrund.trim() ? C.white : C.textDim }}>
-                  Jetzt absagen
+                  {t("ev.jetztAbsagen")}
                 </button>
                 <button onClick={() => { setAbsageOffen(false); setAbsageGrund(""); }}
                   className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>
@@ -3499,6 +3501,7 @@ const leererTerminentwurf = (team = "") => ({
 });
 
 function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpools, setCarpools, dutyPlan, setDutyPlan, onDienstSetzen, werbeplaetze, onSponsorImpression, onSponsorClick, focusRequest, onFocusApplied, currentClub, featureEnabled, entitlement, goSubscribe }) {
+  const t = useT();
   const [filter, setFilter] = useState("alle");
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
