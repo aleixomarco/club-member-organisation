@@ -7233,26 +7233,11 @@ function ProfileView({ user, members, setMembers, currentClub, dutyPlan, punkteZ
           </div>
         </div>
       </div>
-
-      {(user.roles.includes("spieler") || user.roles.includes("trainer")) && <>
-      <SectionTitle eyebrow="Auszeichnungen" title="Deine Badges" />
-      {meineBadges.length === 0 ? (
-        <div className="rounded-2xl p-4 mb-5 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>Noch keine Badges — sag bei Trainings zu, um deine erste Auszeichnung zu sammeln!</div>
-      ) : (
-        <div className="grid grid-cols-2 gap-3 mb-5">
-          {meineBadges.map((bid) => {
-            const b = BADGE_LIBRARY[bid];
-            return (
-              <div key={bid} className="rounded-2xl p-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
-                <div className="w-8 h-8 rounded-full flex items-center justify-center mb-2" style={{ background: C.paper }}><b.icon size={15} style={{ color: C.red }} /></div>
-                <div className="text-xs" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{b.label}</div>
-                <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{b.descFor ? b.descFor(user) : b.desc}</div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-      </>}
+      {/* Hier standen "Deine Badges" samt Erklaertext.
+          Entfernt, weil die Auszeichnungen nichts steuern und nichts
+          freischalten - sie waren Zierde, die Platz auf dem wichtigsten
+          Bildschirm des Profils einnahm. Wer sie zurueckwill, findet sie in
+          BADGE_LIBRARY und in der Historie dieses Commits. */}
 
       {/* Hier stand "Mitglied wirbt Mitglied": "Lade Freunde ein - fuer jede
           Anmeldung gibt's 100 Vereinspunkte. Code: CMO-XY". Nichts davon gab
