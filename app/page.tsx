@@ -5806,7 +5806,13 @@ function VehiclesView({ currentUser, currentClub }) {
     const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
     const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 1);
     const { data, error } = await supabase.from("vehicle_bookings")
-      .select("id,vehicle_id,membership_id,team_id,private_label,starts_at,ends_at,status,created_at,club_vehicles(label),teams(name),club_memberships(display_name)")
+      /* club_memberships MUSS hier benannt werden.
+         vehicle_bookings zeigt seit der Buchungsfreigabe zweimal auf diese
+         Tabelle: membership_id (wer gebucht hat) und decided_by (wer
+         entschieden hat). Ohne den Namen der Beziehung weiss die Abfrage
+         nicht, welche gemeint ist, und liefert gar nichts - die Ansicht
+         meldete nur "Die Buchungen konnten nicht geladen werden". */
+      .select("id,vehicle_id,membership_id,team_id,private_label,starts_at,ends_at,status,created_at,club_vehicles(label),teams(name),club_memberships!vehicle_bookings_membership_id_fkey(display_name)")
       .eq("club_id", currentUser.clubId)
       .lt("starts_at", monthEnd.toISOString())
       .gt("ends_at", monthStart.toISOString())
@@ -6130,7 +6136,10 @@ function DutyTasksSection({ ev, currentUser, sport, onNeuLaden, dutyPlan, member
 
   const loadTasks = useCallback(async () => {
     const { data, error } = await supabase.from("duty_tasks")
-      .select("id,title,due_date,done,assignee_membership_id,created_by,created_at,club_memberships(display_name)")
+      /* Auch hier muss die Beziehung benannt werden: duty_tasks zeigt mit
+         assignee_membership_id UND created_by auf club_memberships. Gemeint
+         ist, wer die Aufgabe uebernommen hat. */
+      .select("id,title,due_date,done,assignee_membership_id,created_by,created_at,club_memberships!duty_tasks_assignee_membership_id_fkey(display_name)")
       .eq("event_id", ev.id)
       .order("created_at", { ascending: true });
     if (!error) {
