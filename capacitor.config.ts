@@ -56,6 +56,17 @@ const config: CapacitorConfig = {
     contentInset: "never",
   },
   plugins: {
+    /* Mitteilungen auch anzeigen, waehrend die App offen ist.
+       iOS zeigt eine Push-Mitteilung von sich aus NICHT an, solange die App
+       im Vordergrund laeuft - sie kommt an, bleibt aber unsichtbar. Beim
+       Testen fuehrt das zuverlaessig in die Irre: Der Versand meldet
+       "zugestellt", auf dem Bildschirm passiert nichts, und man sucht den
+       Fehler an der falschen Stelle.
+       Im Alltag ist es genauso stoerend: Wer gerade im Chat liest, erfaehrt
+       nichts von der Absage des Trainings, die soeben hereinkam. */
+    FirebaseMessaging: {
+      presentationOptions: ["alert", "badge", "sound"],
+    },
     /* Ohne dieses Plugin gilt das Standardverhalten von WKWebView: Die
        Webansicht behaelt ihre volle Hoehe, und iOS scrollt die GANZE Seite nach
        oben, um das Eingabefeld freizulegen. Im Chat schob sich dadurch die
