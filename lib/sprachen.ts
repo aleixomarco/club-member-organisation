@@ -1013,6 +1013,12 @@ const de: Woerterbuch = {
 
   "meta.erstelltVon": "Erstellt von:",
   "meta.erstelltAm": "Erstellt am:",
+
+  "umf.auswahlZuruecknehmen": "Auswahl zurücknehmen",
+
+  "tipp.nochNichtFreigegeben": "Zurzeit noch kein Tippspiel freigegeben",
+  "tipp.freigabeHinweis": "Die Vereinsleitung legt unter „Vereinseinstellungen“ fest, welche Mannschaften eine eigene Tipprunde bekommen.",
+  "tipp.zurueckUebersicht": "Zurück zur Übersicht",
 };
 
 const en: Woerterbuch = {
@@ -1993,6 +1999,12 @@ const en: Woerterbuch = {
 
   "meta.erstelltVon": "Created by:",
   "meta.erstelltAm": "Created on:",
+
+  "umf.auswahlZuruecknehmen": "Withdraw selection",
+
+  "tipp.nochNichtFreigegeben": "No prediction game enabled yet",
+  "tipp.freigabeHinweis": "The club management decides under “Club settings” which teams get their own prediction round.",
+  "tipp.zurueckUebersicht": "Back to overview",
 };
 
 const es: Woerterbuch = {
@@ -2973,6 +2985,12 @@ const es: Woerterbuch = {
 
   "meta.erstelltVon": "Creado por:",
   "meta.erstelltAm": "Creado el:",
+
+  "umf.auswahlZuruecknehmen": "Retirar la selección",
+
+  "tipp.nochNichtFreigegeben": "Todavía no hay ninguna quiniela activada",
+  "tipp.freigabeHinweis": "La dirección del club decide en «Ajustes del club» qué equipos tienen su propia ronda.",
+  "tipp.zurueckUebersicht": "Volver al resumen",
 };
 
 const pt: Woerterbuch = {
@@ -3953,6 +3971,12 @@ const pt: Woerterbuch = {
 
   "meta.erstelltVon": "Criado por:",
   "meta.erstelltAm": "Criado a:",
+
+  "umf.auswahlZuruecknehmen": "Retirar a seleção",
+
+  "tipp.nochNichtFreigegeben": "Ainda não há nenhum jogo de prognósticos ativado",
+  "tipp.freigabeHinweis": "A direção do clube decide em «Definições do clube» que equipas têm a sua própria ronda.",
+  "tipp.zurueckUebersicht": "Voltar ao resumo",
 };
 
 const it: Woerterbuch = {
@@ -4933,6 +4957,12 @@ const it: Woerterbuch = {
 
   "meta.erstelltVon": "Creato da:",
   "meta.erstelltAm": "Creato il:",
+
+  "umf.auswahlZuruecknehmen": "Ritira la scelta",
+
+  "tipp.nochNichtFreigegeben": "Nessun gioco di pronostici ancora attivato",
+  "tipp.freigabeHinweis": "La dirigenza decide in «Impostazioni della società» quali squadre hanno un proprio girone.",
+  "tipp.zurueckUebersicht": "Torna alla panoramica",
 };
 
 const tr: Woerterbuch = {
@@ -5913,6 +5943,12 @@ const tr: Woerterbuch = {
 
   "meta.erstelltVon": "Oluşturan:",
   "meta.erstelltAm": "Oluşturma tarihi:",
+
+  "umf.auswahlZuruecknehmen": "Seçimi geri al",
+
+  "tipp.nochNichtFreigegeben": "Şu anda etkin bir tahmin oyunu yok",
+  "tipp.freigabeHinweis": "Kulüp yönetimi “Kulüp ayarları” altında hangi takımların kendi turu olacağını belirler.",
+  "tipp.zurueckUebersicht": "Genel bakışa dön",
 };
 
 const fr: Woerterbuch = {
@@ -6893,6 +6929,12 @@ const fr: Woerterbuch = {
 
   "meta.erstelltVon": "Créé par :",
   "meta.erstelltAm": "Créé le :",
+
+  "umf.auswahlZuruecknehmen": "Retirer mon choix",
+
+  "tipp.nochNichtFreigegeben": "Aucun jeu de pronostics activé pour le moment",
+  "tipp.freigabeHinweis": "La direction du club définit dans « Paramètres du club » quelles équipes ont leur propre tour.",
+  "tipp.zurueckUebersicht": "Retour à la vue d'ensemble",
 };
 
 const WOERTERBUECHER: Record<string, Woerterbuch> = { de, en, es, pt, it, tr, fr };

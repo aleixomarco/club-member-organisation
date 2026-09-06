@@ -7628,7 +7628,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
 /* ------------------------------------------------------------------ */
 /* Athlet/in der Saison — Wahl                                            */
 /* ------------------------------------------------------------------ */
-function SeasonVoteView({ currentUser, members, seasonVotes, setSeasonVotes, onVote }) {
+function SeasonVoteView({ currentUser, members, seasonVotes, setSeasonVotes, onVote, onUnvote }) {
   const t = useT();
   const closed = new Date() > new Date(SEASON_VOTE_DEADLINE);
   const { d, h, m } = useCountdown(SEASON_VOTE_DEADLINE);
@@ -7643,6 +7643,17 @@ function SeasonVoteView({ currentUser, members, seasonVotes, setSeasonVotes, onV
     const vorher = seasonVotes[currentUser.id];
     setSeasonVotes((v) => ({ ...v, [currentUser.id]: id }));
     const ergebnis = await onVote?.(id);
+    if (ergebnis?.error) {
+      setFehler(ergebnis.error);
+      setSeasonVotes((v) => ({ ...v, [currentUser.id]: vorher }));
+    } else setFehler("");
+  };
+
+  const zuruecknehmen = async () => {
+    if (closed) return;
+    const vorher = seasonVotes[currentUser.id];
+    setSeasonVotes((v) => { const neu = { ...v }; delete neu[currentUser.id]; return neu; });
+    const ergebnis = await onUnvote?.();
     if (ergebnis?.error) {
       setFehler(ergebnis.error);
       setSeasonVotes((v) => ({ ...v, [currentUser.id]: vorher }));
@@ -7699,6 +7710,13 @@ function SeasonVoteView({ currentUser, members, seasonVotes, setSeasonVotes, onV
           );
         })}
       </div>
+      {!closed && myVote && onUnvote && (
+        <button onClick={zuruecknehmen} className="w-full mt-3 py-2 rounded-xl text-xs font-bold"
+          style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>
+          {t("umf.auswahlZuruecknehmen")}
+        </button>
+      )}
+      {fehler && <div role="status" className="text-[11px] mt-2 text-center" style={{ color: C.fehler }}>{fehler}</div>}
       {!closed && myVote && <div className="text-xs mt-3 text-center" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("umf.stimmeAendern")}</div>}
     </div>
   );
@@ -7771,7 +7789,7 @@ function TippRundenPanel({ currentClub }) {
   );
 }
 
-function TippView({ members, currentUser, events, tippPredictions, setTippPredictions, tippResults, onTippSpeichern }) {
+function TippView({ members, currentUser, events, tippPredictions, setTippPredictions, tippResults, onTippSpeichern, onZurueck }) {
   const t = useT();
   const aktuelleRunde = runden.find((r) => r.runde_id === rundeId) || null;
   /* Nur die Spiele der gewaehlten Mannschaft. Ein Spiel gehoert ueber
@@ -7862,9 +7880,22 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
       {/* Mannschaft waehlen - nur freigegebene Runden. Ohne Runde gibt es
           nichts zu tippen; das sagt die Ansicht dann auch, statt eine leere
           Tabelle zu zeigen. */}
+      {/* Keine freigegebene Runde ist KEIN Fehler.
+          Vorher stand hier ein grauer Kasten mit Erklaertext und darunter die
+          leere Ansicht - das las sich, als sei etwas kaputt. Wer hier landet,
+          hat einen Menuepunkt geoeffnet, hinter dem nichts ist; er braucht
+          einen Satz und einen Weg zurueck, keine Fehlermeldung. */}
       {runden.length === 0 ? (
-        <div className="rounded-2xl p-4 mb-5 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>
-          Für diesen Verein ist noch kein Tippspiel freigegeben. Die Vereinsleitung legt unter „Vereinseinstellungen“ fest, welche Mannschaften eine eigene Tipprunde bekommen.
+        <div className="rounded-2xl p-5 text-center" style={{ background: C.paperDim, fontFamily: "Inter" }}>
+          <Trophy size={26} style={{ color: C.textDim, margin: "0 auto 10px" }} />
+          <div className="text-sm font-bold mb-1.5" style={{ color: C.ink }}>{t("tipp.nochNichtFreigegeben")}</div>
+          <div className="text-xs mb-4" style={{ color: C.textDim, lineHeight: 1.6 }}>{t("tipp.freigabeHinweis")}</div>
+          {onZurueck && (
+            <button onClick={onZurueck} className="px-4 py-2.5 rounded-xl text-xs font-bold"
+              style={{ background: C.ink, color: C.white }}>
+              {t("tipp.zurueckUebersicht")}
+            </button>
+          )}
         </div>
       ) : (
         <>
@@ -10727,6 +10758,18 @@ export default function ClubMemberOrganisationApp() {
     return error ? { error: t("umf.stimmeFehler") } : {};
   };
 
+  /* Die Stimme wieder aufgeben.
+     Die Regel "members withdraw season vote" gibt es in der Datenbank schon;
+     es fehlte nur der Weg dorthin. Eine Wahl, die man nur einmal treffen
+     kann, ist keine Wahl - wer sich vertippt, blieb sonst bis zum Stichtag
+     bei einem Namen, den er nicht gemeint hat. */
+  const saisonStimmeZuruecknehmen = async () => {
+    if (!supabase || !selectedClubId || !meinProfil()) return { error: t("allg.nichtMoeglich") };
+    const { error } = await supabase.from("season_votes").delete()
+      .eq("club_id", selectedClubId).eq("season", SAISON_KENNUNG).eq("voter_profile_id", meinProfil());
+    return error ? { error: t("umf.stimmeEntfernenFehler") } : {};
+  };
+
   const dienstSetzen = async (eventId, station, mitgliedsId, eintragen) => {
     if (!supabase || typeof eventId !== "string" || !isDbId(mitgliedsId)) return;
     /* Genau hier ging bisher am meisten verloren: Ein Trainer, der jemand
@@ -11932,8 +11975,8 @@ export default function ClubMemberOrganisationApp() {
             )}
 
             <ZumAktualisierenZiehen key={`${tab}-${subView || ""}`} onAktualisieren={datenNeuLaden} className="tabFade flex-1 overflow-y-auto" style={{ background: C.paper }}>
-              {subView === "season" && featureEnabled("season_award") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Athlet/in der Saison"><SeasonVoteView currentUser={currentUser} members={clubMembers} seasonVotes={seasonVotes} setSeasonVotes={setSeasonVotes} onVote={saisonStimmeAbgeben} /></LockedFeature>}
-              {subView === "tipp" && featureEnabled("tippspiel") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Tippspiel"><TippView members={clubMembers} currentUser={currentUser} events={events} tippPredictions={tippPredictions} setTippPredictions={setTippPredictions} tippResults={tippResults} onTippSpeichern={tippSpeichern} /></LockedFeature>}
+              {subView === "season" && featureEnabled("season_award") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Athlet/in der Saison"><SeasonVoteView currentUser={currentUser} members={clubMembers} seasonVotes={seasonVotes} setSeasonVotes={setSeasonVotes} onVote={saisonStimmeAbgeben} onUnvote={saisonStimmeZuruecknehmen} /></LockedFeature>}
+              {subView === "tipp" && featureEnabled("tippspiel") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Tippspiel"><TippView members={clubMembers} currentUser={currentUser} events={events} tippPredictions={tippPredictions} setTippPredictions={setTippPredictions} tippResults={tippResults} onTippSpeichern={tippSpeichern} onZurueck={() => setSubView(null)} /></LockedFeature>}
               {subView === "postfach" && <PostfachView eintraege={postfach} laedt={postfachLaedt} onGelesen={postfachGelesen} onAlleLoeschen={postfachAlleLoeschen} onLoeschen={postfachLoeschen} />}
               {subView === "duty" && featureEnabled("duty_roster") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Helferplanung"><DutyView members={clubMembers} currentUser={currentUser} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={dienstSetzen} /></LockedFeature>}
               {subView === "tasks" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Aufgaben"><TasksView currentUser={currentUser} members={clubMembers} /></LockedFeature>}
