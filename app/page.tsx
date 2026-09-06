@@ -4830,6 +4830,7 @@ function PlayerTeamSettings({ user, setMembers }) {
   </div>;
 }
 function TeamsView({ currentUser, members, setMembers, currentClub }) {
+  const t = useT();
   const [teams, setTeams] = useState([]);
   const [selectedTeamId, setSelectedTeamId] = useState("");
   const [selectedPlayerId, setSelectedPlayerId] = useState("");
@@ -7157,6 +7158,7 @@ function CalendarSyncSettings({ user, saveRef }) {
 }
 
 function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, currentClub, dutyPlan, punkteZiel, punktePraemie, werbeplaetze, onSponsorImpression, onSponsorClick, onLogout, clubFeatures, onClubFeaturesChanged, entitlement, goSubscribe, dashboardTileOrder, setDashboardTileOrder, ziel, onZielErreicht }) {
+  const t = useT();
   const featureEnabled = (key) => clubFeatures[key] !== false;
   /* Ziel und Praemie legt der VEREIN fest, nicht die App. Ohne Eintrag steht
      kein Versprechen da - vorher verpflichtete die App jeden Verein zu einem
@@ -7239,17 +7241,17 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
           Nur die Kachel mit den Vereinsfunktionen bleibt der Vereinsleitung
           vorbehalten - haette ich den ganzen Abschnitt hinter isAdmin gelassen,
           haetten alle anderen den Zugang zu ihren eigenen Angaben verloren. */}
-      <SectionTitle eyebrow="Verein verwalten" title="Vereinseinstellungen" />
+      <SectionTitle eyebrow={t("pf.vereinVerwalten")} title={t("pf.vereinseinstellungen")} />
       <div className="space-y-2 mb-6">
         {isAdmin(user) && <ProfileSettingsCard icon={Settings} title="Vereinseinstellungen" description="Funktionen wie Fahrzeugbuchung, Tippspiel & Athlet/in der Saison ein- oder ausblenden" color={C.red} onClick={() => setProfileFolder("clubsettings")}/>}
-        <ProfileSettingsCard icon={Trophy} title="Verein & Mitgliedschaft" description="Athleten-, Trainer- und Vereinsrollen" color={C.red} onClick={() => setProfileFolder("club")}/>
-        <ProfileSettingsCard icon={Euro} title="Zugang & Empfehlungen" description="Freischaltung des Vereins und Vereine werben Vereine" color={C.red} onClick={() => setProfileFolder("billing")}/>
+        <ProfileSettingsCard icon={Trophy} title={t("pf.vereinMitglied")} description="Athleten-, Trainer- und Vereinsrollen" color={C.red} onClick={() => setProfileFolder("club")}/>
+        <ProfileSettingsCard icon={Euro} title={t("pf.zugang")} description="Freischaltung des Vereins und Vereine werben Vereine" color={C.red} onClick={() => setProfileFolder("billing")}/>
       </div>
 
-      <SectionTitle eyebrow="Verwalten" title="Einstellungen" />
+      <SectionTitle eyebrow={t("pf.vereinVerwalten")} title={t("pf.einstellungen")} />
       <div className="space-y-2 mb-6">
-        <ProfileSettingsCard icon={User} title="Persönliche Daten" description="Stammdaten, Kontakte, Familie" color={C.secondary} onClick={() => setProfileFolder("personal")}/>
-        <ProfileSettingsCard icon={KeyRound} title="Konto & Sicherheit" description="Passwort, Sicherheit, Rechtliches, Account" color={AVATAR_FARBEN[2]} onClick={() => setProfileFolder("security")}/>
+        <ProfileSettingsCard icon={User} title={t("pf.persoenlich")} description="Stammdaten, Kontakte, Familie" color={C.secondary} onClick={() => setProfileFolder("personal")}/>
+        <ProfileSettingsCard icon={KeyRound} title={t("pf.konto")} description="Passwort, Sicherheit, Rechtliches, Account" color={AVATAR_FARBEN[2]} onClick={() => setProfileFolder("security")}/>
         {/* Die Sprache wird beim ersten Oeffnen gewaehlt - danach muss sie
             auch aenderbar sein. Ohne diese Karte waere die Wahl endgueltig,
             und wer sich vertippt hat, muesste die App loeschen. */}
@@ -7257,7 +7259,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
             und ein Konto anlegt, landet direkt bei der Beitrittsanfrage fuer
             genau diesen Verein - statt in einer Vereinssuche, in der er den
             Namen tippen muesste, den ihm gerade jemand geschickt hat. */}
-        <ProfileSettingsCard icon={UserPlus} title="Freunde einladen" description="Link zum Verein teilen" color={C.secondary} onClick={async () => {
+        <ProfileSettingsCard icon={UserPlus} title={t("pf.einladen")} description="Link zum Verein teilen" color={C.secondary} onClick={async () => {
           const link = `${window.location.origin}/?verein=${currentClub?.id || ""}`;
           const text = `Komm zu ${currentClub?.name || "unserem Verein"} in die Vereins-App:`;
           try {
@@ -7270,9 +7272,9 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
             window.prompt("Einladungslink:", link);
           }
         }}/>
-        <ProfileSettingsCard icon={Globe} title="Sprache" description={SPRACHEN.find((x) => x.code === sprache)?.name || "Deutsch"} color={C.secondary} onClick={() => setProfileFolder("sprache")}/>
-        <ProfileSettingsCard icon={Bell} title="Benachrichtigungen & Kalender" description="Push-Einstellungen und Kalendersync" color={C.secondary} onClick={() => setProfileFolder("notify")}/>
-        <ProfileSettingsCard icon={Star} title="Support & Feedback" description="Bewertung abgeben, Fehler melden" color={C.textDim} onClick={() => setProfileFolder("support")}/>
+        <ProfileSettingsCard icon={Globe} title={t("profil.sprache")} description={SPRACHEN.find((x) => x.code === sprache)?.name || "Deutsch"} color={C.secondary} onClick={() => setProfileFolder("sprache")}/>
+        <ProfileSettingsCard icon={Bell} title={t("pf.benachrichtigungen")} description="Push-Einstellungen und Kalendersync" color={C.secondary} onClick={() => setProfileFolder("notify")}/>
+        <ProfileSettingsCard icon={Star} title={t("pf.support")} description="Bewertung abgeben, Fehler melden" color={C.textDim} onClick={() => setProfileFolder("support")}/>
         {vorhandeneVideos.length > 0 && <ProfileSettingsCard icon={PlayCircle} title="App kennenlernen" description="Kurzvideos zu den Funktionen, die du nutzen kannst" color={C.secondary} onClick={() => setProfileFolder("howto")}/>}
         {/* Direkter Weg zur Kontolöschung. Vorher lag sie drei Overlay-Ebenen tief
             und keine der Zwischenkacheln trug das Wort „löschen" — ein Prüfer, der
@@ -7310,7 +7312,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
 
       {profileFolder === "personal" && <ProfileUnderlay title="Persönliche Daten" eyebrow="Einstellungen" onClose={() => setProfileFolder("")}>
         <div className="space-y-2">
-          <ProfileSettingsCard icon={User} title="Persönliche Daten" description="Stammdaten, Kontakte, Adresse und Mitgliederausweis" color={C.secondary} onClick={() => setProfileUnderlay("personal")}/>
+          <ProfileSettingsCard icon={User} title={t("pf.persoenlich")} description="Stammdaten, Kontakte, Adresse und Mitgliederausweis" color={C.secondary} onClick={() => setProfileUnderlay("personal")}/>
           <ProfileSettingsCard icon={Users} title="Familie" description="Familienprofile ansehen und Verknüpfungen verwalten" color={C.secondary} onClick={() => setProfileUnderlay("family")}/>
         </div>
       </ProfileUnderlay>}
