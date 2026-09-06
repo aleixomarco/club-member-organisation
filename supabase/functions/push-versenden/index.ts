@@ -171,16 +171,38 @@ async function erwartetesGeheimnis(): Promise<string> {
   const url = Deno.env.get("SUPABASE_URL");
   const schluessel = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!url || !schluessel) throw new Error("Supabase-Zugang fehlt in der Umgebung.");
-  const antwort = await fetch(`${url}/rest/v1/rpc/push_geheimnis`, {
-    method: "POST",
-    headers: {
-      apikey: schluessel,
-      Authorization: `Bearer ${schluessel}`,
-      "Content-Type": "application/json",
-    },
-    body: "{}",
-  });
-  if (!antwort.ok) throw new Error(`Geheimnis nicht lesbar: ${antwort.status} ${await antwort.text()}`);
+  /* Zweiter Versuch bei einem Fehlschlag.
+     Der Ausloeser in der Datenbank ruft diese Funktion und wirft die Antwort
+     weg - es gibt keine Wiedervorlage. Scheitert hier also der Griff nach dem
+     Geheimnis, ist die Mitteilung ENDGUELTIG verloren: In der Glocke steht
+     sie, auf dem Telefon kommt nie etwas an, und niemand erfaehrt davon.
+     Genau das ist am 06.09. um 21:48:18 passiert - eine von zwei Mitteilungen
+     kam mit "Nicht bereit" zurueck, die andere ging durch.
+     Ein kalter Start plus ein Schluckauf bei der Datenbank reicht dafuer.
+     Zwei Versuche mit einer kurzen Pause dazwischen fangen das ab; hilft auch
+     der zweite nicht, liegt wirklich etwas im Argen. */
+  let antwort: Response | null = null;
+  for (let versuch = 0; versuch < 2; versuch++) {
+    if (versuch > 0) await new Promise((fertig) => setTimeout(fertig, 250));
+    try {
+      antwort = await fetch(`${url}/rest/v1/rpc/push_geheimnis`, {
+        method: "POST",
+        headers: {
+          apikey: schluessel,
+          Authorization: `Bearer ${schluessel}`,
+          "Content-Type": "application/json",
+        },
+        body: "{}",
+      });
+      if (antwort.ok) break;
+    } catch (fehler) {
+      console.error(`Geheimnis-Abruf Versuch ${versuch + 1} fehlgeschlagen`, fehler);
+      antwort = null;
+    }
+  }
+  if (!antwort || !antwort.ok) {
+    throw new Error(`Geheimnis nicht lesbar: ${antwort ? `${antwort.status} ${await antwort.text()}` : "keine Antwort"}`);
+  }
   const wert = await antwort.json();
   if (typeof wert !== "string" || wert.length < 32) throw new Error("Geheimnis fehlt oder ist zu kurz.");
   geheimnisZwischenspeicher = wert;
