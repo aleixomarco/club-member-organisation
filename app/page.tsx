@@ -7752,7 +7752,68 @@ function AutomationsPanel({ members, feePaid, remindersSent, setRemindersSent, w
 /* ------------------------------------------------------------------ */
 /* Übersicht (Vorstands-Dashboard)                                      */
 /* ------------------------------------------------------------------ */
-function OverviewPanel({ members, events, feePaid, protocols, dutyPlan, seasonVotes, goPanel, showFees }) {
+/* To-Do-Board der Vereinsleitung.
+ *
+ * Was offen ist, verteilte sich ueber drei Bildschirme: Mitgliedsantraege
+ * dort, fehlende Ergebnisse hier, Aufgaben in der Terminkarte. Wer nicht
+ * danach sucht, findet es nicht - und ein Mitgliedsantrag, den niemand sieht,
+ * ist ein Mensch, der vor der Tuer steht und wartet.
+ *
+ * KEIN HAKEN ZUM ABHAKEN. Ein Punkt steht in der Liste, WEIL etwas fehlt -
+ * sobald es da ist, faellt er aus der Abfrage. Ein Haken, den jemand setzen
+ * muss, waere eine zweite Wahrheit neben der ersten: Man koennte abhaken, ohne
+ * etwas zu tun, und die Liste waere sauber und falsch.
+ *
+ * Jede Zeile weiss, wohin sie fuehrt - die Datenbank liefert das Ziel mit. */
+function TodoBoard({ currentClub, goPanel, goFahrzeuge }) {
+  const [punkte, setPunkte] = useState(null);
+  const [fehler, setFehler] = useState("");
+
+  const laden = useCallback(async () => {
+    if (!supabase || !isDbId(currentClub?.id)) { setPunkte([]); return; }
+    const { data, error } = await supabase.rpc("offene_punkte_fuer_verein", { target_club: currentClub.id });
+    if (error) { setFehler("Die offenen Punkte konnten nicht geladen werden."); setPunkte([]); return; }
+    setPunkte(data || []);
+  }, [currentClub?.id]);
+  useEffect(() => { laden(); }, [laden]);
+
+  if (!supabase) return null;
+  if (punkte === null) return null;
+
+  return (
+    <div className="rounded-2xl overflow-hidden mb-4" style={{ border: `1px solid ${C.line}` }}>
+      <div className="flex items-center justify-between px-4 py-2.5" style={{ background: C.ink }}>
+        <span className="text-xs font-bold" style={{ color: C.white, fontFamily: "Inter" }}>
+          {punkte.length === 0 ? "Nichts offen" : `${punkte.length} ${punkte.length === 1 ? "offener Punkt" : "offene Punkte"}`}
+        </span>
+        <button onClick={laden} aria-label="Neu laden" className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,.14)" }}>
+          <RefreshCw size={11} style={{ color: C.white }} />
+        </button>
+      </div>
+      {punkte.length === 0 ? (
+        <div className="px-4 py-3 text-[11px]" style={{ background: C.white, color: C.textDim, fontFamily: "Inter" }}>
+          Keine Mitgliedsanträge, keine fehlenden Ergebnisse, keine fälligen Aufgaben.
+        </div>
+      ) : /* Fahrzeugbuchungen liegen in einer eigenen Ansicht, nicht in der Verwaltung - ohne die Weiche unten liefe der Klick ins Leere. */
+        punkte.map((p, i) => (
+        <button key={`${p.art}-${p.ziel_id}`} onClick={() => (p.ziel === "vehicle" ? goFahrzeuge?.() : goPanel?.(p.ziel))}
+          className="w-full text-left flex items-center gap-2 px-4 py-2.5"
+          style={{ background: C.white, borderTop: i ? `1px solid ${C.line}` : "none" }}>
+          <span className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+            style={{ background: p.art === "mitgliedsantrag" || p.art === "fahrzeuganfrage" ? C.red : C.secondary }} />
+          <span className="flex-1 min-w-0">
+            <span className="block text-xs font-bold truncate" style={{ color: C.ink, fontFamily: "Inter" }}>{p.titel}</span>
+            <span className="block text-[11px] truncate" style={{ color: C.textDim, fontFamily: "Inter" }}>{p.detail}</span>
+          </span>
+          <ChevronRight size={13} style={{ color: C.textDim, flexShrink: 0 }} />
+        </button>
+      ))}
+      {fehler && <div role="status" className="px-4 py-2 text-[11px]" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{fehler}</div>}
+    </div>
+  );
+}
+
+function OverviewPanel({ members, events, feePaid, protocols, dutyPlan, seasonVotes, goPanel, showFees, currentClub, goFahrzeuge }) {
   const paidCount = members.filter((m) => feePaid[m.id]).length;
   const feeRate = members.length ? Math.round((paidCount / members.length) * 100) : 100;
   const openTasks = protocols.flatMap((p) => p.tasks.filter((t) => !t.done)).length;
@@ -7771,6 +7832,10 @@ function OverviewPanel({ members, events, feePaid, protocols, dutyPlan, seasonVo
     .sort((a, b) => new Date(a.date) - new Date(b.date))[0];
 
   return (
+    <>
+    {/* Zuerst das, was Handlung braucht - dann die Zahlen. Ein Kennwert sagt,
+        wie es steht; ein offener Punkt sagt, was zu tun ist. */}
+    <TodoBoard currentClub={currentClub} goPanel={goPanel} goFahrzeuge={goFahrzeuge} />
     <div className="grid grid-cols-2 gap-3">
       <StatCard icon={Users} label="Mitglieder" value={members.length} sub="alle formale Mitglieder" accent={C.ink} />
       {showFees && <StatCard icon={Euro} label="Beitragsquote" value={`${feeRate}%`} sub={`${members.length - paidCount} offen`} accent={C.secondary} />}
@@ -7779,6 +7844,7 @@ function OverviewPanel({ members, events, feePaid, protocols, dutyPlan, seasonVo
       <StatCard icon={Trophy} label="Saison-Stimmen" value={seasonTotal} sub="Athlet/in der Saison" accent={C.secondary} onClick={() => goPanel("season")} />
       <StatCard icon={CalendarDays} label="Nächstes Event" value={nextEvent ? formatDate(nextEvent.date) : "—"} sub={nextEvent ? nextEvent.title : "Kein Termin geplant"} accent={C.red} />
     </div>
+    </>
   );
 }
 
@@ -8945,6 +9011,7 @@ function ClaimManagedPlayerPanel({ members, setMembers, currentUser }) {
 }
 
 function AdminView({
+  goFahrzeuge,
   members, setMembers, events, feePaid, setFeePaid, dutyPlan, setDutyPlan, seasonVotes, currentUser,
   channels, setChannels, maintenanceMode, setMaintenanceMode, onResetDemo,
   protocols, setProtocols, remindersSent, setRemindersSent,
@@ -9010,7 +9077,7 @@ function AdminView({
         ))}
       </div>
 
-      {panel === "overview" && <OverviewPanel members={members} events={events} feePaid={feePaid} protocols={protocols} dutyPlan={dutyPlan} seasonVotes={seasonVotes} goPanel={setPanel} showFees={canSeeFees} />}
+      {panel === "overview" && <OverviewPanel members={members} events={events} feePaid={feePaid} protocols={protocols} dutyPlan={dutyPlan} seasonVotes={seasonVotes} goPanel={setPanel} goFahrzeuge={goFahrzeuge} currentClub={currentClub} showFees={canSeeFees} />}
       {panel === "memberships" && currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role)) && <MembershipApprovalsPanel club={currentClub} members={members} setMembers={setMembers} />}
       {panel === "clubprofile" && currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role)) && <><ClubLogoPanel club={currentClub} onLogoUpdated={onClubLogoUpdated} /><ClubColorPanel club={currentClub} onColorsUpdated={onClubColorsUpdated} /></>}
 
@@ -11038,7 +11105,7 @@ export default function ClubMemberOrganisationApp() {
               {!subView && tab === "redaktion" && currentUserCanEditNews && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Redaktion"><RedaktionView user={currentUser} news={vereinsNews} setNews={setVereinsNews} /></LockedFeature>}
               {!subView && tab === "admin" && (currentUserIsAdmin || currentUserCanEditSponsors) && (
                 <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Verwaltung">
-                <AdminView members={clubMembers} setMembers={setMembers} events={events} feePaid={feePaid} setFeePaid={setFeePaid} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} seasonVotes={seasonVotes}
+                <AdminView goFahrzeuge={() => setSubView("vehicles")} members={clubMembers} setMembers={setMembers} events={events} feePaid={feePaid} setFeePaid={setFeePaid} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} seasonVotes={seasonVotes}
                   currentUser={currentUser} channels={channels} setChannels={setChannels} maintenanceMode={maintenanceMode} setMaintenanceMode={setMaintenanceMode} onResetDemo={resetDemoData}
                   protocols={protocols} setProtocols={setProtocols} remindersSent={remindersSent} setRemindersSent={setRemindersSent}
                   welcomeAutomation={welcomeAutomation} setWelcomeAutomation={setWelcomeAutomation} billingAutomation={billingAutomation} setBillingAutomation={setBillingAutomation}
