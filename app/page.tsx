@@ -5409,17 +5409,30 @@ function TaskCreateForm({ form, setForm, onSubmit, onCancel, editing = false, te
             className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.white, border: `1px solid ${C.line}`, color: C.ink }} />
         </label>
       </div>
+      {/* Eigene Loeschtaste neben den Zeitfeldern.
+          Der Zeitwaehler von iOS hat zwar "Reset", meldet die Leerung aber
+          nicht zuverlaessig an die Seite zurueck - das Feld sah danach leer
+          aus und schickte trotzdem die alte Uhrzeit. Die Taste hier setzt den
+          Wert selbst und erscheint nur, wenn etwas drinsteht. */}
       <div className="flex gap-2 mb-2">
-        <label className="flex-1">
-          <span className="block text-[10px] font-bold mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>Startzeit</span>
-          <input type="time" value={form.startTime || ""} onChange={(e) => setForm({ ...form, startTime: e.target.value })}
-            className="erg-datetime w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.white, border: `1px solid ${C.line}`, color: C.ink }} />
-        </label>
-        <label className="flex-1">
-          <span className="block text-[10px] font-bold mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>Endzeit</span>
-          <input type="time" value={form.endTime || ""} onChange={(e) => setForm({ ...form, endTime: e.target.value })}
-            className="erg-datetime w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.white, border: `1px solid ${C.line}`, color: C.ink }} />
-        </label>
+        {[["startTime", "Startzeit"], ["endTime", "Endzeit"]].map(([feld, beschriftung]) => (
+          <label key={feld} className="flex-1">
+            <span className="block text-[10px] font-bold mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>{beschriftung}</span>
+            <div className="relative">
+              <input type="time" value={form[feld] || ""} onChange={(e) => setForm({ ...form, [feld]: e.target.value })}
+                className="erg-datetime w-full px-3 py-2.5 rounded-xl text-xs outline-none"
+                style={{ background: C.white, border: `1px solid ${C.line}`, color: C.ink, paddingRight: form[feld] ? 30 : 12 }} />
+              {form[feld] && (
+                <button type="button" onClick={() => setForm({ ...form, [feld]: "" })}
+                  aria-label={`${beschriftung} leeren`}
+                  className="absolute top-1/2 right-2 w-5 h-5 rounded-full flex items-center justify-center"
+                  style={{ transform: "translateY(-50%)", background: C.paperDim }}>
+                  <X size={11} style={{ color: C.textDim }} />
+                </button>
+              )}
+            </div>
+          </label>
+        ))}
       </div>
       {teams.length > 0 && (
         <select value={form.teamId || ""} onChange={(e) => setForm({ ...form, teamId: e.target.value })}
