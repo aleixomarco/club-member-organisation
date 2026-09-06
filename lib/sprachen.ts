@@ -1024,6 +1024,10 @@ const de: Woerterbuch = {
   "auf.wiederOeffnen": "Wieder öffnen",
   "auf.erledigenFehler": "Die Aufgabe konnte nicht abgehakt werden.",
   "help.eingetragenLabel": "Eingetragen",
+
+  "update.titel": "Neue Version verfügbar",
+  "update.text": "Bitte aktualisiere die App, um weiterzumachen. Ohne die neue Version funktionieren einige Bereiche nicht mehr richtig.",
+  "update.knopf": "Jetzt aktualisieren",
 };
 
 const en: Woerterbuch = {
@@ -2015,6 +2019,10 @@ const en: Woerterbuch = {
   "auf.wiederOeffnen": "Reopen",
   "auf.erledigenFehler": "The task could not be marked as done.",
   "help.eingetragenLabel": "Signed up",
+
+  "update.titel": "New version available",
+  "update.text": "Please update the app to continue. Some areas no longer work correctly without the new version.",
+  "update.knopf": "Update now",
 };
 
 const es: Woerterbuch = {
@@ -3006,6 +3014,10 @@ const es: Woerterbuch = {
   "auf.wiederOeffnen": "Reabrir",
   "auf.erledigenFehler": "No se ha podido marcar la tarea como hecha.",
   "help.eingetragenLabel": "Apuntados",
+
+  "update.titel": "Nueva versión disponible",
+  "update.text": "Actualiza la aplicación para continuar. Sin la nueva versión, algunas partes ya no funcionan bien.",
+  "update.knopf": "Actualizar ahora",
 };
 
 const pt: Woerterbuch = {
@@ -3997,6 +4009,10 @@ const pt: Woerterbuch = {
   "auf.wiederOeffnen": "Reabrir",
   "auf.erledigenFehler": "Não foi possível marcar a tarefa como concluída.",
   "help.eingetragenLabel": "Inscritos",
+
+  "update.titel": "Nova versão disponível",
+  "update.text": "Atualiza a aplicação para continuar. Sem a nova versão, algumas áreas deixam de funcionar corretamente.",
+  "update.knopf": "Atualizar agora",
 };
 
 const it: Woerterbuch = {
@@ -4988,6 +5004,10 @@ const it: Woerterbuch = {
   "auf.wiederOeffnen": "Riapri",
   "auf.erledigenFehler": "Non è stato possibile segnare il compito come fatto.",
   "help.eingetragenLabel": "Iscritti",
+
+  "update.titel": "Nuova versione disponibile",
+  "update.text": "Aggiorna l'app per continuare. Senza la nuova versione alcune parti non funzionano più correttamente.",
+  "update.knopf": "Aggiorna ora",
 };
 
 const tr: Woerterbuch = {
@@ -5979,6 +5999,10 @@ const tr: Woerterbuch = {
   "auf.wiederOeffnen": "Yeniden aç",
   "auf.erledigenFehler": "Görev tamamlandı olarak işaretlenemedi.",
   "help.eingetragenLabel": "Kaydolanlar",
+
+  "update.titel": "Yeni sürüm mevcut",
+  "update.text": "Devam etmek için uygulamayı güncelle. Yeni sürüm olmadan bazı bölümler düzgün çalışmaz.",
+  "update.knopf": "Şimdi güncelle",
 };
 
 const fr: Woerterbuch = {
@@ -6970,6 +6994,10 @@ const fr: Woerterbuch = {
   "auf.wiederOeffnen": "Rouvrir",
   "auf.erledigenFehler": "Impossible de marquer la tâche comme terminée.",
   "help.eingetragenLabel": "Inscrits",
+
+  "update.titel": "Nouvelle version disponible",
+  "update.text": "Mets l'application à jour pour continuer. Sans la nouvelle version, certaines parties ne fonctionnent plus correctement.",
+  "update.knopf": "Mettre à jour",
 };
 
 const WOERTERBUECHER: Record<string, Woerterbuch> = { de, en, es, pt, it, tr, fr };

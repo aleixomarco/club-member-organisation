@@ -9,7 +9,7 @@ import {
   ShieldCheck, ArrowRight, ArrowLeft, AlertCircle, UserPlus, Eye, EyeOff,
   Target, ClipboardList, Newspaper, Bell, KeyRound, Settings, RefreshCw,
   Bug, Smartphone, Save, Plus, Building2, ExternalLink, Phone, Copy, PlayCircle, ChevronUp
-, ListFilter, Globe,
+, ListFilter, Globe, Download
 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { SPRACHEN, gespeicherteSprache, spracheMerken, uebersetze } from "@/lib/sprachen";
@@ -7172,6 +7172,20 @@ function NotificationSettings({ user, setMembers, saveRef }) {
   const [message,setMessage]=useState("");
   const [pushStatus,setPushStatus]=useState("idle");
   const databaseMembership = !!supabase && isDbId(user.id);
+
+  /* Der Schalter stand nach jedem Oeffnen wieder auf "Push aktivieren" -
+     auch bei jemandem, der es laengst eingeschaltet hatte. pushStatus begann
+     immer bei "idle", weil niemand nachsah, ob fuer dieses Konto schon ein
+     Geraet eingetragen ist. Wer darauf tippte, richtete Push ein zweites Mal
+     ein und hielt es fuer kaputt.
+     Gefragt wird die Datenbank, nicht das Geraet: Dort steht, was zaehlt. */
+  useEffect(() => {
+    if (!databaseMembership) return;
+    let weg = false;
+    supabase.from("push_subscriptions").select("id").eq("membership_id", user.id).limit(1)
+      .then(({ data }) => { if (!weg && data?.length) setPushStatus("active"); });
+    return () => { weg = true; };
+  }, [databaseMembership, user.id]);
   const activatePush = async () => {
     setPushStatus("working");
     const result = await enablePushNotifications(user.id);
@@ -9840,6 +9854,68 @@ function AdminView({
    Zeilen und gilt dann ueberall.
    Der Rueckfall ist Deutsch: Wer useT ausserhalb des Anbieters benutzt -
    etwa in einem Test - bekommt deutsche Texte statt eines Fehlers. */
+/* Ist die installierte Version aelter als die im Store?
+ *
+ * Verglichen wird Zahl fuer Zahl, nicht als Text: "1.10" ist neuer als
+ * "1.9", als Zeichenkette waere es kleiner. Fehlende Stellen zaehlen als 0,
+ * damit "1.2" und "1.2.0" gleich sind. Steckt irgendwo etwas anderes als
+ * eine Zahl, wird NICHT gesperrt - eine Sperre auf Verdacht ist schlimmer
+ * als eine verpasste Aktualisierung. */
+function versionIstAelter(installiert, imStore) {
+  const teile = (v) => String(v || "").split(".").map((x) => Number.parseInt(x, 10));
+  const a = teile(installiert), b = teile(imStore);
+  if (a.some(Number.isNaN) || b.some(Number.isNaN) || !a.length || !b.length) return false;
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const links = a[i] ?? 0, rechts = b[i] ?? 0;
+    if (links !== rechts) return links < rechts;
+  }
+  return false;
+}
+
+/* Der Bildschirm, der zum Aktualisieren zwingt.
+ *
+ * WARUM SO HART
+ * Die Oberflaeche kommt vom Server, die native Huelle aus dem Store. Beide
+ * muessen zusammenpassen: Ruft neue Weboberflaeche einen Baustein auf, den
+ * die alte Huelle nicht hat, bricht sie ab - und der Nutzer sieht einen
+ * Fehler, den er sich nicht erklaeren kann. Genau das ist heute passiert,
+ * als Push in Version 1.0 "nicht eingerichtet werden" konnte.
+ *
+ * WARUM ER TROTZDEM SELTEN KOMMT
+ * Er erscheint nur, wenn Apple eine hoehere Version meldet UND die App sie
+ * kennt. Antwortet der Store nicht, passiert nichts: Ein Ausfall bei Apple
+ * darf keine Nutzer aussperren. */
+function UpdateSperre({ installiert, verfuegbar, storeUrl }) {
+  const t = useT();
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: C.paper,
+                  display: "flex", flexDirection: "column", alignItems: "center",
+                  justifyContent: "center", padding: "32px 28px", textAlign: "center" }}>
+      <div style={{ width: 74, height: 74, borderRadius: 24, background: C.glass,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    marginBottom: 22, border: `1px solid ${C.line}` }}>
+        <Download size={30} style={{ color: C.red }} />
+      </div>
+      <div style={{ fontFamily: "Oswald", fontWeight: 700, fontSize: 23, color: C.ink, marginBottom: 10 }}>
+        {t("update.titel")}
+      </div>
+      <div style={{ fontFamily: "Inter", fontSize: 13, color: C.textDim, lineHeight: 1.65, maxWidth: 330, marginBottom: 6 }}>
+        {t("update.text")}
+      </div>
+      <div style={{ fontFamily: "JetBrains Mono", fontSize: 11, color: C.textDim, marginBottom: 26 }}>
+        {installiert} → {verfuegbar}
+      </div>
+      <button
+        onClick={() => { if (storeUrl) window.location.href = storeUrl; }}
+        style={{ width: "100%", maxWidth: 330, padding: "14px 20px", borderRadius: 16,
+                 background: C.ink, color: C.white, fontFamily: "Inter", fontWeight: 700,
+                 fontSize: 14, border: "none", cursor: "pointer" }}>
+        {t("update.knopf")}
+      </button>
+    </div>
+  );
+}
+
 const SprachKontext = React.createContext("de");
 function useT() {
   const code = React.useContext(SprachKontext);
@@ -10504,6 +10580,24 @@ export default function ClubMemberOrganisationApp() {
        Glocke ja trotzdem stand.
        Ohne Erlaubnis passiert hier nichts - es wird nicht gefragt. */
     if (isDbId(currentUser.id)) pushTokenAuffrischen(currentUser.id);
+
+    /* Beim ersten Oeffnen einmal fragen.
+       Bisher musste jeder den Schalter im Profil selbst finden - und wer ihn
+       nicht fand, bekam nie einen Push. Das ist die Voreinstellung, die
+       niemand bewusst gewaehlt hat.
+       EINMAL heisst einmal: Die Merkzeile im Geraet sorgt dafuer, dass die
+       Frage nicht bei jedem Start wiederkommt. Wer ablehnt, wird nicht wieder
+       gefragt - iOS fragt ohnehin kein zweites Mal, und ein Dialog, den man
+       nicht wegbekommt, ist genau der Grund, warum Leute Apps loeschen.
+       Nur in der nativen App: Im Browser braucht das Fragen eine
+       Nutzeraktion, sonst lehnt der Browser von sich aus ab - und ein
+       verbrannter Versuch laesst sich nicht zuruecknehmen. */
+    if (!isDbId(currentUser.id) || !Capacitor.isNativePlatform()) return;
+    try {
+      if (localStorage.getItem("cmo.pushGefragt")) return;
+      localStorage.setItem("cmo.pushGefragt", "1");
+    } catch { return; }
+    enablePushNotifications(currentUser.id).catch(() => {});
   }, [currentUser?.id]);
   useEffect(() => {
     const isRealAccount = !!supabase && isDbId(currentUser?.id || "");
@@ -10576,6 +10670,32 @@ export default function ClubMemberOrganisationApp() {
      eingeloest; danach setzt sie ihn zurueck, damit ein spaeterer Besuch des
      Profils wieder normal auf der Uebersicht beginnt. */
   const [profilZiel, setProfilZiel] = useState("");
+
+  /* Steht im App Store eine neuere Version?
+     Einmal beim Start, nur in der nativen Huelle. Im Browser gibt es nichts
+     zu aktualisieren - dort ist die Oberflaeche immer die aktuelle. */
+  const [updateNoetig, setUpdateNoetig] = useState(null);
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    let weg = false;
+    (async () => {
+      try {
+        const { App } = await import("@capacitor/app");
+        const info = await App.getInfo();
+        const antwort = await fetch("/api/app-version", { cache: "no-store" });
+        const { version, storeUrl } = await antwort.json();
+        if (weg || !version || !info?.version) return;
+        if (versionIstAelter(info.version, version)) {
+          setUpdateNoetig({ installiert: info.version, verfuegbar: version, storeUrl });
+        }
+      } catch {
+        /* Still. Kein Netz, keine Antwort von Apple, ein Baustein, den die
+           alte Huelle nicht kennt - nichts davon ist ein Grund, jemanden
+           auszusperren. */
+      }
+    })();
+    return () => { weg = true; };
+  }, []);
   const goSubscribe = () => { setSubView(null); setProfilZiel("billing"); setTab("profile"); };
 
   const loadClubFeatures = useCallback(async () => {
@@ -11929,6 +12049,7 @@ export default function ClubMemberOrganisationApp() {
   return (
     <SprachKontext.Provider value={sprache || "de"}>
     <MitgliederKontext.Provider value={members}>
+    {updateNoetig && <UpdateSperre {...updateNoetig} />}
     <div className="erg-app erg-shell w-full flex items-center justify-center" style={{ fontFamily: "Inter", ...themeVars }}>
       <style>{FONTS}</style>
       <div className="erg-canvas erg-frame relative w-full flex flex-col overflow-hidden">
