@@ -213,6 +213,11 @@ button:active { transform: scale(0.96); }
   .erg-frame .px-4 { padding-left: max(24px, calc((100% - 860px) / 2)); padding-right: max(24px, calc((100% - 860px) / 2)); }
   /* Die schwebende Navigation mittig halten statt ueber die ganze Breite */
   .erg-navwrap { left: 50% !important; right: auto !important; transform: translateX(-50%); width: min(680px, calc(100% - 48px)); }
+  /* Anmeldung, Registrierung und Vereinssuche haben eine eigene Huelle. Ohne
+     diese Regel zoegen sich die Eingabefelder ueber die ganze Breite - ein
+     Passwortfeld von 1400 Pixeln sieht kaputt aus, nicht grosszuegig. */
+  .erg-auth { align-items: center; }
+  .erg-auth > * { width: 100%; max-width: 420px; }
 }
 
 /* Milchige Unterseite (Profil-Unterpunkte). Ohne eigene Deckung würde man durch die
@@ -1494,7 +1499,7 @@ function SponsorSlot({ slotKey, bookings, onImpression, onClick, visible = true 
 /* ------------------------------------------------------------------ */
 function AuthShell({ children, footer, club }) {
   return (
-    <div className="flex flex-col h-full px-6 pt-8 pb-6 overflow-y-auto" style={{ background: C.paper }}>
+    <div className="erg-auth flex flex-col h-full px-6 pt-8 pb-6 overflow-y-auto" style={{ background: C.paper }}>
       <div className="flex flex-col items-center mb-8">
         <div className="mb-3"><ClubLogo club={club} size={56} rounded={16} /></div>
         <div className="text-sm tracking-widest" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>{club ? club.shortName : "VEREINS-APP"}</div>
