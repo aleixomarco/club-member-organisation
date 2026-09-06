@@ -253,6 +253,12 @@ Deno.serve(async (anfrage) => {
 
     let zugestellt = 0;
     const totgeglaubt: string[] = [];
+    /* Die Ablehnungsgruende reisen in der Antwort mit.
+       Sie standen bisher nur in console.error - und an das Protokoll einer
+       Edge Function kommt man von aussen nicht heran. Die Antwort dagegen
+       landet in net._http_response und ist damit aus der Datenbank lesbar.
+       Ohne das steht da nur "zugestellt: 0" und man raet, warum. */
+    const abgelehnt: string[] = [];
 
     for (const geraet of geraete as { fcm_token: string }[]) {
       const antwort = await fetch(
@@ -289,6 +295,7 @@ Deno.serve(async (anfrage) => {
       } else {
         console.error("FCM abgelehnt", antwort.status, fehlertext);
       }
+      abgelehnt.push(`${antwort.status}: ${fehlertext.slice(0, 200)}`);
     }
 
     for (const tot of totgeglaubt) {
@@ -296,7 +303,7 @@ Deno.serve(async (anfrage) => {
         .catch((e) => console.error("Aufraeumen fehlgeschlagen", e));
     }
 
-    return Response.json({ zugestellt, aufgeraeumt: totgeglaubt.length, geraete: geraete.length });
+    return Response.json({ zugestellt, aufgeraeumt: totgeglaubt.length, geraete: geraete.length, ...(abgelehnt.length ? { abgelehnt } : {}) });
   } catch (fehler) {
     console.error("Versand fehlgeschlagen", fehler);
     return Response.json({ fehler: String(fehler) }, { status: 500 });
