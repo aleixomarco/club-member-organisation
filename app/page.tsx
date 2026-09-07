@@ -6905,6 +6905,11 @@ function TasksView({ currentUser, members }) {
   const databaseMembership = !!supabase && isDbId(currentUser.id);
   const [clubTasks, setClubTasks] = useState([]);
   const [teamTasks, setTeamTasks] = useState([]);
+  /* Aufgaben, die in einer Sitzung verteilt wurden. Sie lagen bisher nur im
+     Protokoll - wer eine bekam, sah sie in seiner Aufgabenliste nicht und
+     erfuhr davon nur, wenn er das Protokoll aufschlug. Hier stehen sie,
+     solange sie offen sind. */
+  const [protokollAufgaben, setProtokollAufgaben] = useState([]);
   const [myTeams, setMyTeams] = useState([]);
   const [manageableTeamIds, setManageableTeamIds] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -6914,9 +6919,26 @@ function TasksView({ currentUser, members }) {
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [form, setForm] = useState({ title: "", description: "", dueDate: "", slots: "1", teamId: "", verantwortliche: [], startTime: "", endTime: "" });
   const canCreateClubTask = currentUser.roles.some((r) => !["spieler", "mitglied"].includes(r));
+  /* Abhaken heisst: aus der Liste nehmen. Die Zeile bleibt im Protokoll, nur
+     mit Haken - die Regel "eigene protokollaufgabe abhaken" erlaubt genau
+     diesen einen Schreibzugriff. */
+  const protokollAufgabeErledigen = async (id) => {
+    setMessage("");
+    const { error } = await supabase.from("protocol_tasks").update({ done: true }).eq("id", id);
+    if (error) { setMessage(t("auf.hakenFehler")); return; }
+    setProtokollAufgaben((liste) => liste.filter((a) => a.id !== id));
+  };
   const loadAll = useCallback(async () => {
     if (!databaseMembership) { setLoading(false); return; }
     setLoading(true); setMessage("");
+    /* Nur die eigenen und nur die offenen. Abgehakte verschwinden aus der
+       Liste - im Protokoll bleiben sie mit ihrem Haken stehen, dort ist der
+       Nachweis. */
+    supabase.from("protocol_tasks")
+      .select("id,text,due_date,done,protocol_id,protocols(title,meeting_date)")
+      .eq("assignee_membership_id", currentUser.id).eq("done", false)
+      .then(({ data }) => setProtokollAufgaben(data || []));
+
     const { data: teamRows } = await supabase.from("team_members")
       .select("team_id,function,teams(id,name)")
       .eq("membership_id", currentUser.id);
@@ -7085,6 +7107,26 @@ function TasksView({ currentUser, members }) {
       <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>Vereins- und Mannschaftsaufgaben, für die sich Mitglieder freiwillig eintragen können.</div>
       {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: (istErfolg(message)||istErfolg(message)) ? C.erfolgFlaeche : C.fehlerFlaeche, color: (istErfolg(message)||istErfolg(message)) ? C.erfolg : C.fehler }}>{meldungstext(message)}</div>}
       {loading ? <div className="text-xs py-4" style={{ color: C.textDim }}>{t("auf.laden")}</div> : <>
+        {/* Zuerst, was persoenlich zugewiesen wurde - danach das, wofuer man
+            sich freiwillig eintragen kann. */}
+        {protokollAufgaben.length > 0 && <>
+          <SectionTitle eyebrow={t("auf.ausProtokollen")} title={t("auf.dirZugewiesen")}/>
+          <div className="mb-5 space-y-2">{protokollAufgaben.map((a) => {
+            const protokoll = Array.isArray(a.protocols) ? a.protocols[0] : a.protocols;
+            const ueberfaellig = a.due_date && a.due_date < new Date().toISOString().slice(0, 10);
+            return (
+              <div key={a.id} className="rounded-2xl p-3.5" style={{ background: C.glass, border: `1px solid ${ueberfaellig ? C.red : C.line}` }}>
+                <div className="text-sm font-bold mb-1" style={{ color: C.ink }}>{a.text}</div>
+                <div className="text-[10px] mb-2" style={{ color: ueberfaellig ? C.red : C.textDim }}>
+                  {protokoll?.title || t("prot.titel")}
+                  {a.due_date ? ` · ${t("feld.faellig")} ${new Date(a.due_date).toLocaleDateString("de-DE")}` : ""}
+                </div>
+                <button onClick={() => protokollAufgabeErledigen(a.id)} className="w-full py-2 rounded-lg text-xs font-bold"
+                  style={{ background: C.erfolg, color: C.white }}>{t("auf.alsErledigt")}</button>
+              </div>
+            );
+          })}</div>
+        </>}
         <SectionTitle eyebrow="Vereinsweit" title="Vereinsaufgaben"/>
         {showCreateClub && <TaskCreateForm teams={myTeams} members={members} form={form} setForm={setForm} editing={!!editingTaskId} onSubmit={() => createTask(null)} onCancel={() => { setShowCreateClub(false); resetForm(); setEditingTaskId(null); }}/>}
         {clubTasks.length === 0 ? <div className="text-xs rounded-xl p-3 mb-5" style={{ background: C.paperDim, color: C.textDim }}>{t("auf.keine")}</div> : <div className="mb-5">{clubTasks.map((t) => <TaskCard key={t.id} task={t} canManage={canCreateClubTask} onEdit={openEditTask}/>)}</div>}
