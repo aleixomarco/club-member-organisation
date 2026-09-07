@@ -75,13 +75,25 @@ const C = {
   ink: "#2A2028",
   asphalt: "#3B2F38",
   paper: "transparent",
+  /* Deckende Flaeche fuer alles, was ueber einer Abdunklung schwebt.
+     paper ist mit Absicht durchsichtig - die App liegt auf einem Verlauf, und
+     die Ansichten sollen ihn durchscheinen lassen. Ein Overlay darf das
+     NICHT: Dort liegt eine Abdunklung von 72 % darunter, die sonst durch die
+     Flaeche hindurchschlaegt. Genau das war zu sehen - Ueberschrift, Text und
+     Knoepfe wirkten ausgegraut, als waere das Overlay deaktiviert. */
+  blatt: "#FBF8FA",
   paperDim: "rgba(92,72,86,0.07)",
   white: "#FFFFFF",
   glass: "rgba(255,255,255,0.55)",
   glassDim: "rgba(92,72,86,0.07)",
   line: "rgba(70,50,65,0.12)",
   edge: "rgba(255,255,255,0.65)",
-  textDim: "#8A7F85",
+  /* Nebentext. War #8A7F85 und kam damit auf 3,45:1 gegen den hellen Grund -
+     unter dem Mindestwert von 4,5:1, den man fuer Fliesstext braucht. Auf dem
+     Handy im Sonnenlicht war das kaum zu lesen, und es betraf jede zweite
+     Zeile der App: Datumsangaben, Orte, Untertitel, Hinweise.
+     #6E626A ist derselbe Farbton, nur dunkler, und kommt auf 5,20:1. */
+  textDim: "#6E626A",
 
   /* --- Nur fuer Zustandsmeldungen, nie fuer Gestaltung --- */
   fehler: "#C0392B",
@@ -1424,7 +1436,28 @@ function useClubEntitlement(user) {
     if (!supabase || !isDbId(user?.id)) { setState({ loading: false, tier: "pro" }); return; }
     let cancelled = false;
     (async () => {
-      const { data: tier } = await supabase.rpc("member_entitlement_tier", { target_membership: user.id });
+      /* Der Aufruf MUSS einen Zustand hinterlassen, egal wie er ausgeht.
+       *
+       * Vorher stand hier ein nacktes await. Wirft der Aufruf - abgebrochene
+       * Verbindung, Funknetz weg, Zeitueberschreitung -, bricht die Funktion
+       * ab, ohne setState je zu erreichen. loading bleibt dann fuer immer auf
+       * true, und LockedFeature zeigt einen leeren grauen Kasten. Fuer den
+       * Nutzer sieht das aus wie eine Ansicht, die ewig laedt - und zwar in
+       * ALLEN gesperrten Bereichen gleichzeitig: Chat, Teams, Redaktion,
+       * Helferplanung, Tippspiel. Nur ein Neustart der App half.
+       *
+       * Bei einem Fehler bleibt es freigeschaltet. Das ist Absicht: Die Tarife
+       * unterscheiden sich seit dem Groessenstaffel-Modell nur noch in der
+       * Zahl der Zugaenge, nicht im Funktionsumfang - einen zahlenden Verein
+       * wegen eines Funklochs aus seiner eigenen App auszusperren waere der
+       * deutlich groessere Schaden. */
+      let tier = null;
+      try {
+        ({ data: tier } = await supabase.rpc("member_entitlement_tier", { target_membership: user.id }));
+      } catch {
+        if (!cancelled) setState({ loading: false, tier: "pro" });
+        return;
+      }
       if (cancelled) return;
       setState({ loading: false, tier: tier || "none" });
       // Kein aktives Vereinsabo (mehr) -> Rollen jenseits "mitglied" zurücksetzen.
@@ -1447,7 +1480,9 @@ function useClubEntitlement(user) {
    ein paar dekorative Platzhalter ohne echten Inhalt. */
 function LockedFeature({ entitlement, feature = "Diese Funktion", goSubscribe, children }) {
   const t = useT();
-  if (entitlement.loading) return <div className="rounded-2xl p-8" style={{ background: C.paperDim }} />;
+  /* Mit Text statt als leerer Kasten: Ein grauer Block ohne Beschriftung ist
+     von einer haengenden Ansicht nicht zu unterscheiden. */
+  if (entitlement.loading) return <div className="rounded-2xl p-8 text-xs text-center" style={{ background: C.paperDim, color: C.textDim }}>{t("allg.laedt")}</div>;
   /* Seit dem Groessenstaffel-Modell unterscheiden sich die Tarife nur noch in
      der Zahl der Zugaenge, nicht im Funktionsumfang. Freigeschaltet ist also
      alles, sobald ueberhaupt ein Tarif laeuft. */
@@ -4830,7 +4865,8 @@ function TeamMeldungenAbfrage({ currentUser, clubId }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center p-3" style={{ background: "rgba(20,21,26,.72)" }}>
-      <div className="w-full max-w-md rounded-3xl p-4 max-h-[86vh] overflow-y-auto" style={{ background: C.paper }}>
+      <div className="w-full max-w-md rounded-3xl p-4 max-h-[86vh] overflow-y-auto"
+           style={{ background: C.blatt, boxShadow: "0 -14px 38px rgba(20,21,26,.30)", border: `1px solid ${C.edge}` }}>
         <div className="text-base font-bold mb-1" style={{ color: C.ink, fontFamily: "Oswald" }}>{t("tmb.abfrageTitel")}</div>
         <div className="text-[11px] mb-4" style={{ color: C.textDim }}>{t("tmb.abfrageText")}</div>
         <div className="space-y-2.5">
@@ -9912,7 +9948,10 @@ function versionIstAelter(installiert, imStore) {
 function UpdateSperre({ installiert, verfuegbar, storeUrl }) {
   const t = useT();
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: C.paper,
+    /* Deckend, nicht durchsichtig: Ein Sperrbildschirm, durch den man die
+       App sieht, sieht aus wie ein Darstellungsfehler - und laedt dazu ein,
+       daneben zu tippen. */
+    <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: C.blatt,
                   display: "flex", flexDirection: "column", alignItems: "center",
                   justifyContent: "center", padding: "32px 28px", textAlign: "center" }}>
       <div style={{ width: 74, height: 74, borderRadius: 24, background: C.glass,
@@ -10164,8 +10203,14 @@ function AufgabeOverlay({ taskId, currentUser, onClose }) {
 
   return (
     <div className="absolute inset-0 z-50 flex items-end" style={{ background: "rgba(20,21,26,.72)" }} onClick={onClose}>
-      <div className="w-full rounded-t-3xl p-5 pb-8" style={{ background: C.paper, maxHeight: "88%", overflowY: "auto" }}
+      <div className="w-full rounded-t-3xl px-5 pt-3 pb-8"
+           style={{ background: C.blatt, maxHeight: "88%", overflowY: "auto",
+                    boxShadow: "0 -14px 38px rgba(20,21,26,.30)",
+                    borderTop: `1px solid ${C.edge}` }}
            onClick={(e) => e.stopPropagation()}>
+        {/* Griff: macht auf einen Blick klar, dass hier ein Blatt ueber der
+            Liste liegt und nicht die Liste selbst weitergeht. */}
+        <div className="mx-auto mb-3" style={{ width: 38, height: 4, borderRadius: 999, background: C.line }} />
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.red }}>{t("nav.tasks")}</div>
           <button onClick={onClose} aria-label={t("allg.schliessen")} className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background: C.paperDim, color: C.textDim }}>
