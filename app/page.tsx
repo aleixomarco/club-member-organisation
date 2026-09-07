@@ -612,7 +612,18 @@ const sportConfig = (sport) => SPORT_CONFIG[sport] || SPORT_CONFIG.rollhockey;
 /* Der aufgeloeste Begriff. t kommt als Parameter, nicht aus dem Haken:
    sportText wird auch ausserhalb von Komponenten gerufen (die
    FEATURE-Rueckrufe), und useT() waere dort ein Haken am falschen Ort. */
-const sportText = (t, sport, feld) => t(sportConfig(sport)[feld]);
+/* Der Schluessel wird auch dann zurueckgegeben, wenn t fehlt.
+   Nicht aus Bequemlichkeit: Diese Funktion steckt in Dutzenden Beschriftungen,
+   und wer sie ohne t aufruft, hat bisher nicht nur eine falsche Beschriftung
+   erzeugt, sondern den ganzen Bildschirm abgeschossen - es gibt im Projekt
+   keine ErrorBoundary, ein TypeError beim Zeichnen fuehrt direkt zu "This page
+   couldn't load". Genau so ist der Bildschirm "Funktionen" gestorben.
+   Ein sichtbar unuebersetzter Text ist ein Fehler, den man meldet. Ein
+   schwarzer Bildschirm ist einer, bei dem niemand weiss, wo er herkommt. */
+const sportText = (t, sport, feld) => {
+  const schluessel = sportConfig(sport)[feld];
+  return typeof t === "function" ? t(schluessel) : schluessel;
+};
 
 /* Club-Feature-Toggles: nach der Vereinsregistrierung per Ja/Nein abgefragt, später im
    Vereinsadmin-Reiter "Funktionen" änderbar. Default (kein Eintrag in club_feature_toggles) = an. */
@@ -636,15 +647,27 @@ const DEFAULT_CLUB_FEATURES = Object.fromEntries(CLUB_FEATURES.map((f) => [f.key
 
 /* Reihenfolge der "Aktionen & Abstimmungen"-Kacheln auf dem Dashboard — von
    Vereinsadmin/Vorstand/Sysadmin einstellbar (siehe ClubFeatureSettingsPanel). */
+/* Alle Beschriftungen sind Funktionen (sport, t) - auch die, die den Sport
+   nicht brauchen. Vorher standen vier davon als feste deutsche Zeichenketten
+   hier und eine war eine Funktion; dashboardTileLabel musste beide Faelle
+   unterscheiden und rief die Funktion mit nur einem Argument auf. Damit war t
+   undefined, sportText rief undefined("...") auf, und der ganze Bildschirm
+   "Funktionen" stuerzte mit "t is not a function" ab - zu sehen als
+   "This page couldn't load".
+   Einheitlich als Funktion gibt es diesen Fall nicht mehr. Nebenbei waren die
+   vier festen Zeichenketten in allen sieben Sprachen deutsch. */
 const DASHBOARD_TILE_LABELS = {
-  season_award: "Athlet/in der Saison",
-  tippspiel: "Tippspiel",
-  duty_roster: "Helferplanung",
-  tasks: "Aufgaben",
+  season_award: (sport, t) => t("sub.season"),
+  tippspiel: (sport, t) => t("sub.tipp"),
+  duty_roster: (sport, t) => t("sub.duty"),
+  tasks: (sport, t) => t("auf.titel"),
   vehicle_booking: (sport, t) => sportText(t, sport, "vehicleTabLabel"),
 };
 const DEFAULT_DASHBOARD_TILE_ORDER = ["season_award", "tippspiel", "duty_roster", "tasks", "vehicle_booking"];
-const dashboardTileLabel = (key, sport) => { const l = DASHBOARD_TILE_LABELS[key]; return typeof l === "function" ? l(sport) : (l || key); };
+const dashboardTileLabel = (key, sport, t) => {
+  const l = DASHBOARD_TILE_LABELS[key];
+  return typeof l === "function" ? l(sport, t) : key;
+};
 const resolveDashboardTileOrder = (order) => {
   const clean = Array.isArray(order) ? order.filter((key) => DEFAULT_DASHBOARD_TILE_ORDER.includes(key)) : [];
   const missing = DEFAULT_DASHBOARD_TILE_ORDER.filter((key) => !clean.includes(key));
@@ -11026,9 +11049,9 @@ function ClubFeatureSettingsPanel({ currentClub, clubFeatures, onFeaturesChanged
             <div key={key} className="rounded-2xl px-3.5 py-3" style={{ background: C.glass, border: `1px solid ${C.edge}`, boxShadow: "0 10px 26px rgba(60,30,45,0.06)", opacity: an ? 1 : 0.66 }}>
               <div className="flex items-center gap-3">
                 <span className="w-7 h-7 rounded-lg flex items-center justify-center text-[11px] flex-shrink-0" style={{ fontFamily: "JetBrains Mono", fontWeight: 700, background: an ? `color-mix(in srgb, ${C.red} 14%, transparent)` : C.paperDim, color: an ? C.red : C.textDim }}>{index + 1}</span>
-                <span className="flex-1 min-w-0 text-sm font-bold truncate" style={{ color: C.ink }}>{dashboardTileLabel(key, sport)}</span>
+                <span className="flex-1 min-w-0 text-sm font-bold truncate" style={{ color: C.ink }}>{dashboardTileLabel(key, sport, t)}</span>
                 {abschaltbar ? (
-                  <button onClick={() => saving !== key && toggle(key, !an)} aria-label={`${dashboardTileLabel(key, sport)} ${an ? "abschalten" : "einschalten"}`} className="w-10 h-6 rounded-full relative flex-shrink-0" style={{ background: an ? C.secondary : C.paperDim, opacity: saving === key ? 0.5 : 1 }}>
+                  <button onClick={() => saving !== key && toggle(key, !an)} aria-label={`${dashboardTileLabel(key, sport, t)} ${an ? "abschalten" : "einschalten"}`} className="w-10 h-6 rounded-full relative flex-shrink-0" style={{ background: an ? C.secondary : C.paperDim, opacity: saving === key ? 0.5 : 1 }}>
                     <span className="absolute top-0.5 w-5 h-5 rounded-full" style={{ background: "#fff", left: an ? 18 : 2, transition: "left .2s" }} />
                   </button>
                 ) : (
