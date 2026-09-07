@@ -31,8 +31,24 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  /* Kennung der Veroeffentlichung, die diese Seite ausgeliefert hat.
+   *
+   * Sie steht als Meta-Angabe im Dokument, nicht als eingebackene
+   * Umgebungsvariable. Das ist kein Umweg, sondern genauer: Der Wert kommt von
+   * genau dem Server, der auch das Buendel geliefert hat - Seite und Code
+   * gehoeren damit nachweislich zusammen. Ueber next.config.ts einzublenden
+   * waere die naheliegende Loesung gewesen, nur landet der Wert mit Turbopack
+   * nicht im Buendel; nachgemessen im ausgelieferten Chunk.
+   *
+   * Die App vergleicht ihn spaeter mit dem, was /api/web-version meldet -
+   * siehe useNeueFassung(). Fehlt die Variable, bleibt das Feld leer und die
+   * Pruefung schweigt. */
+  const veroeffentlichung = process.env.VERCEL_GIT_COMMIT_SHA || "";
   return (
     <html lang="de">
+      <head>
+        <meta name="cmo-build" content={veroeffentlichung} />
+      </head>
       <body>{children}</body>
     </html>
   );

@@ -4863,6 +4863,114 @@ function AbstimmungErstellen({ onAnlegen, onSchliessen }) {
   );
 }
 
+/* ------------------------------------------------------------------ */
+/* Laeuft die App noch auf dem Code, der veroeffentlicht ist?            */
+/* ------------------------------------------------------------------ */
+/* Die App laedt ihren Code beim Start und behaelt ihn. Auf dem Telefon lebt
+   sie tagelang im Hintergrund, ohne je neu zu laden - wer in dieser Zeit eine
+   Veroeffentlichung verpasst, merkt nichts davon: keine Fehlermeldung, ihm
+   fehlen nur die neuen Sachen. So hat ein Mitglied eine Abstimmung als blossen
+   Text gesehen; sein Buendel kannte Abstimmungen noch nicht.
+
+   Verglichen wird die Kennung im eigenen Buendel (beim Bauen eingesetzt) mit
+   der, die /api/web-version gerade meldet.
+
+   NACHGEFRAGT WIRD BEIM ZURUECKKOMMEN, NICHT IM TAKT
+   Wer die App gerade benutzt, hat den Stand von vor ein paar Minuten - das ist
+   kein Problem. Interessant ist der Moment, in dem jemand nach Stunden
+   zurueckkehrt. Deshalb haengt die Pruefung an der Sichtbarkeit und am
+   Aufwachen der nativen Huelle; der lange Taktgeber ist nur das Netz darunter,
+   fuer den seltenen Fall einer App, die stundenlang offen im Vordergrund
+   steht. */
+const VERSION_TAKT = 30 * 60 * 1000;
+/* Wer den Hinweis wegwischt, soll ihn nicht beim naechsten Wechsel zwischen
+   zwei Apps wiedersehen. Zwei Stunden Ruhe - danach ist die Erinnerung
+   berechtigt, denn der alte Stand bleibt ja alt. */
+const VERSION_RUHE = 2 * 60 * 60 * 1000;
+
+function useNeueFassung() {
+  const [neueFassung, setNeueFassung] = useState(false);
+  const ruheBis = useRef(0);
+
+  useEffect(() => {
+    /* Die eigene Kennung steht im Dokument - der Server hat sie beim
+       Ausliefern hineingeschrieben (siehe app/layout.tsx). Damit gehoeren
+       Seite und Buendel nachweislich zusammen; eine ueber die Konfiguration
+       eingebackene Variable waere der naheliegendere Weg gewesen, landet mit
+       Turbopack aber gar nicht erst im Buendel. */
+    const eigene = document.querySelector('meta[name="cmo-build"]')?.getAttribute("content") || "";
+    /* Ohne eigene Kennung gibt es nichts zu vergleichen - beim Entwickeln
+       etwa. Dann schweigt die Pruefung, statt zu raten. */
+    if (!eigene) return undefined;
+
+    let abgemeldet = false;
+    const pruefen = async () => {
+      if (abgemeldet || Date.now() < ruheBis.current) return;
+      try {
+        const antwort = await fetch("/api/web-version", { cache: "no-store" });
+        if (!antwort.ok) return;
+        const { build } = await antwort.json();
+        /* Nur bei einer echten Abweichung. Eine leere Antwort heisst "weiss
+           ich nicht" und ist kein Grund, jemanden zum Neuladen zu schicken. */
+        if (!abgemeldet && build && build !== eigene) setNeueFassung(true);
+      } catch {
+        /* Kein Netz: dann eben beim naechsten Zurueckkommen. */
+      }
+    };
+
+    const beiSichtbarkeit = () => { if (document.visibilityState === "visible") pruefen(); };
+    document.addEventListener("visibilitychange", beiSichtbarkeit);
+    const takt = window.setInterval(pruefen, VERSION_TAKT);
+    pruefen();
+
+    /* In der nativen Huelle ist "resume" das verlaesslichere Signal:
+       visibilitychange meldet sich in der WKWebView nicht in jedem Fall, wenn
+       die App aus dem Hintergrund kommt. */
+    const griffe = [];
+    if (Capacitor.isNativePlatform()) {
+      import("@capacitor/app")
+        .then(({ App }) => App.addListener("resume", pruefen))
+        .then((h) => { if (abgemeldet) h.remove(); else griffe.push(h); })
+        .catch(() => {});
+    }
+
+    return () => {
+      abgemeldet = true;
+      document.removeEventListener("visibilitychange", beiSichtbarkeit);
+      window.clearInterval(takt);
+      griffe.forEach((h) => h.remove());
+    };
+  }, []);
+
+  const verwerfen = () => { ruheBis.current = Date.now() + VERSION_RUHE; setNeueFassung(false); };
+  return { neueFassung, verwerfen };
+}
+
+/* Ein schmaler Streifen, kein Sperrbildschirm.
+   Neu geladen wird auf Knopfdruck, nicht von selbst: Ein Neuladen mitten in
+   einer angefangenen Nachricht waere schlimmer als der veraltete Stand. Der
+   Sperrbildschirm bleibt dem App-Store-Update vorbehalten - dort geht es um
+   eine Fassung, die man gar nicht mehr betreiben kann. */
+function NeueFassungStreifen({ onLaden, onVerwerfen }) {
+  const t = useT();
+  return (
+    <div className="px-4 py-2 flex items-center gap-2" role="status"
+      style={{ background: C.sekundaerWeich, borderBottom: `1px solid ${C.line}` }}>
+      <RefreshCw size={13} style={{ color: C.ink, flexShrink: 0 }} />
+      <span className="flex-1 min-w-0 text-[11px] leading-snug" style={{ color: C.ink, fontFamily: "Inter" }}>
+        {t("version.neu")}
+      </span>
+      <button onClick={onLaden} className="text-[11px] px-2.5 py-1 rounded-full flex-shrink-0"
+        style={{ background: C.ink, color: C.white, fontFamily: "Inter", fontWeight: 700 }}>
+        {t("version.laden")}
+      </button>
+      <button onClick={onVerwerfen} aria-label={t("version.spaeter")} className="flex-shrink-0 p-1">
+        <X size={13} style={{ color: C.textDim }} />
+      </button>
+    </div>
+  );
+}
+
 function ChatView({ user, channels, setChannels, activeId, setActiveId, members }) {
   const t = useT();
   /* ALLE Hooks stehen vor dem ersten return - ohne Ausnahme.
@@ -12216,6 +12324,9 @@ export default function ClubMemberOrganisationApp() {
   const [tippResults, setTippResults] = useState({});
   const [dutyPlan, setDutyPlan] = useState(supabase ? {} : INITIAL_DUTY_PLAN);
   const [maintenanceMode, setMaintenanceMode] = useState(false);
+  /* Meldet sich, wenn inzwischen eine neue Fassung der Weboberflaeche
+     veroeffentlicht wurde - siehe useNeueFassung(). */
+  const { neueFassung, verwerfen: fassungVerwerfen } = useNeueFassung();
   const [protocols, setProtocols] = useState(supabase ? [] : INITIAL_PROTOCOLS);
   const [welcomeAutomation, setWelcomeAutomation] = useState(true);
   /* Die Werbeplaetze kommen aus der Datenbank, nicht aus dem gemeinsamen
@@ -13988,6 +14099,16 @@ export default function ClubMemberOrganisationApp() {
             {datenFehler && (
               <div role="status" className="px-4 py-2 text-xs text-center flex-shrink-0" style={{ background: C.sekundaerWeich, color: C.ink, fontFamily: "Inter", fontWeight: 600, borderBottom: `1px solid ${C.edge}` }}>
                 Diese Bereiche konnten nicht geladen werden: {datenFehler.join(", ")}. Sie sind nicht verloren — bitte später noch einmal öffnen.
+              </div>
+            )}
+            {/* Laeuft die App noch auf dem veroeffentlichten Code? Der
+                Streifen sitzt unter der Kopfzeile und ueber dem Inhalt -
+                sichtbar, ohne etwas zu verdecken. flex-shrink-0, damit er
+                nicht zusammengedrueckt wird; er nimmt dem Inhalt darunter
+                seine Hoehe weg, was richtig ist. */}
+            {neueFassung && (
+              <div className="flex-shrink-0">
+                <NeueFassungStreifen onLaden={() => window.location.reload()} onVerwerfen={fassungVerwerfen} />
               </div>
             )}
             {maintenanceMode && (
