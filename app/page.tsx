@@ -10482,44 +10482,97 @@ function RolesPanel({ members, setMembers }) {
       for (const role of toRemove) {
         const { error } = await supabase.from("membership_roles").delete().eq("membership_id", memberId).eq("role", role);
         if (error) { setMessage(t("mit.rollenaenderungFehler")); setSaving(false); return; }
+        /* Wer die Rolle verliert, gibt auch die Mannschaften ab. Vorher blieben
+           die Zeilen in team_members stehen: Die Person zaehlte weiter zur
+           Mannschaft - sah also deren Chat und Termine - und blockierte
+           ausserdem den Manager-Platz, den je Mannschaft nur einer hat. In der
+           Oberflaeche war davon nichts zu sehen, die Rolle war ja weg. */
+        if (role === "teammanager" || role === "trainer" || role === "kapitaen") {
+          await supabase.from("team_members").delete().eq("membership_id", memberId).eq("function", role);
+        }
       }
     }
     setMembers((ms) => ms.map((m) => (m.id === memberId
-      ? { ...m, roles: draftRoles.filter((r) => Object.prototype.hasOwnProperty.call(ROLE_META, r)), ...(!draftRoles.includes("teammanager") ? { managedTeam: null } : {}) }
+      ? { ...m, roles: draftRoles.filter((r) => Object.prototype.hasOwnProperty.call(ROLE_META, r)),
+          ...(!draftRoles.includes("teammanager") ? { managedTeam: null, managedTeams: [] } : {}),
+          ...(!draftRoles.includes("trainer") ? { trainerTeams: [] } : {}) }
       : m)));
     setSaving(false);
     closeMember();
   };
 
-  const assignManagedTeam = async (memberId, team) => {
+  /* Eine betreute Mannschaft dazunehmen oder abgeben.
+   *
+   * Vorher war es eine EINZELauswahl: Die Funktion loeschte erst saemtliche
+   * Manager-Zeilen der Person und setzte dann eine neue. Wer zwei
+   * Mannschaften betreut, liess sich damit gar nicht abbilden - die zweite
+   * Auswahl loeschte die erste. Die Datenbank konnte das uebrigens laengst:
+   * Der Schluessel ist (team_id, membership_id, function), eine Person darf
+   * dort in beliebig vielen Mannschaften stehen.
+   *
+   * WAS BLEIBT: EINE MANNSCHAFT, EIN MANAGER
+   * Das ist keine Entscheidung der Oberflaeche, sondern ein eindeutiger Index
+   * in der Datenbank (one_teammanager_per_team). Nimmt jemand eine
+   * Mannschaft, muss der bisherige Manager DIESER Mannschaft also weichen -
+   * sonst scheitert das Einfuegen.
+   *
+   * Ihm wird dabei nur diese eine Mannschaft genommen, nicht die Rolle.
+   * Frueher verlor er beides; betreute er noch weitere Mannschaften, waeren
+   * die stillschweigend mit verschwunden. Die Rolle faellt erst, wenn keine
+   * Mannschaft mehr uebrig ist - ein Teammanager ohne Mannschaft ist nichts.
+   */
+  const toggleManagedTeam = async (memberId, teamName) => {
     const member = members.find((item) => item.id === memberId);
     if (!member) return;
-    let displacedMemberId = null;
+    const bisher = member.managedTeams || [];
+    const nimmt = !bisher.includes(teamName);
+    let verdraengt = null;
+
     if (supabase && isDbId(memberId)) {
       setMessage("");
-      let teamId = null;
-      if (team) {
-        const { data: teamRow, error: teamError } = await supabase.from("teams").select("id").eq("club_id", member.clubId).eq("name", team).maybeSingle();
-        if (teamError || !teamRow) { setMessage(t("tm.managerMannschaftFehler")); return; }
-        teamId = teamRow.id;
-        const { data: existingManager } = await supabase.from("team_members").select("membership_id").eq("team_id", teamId).eq("function", "teammanager").neq("membership_id", memberId).maybeSingle();
-        displacedMemberId = existingManager?.membership_id || null;
-      }
-      const { error: clearError } = await supabase.from("team_members").delete().eq("membership_id", memberId).eq("function", "teammanager");
-      if (clearError) { setMessage(t("tm.managerMannschaftFehler")); return; }
-      if (displacedMemberId) {
-        await supabase.from("team_members").delete().eq("membership_id", displacedMemberId).eq("function", "teammanager");
-        await supabase.from("membership_roles").delete().eq("membership_id", displacedMemberId).eq("role", "teammanager");
-      }
-      if (teamId) {
-        const { error: insertError } = await supabase.from("team_members").insert({ team_id: teamId, membership_id: memberId, function: "teammanager" });
-        if (insertError) { setMessage(t("tm.managerMannschaftFehler")); return; }
+      const { data: teamRow, error: teamFehler } = await supabase.from("teams")
+        .select("id").eq("club_id", member.clubId).eq("name", teamName).maybeSingle();
+      if (teamFehler || !teamRow) { setMessage(t("tm.managerMannschaftFehler")); return; }
+
+      if (!nimmt) {
+        const { error } = await supabase.from("team_members").delete()
+          .eq("membership_id", memberId).eq("team_id", teamRow.id).eq("function", "teammanager");
+        if (error) { setMessage(t("tm.managerMannschaftFehler")); return; }
+      } else {
+        const { data: bisheriger } = await supabase.from("team_members")
+          .select("membership_id").eq("team_id", teamRow.id).eq("function", "teammanager")
+          .neq("membership_id", memberId).maybeSingle();
+        verdraengt = bisheriger?.membership_id || null;
+        if (verdraengt) {
+          await supabase.from("team_members").delete()
+            .eq("membership_id", verdraengt).eq("team_id", teamRow.id).eq("function", "teammanager");
+          const { count } = await supabase.from("team_members")
+            .select("team_id", { count: "exact", head: true })
+            .eq("membership_id", verdraengt).eq("function", "teammanager");
+          if (!count) {
+            await supabase.from("membership_roles").delete()
+              .eq("membership_id", verdraengt).eq("role", "teammanager");
+          }
+        }
+        const { error } = await supabase.from("team_members")
+          .insert({ team_id: teamRow.id, membership_id: memberId, function: "teammanager" });
+        if (error) { setMessage(t("tm.managerMannschaftFehler")); return; }
       }
     }
-    setMembers((all) => all.map((m) => {
-      if (m.id === memberId) return { ...m, managedTeam: team };
-      if (displacedMemberId && m.id === displacedMemberId) return { ...m, managedTeam: null, roles: m.roles.filter((role) => role !== "teammanager") };
-      return m;
+
+    const naechste = nimmt ? [...bisher, teamName] : bisher.filter((name) => name !== teamName);
+    setMembers((all) => all.map((eintrag) => {
+      if (eintrag.id === memberId) {
+        /* managedTeam bleibt als Einzelwert mitgefuehrt - aelterer Code liest
+           ihn noch (Mannschaftsliste, Kanalzugehoerigkeit). */
+        return { ...eintrag, managedTeams: naechste, managedTeam: naechste[0] || null };
+      }
+      if (verdraengt && eintrag.id === verdraengt) {
+        const rest = (eintrag.managedTeams || []).filter((name) => name !== teamName);
+        return { ...eintrag, managedTeams: rest, managedTeam: rest[0] || null,
+          roles: rest.length ? eintrag.roles : eintrag.roles.filter((rolle) => rolle !== "teammanager") };
+      }
+      return eintrag;
     }));
   };
   const toggleTrainerTeam = async (memberId, teamName) => {
@@ -10569,7 +10622,7 @@ function RolesPanel({ members, setMembers }) {
                   })}
                 </div>
                 {m.roles.includes("trainer")&&<div className="mt-2.5 pt-2.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] mb-2 font-bold" style={{color:C.textDim}}>TRAINER FÜR · MEHRERE MANNSCHAFTEN MÖGLICH</div><div className="flex flex-wrap gap-1.5">{waehlbareMannschaften.length===0&&<span className="text-[11px]" style={{color:C.textDim}}>{t("tm.keineAngelegt")}</span>}{waehlbareMannschaften.map((team)=>{const active=(m.trainerTeams||[]).includes(team.name);return <button type="button" key={team.name} onClick={()=>toggleTrainerTeam(m.id,team.name)} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?ROLE_META.trainer.color:C.paperDim,color:active?C.white:C.textDim}}>{active?"✓ ":""}{team.name}</button>})}</div></div>}
-                {m.roles.includes("teammanager")&&<div className="mt-2.5 pt-2.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] mb-1 font-bold" style={{color:C.textDim}}>{t("rol.teammanagerHinweis")}</div><select value={m.managedTeam||""} onChange={(e)=>assignManagedTeam(m.id,e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{background:C.paperDim}}><option value="">{t("tm.mannschaftWaehlen2")}</option>{waehlbareMannschaften.map((team)=><option key={team.name} value={team.name}>{team.name}</option>)}</select></div>}
+                {m.roles.includes("teammanager")&&<div className="mt-2.5 pt-2.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] mb-2 font-bold" style={{color:C.textDim}}>{t("rol.teammanagerHinweis")}</div><div className="flex flex-wrap gap-1.5">{waehlbareMannschaften.length===0&&<span className="text-[11px]" style={{color:C.textDim}}>{t("tm.keineAngelegt")}</span>}{waehlbareMannschaften.map((team)=>{const active=(m.managedTeams||[]).includes(team.name);return <button type="button" key={team.name} onClick={()=>toggleManagedTeam(m.id,team.name)} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?ROLE_META.teammanager.color:C.paperDim,color:active?C.white:C.textDim}}>{active?"\u2713 ":""}{team.name}</button>})}</div></div>}
                 <div className="flex gap-2 mt-3 pt-3" style={{ borderTop: `1px solid ${C.line}` }}>
                   <button type="button" onClick={closeMember} disabled={saving} className="flex-1 py-2 rounded-lg text-xs" style={{ background: C.paperDim, color: C.ink, fontFamily: "Inter", fontWeight: 700 }}>{t("allg.abbrechen")}</button>
                   <button type="button" onClick={() => saveMemberRoles(m.id)} disabled={saving} className="flex-1 py-2 rounded-lg text-xs" style={{ background: C.ink, color: "#fff", fontFamily: "Inter", fontWeight: 700, opacity: saving ? 0.6 : 1 }}>{saving ? t("allg.speichertKurz") : t("allg.speichern")}</button>
