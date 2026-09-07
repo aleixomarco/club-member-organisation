@@ -40,6 +40,7 @@ const AUSNAHMEN = new Map([
   ["Oswald", "Schriftart"],
   ["JetBrains Mono", "Schriftart"],
   ["EUR", "Waehrungscode nach ISO 4217"],
+  ["Content-Type", "HTTP-Kopfzeile, kein Anzeigetext"],
   ["DELETE", "SQL"],
   ["INSERT", "SQL"],
   ["Invalid Date", "Meldung der JavaScript-Laufzeitumgebung"],

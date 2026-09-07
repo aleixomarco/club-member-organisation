@@ -2024,8 +2024,11 @@ function KontoLoeschenBlock({ onDelete }) {
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  /* Der zweite Dialog: Wenn mit dem Konto auch ein Verein untergeht, wird das
+     nicht nebenbei erwaehnt, sondern einzeln bestaetigt. */
+  const [vereineWarnung, setVereineWarnung] = useState(null);
 
-  const remove = async () => {
+  const remove = async (vereineBestaetigt = false) => {
     setBusy(true); setError("");
     /* finally, nicht nur der Fehlerzweig.
      *
@@ -2037,8 +2040,17 @@ function KontoLoeschenBlock({ onDelete }) {
      * drei Bildschirme VOR der Anmeldung, wo es keine Leiste zum
      * Wegnavigieren gibt - nur ein Neustart der App half. */
     try {
-      const result = await onDelete();
-      if (result?.error) setError(result.error);
+      const result = await onDelete(vereineBestaetigt);
+      /* Der Server antwortet mit einem Code, nicht mit einem fertigen Satz -
+         die App spricht sieben Sprachen und formuliert selbst. */
+      if (result?.code === "letzter_admin") {
+        const namen = (result.blockiert || []).map((v) => v.name).filter(Boolean).join(", ");
+        setError(t("konto.nurAdmin") + (namen ? ` ${t("konto.nurAdminVereine").replace("{vereine}", namen)}` : ""));
+      } else if (result?.code === "verein_geht_mit") {
+        setVereineWarnung(result.vereine || []);
+      } else if (result?.error) {
+        setError(result.error);
+      }
     } catch {
       setError(t("konto.loeschenFehler"));
     } finally {
@@ -2065,11 +2077,53 @@ function KontoLoeschenBlock({ onDelete }) {
           </div>
           <div className="flex gap-2">
             <button onClick={() => setConfirming(false)} disabled={busy} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>{t("allg.abbrechen")}</button>
-            <button onClick={remove} disabled={busy} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.red, color: C.aufPrimaer, opacity: busy ? .6 : 1 }}>{busy ? t("allg.wirdGeloescht") : t("allg.endgueltigLoeschen")}</button>
+            <button onClick={() => remove(false)} disabled={busy} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.red, color: C.aufPrimaer, opacity: busy ? .6 : 1 }}>{busy ? t("allg.wirdGeloescht") : t("allg.endgueltigLoeschen")}</button>
           </div>
         </div>
       )}
       {error && <div role="status" className="text-[11px] mt-3 rounded-xl px-3 py-2" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{error}</div>}
+
+      {/* Der zweite Dialog. Bewusst getrennt vom ersten: Das Loeschen des
+          eigenen Kontos ist eine Sache, das Loeschen eines ganzen Vereins mit
+          allen Daten eine andere - die soll man nicht in einem Aufwasch
+          wegklicken. */}
+      {vereineWarnung && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setVereineWarnung(null)}>
+          <div role="dialog" aria-modal="true" className="w-full max-w-sm rounded-3xl p-5"
+            style={{ background: C.blatt, boxShadow: "0 -14px 38px rgba(20,21,26,.30)", border: `1px solid ${C.edge}` }}
+            onClick={(e) => e.stopPropagation()}>
+            <div className="text-base font-bold mb-2" style={{ color: C.ink, fontFamily: "Oswald" }}>
+              {t("konto.vereinGehtMitTitel")}
+            </div>
+            <div className="text-xs mb-2" style={{ color: C.textDim, lineHeight: 1.6 }}>
+              {t("konto.vereinGehtMit")}
+            </div>
+            {vereineWarnung.length > 0 && (
+              <div className="text-xs font-bold mb-2" style={{ color: C.ink }}>
+                {vereineWarnung.map((v) => v.name).filter(Boolean).join(", ")}
+              </div>
+            )}
+            {vereineWarnung.some((v) => v.abo) && (
+              <div className="text-[11px] mb-3 rounded-xl px-3 py-2" style={{ background: C.fehlerFlaeche, color: C.fehler }}>
+                {t("konto.vereinGehtMitAbo")}
+              </div>
+            )}
+            <div className="flex gap-2 mt-3">
+              <button onClick={() => { setVereineWarnung(null); remove(true); }} disabled={busy}
+                className="flex-1 py-2.5 rounded-xl text-xs font-bold"
+                style={{ background: C.fehler, color: C.white }}>
+                {t("allg.ja")}
+              </button>
+              <button onClick={() => setVereineWarnung(null)}
+                className="flex-1 py-2.5 rounded-xl text-xs font-bold"
+                style={{ background: C.glass, color: C.ink, border: `1px solid ${C.line}` }}>
+                {t("allg.nein")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
@@ -7554,6 +7608,8 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const [deleting, setDeleting] = useState(false);
+  /* Zweite Rueckfrage, wenn mit dem Konto ein ganzer Verein untergeht. */
+  const [vereineWarnung, setVereineWarnung] = useState(null);
   const [profileUnderlay, setProfileUnderlay] = useState("");
   const [profileFolder, setProfileFolder] = useState("");
   const [referralAlreadyUsed, setReferralAlreadyUsed] = useState(false);
@@ -7588,7 +7644,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
     supabase.from("club_referral_codes").select("redeemed_at").eq("club_id", currentClub.id).eq("profile_id", user.authProfileId).maybeSingle()
       .then(({ data }) => setReferralAlreadyUsed(Boolean(data?.redeemed_at)));
   }, [currentClub?.id, user.authProfileId]);
-  const deleteAccount = async () => {
+  const deleteAccount = async (vereineBestaetigt = false) => {
     if (!supabase) { setDeleteError(t("konto.demoLoeschen")); return; }
     setDeleting(true); setDeleteError("");
     const { data } = await supabase.auth.getSession();
@@ -7596,11 +7652,31 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
     if (!token) { setDeleteError(t("sich.erneutAnmelden")); setDeleting(false); return; }
     let response;
     try {
-      response = await fetch("/api/account/delete", { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+      response = await fetch("/api/account/delete", {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ vereineBestaetigt }),
+      });
     } catch {
       setDeleteError(t("konto.loeschenFehler")); setDeleting(false); return;
     }
-    if (!response.ok) { setDeleteError(t("konto.loeschenUnvollstaendig")); setDeleting(false); return; }
+    if (!response.ok) {
+      /* Der Server schickt einen Code, keinen fertigen Satz - die App
+         formuliert in ihren sieben Sprachen selbst. Frueher wurde der Rumpf
+         weggeworfen und stattdessen "Loeschung unvollstaendig" gezeigt: Der
+         Nutzer erfuhr weder den Grund noch, was er tun soll, und musste
+         annehmen, sein Konto sei halb geloescht. */
+      const rumpf = await response.json().catch(() => null);
+      setDeleting(false);
+      if (rumpf?.code === "letzter_admin") {
+        const namen = (rumpf.blockiert || []).map((v) => v.name).filter(Boolean).join(", ");
+        setDeleteError(t("konto.nurAdmin") + (namen ? ` ${t("konto.nurAdminVereine").replace("{vereine}", namen)}` : ""));
+        return;
+      }
+      if (rumpf?.code === "verein_geht_mit") { setVereineWarnung(rumpf.vereine || []); return; }
+      setDeleteError(rumpf?.error || t("konto.loeschenUnvollstaendig"));
+      return;
+    }
     await onLogout();
   };
   return (
@@ -7833,6 +7909,36 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
       {/* Schließt zurück ins Profil statt in die Kontoeinstellungen: Die Ansicht ist
           jetzt auch direkt aus der Einstellungsliste erreichbar, und ein Zurück in
           eine Ebene, die man nie geöffnet hat, wäre verwirrend. */}
+      {/* Zweite Rueckfrage: Mit dem Konto geht ein ganzer Verein unter.
+          Bewusst ein eigener Dialog - das soll man nicht im selben Zug
+          wegklicken wie die Loeschung des eigenen Kontos. */}
+      {vereineWarnung && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setVereineWarnung(null)}>
+          <div role="dialog" aria-modal="true" className="w-full max-w-sm rounded-3xl p-5"
+            style={{ background: C.blatt, boxShadow: "0 -14px 38px rgba(20,21,26,.30)", border: `1px solid ${C.edge}` }}
+            onClick={(e) => e.stopPropagation()}>
+            <div className="text-base font-bold mb-2" style={{ color: C.ink, fontFamily: "Oswald" }}>{t("konto.vereinGehtMitTitel")}</div>
+            <div className="text-xs mb-2" style={{ color: C.textDim, lineHeight: 1.6 }}>{t("konto.vereinGehtMit")}</div>
+            {vereineWarnung.length > 0 && (
+              <div className="text-xs font-bold mb-2" style={{ color: C.ink }}>
+                {vereineWarnung.map((v) => v.name).filter(Boolean).join(", ")}
+              </div>
+            )}
+            {vereineWarnung.some((v) => v.abo) && (
+              <div className="text-[11px] mb-3 rounded-xl px-3 py-2" style={{ background: C.fehlerFlaeche, color: C.fehler }}>
+                {t("konto.vereinGehtMitAbo")}
+              </div>
+            )}
+            <div className="flex gap-2 mt-3">
+              <button onClick={() => { setVereineWarnung(null); deleteAccount(true); }} disabled={deleting}
+                className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.fehler, color: C.white }}>{t("allg.ja")}</button>
+              <button onClick={() => setVereineWarnung(null)}
+                className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.glass, color: C.ink, border: `1px solid ${C.line}` }}>{t("allg.nein")}</button>
+            </div>
+          </div>
+        </div>
+      )}
       {profileUnderlay === "account-delete" && <ProfileUnderlay title="Konto löschen" eyebrow="Kontoeinstellungen" onClose={() => { setProfileUnderlay(""); setDeleteConfirm(false); setDeleteError(""); }}>
         <div className="rounded-2xl p-4 mb-6" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="flex items-center gap-2 text-sm font-bold mb-1" style={{ color: C.ink }}><Mail size={15}/> Hinterlegte E-Mail</div><div className="text-xs" style={{ color: C.textDim }}>{user.email}</div></div>
         <SectionTitle eyebrow="Gefahrenbereich" title="Account-Löschung"/>
@@ -12170,20 +12276,30 @@ export default function ClubMemberOrganisationApp() {
     setSelectedClubId(null);
     setAuthScreen("login");
   };
-  const deletePendingAccount = async () => {
+  const deletePendingAccount = async (vereineBestaetigt = false) => {
     if (!supabase) return { error: t("konto.loeschenNurEcht") };
     const { data } = await supabase.auth.getSession();
     const token = data.session?.access_token;
     if (!token) return { error: t("login.sitzungAbgelaufen") };
     let response;
     try {
-      response = await fetch("/api/account/delete", { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+      response = await fetch("/api/account/delete", {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ vereineBestaetigt }),
+      });
     } catch {
       /* Kein Netz, kein Server, abgebrochen. Ein geworfener fetch darf nicht
          als "geloescht" durchgehen - und auch nicht den Aufrufer mitreissen. */
       return { error: t("konto.loeschenFehler") };
     }
-    if (!response.ok) return { error: t("konto.loeschenFehler") };
+    if (!response.ok) {
+      /* 409 traegt einen Code und Vereinsnamen im Rumpf - den braucht der
+         Aufrufer, um die richtige der beiden Rueckfragen zu stellen. */
+      const rumpf = await response.json().catch(() => null);
+      if (rumpf?.code) return rumpf;
+      return { error: t("konto.loeschenFehler") };
+    }
     await leavePendingAccount();
     /* Beim blossen Abmelden bleibt der gewaehlte Verein absichtlich stehen -
        wer auf die Freigabe wartet, findet ihn beim naechsten Anmelden wieder.
