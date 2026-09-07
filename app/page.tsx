@@ -10280,7 +10280,7 @@ function versionIstAelter(installiert, imStore) {
  * Er erscheint nur, wenn Apple eine hoehere Version meldet UND die App sie
  * kennt. Antwortet der Store nicht, passiert nichts: Ein Ausfall bei Apple
  * darf keine Nutzer aussperren. */
-function UpdateSperre({ installiert, verfuegbar, storeUrl }) {
+function UpdateSperre({ installiert, verfuegbar, storeUrl, probe, onProbeEnde }) {
   const t = useT();
   return (
     /* Deckend, nicht durchsichtig: Ein Sperrbildschirm, durch den man die
@@ -10304,7 +10304,10 @@ function UpdateSperre({ installiert, verfuegbar, storeUrl }) {
         {installiert} → {verfuegbar}
       </div>
       <button
-        onClick={() => { if (storeUrl) window.location.href = storeUrl; }}
+        /* Im Probelauf fuehrt der Knopf nicht in den App Store, sondern
+           schliesst nur. Sonst landet man beim Ansehen mitten in einer
+           Store-Seite fuer eine Version, die es noch gar nicht gibt. */
+        onClick={() => { if (probe) { onProbeEnde?.(); return; } if (storeUrl) window.location.href = storeUrl; }}
         style={{ width: "100%", maxWidth: 330, padding: "14px 20px", borderRadius: 16,
                  background: C.ink, color: C.white, fontFamily: "Inter", fontWeight: 700,
                  fontSize: 14, border: "none", cursor: "pointer" }}>
@@ -11354,6 +11357,26 @@ export default function ClubMemberOrganisationApp() {
      Einmal beim Start, nur in der nativen Huelle. Im Browser gibt es nichts
      zu aktualisieren - dort ist die Oberflaeche immer die aktuelle. */
   const [updateNoetig, setUpdateNoetig] = useState(null);
+  /* Probelauf fuer den Sperrbildschirm.
+   *
+   * Der echte Bildschirm erscheint nur, wenn im App Store wirklich eine
+   * neuere Fassung liegt - ansehen kann man ihn also erst, wenn es zu spaet
+   * ist, ihn noch zu aendern. Mit ?updatetest=1 in der Adresse zeigt die App
+   * ihn auf Wunsch, mit erfundenen Versionsnummern; der Knopf schliesst dann
+   * nur, statt in den Store zu fuehren.
+   *
+   * Bewusst ueber die Adresszeile und nicht ueber einen Schalter im Profil:
+   * Ein Schalter, der die App fuer alle sperren kann, hat in der Oberflaeche
+   * nichts zu suchen. Wer den Parameter nicht kennt, stolpert nicht darueber.
+   * Die Plattformpruefung entfaellt dabei - sonst liesse sich der Probelauf
+   * nur in der nativen Huelle ansehen, also genau dort, wo man ihn am
+   * wenigsten braucht. */
+  const [updateProbe, setUpdateProbe] = useState(false);
+  useEffect(() => {
+    try {
+      if (new URLSearchParams(window.location.search).get("updatetest") === "1") setUpdateProbe(true);
+    } catch { /* ohne Adresse kein Probelauf */ }
+  }, []);
   const [verwaltungsBereich, setVerwaltungsBereich] = useState(null);
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
@@ -12724,7 +12747,9 @@ export default function ClubMemberOrganisationApp() {
   return (
     <SprachKontext.Provider value={sprache || "de"}>
     <MitgliederKontext.Provider value={members}>
-    {updateNoetig && <UpdateSperre {...updateNoetig} />}
+    {updateProbe
+      ? <UpdateSperre installiert="1.2" verfuegbar="1.3" storeUrl={null} probe onProbeEnde={() => setUpdateProbe(false)} />
+      : updateNoetig && <UpdateSperre {...updateNoetig} />}
     {offeneAufgabe && currentUser && <AufgabeOverlay taskId={offeneAufgabe} currentUser={currentUser} onClose={() => setOffeneAufgabe(null)} />}
     {currentUser && selectedClubId && <TeamMeldungenAbfrage currentUser={currentUser} clubId={selectedClubId} />}
     <div className="erg-app erg-shell w-full flex items-center justify-center" style={{ fontFamily: "Inter", ...themeVars }}>

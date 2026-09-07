@@ -151,7 +151,15 @@ const lies = (code) => {
   return eintraege;
 };
 const buecher = Object.fromEntries(SPRACHCODES.map((c) => [c, lies(c)]));
-const benutzteSchluessel = new Set([...quelle.matchAll(/\bt\("([a-zA-Z0-9._]+)"\)/g)].map((m) => m[1]));
+/* Beide Schreibweisen. Das Muster suchte nur nach t("..."), es gibt aber
+   auch uebersetzung("..."). Genau EIN Aufruf benutzte die zweite Form -
+   login.willkommen auf dem Anmeldebildschirm -, und weil der Pruefer ihn
+   nicht sah, fehlte der Schluessel im Woerterbuch und auf dem allerersten
+   Bildschirm der App stand woertlich "login.willkommen". */
+const benutzteSchluessel = new Set([
+  ...[...quelle.matchAll(/\bt\("([a-zA-Z0-9._]+)"\)/g)].map((m) => m[1]),
+  ...[...quelle.matchAll(/\buebersetzung\("([a-zA-Z0-9._]+)"\)/g)].map((m) => m[1]),
+]);
 const luecken = [];
 for (const code of SPRACHCODES) {
   for (const schluessel of benutzteSchluessel) {
