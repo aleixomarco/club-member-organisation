@@ -2676,6 +2676,20 @@ function ZumAktualisierenZiehen({ onAktualisieren, className, style, children })
       <div style={{
         transform: zug > 0 || laeuft ? `translateY(${zug}px)` : undefined,
         transition: zieht ? "none" : "transform .25s ease",
+        /* Dieser Umschlag reicht die Hoehe durch.
+         *
+         * Ohne die Angabe war er nur so hoch wie sein Inhalt - und damit riss
+         * die Hoehenkette genau hier. Der Chat baut sich als Saeule auf
+         * (Nachrichten dehnbar, Schreibfeld unten buendig) und braucht dafuer
+         * height: 100%; das rechnete sich gegen einen Umschlag mit height:
+         * auto und ergab wieder nur die Inhaltshoehe. Sichtbar wurde es als
+         * Schreibfeld, das mitten im Bildschirm klebte: gemessen 324 px Loch
+         * zwischen Feldunterkante und Navigationsleiste.
+         *
+         * Fuer alle anderen Ansichten aendert sich nichts: Sie sind
+         * Bildlaufflaechen, ihr Inhalt darf ueber diese Hoehe hinausragen,
+         * und gescrollt wird ohnehin am aeusseren Rahmen. */
+        height: "100%",
       }}>
         {children}
       </div>
