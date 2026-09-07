@@ -936,7 +936,7 @@ const de: Woerterbuch = {
   "sais.historieAnzeigen": "Saison-Historie anzeigen",
   "help.satzAngelegt": "Satz wurde angelegt.",
   "ev.spiele2": "Spiele",
-  "sys.spielergebnisse": "Spielergebnisse",
+  "sys.spielergebnisse": "Spielergebnisse/Tippspiel",
   "sp.bearbeiten": "Sponsor bearbeiten",
   "sp.unseresVereins": "Sponsor unseres Vereins",
   "sp.manager": "Sponsorenmanager",
@@ -987,8 +987,8 @@ const de: Woerterbuch = {
 
   "umf.auswahlZuruecknehmen": "Auswahl zurücknehmen",
 
-  "tipp.nochNichtFreigegeben": "Zurzeit noch kein Tippspiel freigegeben",
-  "tipp.freigabeHinweis": "Die Vereinsleitung legt unter „Vereinseinstellungen“ fest, welche Mannschaften eine eigene Tipprunde bekommen.",
+  "tipp.nochNichtFreigegeben": "Zurzeit kein Tippspiel freigeschaltet",
+  "tipp.freigabeHinweis": "Die Freischaltung nimmt die Vereinsadministration unter „Verwaltung → Spielergebnisse/Tippspiel“ vor.",
   "tipp.zurueckUebersicht": "Zurück zur Übersicht",
 
   "auf.erledigtAm": "Erledigt am",
@@ -2016,7 +2016,7 @@ const en: Woerterbuch = {
   "sais.historieAnzeigen": "Show season history",
   "help.satzAngelegt": "Set created.",
   "ev.spiele2": "Matches",
-  "sys.spielergebnisse": "Match results",
+  "sys.spielergebnisse": "Match results / Prediction game",
   "sp.bearbeiten": "Edit sponsor",
   "sp.unseresVereins": "Our club's sponsor",
   "sp.manager": "Sponsor manager",
@@ -2067,8 +2067,8 @@ const en: Woerterbuch = {
 
   "umf.auswahlZuruecknehmen": "Withdraw selection",
 
-  "tipp.nochNichtFreigegeben": "No prediction game enabled yet",
-  "tipp.freigabeHinweis": "The club management decides under “Club settings” which teams get their own prediction round.",
+  "tipp.nochNichtFreigegeben": "No prediction game is active right now",
+  "tipp.freigabeHinweis": "A club administrator can switch it on under “Admin → Match results / Prediction game”.",
   "tipp.zurueckUebersicht": "Back to overview",
 
   "auf.erledigtAm": "Completed on",
@@ -3096,7 +3096,7 @@ const es: Woerterbuch = {
   "sais.historieAnzeigen": "Ver historial de la temporada",
   "help.satzAngelegt": "Conjunto creado.",
   "ev.spiele2": "Partidos",
-  "sys.spielergebnisse": "Resultados",
+  "sys.spielergebnisse": "Resultados / Quiniela",
   "sp.bearbeiten": "Editar patrocinador",
   "sp.unseresVereins": "Patrocinador de nuestro club",
   "sp.manager": "Gestor de patrocinadores",
@@ -3147,8 +3147,8 @@ const es: Woerterbuch = {
 
   "umf.auswahlZuruecknehmen": "Retirar la selección",
 
-  "tipp.nochNichtFreigegeben": "Todavía no hay ninguna quiniela activada",
-  "tipp.freigabeHinweis": "La dirección del club decide en «Ajustes del club» qué equipos tienen su propia ronda.",
+  "tipp.nochNichtFreigegeben": "Ahora mismo no hay ninguna quiniela activa",
+  "tipp.freigabeHinweis": "La administración del club puede activarla en «Administración → Resultados / Quiniela».",
   "tipp.zurueckUebersicht": "Volver al resumen",
 
   "auf.erledigtAm": "Hecho el",
@@ -4176,7 +4176,7 @@ const pt: Woerterbuch = {
   "sais.historieAnzeigen": "Ver histórico da época",
   "help.satzAngelegt": "Conjunto criado.",
   "ev.spiele2": "Jogos",
-  "sys.spielergebnisse": "Resultados",
+  "sys.spielergebnisse": "Resultados / Bolão",
   "sp.bearbeiten": "Editar patrocinador",
   "sp.unseresVereins": "Patrocinador do nosso clube",
   "sp.manager": "Gestor de patrocinadores",
@@ -4227,8 +4227,8 @@ const pt: Woerterbuch = {
 
   "umf.auswahlZuruecknehmen": "Retirar a seleção",
 
-  "tipp.nochNichtFreigegeben": "Ainda não há nenhum jogo de prognósticos ativado",
-  "tipp.freigabeHinweis": "A direção do clube decide em «Definições do clube» que equipas têm a sua própria ronda.",
+  "tipp.nochNichtFreigegeben": "De momento não há nenhum bolão ativo",
+  "tipp.freigabeHinweis": "A administração do clube pode ativá-lo em «Administração → Resultados / Bolão».",
   "tipp.zurueckUebersicht": "Voltar ao resumo",
 
   "auf.erledigtAm": "Concluído a",
@@ -5256,7 +5256,7 @@ const it: Woerterbuch = {
   "sais.historieAnzeigen": "Mostra cronologia della stagione",
   "help.satzAngelegt": "Set creato.",
   "ev.spiele2": "Partite",
-  "sys.spielergebnisse": "Risultati",
+  "sys.spielergebnisse": "Risultati / Pronostici",
   "sp.bearbeiten": "Modifica sponsor",
   "sp.unseresVereins": "Sponsor della nostra società",
   "sp.manager": "Gestore degli sponsor",
@@ -5307,8 +5307,8 @@ const it: Woerterbuch = {
 
   "umf.auswahlZuruecknehmen": "Ritira la scelta",
 
-  "tipp.nochNichtFreigegeben": "Nessun gioco di pronostici ancora attivato",
-  "tipp.freigabeHinweis": "La dirigenza decide in «Impostazioni della società» quali squadre hanno un proprio girone.",
+  "tipp.nochNichtFreigegeben": "Al momento non c'è nessun pronostico attivo",
+  "tipp.freigabeHinweis": "L'amministrazione della società può attivarlo in «Amministrazione → Risultati / Pronostici».",
   "tipp.zurueckUebersicht": "Torna alla panoramica",
 
   "auf.erledigtAm": "Completato il",
@@ -6336,7 +6336,7 @@ const tr: Woerterbuch = {
   "sais.historieAnzeigen": "Sezon geçmişini göster",
   "help.satzAngelegt": "Set oluşturuldu.",
   "ev.spiele2": "Maçlar",
-  "sys.spielergebnisse": "Maç sonuçları",
+  "sys.spielergebnisse": "Maç sonuçları / Tahmin oyunu",
   "sp.bearbeiten": "Sponsoru düzenle",
   "sp.unseresVereins": "Kulübümüzün sponsoru",
   "sp.manager": "Sponsor yöneticisi",
@@ -6387,8 +6387,8 @@ const tr: Woerterbuch = {
 
   "umf.auswahlZuruecknehmen": "Seçimi geri al",
 
-  "tipp.nochNichtFreigegeben": "Şu anda etkin bir tahmin oyunu yok",
-  "tipp.freigabeHinweis": "Kulüp yönetimi “Kulüp ayarları” altında hangi takımların kendi turu olacağını belirler.",
+  "tipp.nochNichtFreigegeben": "Şu anda açık bir tahmin oyunu yok",
+  "tipp.freigabeHinweis": "Kulüp yönetimi bunu “Yönetim → Maç sonuçları / Tahmin oyunu” altından açabilir.",
   "tipp.zurueckUebersicht": "Genel bakışa dön",
 
   "auf.erledigtAm": "Tamamlanma tarihi",
@@ -7416,7 +7416,7 @@ const fr: Woerterbuch = {
   "sais.historieAnzeigen": "Afficher l'historique de la saison",
   "help.satzAngelegt": "Ensemble créé.",
   "ev.spiele2": "Matchs",
-  "sys.spielergebnisse": "Résultats",
+  "sys.spielergebnisse": "Résultats / Pronostics",
   "sp.bearbeiten": "Modifier le sponsor",
   "sp.unseresVereins": "Sponsor de notre club",
   "sp.manager": "Gestionnaire de sponsors",
@@ -7467,8 +7467,8 @@ const fr: Woerterbuch = {
 
   "umf.auswahlZuruecknehmen": "Retirer mon choix",
 
-  "tipp.nochNichtFreigegeben": "Aucun jeu de pronostics activé pour le moment",
-  "tipp.freigabeHinweis": "La direction du club définit dans « Paramètres du club » quelles équipes ont leur propre tour.",
+  "tipp.nochNichtFreigegeben": "Aucun jeu de pronostics n'est ouvert pour le moment",
+  "tipp.freigabeHinweis": "L'administration du club peut l'activer sous « Administration → Résultats / Pronostics ».",
   "tipp.zurueckUebersicht": "Retour à la vue d'ensemble",
 
   "auf.erledigtAm": "Terminé le",

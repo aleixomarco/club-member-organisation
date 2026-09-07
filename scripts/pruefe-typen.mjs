@@ -24,6 +24,15 @@
  * TS2552  Cannot find name, meinten - dasselbe mit Vorschlag
  * TS2554  falsche Anzahl Argumente  - ein vergessener Parameter
  * TS2551  Eigenschaft gibt es nicht - Tippfehler an einem Objekt
+ * TS2448  vor der Deklaration benutzt - stuerzt beim Rendern ab
+ * TS2454  benutzt, bevor zugewiesen  - dasselbe von der anderen Seite
+ *
+ * Die letzten beiden kamen dazu, nachdem genau so das Tippspiel ausgefallen
+ * ist: In TippView stand "runden.find(...)" neunzehn Zeilen ueber dem
+ * "const [runden, setRunden] = useState([])". Das ist kein Stilfehler,
+ * sondern ein ReferenceError bei JEDEM Rendern - die Seite laedt gar nicht
+ * mehr, im App-Rahmen erscheint "This page couldn't load". Der Pruefer sah
+ * es nicht, weil diese beiden Nummern in der Liste fehlten.
  *
  * NICHT gezaehlt, obwohl es verlockend waere:
  * TS7006/TS7031/TS7053 (impliziert any) - Folge der fehlenden Typisierung.
@@ -41,7 +50,7 @@
 
 import { execSync } from "node:child_process";
 
-const ERNST = /error TS(2304|2552|2554|2551)\b/;
+const ERNST = /error TS(2304|2552|2554|2551|2448|2454)\b/;
 
 /* Diese Dateien laufen NICHT in Node oder im Browser, sondern in fremden
    Laufzeitumgebungen mit eigenen globalen Namen. tsc kennt die hier nicht -

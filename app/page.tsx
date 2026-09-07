@@ -7628,7 +7628,6 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
       {profileFolder === "clubsettings" && isAdmin(user) && <ProfileUnderlay title="Vereinseinstellungen" eyebrow="Verein verwalten" onClose={() => setProfileFolder("")}>
         <ClubRoleOverviewPanel members={members} />
         <ClubFeatureSettingsPanel currentClub={currentClub} clubFeatures={clubFeatures} onFeaturesChanged={onClubFeaturesChanged} dashboardTileOrder={dashboardTileOrder} setDashboardTileOrder={setDashboardTileOrder} />
-        <TippRundenPanel currentClub={currentClub} />
       </ProfileUnderlay>}
 
       {profileFolder === "personal" && <ProfileUnderlay title="Persönliche Daten" eyebrow="Einstellungen" onClose={() => setProfileFolder("")}>
@@ -7950,15 +7949,6 @@ function TippRundenPanel({ currentClub }) {
 
 function TippView({ members, currentUser, events, tippPredictions, setTippPredictions, tippResults, onTippSpeichern, onZurueck }) {
   const t = useT();
-  const aktuelleRunde = runden.find((r) => r.runde_id === rundeId) || null;
-  /* Nur die Spiele der gewaehlten Mannschaft. Ein Spiel gehoert ueber
-     events.team_id zu genau einer Mannschaft und damit zu genau einer Runde -
-     die Zuordnung kann nicht auseinanderlaufen. */
-  const alleBegegnungen = tippBegegnungen(events);
-  const begegnungen = aktuelleRunde
-    ? alleBegegnungen.filter((m) => m.team === aktuelleRunde.team_name)
-    : [];
-  const mine = tippPredictions[currentUser.id] || {};
   /* Getippt wird jetzt in zwei Schritten: eintragen, dann abgeben.
      Vorher ging jede einzelne Ziffer sofort in die Datenbank. Wer "12" statt
      "1" tippte, hatte zwischendurch einen Tipp auf 1 abgegeben; wer eine Zahl
@@ -7973,6 +7963,22 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
   const [rundeId, setRundeId] = useState("");
   const [tabelle, setTabelle] = useState(null);
   const [rundenFehler, setRundenFehler] = useState("");
+
+  /* Diese vier Ableitungen standen ueber den useState-Zeilen und griffen auf
+     runden und rundeId zu, bevor es die gab. In JavaScript ist das kein
+     Stilfehler: const liegt bis zur Deklaration in der temporalen Todeszone,
+     der Zugriff wirft einen ReferenceError - bei JEDEM Rendern. Die Seite
+     kam deshalb gar nicht erst hoch, im App-Rahmen stand "This page
+     couldn't load". Sie stehen jetzt hinter dem Zustand. */
+  const aktuelleRunde = runden.find((r) => r.runde_id === rundeId) || null;
+  /* Nur die Spiele der gewaehlten Mannschaft. Ein Spiel gehoert ueber
+     events.team_id zu genau einer Mannschaft und damit zu genau einer Runde -
+     die Zuordnung kann nicht auseinanderlaufen. */
+  const alleBegegnungen = tippBegegnungen(events);
+  const begegnungen = aktuelleRunde
+    ? alleBegegnungen.filter((m) => m.team === aktuelleRunde.team_name)
+    : [];
+  const mine = tippPredictions[currentUser.id] || {};
 
   const rundenLaden = useCallback(async () => {
     if (!supabase || !isDbId(currentUser.clubId)) return;
@@ -8025,8 +8031,10 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
     onTippSpeichern?.(matchId, "", "");
     setEntwuerfe((e) => { const n = { ...e }; delete n[matchId]; return n; });
   };
-  const leaderboard = members.map((member) => ({ ...member, calculatedTippPoints: totalTippPoints(member.id, tippPredictions, tippResults, begegnungen) }))
-    .sort((a, b) => b.calculatedTippPoints - a.calculatedTippPoints);
+  /* Die frueher hier gerechnete Rangliste ist entfallen. Sie lief ueber ALLE
+     Vereinsmitglieder und alle Spiele auf einmal - also genau das, was jetzt
+     getrennt sein soll. Die Tabelle kommt aus tipp_tabelle(runde_id) und gilt
+     je Mannschaft. Gerendert wurde die alte ohnehin nicht mehr. */
 
   return (
     <div className="px-4 pt-4 pb-10">
@@ -8872,9 +8880,18 @@ function PollManagerPanel({ polls, setPolls, clubId, onAnlegen, onUmschalten }) 
   return <div className="space-y-4"><div className="rounded-2xl p-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">{t("umf.neu")}</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>{t("umf.mindestens")}</div><input value={title} onChange={(e)=>setTitle(e.target.value)} placeholder={t("ph.frageTitel")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim}}/>{options.map((o,i)=><input key={i} value={o} onChange={(e)=>setOptions((all)=>all.map((x,idx)=>idx===i?e.target.value:x))} placeholder={`Antwort ${i+1}`} className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2" style={{background:C.paperDim}}/>)}<div className="flex gap-2"><button onClick={()=>setOptions((o)=>[...o,""])} className="px-3 py-2 rounded-lg text-xs font-bold" style={{background:C.paperDim,color:C.ink}}>＋ Antwort</button><button onClick={create} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{background: C.red, color: C.aufPrimaer}}>{t("allg.veroeffentlichen")}</button></div>{fehler&&<div role="status" className="text-[11px] rounded-xl px-3 py-2 mt-2" style={{background:C.fehlerFlaeche,color:C.fehler}}>{fehler}</div>}</div><div className="space-y-2">{polls.map((poll)=><div key={poll.id} className="rounded-xl p-3 flex items-center gap-3" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="flex-1"><div className="text-xs font-bold">{poll.title}</div><div className="text-[10px] mt-1" style={{color:C.textDim}}>{poll.options.length} Antworten · {poll.options.reduce((n,o)=>n+o.votes,0)} Stimmen</div></div><button onClick={()=>{onUmschalten?.(poll.id,!poll.active);setPolls((ps)=>ps.map((p)=>p.id===poll.id?{...p,active:!p.active}:p));}} className="px-2.5 py-1.5 rounded-full text-[10px] font-bold" style={{background:poll.active?C.erfolgFlaeche:C.paperDim,color:poll.active?C.secondary:C.textDim}}>{poll.active?t("status.aktiv"):t("status.inaktiv")}</button></div>)}</div></div>;
 }
 
-function MatchResultsPanel({ results, onSave, onDelete, events }) {
+function MatchResultsPanel({ results, onSave, onDelete, events, currentClub }) {
   const t = useT();
-  const begegnungen = tippBegegnungen(events);
+  const alleBegegnungen = tippBegegnungen(events);
+  /* Nach Mannschaft gliedern. Vorher standen alle Spiele des Vereins in einer
+     einzigen Liste - bei fuenf Mannschaften und einer vollen Saison sind das
+     hundert Karten hintereinander, und wer das Ergebnis der U15 eintragen
+     wollte, scrollte an den Herren vorbei. */
+  const mannschaften = [...new Set(alleBegegnungen.map((m) => m.team).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, "de"));
+  const [gewaehlt, setGewaehlt] = useState("");
+  const mannschaft = gewaehlt || mannschaften[0] || "";
+  const begegnungen = alleBegegnungen.filter((m) => m.team === mannschaft);
   const [drafts, setDrafts] = useState({});
   const [savedId, setSavedId] = useState(null);
   const update = (matchId, side, value) => setDrafts((current) => ({
@@ -8890,13 +8907,30 @@ function MatchResultsPanel({ results, onSave, onDelete, events }) {
   };
   return (
     <div>
-      <div className="rounded-2xl p-4 mb-4" style={{ background: C.erfolgFlaeche, border: `1px solid ${C.erfolgRand}` }}>
+      {/* Zuerst die Freigabe, dann die Ergebnisse - in dieser Reihenfolge
+          arbeitet man auch: erst entscheiden, welche Mannschaft ein Tippspiel
+          bekommt, dann Woche fuer Woche die Endstaende eintragen. */}
+      <TippRundenPanel currentClub={currentClub} />
+
+      <div className="rounded-2xl p-4 mb-4 mt-4" style={{ background: C.erfolgFlaeche, border: `1px solid ${C.erfolgRand}` }}>
         <div className="text-sm font-bold mb-1" style={{ color: C.ink }}>{t("tipp.ergebnisse")}</div>
         <div className="text-xs" style={{ color: C.textDim }}>Endstand nach dem Spiel eintragen. Das System wertet danach alle Tipps aus: exakt 3 Punkte, richtige Tendenz 1 Punkt.</div>
       </div>
+      {mannschaften.length > 1 && (
+        <label className="block mb-3">
+          <span className="block text-[10px] font-bold mb-1" style={{ color: C.textDim }}>{t("tm.mannschaft")}</span>
+          <select value={mannschaft} onChange={(e) => setGewaehlt(e.target.value)}
+            className="w-full px-3 py-2.5 rounded-xl text-xs outline-none"
+            style={{ background: C.white, border: `1px solid ${C.line}`, color: C.ink }}>
+            {mannschaften.map((n) => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </label>
+      )}
       {begegnungen.length === 0 && (
         <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>
-          Noch keine Spiele im Terminplan, für die sich ein Ergebnis eintragen ließe.
+          {mannschaften.length === 0
+            ? "Noch keine Spiele im Terminplan, für die sich ein Ergebnis eintragen ließe."
+            : `Für ${mannschaft} steht kein Spiel im Terminplan.`}
         </div>
       )}
       <div className="space-y-3">
@@ -9860,7 +9894,7 @@ function AdminView({
       {panel === "sponsoring" && <SponsoringPanel bookings={werbeplaetze} currentClub={currentClub} clubFeatures={clubFeatures} onFeaturesChanged={onClubFeaturesChanged} onChanged={onWerbeplaetzeGeaendert} />}
       {panel === "polls" && <PollManagerPanel polls={polls} setPolls={setPolls} clubId={currentUser.clubId} onAnlegen={onUmfrageAnlegen} onUmschalten={onUmfrageUmschalten} />}
       {panel === "roles" && <><RolesPanel members={members} setMembers={setMembers} /><ClaimManagedPlayerPanel members={members} setMembers={setMembers} currentUser={currentUser} /></>}
-      {panel === "results" && currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role)) && <MatchResultsPanel results={tippResults} onSave={onSaveTippResult} onDelete={onDeleteTippResult} events={events} />}
+      {panel === "results" && currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role)) && <MatchResultsPanel results={tippResults} onSave={onSaveTippResult} onDelete={onDeleteTippResult} events={events} currentClub={currentClub} />}
       {panel === "families" && isSysAdmin(currentUser) && <AdminFamilyPanel members={members} setMembers={setMembers} />}
       {panel === "system" && isSysAdmin(currentUser) && (
         <SystemPanel members={members} channels={channels} setChannels={setChannels} maintenanceMode={maintenanceMode} setMaintenanceMode={setMaintenanceMode} onResetDemo={onResetDemo} onEinstellung={onEinstellung} />
