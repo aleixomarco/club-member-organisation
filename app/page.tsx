@@ -12641,7 +12641,17 @@ export default function ClubMemberOrganisationApp() {
     const [tipps, ergebnisse, umfragen, antworten, stimmen, wahl, dienste, protokolle, aufgaben, einstellungen, eigenesProfil] = await Promise.all([
       supabase.from("predictions").select("event_id,profile_id,home_score,away_score").eq("club_id", clubId),
       supabase.from("event_results").select("event_id,heim,auswaerts,erfasst_von,created_at").eq("club_id", clubId),
-      supabase.from("polls").select("id,title,active,created_at,created_by").eq("club_id", clubId).order("created_at", { ascending: false }),
+      /* NUR Vereinsumfragen - alles mit einem Kanal gehoert in den Chat.
+         polls traegt seit den Chat-Abstimmungen beides: Vereinsumfragen
+         (channel_id leer) und Abstimmungen, die jemand in einen Gruppenchat
+         geworfen hat. Ohne diese Bedingung landeten auch die Chat-Abstimmungen
+         in dieser Liste - und damit auf der Startseite unter "Deine Stimme
+         zaehlt" und in der Vereinsverwaltung unter Umfragen.
+         Die Zeilenregel schuetzt davor nicht: Sie gibt eine Chat-Abstimmung
+         genau den Leuten des Kanals - und die sahen sie dann eben zweimal,
+         einmal im Chat und einmal auf der Startseite. Eine Frage an die
+         Mannschaft hat ausserhalb ihres Chats nichts zu suchen. */
+      supabase.from("polls").select("id,title,active,created_at,created_by").eq("club_id", clubId).is("channel_id", null).order("created_at", { ascending: false }),
       supabase.from("poll_options").select("id,poll_id,label,position,legacy_votes").eq("club_id", clubId),
       supabase.from("poll_votes").select("poll_id,option_id,profile_id").eq("club_id", clubId),
       supabase.from("season_votes").select("voter_profile_id,candidate_membership_id").eq("club_id", clubId).eq("season", SAISON_KENNUNG),
