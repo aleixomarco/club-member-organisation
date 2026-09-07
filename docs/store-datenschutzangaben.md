@@ -27,13 +27,16 @@ Identität verknüpft? Wird er zum Tracking genutzt?
 | Weitere Nutzerdaten | Ja | Ja | Geburtsdatum, Geschlecht, Nationalität, akademischer Titel, Mitgliedsnummer |
 | Fotos oder Videos | Ja | Ja | Nutzerinhalte (Vereinslogo, Bilder in News-Beiträgen) |
 | Andere Nutzerinhalte | Ja | Ja | Chat-Nachrichten, News-Beiträge, Aufgaben, Abstimmungen |
-| Einkäufe | Ja | Ja | Abo-Status (Kaufabwicklung über Apple/PayPal, keine Zahlungsdaten bei uns) |
 | Nutzer-ID | Ja | Ja | Kontozuordnung |
-| Geräte-ID | Ja | Ja | Push-Token für Benachrichtigungen |
+| Geräte-ID | Ja | Ja | Push-Token (Firebase Cloud Messaging), nur nach Einwilligung |
 
 **Nicht erhoben:** Standort, Kontakte, Gesundheits- und Fitnessdaten, Browserverlauf,
-Suchverlauf, Nutzungsdaten, Diagnosedaten, Werbedaten, Zahlungsdaten
-(Kartennummern/IBAN liegen bei Apple bzw. PayPal, nie bei uns).
+Suchverlauf, Nutzungsdaten, Diagnosedaten, Werbedaten, Zahlungsdaten, Einkäufe.
+
+> Stand 07.09.2026: Der In-App-Kauf ist zum 31.08.2026 ersatzlos entfallen, PayPal
+> und RevenueCat sind ausgebaut. Die Abrechnung mit den Vereinen läuft auf Rechnung
+> außerhalb der App, es gibt keinen Zahlungs-Webhook mehr. „Einkäufe" und
+> „Finanzdaten" sind deshalb nirgends mehr anzugeben.
 
 ### Export-Compliance
 Bereits in `ios/App/App/Info.plist` hinterlegt: `ITSAppUsesNonExemptEncryption = false`.
@@ -54,8 +57,8 @@ Hinweisbildschirm nach der Anmeldung
 Google fragt je Datentyp: erhoben, geteilt, zwingend erforderlich, Zweck.
 
 **„Geteilt" ist überall „Nein"** — Daten gehen ausschließlich an
-Auftragsverarbeiter (Supabase, Vercel, Google Firebase, RevenueCat, PayPal), was
-Google ausdrücklich nicht als „Teilen" wertet.
+Auftragsverarbeiter (Supabase, Vercel, Google Firebase, Apple), was Google
+ausdrücklich nicht als „Teilen" wertet.
 
 | Kategorie | Datentyp | Erhoben | Erforderlich | Zweck |
 |---|---|---|---|---|
@@ -66,9 +69,14 @@ Google ausdrücklich nicht als „Teilen" wertet.
 | Personenbezogene Daten | Weitere Infos | Ja | Nein | Geburtsdatum, Geschlecht, Nationalität, Mitgliedsnummer |
 | Fotos und Videos | Fotos | Ja | Nein | App-Funktionalität (Vereinslogo, News-Bilder) |
 | Nachrichten | Andere In-App-Nachrichten | Ja | Nein | App-Funktionalität (Vereinschat) |
-| Finanzdaten | Kaufhistorie | Ja | Nein | App-Funktionalität (Abo-Status) |
 | App-Aktivität | Andere Aktionen | Ja | Nein | Zu-/Absagen, Abstimmungen, Helferdienste |
-| Geräte-IDs | Geräte- oder andere IDs | Ja | Nein | Push-Benachrichtigungen |
+| Geräte-IDs | Geräte- oder andere IDs | Ja | Nein | Push-Token (Firebase Cloud Messaging), nur nach Einwilligung |
+
+> **Zu Push:** Seit 06.09.2026 im Einsatz. Nicht nur der Token, sondern auch der
+> INHALT jeder Mitteilung läuft zur Zustellung über Google und — auf iOS —
+> über Apples APNs. In den Texten stehen Namen, Termintitel, Orte, Ergebnisse und
+> bis zu 90 Zeichen einer Chatnachricht. Das gehört in beide Formulare und in die
+> Datenschutzerklärung (dort Abschnitt 2 und 4).
 
 **Sicherheitsangaben:**
 - Verschlüsselte Übertragung: **Ja** (durchgängig HTTPS/TLS)
