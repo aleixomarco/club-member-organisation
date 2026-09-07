@@ -5907,7 +5907,21 @@ function VehiclesView({ currentUser, currentClub }) {
   const cfg = sportConfig(currentClub?.sport);
   const databaseMembership = !!supabase && isDbId(currentUser.id);
   const canManageFleet = currentUser.roles.some((r) => ["vorstand", "vereinsadmin", "geschaeftsfuehrung"].includes(r));
-  const canBook = canManageFleet || currentUser.roles.some((r) => ["trainer", "teammanager", "kapitaen", "finanzmanager"].includes(r));
+  /* Die Maske ist fuer alle dieselbe.
+   *
+   * Vorher stand hier eine eigene Rollenliste, und wer nicht daraufstand, kam
+   * gar nicht erst in das Formular - obwohl die Datenbank ihn laengst
+   * hineingelassen haette. Sie regelt das naemlich selbst: Die Regel "members
+   * request bookings" erlaubt jedem aktiven Mitglied das Einfuegen, und
+   * fahrzeugbuchung_status_setzen entscheidet VOR dem Speichern, ob daraus
+   * eine Buchung wird (vereinsadmin, sysadmin, organisator) oder eine Anfrage.
+   *
+   * Zwei Rechtelisten fuer dieselbe Sache laufen frueher oder spaeter
+   * auseinander - hier taten sie es schon: Ein Trainer durfte laut App
+   * buchen, war fuer die Datenbank aber ein Anfragender, und ein Mitglied
+   * ohne Rolle durfte laut Datenbank anfragen, sah aber kein Formular. Es
+   * gibt jetzt nur noch die Regel der Datenbank. */
+  const darfDirektBuchen = isAdmin(currentUser) || currentUser.roles.includes("organisator");
   const hasPhone = (currentUser.contactPhones || []).some((p) => p && p.trim());
   const [vehicles, setVehicles] = useState([]);
   const [teams, setTeams] = useState([]);
@@ -6107,12 +6121,12 @@ function VehiclesView({ currentUser, currentClub }) {
         {vehicles.map((v) => (
           <div key={v.id} className="flex items-center gap-3 rounded-2xl px-3.5 py-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
             <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: C.paperDim, color: C.red }}><Car size={18}/></div>
-            <button onClick={() => { if (!canBook) return; if (!hasPhone) { setMessage(t("fzg.telefonNoetig")); return; } openBooking(v); }} disabled={!canBook} className="flex-1 text-left">
+            <button onClick={() => { if (!hasPhone) { setMessage(t("fzg.telefonNoetig")); return; } openBooking(v); }} className="flex-1 text-left">
               <div className="text-sm font-bold" style={{ color: C.ink }}>{v.label}</div>
               <div className="text-[11px]" style={{ color: C.textDim }}>{v.license_plate} · {v.seats} Plätze</div>
               <Erstellt von={v.created_by} am={v.created_at} rahmenlos />
             </button>
-            {canBook && <ChevronRight size={15} style={{ color: C.textDim }}/>}
+            <ChevronRight size={15} style={{ color: C.textDim }}/>
             {canManageFleet && <button onClick={() => openEditVehicle(v)} aria-label={`${v.label} bearbeiten`} className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: C.paperDim, color: C.textDim }}>{t("allg.bearbeiten")}</button>}
             {canManageFleet && <button onClick={() => removeVehicle(v)} aria-label={`${v.label} löschen`} className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.paperDim, color: C.red }}><X size={14}/></button>}
           </div>
@@ -6219,7 +6233,16 @@ function VehiclesView({ currentUser, currentClub }) {
                 {teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
             )}
-            <button onClick={submitBooking} disabled={savingBooking} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{savingBooking ? (editingBookingId ? t("allg.wirdGespeichert") : t("fzg.wirdGebucht")) : (editingBookingId ? t("allg.aenderungenSpeichern") : t("fzg.buchen"))}</button>
+            {/* Wer nicht direkt buchen darf, soll das VORHER wissen und nicht
+                erst am Status "angefragt" merken. */}
+            {!darfDirektBuchen && !editingBookingId && (
+              <div className="text-[11px] mb-2 rounded-xl px-3 py-2" style={{ background: C.paperDim, color: C.textDim }}>
+                {t("fzg.anfrageHinweis")}
+              </div>
+            )}
+            <button onClick={submitBooking} disabled={savingBooking} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{savingBooking ? (editingBookingId ? t("allg.wirdGespeichert") : t("fzg.wirdGebucht"))
+              : editingBookingId ? t("allg.aenderungenSpeichern")
+              : darfDirektBuchen ? t("fzg.buchen") : t("fzg.anfragen")}</button>
           </div>
         </div>
       )}
@@ -11070,6 +11093,11 @@ export default function ClubMemberOrganisationApp() {
       setTab("events");
       return;
     }
+    /* Die Buchungsanfrage fuehrt dorthin, wo man sie genehmigen kann.
+       Ohne diesen Zweig traegt die Meldung zwar ein Ziel, die App wuesste
+       damit aber nichts anzufangen - die Zeile waere anklickbar und taete
+       nichts. */
+    if (e.ziel_art === "fahrzeug") { setSubView("vehicles"); return; }
     if (e.ziel_art === "umfrage") { setSubView(null); setTab("home"); return; }
     if (e.ziel_art === "news") { setSubView(null); setTab("home"); return; }
   };
