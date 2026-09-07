@@ -5836,7 +5836,7 @@ function TasksView({ currentUser, members }) {
       <div className="rounded-2xl p-3.5 mb-2" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
         <div className="flex items-start justify-between gap-2 mb-1">
           <div className="text-sm font-bold" style={{ color: C.ink }}>{task.title}</div>
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={{ background: erledigt ? C.erfolgFlaeche : free > 0 ? C.paperDim : C.fehlerFlaeche, color: erledigt ? C.erfolg : free > 0 ? C.textDim : C.fehler }}>{erledigt ? t("auf.erledigt") : free > 0 ? `${free}/${task.slots} frei` : t("help.voll")}</span>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={{ background: erledigt ? C.erfolgFlaeche : free > 0 ? C.paperDim : C.fehlerFlaeche, color: erledigt ? C.erfolg : free > 0 ? C.textDim : C.fehler }}>{erledigt ? t("auf.erledigt") : free > 0 ? `${free}/${task.slots} ${t("help.frei")}` : `${taken}/${task.slots} ${t("help.voll")}`}</span>
         </div>
         {task.description && <div className="text-xs mb-1.5" style={{ color: C.textDim }}>{task.description}</div>}
         <div className="text-[10px] mb-2" style={{ color: C.textDim }}>{task.teamName ? `${task.teamName} · ` : t("verein.mitPunktRaum")}{task.dueDate ? `Fällig bis ${new Date(task.dueDate).toLocaleDateString("de-DE")}` : t("auf.keinFaelligkeitsdatum")}</div>
@@ -10273,7 +10273,14 @@ function AufgabeOverlay({ taskId, currentUser, onClose }) {
               {eintragungen.length > 0 && <div className="text-[11px] mb-1" style={{ color: C.textDim }}>{t("help.eingetragenLabel")}: {eintragungen.map((p) => p.name).join(", ")}</div>}
               <div className="text-[11px]" style={{ color: erledigt ? C.erfolg : frei > 0 ? C.textDim : C.fehler, fontWeight: 700 }}>
                 {erledigt ? `${t("auf.erledigtAm")} ${new Date(aufgabe.erledigt_am).toLocaleDateString("de-DE")}`
-                  : frei > 0 ? `${frei}/${aufgabe.slots_needed} ${t("help.frei")}` : t("help.voll")}
+                  /* Auch im vollen Fall die Kapazitaet zeigen. Ein blosses
+                     "Voll" verschweigt, wie viele Plaetze es ueberhaupt gab -
+                     bei einer Aufgabe mit einem Platz sieht das genauso aus
+                     wie bei einer mit acht. Dass die Zahlen hier die Belegung
+                     meinen und im freien Fall die Restplaetze, klaert das Wort
+                     dahinter: "1/1 Voll" laesst sich nicht als "1 frei" lesen. */
+                  : frei > 0 ? `${frei}/${aufgabe.slots_needed} ${t("help.frei")}`
+                  : `${belegt.length}/${aufgabe.slots_needed} ${t("help.voll")}`}
               </div>
             </div>
 
