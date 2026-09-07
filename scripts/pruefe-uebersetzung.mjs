@@ -115,6 +115,19 @@ for (let i = 0; i < zeilen.length; i++) {
   /* JSX-Text und Attribute - gelten ueberall, auch ausserhalb von Komponenten
      kann so etwas nicht stehen, also ist die Einschraenkung hier unnoetig. */
   for (const [, text] of roh.matchAll(/>([A-ZÄÖÜ][^<>{}\n]{2,80})</g)) merken(text, i, "JSX");
+  /* Beschriftungen, die ueber den Zeilenrand gehen.
+     Das Muster oben verlangt oeffnende UND schliessende Klammer in DERSELBEN
+     Zeile. Genau daran ist "Neuen Verein registrieren" vorbeigekommen: Der
+     Text stand am Zeilenende, das </button> eine Zeile tiefer. Ein Nutzer hat
+     ihn gemeldet, nicht dieser Pruefer.
+     Deshalb zwei weitere Faelle: Text NACH einem > bis zum Zeilenende, und
+     Text am Zeilenanfang VOR einem schliessenden Element. */
+  /* Das > darf nicht das eines Pfeils sein - "=> Array.isArray(...)" ist
+     Code, kein Knopf. Und Beschriftungen enthalten keine Klammern, Punkte
+     oder Semikola; damit fallen die uebrigen Codezeilen weg. */
+  const wieText = (x) => !/[().;=]/.test(x);
+  for (const [, text] of roh.matchAll(/[^=]>\s*([A-ZÄÖÜ][^<>{}\n]{2,80}?)\s*$/g)) { if (wieText(text)) merken(text, i, "JSX-Ende"); }
+  for (const [, text] of roh.matchAll(/^\s*([A-ZÄÖÜ][^<>{}\n]{2,80}?)\s*<\//g)) { if (wieText(text)) merken(text, i, "JSX-Anfang"); }
   for (const [, text] of roh.matchAll(/placeholder="([^"]{3,80})"/g)) merken(text, i, "Platzhalter");
   for (const [, text] of roh.matchAll(/aria-label="([^"]{3,80})"/g)) merken(text, i, "Vorlesehilfe");
 

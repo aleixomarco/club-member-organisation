@@ -139,6 +139,12 @@ const CLUB_COLOR_PRESETS = [
 const OK_ZEICHEN = "\u200B";
 const istErfolg = (m) => typeof m === "string" && m.startsWith(OK_ZEICHEN);
 const meldungstext = (m) => (typeof m === "string" ? m.split(OK_ZEICHEN).join("") : m);
+/* Platzhalter in uebersetzten Texten fuellen.
+   Ein blosses "seit" plus Jahreszahl geht nicht auf: Im Tuerkischen steht das
+   Jahr VORNE ("2026'dan beri"). Die Wortstellung gehoert also in die
+   Uebersetzung, nicht in den Code - deshalb ein Platzhalter im Text. */
+const mitWerten = (text, werte) => Object.entries(werte || {})
+  .reduce((satz, [name, wert]) => satz.split(`{${name}}`).join(String(wert)), String(text ?? ""));
 
 function mischeHex(hex, anteil, mitWeiss = true) {
   const clean = String(hex || "").replace("#", "");
@@ -1744,7 +1750,7 @@ function AuthShell({ children, footer, club }) {
       <div className="flex flex-col items-center mb-8">
         <div className="mb-3"><ClubLogo club={club} size={56} rounded={16} /></div>
         <div className="text-sm tracking-widest" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>{club ? club.shortName : "VEREINS-APP"}</div>
-        <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{club ? `Mitglieder-App · seit ${club.foundedYear}` : t("allg.mitgliederApp")}</div>
+        <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{club ? mitWerten(t("allg.appSeitJahr"), { jahr: club.foundedYear }) : t("allg.mitgliederApp")}</div>
       </div>
       {children}
       <div className="mt-auto pt-6">{footer}</div>
@@ -1941,7 +1947,7 @@ function ClubSelectScreen({ clubs, onSelect, goNewClub, goBack, onAbmelden, onKo
             <ClubLogo club={c} size={36} rounded={9} />
             <div className="text-left flex-1">
               <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{c.name}</div>
-              <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{c.city} · seit {c.foundedYear}</div>
+              <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{c.city} · {mitWerten(t("allg.seitJahr"), { jahr: c.foundedYear })}</div>
             </div>
             <ChevronRight size={16} style={{ color: C.textDim, flexShrink: 0 }} />
           </button>
@@ -1949,7 +1955,7 @@ function ClubSelectScreen({ clubs, onSelect, goNewClub, goBack, onAbmelden, onKo
       </div>
 
       <button onClick={goNewClub} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm mb-6" style={{ background: C.ink, color: "#fff", fontFamily: "Inter", fontWeight: 700 }}>
-        <UserPlus size={15} /> Neuen Verein registrieren
+        <UserPlus size={15} /> {t("verein.neuAnlegen")}
       </button>
 
       {/* Nur fuer eine offene Sitzung: Wer hier ohne Anmeldung einen Verein
@@ -8458,7 +8464,7 @@ function SysAdminUserManager({ members, setMembers }) {
       <button onClick={() => { setSelectedId(""); setSuche(""); setSection("overview"); }}
         className="flex items-center gap-1.5 mb-3 px-3 py-2 rounded-full text-xs"
         style={{ background: C.primaerWeich, border: `1px solid ${C.red}`, color: C.red, fontFamily: "Inter", fontWeight: 700 }}>
-        <ArrowLeft size={14} style={{ color: C.red }} /> Zur Nutzerübersicht
+        <ArrowLeft size={14} style={{ color: C.red }} /> {t("betr.zurUebersicht")}
       </button>
     )}
     {selected && <><div className="rounded-2xl p-4 mb-4 flex items-center gap-3" style={{ background: C.ink, color: C.white }}><div className="w-11 h-11 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: selected.color }}>{initialsOf(selected.name)}</div><div className="min-w-0"><div className="text-base font-bold truncate" style={{ fontFamily: "Oswald" }}>{selected.name}</div><div className="text-[10px] truncate" style={{ color: C.textDim }}>{selected.email || t("pf.ohneEigeneMail")}</div></div></div>
@@ -8868,7 +8874,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
               seine zweite Mannschaft nirgends. Hier gehoeren alle hin, nach
               Rang geordnet. */}
           <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{nachRangSortiert(memberAllTeams(user)).join(" · ") || user.team}{user.number ? ` · Rückennummer ${user.number}` : ""}</div>
-          <div className="text-xs mt-0.5 mb-2" style={{ color: C.textDim, fontFamily: "Inter" }}>Dabei seit {user.since} · {age(user.birthdate)} Jahre</div>
+          <div className="text-xs mt-0.5 mb-2" style={{ color: C.textDim, fontFamily: "Inter" }}>{mitWerten(t("pf.dabeiSeitJahr"), { jahr: user.since })} · {mitWerten(t("pf.jahreAlt"), { zahl: age(user.birthdate) })}</div>
           <div className="flex flex-wrap gap-1.5">
             {user.roles.filter((r) => ROLE_META[r]).map((r) => <Pill key={r} bg={ROLE_META[r].color}>{rollenLabel(t, r)}</Pill>)}
           </div>
@@ -9062,7 +9068,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
       </div>
 
       <button onClick={onLogout} className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm" style={{ background: C.paperDim, color: C.red, fontFamily: "Inter", fontWeight: 700 }}>
-        <LogOut size={15} /> Abmelden
+        <LogOut size={15} /> {t("allg.abmelden")}
       </button>
 
       {profileUnderlay === "subscription" && <ProfileUnderlay title="Zugang des Vereins" onClose={() => setProfileUnderlay("")}><SubscriptionPanel user={user}/></ProfileUnderlay>}
@@ -14226,7 +14232,7 @@ export default function ClubMemberOrganisationApp() {
                   )}
                   <div>
                     <div className="text-xs leading-none" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink, letterSpacing: 0.5 }}>{currentClub?.shortName}</div>
-                    <div className="text-[10px]" style={{ color: C.textDim }}>seit {currentClub?.foundedYear}</div>
+                    <div className="text-[10px]" style={{ color: C.textDim }}>{mitWerten(t("allg.seitJahr"), { jahr: currentClub?.foundedYear })}</div>
                   </div>
                   {/* Die Glocke. Sie zeigt nur eine Zahl, wenn es etwas zu
                       sehen gibt - eine dauerhaft leere Glocke waere ein Knopf,
