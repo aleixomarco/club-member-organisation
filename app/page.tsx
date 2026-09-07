@@ -3228,9 +3228,36 @@ function NextTrainingCard({ training, team, auswahlVorhanden = false }) {
     </div>
   );
 }
-function Dashboard({ user, members, events, channels, news, dutyPlan, seasonVotes, tippPredictions, tippResults, polls, setPolls, onVote, onUnvote, onFavoritMannschaft, werbeplaetze, onSponsorImpression, onSponsorClick, goEvents, goSeason, goTipp, goDuty, goNews, goTasks, goVehicles, currentClub, featureEnabled, dashboardTileOrder, entitlement, goSubscribe, mannschaften = [], gewaehlteMannschaft = "", onMannschaftWechsel }) {
+function Dashboard({ user, members, events, channels, news, dutyPlan, seasonVotes, tippPredictions, tippResults, polls, setPolls, onVote, onUnvote, umfrageFokus, onUmfrageFokusErledigt, onFavoritMannschaft, werbeplaetze, onSponsorImpression, onSponsorClick, goEvents, goSeason, goTipp, goDuty, goNews, goTasks, goVehicles, currentClub, featureEnabled, dashboardTileOrder, entitlement, goSubscribe, mannschaften = [], gewaehlteMannschaft = "", onMannschaftWechsel }) {
   const t = useT();
   const sport = currentClub?.sport || "rollhockey";
+
+  /* Eine angetippte Umfrage-Meldung fuehrt nicht nur auf die Startseite,
+     sondern an die Umfrage.
+     Angesteuert wird ueber die Kennung im Markup, nicht ueber eine Referenz je
+     Karte: Es koennen beliebig viele sein, und ein Feld voller Referenzen waere
+     nur eine umstaendlichere Art, dasselbe zu tun.
+     Der kurze Rahmen ist wichtiger, als er aussieht - nach dem Rollen sieht
+     man sonst eine Liste von Karten und weiss nicht, welche gemeint war. */
+  useEffect(() => {
+    if (!umfrageFokus?.pollId) return undefined;
+    let abgebrochen = false;
+    /* Zwei Bilder warten: Beim Wechsel auf die Startseite steht die Kachel im
+       ersten Durchlauf noch nicht im Dokument. */
+    const kennung = window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+      if (abgebrochen) return;
+      const knoten = document.getElementById(`umfrage-${umfrageFokus.pollId}`);
+      onUmfrageFokusErledigt?.();
+      if (!knoten) return;
+      knoten.scrollIntoView({ behavior: "smooth", block: "center" });
+      knoten.style.transition = "box-shadow .3s";
+      knoten.style.boxShadow = `0 0 0 2px ${C.red}`;
+      knoten.style.borderRadius = "18px";
+      window.setTimeout(() => { knoten.style.boxShadow = "none"; }, 1800);
+    }));
+    return () => { abgebrochen = true; window.cancelAnimationFrame(kennung); };
+  }, [umfrageFokus, onUmfrageFokusErledigt]);
+
   /* Alle Kacheln in „Aktionen & Abstimmungen" hängen am Premium-Tarif
      (siehe die LockedFeature-Hüllen der jeweiligen Ansichten). Während der
      Tarif noch geladen wird, zeigen wir kein Schloss — sonst blitzt es kurz
@@ -3417,7 +3444,11 @@ function Dashboard({ user, members, events, channels, news, dutyPlan, seasonVote
       {polls.some((p) => p.active) && (
         <DashboardSection accent={C.secondary} background={C.sekundaerWeich}>
           <SectionTitle eyebrow="Mitmachen" title="Deine Stimme zählt" />
-          <div className="space-y-3">{polls.filter((p)=>p.active).map((poll)=><PollWidget key={poll.id} poll={poll} userId={user.id} setPolls={setPolls} onVote={onVote} onUnvote={onUnvote}/>)}</div>
+          <div className="space-y-3">{polls.filter((p)=>p.active).map((poll)=>(
+            <div key={poll.id} id={`umfrage-${poll.id}`} style={{ scrollMarginTop: 90, scrollMarginBottom: 120 }}>
+              <PollWidget poll={poll} userId={user.id} setPolls={setPolls} onVote={onVote} onUnvote={onUnvote}/>
+            </div>
+          ))}</div>
         </DashboardSection>
       )}
 
@@ -5102,9 +5133,14 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
       .map((m) => m.id)
       .filter((id) => isDbId(id));
     if (empfaenger.length === 0) return;
-    supabase.rpc("notify_many", {
+    /* Mit Ziel, damit die Meldung in der Glocke antippbar ist und in DIESEN
+       Kanal fuehrt. Ohne das stand dort "Neue Nachricht", und ein Tipp darauf
+       tat nichts - bei einer Abstimmung ausgerechnet das, was man sofort
+       oeffnen will. */
+    supabase.rpc("notify_many_ziel", {
       target_memberships: empfaenger, p_notif_type: "chat",
       p_title: `Neue Nachricht · ${active.name || "Chat"}`, p_body: rumpf,
+      p_ziel_art: "chat", p_ziel_id: active.id,
     });
   };
 
@@ -12337,6 +12373,11 @@ export default function ClubMemberOrganisationApp() {
      Datenbank eine neue Art schickt -, passiert nichts. Ein Sprung ins Leere
      waere schlechter als keiner. */
   const [offeneAufgabe, setOffeneAufgabe] = useState(null);
+  /* Welche Umfrage die Startseite heranrollen soll. Der Zeitstempel gehoert
+     dazu: Tippt jemand dieselbe Meldung ein zweites Mal an, aendert sich die
+     Kennung nicht - ohne ihn bliebe der Wunsch unbemerkt und nichts
+     passierte. */
+  const [umfrageFokus, setUmfrageFokus] = useState(null);
   const meldungOeffnen = (e) => {
     if (!e?.ziel_art || !e?.ziel_id) return;
     if (e.ziel_art === "aufgabe") { setOffeneAufgabe(e.ziel_id); return; }
@@ -12355,7 +12396,25 @@ export default function ClubMemberOrganisationApp() {
     if (e.ziel_art === "beitritt") { setSubView(null); setVerwaltungsBereich("memberships"); setTab("admin"); return; }
     /* Strafen haengen an einer Mannschaft; die Uebersicht liegt unter Teams. */
     if (e.ziel_art === "strafe") { setSubView(null); setTab("teams"); return; }
-    if (e.ziel_art === "umfrage") { setSubView(null); setTab("home"); return; }
+    /* Bis hierher fuehrte die Umfrage nur auf die Startseite. Dort steht sie
+       zwar - aber unter den Terminen, den Neuigkeiten und den Aktionen, und
+       wer eine Meldung antippt, will nicht suchen. Die Kennung geht deshalb
+       als Wunsch weiter; das Dashboard rollt die Karte heran und hebt sie
+       kurz hervor. */
+    if (e.ziel_art === "umfrage") {
+      setSubView(null);
+      setUmfrageFokus({ pollId: e.ziel_id, angefragt: Date.now() });
+      setTab("home");
+      return;
+    }
+    /* Eine Nachricht - oder eine Abstimmung - aus einem Kanal fuehrt in genau
+       diesen Kanal. */
+    if (e.ziel_art === "chat") {
+      setSubView(null);
+      if (e.ziel_id) setChatChannelId(e.ziel_id);
+      setTab("chat");
+      return;
+    }
     if (e.ziel_art === "news") { setSubView(null); setTab("home"); return; }
   };
 
@@ -13924,6 +13983,7 @@ export default function ClubMemberOrganisationApp() {
 
               {!subView && tab === "home" && (
                 <Dashboard user={currentUser} onFavoritMannschaft={setzeFavoritMannschaft} members={clubMembers} events={events} channels={channels} news={vereinsNews} dutyPlan={dutyPlan} seasonVotes={seasonVotes} tippPredictions={tippPredictions} tippResults={tippResults} polls={polls} setPolls={setPolls} onVote={stimmeAbgeben} onUnvote={stimmeZuruecknehmen}
+                  umfrageFokus={umfrageFokus} onUmfrageFokusErledigt={() => setUmfrageFokus(null)}
                   werbeplaetze={werbeplaetze} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick}
                   goEvents={goToMyNextMatch} goSeason={() => setSubView("season")} goTipp={() => setSubView("tipp")} goDuty={() => setSubView("duty")} goTasks={() => setSubView("tasks")} goVehicles={() => setSubView("vehicles")} goNews={currentUserCanEditNews ? goNews : null}
                   currentClub={currentClub} featureEnabled={featureEnabled} dashboardTileOrder={dashboardTileOrder} entitlement={entitlement} goSubscribe={goSubscribe}
