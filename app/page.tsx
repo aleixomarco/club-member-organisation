@@ -5607,14 +5607,24 @@ function TaskCreateForm({ form, setForm, onSubmit, onCancel, editing = false, te
   const entfernen = (id) => setForm({ ...form, verantwortliche: verantwortliche.filter((v) => v !== id) });
   return (
     <div className="rounded-2xl p-3.5 mb-3" style={{ background: C.paperDim }}>
-      <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} maxLength={120} placeholder={t("ph.aufgabeTitel")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.glass, color: C.ink }}/>
-      <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} maxLength={300} placeholder={t("feld.beschreibung")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.glass, color: C.ink }}/>
+      {/* Beschriftung UEBER dem Feld, nicht nur als Platzhalter darin.
+          Ein Platzhalter verschwindet, sobald man tippt - danach steht dort
+          Text ohne Erklaerung, und beim Nachbearbeiten weiss niemand mehr,
+          welches Kaestchen der Titel und welches die Beschreibung war. */}
+      <label className="block mb-2">
+        <span className="block text-[10px] font-bold mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("feld.titel")}</span>
+        <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} maxLength={120} placeholder={t("ph.aufgabeTitel")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.glass, color: C.ink }}/>
+      </label>
+      <label className="block mb-2">
+        <span className="block text-[10px] font-bold mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("feld.beschreibungLabel")}</span>
+        <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} maxLength={300} placeholder={t("feld.beschreibung")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.glass, color: C.ink }}/>
+      </label>
       {/* Beschriftete Felder statt nackter Kaesten: Ein leeres Datumsfeld
           sieht auf dem iPhone aus wie ein grauer Balken - man sieht nicht, ob
           dort Beginn oder Ende hingehoert. */}
       <div className="flex gap-2 mb-2">
         <label className="flex-1">
-          <span className="block text-[10px] font-bold mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("ev.datum")}</span>
+          <span className="block text-[10px] font-bold mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("feld.faelligkeitsdatum")}</span>
           <input type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
             className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.white, border: `1px solid ${C.line}`, color: C.ink }} />
         </label>
@@ -5650,12 +5660,15 @@ function TaskCreateForm({ form, setForm, onSubmit, onCancel, editing = false, te
         ))}
       </div>
       {teams.length > 0 && (
-        <select value={form.teamId || ""} onChange={(e) => setForm({ ...form, teamId: e.target.value })}
-          aria-label={t("tm.mannschaft")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2"
-          style={{ background: C.white, border: `1px solid ${C.line}`, color: C.ink, fontFamily: "Inter" }}>
-          <option value="">{t("auf.ganzerVerein")}</option>
-          {teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-        </select>
+        <label className="block mb-2">
+          <span className="block text-[10px] font-bold mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("tm.mannschaft")}</span>
+          <select value={form.teamId || ""} onChange={(e) => setForm({ ...form, teamId: e.target.value })}
+            className="w-full px-3 py-2.5 rounded-xl text-xs outline-none"
+            style={{ background: C.white, border: `1px solid ${C.line}`, color: C.ink, fontFamily: "Inter" }}>
+            <option value="">{t("auf.ganzerVerein")}</option>
+            {teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+          </select>
+        </label>
       )}
 
       <div className="rounded-xl p-2 mb-2" style={{ background: C.white, border: `1px solid ${C.line}` }}>
@@ -10277,13 +10290,22 @@ function AufgabeOverlay({ taskId, currentUser, onClose }) {
          : !aufgabe ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{t("auf.nichtMehrDa")}</div>
          : bearbeitet ? (
           <>
-            <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} maxLength={120}
-              placeholder={t("ph.aufgabeTitel")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={feldStil} />
-            <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} maxLength={300}
-              placeholder={t("feld.beschreibung")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={feldStil} />
+            {/* Dieselben Beschriftungen wie im Anlegen-Formular. Eine Aufgabe
+                darf nicht anders aussehen, je nachdem ob man sie aus der
+                Liste oder aus der Glocke oeffnet. */}
+            <label className="block mb-2">
+              <span className="block text-[10px] font-bold mb-1" style={{ color: C.textDim }}>{t("feld.titel")}</span>
+              <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} maxLength={120}
+                placeholder={t("ph.aufgabeTitel")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={feldStil} />
+            </label>
+            <label className="block mb-2">
+              <span className="block text-[10px] font-bold mb-1" style={{ color: C.textDim }}>{t("feld.beschreibungLabel")}</span>
+              <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} maxLength={300}
+                placeholder={t("feld.beschreibung")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={feldStil} />
+            </label>
             <div className="flex gap-2 mb-2">
               <label className="flex-1">
-                <span className="block text-[10px] font-bold mb-1" style={{ color: C.textDim }}>{t("ev.datum")}</span>
+                <span className="block text-[10px] font-bold mb-1" style={{ color: C.textDim }}>{t("feld.faelligkeitsdatum")}</span>
                 <input type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
                   className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={feldStil} />
               </label>
