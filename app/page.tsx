@@ -5815,7 +5815,13 @@ function TasksView({ currentUser, members }) {
           {binDrin && <button onClick={() => erledigenUmschalten(task)} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: erledigt ? C.paperDim : C.erfolg, color: erledigt ? C.textDim : C.white }}>{erledigt ? t("auf.wiederOeffnen") : t("auf.erledigt")}</button>}
           {isSignedUp && !erledigt && <button onClick={() => withdraw(task.id)} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: C.paperDim, color: C.red }}>{t("allg.austragen")}</button>}
           {(isCreator || canManage) && <button onClick={() => onEdit(task)} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.paperDim, color: C.textDim }}>{t("allg.bearbeiten")}</button>}
-          {(isCreator || canManage) && <button onClick={() => removeTask(task)} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.paperDim, color: C.red }}>{t("allg.loeschen")}</button>}
+          {/* Loeschen darf NUR der Ersteller - so steht es in der Regel
+              "task creator deletes task". Der Knopf stand hier unter derselben
+              Bedingung wie "Bearbeiten", und aendern duerfen auch
+              Vereinsleitung und Mannschaftsfuehrung. Ein Teammanager sah an
+              einer fremden Aufgabe also ein Loeschen, das die Datenbank
+              danach abwies. */}
+          {isCreator && <button onClick={() => removeTask(task)} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.paperDim, color: C.red }}>{t("allg.loeschen")}</button>}
         </div>
         <Erstellt von={task.createdBy} am={task.createdAt} />
       </div>
@@ -10031,22 +10037,59 @@ const subviewTitel = (t) => ({ season: t("sub.season"), tipp: t("sub.tipp"), dut
  * sich eingetragen hat, ob sie erledigt ist -, weiss nur die Datenbank.
  * Wurde die Aufgabe geloescht, sagt das Fenster das auch, statt leer zu
  * bleiben. */
+/* Eine Aufgabe, aus der Glocke geoeffnet - mit allem, was die
+ * Aufgabenansicht auch kann.
+ *
+ * WARUM DAS OVERLAY UEBERHAUPT EXISTIERT
+ * Eine Meldung "Marco hat dir eine Aufgabe zugewiesen" ist wertlos, wenn man
+ * danach selbst suchen muss. Die Meldung traegt ihr Ziel mit (ziel_art,
+ * ziel_id), und hier wird es aufgeschlagen.
+ *
+ * WARUM ES JETZT AUCH BEARBEITEN KANN
+ * Vorher gab es nur eintragen, austragen, erledigt. Wer aus der Glocke kam
+ * und das Datum aendern wollte, musste die Ansicht wechseln und die Aufgabe
+ * ein zweites Mal suchen - genau der Umweg, den das Overlay abschaffen
+ * sollte.
+ *
+ * WER WAS DARF - UND WARUM NICHT DASSELBE
+ * Die Datenbank kennt zwei verschiedene Regeln, und die Knoepfe folgen ihnen
+ * genau:
+ *   aendern  - Ersteller, Vereinsleitung/Organisation, oder wer die
+ *              Mannschaft fuehrt (Trainer, Kapitaen, Teammanager)
+ *   loeschen - NUR der Ersteller
+ * In der Aufgabenansicht stehen beide Knoepfe unter derselben Bedingung. Ein
+ * Teammanager sieht dort also "Loeschen" an einer fremden Aufgabe, und die
+ * Datenbank weist ihn ab - ein Knopf, der immer scheitert. Hier nicht. */
 function AufgabeOverlay({ taskId, currentUser, onClose }) {
   const t = useT();
   const [aufgabe, setAufgabe] = useState(null);
   const [laedt, setLaedt] = useState(true);
   const [fehler, setFehler] = useState("");
   const [arbeitet, setArbeitet] = useState(false);
+  const [fuehrtMannschaft, setFuehrtMannschaft] = useState(false);
+  const [bearbeitet, setBearbeitet] = useState(false);
+  const [form, setForm] = useState({ title: "", description: "", dueDate: "", slots: "1", startTime: "", endTime: "" });
 
   const laden = useCallback(async () => {
     if (!supabase || !isDbId(taskId)) { setLaedt(false); return; }
     const { data, error } = await supabase.from("club_tasks")
-      .select("id,title,description,due_date,slots_needed,start_time,end_time,erledigt_am,created_by,created_at,teams(name),club_task_signups(membership_id,club_memberships(display_name)),club_task_assignees(membership_id,club_memberships(display_name))")
+      .select("id,team_id,title,description,due_date,slots_needed,start_time,end_time,erledigt_am,created_by,created_at,teams(name),club_task_signups(membership_id,club_memberships(display_name)),club_task_assignees(membership_id,club_memberships(display_name))")
       .eq("id", taskId).maybeSingle();
     setLaedt(false);
     if (error) { setFehler(t("auf.ladenFehler")); return; }
     setAufgabe(data || null);
-  }, [taskId]);
+    /* Fuehre ich diese Mannschaft? Das entscheidet ueber den Aendern-Knopf
+       und laesst sich nicht aus der Aufgabe ableiten - es steht in
+       team_members. */
+    if (data?.team_id) {
+      const { data: rolle } = await supabase.from("team_members")
+        .select("function").eq("team_id", data.team_id).eq("membership_id", currentUser.id)
+        .in("function", ["trainer", "kapitaen", "teammanager"]);
+      setFuehrtMannschaft((rolle || []).length > 0);
+    } else {
+      setFuehrtMannschaft(false);
+    }
+  }, [taskId, currentUser.id]);
   useEffect(() => { laden(); }, [laden]);
 
   const namen = (e) => {
@@ -10063,6 +10106,49 @@ function AufgabeOverlay({ taskId, currentUser, onClose }) {
   const erledigt = !!aufgabe?.erledigt_am;
   const team = Array.isArray(aufgabe?.teams) ? aufgabe.teams[0] : aufgabe?.teams;
 
+  const binErsteller = !!aufgabe && aufgabe.created_by === currentUser.id;
+  const vereinsweit = isAdmin(currentUser) || currentUser.roles.includes("organisator");
+  const darfAendern = binErsteller || vereinsweit || fuehrtMannschaft;
+  const darfLoeschen = binErsteller;
+
+  const bearbeitenStarten = () => {
+    setForm({
+      title: aufgabe.title || "",
+      description: aufgabe.description || "",
+      dueDate: aufgabe.due_date || "",
+      slots: String(aufgabe.slots_needed || 1),
+      startTime: (aufgabe.start_time || "").slice(0, 5),
+      endTime: (aufgabe.end_time || "").slice(0, 5),
+    });
+    setFehler(""); setBearbeitet(true);
+  };
+
+  const speichern = async () => {
+    if (!form.title.trim()) { setFehler(t("allg.titelEingeben")); return; }
+    setArbeitet(true); setFehler("");
+    const { error } = await supabase.from("club_tasks").update({
+      title: form.title.trim(),
+      description: form.description.trim() || null,
+      due_date: form.dueDate || null,
+      slots_needed: Math.max(1, Number(form.slots) || 1),
+      start_time: form.startTime || null,
+      end_time: form.endTime || null,
+    }).eq("id", taskId);
+    setArbeitet(false);
+    if (error) { setFehler(t("auf.aendernFehler")); return; }
+    setBearbeitet(false);
+    await laden();
+  };
+
+  const loeschen = async () => {
+    if (!window.confirm(`Aufgabe „${aufgabe.title}“ wirklich löschen?`)) return;
+    setArbeitet(true); setFehler("");
+    const { error } = await supabase.from("club_tasks").delete().eq("id", taskId);
+    setArbeitet(false);
+    if (error) { setFehler(t("allg.loeschenFehler")); return; }
+    onClose();
+  };
+
   const tun = async (was) => {
     setArbeitet(true); setFehler("");
     let error = null;
@@ -10070,9 +10156,11 @@ function AufgabeOverlay({ taskId, currentUser, onClose }) {
     else if (was === "austragen") ({ error } = await supabase.from("club_task_signups").delete().eq("task_id", taskId).eq("membership_id", currentUser.id));
     else ({ error } = await supabase.rpc("aufgabe_erledigen", { target_task: taskId, erledigt: !erledigt }));
     setArbeitet(false);
-    if (error) { setFehler(t("auf.erledigenFehler")); return; }
+    if (error) { setFehler(was === "eintragen" ? t("help.eintragenNichtMoeglich") : was === "austragen" ? t("allg.entfernenFehler") : t("auf.erledigenFehler")); return; }
     await laden();
   };
+
+  const feldStil = { background: C.white, border: `1px solid ${C.line}`, color: C.ink };
 
   return (
     <div className="absolute inset-0 z-50 flex items-end" style={{ background: "rgba(20,21,26,.72)" }} onClick={onClose}>
@@ -10087,7 +10175,44 @@ function AufgabeOverlay({ taskId, currentUser, onClose }) {
 
         {laedt ? <div className="text-xs py-4" style={{ color: C.textDim }}>{t("allg.laedt")}</div>
          : !aufgabe ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{t("auf.nichtMehrDa")}</div>
-         : (
+         : bearbeitet ? (
+          <>
+            <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} maxLength={120}
+              placeholder={t("ph.aufgabeTitel")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={feldStil} />
+            <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} maxLength={300}
+              placeholder={t("feld.beschreibung")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={feldStil} />
+            <div className="flex gap-2 mb-2">
+              <label className="flex-1">
+                <span className="block text-[10px] font-bold mb-1" style={{ color: C.textDim }}>{t("ev.datum")}</span>
+                <input type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
+                  className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={feldStil} />
+              </label>
+              <label className="w-24">
+                <span className="block text-[10px] font-bold mb-1" style={{ color: C.textDim }}>{t("feld.personen")}</span>
+                <input type="number" min="1" value={form.slots} onChange={(e) => setForm({ ...form, slots: e.target.value })}
+                  className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={feldStil} />
+              </label>
+            </div>
+            <div className="flex gap-2 mb-3">
+              {[["startTime", t("feld.startzeit")], ["endTime", t("feld.endzeit")]].map(([feld, beschriftung]) => (
+                <label key={feld} className="flex-1">
+                  <span className="block text-[10px] font-bold mb-1" style={{ color: C.textDim }}>{beschriftung}</span>
+                  <input type="time" value={form[feld]} onChange={(e) => setForm({ ...form, [feld]: e.target.value })}
+                    className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={feldStil} />
+                </label>
+              ))}
+            </div>
+            {fehler && <div role="status" className="text-[11px] mb-2" style={{ color: C.fehler }}>{fehler}</div>}
+            <div className="flex gap-2">
+              <button onClick={speichern} disabled={arbeitet} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>
+                {arbeitet ? t("allg.wirdBearbeitet") : t("allg.speichern")}
+              </button>
+              <button onClick={() => { setBearbeitet(false); setFehler(""); }} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>
+                {t("allg.abbrechen")}
+              </button>
+            </div>
+          </>
+        ) : (
           <>
             <div className="text-lg font-bold mb-1" style={{ color: C.ink, fontFamily: "Oswald" }}>{aufgabe.title}</div>
             <div className="text-[11px] mb-3" style={{ color: C.textDim }}>
@@ -10099,27 +10224,35 @@ function AufgabeOverlay({ taskId, currentUser, onClose }) {
             {aufgabe.description && <div className="text-xs mb-3" style={{ color: C.textDim }}>{aufgabe.description}</div>}
 
             <div className="rounded-xl p-3 mb-3" style={{ background: C.paperDim }}>
-              {verantwortliche.length > 0 && <div className="text-[11px] mb-1" style={{ color: C.textDim }}>{t("auf.verantwortlich")} {verantwortliche.map((v) => v.name).join(", ")}</div>}
-              {eintragungen.length > 0 && <div className="text-[11px] mb-1" style={{ color: C.textDim }}>{t("help.eingetragenLabel")}: {eintragungen.map((v) => v.name).join(", ")}</div>}
+              {verantwortliche.length > 0 && <div className="text-[11px] mb-1" style={{ color: C.textDim }}>{t("auf.verantwortlich")} {verantwortliche.map((p) => p.name).join(", ")}</div>}
+              {eintragungen.length > 0 && <div className="text-[11px] mb-1" style={{ color: C.textDim }}>{t("help.eingetragenLabel")}: {eintragungen.map((p) => p.name).join(", ")}</div>}
               <div className="text-[11px]" style={{ color: erledigt ? C.erfolg : frei > 0 ? C.textDim : C.fehler, fontWeight: 700 }}>
                 {erledigt ? `${t("auf.erledigtAm")} ${new Date(aufgabe.erledigt_am).toLocaleDateString("de-DE")}`
                   : frei > 0 ? `${frei}/${aufgabe.slots_needed} ${t("help.frei")}` : t("help.voll")}
               </div>
             </div>
 
+            <div className="-mt-1 mb-3"><Erstellt von={aufgabe.created_by} am={aufgabe.created_at} rahmenlos /></div>
+
             {fehler && <div role="status" className="text-[11px] mb-2" style={{ color: C.fehler }}>{fehler}</div>}
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               {!binDrin && !erledigt && frei > 0 && (
                 <button onClick={() => tun("eintragen")} disabled={arbeitet} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{t("allg.eintragenKnopf")}</button>
               )}
               {binDrin && (
-                <button onClick={() => tun("erledigt")} disabled={arbeitet} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: erledigt ? C.paperDim : C.erfolg, color: erledigt ? C.textDim : C.white }}>
+                <button onClick={() => tun("erledigt")} disabled={arbeitet} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: erledigt ? C.glass : C.erfolg, color: erledigt ? C.textDim : C.white }}>
                   {erledigt ? t("auf.wiederOeffnen") : t("auf.erledigt")}
                 </button>
               )}
               {binEingetragen && !erledigt && (
-                <button onClick={() => tun("austragen")} disabled={arbeitet} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.red }}>{t("allg.austragen")}</button>
+                <button onClick={() => tun("austragen")} disabled={arbeitet} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>{t("allg.austragen")}</button>
+              )}
+              {darfAendern && (
+                <button onClick={bearbeitenStarten} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.textDim }}>{t("allg.bearbeiten")}</button>
+              )}
+              {darfLoeschen && (
+                <button onClick={loeschen} disabled={arbeitet} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.red }}>{t("allg.loeschen")}</button>
               )}
             </div>
           </>
