@@ -471,130 +471,152 @@ const DEMO_CLUB_ID = "00000000-0000-4000-8000-000000000001";
  *
  * Die Helferdienste sind je Sportart benannt, weil sie dort anders heissen:
  * Beim Fussball ist es der Kioskdienst, beim Wasserball der Beckenrand. */
+/* Sportartspezifische Begriffe - hier stehen SCHLUESSEL, keine Woerter.
+ *
+ * Bis heute standen hier 62 deutsche Zeichenketten: "Kioskdienst",
+ * "Mannschaftsbus", "Beckendienst", "Heimspiel". Sie erscheinen als
+ * Reiterbeschriftungen, Ueberschriften und Platzhalter - ein tuerkischer
+ * Nutzer eines Fussballvereins las also mitten in einer tuerkischen
+ * Oberflaeche "Kioskdienst".
+ *
+ * Aufgefallen ist es nicht, weil der Uebersetzungspruefer nach Text in JSX
+ * sucht; in einem Objektliteral hat er nichts zu suchen. Aufgeflogen ist es
+ * erst beim Aufraeumen: 61 sport.*-Schluessel lagen unbenutzt im
+ * Woerterbuch - angelegt fuer genau diesen Zweck und nie verdrahtet. Sie
+ * passten allerdings nur noch zu 12 der 62 Woerter, der Inhalt hatte sich
+ * seitdem geaendert. Der Katalog ist deshalb neu.
+ *
+ * sportText(t, sport, feld) loest die Schluessel auf. */
 const SPORT_CONFIG = {
   fussball: {
-    label: "Fußball", homeEventLabel: "Heimspiel",
-    dutyTabLabel: "Kioskdienst", dutyStationExamples: "z. B. Kiosk, Kasse, Grill, Ordnungsdienst, Parkplatzeinweisung",
-    vehicleTabLabel: "Mannschaftsbus", vehicleIntro: "Der Mannschaftsbus und seine Buchungen für Auswärtsspiele.",
+    label: "sport.labe.fussball", homeEventLabel: "sport.home.heimspiel",
+    dutyTabLabel: "sport.duty.kioskdienst", dutyStationExamples: "sport.duty.zbkioskkassegrillordnungsdienstpar",
+    vehicleTabLabel: "sport.vehi.mannschaftsbus", vehicleIntro: "sport.vehi.dermannschaftsbusundseinebuchungen",
   },
   futsal: {
-    label: "Futsal", homeEventLabel: "Heimspiel",
-    dutyTabLabel: "Hallendienst", dutyStationExamples: "z. B. Kasse, Zeitnahme, Getränke, Hallenaufsicht",
-    vehicleTabLabel: "Mannschaftsbus", vehicleIntro: "Der Mannschaftsbus und seine Buchungen für Auswärtsspiele.",
+    label: "sport.labe.futsal", homeEventLabel: "sport.home.heimspiel",
+    dutyTabLabel: "sport.duty.hallendienst", dutyStationExamples: "sport.duty.zbkassezeitnahmegetrankehallenaufs",
+    vehicleTabLabel: "sport.vehi.mannschaftsbus", vehicleIntro: "sport.vehi.dermannschaftsbusundseinebuchungen",
   },
   basketball: {
-    label: "Basketball", homeEventLabel: "Heimspiel",
-    dutyTabLabel: "Hallendienst", dutyStationExamples: "z. B. Kampfgericht, Anzeigetafel, Kasse, Getränke",
-    vehicleTabLabel: "Mannschaftsbus", vehicleIntro: "Der Mannschaftsbus und seine Buchungen für Auswärtsspiele.",
+    label: "sport.labe.basketball", homeEventLabel: "sport.home.heimspiel",
+    dutyTabLabel: "sport.duty.hallendienst", dutyStationExamples: "sport.duty.zbkampfgerichtanzeigetafelkasseget",
+    vehicleTabLabel: "sport.vehi.mannschaftsbus", vehicleIntro: "sport.vehi.dermannschaftsbusundseinebuchungen",
   },
   handball: {
-    label: "Handball", homeEventLabel: "Heimspiel",
-    dutyTabLabel: "Hallendienst", dutyStationExamples: "z. B. Zeitnahme, Sekretariat, Kasse, Kuchenverkauf",
-    vehicleTabLabel: "Mannschaftsbus", vehicleIntro: "Der Mannschaftsbus und seine Buchungen für Auswärtsspiele.",
+    label: "sport.labe.handball", homeEventLabel: "sport.home.heimspiel",
+    dutyTabLabel: "sport.duty.hallendienst", dutyStationExamples: "sport.duty.zbzeitnahmesekretariatkassekuchenv",
+    vehicleTabLabel: "sport.vehi.mannschaftsbus", vehicleIntro: "sport.vehi.dermannschaftsbusundseinebuchungen",
   },
   rollhockey: {
-    label: "Rollhockey", homeEventLabel: "Heimspiel",
-    dutyTabLabel: "Helferdienst", dutyStationExamples: "z. B. Theke, Kasse, Grill, Zeitnahme",
-    vehicleTabLabel: "Vereinsfahrzeuge", vehicleIntro: "Alle Vereinsfahrzeuge und ihre Buchungen für Auswärtsfahrten.",
+    label: "sport.labe.rollhockey", homeEventLabel: "sport.home.heimspiel",
+    dutyTabLabel: "sport.duty.helferdienst", dutyStationExamples: "sport.duty.zbthekekassegrillzeitnahme",
+    vehicleTabLabel: "sport.vehi.vereinsfahrzeuge", vehicleIntro: "sport.vehi.allevereinsfahrzeugeundihrebuchung",
   },
   eishockey: {
-    label: "Eishockey", homeEventLabel: "Heimspiel",
-    dutyTabLabel: "Hallendienst", dutyStationExamples: "z. B. Strafbank, Anzeigetafel, Kasse, Bandenwerbung",
-    vehicleTabLabel: "Mannschaftsbus", vehicleIntro: "Der Mannschaftsbus und seine Buchungen für Auswärtsspiele.",
+    label: "sport.labe.eishockey", homeEventLabel: "sport.home.heimspiel",
+    dutyTabLabel: "sport.duty.hallendienst", dutyStationExamples: "sport.duty.zbstrafbankanzeigetafelkassebanden",
+    vehicleTabLabel: "sport.vehi.mannschaftsbus", vehicleIntro: "sport.vehi.dermannschaftsbusundseinebuchungen",
   },
   feldhockey: {
-    label: "Feldhockey", homeEventLabel: "Heimspiel",
-    dutyTabLabel: "Platzdienst", dutyStationExamples: "z. B. Kuchenbuffet, Getränke, Kasse, Platzaufbau",
-    vehicleTabLabel: "Mannschaftsbus", vehicleIntro: "Der Mannschaftsbus und seine Buchungen für Auswärtsspiele.",
+    label: "sport.labe.feldhockey", homeEventLabel: "sport.home.heimspiel",
+    dutyTabLabel: "sport.duty.platzdienst", dutyStationExamples: "sport.duty.zbkuchenbuffetgetrankekasseplatzau",
+    vehicleTabLabel: "sport.vehi.mannschaftsbus", vehicleIntro: "sport.vehi.dermannschaftsbusundseinebuchungen",
   },
   floorball: {
-    label: "Floorball / Unihockey", homeEventLabel: "Heimspiel",
-    dutyTabLabel: "Hallendienst", dutyStationExamples: "z. B. Zeitnahme, Sekretariat, Bandenaufbau, Kasse",
-    vehicleTabLabel: "Mannschaftsbus", vehicleIntro: "Der Mannschaftsbus und seine Buchungen für Auswärtsspiele.",
+    label: "sport.labe.floorballunihockey", homeEventLabel: "sport.home.heimspiel",
+    dutyTabLabel: "sport.duty.hallendienst", dutyStationExamples: "sport.duty.zbzeitnahmesekretariatbandenaufbau",
+    vehicleTabLabel: "sport.vehi.mannschaftsbus", vehicleIntro: "sport.vehi.dermannschaftsbusundseinebuchungen",
   },
   wasserball: {
-    label: "Wasserball", homeEventLabel: "Heimspiel",
-    dutyTabLabel: "Beckendienst", dutyStationExamples: "z. B. Zeitnahme, Kasse, Getränke, Einlass",
-    vehicleTabLabel: "Vereinsfahrzeuge", vehicleIntro: "Alle Vereinsfahrzeuge und ihre Buchungen für Auswärtsfahrten.",
+    label: "sport.labe.wasserball", homeEventLabel: "sport.home.heimspiel",
+    dutyTabLabel: "sport.duty.beckendienst", dutyStationExamples: "sport.duty.zbzeitnahmekassegetrankeeinlass",
+    vehicleTabLabel: "sport.vehi.vereinsfahrzeuge", vehicleIntro: "sport.vehi.allevereinsfahrzeugeundihrebuchung",
   },
   lacrosse: {
-    label: "Lacrosse", homeEventLabel: "Heimspiel",
-    dutyTabLabel: "Platzdienst", dutyStationExamples: "z. B. Kasse, Getränke, Grill, Feldaufbau",
-    vehicleTabLabel: "Mannschaftsbus", vehicleIntro: "Der Mannschaftsbus und seine Buchungen für Auswärtsspiele.",
+    label: "sport.labe.lacrosse", homeEventLabel: "sport.home.heimspiel",
+    dutyTabLabel: "sport.duty.platzdienst", dutyStationExamples: "sport.duty.zbkassegetrankegrillfeldaufbau",
+    vehicleTabLabel: "sport.vehi.mannschaftsbus", vehicleIntro: "sport.vehi.dermannschaftsbusundseinebuchungen",
   },
   bandy: {
-    label: "Bandy", homeEventLabel: "Heimspiel",
-    dutyTabLabel: "Eisdienst", dutyStationExamples: "z. B. Zeitnahme, Kasse, Getränke, Eisaufbereitung",
-    vehicleTabLabel: "Mannschaftsbus", vehicleIntro: "Der Mannschaftsbus und seine Buchungen für Auswärtsspiele.",
+    label: "sport.labe.bandy", homeEventLabel: "sport.home.heimspiel",
+    dutyTabLabel: "sport.duty.eisdienst", dutyStationExamples: "sport.duty.zbzeitnahmekassegetrankeeisaufbere",
+    vehicleTabLabel: "sport.vehi.mannschaftsbus", vehicleIntro: "sport.vehi.dermannschaftsbusundseinebuchungen",
   },
   netball: {
-    label: "Netball", homeEventLabel: "Heimspiel",
-    dutyTabLabel: "Hallendienst", dutyStationExamples: "z. B. Kampfgericht, Kasse, Getränke, Aufbau",
-    vehicleTabLabel: "Mannschaftsbus", vehicleIntro: "Der Mannschaftsbus und seine Buchungen für Auswärtsspiele.",
+    label: "sport.labe.netball", homeEventLabel: "sport.home.heimspiel",
+    dutyTabLabel: "sport.duty.hallendienst", dutyStationExamples: "sport.duty.zbkampfgerichtkassegetrankeaufbau",
+    vehicleTabLabel: "sport.vehi.mannschaftsbus", vehicleIntro: "sport.vehi.dermannschaftsbusundseinebuchungen",
   },
   korfball: {
-    label: "Korfball", homeEventLabel: "Heimspiel",
-    dutyTabLabel: "Hallendienst", dutyStationExamples: "z. B. Zeitnahme, Kasse, Getränke, Korbaufbau",
-    vehicleTabLabel: "Mannschaftsbus", vehicleIntro: "Der Mannschaftsbus und seine Buchungen für Auswärtsspiele.",
+    label: "sport.labe.korfball", homeEventLabel: "sport.home.heimspiel",
+    dutyTabLabel: "sport.duty.hallendienst", dutyStationExamples: "sport.duty.zbzeitnahmekassegetrankekorbaufbau",
+    vehicleTabLabel: "sport.vehi.mannschaftsbus", vehicleIntro: "sport.vehi.dermannschaftsbusundseinebuchungen",
   },
   rugby_union: {
-    label: "Rugby Union", homeEventLabel: "Heimspiel",
-    dutyTabLabel: "Clubhausdienst", dutyStationExamples: "z. B. Theke, Grill, Kasse, Ordnungsdienst",
-    vehicleTabLabel: "Mannschaftsbus", vehicleIntro: "Der Mannschaftsbus und seine Buchungen für Auswärtsspiele.",
+    label: "sport.labe.rugbyunion", homeEventLabel: "sport.home.heimspiel",
+    dutyTabLabel: "sport.duty.clubhausdienst", dutyStationExamples: "sport.duty.zbthekegrillkasseordnungsdienst",
+    vehicleTabLabel: "sport.vehi.mannschaftsbus", vehicleIntro: "sport.vehi.dermannschaftsbusundseinebuchungen",
   },
   rugby_league: {
-    label: "Rugby League", homeEventLabel: "Heimspiel",
-    dutyTabLabel: "Clubhausdienst", dutyStationExamples: "z. B. Theke, Grill, Kasse, Ordnungsdienst",
-    vehicleTabLabel: "Mannschaftsbus", vehicleIntro: "Der Mannschaftsbus und seine Buchungen für Auswärtsspiele.",
+    label: "sport.labe.rugbyleague", homeEventLabel: "sport.home.heimspiel",
+    dutyTabLabel: "sport.duty.clubhausdienst", dutyStationExamples: "sport.duty.zbthekegrillkasseordnungsdienst",
+    vehicleTabLabel: "sport.vehi.mannschaftsbus", vehicleIntro: "sport.vehi.dermannschaftsbusundseinebuchungen",
   },
   american_football: {
-    label: "American Football", homeEventLabel: "Heimspiel",
-    dutyTabLabel: "Gameday-Dienst", dutyStationExamples: "z. B. Kettencrew, Anzeigetafel, Kasse, Grill, Sanitätsdienst",
-    vehicleTabLabel: "Mannschaftsbus", vehicleIntro: "Der Mannschaftsbus und seine Buchungen für Auswärtsspiele.",
+    label: "sport.labe.americanfootball", homeEventLabel: "sport.home.heimspiel",
+    dutyTabLabel: "sport.duty.gamedaydienst", dutyStationExamples: "sport.duty.zbkettencrewanzeigetafelkassegrill",
+    vehicleTabLabel: "sport.vehi.mannschaftsbus", vehicleIntro: "sport.vehi.dermannschaftsbusundseinebuchungen",
   },
   australian_football: {
-    label: "Australian Football", homeEventLabel: "Heimspiel",
-    dutyTabLabel: "Platzdienst", dutyStationExamples: "z. B. Torrichter, Kasse, Getränke, Grill",
-    vehicleTabLabel: "Mannschaftsbus", vehicleIntro: "Der Mannschaftsbus und seine Buchungen für Auswärtsspiele.",
+    label: "sport.labe.australianfootball", homeEventLabel: "sport.home.heimspiel",
+    dutyTabLabel: "sport.duty.platzdienst", dutyStationExamples: "sport.duty.zbtorrichterkassegetrankegrill",
+    vehicleTabLabel: "sport.vehi.mannschaftsbus", vehicleIntro: "sport.vehi.dermannschaftsbusundseinebuchungen",
   },
   gaelic_football: {
-    label: "Gaelic Football", homeEventLabel: "Heimspiel",
-    dutyTabLabel: "Platzdienst", dutyStationExamples: "z. B. Kasse, Getränke, Grill, Feldaufbau",
-    vehicleTabLabel: "Mannschaftsbus", vehicleIntro: "Der Mannschaftsbus und seine Buchungen für Auswärtsspiele.",
+    label: "sport.labe.gaelicfootball", homeEventLabel: "sport.home.heimspiel",
+    dutyTabLabel: "sport.duty.platzdienst", dutyStationExamples: "sport.duty.zbkassegetrankegrillfeldaufbau",
+    vehicleTabLabel: "sport.vehi.mannschaftsbus", vehicleIntro: "sport.vehi.dermannschaftsbusundseinebuchungen",
   },
   polo: {
-    label: "Polo", homeEventLabel: "Heimspiel",
-    dutyTabLabel: "Turnierdienst", dutyStationExamples: "z. B. Empfang, Bewirtung, Divot Stomping, Parkplatzeinweisung",
-    vehicleTabLabel: "Pferdeanhänger", vehicleIntro: "Alle Anhänger und Fahrzeuge des Vereins und ihre Buchungen.",
+    label: "sport.labe.polo", homeEventLabel: "sport.home.heimspiel",
+    dutyTabLabel: "sport.duty.turnierdienst", dutyStationExamples: "sport.duty.zbempfangbewirtungdivotstompingpar",
+    vehicleTabLabel: "sport.vehi.pferdeanhanger", vehicleIntro: "sport.vehi.alleanhangerundfahrzeugedesvereins",
   },
   bike_polo: {
-    label: "Bike Polo", homeEventLabel: "Heimspiel",
-    dutyTabLabel: "Courtdienst", dutyStationExamples: "z. B. Zeitnahme, Bandenaufbau, Getränke, Kasse",
-    vehicleTabLabel: "Vereinsfahrzeuge", vehicleIntro: "Alle Vereinsfahrzeuge und ihre Buchungen für Auswärtsfahrten.",
+    label: "sport.labe.bikepolo", homeEventLabel: "sport.home.heimspiel",
+    dutyTabLabel: "sport.duty.courtdienst", dutyStationExamples: "sport.duty.zbzeitnahmebandenaufbaugetrankekas",
+    vehicleTabLabel: "sport.vehi.vereinsfahrzeuge", vehicleIntro: "sport.vehi.allevereinsfahrzeugeundihrebuchung",
   },
   kanupolo: {
-    label: "Kanupolo", homeEventLabel: "Heimspiel",
-    dutyTabLabel: "Beckendienst", dutyStationExamples: "z. B. Zeitnahme, Toraufbau, Bootstransport, Kasse",
-    vehicleTabLabel: "Bootsanhänger", vehicleIntro: "Alle Anhänger und Fahrzeuge des Vereins und ihre Buchungen.",
+    label: "sport.labe.kanupolo", homeEventLabel: "sport.home.heimspiel",
+    dutyTabLabel: "sport.duty.beckendienst", dutyStationExamples: "sport.duty.zbzeitnahmetoraufbaubootstransport",
+    vehicleTabLabel: "sport.vehi.bootsanhanger", vehicleIntro: "sport.vehi.alleanhangerundfahrzeugedesvereins",
   },
   rollerderby: {
-    label: "Roller Derby", homeEventLabel: "Heimbout",
-    dutyTabLabel: "Bout-Dienst", dutyStationExamples: "z. B. NSO-Crew, Kasse, Merch-Stand, Sanitätsdienst",
-    vehicleTabLabel: "Vereinsfahrzeuge", vehicleIntro: "Alle Vereinsfahrzeuge und ihre Buchungen für Auswärtsfahrten.",
+    label: "sport.labe.rollerderby", homeEventLabel: "sport.home.heimbout",
+    dutyTabLabel: "sport.duty.boutdienst", dutyStationExamples: "sport.duty.zbnsocrewkassemerchstandsanitatsdi",
+    vehicleTabLabel: "sport.vehi.vereinsfahrzeuge", vehicleIntro: "sport.vehi.allevereinsfahrzeugeundihrebuchung",
   },
 };
 
 const SPORTS = Object.keys(SPORT_CONFIG);
 const sportConfig = (sport) => SPORT_CONFIG[sport] || SPORT_CONFIG.rollhockey;
+/* Der aufgeloeste Begriff. t kommt als Parameter, nicht aus dem Haken:
+   sportText wird auch ausserhalb von Komponenten gerufen (die
+   FEATURE-Rueckrufe), und useT() waere dort ein Haken am falschen Ort. */
+const sportText = (t, sport, feld) => t(sportConfig(sport)[feld]);
 
 /* Club-Feature-Toggles: nach der Vereinsregistrierung per Ja/Nein abgefragt, später im
    Vereinsadmin-Reiter "Funktionen" änderbar. Default (kein Eintrag in club_feature_toggles) = an. */
 const CLUB_FEATURES = [
-  { key: "duty_roster", label: (sport) => sportConfig(sport).dutyTabLabel,
-    question: (sport) => `Möchtet ihr „${sportConfig(sport).dutyTabLabel}" nutzen, um Helfer:innen für ${sportConfig(sport).homeEventLabel}e einzuteilen (${sportConfig(sport).dutyStationExamples})?`,
-    settingsDesc: (sport) => `Helferdienst-Sätze anlegen und Stationen für ${sportConfig(sport).homeEventLabel}e zuweisen.` },
-  { key: "vehicle_booking", label: (sport) => sportConfig(sport).vehicleTabLabel,
-    question: (sport) => `Hat euer Verein ein Fahrzeug (${sportConfig(sport).vehicleTabLabel}), das über die App gebucht werden soll?`,
+  { key: "duty_roster", label: (sport, t) => sportText(t, sport, "dutyTabLabel"),
+    question: (sport, t) => `Möchtet ihr „${sportText(t, sport, "dutyTabLabel")}" nutzen, um Helfer:innen für ${sportText(t, sport, "homeEventLabel")}e einzuteilen (${sportText(t, sport, "dutyStationExamples")})?`,
+    settingsDesc: (sport, t) => t("help.saetzeAnlegen")
+      .replace("{begriff}", sportText(t, sport, "dutyTabLabel"))
+      .replace("{termin}", sportText(t, sport, "homeEventLabel")) },
+  { key: "vehicle_booking", label: (sport, t) => sportText(t, sport, "vehicleTabLabel"),
+    question: (sport, t) => `Hat euer Verein ein Fahrzeug (${sportText(t, sport, "vehicleTabLabel")}), das über die App gebucht werden soll?`,
     settingsDesc: () => "Kalender & Buchung für Vereinsfahrzeuge." },
   { key: "tippspiel", label: () => "Tippspiel",
     question: () => "Soll es ein Tippspiel geben, bei dem Mitglieder Spielergebnisse vorhersagen und Punkte sammeln?",
@@ -612,7 +634,7 @@ const DASHBOARD_TILE_LABELS = {
   tippspiel: "Tippspiel",
   duty_roster: "Helferplanung",
   tasks: "Aufgaben",
-  vehicle_booking: (sport) => sportConfig(sport).vehicleTabLabel,
+  vehicle_booking: (sport, t) => sportText(t, sport, "vehicleTabLabel"),
 };
 const DEFAULT_DASHBOARD_TILE_ORDER = ["season_award", "tippspiel", "duty_roster", "tasks", "vehicle_booking"];
 const dashboardTileLabel = (key, sport) => { const l = DASHBOARD_TILE_LABELS[key]; return typeof l === "function" ? l(sport) : (l || key); };
@@ -1978,7 +2000,7 @@ function NewClubScreen({ onCreate, goBack }) {
         <div className="mb-3">
           <div className="text-[10px] font-bold mb-1.5 px-0.5" style={{ color: C.textDim }}>SPORTART</div>
           <select value={form.sport} onChange={set("sport")} className="w-full px-3.5 py-3 rounded-xl text-sm outline-none" style={{ background: C.paperDim, color: C.ink }}>
-            {SPORTS.map((s) => <option key={s} value={s}>{sportConfig(s).label}</option>)}
+            {SPORTS.map((s) => <option key={s} value={s}>{sportText(t, s, "label")}</option>)}
           </select>
         </div>
         <Field icon={MapPin} placeholder={t("feld.stadt")} value={form.city} onChange={set("city")} />
@@ -3077,7 +3099,7 @@ function Dashboard({ user, members, events, channels, news, dutyPlan, seasonVote
               case "tasks":
                 return <FeatureRow key={tileKey} icon={ClipboardList} title="Aufgaben" subtitle="Für den Verein mithelfen" onClick={goTasks} accent={C.red} locked={featureLocked} />;
               case "vehicle_booking":
-                return featureEnabled("vehicle_booking") && <FeatureRow key={tileKey} icon={Car} title={sportConfig(sport).vehicleTabLabel} subtitle="Kalender & Buchung" onClick={goVehicles} accent={C.secondary} locked={featureLocked} />;
+                return featureEnabled("vehicle_booking") && <FeatureRow key={tileKey} icon={Car} title={sportText(t, sport, "vehicleTabLabel")} subtitle="Kalender & Buchung" onClick={goVehicles} accent={C.secondary} locked={featureLocked} />;
               default:
                 return null;
             }
@@ -6218,8 +6240,8 @@ function VehiclesView({ currentUser, currentClub }) {
   if (!databaseMembership) return <div className="px-4 pt-4 pb-24"><div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{t("fzg.nurEchterVerein")}</div></div>;
   return (
     <div className="px-4 pt-4 pb-24">
-      <SectionTitle eyebrow="Verein" title={cfg.vehicleTabLabel} right={canManageFleet ? <button onClick={() => { if (showAddVehicle) { setEditingVehicleId(null); setNewVehicle({ label: "", plate: "", seats: "" }); } setShowAddVehicle((v) => !v); }} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showAddVehicle ? t("allg.schliessen") : "+ Fahrzeug"}</button> : null}/>
-      <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>{cfg.vehicleIntro} Jedes Mitglied kann anfragen; Vereinsadministration und Organisation geben frei. </div>
+      <SectionTitle eyebrow="Verein" title={t(cfg.vehicleTabLabel)} right={canManageFleet ? <button onClick={() => { if (showAddVehicle) { setEditingVehicleId(null); setNewVehicle({ label: "", plate: "", seats: "" }); } setShowAddVehicle((v) => !v); }} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showAddVehicle ? t("allg.schliessen") : "+ Fahrzeug"}</button> : null}/>
+      <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>{t(cfg.vehicleIntro)} {t("fzg.jederKannAnfragen")}</div>
       {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{meldungstext(message)}</div>}
       {showAddVehicle && (
         <div className="rounded-2xl p-4 mb-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
@@ -6515,11 +6537,11 @@ function DutyTasksSection({ ev, currentUser, sport, onNeuLaden, dutyPlan, member
   };
 
   if (!supabase) return null;
-  if (loading) return <div className="mt-3 text-xs" style={{ color: C.textDim }}>{cfg.dutyTabLabel} wird geladen …</div>;
+  if (loading) return <div className="mt-3 text-xs" style={{ color: C.textDim }}>{t("help.begriffLaedt").replace("{begriff}", t(cfg.dutyTabLabel))}</div>;
 
   return (
     <div className="mt-3">
-      <div className="text-xs font-semibold mb-2" style={{ fontFamily: "Inter", color: C.ink }}>{cfg.dutyTabLabel}</div>
+      <div className="text-xs font-semibold mb-2" style={{ fontFamily: "Inter", color: C.ink }}>{t(cfg.dutyTabLabel)}</div>
       {canManage && templates.length > 0 && (
         <div className="flex gap-2 mb-2.5">
           <select value={selectedTemplate} onChange={(e) => setSelectedTemplate(e.target.value)} className="flex-1 px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}>
@@ -6552,7 +6574,7 @@ function DutyTasksSection({ ev, currentUser, sport, onNeuLaden, dutyPlan, member
         </div>
       )}
       {tasks.length === 0 ? (
-        <div className="text-[11px] rounded-xl p-2.5" style={{ background: C.paperDim, color: C.textDim }}>Noch keine Stationen für diesen {cfg.homeEventLabel} eingetragen.</div>
+        <div className="text-[11px] rounded-xl p-2.5" style={{ background: C.paperDim, color: C.textDim }}>{t("help.keineStationen").replace("{begriff}", t(cfg.homeEventLabel))}</div>
       ) : (
         <div className="flex flex-col gap-2">
           {tasks.map((task) => (
@@ -6638,17 +6660,17 @@ function DutyTemplatesPanel({ currentUser, sport }) {
   };
   const removeItem = async (itemId) => { const { error } = await supabase.from("duty_task_template_items").delete().eq("id", itemId); if (!error) await loadTemplates(); };
 
-  if (!supabase) return <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{cfg.dutyTabLabel}-Sätze sind nur mit einem echten Vereinskonto verfügbar.</div>;
-  if (loading) return <div className="text-xs py-4" style={{ color: C.textDim }}>{cfg.dutyTabLabel}-Sätze werden geladen …</div>;
+  if (!supabase) return <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{t("help.saetzeNurEcht").replace("{begriff}", t(cfg.dutyTabLabel))}.</div>;
+  if (loading) return <div className="text-xs py-4" style={{ color: C.textDim }}>{t("help.saetzeLaden").replace("{begriff}", t(cfg.dutyTabLabel))}</div>;
 
   return (
     <div>
-      <SectionTitle eyebrow={cfg.dutyTabLabel} title="Sätze & Stationen" />
-      <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>Wiederverwendbare Vorlagen mit Stationen, die beim Anlegen eines {cfg.homeEventLabel}s vorgeladen werden können.</div>
+      <SectionTitle eyebrow={t(cfg.dutyTabLabel)} title={t("help.saetzeUndStationen")} />
+      <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>{t("help.vorlagenHinweis").replace("{begriff}", t(cfg.homeEventLabel))}</div>
       {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: messageOk ? C.erfolgFlaeche : C.fehlerFlaeche, color: messageOk ? C.erfolg : C.fehler }}>{meldungstext(message)}</div>}
       <div className="rounded-2xl p-3.5 mb-4" style={{ background: C.paperDim }}>
         <div className="flex gap-2">
-          <input value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={80} placeholder={`Name, z. B. Standard ${cfg.homeEventLabel}tag`} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.glass, color: C.ink }}/>
+          <input value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={80} placeholder={t("ph.satzName").replace("{begriff}", t(cfg.homeEventLabel))} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.glass, color: C.ink }}/>
           <button onClick={createTemplate} disabled={!newName.trim()} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: newName.trim() ? C.ink : C.line, color: C.white }}>{t("allg.anlegen")}</button>
         </div>
       </div>
@@ -6674,7 +6696,7 @@ function DutyTemplatesPanel({ currentUser, sport }) {
                   </div>
                 ))}
                 <div className="flex gap-2 mt-2">
-                  <input value={newItemTitles[t.id] || ""} onChange={(e) => setNewItemTitles((all) => ({ ...all, [t.id]: e.target.value }))} maxLength={60} placeholder={`Station, ${cfg.dutyStationExamples}`} className="flex-1 px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}/>
+                  <input value={newItemTitles[t.id] || ""} onChange={(e) => setNewItemTitles((all) => ({ ...all, [t.id]: e.target.value }))} maxLength={60} placeholder={`Station, ${t(cfg.dutyStationExamples)}`} className="flex-1 px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}/>
                   <button onClick={() => addItem(t.id)} disabled={!(newItemTitles[t.id] || "").trim()} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: (newItemTitles[t.id] || "").trim() ? C.ink : C.line, color: C.white }}>+ Station</button>
                 </div>
                 <button onClick={() => deleteTemplate(t.id)} className="w-full mt-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.paperDim, color: C.red }}>{t("helf.satzLoeschen")}</button>
@@ -9886,13 +9908,13 @@ function ClubFeatureOnboarding({ club, onDone }) {
   return (
     <div className="flex flex-col h-full items-center justify-center p-5" style={{ background: C.paper }}>
       <div className="w-full max-w-sm">
-        <div className="text-[10px] uppercase tracking-widest font-bold mb-1" style={{ color: C.red, fontFamily: "Inter" }}>Verein einrichten · {cfg.label}</div>
+        <div className="text-[10px] uppercase tracking-widest font-bold mb-1" style={{ color: C.red, fontFamily: "Inter" }}>{t("sys.vereinEinrichten")} · {t(cfg.label)}</div>
         <div className="text-xl mb-1" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>{t("verein.funktionenFrage")}</div>
         {fehler && <div role="alert" className="text-[11px] rounded-xl px-3 py-2 mb-3" style={{ background: C.fehlerFlaeche, color: C.fehler, fontFamily: "Inter" }}>{fehler}</div>}
         <div className="text-xs mb-6" style={{ color: C.textDim, fontFamily: "Inter" }}>Frage {step + 1} von {CLUB_FEATURES.length} — lässt sich jederzeit in den Vereinseinstellungen unter „Funktionen“ ändern.</div>
         <div className="rounded-2xl p-5 mb-5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
-          <div className="text-sm font-bold mb-2" style={{ color: C.ink, fontFamily: "Inter" }}>{feature.label(sport)}</div>
-          <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{feature.question(sport)}</div>
+          <div className="text-sm font-bold mb-2" style={{ color: C.ink, fontFamily: "Inter" }}>{feature.label(sport, t)}</div>
+          <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{feature.question(sport, t)}</div>
         </div>
         <div className="flex gap-2">
           <button onClick={() => answer(false)} disabled={saving} className="flex-1 py-3 rounded-xl text-sm font-bold" style={{ background: C.paperDim, color: C.textDim, opacity: saving ? .6 : 1 }}>{t("allg.nein")}</button>
@@ -9982,7 +10004,7 @@ function ClubFeatureSettingsPanel({ currentClub, clubFeatures, onFeaturesChanged
 
   return (
     <div>
-      <SectionTitle eyebrow={sportConfig(sport).label} title="Funktionen & Reihenfolge" />
+      <SectionTitle eyebrow={sportText(t, sport, "label")} title="Funktionen & Reihenfolge" />
       <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>Lege je Funktion fest, ob ihr sie nutzt und an welcher Stelle sie unter „Aktionen &amp; Abstimmungen“ auf dem Dashboard erscheint. Abgeschaltete Funktionen sind für alle Mitglieder ausgeblendet.</div>
       {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{meldungstext(message)}</div>}
 
@@ -9991,7 +10013,7 @@ function ClubFeatureSettingsPanel({ currentClub, clubFeatures, onFeaturesChanged
           const feature = featureByKey[key];
           const abschaltbar = !!feature;
           const an = abschaltbar ? clubFeatures[key] !== false : true;
-          const beschreibung = abschaltbar ? feature.settingsDesc(sport) : t("auf.beschreibung");
+          const beschreibung = abschaltbar ? feature.settingsDesc(sport, t) : t("auf.beschreibung");
           return (
             <div key={key} className="rounded-2xl px-3.5 py-3" style={{ background: C.glass, border: `1px solid ${C.edge}`, boxShadow: "0 10px 26px rgba(60,30,45,0.06)", opacity: an ? 1 : 0.66 }}>
               <div className="flex items-center gap-3">
@@ -10098,7 +10120,7 @@ function AdminView({
   const restrictedOnly = !isAdmin(currentUser) && (canSponsor || canDutyTemplates);
   const restrictedPanels = [
     ...(canSponsor ? [["sponsoring", "Sponsoring"]] : []),
-    ...(canDutyTemplates ? [["duty-templates", `${dutyCfg.dutyTabLabel}-Sätze`]] : []),
+    ...(canDutyTemplates ? [["duty-templates", t("help.saetzeTitel").replace("{begriff}", t(dutyCfg.dutyTabLabel))]] : []),
     ["polls", t("umf.umfragen")],
   ];
   const [panel, setPanel] = useState(restrictedOnly ? restrictedPanels[0][0] : "overview");
@@ -10111,7 +10133,7 @@ function AdminView({
     setPanel(bereichWunsch);
     onBereichUebernommen?.();
   }, [bereichWunsch, onBereichUebernommen]);
-  const panels = restrictedOnly ? restrictedPanels : [["overview", t("allg.uebersicht")], ["automation", t("sys.automatisierung")], ...(dutyFeatureOn ? [["duty", t("help.helferplanung")], ["duty-templates", `${dutyCfg.dutyTabLabel}-Sätze`]] : []), ["protokolle", t("prot.protokolle")], ["polls", t("umf.umfragen")], ...(SPONSOREN_VERWALTUNG_SICHTBAR ? [["sponsoring", "Sponsoring"]] : []), ["season", t("sais.athletDerSaison")]];
+  const panels = restrictedOnly ? restrictedPanels : [["overview", t("allg.uebersicht")], ["automation", t("sys.automatisierung")], ...(dutyFeatureOn ? [["duty", t("help.helferplanung")], ["duty-templates", t("help.saetzeTitel").replace("{begriff}", t(dutyCfg.dutyTabLabel))]] : []), ["protokolle", t("prot.protokolle")], ["polls", t("umf.umfragen")], ...(SPONSOREN_VERWALTUNG_SICHTBAR ? [["sponsoring", "Sponsoring"]] : []), ["season", t("sais.athletDerSaison")]];
   if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.push(["roles", t("sys.rollen")]);
   if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.splice(1, 0, ["memberships", t("mit.antraege")]);
   if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.splice(1, 0, ["clubprofile", t("verein.profil")]);
@@ -10121,7 +10143,7 @@ function AdminView({
 
   return (
     <div className="px-4 pt-4 pb-24">
-      <SectionTitle title={restrictedOnly ? (sponsorOnly ? t("sp.manager") : `${dutyCfg.dutyTabLabel}-Organisator`) : t("sys.verwaltung")} eyebrow={restrictedOnly ? (sponsorOnly ? t("sp.anzeigenKampagnen") : t("help.saetzeStationen")) : t("rol.vorstand")} />
+      <SectionTitle title={restrictedOnly ? (sponsorOnly ? t("sp.manager") : t("help.organisator").replace("{begriff}", t(dutyCfg.dutyTabLabel))) : t("sys.verwaltung")} eyebrow={restrictedOnly ? (sponsorOnly ? t("sp.anzeigenKampagnen") : t("help.saetzeStationen")) : t("rol.vorstand")} />
       {!restrictedOnly && <div className="rounded-2xl p-4 mb-5 flex items-center gap-3" style={{ background: C.ink }}>
         <ShieldCheck size={22} style={{ color: C.secondary }} />
         <div>
