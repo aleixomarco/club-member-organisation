@@ -1038,7 +1038,10 @@ function useVorhandeneHowToVideos() {
   }, []);
   return dateien;
 }
-function linkFamilyRecords(list, firstId, secondId, firstRelation, linkId = null) {
+/* firstWort/secondWort sind die genauen Bezeichnungen je Seite ("vater",
+   "tochter") - sie stehen neben dem Grad und werden nur angezeigt. Fehlt eine,
+   zeigt die Oberflaeche den allgemeinen Grad. */
+function linkFamilyRecords(list, firstId, secondId, firstRelation, linkId = null, firstWort = null, secondWort = null) {
   const first = list.find((m) => m.id === firstId);
   const second = list.find((m) => m.id === secondId);
   if (!first || !second || first.id === second.id) return list;
@@ -1049,8 +1052,10 @@ function linkFamilyRecords(list, firstId, secondId, firstRelation, linkId = null
     const belongs = m.id === firstId || m.id === secondId || oldFamilyIds.includes(m.familyId);
     if (!belongs) return m;
     const links = [...(m.familyLinks || [])];
-    if (m.id === firstId && !links.some((l) => l.memberId === secondId)) links.push({ memberId: secondId, relation: opposite, linkId });
-    if (m.id === secondId && !links.some((l) => l.memberId === firstId)) links.push({ memberId: firstId, relation: firstRelation, linkId });
+    /* Aus Sicht von A steht in der Verknuepfung, was B fuer ihn IST - also
+       Grad und Wort der GEGENseite. */
+    if (m.id === firstId && !links.some((l) => l.memberId === secondId)) links.push({ memberId: secondId, relation: opposite, linkId, wort: secondWort });
+    if (m.id === secondId && !links.some((l) => l.memberId === firstId)) links.push({ memberId: firstId, relation: firstRelation, linkId, wort: firstWort });
     return { ...m, familyId, familyRole: m.id === firstId ? firstRelation : m.id === secondId ? opposite : m.familyRole, familyLinks: links };
   });
 }
@@ -1062,6 +1067,8 @@ function hydrateFamilyLinks(roster, links) {
     link.second_membership_id,
     link.first_to_second,
     link.id,
+    link.first_label || null,
+    link.second_label || null,
   ), roster);
 }
 function unlinkFamilyRecords(list, firstId, secondId) {
@@ -5636,7 +5643,11 @@ function FamilyTree({ user, members }) {
   const family = members.filter((m) => m.familyId === user.familyId);
   const gen = (role) => family.filter((m) => m.familyRole === role);
   const rows = [
-    { role: "großeltern", label: t("fam.grosseltern"), list: gen("großeltern") },
+    /* "grosseltern" mit ss - so heisst der Wert in der Datenbank
+       (family_relation). Hier stand "großeltern" mit ss-z; die Zeile fand
+       deshalb nie jemanden, und Grosseltern tauchten im Stammbaum ueberhaupt
+       nicht auf. */
+    { role: "grosseltern", label: t("fam.grosseltern"), list: gen("grosseltern") },
     { role: "eltern", label: t("fam.eltern"), list: gen("eltern") },
     { role: "kind", label: t("fam.kinder"), list: gen("kind") },
   ].filter((r) => r.list.length);
@@ -5661,20 +5672,59 @@ function FamilyTree({ user, members }) {
   );
 }
 
+/* Was jemand fuer den anderen ist - in den Woertern, die Leute benutzen.
+ *
+ * Jeder Eintrag traegt zweierlei: den GRAD, an dem Rechte haengen (ein
+ * Elternteil sieht die Mannschaft seines Kindes), und das WORT, das im Profil
+ * steht. Der Grad ist die Aufzaehlung in der Datenbank und bleibt eng - eltern,
+ * kind, grosseltern; das Wort steht daneben und wird nirgends ausgewertet.
+ * Warum nicht einfach 'vater' als Grad speichern, steht in der Migration
+ * 20260907220000: gehoert_zu_mannschaft sucht nach 'eltern', und wer dort
+ * anders heisst, verliert den Zugang zur Mannschaft seines Kindes.
+ *
+ * Die Gegenseite bekommt bewusst KEIN Wort: Wer Vater ist, hat einen Sohn oder
+ * eine Tochter - was davon, sagt seine eigene Angabe nicht. Dort steht der
+ * allgemeine Grad, bis die andere Person selbst etwas eintraegt. */
+const VERWANDTSCHAFT = [
+  { id: "vater",   grad: "eltern" },
+  { id: "mutter",  grad: "eltern" },
+  { id: "sohn",    grad: "kind" },
+  { id: "tochter", grad: "kind" },
+  { id: "opa",     grad: "grosseltern" },
+  { id: "oma",     grad: "grosseltern" },
+];
+const verwandtschaftLabel = (t, wort, grad) => (
+  wort && VERWANDTSCHAFT.some((v) => v.id === wort)
+    ? t(`fam.grad.${wort}`)
+    : t(`fam.grad.${grad || "sonstige"}`)
+);
+
 function FamilyLinkManager({ user, members, setMembers, adminMode = false }) {
   const t = useT();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [newName, setNewName] = useState("");
-  const [relationMode, setRelationMode] = useState(user.roles.includes("eltern") ? "eltern" : "kind");
+  /* Vorbelegt mit "Vater", weil Eltern diese Ansicht am haeufigsten oeffnen -
+     aber sichtbar aenderbar, nicht aus der Rolle geraten. Die alte Vorbelegung
+     las user.roles.includes("eltern"); diese Rolle ist abgeschafft und
+     niemandem mehr zugewiesen, die Bedingung war also immer falsch. */
+  const [grad, setGrad] = useState("vater");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const databaseMembership = !!supabase && isDbId(user.id);
-  const userIsParent = relationMode === "eltern";
-  const wantedRole = userIsParent ? "spieler" : "eltern";
+  const gewaehlt = VERWANDTSCHAFT.find((v) => v.id === grad) || VERWANDTSCHAFT[0];
+  const userIsParent = gewaehlt.grad === "eltern";
   const linkedIds = (user.familyLinks || []).map((l) => l.memberId);
   const familyConnections = members.filter((member) => linkedIds.includes(member.id));
-  const results = members.filter((m) => m.id !== user.id && !linkedIds.includes(m.id) && !m.accountPending && m.roles.includes(wantedRole) && m.name.toLowerCase().includes(query.toLowerCase())).slice(0, 5);
+  /* Gesucht wird unter ALLEN Mitgliedern, nicht nach einer Rolle.
+     Vorher filterte die Suche auf die Rolle "spieler" bzw. "eltern". Die Rolle
+     "eltern" gibt es nicht mehr - sie ist niemandem zugewiesen -, und damit
+     lieferte die Richtung "Ich bin das Kind" ausnahmslos null Treffer: Man
+     konnte seinen Elternteil gar nicht eintragen. Und ein Kind, das noch nicht
+     als Athlet gefuehrt wird, war in der anderen Richtung ebenso unsichtbar.
+     Wer zu wem gehoert, sagt der gewaehlte Grad - die Rolle muss das nicht
+     noch einmal bestaetigen. */
+  const results = members.filter((m) => m.id !== user.id && !linkedIds.includes(m.id) && !m.accountPending && m.name.toLowerCase().includes(query.toLowerCase())).slice(0, 6);
   const connect = async (targetId) => {
     setSaving(true); setMessage("");
     let linkId = null;
@@ -5683,12 +5733,13 @@ function FamilyLinkManager({ user, members, setMembers, adminMode = false }) {
         target_club: user.clubId,
         acting_membership: user.id,
         related_membership: targetId,
-        acting_relation: userIsParent ? "eltern" : "kind",
+        acting_relation: gewaehlt.grad,
+        acting_label: gewaehlt.id,
       });
       if (error) { setMessage(t("fam.verknuepfungFehler")); setSaving(false); return; }
       linkId = data;
     }
-    setMembers((ms) => linkFamilyRecords(ms, user.id, targetId, userIsParent ? "eltern" : "kind", linkId));
+    setMembers((ms) => linkFamilyRecords(ms, user.id, targetId, gewaehlt.grad, linkId, gewaehlt.id, null));
     setQuery(""); setOpen(false); setSaving(false);
   };
   const createDependent = async () => {
@@ -5726,8 +5777,8 @@ function FamilyLinkManager({ user, members, setMembers, adminMode = false }) {
   return <div className="rounded-2xl p-4 mb-5" style={{background:C.glass,border:`1px solid ${C.line}`}}>
     <div className="flex items-center justify-between"><div><div className="text-sm font-bold" style={{color:C.ink}}>{t("fam.verknuepfung")}</div><div className="text-[11px]" style={{color:C.textDim}}>{adminMode ? `Sysadmin bearbeitet das Profil von ${user.name}.` : t("fam.selbstVerwalten")} Verknüpfungen gelten automatisch für beide Profile.</div></div><button disabled={saving} onClick={()=>setOpen(!open)} className="px-3 py-1.5 rounded-full text-xs font-bold" style={{background:C.paperDim,color:C.ink}}>{open?t("allg.schliessen"):t("fam.verknuepfenKnopf")}</button></div>
     {message&&<div className="mt-2 text-[11px] font-semibold" style={{color:C.red}}>{meldungstext(message)}</div>}
-    {familyConnections.length>0&&<div className="mt-3 pt-3 space-y-1.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] font-bold mb-1" style={{color:C.textDim}}>BESTEHENDE VERKNÜPFUNGEN</div>{familyConnections.map((member)=><div key={member.id} className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{background:C.paperDim}}><div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold" style={{background:member.color,color:C.white}}>{initialsOf(member.name)}</div><div className="flex-1 min-w-0"><div className="text-xs font-bold truncate" style={{color:C.ink}}>{member.name}</div><div className="text-[10px]" style={{color:C.textDim}}>{member.familyRole||t("fam.familie")}</div></div><button onClick={()=>removeConnection(member)} className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold" style={{background:C.fehlerFlaeche,color:C.fehler}}>{t("allg.loeschen")}</button></div>)}</div>}
-    {open&&<div className="mt-3 pt-3" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[11px] font-bold mb-1">{t("fam.rolle")}</div><select value={relationMode} onChange={(e)=>{setRelationMode(e.target.value);setQuery("");}} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim}}><option value="eltern">{t("fam.elternteilHinzu")}</option><option value="kind">{t("fam.kindHinzu")}</option></select><input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder={userIsParent?t("ph.vorhandenenAthletSuchen"):t("ph.vorhandenesElternteilSuchen")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim}}/>{query&&<div className="space-y-1">{results.map(m=><button key={m.id} onClick={()=>connect(m.id)} className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs" style={{background:C.paperDim,color:C.ink}}><span>{m.name} · {m.team}</span><span style={{color:C.red}}>{t("fam.verbinden")}</span></button>)}{results.length===0&&<div className="text-[11px] py-2" style={{color:C.textDim}}>{t("fam.keinProfil")}</div>}</div>}{userIsParent&&<div className="mt-3 pt-3" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[11px] font-bold mb-2">{t("fam.kindAnlegen")}</div><div className="flex gap-2"><input value={newName} onChange={(e)=>setNewName(e.target.value)} placeholder={t("feld.vollerName")} className="flex-1 px-3 py-2 rounded-lg text-xs outline-none" style={{background:C.paperDim}}/><button onClick={createDependent} disabled={!newName.trim()} className="px-3 rounded-lg text-xs font-bold" style={{background:newName.trim()?C.red:C.line,color:"#fff"}}>{t("allg.anlegen")}</button></div><div className="text-[10px] mt-2" style={{color:C.textDim}}>Das Kind kann sein vorläufiges Profil später beim Erstellen des eigenen Kontos übernehmen.</div></div>}</div>}
+    {familyConnections.length>0&&<div className="mt-3 pt-3 space-y-1.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] font-bold mb-1" style={{color:C.textDim}}>BESTEHENDE VERKNÜPFUNGEN</div>{familyConnections.map((member)=><div key={member.id} className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{background:C.paperDim}}><div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold" style={{background:member.color,color:C.white}}>{initialsOf(member.name)}</div><div className="flex-1 min-w-0"><div className="text-xs font-bold truncate" style={{color:C.ink}}>{member.name}</div><div className="text-[10px]" style={{color:C.textDim}}>{(()=>{const v=(user.familyLinks||[]).find((l)=>l.memberId===member.id);return v?verwandtschaftLabel(t,v.wort,v.relation):t("fam.familie");})()}</div></div><button onClick={()=>removeConnection(member)} className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold" style={{background:C.fehlerFlaeche,color:C.fehler}}>{t("allg.loeschen")}</button></div>)}</div>}
+    {open&&<div className="mt-3 pt-3" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[11px] font-bold mb-1">{t("fam.rolle")}</div><div className="flex flex-wrap gap-1.5 mb-2">{VERWANDTSCHAFT.map((v)=><button type="button" key={v.id} onClick={()=>{setGrad(v.id);setQuery("");}} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:grad===v.id?C.red:C.paperDim,color:grad===v.id?C.white:C.textDim}}>{t(`fam.grad.${v.id}`)}</button>)}</div><input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder={userIsParent?t("ph.vorhandenenAthletSuchen"):t("ph.vorhandenesElternteilSuchen")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim}}/>{query&&<div className="space-y-1">{results.map(m=><button key={m.id} onClick={()=>connect(m.id)} className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs" style={{background:C.paperDim,color:C.ink}}><span>{m.name} · {m.team}</span><span style={{color:C.red}}>{t("fam.verbinden")}</span></button>)}{results.length===0&&<div className="text-[11px] py-2" style={{color:C.textDim}}>{t("fam.keinProfil")}</div>}</div>}{userIsParent&&<div className="mt-3 pt-3" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[11px] font-bold mb-2">{t("fam.kindAnlegen")}</div><div className="flex gap-2"><input value={newName} onChange={(e)=>setNewName(e.target.value)} placeholder={t("feld.vollerName")} className="flex-1 px-3 py-2 rounded-lg text-xs outline-none" style={{background:C.paperDim}}/><button onClick={createDependent} disabled={!newName.trim()} className="px-3 rounded-lg text-xs font-bold" style={{background:newName.trim()?C.red:C.line,color:"#fff"}}>{t("allg.anlegen")}</button></div><div className="text-[10px] mt-2" style={{color:C.textDim}}>Das Kind kann sein vorläufiges Profil später beim Erstellen des eigenen Kontos übernehmen.</div></div>}</div>}
   </div>;
 }
 
@@ -8808,7 +8859,13 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
             genau diesen Verein - statt in einer Vereinssuche, in der er den
             Namen tippen muesste, den ihm gerade jemand geschickt hat. */}
         <ProfileSettingsCard icon={UserPlus} title={t("pf.einladen")} description="Link zum Verein teilen" color={C.secondary} onClick={async () => {
-          const link = `${window.location.origin}/?verein=${currentClub?.id || ""}`;
+          /* Ueber /willkommen statt direkt in die App: Wer eingeladen wird, hat
+             die App in aller Regel noch nicht. Der alte Link oeffnete sofort die
+             Weboberflaeche - die funktioniert zwar, aber der Freund soll sie
+             herunterladen koennen. Die Seite bietet den App Store an und fuehrt
+             mit "Im Browser oeffnen" weiterhin direkt zur Beitrittsanfrage;
+             die Vereinskennung geht dabei mit. */
+          const link = `${window.location.origin}/willkommen?verein=${currentClub?.id || ""}`;
           const text = `Komm zu ${currentClub?.name || "unserem Verein"} in die Vereins-App:`;
           try {
             if (navigator.share) { await navigator.share({ title: currentClub?.name || "Vereins-App", text, url: link }); return; }
@@ -13172,7 +13229,7 @@ export default function ClubMemberOrganisationApp() {
       .eq("club_id", clubId).in("status", ["active", "pending"]);
     if (rosterError) return { error: t("mit.listeFehler") };
     const { data: familyData, error: familyError } = await supabase.from("family_links")
-      .select("id,first_membership_id,second_membership_id,first_to_second,second_to_first")
+      .select("id,first_membership_id,second_membership_id,first_to_second,second_to_first,first_label,second_label")
       .eq("club_id", clubId);
     if (familyError) return { error: t("fam.verknuepfungenLadenFehler") };
     const roster = (rosterData || []).map((record, index) => {

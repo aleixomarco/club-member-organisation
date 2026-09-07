@@ -22,9 +22,28 @@ const gedaempft = "#6B5F67";
 const grund = "#F7F4F6";
 const rot = "#C8102E";
 
-export default function Willkommen() {
-  const appStore = process.env.NEXT_PUBLIC_APP_STORE_URL;
-  const playStore = process.env.NEXT_PUBLIC_PLAY_STORE_URL;
+/* Die Adresse im App Store ist keine Konfiguration, sondern eine Tatsache:
+   Sie steht fest, seit die App dort liegt, und aendert sich nicht mehr.
+   Bisher hing sie an NEXT_PUBLIC_APP_STORE_URL - und weil die Variable
+   nirgends gesetzt ist, blieb der Knopf unsichtbar. Wer den Einladungslink
+   eines Freundes oeffnete, bekam die App gar nicht angeboten.
+   Die Variable darf weiterhin uebersteuern; ohne sie gilt der feste Wert. */
+const APP_STORE = "https://apps.apple.com/de/app/club-member-organisation/id6801881765";
+/* Bei Google Play liegt die App noch nicht. Ein Link dorthin fuehrte auf eine
+   Fehlerseite - schlimmer als kein Link. Sobald sie dort ist, kommt die
+   Adresse hier hinein (oder in NEXT_PUBLIC_PLAY_STORE_URL). */
+const PLAY_STORE: string | null = null;
+
+export default async function Willkommen({ searchParams }: { searchParams: Promise<{ verein?: string }> }) {
+  const { verein } = await searchParams;
+  /* Die Vereinskennung wird durchgereicht, damit der Weg im Browser direkt
+     bei der Beitrittsanfrage endet statt in der Vereinssuche. Geprueft wird
+     sie hier auf ihre Form - was hier hineingegeben wird, landet in einer
+     Adresse. */
+  const vereinsLink = verein && /^[0-9a-fA-F-]{36}$/.test(verein)
+    ? `/?verein=${encodeURIComponent(verein)}` : "/";
+  const appStore = process.env.NEXT_PUBLIC_APP_STORE_URL || APP_STORE;
+  const playStore = process.env.NEXT_PUBLIC_PLAY_STORE_URL || PLAY_STORE;
   const linkStil = {
     display: "block", textAlign: "center" as const, padding: "12px 16px",
     borderRadius: 14, background: tinte, color: "#fff", fontWeight: 700,
@@ -51,9 +70,15 @@ export default function Willkommen() {
 
         {appStore && <a href={appStore} style={linkStil}>Im App&nbsp;Store laden</a>}
         {playStore && <a href={playStore} style={linkStil}>Bei Google&nbsp;Play laden</a>}
-        <a href="/" style={{ ...linkStil, background: "#fff", color: tinte, border: "1px solid #E6E0E3" }}>
+        <a href={vereinsLink} style={{ ...linkStil, background: "#fff", color: tinte, border: "1px solid #E6E0E3" }}>
           Im Browser öffnen
         </a>
+        {!playStore && (
+          <p style={{ fontSize: 12, marginTop: 14, lineHeight: 1.6, color: gedaempft }}>
+            Für Android kommt die App noch in den Play&nbsp;Store. Bis dahin läuft sie
+            im Browser — mit demselben Konto und allen Funktionen.
+          </p>
+        )}
 
         <div style={{ marginTop: 28, fontSize: 12 }}>
           <a href="/nutzungsbedingungen" style={{ color: gedaempft, margin: "0 8px" }}>Nutzungsbedingungen</a>
