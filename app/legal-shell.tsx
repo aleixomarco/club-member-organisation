@@ -43,4 +43,10 @@ export const legal = {
   phone: process.env.NEXT_PUBLIC_LEGAL_PHONE || "",
   register: process.env.NEXT_PUBLIC_LEGAL_REGISTER || "",
   vatId: process.env.NEXT_PUBLIC_LEGAL_VAT_ID || "",
+  /* Steuernummer des Finanzamts - NICHT dasselbe wie die
+     Umsatzsteuer-Identifikationsnummer. Eigenes Feld, weil § 27a UStG nur
+     nach der USt-IdNr. fragt und beide Nummern verschiedene Formate haben
+     (DE123456789 gegenueber 328/5219/0258). In dasselbe Feld geschrieben
+     stuende im Impressum eine falsche Ueberschrift ueber der Zahl. */
+  taxNumber: process.env.NEXT_PUBLIC_LEGAL_TAX_NUMBER || "",
 };

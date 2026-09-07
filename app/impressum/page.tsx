@@ -7,8 +7,9 @@ export default function ImprintPage() { return <LegalShell title="Impressum">
   {legal.register && <p>Registereintrag: {legal.register}</p>}
   <h2>Kontakt</h2>
   <p>E-Mail: {legal.email}{legal.phone && <><br/>Telefon: {legal.phone}</>}</p>
-  <h2>Umsatzsteuer-Identifikationsnummer</h2>
+  <h2>Steuerliche Angaben</h2>
   <p>{legal.vatId ? <>Umsatzsteuer-Identifikationsnummer gemäß § 27a UStG: {legal.vatId}</> : "Keine Umsatzsteuer-Identifikationsnummer vorhanden."}</p>
+  {legal.taxNumber && <p>Steuernummer: {legal.taxNumber}</p>}
   <h2>Verantwortlich für den Inhalt</h2>
   <p>{legal.representative}, Anschrift wie oben.</p>
   <h2>EU-Streitschlichtung</h2>
