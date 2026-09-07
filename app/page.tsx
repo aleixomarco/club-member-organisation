@@ -2346,9 +2346,270 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub, offeneS
 }
 
 
+/* ------------------------------------------------------------------ */
+/* Wohnort: Land, Postleitzahl, Ort                                     */
+/* ------------------------------------------------------------------ */
+/* Das Land steht bewusst OBEN und wird zuerst gebraucht: Postleitzahlen
+   sind nur innerhalb eines Landes eindeutig. "58636" ist Iserlohn in
+   Deutschland und nichts in Frankreich - ohne Land waere jede Suche geraten.
+   Deshalb bleiben Postleitzahl und Ort gesperrt, solange kein Land gewaehlt
+   ist.
+
+   Die Verzeichnisse liegen als statische Dateien unter /geo/plz/<LAND>.json
+   (gebaut von scripts/plz-bauen.mjs, Quelle GeoNames CC BY 4.0). Geladen wird
+   je Land einmal - beim ersten Tastendruck in einem der beiden Felder, nicht
+   schon beim Oeffnen des Formulars: Wer sich registriert, laedt sonst
+   Frankreich mit, ohne es je zu brauchen. */
+
+/* Gespeichert wird das VERSPRECHEN, nicht das Ergebnis. Postleitzahl- und
+   Ortsfeld fragen unabhaengig voneinander an; ohne das laedt dieselbe Datei
+   zweimal. Schlaegt der Abruf fehl, faellt der Eintrag wieder heraus, damit
+   der naechste Versuch es erneut probieren kann statt dauerhaft aufzugeben. */
+const PLZ_VERZEICHNISSE = new Map();
+let PLZ_LAENDER = null;
+
+/* Umlaute und Akzente fallen fuer die Suche weg: Wer "koln" oder "Köln"
+   tippt, meint dasselbe. Zusaetzlich die deutsche Umschreibung, damit auch
+   "koeln" trifft - auf dem Telefon tippt man die haeufiger als das Ö. */
+const ohneZeichen = (text) => String(text || "").toLowerCase()
+  .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+const deutscheUmschrift = (text) => String(text || "").toLowerCase()
+  .replace(/ä/g, "ae").replace(/ö/g, "oe").replace(/ü/g, "ue").replace(/ß/g, "ss");
+
+async function plzLaenderVerzeichnis() {
+  if (PLZ_LAENDER) return PLZ_LAENDER;
+  try {
+    const antwort = await fetch("/geo/plz/index.json");
+    PLZ_LAENDER = antwort.ok ? new Set((await antwort.json()).laender || []) : new Set();
+  } catch { PLZ_LAENDER = new Set(); }
+  return PLZ_LAENDER;
+}
+
+function plzVerzeichnis(land) {
+  if (!land) return Promise.resolve(null);
+  if (PLZ_VERZEICHNISSE.has(land)) return PLZ_VERZEICHNISSE.get(land);
+  const laden = (async () => {
+    try {
+      /* Erst ins Verzeichnis sehen, dann laden. Ohne diese Frage laeuft die
+         App auch in Laender hinein, fuer die es gar keine Datei gibt -
+         Griechenland, Bosnien-Herzegowina, Montenegro, Kosovo - und wartet
+         dort auf eine 404-Seite. Gemessen: 1,2 Sekunden fuer nichts, waehrend
+         daneben das Feld auf Vorschlaege wartet. */
+      const vorhanden = await plzLaenderVerzeichnis();
+      if (vorhanden.size && !vorhanden.has(land)) return null;
+      const antwort = await fetch(`/geo/plz/${land}.json`);
+      if (!antwort.ok) return null;
+      const roh = await antwort.json();
+      /* Die Suchform wird EINMAL beim Laden gebildet, nicht bei jedem
+         Tastendruck. Frankreich hat 51.585 Eintraege - sie pro Anschlag neu
+         zu normalisieren waere die einzige Stelle, an der diese Suche
+         langsam werden koennte. */
+      return (roh.eintraege || []).map(([plz, o, r]) => {
+        const ort = roh.orte[o] || "";
+        const schlicht = ohneZeichen(ort);
+        const umschrift = ohneZeichen(deutscheUmschrift(ort));
+        return {
+          plz,
+          ort,
+          region: r >= 0 ? (roh.regionen[r] || "") : "",
+          suche: schlicht,
+          suche2: umschrift === schlicht ? null : umschrift,
+        };
+      });
+    } catch { return null; }
+  })().then((wert) => {
+    if (!wert) PLZ_VERZEICHNISSE.delete(land);
+    return wert;
+  });
+  PLZ_VERZEICHNISSE.set(land, laden);
+  return laden;
+}
+
+function WohnortFelder({ wert, onAendern, dicht }) {
+  const t = useT();
+  const sprache = useSprache();
+  const [verzeichnis, setVerzeichnis] = useState(null);
+  const [laedt, setLaedt] = useState(false);
+  const [mitDaten, setMitDaten] = useState(null);
+  const [offen, setOffen] = useState("");
+  const [landSuche, setLandSuche] = useState("");
+  /* Ob der Ort von der App eingesetzt wurde oder von Hand kommt. Nur einen
+     selbst eingesetzten Ort darf eine spaetere Postleitzahl ueberschreiben -
+     sonst loescht das Formular, was jemand gerade getippt hat. */
+  const ortAutomatisch = React.useRef(false);
+
+  const land = wert.countryCode || "";
+  const plz = wert.postalCode || "";
+  const ort = wert.city || "";
+  const setzen = (aenderung) => onAendern({ ...wert, ...aenderung });
+
+  const laenderNamen = React.useMemo(() => {
+    let namen;
+    try { namen = new Intl.DisplayNames([sprache], { type: "region" }); } catch { namen = null; }
+    return COUNTRY_CODES.map((code) => ({ code, name: namen?.of(code) || code }))
+      .sort((a, b) => a.name.localeCompare(b.name, sprache));
+  }, [sprache]);
+  const landName = laenderNamen.find((l) => l.code === land)?.name || land;
+  const landTreffer = laenderNamen.filter((l) => {
+    const q = ohneZeichen(landSuche);
+    return !q || ohneZeichen(l.name).includes(q) || l.code.toLowerCase().startsWith(q);
+  }).slice(0, 40);
+
+  useEffect(() => { plzLaenderVerzeichnis().then(setMitDaten); }, []);
+
+  /* Beim Landwechsel gilt das alte Verzeichnis nicht mehr - und die alte
+     Postleitzahl auch nicht. Sie stehen zu lassen waere schlimmer als sie zu
+     leeren: "58636" mit dem Land Frankreich sieht aus wie eine gepruefte
+     Angabe und ist keine. */
+  useEffect(() => {
+    let abgebrochen = false;
+    setVerzeichnis(null);
+    if (!land) return undefined;
+    setLaedt(true);
+    plzVerzeichnis(land).then((daten) => {
+      if (abgebrochen) return;
+      setVerzeichnis(daten);
+      setLaedt(false);
+    });
+    return () => { abgebrochen = true; };
+  }, [land]);
+
+  const plzTreffer = React.useMemo(() => {
+    const q = plz.trim().toLowerCase();
+    if (!verzeichnis || q.length < 2) return [];
+    return verzeichnis.filter((e) => e.plz.toLowerCase().startsWith(q)).slice(0, 8);
+  }, [verzeichnis, plz]);
+
+  const ortTreffer = React.useMemo(() => {
+    const q = ohneZeichen(deutscheUmschrift(ort.trim()));
+    if (!verzeichnis || q.length < 2) return [];
+    const beginnt = []; const enthaelt = [];
+    for (const e of verzeichnis) {
+      if (e.suche.startsWith(q) || (e.suche2 && e.suche2.startsWith(q))) beginnt.push(e);
+      else if (e.suche.includes(q)) enthaelt.push(e);
+    }
+    return [...beginnt, ...enthaelt].slice(0, 8);
+  }, [verzeichnis, ort]);
+
+  /* Der Ort wird gezogen, sobald die Postleitzahl genau passt. Steht dort
+     mehr als ein Ort - 01067 ist Dresden UND Dresden Friedrichstadt -, kommt
+     der amtliche zuerst; die Liste bleibt offen, wer den Stadtteil will,
+     tippt ihn an. */
+  useEffect(() => {
+    if (!verzeichnis) return;
+    const genau = verzeichnis.filter((e) => e.plz.toLowerCase() === plz.trim().toLowerCase());
+    if (!genau.length) return;
+    if (ort && !ortAutomatisch.current) return;
+    if (genau[0].ort === ort) return;
+    ortAutomatisch.current = true;
+    setzen({ city: genau[0].ort });
+  }, [verzeichnis, plz]);
+
+  const uebernehmen = (eintrag) => {
+    ortAutomatisch.current = true;
+    setzen({ postalCode: eintrag.plz, city: eintrag.ort });
+    setOffen("");
+  };
+
+  const feldStil = { background: C.paperDim, color: C.ink, fontFamily: "Inter" };
+  const polster = dicht ? "px-3 py-2 text-xs" : "px-3.5 py-3 text-sm";
+  const beschriftung = (text) => (
+    <span className="block text-[10px] font-bold mb-1" style={{ color: C.textDim }}>{text}</span>
+  );
+  const liste = (kinder) => (
+    <div className="absolute z-20 left-0 right-0 top-full mt-1 rounded-xl overflow-hidden shadow-xl"
+      style={{ background: C.blatt, border: `1px solid ${C.line}`, maxHeight: 210, overflowY: "auto" }}>
+      {kinder}
+    </div>
+  );
+  const eintragsZeile = (e, schluessel) => (
+    <button type="button" key={schluessel} onMouseDown={(ev) => ev.preventDefault()}
+      onClick={() => uebernehmen(e)}
+      className="w-full px-3 py-2 text-left text-xs flex items-baseline gap-2"
+      style={{ color: C.ink, fontFamily: "Inter" }}>
+      <span className="font-bold" style={{ minWidth: 54 }}>{e.plz}</span>
+      <span className="truncate">{e.ort}</span>
+      {e.region && <span className="text-[10px] truncate" style={{ color: C.textDim }}>{e.region}</span>}
+    </button>
+  );
+
+  const ohneVerzeichnis = mitDaten && land && !mitDaten.has(land);
+
+  return (
+    <div className="mb-3">
+      {/* Land */}
+      <label className="block relative mb-2">
+        {beschriftung(t("feld.landPflicht"))}
+        <button type="button"
+          onClick={() => { setOffen(offen === "land" ? "" : "land"); setLandSuche(""); }}
+          className={`w-full rounded-xl outline-none flex items-center justify-between gap-2 text-left ${polster}`}
+          style={{ ...feldStil, color: land ? C.ink : C.textDim }}>
+          <span className="truncate">{land ? landName : t("ph.landWaehlen")}</span>
+          <ChevronDown size={14} style={{ color: C.textDim, flexShrink: 0 }} />
+        </button>
+        {offen === "land" && liste(<>
+          <input autoFocus value={landSuche} onChange={(e) => setLandSuche(e.target.value)}
+            placeholder={t("ph.landSuchen")} aria-label={t("ph.landSuchen")}
+            className="w-full px-3 py-2 text-xs outline-none sticky top-0"
+            style={{ background: C.white, color: C.ink, borderBottom: `1px solid ${C.line}` }} />
+          {landTreffer.map((l) => (
+            <button type="button" key={l.code} onClick={() => {
+              /* Land gewechselt: Postleitzahl und Ort gehoeren zum alten Land
+                 und werden geleert. */
+              ortAutomatisch.current = false;
+              onAendern({ ...wert, countryCode: l.code, postalCode: "", city: "" });
+              setOffen(""); setLandSuche("");
+            }} className="w-full px-3 py-2 text-left text-xs flex items-center justify-between gap-2"
+              style={{ color: C.ink, fontFamily: "Inter" }}>
+              <span className="truncate">{l.name}</span>
+              <span className="text-[10px]" style={{ color: C.textDim }}>{l.code}</span>
+            </button>
+          ))}
+        </>)}
+      </label>
+
+      {/* Postleitzahl und Ort - erst wenn ein Land feststeht */}
+      <div className="grid gap-2" style={{ gridTemplateColumns: "5fr 7fr" }}>
+        <label className="block relative">
+          {beschriftung(t("feld.plzPflicht"))}
+          <input value={plz} disabled={!land}
+            onChange={(e) => { setzen({ postalCode: e.target.value }); setOffen("plz"); }}
+            onFocus={() => setOffen("plz")}
+            onBlur={() => window.setTimeout(() => setOffen((o) => (o === "plz" ? "" : o)), 120)}
+            placeholder={t("ph.plz")} inputMode="numeric" autoComplete="postal-code"
+            className={`w-full rounded-xl outline-none ${polster}`}
+            style={{ ...feldStil, opacity: land ? 1 : 0.5 }} />
+          {offen === "plz" && plzTreffer.length > 0 && liste(plzTreffer.map((e, i) => eintragsZeile(e, `${e.plz}-${i}`)))}
+        </label>
+        <label className="block relative">
+          {beschriftung(t("feld.ort"))}
+          <input value={ort} disabled={!land}
+            onChange={(e) => { ortAutomatisch.current = false; setzen({ city: e.target.value }); setOffen("ort"); }}
+            onFocus={() => setOffen("ort")}
+            onBlur={() => window.setTimeout(() => setOffen((o) => (o === "ort" ? "" : o)), 120)}
+            placeholder={t("ph.ort")} autoComplete="address-level2"
+            className={`w-full rounded-xl outline-none ${polster}`}
+            style={{ ...feldStil, opacity: land ? 1 : 0.5 }} />
+          {offen === "ort" && ortTreffer.length > 0 && liste(ortTreffer.map((e, i) => eintragsZeile(e, `${e.plz}-${i}`)))}
+        </label>
+      </div>
+
+      {/* Was gerade passiert - oder eben nicht. Ein Feld ohne Vorschlaege
+          sieht sonst kaputt aus, obwohl es nur keine Daten gibt. */}
+      {!land ? (
+        <div className="text-[10px] mt-1" style={{ color: C.textDim }}>{t("wohnort.zuerstLand")}</div>
+      ) : laedt ? (
+        <div className="text-[10px] mt-1" style={{ color: C.textDim }}>{t("wohnort.laedt")}</div>
+      ) : ohneVerzeichnis ? (
+        <div className="text-[10px] mt-1" style={{ color: C.textDim }}>{t("wohnort.ohneVerzeichnis")}</div>
+      ) : null}
+    </div>
+  );
+}
+
 function RegisterScreen({ onRegister, members, club, goLogin }) {
   const t = useT();
-  const [form, setForm] = useState({ firstName: "", lastName: "", email: "", team: supabase ? "" : TEAMS[0], birthdate: "", password: "", password2: "", accountType: "mitglied", relativeId: "", childName: "", childBirthdate: "", childTeam: "U11" });
+  const [form, setForm] = useState({ firstName: "", lastName: "", email: "", team: supabase ? "" : TEAMS[0], birthdate: "", password: "", password2: "", accountType: "mitglied", relativeId: "", childName: "", childBirthdate: "", childTeam: "U11", countryCode: "DE", postalCode: "", city: "" });
   const [legalAccepted, setLegalAccepted] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -2387,6 +2648,9 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
       [!form.lastName.trim(), t("reg.nachname")],
       [!form.email.trim(), t("login.email")],
       [!form.birthdate, t("feld.geburtsdatum")],
+      [!form.countryCode, t("feld.land")],
+      [!form.postalCode.trim(), t("feld.plz")],
+      [!form.city.trim(), t("feld.wohnort")],
       [!form.password, t("login.passwort")],
     ].filter(([leer]) => leer).map(([, bezeichnung]) => bezeichnung);
     if (fehlt.length) {
@@ -2433,6 +2697,12 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
       tippPoints: 0,
       badges: [],
       birthdate: form.birthdate,
+      /* Wohnort gehoert zum Konto, nicht zur Mitgliedschaft: Wer den Verein
+         wechselt, zieht deshalb nicht um. Geschrieben wird er in profiles -
+         siehe handle_new_user(). */
+      countryCode: form.countryCode,
+      postalCode: form.postalCode.trim(),
+      city: form.city.trim(),
     }, { relativeId: form.relativeId || null, accountType: form.accountType, child: form.accountType === "eltern" && !form.relativeId && form.childName.trim() ? { name: form.childName.trim(), birthdate: form.childBirthdate, team: form.childTeam } : null });
     setBusy(false);
     if (result?.error) setError(result.error);
@@ -2494,6 +2764,11 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
         <Field icon={User} placeholder={t("reg.nachname")} value={form.lastName} onChange={set("lastName")} />
         <Field icon={Mail} type="email" placeholder={t("login.email")} value={form.email} onChange={set("email")} />
         <Field icon={Cake} type="date" value={form.birthdate} onChange={set("birthdate")} />
+
+        {/* Wohnort. Steht vor der Rollenwahl, weil er zur Person gehoert und
+            nicht zum Verein - und weil das Land die Postleitzahlensuche
+            ueberhaupt erst moeglich macht. */}
+        <WohnortFelder wert={form} onAendern={(w) => setForm((f) => ({ ...f, ...w }))} />
 
         {/* Rolle, Mannschaft und Familienverknuepfung ergeben ohne Verein
             keinen Sinn - danach wird beim Beitritt gefragt. */}
@@ -7388,10 +7663,7 @@ function ProfileDataSettings({ user, setMembers, saveRef }) {
     showBirthday: user.showBirthday ?? true,
     street: user.street || "", postalCode: user.postalCode || "", city: user.city || "", countryCode: user.countryCode || "DE",
   });
-  const [countryQuery, setCountryQuery] = useState("");
   const [message, setMessage] = useState("");
-  const countryNames = React.useMemo(() => { const names = new Intl.DisplayNames(["de"], { type: "region" }); return COUNTRY_CODES.map((code) => ({ code, name: names.of(code) || code })).sort((a,b)=>a.name.localeCompare(b.name,"de")); }, []);
-  const matches = countryNames.filter((item) => !countryQuery || item.name.toLowerCase().includes(countryQuery.toLowerCase()) || item.code.toLowerCase().startsWith(countryQuery.toLowerCase())).slice(0, 12);
   const save = async () => {
     if (!form.firstName.trim() || !form.lastName.trim()) { setMessage(t("pf.namePflicht")); return; }
     /* Die Rueckfrage vor dem Speichern ist entfallen. Sie warnte davor, sich
@@ -7425,7 +7697,12 @@ function ProfileDataSettings({ user, setMembers, saveRef }) {
     {section(t("pf.persoenlich2"), <><input value={form.membershipNumber} onChange={(e)=>setForm({...form,membershipNumber:e.target.value})} placeholder={t("ph.ausweisnummer")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><input value={form.academicTitle} onChange={(e)=>setForm({...form,academicTitle:e.target.value})} placeholder={t("ph.akadTitel")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><div className="grid grid-cols-2 gap-2"><input value={form.firstName} onChange={(e)=>setForm({...form,firstName:e.target.value})} placeholder={t("reg.vorname")} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><input value={form.lastName} onChange={(e)=>setForm({...form,lastName:e.target.value})} placeholder={t("reg.nachname")} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/></div></>)}
     {section(t("feld.kontaktdaten"), <><div className="text-[10px] font-bold" style={{color:C.textDim}}>{t("feld.anmeldeadresse")}</div><div className="flex items-center gap-2 px-3 py-2.5 rounded-xl" style={{background:C.paperDim,border:`1px solid ${C.line}`}}><Lock size={13} style={{color:C.textDim,flexShrink:0}}/><span className="text-xs truncate" style={{color:C.textDim}}>{user.email || "—"}</span></div><div className="text-[10px] leading-snug" style={{color:C.textDim}}>{t("feld.anmeldeadresseGesperrt")}</div><div className="text-[10px] font-bold pt-2" style={{color:C.textDim}}>{t("feld.weitereEmails")}</div>{form.emails.map((value,index)=><div key={`e-${index}`} className="flex gap-2"><input type="email" value={value} onChange={(e)=>updateList("emails",index,e.target.value)} placeholder={t("login.email")} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/>{index>0&&<button onClick={()=>setForm({...form,emails:form.emails.filter((_,i)=>i!==index)})}><X size={15}/></button>}</div>)}<button onClick={()=>addList("emails")} className="flex items-center gap-1 text-[11px] font-bold" style={{color:C.red}}><Plus size={13}/> Weitere E-Mail</button><div className="text-[10px] font-bold pt-2" style={{color:C.textDim}}>{t("feld.telefonnummern")}</div>{form.phones.map((value,index)=><div key={`p-${index}`} className="flex gap-2"><input type="tel" value={value} onChange={(e)=>updateList("phones",index,e.target.value)} placeholder={t("ph.telefonnummer")} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/>{index>0&&<button onClick={()=>setForm({...form,phones:form.phones.filter((_,i)=>i!==index)})}><X size={15}/></button>}</div>)}<button onClick={()=>addList("phones")} className="flex items-center gap-1 text-[11px] font-bold" style={{color:C.red}}><Plus size={13}/> Weitere Telefonnummer</button></>)}
     {section(t("pf.weitereAngaben"), <><input type="date" value={form.birthdate} onChange={(e)=>setForm({...form,birthdate:e.target.value})} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><label className="flex items-center justify-between gap-3 px-0.5 py-1"><span className="text-xs" style={{color:C.ink}}>{t("feld.geburtstagZeigen")}</span><button type="button" onClick={()=>setForm({...form,showBirthday:!form.showBirthday})} className="w-10 h-6 rounded-full flex items-center px-0.5" style={{background:form.showBirthday?C.secondary:C.line,justifyContent:form.showBirthday?"flex-end":"flex-start"}}><span className="w-5 h-5 rounded-full" style={{background:C.glass}}/></button></label><select value={form.gender} onChange={(e)=>setForm({...form,gender:e.target.value})} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}><option value="weiblich">{t("gesch.w")}</option><option value="maennlich">{t("gesch.m")}</option><option value="divers">{t("gesch.d")}</option><option value="keine_angabe">{t("gesch.k")}</option></select><input value={form.nationality} onChange={(e)=>setForm({...form,nationality:e.target.value})} placeholder={t("ph.nationalitaet")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/></>)}
-    {section(t("feld.adresse"), <><input value={form.street} onChange={(e)=>setForm({...form,street:e.target.value})} placeholder={t("ph.strasse")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><div className="grid grid-cols-2 gap-2"><input value={form.postalCode} onChange={(e)=>setForm({...form,postalCode:e.target.value})} placeholder="PLZ" className="px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><input value={form.city} onChange={(e)=>setForm({...form,city:e.target.value})} placeholder={t("feld.stadt")} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/></div><div className="relative"><input value={countryQuery || countryNames.find((c)=>c.code===form.countryCode)?.name || form.countryCode} onChange={(e)=>setCountryQuery(e.target.value)} onFocus={()=>setCountryQuery("")} placeholder={t("ph.landSuchen")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/>{countryQuery&&<div className="absolute z-10 left-0 right-0 top-full mt-1 rounded-xl overflow-hidden shadow-xl" style={{background:C.glass,border:`1px solid ${C.line}`}}>{matches.map((item)=><button key={item.code} onClick={()=>{setForm({...form,countryCode:item.code});setCountryQuery("");}} className="w-full px-3 py-2 text-left text-xs hover:bg-gray-50">{item.name} <span style={{color:C.textDim}}>({item.code})</span></button>)}</div>}</div></>)}
+    {/* Strasse bleibt ein freies Feld - dafuer gibt es kein Verzeichnis.
+        Land, Postleitzahl und Ort teilen sich mit der Registrierung
+        dieselbe Komponente: Wer beim Anmelden Vorschlaege bekommt und
+        sie im Profil nicht mehr findet, haelt das zu Recht fuer einen
+        Fehler. */}
+    {section(t("feld.adresse"), <><label className="block mb-2"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("ph.strasse")}</span><input value={form.street} onChange={(e)=>setForm({...form,street:e.target.value})} placeholder={t("ph.strasse")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/></label><WohnortFelder dicht wert={form} onAendern={(w)=>setForm({...form,...w})}/></>)}
   </div>;
 }
 
@@ -12579,6 +12856,16 @@ export default function ClubMemberOrganisationApp() {
           account_role: familySetup?.accountType || "mitglied",
           birthdate: draft.birthdate || null,
           requested_team: draft.team || null,
+          /* Der Wohnort muss HIER mitgehen, nicht spaeter nachgetragen werden.
+             Zwischen Registrierung und erster Anmeldung liegt der Klick in der
+             Bestaetigungsmail - bis dahin gibt es keine Sitzung, mit der die
+             App etwas in profiles schreiben koennte. Was nicht in den
+             Kontodaten steht, ist an dieser Stelle verloren.
+             Geschrieben wird es von handle_new_user(), siehe Migration
+             20260907190000_wohnort_bei_registrierung.sql. */
+          country_code: draft.countryCode || null,
+          postal_code: draft.postalCode || null,
+          city: draft.city || null,
         } },
       });
       if (error) return { error: registrierFehlerText(error, t) };

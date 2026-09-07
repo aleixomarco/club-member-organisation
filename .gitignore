@@ -65,3 +65,6 @@ AuthKey_*
 # Package.swift verweist darauf; wer baut, muss ohnehin vorher cap sync laufen
 # lassen, und dabei entsteht der Ordner neu.
 ios/App/CapApp-SPM/symlinks/
+
+# Rohdaten von GeoNames - nur Zwischenlager fuer scripts/plz-bauen.mjs
+.plz-cache/

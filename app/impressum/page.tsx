@@ -16,6 +16,12 @@ export default function ImprintPage() { return <LegalShell title="Impressum">
   <p>Die Europäische Kommission stellt eine Plattform zur Online-Streitbeilegung (OS) bereit: <a href="https://ec.europa.eu/consumers/odr/" target="_blank" rel="noreferrer">https://ec.europa.eu/consumers/odr/</a>. Unsere E-Mail-Adresse findest du oben unter Kontakt.</p>
   <h2>Verbraucherstreitbeilegung</h2>
   <p>Wir sind nicht verpflichtet und nicht bereit, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle im Sinne des Verbraucherstreitbeilegungsgesetzes (VSBG) teilzunehmen.</p>
+  {/* Namensnennung. Die Postleitzahlenverzeichnisse unter /geo/plz stammen von
+      GeoNames und stehen unter CC BY 4.0 - diese Lizenz verlangt, die Quelle zu
+      nennen. Wer den Datensatz austauscht (scripts/plz-bauen.mjs), muss diesen
+      Absatz mitpflegen. */}
+  <h2>Verwendete Daten</h2>
+  <p>Die Postleitzahlen- und Ortsverzeichnisse, mit denen die App bei der Eingabe des Wohnorts Vorschläge macht, stammen von <a href="https://www.geonames.org/" target="_blank" rel="noreferrer">GeoNames</a> und stehen unter der Lizenz <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">Creative Commons Attribution 4.0</a>. Die Daten werden unverändert übernommen; für ihre Richtigkeit und Vollständigkeit können wir nicht einstehen.</p>
   <h2>Haftung für Inhalte und Links</h2>
   <p>Als Diensteanbieter sind wir für eigene Inhalte auf diesen Seiten nach den allgemeinen Gesetzen verantwortlich. Für Inhalte externer Links, auf die wir verweisen, übernehmen wir keine Gewähr; für den Inhalt verlinkter Seiten sind ausschließlich deren Betreiber verantwortlich.</p>
 </LegalShell>; }
