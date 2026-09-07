@@ -7999,6 +7999,7 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
   const [rundeId, setRundeId] = useState("");
   const [tabelle, setTabelle] = useState(null);
   const [rundenFehler, setRundenFehler] = useState("");
+  const [verlassenFrage, setVerlassenFrage] = useState(false);
 
   /* Diese vier Ableitungen standen ueber den useState-Zeilen und griffen auf
      runden und rundeId zu, bevor es die gab. In JavaScript ist das kein
@@ -8131,7 +8132,16 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
       )}
 
       {aktuelleRunde?.ich_dabei && (<>
-      <SectionTitle eyebrow="Rangliste" title={`Tabelle ${aktuelleRunde.team_name}`} />
+      {/* Der Ausstieg steht oben rechts, auf Hoehe der Ueberschrift - dort,
+          wo in dieser App alle Aktionen zu einem Abschnitt stehen. */}
+      <SectionTitle eyebrow="Rangliste" title={`Tabelle ${aktuelleRunde.team_name}`}
+        right={
+          <button onClick={() => setVerlassenFrage(true)}
+            className="px-3 py-1.5 rounded-full text-[10px] font-bold flex-shrink-0"
+            style={{ background: C.fehlerFlaeche, color: C.fehler, border: `1px solid ${C.fehlerRand}` }}>
+            {t("tipp.verlassen")}
+          </button>
+        } />
       <div className="rounded-2xl overflow-hidden mb-6" style={{ border: `1px solid ${C.line}` }}>
         {(tabelle || []).length === 0 && <div className="px-4 py-3 text-xs" style={{ color: C.textDim }}>{t("tipp.niemand")}</div>}
         {(tabelle || []).map((m, i) => (
@@ -8205,27 +8215,45 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
         );
       })}
 
-      {/* Wieder aussteigen.
-       *
-       * beitreten() konnte das Austragen von Anfang an - es fehlte nur der
-       * Knopf dafuer. Wer einmal beigetreten war, kam nicht mehr heraus.
-       *
-       * Ganz unten und nicht neben der Mannschaftsauswahl: Ein roter Knopf
-       * oben waere beim Blaettern zwischen den Runden staendig unter dem
-       * Daumen.
-       *
-       * Ausgetragen wird nur die Teilnahme - die abgegebenen Tipps bleiben in
-       * predictions stehen. Wer zurueckkommt, findet seine Punkte wieder. Das
-       * steht auch in der Rueckfrage, sonst traut sich niemand. */}
-      <button
-        onClick={() => {
-          if (window.confirm(t("tipp.verlassenFrage").replace("{team}", aktuelleRunde.team_name))) beitreten(true);
-        }}
-        className="w-full py-2.5 rounded-xl text-xs font-bold mt-2"
-        style={{ background: C.fehlerFlaeche, color: C.fehler, border: `1px solid ${C.fehlerRand}` }}>
-        {t("tipp.verlassen")}
-      </button>
       </>)}
+
+      {/* Eigener Dialog statt window.confirm.
+       *
+       * window.confirm laesst sich nicht beschriften - iOS zeigt dort "OK" und
+       * "Abbrechen", nicht "Ja" und "Nein". Fuer eine klare Ja/Nein-Frage
+       * braucht es deshalb einen eigenen.
+       *
+       * Ausgetragen wird NUR die Teilnahme: Die abgegebenen Tipps bleiben in
+       * predictions stehen, wer zurueckkommt, findet seine Punkte wieder. Das
+       * steht auch im Text - sonst traut sich niemand, den Knopf zu
+       * druecken. */}
+      {verlassenFrage && aktuelleRunde && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setVerlassenFrage(false)}>
+          <div role="dialog" aria-modal="true" className="w-full max-w-sm rounded-3xl p-5"
+            style={{ background: C.blatt, boxShadow: "0 -14px 38px rgba(20,21,26,.30)", border: `1px solid ${C.edge}` }}
+            onClick={(e) => e.stopPropagation()}>
+            <div className="text-base font-bold mb-2" style={{ color: C.ink, fontFamily: "Oswald" }}>
+              {t("tipp.verlassenTitel")}
+            </div>
+            <div className="text-xs mb-4" style={{ color: C.textDim, lineHeight: 1.6 }}>
+              {t("tipp.verlassenFrage").replace("{team}", aktuelleRunde.team_name)}
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => { setVerlassenFrage(false); beitreten(true); }}
+                className="flex-1 py-2.5 rounded-xl text-xs font-bold"
+                style={{ background: C.fehler, color: C.white }}>
+                {t("allg.ja")}
+              </button>
+              <button onClick={() => setVerlassenFrage(false)}
+                className="flex-1 py-2.5 rounded-xl text-xs font-bold"
+                style={{ background: C.glass, color: C.ink, border: `1px solid ${C.line}` }}>
+                {t("allg.nein")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
