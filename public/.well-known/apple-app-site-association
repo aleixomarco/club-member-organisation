@@ -1,0 +1,21 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["BGDB66U66T.de.idbranding.clubmemberorganisation"],
+        "components": [
+          {
+            "/": "/willkommen",
+            "?": { "verein": "?*" },
+            "comment": "Einladungslink eines Vereins - fuehrt direkt zur Beitrittsanfrage"
+          },
+          {
+            "/": "/",
+            "?": { "verein": "?*" },
+            "comment": "Aeltere Einladungslinks, die noch auf die Wurzel zeigen"
+          }
+        ]
+      }
+    ]
+  }
+}

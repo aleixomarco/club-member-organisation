@@ -34,14 +34,49 @@ const APP_STORE = "https://apps.apple.com/de/app/club-member-organisation/id6801
    Adresse hier hinein (oder in NEXT_PUBLIC_PLAY_STORE_URL). */
 const PLAY_STORE: string | null = null;
 
+/* Zu WELCHEM Verein wurde eingeladen?
+ *
+ * Universal Links loesen den Fall "App ist schon da" - der Link oeffnet dann
+ * die App mitsamt Vereinskennung. Sie loesen NICHT den Fall "App wird erst
+ * installiert": Nach dem Weg ueber den App Store ist die Kennung verloren,
+ * iOS reicht sie nicht in die frische Installation weiter.
+ *
+ * Was bleibt, ist der Name. Wer hier liest "Du wurdest zu ERG Iserlohn
+ * eingeladen", findet den Verein nach der Installation in der Vereinssuche -
+ * statt zu raten, wie der Verein wohl genau geschrieben wird.
+ *
+ * Die Vereinsliste ist absichtlich oeffentlich lesbar ("clubs are
+ * discoverable", using true) - genau dafuer. Beitreten kann trotzdem nur, wen
+ * die Vereinsleitung freigibt. */
+async function vereinLaden(kennung: string) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) return null;
+  try {
+    const antwort = await fetch(
+      `${url}/rest/v1/clubs?id=eq.${encodeURIComponent(kennung)}&select=name,city`,
+      { headers: { apikey: key, Authorization: `Bearer ${key}` }, cache: "no-store",
+        signal: AbortSignal.timeout(4000) },
+    );
+    if (!antwort.ok) return null;
+    const zeilen = await antwort.json();
+    return zeilen?.[0]?.name ? zeilen[0] : null;
+  } catch {
+    /* Der Name ist Beiwerk. Faellt die Abfrage aus, bleibt die Seite genau so
+       brauchbar wie vorher - nur ohne Vereinsnamen. */
+    return null;
+  }
+}
+
 export default async function Willkommen({ searchParams }: { searchParams: Promise<{ verein?: string }> }) {
   const { verein } = await searchParams;
   /* Die Vereinskennung wird durchgereicht, damit der Weg im Browser direkt
      bei der Beitrittsanfrage endet statt in der Vereinssuche. Geprueft wird
      sie hier auf ihre Form - was hier hineingegeben wird, landet in einer
      Adresse. */
-  const vereinsLink = verein && /^[0-9a-fA-F-]{36}$/.test(verein)
-    ? `/?verein=${encodeURIComponent(verein)}` : "/";
+  const gueltig = !!verein && /^[0-9a-fA-F-]{36}$/.test(verein);
+  const vereinsLink = gueltig ? `/?verein=${encodeURIComponent(verein!)}` : "/";
+  const eingeladenZu = gueltig ? await vereinLaden(verein!) : null;
   const appStore = process.env.NEXT_PUBLIC_APP_STORE_URL || APP_STORE;
   const playStore = process.env.NEXT_PUBLIC_PLAY_STORE_URL || PLAY_STORE;
   const linkStil = {
@@ -63,10 +98,29 @@ export default async function Willkommen({ searchParams }: { searchParams: Promi
         <h1 style={{ fontSize: 22, marginBottom: 8, fontWeight: 700, color: tinte }}>
           Club Member Organisation
         </h1>
-        <p style={{ fontSize: 13, marginBottom: 28, lineHeight: 1.6, color: gedaempft }}>
-          Termine, Mannschaften, Helferdienste und Vereinsnachrichten an einem Ort.
-          Es gibt sie als App fürs Smartphone — und im Browser.
-        </p>
+        {eingeladenZu ? (
+          <>
+            <p style={{ fontSize: 14, marginBottom: 6, lineHeight: 1.6, color: tinte }}>
+              Du wurdest eingeladen zu
+            </p>
+            <p style={{ fontSize: 19, marginBottom: 8, fontWeight: 700, color: rot }}>
+              {eingeladenZu.name}
+            </p>
+            {/* Der Name steht hier nicht als Zierde: Nach der Installation aus
+                dem Store ist die Vereinskennung weg, und dann ist der Name das
+                Einzige, womit man den Verein in der Suche wiederfindet. */}
+            <p style={{ fontSize: 13, marginBottom: 28, lineHeight: 1.6, color: gedaempft }}>
+              Lade die App, erstelle dein Konto und suche dort nach
+              „{eingeladenZu.name}“{eingeladenZu.city ? ` (${eingeladenZu.city})` : ""}.
+              Die Vereinsleitung gibt dich anschließend frei.
+            </p>
+          </>
+        ) : (
+          <p style={{ fontSize: 13, marginBottom: 28, lineHeight: 1.6, color: gedaempft }}>
+            Termine, Mannschaften, Helferdienste und Vereinsnachrichten an einem Ort.
+            Es gibt sie als App fürs Smartphone — und im Browser.
+          </p>
+        )}
 
         {appStore && <a href={appStore} style={linkStil}>Im App&nbsp;Store laden</a>}
         {playStore && <a href={playStore} style={linkStil}>Bei Google&nbsp;Play laden</a>}

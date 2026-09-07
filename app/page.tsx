@@ -12120,6 +12120,40 @@ export default function ClubMemberOrganisationApp() {
     } catch { /* privater Modus - dann eben ohne Einladung */ }
   }, []);
 
+  /* Derselbe Einladungslink, aber als Universal Link.
+   *
+   * Tippt jemand den Link an und hat die App bereits, oeffnet iOS nicht den
+   * Browser, sondern die App - und liefert die Adresse ueber "appUrlOpen"
+   * nach. Der Block darueber sieht sie nicht: Er liest window.location beim
+   * Start, und beim Start stand dort noch nichts.
+   *
+   * Ohne das waere der Universal Link ein Rueckschritt: Die App ginge auf,
+   * zeigte aber die Startseite statt den Verein, zu dem man eingeladen wurde.
+   *
+   * Wirkungslos ohne das Entitlement com.apple.developer.associated-domains
+   * (siehe ios/App/App/App.entitlements) - im Browser feuert dieses Ereignis
+   * nie. */
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return undefined;
+    let abgemeldet = false;
+    const griffe = [];
+    import("@capacitor/app")
+      .then(({ App }) => App.addListener("appUrlOpen", ({ url }) => {
+        try {
+          const verein = new URL(url).searchParams.get("verein");
+          if (!verein || !isDbId(verein)) return;
+          window.sessionStorage.setItem("cmo.einladung", verein);
+          setEinladungsVerein(verein);
+          /* Wer schon angemeldet ist, soll den Verein sofort sehen und nicht
+             erst beim naechsten Start. */
+          setSelectedClubId(verein);
+        } catch { /* keine gueltige Adresse - dann passiert nichts */ }
+      }))
+      .then((h) => { if (abgemeldet) h.remove(); else griffe.push(h); })
+      .catch(() => {});
+    return () => { abgemeldet = true; griffe.forEach((h) => h.remove()); };
+  }, []);
+
   const [sprache, setSprache] = useState(null);
   useEffect(() => { setSprache(gespeicherteSprache() || ""); }, []);
   const t = useCallback((schluessel) => uebersetze(sprache || "de", schluessel), [sprache]);

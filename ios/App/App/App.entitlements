@@ -9,5 +9,18 @@
 	     Wert anhand des Provisioning-Profils durch "production". -->
 	<key>aps-environment</key>
 	<string>development</string>
+	<!-- Universal Links: Ein Einladungslink auf diese Domain oeffnet die App,
+	     statt den Browser. Ohne diesen Eintrag ignoriert iOS die Datei
+	     .well-known/apple-app-site-association vollstaendig - der Link landet
+	     dann weiter in Safari.
+	     Die Domain muss die sein, die auch capacitor.config.ts laedt. Zieht die
+	     App je auf eine eigene Domain um, gehoert sie zusaetzlich hierher; iOS
+	     prueft jede Zeile einzeln.
+	     "applinks:" ohne Schema und ohne Pfad - der Pfad steht in der Datei auf
+	     dem Server, nicht hier. -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:club-member-organisation.vercel.app</string>
+	</array>
 </dict>
 </plist>
