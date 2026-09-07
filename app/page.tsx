@@ -283,8 +283,15 @@ button:active { transform: scale(0.96); }
      eine Zeile tiefer als das, was man sah.
      position: fixed mit inset: 0 fuellt genau die Flaeche der App-Huelle. Die
      bleibt konstant, egal was das System einblendet. */
-  /* Startwert, bis die Leiste einmal gemessen wurde. */
-  :root { --erg-nav-h: 96px; }
+  /* Startwert, bis die Leiste einmal gemessen wurde - und Rueckfallwert, falls
+     die Messung ausfaellt.
+     Der sichere Bereich am unteren Rand gehoert mit hinein: Auf einem iPhone
+     mit Home-Leiste sitzt die Navigationspille rund 34 Pixel hoeher als auf
+     dem Schreibtisch, und ein starrer Startwert von 96px liesse das
+     Schreibfeld im Chat darunter verschwinden. Lieber grosszuegig schaetzen:
+     Ein zu grosser Abstand ist eine Luecke, ein zu kleiner verdeckt die
+     Eingabe. */
+  :root { --erg-nav-h: calc(env(safe-area-inset-bottom, 0px) + 96px); }
   html, body { height: 100%; overflow: hidden; overscroll-behavior: none; background: #F7F4F5; }
   .erg-shell { position: fixed; inset: 0; padding: 0; background: transparent; min-height: 0; }
   .erg-frame { max-width: none; height: 100%; border-radius: 0; box-shadow: none; }
@@ -5142,9 +5149,12 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
     /* Der Chat ist kein Scrollbereich mit Auslauf, sondern eine feste Saeule:
        Nachrichtenliste dehnbar, Schreibfeld unten buendig. Darum hier nicht
        pb-24 (das rechnet fuer Listen grosszuegig safe-area + 124px und liess
-       genau die Luecke unter dem Schreibfeld), sondern die gemessene Hoehe der
-       Navigationsleiste plus etwas Luft. */
-    <div className="pt-4 flex flex-col" style={{ height: "100%", paddingBottom: "calc(var(--erg-nav-h, 96px) + 10px)" }}>
+       genau die Luecke unter dem Schreibfeld), sondern der gemessene Abstand
+       bis zur Oberkante der Navigationspille plus etwas Luft.
+       --erg-nav-h ist seit der Korrektur genau diese Strecke und nicht mehr
+       die Hoehe der Navigationshuelle; die 18px halten den sichtbaren Abstand
+       dabei so, wie er vorher war. */
+    <div className="pt-4 flex flex-col" style={{ height: "100%", paddingBottom: "calc(var(--erg-nav-h, 96px) + 18px)" }}>
       <div className="px-4"><SectionTitle title="Chat" /></div>
       <div className="flex gap-2 px-4 mb-3 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
         {visibleChannels.map((c) => (
@@ -11963,17 +11973,51 @@ export default function ClubMemberOrganisationApp() {
        stellen. Sonst uebersteuerte eine 0 den Vorgabewert aus dem Stylesheet,
        und ohne Messung saesse das Schreibfeld unter der Leiste. */
     const zuruecksetzen = () => document.documentElement.style.removeProperty("--erg-nav-h");
+
+    /* WAS HIER GEMESSEN WIRD - UND WARUM NICHT EINFACH DIE HOEHE
+     *
+     * Gebraucht wird die Strecke, die der Inhalt unten freihalten muss: vom
+     * unteren Rand des Rahmens bis zur OBERKANTE der Pille. Genau die wird
+     * gemessen.
+     *
+     * Vorher stand hier die Hoehe der Huelle, und der Beobachter meldete
+     * borderBoxSize ?? contentRect.height. Das ist auf dem Telefon falsch:
+     * contentRect ist die INHALTSbox und laesst die Polsterung weg - und
+     * darin steckt hier der sichere Bereich am unteren Rand
+     * (env(safe-area-inset-bottom) + 12px), auf einem iPhone mit Home-Leiste
+     * gut 45 Pixel. Wo borderBoxSize fehlt, meldete der Beobachter also nur
+     * die Hoehe der Pille, der Chat rechnete mit einem zu kleinen Abstand,
+     * und das Schreibfeld rutschte unter die Leiste. Im Browser am
+     * Schreibtisch faellt das nicht auf: dort gibt es borderBoxSize, und der
+     * sichere Bereich ist 0.
+     *
+     * Die Randbox der Huelle waere auch richtig, aber sie beantwortet die
+     * Frage nur mittelbar - ueber die Annahme, dass Polsterung oben (pt-2)
+     * und die Pille zusammen die Huelle fuellen. Der Abstand zur Pille
+     * beantwortet sie direkt und bleibt richtig, wenn sich an der Polsterung
+     * etwas aendert. */
+    const messen = () => {
+      const eigen = knoten.getBoundingClientRect();
+      /* Bei offener Tastatur ist die Leiste display:none. Dann ist 0 die
+         richtige Antwort: Das Schreibfeld darf bis nach unten. */
+      if (eigen.height === 0) return 0;
+      const rahmen = knoten.closest(".erg-frame");
+      const pille = knoten.firstElementChild;
+      if (!rahmen || !pille) return eigen.height;
+      return Math.max(0, rahmen.getBoundingClientRect().bottom - pille.getBoundingClientRect().top);
+    };
+
     navBeobachter.current?.disconnect();
     navBeobachter.current = null;
     if (!knoten) { zuruecksetzen(); return; }
     /* Sofort messen - der Beobachter meldet sich erst nach dem naechsten
        Zeichnen, und bis dahin soll der Abstand schon stimmen. */
-    setzen(knoten.getBoundingClientRect().height);
+    setzen(messen());
     if (typeof ResizeObserver === "undefined") return;
-    const beobachter = new ResizeObserver((eintraege) => {
-      const eintrag = eintraege[0];
-      setzen(eintrag?.borderBoxSize?.[0]?.blockSize ?? eintrag?.contentRect?.height ?? 0);
-    });
+    /* Die Werte aus dem Ereignis werden bewusst NICHT benutzt - gemessen wird
+       jedes Mal neu am Knoten. Das Ereignis sagt nur, DASS sich etwas
+       geaendert hat. */
+    const beobachter = new ResizeObserver(() => setzen(messen()));
     beobachter.observe(knoten);
     navBeobachter.current = beobachter;
   }, []);
