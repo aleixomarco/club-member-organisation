@@ -11,7 +11,7 @@ und die fünf Mannschaften. Sie legt keine Demo-Passwörter oder künstlichen
 Benutzerkonten an.
 
 Nach erfolgreicher Ausführung unter **Table Editor** prüfen, ob unter anderem
-`clubs`, `profiles`, `club_memberships`, `teams`, `events`, `fee_records`,
+`clubs`, `profiles`, `club_memberships`, `teams`, `events`,
 `family_links`, `sponsors`, `polls`, `channels` und `messages` vorhanden sind.
 
 ## Weitere Migrationen

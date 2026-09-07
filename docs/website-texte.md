@@ -6,7 +6,8 @@ Funktionsumfang geprüft — nichts versprochen, was die App nicht kann.
 Nicht erwähnt und bewusst weggelassen: Push-Benachrichtigungen (gibt es auf iOS
 noch nicht), Plus und Pro als kaufbare Tarife (derzeit nur Basic), ein
 kostenloser Testzeitraum (entfällt seit dem 30.08.2026), die Beitragsverwaltung
-(vorerst abgeschaltet — siehe BEITRAGSVERWALTUNG_SICHTBAR in app/page.tsx).
+(am 07.09.2026 vollständig entfernt — Code und Tabellen sind weg, nicht nur
+abgeschaltet).
 
 ---
 

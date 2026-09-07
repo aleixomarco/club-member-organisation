@@ -45,7 +45,7 @@ aber heil aus. Mit der Migration zuerst gibt es diesen Zwischenzustand nicht.
 Spiel und Training, vorbelegt mit der höchsten eigenen Mannschaft),
 Mehrfach-Mitgliedschaften an rund 30 Stellen (Chat-Sichtbarkeit,
 Absagerechte, Kader), Vereins-News als Kanal für alle, Beitragsverwaltung
-abgeschaltet (`BEITRAGSVERWALTUNG_SICHTBAR`), Chat schließt unten bündig ab.
+vollständig entfernt (Code und Tabellen), Chat schließt unten bündig ab.
 45 Tests grün, `npm test` Exitcode 0.
 
 **Lint:** `npm run lint`, `npm test` und `npm run build` laufen alle mit

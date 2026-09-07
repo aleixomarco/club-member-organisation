@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Script from "next/script";
 import {
-  Home, CalendarDays, Wallet, MessageCircle, User, ChevronRight, Trash2,
+  Home, CalendarDays, MessageCircle, User, ChevronRight, Trash2,
   Check, X, Users, Award, Gift, MapPin, Clock, Send,
   Trophy, Flame, Cake, Megaphone, Euro, CheckCircle2, Circle, Car,
   Sparkles, Image as ImageIcon, ChevronDown, Star, Mail, Lock, LogOut,
@@ -621,7 +621,7 @@ const NOTIFICATION_OPTIONS = [
   ["game_created", "Neues Spiel"], ["game_cancelled", "Spielabsage"],
   ["game_changed", "Spieländerung"], ["events", "Vereinstermine"],
   ["news", "Vereins-News"], ["chat", "Neue Chatnachrichten"],
-  ["membership", "Mitgliedschaft und Freigaben"], ["payments", "Zahlungen und Beiträge"],
+  ["membership", "Mitgliedschaft und Freigaben"],
   ["penalties", "Strafen"], ["tasks", "Aufgaben"], ["carpool", "Fahrgemeinschaften"],
   ["duty", "Helferdienst"], ["join_requests", "Beitrittsanfragen"],
   ["polls", "Umfragen und Abstimmungen"], ["protocols", "Vorstandsprotokolle"],
@@ -733,9 +733,9 @@ const ROLE_META = {
   spieler: { label: "Athlet/in", color: C.secondary, admin: false, formalMember: true, selfService: true },
   mitglied: { label: "Mitglied", color: C.textDim, admin: false, formalMember: true, selfService: true, alwaysOn: true },
   /* Ein Fan folgt dem Verein, ist aber KEIN formales Mitglied: formalMember
-     false haelt ihn aus Mitgliederzahl, Beitragslisten und Helferpflicht
-     heraus. Wuerde hier true stehen, taeuchte er ueberall auf, wo es um
-     Pflichten geht - und der Verein wuerde ihm Beitraege berechnen. */
+     false haelt ihn aus der Mitgliederzahl und der Helferpflicht heraus.
+     Wuerde hier true stehen, taeuchte er ueberall auf, wo es um Pflichten
+     geht. */
   fan: { label: "Fan", color: C.secondary, admin: false, formalMember: false, selfService: true },
   organisator: { label: "Organisator/in", color: C.secondary, admin: false, formalMember: true, selfService: false },
 };
@@ -875,24 +875,6 @@ const notifyClubAdmins = async (clubId, notifType, title, body, excludeMembershi
 const rollenLabel = (t, schluessel) => (ROLE_META[schluessel] ? t(`rolle.${schluessel}`) : schluessel);
 
 const isAdmin = (m) => !!m && m.roles.some((r) => ROLE_META[r]?.admin);
-/* Wer die Beitraege verwaltet.
- *
- * Vorher nur Geschaeftsfuehrung und Finanzmanager. Ein kleiner Verein, der
- * genau einen Vereinsadmin anlegt - der Normalfall bei der Gruendung -, fand
- * die Beitragsverwaltung deshalb nie. Sie war da, nur unsichtbar, und niemand
- * konnte erraten, dass es dafuer eine eigene Rolle braucht. */
-/* Beitragsverwaltung vorerst abgeschaltet.
-   Ein Schalter statt geloeschtem Code: Die Ansichten, Tabellen und
-   Sicherheitsregeln bleiben unangetastet, nur erreichbar ist nichts davon.
-   Zum Wiedereinschalten diese eine Zeile auf true setzen - und dabei den
-   Abschnitt "Beitraege" in docs/website-texte.md wieder aufnehmen, der
-   zusammen mit dieser Abschaltung herausgenommen wurde.
-   Haengt daran: der Reiter "Beitraege", die Beitragsansicht selbst, das Laden
-   der fee_records, die Kennzahl "Beitragsquote" in der Uebersicht, die Zeile
-   "X Beitraege noch offen" im Kopf der Verwaltung sowie die beiden
-   Beitrags-Automatiken (Zahlungserinnerungen, Beitragsperioden). */
-const BEITRAGSVERWALTUNG_SICHTBAR = false;
-const canManageFees = (m) => BEITRAGSVERWALTUNG_SICHTBAR && !!m && m.roles.some((r) => ["geschaeftsfuehrung", "finanzmanager", "vereinsadmin", "sysadmin", "vorstand"].includes(r));
 const isFormalMember = (m) => !!m && m.roles.some((r) => ROLE_META[r]?.formalMember);
 const isSysAdmin = (m) => !!m && m.roles.includes("sysadmin");
 
@@ -1082,26 +1064,6 @@ const INITIAL_MEMBERS = [
   { id: "m18", clubId: DEMO_CLUB_ID, name: "Phillip Blum", email: "phillip@cmo.app", password: "demo", team: "U15", playerTeams: ["U15"], number: null, since: 2023, roles: ["spieler", "mitglied"], color: C.ink, points: 10, tippPoints: 0, badges: [] },
 ];
 
-const INITIAL_FEE_PAID = { m1: false, m2: true, m3: false, v1: true, m4: true, m5: true, m6: true, m7: true, m8: true, m9: true };
-const INITIAL_FEE_RECORDS = [
-  { id: "fee-1", memberId: "m1", year: "2026", type: "Mitgliedsbeitrag", amount: "120,00", paid: false, invoiceNumber: "RG-2026-001" },
-  { id: "fee-2", memberId: "m2", year: "2026", type: "Mitgliedsbeitrag", amount: "120,00", paid: true, invoiceNumber: "RG-2026-002" },
-  { id: "fee-3", memberId: "m3", year: "2026", type: "Familienbeitrag", amount: "85,00", paid: false, invoiceNumber: "RG-2026-003", linkedMemberIds: ["m4", "m5"], manualNames: ["Thomas Thomas"], personCount: 4 },
-  { id: "fee-4", memberId: "v1", year: "2026", type: "Mitgliedsbeitrag", amount: "60,00", paid: true, invoiceNumber: "RG-2026-004" },
-  { id: "fee-5", memberId: "m4", year: "2026", type: "Mitgliedsbeitrag", amount: "75,00", paid: true, invoiceNumber: "RG-2026-005" },
-];
-const OVERDUE_DAYS = { m1: 5, m3: 14 };
-/* t kommt als Parameter, nicht aus dem Haken.
-   Diese Funktion ist keine Komponente - useT() waere hier ein Haken
-   ausserhalb einer Komponente, und React verbietet das. Das Werkzeug, das
-   die Uebersetzungen eingesetzt hat, hat den Unterschied nicht gesehen und
-   den Haken hier hineingeschrieben; der Linter hat es gemeldet. */
-function reminderStage(days, t) {
-  if (days >= 20) return { n: 3, label: t("prot.vorstandInformiert"), color: C.red };
-  if (days >= 10) return { n: 2, label: t("bei.mahnung"), color: C.secondary };
-  if (days >= 3) return { n: 1, label: t("bei.freundlicheErinnerung"), color: C.secondary };
-  return { n: 0, label: t("bei.nochNichtFaellig"), color: C.textDim };
-}
 
 const INITIAL_DUTY_PLAN = {
   2: { Theke: ["m2"], Zeitnahme: [], Grill: ["v1"], Kasse: [] },
@@ -2853,7 +2815,7 @@ function NextTrainingCard({ training, team, auswahlVorhanden = false }) {
     </div>
   );
 }
-function Dashboard({ user, members, events, feePaid, channels, news, dutyPlan, seasonVotes, tippPredictions, tippResults, polls, setPolls, onVote, onUnvote, onFavoritMannschaft, werbeplaetze, onSponsorImpression, onSponsorClick, goEvents, goSeason, goTipp, goDuty, goNews, goTasks, goVehicles, currentClub, featureEnabled, dashboardTileOrder, entitlement, goSubscribe, mannschaften = [], gewaehlteMannschaft = "", onMannschaftWechsel }) {
+function Dashboard({ user, members, events, channels, news, dutyPlan, seasonVotes, tippPredictions, tippResults, polls, setPolls, onVote, onUnvote, onFavoritMannschaft, werbeplaetze, onSponsorImpression, onSponsorClick, goEvents, goSeason, goTipp, goDuty, goNews, goTasks, goVehicles, currentClub, featureEnabled, dashboardTileOrder, entitlement, goSubscribe, mannschaften = [], gewaehlteMannschaft = "", onMannschaftWechsel }) {
   const t = useT();
   const sport = currentClub?.sport || "rollhockey";
   /* Alle Kacheln in „Aktionen & Abstimmungen" hängen am Premium-Tarif
@@ -4045,167 +4007,6 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
   );
 }
 
-/* ------------------------------------------------------------------ */
-/* Beiträge                                                             */
-/* ------------------------------------------------------------------ */
-function FeesView({ members, records, setRecords }) {
-  const t = useT();
-  const [selectedMemberId, setSelectedMemberId] = useState(null);
-  /* "Mitgliedsbeitrag" ist hier KEINE Beschriftung, sondern der Wert, der
-     als fee_kind in die Datenbank geht und weiter unten mit
-     t("bei.familie") verglichen wird. Uebersetzt man ihn, steht in der
-     Datenbank je nach Sprache des Erfassers etwas anderes - und der
-     Vergleich auf Familienbeitrag trifft nie mehr zu. Uebersetzt wird nur
-     die Beschriftung im Auswahlfeld. */
-  const [form, setForm] = useState({ year: "2026", type: t("bei.mitglied"), amount: "", paid: "offen", invoiceNumber: "", linkedMemberIds: [], manualNames: "", personCount: "1" });
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
-  const selectedMember = members.find((member) => member.id === selectedMemberId);
-  const memberRecords = records.filter((record) => record.memberId === selectedMemberId);
-  const addRecord = async (event) => {
-    event.preventDefault();
-    if (!selectedMemberId || !form.year || !form.type.trim() || !form.amount.trim()) return;
-    const manualNames = form.type === "Familienbeitrag" ? form.manualNames.split(",").map((name) => name.trim()).filter(Boolean) : [];
-    const databaseMembership = !!supabase && isDbId(selectedMemberId);
-    const amountNumber = Number(form.amount.replace(",", "."));
-    if (!Number.isFinite(amountNumber) || amountNumber < 0) { setMessage(t("bei.hoeheUngueltig")); return; }
-    setSaving(true); setMessage("");
-    let id = `fee-${Date.now()}`;
-    if (databaseMembership) {
-      const { data, error } = await supabase.rpc("save_fee_record", {
-        target_club: selectedMember.clubId,
-        target_membership: selectedMemberId,
-        fee_year: Number(form.year),
-        fee_kind: form.type,
-        fee_amount: amountNumber,
-        fee_status: form.paid,
-        fee_invoice_number: form.invoiceNumber.trim() || null,
-        fee_person_count: form.type === "Familienbeitrag" ? Math.max(1, Number(form.personCount) || 1) : 1,
-        linked_memberships: form.type === "Familienbeitrag" ? form.linkedMemberIds : [],
-        manual_people: manualNames,
-      });
-      if (error) { setMessage(error.message.includes("invoice") ? t("bei.rechnungsnummerVergeben") : t("bei.speichernFehler")); setSaving(false); return; }
-      id = data;
-    }
-    setRecords((all) => [{ id, memberId: selectedMemberId, year: form.year, type: form.type, amount: amountNumber.toFixed(2).replace(".", ","), paid: form.paid === "bezahlt", invoiceNumber: form.invoiceNumber.trim(), linkedMemberIds: form.type === "Familienbeitrag" ? form.linkedMemberIds : [], manualNames, personCount: form.type === "Familienbeitrag" ? Math.max(1, Number(form.personCount) || 1) : 1 }, ...all]);
-    setForm((current) => ({ ...current, amount: "", invoiceNumber: "", linkedMemberIds: [], manualNames: "", personCount: current.type === "Familienbeitrag" ? "2" : "1" }));
-    setSaving(false); setMessage((OK_ZEICHEN + t("bei.datensatzGespeichert")));
-  };
-  const togglePaid = async (record) => {
-    const nextPaid = !record.paid;
-    if (supabase && isDbId(record.id)) {
-      const { error } = await supabase.rpc("set_fee_payment_status", { target_fee: record.id, new_status: nextPaid ? "bezahlt" : "offen" });
-      if (error) { setMessage(t("bei.zahlungsstatusFehler")); return; }
-    }
-    setRecords((all) => all.map((item) => item.id === record.id ? { ...item, paid: nextPaid } : item));
-  };
-  const deleteRecord = async (record) => {
-    if (!window.confirm(`Beitragsdatensatz ${record.invoiceNumber || record.year} wirklich löschen?`)) return;
-    if (supabase && isDbId(record.id)) {
-      const { error } = await supabase.rpc("delete_fee_record", { target_fee: record.id });
-      if (error) { setMessage(t("bei.datensatzLoeschenFehler")); return; }
-    }
-    setRecords((all) => all.filter((item) => item.id !== record.id));
-  };
-  const toggleFamilyMember = (memberId) => setForm((current) => ({ ...current, linkedMemberIds: current.linkedMemberIds.includes(memberId) ? current.linkedMemberIds.filter((id) => id !== memberId) : [...current.linkedMemberIds, memberId] }));
-
-  if (!selectedMember) {
-    return (
-      <div className="px-4 pt-4 pb-24">
-        <SectionTitle eyebrow="Geschäftsführung & Finanzmanagement" title="Beiträge" />
-        <div className="rounded-2xl p-4 mb-4" style={{ background: C.ink }}>
-          <div className="text-white text-sm" style={{ fontFamily: "Inter", fontWeight: 700 }}>{members.length} Vereinsmitglieder</div>
-          <div className="text-xs mt-1" style={{ color: C.textDim }}>{t("bei.mitgliedWaehlen")}</div>
-        </div>
-        <div className="space-y-2">
-          {members.map((member) => {
-            const entries = records.filter((record) => record.memberId === member.id);
-            const open = entries.filter((record) => !record.paid).length;
-            return (
-              <button key={member.id} onClick={() => setSelectedMemberId(member.id)} className="w-full flex items-center gap-3 p-3 rounded-2xl text-left" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
-                <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0" style={{ background: member.color, color: C.white }}>{initialsOf(member.name)}</div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm truncate" style={{ fontWeight: 700, color: C.ink }}>{member.name}</div>
-                  <div className="text-[11px]" style={{ color: C.textDim }}>{member.team} · {entries.length} Datensätze</div>
-                </div>
-                <Pill bg={open ? C.fehler : C.erfolg}>{open ? `${open} offen` : "bezahlt"}</Pill>
-                <ChevronRight size={15} style={{ color: C.textDim }} />
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="px-4 pt-4 pb-24">
-      <button onClick={() => setSelectedMemberId(null)} className="flex items-center gap-1 text-xs mb-3" style={{ color: C.textDim, fontWeight: 700 }}><ArrowLeft size={13} /> Alle Mitglieder</button>
-      <SectionTitle eyebrow={selectedMember.team} title={selectedMember.name} />
-      <div className="space-y-2 mb-5">
-        {memberRecords.map((record) => (
-          <div key={record.id} className="rounded-2xl p-3.5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
-            <div className="flex items-start justify-between gap-2">
-              <div><div className="text-sm" style={{ fontWeight: 700, color: C.ink }}>{record.type}</div><div className="text-[11px]" style={{ color: C.textDim }}>Jahr {record.year} · {record.invoiceNumber || "ohne Rechnungsnummer"}</div></div>
-              <div className="text-right"><div className="text-sm" style={{ fontFamily: "JetBrains Mono", fontWeight: 700 }}>{record.amount} €</div></div>
-            </div>
-            {record.type === "Familienbeitrag" && (
-              <div className="mt-2 rounded-xl px-3 py-2 text-[11px]" style={{ background: C.paperDim, color: C.textDim }}>
-                <div style={{ fontWeight: 700, color: C.ink }}>{record.personCount || 1} Personen im Familienbeitrag</div>
-                {[...(record.linkedMemberIds || []).map((id) => members.find((member) => member.id === id)?.name).filter(Boolean), ...(record.manualNames || [])].length > 0 && (
-                  <div className="mt-0.5">{[...(record.linkedMemberIds || []).map((id) => members.find((member) => member.id === id)?.name).filter(Boolean), ...(record.manualNames || [])].join(", ")}</div>
-                )}
-              </div>
-            )}
-            <div className="mt-2 flex items-center gap-2"><button onClick={() => togglePaid(record)} className="px-2.5 py-1 rounded-full text-[11px]" style={{ background: record.paid ? C.erfolgFlaeche : C.fehlerFlaeche, color: record.paid ? C.erfolg : C.fehler, fontWeight: 700 }}>{record.paid ? t("bei.bezahltHaken") : t("bei.offen")}</button><button onClick={() => deleteRecord(record)} className="px-2.5 py-1 rounded-full text-[11px]" style={{ background:C.paperDim,color:C.textDim,fontWeight:700 }}>{t("allg.loeschen")}</button></div>
-            <Erstellt von={record.erstelltVon} am={record.erstelltAm} />
-          </div>
-        ))}
-        {memberRecords.length === 0 && <div className="rounded-2xl p-4 text-xs text-center" style={{ background: C.paperDim, color: C.textDim }}>{t("bei.keineDaten")}</div>}
-      </div>
-      <SectionTitle eyebrow="Neuer Datensatz" title="Beitrag hinterlegen" />
-      {message&&<div className="mb-3 rounded-xl px-3 py-2 text-[11px] font-semibold" style={{background:istErfolg(message)?C.erfolgFlaeche:C.fehlerFlaeche,color:istErfolg(message)?C.erfolg:C.fehler}}>{meldungstext(message)}</div>}
-      <form onSubmit={addRecord} className="rounded-2xl p-4 space-y-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
-        <div className="grid grid-cols-2 gap-2">
-          <input value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} placeholder={t("ph.jahr")} inputMode="numeric" className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }} />
-          <input value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder={t("ph.beitragshoehe")} inputMode="decimal" className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }} />
-        </div>
-        <div>
-          <label className="block text-[10px] mb-1" style={{ color: C.textDim, fontWeight: 700 }}>{t("bei.art")}</label>
-          <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value, linkedMemberIds: [], manualNames: "", personCount: e.target.value === "Familienbeitrag" ? "2" : "1" })} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}><option value="Mitgliedsbeitrag">{t("bei.mitglied")}</option><option value="Familienbeitrag">{t("bei.familie")}</option></select>
-        </div>
-        {form.type === "Familienbeitrag" && (
-          <div className="rounded-xl p-3 space-y-3" style={{ background: C.paperDim, border: `1px solid ${C.line}` }}>
-            <div>
-              <div className="text-xs" style={{ fontWeight: 700, color: C.ink }}>{t("mit.weitere")}</div>
-              <div className="text-[10px] mt-0.5 mb-2" style={{ color: C.textDim }}>{t("bei.familieWaehlen")}</div>
-              <div className="space-y-1.5 max-h-32 overflow-y-auto">
-                {members.filter((member) => member.id !== selectedMemberId).map((member) => (
-                  <label key={member.id} className="flex items-center gap-2 text-xs cursor-pointer">
-                    <input type="checkbox" checked={form.linkedMemberIds.includes(member.id)} onChange={() => toggleFamilyMember(member.id)} />
-                    <span style={{ color: C.ink }}>{member.name}</span><span className="text-[10px]" style={{ color: C.textDim }}>({member.team})</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-            <div>
-              <label className="block text-[10px] mb-1" style={{ color: C.textDim, fontWeight: 700 }}>{t("bei.weitereNamen")}</label>
-              <textarea value={form.manualNames} onChange={(e) => setForm({ ...form, manualNames: e.target.value })} placeholder={t("ph.namenBeispiel")} rows={2} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none" style={{ background: C.glass }} />
-              <div className="text-[9px] mt-1" style={{ color: C.textDim }}>{t("bei.kommaHinweis")}</div>
-            </div>
-            <div>
-              <label className="block text-[10px] mb-1" style={{ color: C.textDim, fontWeight: 700 }}>{t("bei.anzahlPersonen")}</label>
-              <input value={form.personCount} onChange={(e) => setForm({ ...form, personCount: e.target.value })} min="1" type="number" inputMode="numeric" className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.glass }} />
-            </div>
-          </div>
-        )}
-        <input value={form.invoiceNumber} onChange={(e) => setForm({ ...form, invoiceNumber: e.target.value })} placeholder={t("ph.rechnungsnummer")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }} />
-        <select value={form.paid} onChange={(e) => setForm({ ...form, paid: e.target.value })} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}><option value="offen">{t("bei.offen")}</option><option value="bezahlt">{t("bei.bezahlt")}</option></select>
-        <button disabled={saving} type="submit" className="w-full py-2.5 rounded-xl text-xs" style={{ background: saving ? C.textDim : C.ink, color: C.white, fontWeight: 700 }}>{saving ? t("allg.wirdGespeichert") : t("bei.datensatzAnlegen")}</button>
-      </form>
-    </div>
-  );
-}
 
 /* ------------------------------------------------------------------ */
 /* Chat                                                                  */
@@ -7472,7 +7273,7 @@ function NotificationSettings({ user, setMembers, saveRef }) {
         Geraet ueberhaupt fuer Push anmelden. Kein Nutzer konnte Push je
         einschalten. Seit lib/firebase-push.ts einen nativen Weg hat
         (@capacitor-firebase/messaging), gehoert der Schalter genau hierhin. */}
-    {databaseMembership && <div className="rounded-2xl p-4 mb-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1" style={{color:C.ink}}>{t("push.aufGeraet")}</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>Aktiviere Push, um Benachrichtigungen auch dann zu bekommen, wenn die App geschlossen ist. Du kannst weiter unten einzeln festlegen, worüber.</div><button onClick={pushStatus==="active"?deactivatePush:activatePush} disabled={pushStatus==="working"} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{background:pushStatus==="active"?C.fehlerFlaeche:C.ink,color:pushStatus==="active"?C.red:C.white}}>{pushStatus==="working"?t("allg.wirdBearbeitet"):pushStatus==="active"?t("push.deaktivieren"):t("push.aktivieren")}</button></div>}<ToggleCard title="Benachrichtigungen auf diesem Gerät" desc="Master-Schalter für alle App-Benachrichtigungen" value={master} onChange={setMaster}/><div className="mt-4 rounded-2xl p-4space-y-3" style={{background:C.glass,border:`1px solid ${C.line}`}}>{NOTIFICATION_OPTIONS.filter(([key])=>BEITRAGSVERWALTUNG_SICHTBAR||key!=="payments").map(([key,label])=><label key={key} className="flex items-center justify-between gap-3"><span className="text-xs font-bold">{t(`benach.${key}`)}</span><select disabled={!master} value={prefs[key]?"ja":"nein"} onChange={(e)=>setPrefs({...prefs,[key]:e.target.value==="ja"})} className="px-3 py-2 rounded-xl text-xs" style={{background:C.paperDim,opacity:master?1:.45}}><option value="ja">Ja</option><option value="nein">{t("allg.nein")}</option></select></label>)}</div></div>;
+    {databaseMembership && <div className="rounded-2xl p-4 mb-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1" style={{color:C.ink}}>{t("push.aufGeraet")}</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>Aktiviere Push, um Benachrichtigungen auch dann zu bekommen, wenn die App geschlossen ist. Du kannst weiter unten einzeln festlegen, worüber.</div><button onClick={pushStatus==="active"?deactivatePush:activatePush} disabled={pushStatus==="working"} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{background:pushStatus==="active"?C.fehlerFlaeche:C.ink,color:pushStatus==="active"?C.red:C.white}}>{pushStatus==="working"?t("allg.wirdBearbeitet"):pushStatus==="active"?t("push.deaktivieren"):t("push.aktivieren")}</button></div>}<ToggleCard title="Benachrichtigungen auf diesem Gerät" desc="Master-Schalter für alle App-Benachrichtigungen" value={master} onChange={setMaster}/><div className="mt-4 rounded-2xl p-4space-y-3" style={{background:C.glass,border:`1px solid ${C.line}`}}>{NOTIFICATION_OPTIONS.map(([key,label])=><label key={key} className="flex items-center justify-between gap-3"><span className="text-xs font-bold">{t(`benach.${key}`)}</span><select disabled={!master} value={prefs[key]?"ja":"nein"} onChange={(e)=>setPrefs({...prefs,[key]:e.target.value==="ja"})} className="px-3 py-2 rounded-xl text-xs" style={{background:C.paperDim,opacity:master?1:.45}}><option value="ja">Ja</option><option value="nein">{t("allg.nein")}</option></select></label>)}</div></div>;
 }
 
 function PasswordSettings({ user, onLogout, saveRef }) {
@@ -8625,44 +8426,11 @@ function ProtokollePanel({ members, protocols, setProtocols, clubId, onSpeichern
 /* ------------------------------------------------------------------ */
 /* Automatisierungen                                                    */
 /* ------------------------------------------------------------------ */
-function AutomationsPanel({ members, feePaid, remindersSent, setRemindersSent, welcomeAutomation, setWelcomeAutomation, billingAutomation, setBillingAutomation, onEinstellung, onErinnerung }) {
+function AutomationsPanel({ welcomeAutomation, setWelcomeAutomation, onEinstellung }) {
   const t = useT();
-  const openMembers = members.filter((m) => isFormalMember(m) && !feePaid[m.id]);
-  /* Der Vermerk gehoert in die Datenbank: Vorher stand er im Zustandsblock und
-     ging verloren, sobald ein anderer Administrator speicherte - dann wurde
-     dieselbe Person ein zweites Mal erinnert. */
-  const sendReminder = (id) => { onErinnerung?.(id); setRemindersSent((r) => ({ ...r, [id]: new Date().toISOString() })); };
 
   return (
     <div className="space-y-6">
-      {BEITRAGSVERWALTUNG_SICHTBAR && <div>
-        <div className="text-sm mb-2" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{t("bei.erinnerungen")}</div>
-        <div className="text-[11px] mb-2" style={{ color: C.textDim, fontFamily: "Inter" }}>Stufe 1 ab 3 Tagen · Stufe 2 (Mahnung) ab 10 Tagen · Stufe 3 (Vorstand informiert) ab 20 Tagen überfällig.</div>
-        {openMembers.length === 0 ? (
-          <div className="rounded-2xl p-3 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>{t("bei.keineOffenen")}</div>
-        ) : (
-          <div className="space-y-1.5">
-            {openMembers.map((m) => {
-              const days = OVERDUE_DAYS[m.id] || 0;
-              const stage = reminderStage(days, t);
-              const sent = remindersSent[m.id];
-              return (
-                <div key={m.id} className="flex items-center justify-between px-3 py-2.5 rounded-xl" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
-                  <div>
-                    <div className="text-xs" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{m.name}</div>
-                    <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{days} Tage überfällig · <span style={{ color: stage.color, fontWeight: 700 }}>{stage.label}</span></div>
-                  </div>
-                  <button onClick={() => sendReminder(m.id)} disabled={!!sent} className="px-2.5 py-1.5 rounded-full text-[11px] flex-shrink-0" style={{ fontFamily: "Inter", fontWeight: 700, background: sent ? C.paperDim : C.ink, color: sent ? C.textDim : "#fff" }}>
-                    {sent ? t("allg.gesendetHaken") : t("bei.erinnerungSenden")}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>}
-
-      {BEITRAGSVERWALTUNG_SICHTBAR && <ToggleCard title="Automatische Beitragsperioden" desc="Am 1. jedes Monats werden neue Beitragsposten für alle aktiven Mitglieder erzeugt. Nächster Lauf: 01.09.2026." value={billingAutomation} onChange={(w)=>{onEinstellung?.("billing_automation",w);setBillingAutomation(w);}} />}
       <ToggleCard title="Willkommens-Automatik" desc="Neue Mitglieder erhalten automatisch eine Begrüßung im Kanal „Vereins-News“." value={welcomeAutomation} onChange={(w)=>{onEinstellung?.("welcome_automation",w);setWelcomeAutomation(w);}} />
     </div>
   );
@@ -8733,10 +8501,8 @@ function TodoBoard({ currentClub, goPanel, goFahrzeuge, goAufgaben }) {
   );
 }
 
-function OverviewPanel({ members, events, feePaid, protocols, dutyPlan, seasonVotes, goPanel, showFees }) {
+function OverviewPanel({ members, events, protocols, dutyPlan, seasonVotes, goPanel }) {
   const t = useT();
-  const paidCount = members.filter((m) => feePaid[m.id]).length;
-  const feeRate = members.length ? Math.round((paidCount / members.length) * 100) : 100;
   const openTasks = protocols.flatMap((p) => p.tasks.filter((t) => !t.done)).length;
 
   const helperEvents = (events || []).filter((e) => e.helperSlots && e.helperSlots.length);
@@ -8755,7 +8521,6 @@ function OverviewPanel({ members, events, feePaid, protocols, dutyPlan, seasonVo
   return (
     <div className="grid grid-cols-2 gap-3">
       <StatCard icon={Users} label="Mitglieder" value={members.length} sub="alle formale Mitglieder" accent={C.ink} />
-      {showFees && <StatCard icon={Euro} label="Beitragsquote" value={`${feeRate}%`} sub={`${members.length - paidCount} offen`} accent={C.secondary} />}
       <StatCard icon={ClipboardList} label="Offene Aufgaben" value={openTasks} sub="aus Protokollen" accent={C.red} onClick={() => goPanel("protokolle")} />
       <StatCard icon={AlertCircle} label="Helfer-Lücken" value={openSlots} sub={`von ${totalSlots} Plätzen offen`} accent={C.secondary} onClick={() => goPanel("duty")} />
       <StatCard icon={Trophy} label="Saison-Stimmen" value={seasonTotal} sub="Athlet/in der Saison" accent={C.secondary} onClick={() => goPanel("season")} />
@@ -9967,14 +9732,14 @@ function ClaimManagedPlayerPanel({ members, setMembers, currentUser }) {
 
 function AdminView({
   goFahrzeuge, goAufgaben,
-  members, setMembers, events, feePaid, setFeePaid, dutyPlan, setDutyPlan, seasonVotes, currentUser,
+  members, setMembers, events, dutyPlan, setDutyPlan, seasonVotes, currentUser,
   channels, setChannels, maintenanceMode, setMaintenanceMode, onResetDemo,
-  protocols, setProtocols, remindersSent, setRemindersSent,
-  welcomeAutomation, setWelcomeAutomation, billingAutomation, setBillingAutomation,
+  protocols, setProtocols,
+  welcomeAutomation, setWelcomeAutomation,
   werbeplaetze, onWerbeplaetzeGeaendert, polls, setPolls, tippResults, onSaveTippResult, onDeleteTippResult,
   dashboardTileOrder, setDashboardTileOrder,
   onUmfrageAnlegen, onUmfrageUmschalten, onDienstSetzen, onProtokollSpeichern, onAufgabeUmschalten,
-  onEinstellung, onErinnerung,
+  onEinstellung,
   currentClub, onClubLogoUpdated, onClubColorsUpdated, clubFeatures, onClubFeaturesChanged,
 }) {
   const t = useT();
@@ -9985,14 +9750,12 @@ function AdminView({
   const canDutyTemplates = dutyFeatureOn && !isAdmin(currentUser) && currentUser.roles.includes("organisator");
   const sponsorOnly = !isAdmin(currentUser) && canSponsor && !canDutyTemplates;
   const restrictedOnly = !isAdmin(currentUser) && (canSponsor || canDutyTemplates);
-  const canSeeFees = canManageFees(currentUser);
   const restrictedPanels = [
     ...(canSponsor ? [["sponsoring", "Sponsoring"]] : []),
     ...(canDutyTemplates ? [["duty-templates", `${dutyCfg.dutyTabLabel}-Sätze`]] : []),
     ["polls", t("umf.umfragen")],
   ];
   const [panel, setPanel] = useState(restrictedOnly ? restrictedPanels[0][0] : "overview");
-  const openCount = members.filter((m) => !feePaid[m.id]).length;
   const panels = restrictedOnly ? restrictedPanels : [["overview", t("allg.uebersicht")], ["automation", t("sys.automatisierung")], ...(dutyFeatureOn ? [["duty", t("help.helferplanung")], ["duty-templates", `${dutyCfg.dutyTabLabel}-Sätze`]] : []), ["protokolle", t("prot.protokolle")], ["polls", t("umf.umfragen")], ...(SPONSOREN_VERWALTUNG_SICHTBAR ? [["sponsoring", "Sponsoring"]] : []), ["season", t("sais.athletDerSaison")]];
   if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.push(["roles", t("sys.rollen")]);
   if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.splice(1, 0, ["memberships", t("mit.antraege")]);
@@ -10008,7 +9771,7 @@ function AdminView({
         <ShieldCheck size={22} style={{ color: C.secondary }} />
         <div>
           <div className="text-white text-sm" style={{ fontFamily: "Inter", fontWeight: 700 }}>{members.length} Mitglieder</div>
-          <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{canSeeFees ? `${openCount} Beiträge noch offen` : t("sys.vereinsverwaltung")}</div>
+          <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("sys.vereinsverwaltung")}</div>
         </div>
       </div>}
 
@@ -10040,15 +9803,12 @@ function AdminView({
         ))}
       </div>
 
-      {panel === "overview" && <OverviewPanel members={members} events={events} feePaid={feePaid} protocols={protocols} dutyPlan={dutyPlan} seasonVotes={seasonVotes} goPanel={setPanel} showFees={canSeeFees} />}
+      {panel === "overview" && <OverviewPanel members={members} events={events} protocols={protocols} dutyPlan={dutyPlan} seasonVotes={seasonVotes} goPanel={setPanel} />}
       {panel === "memberships" && currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role)) && <MembershipApprovalsPanel club={currentClub} members={members} setMembers={setMembers} />}
       {panel === "clubprofile" && currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role)) && <><ClubLogoPanel club={currentClub} onLogoUpdated={onClubLogoUpdated} /><ClubColorPanel club={currentClub} onColorsUpdated={onClubColorsUpdated} /></>}
 
       {panel === "automation" && (
-        <AutomationsPanel members={members} feePaid={feePaid} remindersSent={remindersSent} setRemindersSent={setRemindersSent}
-          welcomeAutomation={welcomeAutomation} setWelcomeAutomation={setWelcomeAutomation}
-          billingAutomation={billingAutomation} setBillingAutomation={setBillingAutomation}
-          onEinstellung={onEinstellung} onErinnerung={onErinnerung} />
+        <AutomationsPanel welcomeAutomation={welcomeAutomation} setWelcomeAutomation={setWelcomeAutomation} onEinstellung={onEinstellung} />
       )}
 
       {panel === "duty" && dutyFeatureOn && <AdminDutyPanel members={members} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onSetzen={onDienstSetzen} />}
@@ -10235,7 +9995,7 @@ function Erstellt({ von, am, rahmenlos = false }) {
   );
 }
 
-function baseTabs(t, isAdminUser, canEditNews, canEditSponsors, canManageFees, canManageDutyUser) {
+function baseTabs(t, isAdminUser, canEditNews, canEditSponsors, canManageDutyUser) {
   const tabs = [
     { id: "home", label: t("nav.home"), icon: Home },
     { id: "events", label: t("nav.events"), icon: CalendarDays },
@@ -10243,7 +10003,6 @@ function baseTabs(t, isAdminUser, canEditNews, canEditSponsors, canManageFees, c
     { id: "chat", label: t("nav.chat"), icon: MessageCircle },
     { id: "profile", label: t("nav.profile"), icon: User },
   ];
-  if (canManageFees) tabs.splice(tabs.findIndex((tab) => tab.id === "chat"), 0, { id: "fees", label: t("nav.fees"), icon: Wallet });
   if (canEditNews) tabs.splice(tabs.findIndex((tab) => tab.id === "chat"), 0, { id: "redaktion", label: t("nav.news"), icon: Newspaper });
   if (isAdminUser || canEditSponsors || canManageDutyUser) tabs.splice(tabs.findIndex((tab) => tab.id === "profile"), 0, { id: "admin", label: canEditSponsors && !isAdminUser ? t("nav.sponsors") : t("nav.admin"), icon: ShieldCheck });
   return tabs;
@@ -10725,8 +10484,6 @@ export default function ClubMemberOrganisationApp() {
     navBeobachter.current = beobachter;
   }, []);
 
-  const [feePaid, setFeePaid] = useState(supabase ? {} : INITIAL_FEE_PAID);
-  const [feeRecords, setFeeRecords] = useState(supabase ? [] : INITIAL_FEE_RECORDS);
   /* DEMODATEN GEHOEREN NICHT IN EINEN ECHTEN VEREIN.
    *
    * Diese Zustaende starteten bisher IMMER mit den erfundenen Daten und
@@ -10863,9 +10620,7 @@ export default function ClubMemberOrganisationApp() {
   const [dutyPlan, setDutyPlan] = useState(supabase ? {} : INITIAL_DUTY_PLAN);
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [protocols, setProtocols] = useState(supabase ? [] : INITIAL_PROTOCOLS);
-  const [remindersSent, setRemindersSent] = useState({});
   const [welcomeAutomation, setWelcomeAutomation] = useState(true);
-  const [billingAutomation, setBillingAutomation] = useState(true);
   /* Die Werbeplaetze kommen aus der Datenbank, nicht aus dem gemeinsamen
      Zustandsblock der Administratoren: Was auf einem Platz steht, entscheidet
      anzeige_fuer_platz() - eigener Sponsor des Vereins vor Werbung des
@@ -10901,12 +10656,6 @@ export default function ClubMemberOrganisationApp() {
   const [postfachLaedt, setPostfachLaedt] = useState(false);
   const [ungelesen, setUngelesen] = useState(0);
 
-  useEffect(() => {
-    setFeePaid(Object.fromEntries(members.map((member) => {
-      const entries = feeRecords.filter((record) => record.memberId === member.id);
-      return [member.id, entries.length > 0 && entries.every((record) => record.paid)];
-    })));
-  }, [feeRecords, members]);
 
   /* Als benannte Funktion, damit der Bildschirm sie ueber "Erneut versuchen"
      noch einmal aufrufen kann. Vorher lief die Abfrage genau einmal beim
@@ -11208,7 +10957,6 @@ export default function ClubMemberOrganisationApp() {
 
     setMaintenanceMode(einstellungen.data?.maintenance_mode === true);
     setWelcomeAutomation(einstellungen.data?.welcome_automation !== false);
-    setBillingAutomation(einstellungen.data?.billing_automation !== false);
     if (Array.isArray(eigenesProfil?.data?.dashboard_tile_order) && eigenesProfil.data.dashboard_tile_order.length) {
       setDashboardTileOrderIntern(eigenesProfil.data.dashboard_tile_order);
     }
@@ -11405,10 +11153,6 @@ export default function ClubMemberOrganisationApp() {
     if (error) setSchreibFehler(t("sys.einstellungFehler"));
   };
 
-  /* erinnerungVermerken ist entfallen - die Tabelle fee_reminders gibt es
-     nicht mehr. Der Knopf dazu steht ohnehin hinter
-     BEITRAGSVERWALTUNG_SICHTBAR und ist seit Wochen unsichtbar. */
-  const erinnerungVermerken = async () => {};
 
   const ungelesenZaehlen = useCallback(async () => {
     if (!supabase || !selectedClubId || !meinProfil()) return;
@@ -11604,31 +11348,6 @@ export default function ClubMemberOrganisationApp() {
     const hydratedRoster = hydrateFamilyLinks(roster, familyData || []);
     const member = hydratedRoster.find((item) => item.id === data.id);
     if (!member) return { error: t("verein.profilLadenFehler") };
-    if (canManageFees(member)) {
-      const { data: feesData, error: feesError } = await supabase.from("fee_records")
-        .select("id,membership_id,year,type,amount,payment_status,invoice_number,person_count,created_by,created_at,fee_people(membership_id,manual_name)")
-        .eq("club_id", clubId).order("year", { ascending: false }).order("created_at", { ascending: false });
-      if (feesError) return { error: t("bei.verwaltungLadenFehler") };
-      const loadedFees = (feesData || []).map((record) => ({
-        id: record.id,
-        memberId: record.membership_id,
-        year: String(record.year),
-        type: record.type,
-        amount: Number(record.amount).toFixed(2).replace(".", ","),
-        paid: record.payment_status === "bezahlt",
-        invoiceNumber: record.invoice_number || "",
-        personCount: record.person_count || 1,
-        erstelltVon: record.created_by || null,
-        erstelltAm: record.created_at || null,
-        linkedMemberIds: (record.fee_people || []).map((person) => person.membership_id).filter(Boolean),
-        manualNames: (record.fee_people || []).map((person) => person.manual_name).filter(Boolean),
-      }));
-      setFeeRecords(loadedFees);
-      setFeePaid(Object.fromEntries(hydratedRoster.map((rosterMember) => {
-        const entries = loadedFees.filter((fee) => fee.memberId === rosterMember.id);
-        return [rosterMember.id, entries.length > 0 && entries.every((fee) => fee.paid)];
-      })));
-    }
     const { data: newsData, error: newsError } = await supabase.from("news_posts")
       .select("id,title,body,image_path,author_name,author_id,created_at")
       .eq("club_id", clubId).order("created_at", { ascending: true }).limit(100);
@@ -12195,7 +11914,6 @@ export default function ClubMemberOrganisationApp() {
       }
       return next;
     });
-    setFeePaid((f) => ({ ...f, [draft.id]: false }));
     /* Der Willkommensgruss stand hier als Nachricht in einem Kanal mit der
        Kennung "news" - den es fuer echte Vereine nicht gibt. Er landete also im
        Arbeitsspeicher des Anlegenden und war beim naechsten Oeffnen weg.
@@ -12315,8 +12033,7 @@ export default function ClubMemberOrganisationApp() {
   const resetDemoData = () => {
     if (supabase) return { error: t("sys.nichtsZurueckzusetzen") };
     setCarpools({}); setSeasonVotes({}); setTippPredictions({}); setTippResults({});
-    setRemindersSent({});
-    setFeePaid(INITIAL_FEE_PAID); setFeeRecords(INITIAL_FEE_RECORDS); setEvents(EVENTS); setDutyPlan(INITIAL_DUTY_PLAN); setChannels(INITIAL_CHANNELS);
+    setEvents(EVENTS); setDutyPlan(INITIAL_DUTY_PLAN); setChannels(INITIAL_CHANNELS);
     return {};
   };
   const saveTippResult = (matchId, result) => {
@@ -12362,8 +12079,7 @@ export default function ClubMemberOrganisationApp() {
   const currentUserCanEditNews = canWriteNews(currentUser);
   const currentUserCanEditSponsors = canManageSponsors(currentUser);
   const currentUserCanManageDuty = canManageDuty(currentUser);
-  const currentUserCanManageFees = canManageFees(currentUser);
-  const TABS = baseTabs(t, currentUserIsAdmin, currentUserCanEditNews, currentUserCanEditSponsors, currentUserCanManageFees, currentUserCanManageDuty);
+  const TABS = baseTabs(t, currentUserIsAdmin, currentUserCanEditNews, currentUserCanEditSponsors, currentUserCanManageDuty);
   const clubPrimary = currentClub?.primaryColor || DEFAULT_CLUB_COLORS.primary;
   const clubSecondary = currentClub?.secondaryColor || DEFAULT_CLUB_COLORS.secondary;
   /* Alle abgeleiteten Toene werden hier einmal ausgerechnet und als Variablen
@@ -12573,7 +12289,7 @@ export default function ClubMemberOrganisationApp() {
               {subView === "vehicles" && featureEnabled("vehicle_booking") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Vereinsfahrzeuge"><VehiclesView currentUser={currentUser} currentClub={currentClub} /></LockedFeature>}
 
               {!subView && tab === "home" && (
-                <Dashboard user={currentUser} onFavoritMannschaft={setzeFavoritMannschaft} members={clubMembers} events={events} feePaid={!!feePaid[currentUser.id]} channels={channels} news={vereinsNews} dutyPlan={dutyPlan} seasonVotes={seasonVotes} tippPredictions={tippPredictions} tippResults={tippResults} polls={polls} setPolls={setPolls} onVote={stimmeAbgeben} onUnvote={stimmeZuruecknehmen}
+                <Dashboard user={currentUser} onFavoritMannschaft={setzeFavoritMannschaft} members={clubMembers} events={events} channels={channels} news={vereinsNews} dutyPlan={dutyPlan} seasonVotes={seasonVotes} tippPredictions={tippPredictions} tippResults={tippResults} polls={polls} setPolls={setPolls} onVote={stimmeAbgeben} onUnvote={stimmeZuruecknehmen}
                   werbeplaetze={werbeplaetze} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick}
                   goEvents={goToMyNextMatch} goSeason={() => setSubView("season")} goTipp={() => setSubView("tipp")} goDuty={() => setSubView("duty")} goTasks={() => setSubView("tasks")} goVehicles={() => setSubView("vehicles")} goNews={currentUserCanEditNews ? goNews : null}
                   currentClub={currentClub} featureEnabled={featureEnabled} dashboardTileOrder={dashboardTileOrder} entitlement={entitlement} goSubscribe={goSubscribe}
@@ -12587,19 +12303,18 @@ export default function ClubMemberOrganisationApp() {
                   currentClub={currentClub} featureEnabled={featureEnabled} />
               )}
               {!subView && tab === "teams" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Teams-Verwaltung"><TeamsView currentUser={currentUser} members={clubMembers} setMembers={setMembers} currentClub={currentClub} /></LockedFeature>}
-              {!subView && tab === "fees" && currentUserCanManageFees && <FeesView members={clubMembers} records={feeRecords} setRecords={setFeeRecords} />}
               {!subView && tab === "chat" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Chat"><ChatView user={currentUser} channels={channels} setChannels={setChannels} activeId={chatChannelId} setActiveId={setChatChannelId} members={clubMembers} /></LockedFeature>}
               {!subView && tab === "redaktion" && currentUserCanEditNews && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Redaktion"><RedaktionView user={currentUser} news={vereinsNews} setNews={setVereinsNews} /></LockedFeature>}
               {!subView && tab === "admin" && (currentUserIsAdmin || currentUserCanEditSponsors) && (
                 <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Verwaltung">
-                <AdminView goFahrzeuge={() => setSubView("vehicles")} goAufgaben={() => setSubView("tasks")} members={clubMembers} setMembers={setMembers} events={events} feePaid={feePaid} setFeePaid={setFeePaid} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} seasonVotes={seasonVotes}
+                <AdminView goFahrzeuge={() => setSubView("vehicles")} goAufgaben={() => setSubView("tasks")} members={clubMembers} setMembers={setMembers} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} seasonVotes={seasonVotes}
                   currentUser={currentUser} channels={channels} setChannels={setChannels} maintenanceMode={maintenanceMode} setMaintenanceMode={setMaintenanceMode} onResetDemo={resetDemoData}
-                  protocols={protocols} setProtocols={setProtocols} remindersSent={remindersSent} setRemindersSent={setRemindersSent}
-                  welcomeAutomation={welcomeAutomation} setWelcomeAutomation={setWelcomeAutomation} billingAutomation={billingAutomation} setBillingAutomation={setBillingAutomation}
+                  protocols={protocols} setProtocols={setProtocols}
+                  welcomeAutomation={welcomeAutomation} setWelcomeAutomation={setWelcomeAutomation}
                   werbeplaetze={werbeplaetze} onWerbeplaetzeGeaendert={ladeWerbeplaetze} polls={polls} setPolls={setPolls}
                   onUmfrageAnlegen={umfrageAnlegen} onUmfrageUmschalten={umfrageUmschalten} onDienstSetzen={dienstSetzen}
                   onProtokollSpeichern={protokollSpeichern} onAufgabeUmschalten={aufgabeUmschalten}
-                  onEinstellung={vereinseinstellungSetzen} onErinnerung={erinnerungVermerken}
+                  onEinstellung={vereinseinstellungSetzen}
                   tippResults={tippResults} onSaveTippResult={saveTippResult} onDeleteTippResult={deleteTippResult}
                   dashboardTileOrder={dashboardTileOrder} setDashboardTileOrder={setDashboardTileOrder}
                   currentClub={currentClub} onClubLogoUpdated={updateCurrentClubLogo} onClubColorsUpdated={updateCurrentClubColors} clubFeatures={clubFeatures} onClubFeaturesChanged={loadClubFeatures} />
