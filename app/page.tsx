@@ -8586,15 +8586,118 @@ function AdminDutyPanel({ members, events, dutyPlan, setDutyPlan, onSetzen }) {
 /* ------------------------------------------------------------------ */
 /* Vorstandsprotokolle mit Aufgabenextraktion                           */
 /* ------------------------------------------------------------------ */
-function ProtocolCard({ protocol, members, onToggleTask }) {
+/* Teilnehmende auswaehlen.
+ *
+ * Vorher standen ALLE Mitglieder als Knopfleiste im Formular - bei neunzehn
+ * Mitgliedern drei Reihen, bei zweihundert eine Wand. Man suchte den Namen
+ * mit dem Auge, ohne Sortierung und ohne Suche.
+ *
+ * Jetzt: ein Knopf, dahinter eine Liste. Sortiert nach NACHNAMEN, weil man
+ * danach sucht und danach blaettert - "Aleixo, Iwanowski, Lima" statt
+ * "Dirk, Marco, Maria". Die Suche greift auf den ganzen Namen, damit auch der
+ * Vorname findet, wer ihn zuerst tippt. */
+function TeilnehmerWahl({ alle, gewaehlt, onAendern }) {
+  const t = useT();
+  const [offen, setOffen] = useState(false);
+  const [suche, setSuche] = useState("");
+
+  const nachname = (name) => String(name || "").trim().split(/\s+/).slice(-1)[0] || "";
+  const sortiert = [...(alle || [])].sort((a, b) =>
+    nachname(a.name).localeCompare(nachname(b.name), "de") || String(a.name).localeCompare(String(b.name), "de"));
+  const gefiltert = suche.trim()
+    ? sortiert.filter((m) => String(m.name || "").toLowerCase().includes(suche.trim().toLowerCase()))
+    : sortiert;
+  const umschalten = (id) =>
+    onAendern(gewaehlt.includes(id) ? gewaehlt.filter((x) => x !== id) : [...gewaehlt, id]);
+
+  return (
+    <div>
+      <div className="text-[11px] mb-1.5" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("prot.teilnehmer")}</div>
+
+      {gewaehlt.length === 0 ? (
+        <div className="text-[11px] mb-2" style={{ color: C.textDim, fontStyle: "italic" }}>{t("prot.niemandGewaehlt")}</div>
+      ) : (
+        <div className="flex flex-wrap gap-1.5 mb-2">
+          {gewaehlt.map((id) => {
+            const person = (alle || []).find((m) => m.id === id);
+            return (
+              <button type="button" key={id} onClick={() => umschalten(id)}
+                aria-label={`${person?.name || id} entfernen`}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px]"
+                style={{ background: C.ink, color: C.white, fontWeight: 700 }}>
+                {person?.name || t("allg.unbekannt")} <X size={10} />
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      <button type="button" onClick={() => { setSuche(""); setOffen(true); }}
+        className="w-full py-2 rounded-xl text-xs font-bold"
+        style={{ background: C.paperDim, color: C.ink, border: `1px dashed ${C.line}` }}>
+        + {t("prot.teilnehmerHinzufuegen")}
+      </button>
+
+      {offen && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center" style={{ background: "rgba(20,21,26,.72)" }}
+          onClick={() => setOffen(false)}>
+          <div className="w-full max-w-md rounded-t-3xl p-4 pb-6" style={{ background: C.blatt, maxHeight: "86vh", display: "flex", flexDirection: "column", boxShadow: "0 -14px 38px rgba(20,21,26,.30)" }}
+            onClick={(e) => e.stopPropagation()}>
+            <div className="mx-auto mb-3" style={{ width: 38, height: 4, borderRadius: 999, background: C.line }} />
+            <div className="text-sm font-bold mb-2" style={{ color: C.ink }}>
+              {t("prot.teilnehmerHinzufuegen")}
+              {gewaehlt.length > 0 && <span className="ml-2 text-[11px] font-normal" style={{ color: C.textDim }}>
+                {t("prot.ausgewaehlt").replace("{anzahl}", String(gewaehlt.length))}
+              </span>}
+            </div>
+            <input value={suche} onChange={(e) => setSuche(e.target.value)} placeholder={t("ph.nameSuchen")}
+              className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2"
+              style={{ background: C.white, border: `1px solid ${C.line}`, color: C.ink }} />
+            <div className="flex-1 overflow-y-auto rounded-xl" style={{ border: `1px solid ${C.line}` }}>
+              {gefiltert.length === 0 && (
+                <div className="px-3 py-4 text-xs text-center" style={{ color: C.textDim }}>{t("allg.keinTreffer")}</div>
+              )}
+              {gefiltert.map((m, i) => {
+                const drin = gewaehlt.includes(m.id);
+                return (
+                  <button type="button" key={m.id} onClick={() => umschalten(m.id)}
+                    className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left"
+                    style={{ background: drin ? C.erfolgFlaeche : C.white, borderTop: i ? `1px solid ${C.line}` : "none" }}>
+                    <span className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0"
+                      style={{ background: drin ? C.erfolg : C.paperDim, border: `1px solid ${drin ? C.erfolg : C.line}` }}>
+                      {drin && <Check size={12} color={C.white} />}
+                    </span>
+                    <span className="text-xs" style={{ color: C.ink, fontWeight: drin ? 700 : 400 }}>{m.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <button type="button" onClick={() => setOffen(false)}
+              className="w-full py-2.5 rounded-xl text-xs font-bold mt-3"
+              style={{ background: C.ink, color: C.white }}>
+              {t("allg.fertig")}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProtocolCard({ protocol, members, onToggleTask, onLoeschen }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
+  const [fehler, setFehler] = useState("");
   const openCount = protocol.tasks.filter((t) => !t.done).length;
   return (
     <div className="rounded-2xl overflow-hidden" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
       <button onClick={() => setOpen((o) => !o)} className="w-full text-left p-3 flex items-center justify-between">
         <div>
           <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{protocol.title}</div>
-          <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{protocol.date} · {protocol.attendees.length} Teilnehmer:innen · {openCount} offen</div>
+          <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>
+            {protocol.date} · {protocol.attendees.length} {t("prot.teilnehmer")} · {openCount} offen
+            {protocol.oeffentlich && <> · {t("prot.oeffentlich")}</>}
+          </div>
         </div>
         <ChevronDown size={15} style={{ color: C.textDim, transform: open ? "rotate(180deg)" : "none", transition: "transform .2s", flexShrink: 0 }} />
       </button>
@@ -8616,16 +8719,34 @@ function ProtocolCard({ protocol, members, onToggleTask }) {
             })}
           </div>
           <Erstellt von={protocol.erstelltVon} am={protocol.erstelltAm} />
+
+          {/* Loeschen nur anbieten, wenn es auch erlaubt ist. Der Knopf kommt
+              von aussen: Wer darf, entscheidet die Zeilenregel in der
+              Datenbank - die Ansicht raet das nicht nach. */}
+          {onLoeschen && (
+            <button type="button"
+              onClick={async () => {
+                if (!window.confirm(t("prot.loeschenFrage").replace("{titel}", protocol.title))) return;
+                const ergebnis = await onLoeschen(protocol.id);
+                if (ergebnis?.error) setFehler(ergebnis.error);
+              }}
+              className="w-full py-2 rounded-xl text-[11px] font-bold mt-2"
+              style={{ background: C.fehlerFlaeche, color: C.fehler, border: `1px solid ${C.fehlerRand}` }}>
+              {t("allg.loeschen")}
+            </button>
+          )}
+          {fehler && <div role="status" className="text-[10px] mt-2" style={{ color: C.fehler }}>{fehler}</div>}
         </div>
       )}
     </div>
   );
 }
-function ProtokollePanel({ members, protocols, setProtocols, clubId, onSpeichern, onAufgabe }) {
+function ProtokollePanel({ members, protocols, setProtocols, clubId, onSpeichern, onAufgabe, onLoeschen }) {
   const t = useT();
   const [title, setTitle] = useState("");
   const [date, setDate] = useState(alsDatum(new Date()));
   const [attendees, setAttendees] = useState([]);
+  const [oeffentlich, setOeffentlich] = useState(false);
   const [rawText, setRawText] = useState("");
   const [draftTasks, setDraftTasks] = useState([]);
   const [newTaskText, setNewTaskText] = useState("");
@@ -8652,7 +8773,7 @@ function ProtokollePanel({ members, protocols, setProtocols, clubId, onSpeichern
   const [speicherFehler, setSpeicherFehler] = useState("");
   const saveProtocol = async () => {
     if (!title.trim() || !rawText.trim()) return;
-    const entwurf = { title: title.trim(), date, attendees, rawText, tasks: draftTasks.filter((t) => t.text.trim()) };
+    const entwurf = { title: title.trim(), date, attendees, rawText, oeffentlich, tasks: draftTasks.filter((t) => t.text.trim()) };
     /* Erst schreiben, dann anzeigen - die Kennungen der Aufgaben kommen aus der
        Datenbank, und ohne sie liesse sich hinterher kein Haken setzen. */
     const ergebnis = await onSpeichern?.(entwurf);
@@ -8661,9 +8782,15 @@ function ProtokollePanel({ members, protocols, setProtocols, clubId, onSpeichern
        stehen, das Protokoll wird trotzdem aufgenommen - sonst legt jemand aus
        Versehen ein zweites an. */
     setSpeicherFehler(ergebnis?.warnung || "");
-    setProtocols((ps) => [{ ...entwurf, id: ergebnis?.id || "p" + Date.now() }, ...ps]);
+    /* Die Aufgaben aus der Antwort uebernehmen, nicht die Entwuerfe - sonst
+       traegt die Ansicht Kennungen, die es in der Datenbank nicht gibt. */
+    setProtocols((ps) => [{
+      ...entwurf,
+      id: ergebnis?.id || "p" + Date.now(),
+      tasks: ergebnis?.tasks?.length ? ergebnis.tasks : entwurf.tasks,
+    }, ...ps]);
     if (supabase && clubId) supabase.rpc("notify_club", { target_club: clubId, p_notif_type: "protocols", p_title: t("prot.neuesProtokoll"), p_body: title.trim() });
-    setTitle(""); setAttendees([]); setRawText(""); setDraftTasks([]);
+    setTitle(""); setAttendees([]); setRawText(""); setDraftTasks([]); setOeffentlich(false);
   };
 
   return (
@@ -8697,20 +8824,17 @@ function ProtokollePanel({ members, protocols, setProtocols, clubId, onSpeichern
             className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={{ background: C.paperDim, fontFamily: "Inter", color: C.ink }} />
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)}
             className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={{ background: C.paperDim, fontFamily: "Inter", color: C.ink }} />
-          <div>
-            <div className="text-[11px] mb-1.5" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("prot.teilnehmer")}</div>
-            <div className="flex flex-wrap gap-1.5">
-              {members.map((m) => {
-                const active = attendees.includes(m.id);
-                return (
-                  <button type="button" key={m.id} onClick={() => toggleAttendee(m.id)} className="px-2.5 py-1 rounded-full text-[11px]"
-                    style={{ fontFamily: "Inter", fontWeight: 700, background: active ? C.ink : C.paperDim, color: active ? "#fff" : C.textDim }}>
-                    {m.name}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          <TeilnehmerWahl alle={members} gewaehlt={attendees} onAendern={setAttendees} />
+
+          {/* Ein Protokoll ist normalerweise intern. Der Schalter ist die
+              bewusste Ausnahme - Hauptversammlung und dergleichen. */}
+          <label className="flex items-start gap-2.5 px-0.5">
+            <input type="checkbox" checked={oeffentlich} onChange={(e) => setOeffentlich(e.target.checked)} className="mt-0.5" />
+            <span>
+              <span className="block text-xs font-bold" style={{ color: C.ink }}>{t("prot.oeffentlich")}</span>
+              <span className="block text-[10px] leading-snug" style={{ color: C.textDim }}>{t("prot.oeffentlichHinweis")}</span>
+            </span>
+          </label>
           <textarea value={rawText} onChange={(e) => setRawText(e.target.value)} placeholder={t("ph.protokolltext")} rows={5}
             className="w-full px-3 py-2.5 rounded-lg text-sm outline-none resize-none" style={{ background: C.paperDim, fontFamily: "Inter", color: C.ink }} />
         </div>
@@ -8757,7 +8881,7 @@ function ProtokollePanel({ members, protocols, setProtocols, clubId, onSpeichern
       <div>
         <div className="text-sm mb-2" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{t("prot.vergangene")}</div>
         <div className="space-y-2">
-          {protocols.map((p) => <ProtocolCard key={p.id} protocol={p} members={members} onToggleTask={toggleTaskDone} />)}
+          {protocols.map((p) => <ProtocolCard key={p.id} protocol={p} members={members} onToggleTask={toggleTaskDone} onLoeschen={onLoeschen} />)}
         </div>
       </div>
     </div>
@@ -10106,7 +10230,7 @@ function AdminView({
   welcomeAutomation, setWelcomeAutomation,
   werbeplaetze, onWerbeplaetzeGeaendert, polls, setPolls, tippResults, onSaveTippResult, onDeleteTippResult,
   dashboardTileOrder, setDashboardTileOrder,
-  onUmfrageAnlegen, onUmfrageUmschalten, onDienstSetzen, onProtokollSpeichern, onAufgabeUmschalten,
+  onUmfrageAnlegen, onUmfrageUmschalten, onDienstSetzen, onProtokollSpeichern, onProtokollLoeschen, onAufgabeUmschalten,
   onEinstellung,
   currentClub, onClubLogoUpdated, onClubColorsUpdated, clubFeatures, onClubFeaturesChanged,
 }) {
@@ -10191,7 +10315,7 @@ function AdminView({
       {panel === "duty" && dutyFeatureOn && <AdminDutyPanel members={members} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onSetzen={onDienstSetzen} />}
       {panel === "duty-templates" && <DutyTemplatesPanel currentUser={currentUser} sport={currentClub?.sport} />}
       {panel === "functions" && canManageClubFeatures && <ClubFeatureSettingsPanel currentClub={currentClub} clubFeatures={clubFeatures} onFeaturesChanged={onClubFeaturesChanged} dashboardTileOrder={dashboardTileOrder} setDashboardTileOrder={setDashboardTileOrder} />}
-      {panel === "protokolle" && <ProtokollePanel members={members} protocols={protocols} setProtocols={setProtocols} clubId={currentUser.clubId} onSpeichern={onProtokollSpeichern} onAufgabe={onAufgabeUmschalten} />}
+      {panel === "protokolle" && <ProtokollePanel members={members} protocols={protocols} setProtocols={setProtocols} clubId={currentUser.clubId} onSpeichern={onProtokollSpeichern} onAufgabe={onAufgabeUmschalten} onLoeschen={onProtokollLoeschen} />}
       {panel === "sponsoring" && <SponsoringPanel bookings={werbeplaetze} currentClub={currentClub} clubFeatures={clubFeatures} onFeaturesChanged={onClubFeaturesChanged} onChanged={onWerbeplaetzeGeaendert} />}
       {panel === "polls" && <PollManagerPanel polls={polls} setPolls={setPolls} clubId={currentUser.clubId} onAnlegen={onUmfrageAnlegen} onUmschalten={onUmfrageUmschalten} />}
       {panel === "roles" && <><RolesPanel members={members} setMembers={setMembers} /><ClaimManagedPlayerPanel members={members} setMembers={setMembers} currentUser={currentUser} /></>}
@@ -11447,7 +11571,7 @@ export default function ClubMemberOrganisationApp() {
       supabase.from("poll_votes").select("poll_id,option_id,profile_id").eq("club_id", clubId),
       supabase.from("season_votes").select("voter_profile_id,candidate_membership_id").eq("club_id", clubId).eq("season", SAISON_KENNUNG),
       supabase.from("duty_assignments").select("event_id,station,membership_id").eq("club_id", clubId),
-      supabase.from("protocols").select("id,title,meeting_date,raw_text,attendee_membership_ids,created_at,created_by").eq("club_id", clubId).order("meeting_date", { ascending: false }),
+      supabase.from("protocols").select("id,title,meeting_date,raw_text,attendee_membership_ids,oeffentlich,created_at,created_by").eq("club_id", clubId).order("meeting_date", { ascending: false }),
       supabase.from("protocol_tasks").select("id,protocol_id,text,assignee_membership_id,due_date,done").eq("club_id", clubId),
       supabase.from("club_settings").select("maintenance_mode,welcome_automation,billing_automation,punkte_ziel,punkte_praemie").eq("club_id", clubId).maybeSingle(),
       profileId ? supabase.from("profiles").select("dashboard_tile_order").eq("id", profileId).maybeSingle() : Promise.resolve({ data: null }),
@@ -11500,7 +11624,7 @@ export default function ClubMemberOrganisationApp() {
     });
     setProtocols((protokolle.data || []).map((p) => ({
       id: p.id, title: p.title, date: p.meeting_date, attendees: p.attendee_membership_ids || [],
-      rawText: p.raw_text || "", tasks: aufgabenJeProtokoll[p.id] || [],
+      rawText: p.raw_text || "", oeffentlich: p.oeffentlich === true, tasks: aufgabenJeProtokoll[p.id] || [],
       erstelltVon: p.created_by || null, erstelltAm: p.created_at || null,
     })));
 
@@ -11678,6 +11802,7 @@ export default function ClubMemberOrganisationApp() {
     const { data: protokoll, error } = await supabase.from("protocols").insert({
       club_id: selectedClubId, title: entwurf.title, meeting_date: entwurf.date,
       raw_text: entwurf.rawText, attendee_membership_ids: (entwurf.attendees || []).filter(isDbId),
+      oeffentlich: entwurf.oeffentlich === true,
       created_by: meinProfil(),
     }).select("id").single();
     if (error || !protokoll) return { error: t("prot.speichernFehler") };
@@ -11688,22 +11813,50 @@ export default function ClubMemberOrganisationApp() {
          Jemand bekam eine Aufgabe zugeteilt, von der er nie erfuhr. Weil das
          Protokoll steht, ist das kein voller Fehlschlag: Die Meldung sagt
          genau das, damit niemand aus Versehen ein zweites anlegt. */
-      const { error: aufgabenFehler } = await supabase.from("protocol_tasks").insert(aufgaben.map((t) => ({
+      /* Die angelegten Zeilen samt Kennung zurueckholen.
+       .select() ist hier nicht Beiwerk: Ohne die Kennungen aus der Datenbank
+       behaelt die Ansicht die Entwurfs-Kennungen ("d1757…"), und der erste
+       Haken danach geht mit einer Zeichenkette an die Datenbank, die keine
+       Kennung ist - "Der Haken an der Aufgabe konnte nicht gespeichert
+       werden". Genau das ist passiert. */
+      const { data: angelegt, error: aufgabenFehler } = await supabase.from("protocol_tasks").insert(aufgaben.map((t) => ({
         protocol_id: protokoll.id, text: t.text.trim(),
         assignee_membership_id: isDbId(t.assignee) ? t.assignee : null,
         due_date: t.due || null, done: false,
-      })));
+      }))).select("id,text,assignee_membership_id,due_date,done");
       if (aufgabenFehler) {
         return { id: protokoll.id, warnung: t("prot.aufgabenNichtAngelegt") };
       }
+      return {
+        id: protokoll.id,
+        tasks: (angelegt || []).map((a) => ({
+          id: a.id, text: a.text, assignee: a.assignee_membership_id || "",
+          due: a.due_date || "", done: a.done,
+        })),
+      };
     }
-    return { id: protokoll.id };
+    return { id: protokoll.id, tasks: [] };
+  };
+
+  /* Loeschen darf, wer Protokolle verwaltet - die Zeilenregel entscheidet, die
+     App fragt nur nach. Die Ergebnispruefung ist noetig: PostgREST meldet
+     keinen Fehler, wenn die Regel die Zeile gar nicht sichtbar macht - es wird
+     dann nur nichts geloescht, und ohne .select() saehe das wie Erfolg aus. */
+  const protokollLoeschen = async (protokollId) => {
+    if (!supabase || !isDbId(protokollId)) return { error: t("prot.loeschenFehler") };
+    const { data, error } = await supabase.from("protocols").delete().eq("id", protokollId).select("id");
+    if (error || !(data || []).length) return { error: t("prot.loeschenFehler") };
+    setProtocols((ps) => ps.filter((p) => p.id !== protokollId));
+    return {};
   };
 
   const aufgabeUmschalten = async (taskId, erledigt) => {
-    if (!supabase || typeof taskId !== "string") return;
+    /* Nur echte Kennungen. Eine Aufgabe, die noch nicht in der Datenbank
+       steht, laesst sich dort auch nicht abhaken - und ein Aufruf mit einer
+       Entwurfs-Kennung erzeugt nur eine Fehlermeldung, die niemandem hilft. */
+    if (!supabase || !isDbId(taskId)) return;
     const { error } = await supabase.from("protocol_tasks").update({ done: erledigt }).eq("id", taskId);
-    if (error) setSchreibFehler(t("auf.hakenSpeichernFehler"));
+    if (error) setSchreibFehler(`${t("auf.hakenSpeichernFehler")} (${error.message})`);
   };
 
   const vereinseinstellungSetzen = async (feld, wert) => {
@@ -12895,7 +13048,7 @@ export default function ClubMemberOrganisationApp() {
                   welcomeAutomation={welcomeAutomation} setWelcomeAutomation={setWelcomeAutomation}
                   werbeplaetze={werbeplaetze} onWerbeplaetzeGeaendert={ladeWerbeplaetze} polls={polls} setPolls={setPolls}
                   onUmfrageAnlegen={umfrageAnlegen} onUmfrageUmschalten={umfrageUmschalten} onDienstSetzen={dienstSetzen}
-                  onProtokollSpeichern={protokollSpeichern} onAufgabeUmschalten={aufgabeUmschalten}
+                  onProtokollSpeichern={protokollSpeichern} onProtokollLoeschen={protokollLoeschen} onAufgabeUmschalten={aufgabeUmschalten}
                   onEinstellung={vereinseinstellungSetzen}
                   tippResults={tippResults} onSaveTippResult={saveTippResult} onDeleteTippResult={deleteTippResult}
                   dashboardTileOrder={dashboardTileOrder} setDashboardTileOrder={setDashboardTileOrder}
