@@ -8168,6 +8168,27 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
           </div>
         );
       })}
+
+      {/* Wieder aussteigen.
+       *
+       * beitreten() konnte das Austragen von Anfang an - es fehlte nur der
+       * Knopf dafuer. Wer einmal beigetreten war, kam nicht mehr heraus.
+       *
+       * Ganz unten und nicht neben der Mannschaftsauswahl: Ein roter Knopf
+       * oben waere beim Blaettern zwischen den Runden staendig unter dem
+       * Daumen.
+       *
+       * Ausgetragen wird nur die Teilnahme - die abgegebenen Tipps bleiben in
+       * predictions stehen. Wer zurueckkommt, findet seine Punkte wieder. Das
+       * steht auch in der Rueckfrage, sonst traut sich niemand. */}
+      <button
+        onClick={() => {
+          if (window.confirm(t("tipp.verlassenFrage").replace("{team}", aktuelleRunde.team_name))) beitreten(true);
+        }}
+        className="w-full py-2.5 rounded-xl text-xs font-bold mt-2"
+        style={{ background: C.fehlerFlaeche, color: C.fehler, border: `1px solid ${C.fehlerRand}` }}>
+        {t("tipp.verlassen")}
+      </button>
       </>)}
     </div>
   );
@@ -8929,8 +8950,8 @@ function MatchResultsPanel({ results, onSave, onDelete, events, currentClub }) {
       {begegnungen.length === 0 && (
         <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>
           {mannschaften.length === 0
-            ? "Noch keine Spiele im Terminplan, für die sich ein Ergebnis eintragen ließe."
-            : `Für ${mannschaft} steht kein Spiel im Terminplan.`}
+            ? t("erg.keineSpiele")
+            : t("erg.keineSpieleTeam").replace("{team}", mannschaft)}
         </div>
       )}
       <div className="space-y-3">
