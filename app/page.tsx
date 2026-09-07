@@ -2027,8 +2027,23 @@ function KontoLoeschenBlock({ onDelete }) {
 
   const remove = async () => {
     setBusy(true); setError("");
-    const result = await onDelete();
-    if (result?.error) { setError(result.error); setBusy(false); }
+    /* finally, nicht nur der Fehlerzweig.
+     *
+     * onDelete fuehrt zu einem rohen fetch. Anders als die Supabase-Aufrufe,
+     * die ueberall sonst zu {data,error} aufloesen, LEHNT fetch bei jedem
+     * Netzproblem ab - offline, DNS, abgebrochene Anfrage. Die Ablehnung lief
+     * hier durch, setBusy(false) wurde nie erreicht, und weil BEIDE Knoepfe
+     * des Kastens disabled={busy} sind, war auch "Abbrechen" tot. Das trifft
+     * drei Bildschirme VOR der Anmeldung, wo es keine Leiste zum
+     * Wegnavigieren gibt - nur ein Neustart der App half. */
+    try {
+      const result = await onDelete();
+      if (result?.error) setError(result.error);
+    } catch {
+      setError(t("konto.loeschenFehler"));
+    } finally {
+      setBusy(false);
+    }
   };
 
         /* Zurueckhaltend, aber auffindbar. Apple verlangt einen Weg zur
@@ -7315,7 +7330,18 @@ function NotificationSettings({ user, setMembers, saveRef }) {
   }, [databaseMembership, user.id]);
   const activatePush = async () => {
     setPushStatus("working");
-    const result = await enablePushNotifications(user.id);
+    /* enablePushNotifications sichert seine inneren Zweige ab, aber
+       Notification.requestPermission() liegt ausserhalb davon. Wirft es,
+       bliebe der Knopf fuer immer auf "wird bearbeitet" - genau der Knopf,
+       den man drueckt, wenn Push noch nicht geht. */
+    let result;
+    try {
+      result = await enablePushNotifications(user.id);
+    } catch (fehler) {
+      setPushStatus("error");
+      setMessage(t("push.aktivierenFehler") + (fehler?.message ? ` (${fehler.message})` : ""));
+      return;
+    }
     if (result.error) {
       const messages = { unsupported: t("push.nichtUnterstuetzt"), denied: t("push.nichtErteilt"), save_failed: t("push.tokenFehler"), setup_failed: t("push.einrichtenFehler"), no_token: t("push.keinToken"), not_browser: t("sys.nurImBrowser") };
       /* Den Originalgrund mitzeigen. "Push konnte nicht eingerichtet werden"
@@ -7568,7 +7594,12 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
     const { data } = await supabase.auth.getSession();
     const token = data.session?.access_token;
     if (!token) { setDeleteError(t("sich.erneutAnmelden")); setDeleting(false); return; }
-    const response = await fetch("/api/account/delete", { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+    let response;
+    try {
+      response = await fetch("/api/account/delete", { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+    } catch {
+      setDeleteError(t("konto.loeschenFehler")); setDeleting(false); return;
+    }
     if (!response.ok) { setDeleteError(t("konto.loeschenUnvollstaendig")); setDeleting(false); return; }
     await onLogout();
   };
@@ -9892,6 +9923,7 @@ function ClaimManagedPlayerPanel({ members, setMembers, currentUser }) {
 }
 
 function AdminView({
+  bereichWunsch, onBereichUebernommen,
   goFahrzeuge, goAufgaben,
   members, setMembers, events, dutyPlan, setDutyPlan, seasonVotes, currentUser,
   channels, setChannels, maintenanceMode, setMaintenanceMode, onResetDemo,
@@ -9917,6 +9949,15 @@ function AdminView({
     ["polls", t("umf.umfragen")],
   ];
   const [panel, setPanel] = useState(restrictedOnly ? restrictedPanels[0][0] : "overview");
+  /* Aus der Glocke heraus soll die Verwaltung gleich im richtigen Bereich
+     aufgehen. Der Wunsch kommt von aussen und wird einmal verbraucht - sonst
+     springt die Ansicht bei jedem Rendern zurueck und man kaeme nie woanders
+     hin. */
+  useEffect(() => {
+    if (!bereichWunsch) return;
+    setPanel(bereichWunsch);
+    onBereichUebernommen?.();
+  }, [bereichWunsch, onBereichUebernommen]);
   const panels = restrictedOnly ? restrictedPanels : [["overview", t("allg.uebersicht")], ["automation", t("sys.automatisierung")], ...(dutyFeatureOn ? [["duty", t("help.helferplanung")], ["duty-templates", `${dutyCfg.dutyTabLabel}-Sätze`]] : []), ["protokolle", t("prot.protokolle")], ["polls", t("umf.umfragen")], ...(SPONSOREN_VERWALTUNG_SICHTBAR ? [["sponsoring", "Sponsoring"]] : []), ["season", t("sais.athletDerSaison")]];
   if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.push(["roles", t("sys.rollen")]);
   if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.splice(1, 0, ["memberships", t("mit.antraege")]);
@@ -11126,6 +11167,10 @@ export default function ClubMemberOrganisationApp() {
        damit aber nichts anzufangen - die Zeile waere anklickbar und taete
        nichts. */
     if (e.ziel_art === "fahrzeug") { setSubView("vehicles"); return; }
+    /* Eine Beitrittsanfrage fuehrt dorthin, wo man sie annimmt oder ablehnt. */
+    if (e.ziel_art === "beitritt") { setSubView(null); setVerwaltungsBereich("memberships"); setTab("admin"); return; }
+    /* Strafen haengen an einer Mannschaft; die Uebersicht liegt unter Teams. */
+    if (e.ziel_art === "strafe") { setSubView(null); setTab("teams"); return; }
     if (e.ziel_art === "umfrage") { setSubView(null); setTab("home"); return; }
     if (e.ziel_art === "news") { setSubView(null); setTab("home"); return; }
   };
@@ -11134,6 +11179,7 @@ export default function ClubMemberOrganisationApp() {
      Einmal beim Start, nur in der nativen Huelle. Im Browser gibt es nichts
      zu aktualisieren - dort ist die Oberflaeche immer die aktuelle. */
   const [updateNoetig, setUpdateNoetig] = useState(null);
+  const [verwaltungsBereich, setVerwaltungsBereich] = useState(null);
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
     let weg = false;
@@ -12129,7 +12175,14 @@ export default function ClubMemberOrganisationApp() {
     const { data } = await supabase.auth.getSession();
     const token = data.session?.access_token;
     if (!token) return { error: t("login.sitzungAbgelaufen") };
-    const response = await fetch("/api/account/delete", { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+    let response;
+    try {
+      response = await fetch("/api/account/delete", { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+    } catch {
+      /* Kein Netz, kein Server, abgebrochen. Ein geworfener fetch darf nicht
+         als "geloescht" durchgehen - und auch nicht den Aufrufer mitreissen. */
+      return { error: t("konto.loeschenFehler") };
+    }
     if (!response.ok) return { error: t("konto.loeschenFehler") };
     await leavePendingAccount();
     /* Beim blossen Abmelden bleibt der gewaehlte Verein absichtlich stehen -
@@ -12625,7 +12678,8 @@ export default function ClubMemberOrganisationApp() {
               {!subView && tab === "redaktion" && currentUserCanEditNews && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Redaktion"><RedaktionView user={currentUser} news={vereinsNews} setNews={setVereinsNews} /></LockedFeature>}
               {!subView && tab === "admin" && (currentUserIsAdmin || currentUserCanEditSponsors) && (
                 <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Verwaltung">
-                <AdminView goFahrzeuge={() => setSubView("vehicles")} goAufgaben={() => setSubView("tasks")} members={clubMembers} setMembers={setMembers} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} seasonVotes={seasonVotes}
+                <AdminView bereichWunsch={verwaltungsBereich} onBereichUebernommen={() => setVerwaltungsBereich(null)}
+                  goFahrzeuge={() => setSubView("vehicles")} goAufgaben={() => setSubView("tasks")} members={clubMembers} setMembers={setMembers} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} seasonVotes={seasonVotes}
                   currentUser={currentUser} channels={channels} setChannels={setChannels} maintenanceMode={maintenanceMode} setMaintenanceMode={setMaintenanceMode} onResetDemo={resetDemoData}
                   protocols={protocols} setProtocols={setProtocols}
                   welcomeAutomation={welcomeAutomation} setWelcomeAutomation={setWelcomeAutomation}
