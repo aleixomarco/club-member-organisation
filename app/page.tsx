@@ -9,7 +9,7 @@ import {
   ShieldCheck, ArrowRight, ArrowLeft, AlertCircle, UserPlus, Eye, EyeOff,
   Target, ClipboardList, Newspaper, Bell, KeyRound, Settings, RefreshCw,
   Bug, Smartphone, Save, Plus, Building2, ExternalLink, Phone, Copy, PlayCircle, ChevronUp
-, ListFilter, Globe, Download
+, ListFilter, Globe, Download, BarChart3, GripVertical
 } from "lucide-react";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { SPRACHEN, gespeicherteSprache, spracheMerken, uebersetze } from "@/lib/sprachen";
@@ -1194,6 +1194,11 @@ function zeileZuNachricht(zeile, t) {
     text: zeile.body,
     time: zeit.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }),
     authorId: zeile.author_id,
+    /* Traegt die Nachricht eine Abstimmung, steht hier ihre Kennung - der
+       Chat zeichnet dann die Karte statt des Textes. Der Text bleibt
+       trotzdem gefuellt (die Frage), damit die Nachricht ueberall dort
+       lesbar ist, wo die Karte nicht gezeichnet wird. */
+    pollId: zeile.poll_id || null,
   };
 }
 
@@ -4412,6 +4417,391 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
 /* ------------------------------------------------------------------ */
 /* Chat                                                                  */
 /* ------------------------------------------------------------------ */
+/* ------------------------------------------------------------------ */
+/* Abstimmungen im Chat                                                 */
+/* ------------------------------------------------------------------ */
+/* Eine Abstimmung ist hier eine Nachricht, kein eigener Bildschirm. Sie steht
+   im Verlauf an der Stelle, an der sie gestellt wurde, und man antwortet mit
+   einem Antippen - ohne Absendeknopf, ohne Rueckfrage, ohne den Chat zu
+   verlassen. Das ist der ganze Zweck: Frage sehen, Antwort tippen, Ergebnis
+   verstehen.
+
+   Gerechnet wird NICHT im Browser. Wie viele Stimmen eine Antwort hat und ob
+   das Ergebnis ueberhaupt gezeigt werden darf, entscheidet
+   abstimmung_ergebnis() in der Datenbank - sonst koennte man eine anonyme
+   Abstimmung mit einem einzigen API-Aufruf aufdecken. Der Browser zeigt nur,
+   was er bekommt. */
+
+/* Der Stand einer Abstimmung nach dem eigenen Klick - aber VOR der Antwort des
+   Servers. Ohne das haengt die Auswahl eine Netzwerkrunde lang in der Luft,
+   und auf dem Telefon fuehlt sich das an, als haette der Klick nicht
+   funktioniert. Was hier steht, ist eine Vorhersage; die Antwort des Servers
+   ersetzt sie unmittelbar danach. */
+function abstimmungVorhersage(stand, optionId) {
+  if (!stand || !stand.optionen) return stand;
+  const meine = new Set(stand.meine || []);
+  const hatte = meine.has(optionId);
+  if (stand.mehrfach) {
+    if (hatte) meine.delete(optionId); else meine.add(optionId);
+  } else {
+    meine.clear();
+    if (!hatte) meine.add(optionId);
+  }
+  /* Die eigene Stimme aus den Zaehlern herausrechnen und neu einsetzen. Die
+     Stimmen der anderen bleiben, wie sie waren - der Server hat das letzte
+     Wort. */
+  const vorherMeine = new Set(stand.meine || []);
+  const optionen = stand.optionen.map((o) => {
+    if (o.stimmen === null || o.stimmen === undefined) return o;
+    const warDrin = vorherMeine.has(o.id);
+    const istDrin = meine.has(o.id);
+    if (warDrin === istDrin) return o;
+    return { ...o, stimmen: Math.max(0, o.stimmen + (istDrin ? 1 : -1)) };
+  });
+  const warTeilnehmer = vorherMeine.size > 0;
+  const istTeilnehmer = meine.size > 0;
+  const teilnehmer = Math.max(0, (stand.teilnehmer || 0) + (istTeilnehmer ? 1 : 0) - (warTeilnehmer ? 1 : 0));
+  return {
+    ...stand,
+    meine: [...meine],
+    teilnehmer,
+    auswahlen: Math.max(0, (stand.auswahlen || 0) + meine.size - vorherMeine.size),
+    optionen: optionen.map((o) => ({
+      ...o,
+      anteil: o.stimmen === null || o.stimmen === undefined ? o.anteil
+        : teilnehmer > 0 ? Math.round((o.stimmen * 100) / teilnehmer) : 0,
+    })),
+  };
+}
+
+function AbstimmungKarte({ stand, meinProfil, onStimmen, onBeenden, onDetails, mine }) {
+  const t = useT();
+  const [fehler, setFehler] = useState("");
+  if (!stand) {
+    return (
+      <div className="px-3 py-2 text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("abst.laedt")}</div>
+    );
+  }
+  const offen = stand.offen;
+  const sichtbar = stand.sichtbar;
+  const meine = new Set(stand.meine || []);
+  const istErsteller = stand.ersteller && stand.ersteller === meinProfil;
+
+  const tippen = async (optionId) => {
+    if (!offen) { setFehler(t("abst.beendet")); return; }
+    if (!stand.aenderbar && meine.size > 0) { setFehler(t("abst.nichtAenderbar")); return; }
+    setFehler("");
+    const antwort = await onStimmen(optionId, !meine.has(optionId));
+    if (antwort?.error) setFehler(antwort.error);
+  };
+
+  const farbeText = mine ? C.aufPrimaer : C.ink;
+  const farbeSchwach = mine ? "rgba(255,255,255,0.72)" : C.textDim;
+  const balken = mine ? "rgba(255,255,255,0.22)" : C.paperDim;
+  const rand = mine ? "rgba(255,255,255,0.28)" : C.line;
+
+  return (
+    <div className="px-3 py-2.5" style={{ minWidth: 236 }}>
+      <div className="flex items-start gap-2 mb-2">
+        <BarChart3 size={14} style={{ color: farbeText, flexShrink: 0, marginTop: 2 }} />
+        <div className="text-sm leading-snug" style={{ fontFamily: "Inter", fontWeight: 700, color: farbeText }}>
+          {stand.frage}
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        {(stand.optionen || []).map((o) => {
+          const gewaehlt = meine.has(o.id);
+          const anteil = sichtbar ? (o.anteil ?? 0) : 0;
+          return (
+            <button key={o.id} type="button" onClick={() => tippen(o.id)}
+              aria-pressed={gewaehlt}
+              className="w-full text-left relative overflow-hidden rounded-lg"
+              style={{ border: `1px solid ${gewaehlt ? (mine ? C.white : C.red) : rand}`,
+                       cursor: offen ? "pointer" : "default" }}>
+              {sichtbar && (
+                <div className="absolute inset-y-0 left-0" aria-hidden="true"
+                  style={{ width: `${anteil}%`, background: balken, transition: "width .35s ease" }} />
+              )}
+              <div className="relative flex items-center gap-2 px-2.5 py-1.5">
+                {/* Kreis bei Einfachauswahl, Kasten bei Mehrfachauswahl - der
+                    Unterschied muss man sehen, bevor man tippt, nicht erst
+                    danach, wenn die erste Auswahl verschwunden ist. */}
+                <span className="flex-shrink-0 flex items-center justify-center"
+                  style={{ width: 14, height: 14,
+                           borderRadius: stand.mehrfach ? 4 : 999,
+                           border: `1.5px solid ${gewaehlt ? (mine ? C.white : C.red) : farbeSchwach}`,
+                           background: gewaehlt ? (mine ? C.white : C.red) : "transparent" }}>
+                  {gewaehlt && <Check size={9} style={{ color: mine ? C.red : C.white }} strokeWidth={3.5} />}
+                </span>
+                <span className="flex-1 text-xs leading-snug break-words" style={{ color: farbeText, fontFamily: "Inter", fontWeight: gewaehlt ? 700 : 500 }}>
+                  {o.label}
+                </span>
+                {sichtbar && (
+                  <span className="text-[10px] flex-shrink-0 tabular-nums" style={{ color: farbeSchwach, fontFamily: "Inter" }}>
+                    {o.stimmen} · {o.anteil}%
+                  </span>
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {fehler && <div className="text-[10px] mt-1.5" style={{ color: mine ? C.white : C.fehler }}>{fehler}</div>}
+
+      <div className="flex items-center gap-2 mt-2 flex-wrap">
+        <span className="text-[10px]" style={{ color: farbeSchwach, fontFamily: "Inter" }}>
+          {stand.teilnehmer === 1 ? t("abst.eineStimme") : `${stand.teilnehmer} ${t("abst.stimmen")}`}
+          {stand.mehrfach ? ` · ${t("abst.mehrfach")}` : ""}
+          {stand.anonym ? ` · ${t("abst.anonym")}` : ""}
+          {!offen ? ` · ${t("abst.beendetKurz")}` : ""}
+        </span>
+      </div>
+
+      {/* Warum das Ergebnis (noch) nicht dasteht. Ohne diesen Satz sieht die
+          Karte aus, als sei sie kaputt. */}
+      {!sichtbar && (
+        <div className="text-[10px] mt-1" style={{ color: farbeSchwach, fontFamily: "Inter" }}>
+          {stand.grund === "erst_ende" ? t("abst.erstNachEnde") : t("abst.erstAbstimmen")}
+        </div>
+      )}
+
+      <div className="flex items-center gap-3 mt-1.5">
+        {sichtbar && (
+          <button type="button" onClick={onDetails} className="text-[10px]"
+            style={{ color: farbeSchwach, fontFamily: "Inter", textDecoration: "underline" }}>
+            {t("abst.stimmenAnsehen")}
+          </button>
+        )}
+        {istErsteller && offen && (
+          <button type="button" onClick={onBeenden} className="text-[10px]"
+            style={{ color: farbeSchwach, fontFamily: "Inter", textDecoration: "underline" }}>
+            {t("abst.beenden")}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* Die Detailansicht. Bei anonymen Abstimmungen stehen hier nur Zahlen - die
+   Namen kommen in diesem Fall gar nicht erst aus der Datenbank, es ist also
+   nichts, was die Oberflaeche noch verbergen muesste. */
+function AbstimmungDetails({ stand, onSchliessen }) {
+  const t = useT();
+  if (!stand) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center" style={{ background: "rgba(20,10,18,0.45)" }}
+      onClick={onSchliessen}>
+      <div className="w-full max-w-md rounded-t-3xl p-4" style={{ background: C.blatt, maxHeight: "82vh", overflowY: "auto" }}
+        onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start justify-between gap-3 mb-1">
+          <div className="text-base leading-snug" style={{ fontFamily: "Oswald", fontWeight: 600, color: C.ink }}>{stand.frage}</div>
+          <button type="button" onClick={onSchliessen} aria-label={t("allg.schliessen")} className="flex-shrink-0 p-1"><X size={18} style={{ color: C.textDim }} /></button>
+        </div>
+        <div className="text-[11px] mb-3" style={{ color: C.textDim, fontFamily: "Inter" }}>
+          {/* Drei Zahlen, die man auseinanderhalten muss: Personen, Kreuze,
+              und je Antwort die Stimmen. Bei Mehrfachauswahl sind die ersten
+              beiden verschieden - deshalb stehen sie beide da. */}
+          {stand.teilnehmer === 1 ? t("abst.eineStimme") : `${stand.teilnehmer} ${t("abst.stimmen")}`}
+          {stand.mehrfach ? ` · ${stand.auswahlen} ${t("abst.auswahlen")}` : ""}
+          {stand.anonym ? ` · ${t("abst.anonym")}` : ""}
+        </div>
+        <div className="space-y-3">
+          {(stand.optionen || []).map((o) => (
+            <div key={o.id}>
+              <div className="flex items-baseline justify-between gap-2 mb-1">
+                <div className="text-sm break-words" style={{ fontFamily: "Inter", fontWeight: 600, color: C.ink }}>{o.label}</div>
+                <div className="text-[11px] flex-shrink-0 tabular-nums" style={{ color: C.textDim }}>
+                  {o.stimmen === 1 ? t("abst.eineStimme") : `${o.stimmen} ${t("abst.stimmen")}`} · {o.anteil}%
+                </div>
+              </div>
+              <div className="h-1.5 rounded-full overflow-hidden mb-1" style={{ background: C.paperDim }}>
+                <div className="h-full rounded-full" style={{ width: `${o.anteil}%`, background: C.red, transition: "width .35s" }} />
+              </div>
+              {o.waehler === null ? (
+                <div className="text-[10px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("abst.anonymHinweis")}</div>
+              ) : o.waehler.length === 0 ? (
+                <div className="text-[10px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("abst.niemand")}</div>
+              ) : (
+                <div className="flex flex-wrap gap-1">
+                  {o.waehler.map((w) => (
+                    <span key={w.id} className="text-[10px] px-2 py-0.5 rounded-full"
+                      style={{ background: C.paperDim, color: C.ink, fontFamily: "Inter" }}>{w.name}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* Das Erstellungsformular. Es liegt als Blatt ueber dem Chat, damit man die
+   Unterhaltung im Ruecken behaelt. */
+function AbstimmungErstellen({ onAnlegen, onSchliessen }) {
+  const t = useT();
+  const [frage, setFrage] = useState("");
+  const [optionen, setOptionen] = useState(["", ""]);
+  const [einstellungenOffen, setEinstellungenOffen] = useState(false);
+  const [mehrfach, setMehrfach] = useState(false);
+  const [anonym, setAnonym] = useState(false);
+  const [ergebnisVorStimme, setErgebnisVorStimme] = useState(true);
+  const [ergebnisVorEnde, setErgebnisVorEnde] = useState(true);
+  const [aenderbar, setAenderbar] = useState(true);
+  const [endet, setEndet] = useState("");
+  const [fehler, setFehler] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [zieht, setZieht] = useState(null);
+
+  const setzeOption = (i, wert) => setOptionen((o) => o.map((x, idx) => (idx === i ? wert : x)));
+  const entferne = (i) => setOptionen((o) => (o.length <= 2 ? o : o.filter((_, idx) => idx !== i)));
+  const hinzu = () => setOptionen((o) => (o.length >= 20 ? o : [...o, ""]));
+
+  /* Reihenfolge aendern. Ueber Zeigerereignisse statt der HTML5-Zugvorgaenge:
+     Die funktionieren auf dem Telefon naemlich gar nicht, und dort wird diese
+     App benutzt. Verschoben wird, sobald der Zeiger die Mitte der
+     Nachbarzeile ueberschreitet. */
+  const listeRef = React.useRef(null);
+  const beiZeigerBewegung = (e) => {
+    if (zieht === null || !listeRef.current) return;
+    const zeilen = [...listeRef.current.querySelectorAll("[data-option]")];
+    const y = e.clientY;
+    const ziel = zeilen.findIndex((el) => {
+      const r = el.getBoundingClientRect();
+      return y >= r.top && y <= r.bottom;
+    });
+    if (ziel >= 0 && ziel !== zieht) {
+      setOptionen((o) => {
+        const kopie = [...o];
+        const [weg] = kopie.splice(zieht, 1);
+        kopie.splice(ziel, 0, weg);
+        return kopie;
+      });
+      setZieht(ziel);
+    }
+  };
+
+  /* Dieselbe Bereinigung wie in der Datenbank - nur damit der Hinweis schon
+     beim Tippen erscheint und nicht erst als Fehlermeldung vom Server. Die
+     Entscheidung faellt trotzdem dort: chat_abstimmung_anlegen() bereinigt
+     erneut. */
+  const sauber = optionen.map((o) => o.trim()).filter(Boolean);
+  const eindeutig = [...new Map(sauber.map((o) => [o.toLowerCase(), o])).values()];
+  const dubletten = sauber.length !== eindeutig.length;
+
+  const absenden = async () => {
+    if (!frage.trim()) { setFehler(t("abst.frageFehlt")); return; }
+    if (eindeutig.length < 2) { setFehler(t("abst.zweiAntworten")); return; }
+    setFehler(""); setBusy(true);
+    const ergebnis = await onAnlegen({
+      frage: frage.trim(), optionen: eindeutig, mehrfach, anonym,
+      ergebnisVorStimme, ergebnisVorEnde, aenderbar,
+      endet: endet ? new Date(endet).toISOString() : null,
+    });
+    setBusy(false);
+    if (ergebnis?.error) setFehler(ergebnis.error);
+    else onSchliessen();
+  };
+
+  const schalter = (an, setzen, titel, hinweis) => (
+    <button type="button" onClick={() => setzen(!an)} className="w-full flex items-center justify-between gap-3 py-2 text-left">
+      <span className="min-w-0">
+        <span className="block text-xs" style={{ color: C.ink, fontFamily: "Inter", fontWeight: 600 }}>{titel}</span>
+        {hinweis && <span className="block text-[10px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{hinweis}</span>}
+      </span>
+      <span className="flex-shrink-0 rounded-full" style={{ width: 38, height: 22, background: an ? C.red : C.paperDim, transition: "background .2s", position: "relative" }}>
+        <span className="rounded-full absolute" style={{ width: 18, height: 18, background: C.white, top: 2, left: an ? 18 : 2, transition: "left .2s", boxShadow: "0 1px 3px rgba(0,0,0,.2)" }} />
+      </span>
+    </button>
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center" style={{ background: "rgba(20,10,18,0.45)" }} onClick={onSchliessen}>
+      <div className="w-full max-w-md rounded-t-3xl p-4" style={{ background: C.blatt, maxHeight: "88vh", overflowY: "auto" }} onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-3">
+          <div className="text-base" style={{ fontFamily: "Oswald", fontWeight: 600, color: C.ink }}>{t("abst.neueAbstimmung")}</div>
+          <button type="button" onClick={onSchliessen} aria-label={t("allg.schliessen")} className="p-1"><X size={18} style={{ color: C.textDim }} /></button>
+        </div>
+
+        <label className="block mb-3">
+          <span className="block text-[10px] font-bold mb-1" style={{ color: C.textDim }}>{t("abst.fragePflicht")}</span>
+          <input autoFocus value={frage} onChange={(e) => setFrage(e.target.value)} maxLength={300}
+            placeholder={t("abst.fragePlatzhalter")}
+            className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+            style={{ background: C.paperDim, color: C.ink, fontFamily: "Inter" }} />
+        </label>
+
+        <span className="block text-[10px] font-bold mb-1" style={{ color: C.textDim }}>{t("abst.antwortenPflicht")}</span>
+        <div ref={listeRef} className="space-y-1.5 mb-2"
+          onPointerMove={beiZeigerBewegung}
+          onPointerUp={() => setZieht(null)}
+          onPointerCancel={() => setZieht(null)}>
+          {optionen.map((o, i) => (
+            <div key={i} data-option className="flex items-center gap-1.5"
+              style={{ opacity: zieht === i ? 0.55 : 1 }}>
+              <button type="button" aria-label={t("abst.verschieben")}
+                onPointerDown={(e) => { e.preventDefault(); setZieht(i); }}
+                className="flex-shrink-0 px-1 py-2" style={{ cursor: "grab", touchAction: "none" }}>
+                <GripVertical size={14} style={{ color: C.textDim }} />
+              </button>
+              <input value={o} onChange={(e) => setzeOption(i, e.target.value)} maxLength={200}
+                placeholder={`${t("abst.antwort")} ${i + 1}`}
+                className="flex-1 px-3 py-2 rounded-xl text-xs outline-none"
+                style={{ background: C.paperDim, color: C.ink, fontFamily: "Inter" }} />
+              <button type="button" onClick={() => entferne(i)} disabled={optionen.length <= 2}
+                aria-label={t("allg.loeschen")} className="flex-shrink-0 p-1.5"
+                style={{ opacity: optionen.length <= 2 ? 0.3 : 1 }}>
+                <X size={14} style={{ color: C.textDim }} />
+              </button>
+            </div>
+          ))}
+        </div>
+        {dubletten && <div className="text-[10px] mb-2" style={{ color: C.textDim }}>{t("abst.dubletten")}</div>}
+        {optionen.length < 20 && (
+          <button type="button" onClick={hinzu} className="text-xs mb-3 flex items-center gap-1"
+            style={{ color: C.red, fontFamily: "Inter", fontWeight: 700 }}>
+            <Plus size={13} /> {t("abst.antwortHinzu")}
+          </button>
+        )}
+
+        <button type="button" onClick={() => setEinstellungenOffen((o) => !o)}
+          className="w-full flex items-center justify-between py-2 mb-1">
+          <span className="text-xs" style={{ color: C.ink, fontFamily: "Inter", fontWeight: 700 }}>{t("abst.einstellungen")}</span>
+          <ChevronDown size={14} style={{ color: C.textDim, transform: einstellungenOffen ? "rotate(180deg)" : "none", transition: "transform .2s" }} />
+        </button>
+        {einstellungenOffen && (
+          <div className="mb-3 px-1">
+            {schalter(mehrfach, setMehrfach, t("abst.mehrereAntworten"), t("abst.mehrereAntwortenHinweis"))}
+            {schalter(anonym, setAnonym, t("abst.anonymAbstimmen"), t("abst.anonymAbstimmenHinweis"))}
+            {schalter(aenderbar, setAenderbar, t("abst.stimmeAenderbar"), t("abst.stimmeAenderbarHinweis"))}
+            {schalter(ergebnisVorStimme, setErgebnisVorStimme, t("abst.ergebnisVorStimme"), t("abst.ergebnisVorStimmeHinweis"))}
+            {schalter(ergebnisVorEnde, setErgebnisVorEnde, t("abst.ergebnisVorEnde"), t("abst.ergebnisVorEndeHinweis"))}
+            <label className="block pt-2">
+              <span className="block text-[10px] font-bold mb-1" style={{ color: C.textDim }}>{t("abst.endetAm")}</span>
+              <input type="datetime-local" value={endet} onChange={(e) => setEndet(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl text-xs outline-none"
+                style={{ background: C.paperDim, color: C.ink, fontFamily: "Inter" }} />
+              <span className="block text-[10px] mt-1" style={{ color: C.textDim }}>{t("abst.endetAmHinweis")}</span>
+            </label>
+          </div>
+        )}
+
+        {fehler && <div className="text-[11px] mb-2 rounded-xl px-3 py-2" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{fehler}</div>}
+
+        <button type="button" onClick={absenden} disabled={busy}
+          className="w-full py-3 rounded-xl text-sm flex items-center justify-center gap-2"
+          style={{ background: C.red, color: C.aufPrimaer, fontFamily: "Inter", fontWeight: 700, opacity: busy ? 0.6 : 1 }}>
+          <BarChart3 size={15} /> {busy ? t("abst.wirdErstellt") : t("abst.erstellen")}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function ChatView({ user, channels, setChannels, activeId, setActiveId, members }) {
   const t = useT();
   /* ALLE Hooks stehen vor dem ersten return - ohne Ausnahme.
@@ -4424,6 +4814,30 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
      ab. Die Regel gilt ausnahmslos: erst alle Hooks, dann jeder Ausstieg. */
   const [text, setText] = useState("");
   const [sendeFehler, setSendeFehler] = useState("");
+  /* Abstimmungen. Der Stand kommt vollstaendig aus abstimmung_ergebnis() -
+     einschliesslich der Entscheidung, ob das Ergebnis ueberhaupt gezeigt
+     werden darf. Hier wird nichts nachgerechnet. */
+  const [pollStand, setPollStand] = useState({});
+  const [pollDetails, setPollDetails] = useState(null);
+  const [pollErstellen, setPollErstellen] = useState(false);
+  const [anhangOffen, setAnhangOffen] = useState(false);
+  /* Laufende Nummer je Abstimmung. Wer schnell mehrfach tippt, loest mehrere
+     Anfragen aus, und die Antworten koennen in beliebiger Reihenfolge
+     eintreffen. Ohne diese Nummer setzt eine verspaetete Antwort den Stand
+     zurueck, den eine neuere schon ueberholt hat - die Auswahl springt dann
+     sichtbar hin und her. Angezeigt wird nur, was zur juengsten Anfrage
+     gehoert. */
+  const pollAnfrage = React.useRef({});
+  const pollIdsRef = React.useRef([]);
+
+  const ergebnisLaden = React.useCallback(async (pollId) => {
+    if (!supabase || !isDbId(pollId)) return;
+    const nr = (pollAnfrage.current[pollId] || 0) + 1;
+    pollAnfrage.current[pollId] = nr;
+    const { data, error } = await supabase.rpc("abstimmung_ergebnis", { p_poll: pollId });
+    if (error || pollAnfrage.current[pollId] !== nr) return;
+    setPollStand((st) => ({ ...st, [pollId]: data }));
+  }, []);
 
   /* Sichtbare Kanaele.
      Die Mannschaftspruefung lautete "c.team === user.team" - also gegen die
@@ -4570,6 +4984,123 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
   };
   const visibleMessages = active.messages.filter((m) => m.authorId === user.authProfileId || !blocked.includes(m.authorId));
 
+  /* Die Abstimmungen dieses Kanals nachladen, sobald eine auftaucht, die wir
+     noch nicht kennen. */
+  const pollIds = visibleMessages.map((m) => m.pollId).filter((id) => isDbId(id));
+  pollIdsRef.current = pollIds;
+  const pollSchluessel = pollIds.join(",");
+  useEffect(() => {
+    pollIds.forEach((id) => { if (!pollStand[id]) ergebnisLaden(id); });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pollSchluessel]);
+
+  /* Echtzeit. Eine Abstimmung, bei der man die Stimmen der anderen erst nach
+     einem Neustart sieht, ist keine Abstimmung, sondern ein Formular.
+     Ein einziges Abonnement fuer den ganzen Kanal - nicht eines je Karte:
+     Jede Karte einzeln anzumelden waere bei zwanzig Abstimmungen im Verlauf
+     zwanzig Verbindungen fuer dieselbe Information. */
+  useEffect(() => {
+    if (!supabase || !isDbId(active.id)) return undefined;
+    const betroffen = (id) => id && pollIdsRef.current.includes(id);
+    const kanal = supabase
+      .channel(`abstimmungen-${active.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "poll_votes" }, (ereignis) => {
+        const id = ereignis.new?.poll_id || ereignis.old?.poll_id;
+        if (betroffen(id)) ergebnisLaden(id);
+      })
+      /* Auch das Beenden und das Verschieben des Endzeitpunkts sind
+         Aenderungen, die alle sehen muessen. */
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "polls" }, (ereignis) => {
+        const id = ereignis.new?.id;
+        if (betroffen(id)) ergebnisLaden(id);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(kanal); };
+  }, [active.id, ergebnisLaden]);
+
+  /* Abstimmen. Erst die Vorhersage anzeigen, dann schreiben, bei einem Fehler
+     zurueck auf den alten Stand - dieselbe Reihenfolge wie bei den
+     Vereinsumfragen. Der Unterschied: Was zurueckkommt, IST das neue
+     Ergebnis, nicht nur eine Bestaetigung. */
+  const abstimmen = async (pollId, optionId, gewaehlt) => {
+    if (!supabase) return { error: t("allg.nichtMoeglich") };
+    const vorher = pollStand[pollId];
+    setPollStand((st) => ({ ...st, [pollId]: abstimmungVorhersage(vorher, optionId) }));
+    const nr = (pollAnfrage.current[pollId] || 0) + 1;
+    pollAnfrage.current[pollId] = nr;
+    const { data, error } = await supabase.rpc("abstimmung_stimmen", { p_option: optionId, p_gewaehlt: gewaehlt });
+    if (pollAnfrage.current[pollId] !== nr) return {};
+    if (error) {
+      setPollStand((st) => ({ ...st, [pollId]: vorher }));
+      /* Die Datenbank nennt den Grund - "Diese Abstimmung ist beendet" ist
+         etwas anderes als ein Netzwerkfehler, und der Unterschied gehoert
+         auf den Bildschirm. Ist die Abstimmung inzwischen beendet, holen wir
+         den aktuellen Stand nach, damit die Karte das auch zeigt. */
+      ergebnisLaden(pollId);
+      return { error: error.message || t("abst.stimmeFehler") };
+    }
+    setPollStand((st) => ({ ...st, [pollId]: data }));
+    return {};
+  };
+
+  const abstimmungBeenden = async (pollId) => {
+    if (!supabase || !window.confirm(t("abst.beendenFrage"))) return;
+    const { data, error } = await supabase.rpc("chat_abstimmung_beenden", { p_poll: pollId });
+    if (error) { setSendeFehler(error.message || t("abst.beendenFehler")); return; }
+    setPollStand((st) => ({ ...st, [pollId]: data }));
+  };
+
+  const abstimmungAnlegen = async (entwurf) => {
+    if (!supabase || !isDbId(active.id)) return { error: t("allg.nichtMoeglich") };
+    const { data, error } = await supabase.rpc("chat_abstimmung_anlegen", {
+      p_channel: active.id,
+      p_frage: entwurf.frage,
+      p_optionen: entwurf.optionen,
+      p_mehrfach: entwurf.mehrfach,
+      p_anonym: entwurf.anonym,
+      p_ergebnis_vor_stimme: entwurf.ergebnisVorStimme,
+      p_ergebnis_vor_ende: entwurf.ergebnisVorEnde,
+      p_stimme_aenderbar: entwurf.aenderbar,
+      p_endet_am: entwurf.endet,
+    });
+    if (error || !data?.message_id) return { error: error?.message || t("abst.anlegenFehler") };
+
+    /* Die eigene Abstimmung sofort in den Verlauf setzen, statt auf die
+       Echtzeitmeldung zu warten: Beim Absender kaeme sie zwar auch an, aber
+       spuerbar spaeter - und bis dahin saehe es aus, als sei nichts
+       passiert. Die Pruefung auf die Kennung verhindert, dass sie doppelt
+       erscheint, wenn die Meldung nachkommt. */
+    const { data: zeile } = await supabase
+      .from("messages")
+      .select("id,channel_id,body,created_at,author_id,poll_id,profiles(full_name)")
+      .eq("id", data.message_id).maybeSingle();
+    if (zeile) {
+      setChannels((cs) => cs.map((c) => (c.id !== active.id || c.messages.some((m) => m.id === zeile.id)
+        ? c
+        : { ...c, messages: [...c.messages, { ...zeileZuNachricht(zeile, t), me: true }].slice(-200) })));
+    }
+    ergebnisLaden(data.poll_id);
+    benachrichtigen(`${user.name}: ${entwurf.frage}`);
+    return {};
+  };
+
+  /* Wer eine Nachricht in diesem Kanal bekommen soll. Stand vorher nur in
+     send(); die Abstimmung braucht dieselbe Liste, und zweimal dieselbe
+     Bedingung waere zweimal dieselbe Gelegenheit, sie auseinanderlaufen zu
+     lassen. */
+  const benachrichtigen = (rumpf) => {
+    if (!supabase || !Array.isArray(members)) return;
+    const empfaenger = members
+      .filter((m) => m.id !== user.id && !m.accountPending && sichtbarFuer(m, active))
+      .map((m) => m.id)
+      .filter((id) => isDbId(id));
+    if (empfaenger.length === 0) return;
+    supabase.rpc("notify_many", {
+      target_memberships: empfaenger, p_notif_type: "chat",
+      p_title: `Neue Nachricht · ${active.name || "Chat"}`, p_body: rumpf,
+    });
+  };
+
   const send = async () => {
     if (!text.trim() || !canPost) return;
     const inhalt = text.trim();
@@ -4584,7 +5115,7 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
       const { data: gespeichert, error } = await supabase
         .from("messages")
         .insert({ channel_id: active.id, author_id: user.authProfileId, body: inhalt })
-        .select("id,channel_id,body,created_at,author_id,profiles(full_name)")
+        .select("id,channel_id,body,created_at,author_id,poll_id,profiles(full_name)")
         .maybeSingle();
       if (error) {
         setSendeFehler(t("chat.sendenFehler"));
@@ -4601,24 +5132,9 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
         ? { ...c, messages: [...c.messages, { who: user.name, init: initialsOf(user.name), color: user.color, text: inhalt, time: "jetzt", me: true }].slice(active.id === "news" ? -10 : -200) }
         : c));
     }
-    if (supabase && Array.isArray(members)) {
-      const recipients = members
-        /* Spiegelbild der Sichtbarkeit: Benachrichtigt wird, wer den Kanal
-           auch sehen darf. Vorher stand hier dieselbe Verkuerzung auf die
-           eine Mannschaft - wer den Kanal sehen konnte, dessen Abkuerzung
-           aber eine andere Mannschaft nannte, bekam nie eine Mitteilung und
-           las die Nachricht erst zufaellig. */
-        /* Wer noch nicht freigegeben ist, bekommt nichts. Die Mitgliederliste
-           enthaelt auch Konten im Status "pending" - beim vereinsweiten
-           News-Kanal, den jeder sehen darf, waeren das sonst Mitteilungen an
-           Leute, die der Verein noch gar nicht aufgenommen hat. */
-        .filter((m) => m.id !== user.id && !m.accountPending && sichtbarFuer(m, active))
-        .map((m) => m.id)
-        .filter((id) => isDbId(id));
-      if (recipients.length > 0) {
-        supabase.rpc("notify_many", { target_memberships: recipients, p_notif_type: "chat", p_title: `Neue Nachricht · ${active.name || "Chat"}`, p_body: `${user.name}: ${text.trim()}` });
-      }
-    }
+    /* Spiegelbild der Sichtbarkeit: Benachrichtigt wird, wer den Kanal auch
+       sehen darf - siehe benachrichtigen(). */
+    benachrichtigen(`${user.name}: ${inhalt}`);
     setText("");
   };
 
@@ -4680,10 +5196,26 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
                 {!mine && <div className="text-[11px] mb-0.5" style={{ color: C.textDim, fontFamily: "Inter" }}>{verfasser}</div>}
                 <div className="rounded-2xl text-sm overflow-hidden" style={{ fontFamily: "Inter", background: mine ? C.red : C.white, color: mine ? C.aufPrimaer : C.ink, border: mine ? "none" : `1px solid ${C.line}`, borderBottomRightRadius: mine ? 4 : 16, borderBottomLeftRadius: mine ? 16 : 4 }}>
                   {m.imageUrl && <img src={m.imageUrl} alt="" className="w-full block" style={{ maxHeight: 180, objectFit: "cover" }} />}
-                  <div className="px-3 py-2">
-                    {m.title && <div className="mb-1" style={{ fontFamily: "Oswald", fontWeight: 700, fontSize: 14 }}>{m.title}</div>}
-                    {m.text}
-                  </div>
+                  {/* Eine Abstimmung ist dieselbe Blase wie jede andere
+                      Nachricht - nur mit Karte statt Text darin. Genau das
+                      ist gemeint mit "fuehlt sich wie ein normaler
+                      Nachrichteninhalt an": gleiche Ecken, gleiche Seite,
+                      gleiche Fusszeile mit Uhrzeit. */}
+                  {m.pollId ? (
+                    <AbstimmungKarte
+                      stand={pollStand[m.pollId]}
+                      meinProfil={user.authProfileId}
+                      mine={mine}
+                      onStimmen={(optionId, gewaehlt) => abstimmen(m.pollId, optionId, gewaehlt)}
+                      onBeenden={() => abstimmungBeenden(m.pollId)}
+                      onDetails={() => setPollDetails(pollStand[m.pollId])}
+                    />
+                  ) : (
+                    <div className="px-3 py-2">
+                      {m.title && <div className="mb-1" style={{ fontFamily: "Oswald", fontWeight: 700, fontSize: 14 }}>{m.title}</div>}
+                      {m.text}
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 mt-0.5">
                   <div className="text-[10px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{m.time}</div>
@@ -4705,7 +5237,30 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
              darueber. */
           <div>
             {sendeFehler && <div className="text-[10px] mb-1.5 rounded-xl px-3 py-2" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{sendeFehler}</div>}
+            {/* Das Anhangmenue. Bisher gab es nur Text; die Abstimmung ist
+                der erste weitere Inhalt, und weitere werden folgen -
+                deshalb ein Menue und nicht ein zweiter Knopf neben dem
+                Senden. */}
+            {anhangOffen && (
+              <div className="mb-2 rounded-2xl overflow-hidden" style={{ background: C.blatt, border: `1px solid ${C.line}` }}>
+                <button type="button" onClick={() => { setAnhangOffen(false); setPollErstellen(true); }}
+                  className="w-full flex items-center gap-3 px-3 py-3 text-left">
+                  <span className="rounded-full p-2" style={{ background: C.paperDim }}><BarChart3 size={15} style={{ color: C.red }} /></span>
+                  <span>
+                    <span className="block text-xs" style={{ color: C.ink, fontFamily: "Inter", fontWeight: 700 }}>{t("abst.abstimmung")}</span>
+                    <span className="block text-[10px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("abst.abstimmungHinweis")}</span>
+                  </span>
+                </button>
+              </div>
+            )}
             <div className="flex items-center gap-2">
+            {isDbId(active.id) && (
+              <button onClick={() => setAnhangOffen((o) => !o)} aria-label={t("abst.anhaengen")} aria-expanded={anhangOffen}
+                className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                style={{ background: C.paperDim, transform: anhangOffen ? "rotate(45deg)" : "none", transition: "transform .2s" }}>
+                <Plus size={18} style={{ color: C.ink }} />
+              </button>
+            )}
             <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && send()} placeholder={t("ph.nachrichtSchreiben")}
               className="flex-1 px-3 py-2.5 rounded-full text-sm outline-none" style={{ background: C.paperDim, fontFamily: "Inter", color: C.ink }} />
             <button onClick={send} aria-label={t("aria.nachrichtSenden")} className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: C.red }}><Send size={16} color={C.aufPrimaer} /></button>
@@ -4713,6 +5268,12 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
           </div>
         )}
       </div>
+      {pollErstellen && (
+        <AbstimmungErstellen onAnlegen={abstimmungAnlegen} onSchliessen={() => setPollErstellen(false)} />
+      )}
+      {pollDetails && (
+        <AbstimmungDetails stand={pollDetails} onSchliessen={() => setPollDetails(null)} />
+      )}
     </div>
   );
 }
@@ -11485,7 +12046,7 @@ export default function ClubMemberOrganisationApp() {
          Oeffnen. */
       const { data: nachrichten } = await supabase
         .from("messages")
-        .select("id,channel_id,body,created_at,author_id,profiles(full_name)")
+        .select("id,channel_id,body,created_at,author_id,poll_id,profiles(full_name)")
         .in("channel_id", ids)
         .order("created_at", { ascending: false })
         .limit(200 * ids.length);
@@ -11993,11 +12554,19 @@ export default function ClubMemberOrganisationApp() {
 
   const stimmeAbgeben = async (pollId, optionId) => {
     if (!supabase || !meinProfil() || typeof pollId !== "string") return { error: t("allg.nichtMoeglich") };
-    const { error } = await supabase.from("poll_votes").upsert(
-      { poll_id: pollId, option_id: optionId, profile_id: meinProfil() },
-      { onConflict: "poll_id,profile_id" },
-    );
-    return error ? { error: t("umf.stimmeFehler") } : {};
+    /* Frueher ein Upsert auf (poll_id, profile_id): Der Schluessel selbst
+       sorgte dafuer, dass eine zweite Stimme die erste ersetzte. Seit die
+       Chat-Abstimmungen Mehrfachauswahl koennen, gehoert die Option mit in
+       den Schluessel - und derselbe Aufruf legte damit eine ZWEITE Zeile an
+       statt zu ersetzen. Die Person haette doppelt gezaehlt, ohne dass es
+       jemandem aufgefallen waere.
+       Das Ersetzen steht jetzt in abstimmung_stimmen(), zusammen mit der
+       Sperre auf der Umfragezeile - dieselbe Funktion, die auch der Chat
+       benutzt. Vereinsumfragen sind dort Einfachauswahl (allow_multiple
+       bleibt false), das Verhalten ist also unveraendert; neu ist nur, dass
+       Pruefung und Ersetzen nicht mehr auseinanderfallen koennen. */
+    const { error } = await supabase.rpc("abstimmung_stimmen", { p_option: optionId, p_gewaehlt: true });
+    return error ? { error: error.message || t("umf.stimmeFehler") } : {};
   };
 
   /* Stimme zuruecknehmen. Bisher war eine Umfrage eine Einbahnstrasse: einmal
