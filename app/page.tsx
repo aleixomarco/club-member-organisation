@@ -9437,19 +9437,29 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
                          background: r.runde_id === rundeId ? C.ink : C.paperDim,
                          color: r.runde_id === rundeId ? C.white : C.textDim }}>
                 {r.team_name}{r.ich_dabei ? " ✓" : ""}
+                {r.teilnehmer > 0 && <span style={{ opacity: 0.6, marginLeft: 4 }}>{r.teilnehmer}</span>}
               </button>
             ))}
           </div>
 
+          {/* Eine Einladung, keine Sperre.
+              Vorher hing die gesamte Ansicht - Tabelle UND Spiele - an
+              ich_dabei. Wer nicht teilnahm, sah von einer Runde gar nichts und
+              konnte nicht einmal nachsehen, wer dort vorne liegt. Dabei gibt
+              die Datenbank die Tabelle jedem Vereinsmitglied frei
+              (tipp_tabelle prueft nur is_club_member) - es war allein die
+              Oberflaeche, die zumachte.
+              Jetzt gilt: Ansehen darf jeder, tippen und in der Rangliste
+              stehen nur, wer teilnimmt. Und zwar bei so vielen Mannschaften,
+              wie er moechte - der Schluessel (runde_id, membership_id) sieht
+              das seit jeher vor. */}
           {aktuelleRunde && !aktuelleRunde.ich_dabei && (
             <div className="rounded-2xl p-4 mb-5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
-              <div className="text-sm font-bold mb-1" style={{ color: C.ink }}>Tipprunde {aktuelleRunde.team_name}</div>
-              <div className="text-xs mb-3" style={{ color: C.textDim }}>
-                Du bist noch nicht dabei. Jede Mannschaft hat eine eigene Runde mit eigener Tabelle — beitreten musst du überall einzeln.
-              </div>
+              <div className="text-sm font-bold mb-1" style={{ color: C.ink }}>{t("tipp.rundeVon")} {aktuelleRunde.team_name}</div>
+              <div className="text-xs mb-3" style={{ color: C.textDim, lineHeight: 1.6 }}>{t("tipp.nurZuschauen")}</div>
               <button onClick={() => beitreten(false)} className="w-full py-2.5 rounded-xl text-xs font-bold"
-                style={{ background: C.ink, color: C.white === undefined ? C.white : C.white }}>
-                Tipprunde beitreten
+                style={{ background: C.ink, color: C.white }}>
+                {t("tipp.teilnehmen")}
               </button>
             </div>
           )}
@@ -9457,17 +9467,17 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
         </>
       )}
 
-      {aktuelleRunde?.ich_dabei && (<>
+      {aktuelleRunde && (<>
       {/* Der Ausstieg steht oben rechts, auf Hoehe der Ueberschrift - dort,
           wo in dieser App alle Aktionen zu einem Abschnitt stehen. */}
-      <SectionTitle eyebrow="Rangliste" title={`Tabelle ${aktuelleRunde.team_name}`}
-        right={
+      <SectionTitle eyebrow={t("tipp.rangliste")} title={`${t("tipp.tabelleVon")} ${aktuelleRunde.team_name}`}
+        right={aktuelleRunde.ich_dabei ? (
           <button onClick={() => setVerlassenFrage(true)}
             className="px-3 py-1.5 rounded-full text-[10px] font-bold flex-shrink-0"
             style={{ background: C.fehlerFlaeche, color: C.fehler, border: `1px solid ${C.fehlerRand}` }}>
             {t("tipp.verlassen")}
           </button>
-        } />
+        ) : null} />
       <div className="rounded-2xl overflow-hidden mb-6" style={{ border: `1px solid ${C.line}` }}>
         {(tabelle || []).length === 0 && <div className="px-4 py-3 text-xs" style={{ color: C.textDim }}>{t("tipp.niemand")}</div>}
         {(tabelle || []).map((m, i) => (
@@ -9479,15 +9489,16 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
         ))}
       </div>
 
-      <SectionTitle eyebrow="Punkteregeln" title="So funktioniert's" />
+      <SectionTitle eyebrow={t("tipp.punkteregeln")} title={t("tipp.soGehtEs")} />
       <div className="rounded-2xl p-4 mb-6 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>
-        Genaues Ergebnis = 3 Punkte · richtige Tendenz = 1 Punkt. Nach Eintragung des Endergebnisses durch den Vereins-Administrator berechnet das System alle Punkte automatisch.
+        {t("tipp.punkteErklaerung")}
       </div>
 
-      <SectionTitle eyebrow="Nächste Spiele" title="Jetzt tippen" />
+      <SectionTitle eyebrow={t("tipp.naechsteSpiele")}
+        title={aktuelleRunde.ich_dabei ? t("tipp.jetztTippen") : t("tipp.spieleDerRunde")} />
       {begegnungen.length === 0 && (
         <div className="rounded-2xl p-4 mb-3 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>
-          Noch keine Spiele im Terminplan. Sobald der Verein welche einträgt, könnt ihr hier tippen.
+          {t("tipp.keineSpiele")}
         </div>
       )}
       {begegnungen.map((match) => {
@@ -9505,6 +9516,19 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
               <div><div className="text-sm font-bold" style={{ color: C.ink, fontFamily: "Inter" }}>{match.titel}</div><div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{formatDate(match.date)} · {formatTime(match.date)}{match.team ? ` · ${match.team}` : ""}</div></div>
               {result ? <Pill bg={C.secondary}>Endstand {result.home}:{result.away} · +{earned} P</Pill> : locked ? <Pill bg={C.textDim}>{t("tipp.wartet")}</Pill> : null}
             </div>
+            {/* Wer nur zuschaut, sieht die Begegnung - aber keine Felder.
+                Ein deaktiviertes Eingabefeld waere die schlechtere Loesung: Es
+                sieht aus, als duerfte man gleich, und laesst einen raten,
+                warum nicht. */}
+            {!aktuelleRunde.ich_dabei ? (
+              <div className="flex items-center justify-center gap-3">
+                <span className="text-sm flex-1 text-right" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{t("ev.wir")}</span>
+                <span className="px-3 py-1.5 rounded-lg text-sm" style={{ background: C.paperDim, color: C.textDim, fontFamily: "JetBrains Mono", fontWeight: 700 }}>
+                  {result ? `${result.home}:${result.away}` : "–:–"}
+                </span>
+                <span className="text-sm flex-1" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{t("feld.gegner")}</span>
+              </div>
+            ) : (
             <div className="flex items-center justify-center gap-3">
               <span className="text-sm flex-1 text-right" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{t("ev.wir")}</span>
               <input type="number" min="0" disabled={locked} aria-label={t("aria.unsereToreTippen")} value={feld.home} onChange={(e) => setPred(match.id, "home", e.target.value)}
@@ -9514,7 +9538,8 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
                 className="w-12 text-center py-1.5 rounded-lg text-sm outline-none" style={{ background: C.paperDim, fontFamily: "JetBrains Mono", fontWeight: 700 }} />
               <span className="text-sm flex-1" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{t("feld.gegner")}</span>
             </div>
-            {!locked && (
+            )}
+            {aktuelleRunde.ich_dabei && !locked && (
               <div className="mt-3 flex gap-2">
                 <button onClick={() => tippAbgeben(match.id)} disabled={!entwurfVollstaendig || !hatAenderung}
                   className="flex-1 py-2 rounded-lg text-xs font-bold"
@@ -9526,15 +9551,15 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
                   <button onClick={() => { if (window.confirm(`Deinen Tipp ${pred.home}:${pred.away} für "${match.titel}" löschen?`)) tippLoeschen(match.id); }}
                     className="px-3 py-2 rounded-lg text-xs font-bold"
                     style={{ background: C.fehlerFlaeche, color: C.fehler }}>
-                    Löschen
+                    {t("allg.loeschen")}
                   </button>
                 )}
               </div>
             )}
             <Erstellt von={result?.erstelltVon} am={result?.erstelltAm} />
-            {abgegeben && !hatAenderung && !locked && (
+            {aktuelleRunde.ich_dabei && abgegeben && !hatAenderung && !locked && (
               <div className="mt-2 text-[11px]" style={{ color: C.erfolg, fontFamily: "Inter", fontWeight: 600 }}>
-                Tipp {pred.home}:{pred.away} abgegeben — änderbar bis zum Anpfiff.
+                {mitWerten(t("tipp.abgegebenHinweis"), { tipp: `${pred.home}:${pred.away}` })}
               </div>
             )}
           </div>
