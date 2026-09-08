@@ -15,7 +15,8 @@ let package = Package(
         .package(name: "CapacitorFirebaseMessaging", path: "symlinks/CapacitorFirebaseMessaging"),
         .package(name: "CapacitorApp", path: "../../../node_modules/@capacitor/app"),
         .package(name: "CapacitorKeyboard", path: "../../../node_modules/@capacitor/keyboard"),
-        .package(name: "CapacitorSplashScreen", path: "../../../node_modules/@capacitor/splash-screen")
+        .package(name: "CapacitorSplashScreen", path: "../../../node_modules/@capacitor/splash-screen"),
+        .package(name: "CapawesomeCapacitorBadge", path: "../../../node_modules/@capawesome/capacitor-badge")
     ],
     targets: [
         .target(
@@ -26,7 +27,8 @@ let package = Package(
                 .product(name: "CapacitorFirebaseMessaging", package: "CapacitorFirebaseMessaging"),
                 .product(name: "CapacitorApp", package: "CapacitorApp"),
                 .product(name: "CapacitorKeyboard", package: "CapacitorKeyboard"),
-                .product(name: "CapacitorSplashScreen", package: "CapacitorSplashScreen")
+                .product(name: "CapacitorSplashScreen", package: "CapacitorSplashScreen"),
+                .product(name: "CapawesomeCapacitorBadge", package: "CapawesomeCapacitorBadge")
             ]
         )
     ]

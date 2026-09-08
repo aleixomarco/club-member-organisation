@@ -273,6 +273,35 @@ Deno.serve(async (anfrage) => {
     const konto = dienstkontoLesen();
     const token = await zugangstoken(konto);
 
+    /* Die Zahl auf dem App-Symbol.
+     *
+     * Hier stand bisher fest badge: 1 - bei JEDER Mitteilung. Und weil nichts
+     * in der App den Zaehler je zurueckgesetzt hat, trug jeder, der einmal
+     * eine Push-Nachricht bekommen hatte, seitdem dauerhaft eine 1 auf dem
+     * Symbol. Egal ob null oder zwanzig Meldungen offen waren, egal ob
+     * laengst gelesen. Das ist schlechter als kein Zaehler: Man lernt, ihn zu
+     * ignorieren.
+     *
+     * Gezaehlt wird ueber ALLE Vereine dieser Person, nicht nur ueber den,
+     * aus dem die Mitteilung kommt. Das Symbol gibt es auf dem Geraet nur
+     * einmal; es beantwortet die Frage "wie viel wartet auf mich", nicht "wie
+     * viel wartet in diesem einen Verein".
+     *
+     * Die gerade eingefuegte Zeile zaehlt mit - sie ist ja das, was wartet.
+     *
+     * Bei 99 wird abgeschnitten: Mehr sagt kein Symbol aus, und die Abfrage
+     * bleibt klein. Faellt sie aus, bleibt es bei der alten 1 - lieber eine
+     * ungenaue Zahl als gar keine Mitteilung. */
+    let offen = 1;
+    try {
+      const wartend = await supabaseAbfrage(
+        `user_notifications?select=id&profile_id=eq.${zeile.profile_id}&read_at=is.null&limit=99`,
+      );
+      if (Array.isArray(wartend) && wartend.length > 0) offen = wartend.length;
+    } catch (fehler) {
+      console.error("Zahl der offenen Meldungen nicht ermittelbar", fehler);
+    }
+
     let zugestellt = 0;
     const totgeglaubt: string[] = [];
     /* Die Ablehnungsgruende reisen in der Antwort mit.
@@ -299,7 +328,7 @@ Deno.serve(async (anfrage) => {
                 club_id: String(zeile.club_id ?? ""),
                 notification_id: String(zeile.id ?? ""),
               },
-              apns: { payload: { aps: { sound: "default", badge: 1 } } },
+              apns: { payload: { aps: { sound: "default", badge: offen } } },
             },
           }),
         },

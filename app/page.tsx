@@ -12581,6 +12581,27 @@ export default function ClubMemberOrganisationApp() {
   const [postfachLaedt, setPostfachLaedt] = useState(false);
   const [ungelesen, setUngelesen] = useState(0);
 
+  /* Dieselbe Zahl auch auf das App-Symbol.
+   *
+   * Der Versender setzte bisher fest badge: 1, und nichts hat den Zaehler je
+   * zurueckgesetzt - wer einmal eine Push-Nachricht bekommen hatte, trug
+   * seitdem dauerhaft eine 1 auf dem Symbol. Die Serverseite schickt jetzt die
+   * echte Zahl; hier bleibt sie in Bewegung.
+   *
+   * An "ungelesen" zu haengen statt an fuenf einzelnen Stellen ist Absicht:
+   * Diese Zahl steht ohnehin schon an der Glocke und wird beim Laden, beim
+   * Lesen, beim Loeschen und beim Leeren gepflegt. Was dort richtig ist, ist
+   * auf dem Symbol auch richtig - und es kann nicht auseinanderlaufen.
+   *
+   * Der Zaehler gehoert unter iOS zu den Mitteilungsrechten: Wer Push
+   * abgelehnt hat, sieht ihn nicht. Der Aufruf schadet dann trotzdem nicht. */
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    import("@capawesome/capacitor-badge")
+      .then(({ Badge }) => (ungelesen > 0 ? Badge.set({ count: ungelesen }) : Badge.clear()))
+      .catch(() => { /* Plugin fehlt in dieser Fassung - dann eben ohne Zahl */ });
+  }, [ungelesen]);
+
 
   /* Als benannte Funktion, damit der Bildschirm sie ueber "Erneut versuchen"
      noch einmal aufrufen kann. Vorher lief die Abfrage genau einmal beim
