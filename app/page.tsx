@@ -6656,7 +6656,12 @@ function TeamPenaltyCatalog({ user }) {
     if (!selectedTeamId) return;
     const vorher = teams;
     setTeams((liste) => liste.map((team) => (team.id === selectedTeamId ? { ...team, [feld]: wert } : team)));
-    if (!supabase || !databaseMembership) return;
+    /* Ohne Datenbank aendert der Schalter nur die Anzeige. Vorher stieg die
+       Funktion hier stumm aus: Der Schalter kippte, sah gespeichert aus und
+       war beim naechsten Laden zurueck. Wer im Demo-Betrieb prueft, ob eine
+       Einstellung wirkt, zog daraus den falschen Schluss - der Schalter tue
+       nichts, obwohl er in der echten App sofort speichert. */
+    if (!supabase || !databaseMembership) { setMessage(t("sys.nurAnzeigeOhneDatenbank")); return; }
     setSchaltet(feld);
     const { error } = await supabase.rpc("mannschaft_funktionen_setzen", {
       target_team: selectedTeamId,
@@ -6665,7 +6670,12 @@ function TeamPenaltyCatalog({ user }) {
       p_strafen: feld === "strafen_aktiv" ? wert : null,
     });
     setSchaltet("");
-    if (error) { setTeams(vorher); setMessage(t("sys.einstellungFehler")); }
+    /* Bewusst auch bei Erfolg eine Meldung. Der Schalter speichert sofort und
+       hat deshalb keinen Speicherknopf - ohne Rueckmeldung sieht man dem
+       Bildschirm aber nicht an, ob das geklappt hat, und sucht nach einem
+       Knopf, den es nicht gibt. */
+    if (error) { setTeams(vorher); setMessage(t("sys.einstellungFehler")); return; }
+    setMessage(t("sys.einstellungGespeichert"));
   };
   const canManageSeasons = databaseMembership && user.roles.some((role) => ["vorstand", "finanzmanager", "sysadmin", "vereinsadmin"].includes(role));
   useEffect(() => {
@@ -9069,6 +9079,18 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
       <SectionTitle eyebrow={t("pf.einstellungen2")} title={t("pf.einstellungen")} />
       <div className="space-y-2 mb-6">
         <ProfileSettingsCard icon={User} title={t("pf.persoenlich")} description="Stammdaten, Kontakte, Familie" color={C.secondary} onClick={() => setProfileFolder("personal")}/>
+        {/* Der Strafenkatalog gehoert auch den Athletinnen und Athleten: Sie
+            muessen nachsehen koennen, was eine Strafe kostet und was sie
+            selbst offen haben. Beim Abriegeln von "Verein & Mitgliedschaft"
+            ist er ihnen abhanden gekommen - er lag mit darin.
+            Trainer und Vereinsleitung finden ihn im Trainerbereich unter
+            "Mannschaftseinstellungen"; hier steht er nur fuer die uebrigen,
+            damit niemand zwei Wege zum selben Bildschirm sieht. Bearbeiten
+            darf dort ohnehin nur, wer die Mannschaft betreut - das entscheidet
+            der Bildschirm selbst. */}
+        {!user.roles.includes("trainer") && !darfVereinVerwalten(user)
+          && ["spieler", "teammanager", "kapitaen"].some((r) => user.roles.includes(r))
+          && <ProfileSettingsCard icon={ClipboardList} title={t("straf.katalog")} description={t("straf.katalogHinweis")} color={C.secondary} onClick={() => setProfileUnderlay("penalties")}/>}
         <ProfileSettingsCard icon={KeyRound} title={t("pf.konto")} description="Passwort, Sicherheit, Rechtliches, Account" color={AVATAR_FARBEN[2]} onClick={() => setProfileFolder("security")}/>
         {/* Die Sprache wird beim ersten Oeffnen gewaehlt - danach muss sie
             auch aenderbar sein. Ohne diese Karte waere die Wahl endgueltig,
@@ -9257,7 +9279,8 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
       {profileUnderlay === "feedback" && <ProfileUnderlay title="App bewerten" onClose={() => setProfileUnderlay("")}><FeedbackSettings/></ProfileUnderlay>}
       {profileUnderlay === "bug" && <ProfileUnderlay title="Fehler melden" onClose={() => setProfileUnderlay("")}><BugReportSettings user={user}/></ProfileUnderlay>}
       {profileUnderlay === "trainer" && (user.roles.includes("trainer") || darfVereinVerwalten(user)) && <ProfileUnderlay title={t("pf.trainerRollen")} eyebrow="Mannschaftsverwaltung" onClose={() => setProfileUnderlay("")}><TrainerTeamSettings user={user} members={members} setMembers={setMembers}/></ProfileUnderlay>}
-      {profileUnderlay === "penalties" && (user.roles.includes("trainer") || darfVereinVerwalten(user)) && <ProfileUnderlay title={t("pf.mannschaftseinstellungen")} eyebrow="Mannschaftsverwaltung" onClose={() => setProfileUnderlay("")}><TeamPenaltyCatalog user={user}/></ProfileUnderlay>}
+      {profileUnderlay === "penalties" && (user.roles.includes("trainer") || darfVereinVerwalten(user)
+        || ["spieler", "teammanager", "kapitaen"].some((r) => user.roles.includes(r))) && <ProfileUnderlay title={t("pf.mannschaftseinstellungen")} eyebrow="Mannschaftsverwaltung" onClose={() => setProfileUnderlay("")}><TeamPenaltyCatalog user={user}/></ProfileUnderlay>}
       {profileUnderlay === "family" && <ProfileUnderlay title="Familie & Verknüpfungen" onClose={() => setProfileUnderlay("")}><SectionTitle eyebrow="Familie" title="Stammbaum"/><div className="mb-2"><FamilyTree user={user} members={members}/></div><div className="text-[11px] mb-5" style={{ color: C.textDim }}>{eligible ? t("help.berechtigt") : t("help.unter16")}</div><FamilyLinkManager user={user} members={members} setMembers={setMembers}/></ProfileUnderlay>}
       {profileUnderlay === "users" && darfVereinVerwalten(user) && <ProfileUnderlay title="Benutzerverwaltung" eyebrow="Sys-Administration" onClose={() => setProfileUnderlay("")}><SysAdminUserManager members={members} setMembers={setMembers}/></ProfileUnderlay>}
       {profileUnderlay === "board-overview" && darfVereinVerwalten(user) && <ProfileUnderlay title="Mitgliederübersicht" eyebrow="Vorstand" onClose={() => setProfileUnderlay("")}><BoardMemberOverview members={members} currentUser={user}/></ProfileUnderlay>}
