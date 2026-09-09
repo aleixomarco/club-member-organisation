@@ -4316,6 +4316,16 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
   const [eventFehler, setEventFehler] = useState("");
+  /* Sperre gegen das doppelte Absenden.
+     Der Speichern-Knopf war weder gesperrt noch gab es eine Pruefung im
+     Ablauf: Zwei Tipper hintereinander - auf dem Telefon leicht passiert,
+     wenn die Antwort einen Moment braucht - legten den Termin zweimal an.
+     Bei einer WIEDERHOLENDEN Reihe legten sie bis zu 85 Termine zweimal an,
+     und der Trainer haette jeden einzelnen von Hand wieder loeschen muessen. */
+  const [eventSpeichert, setEventSpeichert] = useState(false);
+  /* Siehe Chat: Der Zustand allein haelt zwei Klicks im selben Durchlauf nicht
+     auf, weil beide denselben alten Wert lesen. */
+  const eventSpeichertRef = useRef(false);
   const [eventDraft, setEventDraft] = useState(() => leererTerminentwurf());
   /* Die Standardansicht haengt an der Mitgliedschaft, nicht am Geraet. Wer auf
      dem Telefon "U15" gespeichert hat, will das auf dem Tablet auch - vorher
@@ -4432,6 +4442,22 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
   const resetEventDraft = () => setEventDraft(leererTerminentwurf(allowedEventTeams[0] || ""));
   const createSportEvent = async (event) => {
     event.preventDefault();
+    if (eventSpeichertRef.current) return;
+    eventSpeichertRef.current = true;
+    setEventSpeichert(true);
+    try {
+      await terminAnlegen();
+    } finally {
+      /* In finally, weil der Ablauf ein Dutzend vorzeitige Ausstiege hat -
+         fehlende Mannschaft, fehlender Titel, Fehler der Datenbank. Sie
+         einzeln aufzuraeumen hiesse, einen davon zu vergessen, und der Knopf
+         bliebe fuer immer gesperrt. */
+      eventSpeichertRef.current = false;
+      setEventSpeichert(false);
+    }
+  };
+
+  const terminAnlegen = async () => {
     const isClubEvent = eventDraft.type === "event";
     /* Diese beiden Pruefungen brachen frueher stumm ab: Der Speichern-Knopf tat
        schlicht nichts, ohne jeden Hinweis. */
@@ -4702,7 +4728,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
           <label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.beginnPflicht")}</span><input type="time" value={eventDraft.startTime} onChange={(e)=>setEventDraft({...eventDraft,startTime:e.target.value})} className="erg-datetime w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim,color:C.ink}}/></label>
           <label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.endePflicht")}</span><input type="time" value={eventDraft.endTime} onChange={(e)=>setEventDraft({...eventDraft,endTime:e.target.value})} className="erg-datetime w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim,color:C.ink}}/></label>
         </div>
-      </div> : <div className="space-y-2"><div className="flex gap-1.5 flex-wrap">{[["1","Mo"],["2","Di"],["3","Mi"],["4","Do"],["5","Fr"],["6","Sa"],["7","So"]].map(([num,label])=>{const n=Number(num);const active=eventDraft.weekdays.includes(n);return <button type="button" key={num} onClick={()=>setEventDraft({...eventDraft,weekdays:active?eventDraft.weekdays.filter((w)=>w!==n):[...eventDraft.weekdays,n]})} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?C.red:C.paperDim,color:active?C.white:C.textDim}}>{label}</button>;})}</div><div className="grid grid-cols-2 gap-2"><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.beginnPflicht")}</span><input type="time" value={eventDraft.startTime} onChange={(e)=>setEventDraft({...eventDraft,startTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></label><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.endePflicht")}</span><input type="time" value={eventDraft.endTime} onChange={(e)=>setEventDraft({...eventDraft,endTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></label></div><div className="grid grid-cols-2 gap-2"><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.ersterTermin")}</span><input type="date" value={eventDraft.rangeStart} onChange={(e)=>setEventDraft({...eventDraft,rangeStart:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></label><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.letzterTermin")}</span><input type="date" value={eventDraft.rangeEnd} onChange={(e)=>setEventDraft({...eventDraft,rangeEnd:e.target.value})} className="erg-datetime px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim,color:C.ink}}/></label></div></div>}<label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.ort")}</span><input value={eventDraft.location} onChange={(e)=>setEventDraft({...eventDraft,location:e.target.value})} placeholder={t("ph.ortPflicht")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></label><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.beschreibungLabel")}</span><textarea value={eventDraft.desc} onChange={(e)=>setEventDraft({...eventDraft,desc:e.target.value})} placeholder={t("feld.beschreibung")} rows={2} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none" style={{background:C.paperDim}}/></label><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.helferstationen")}</span><input value={eventDraft.helferStationen} onChange={(e)=>setEventDraft({...eventDraft,helferStationen:e.target.value})} placeholder={`${t("ph.helferstationen")} — ${sportText(t, currentClub?.sport, "dutyStationExamples")}`} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></label>{/* Die Meldung stand vorher IM Zweig fuer Einzeltermine. Bei einer Serie erschien sie deshalb nie, und das Speichern blieb wieder stumm - genau der Fehler, den sie beheben sollte. Jetzt steht sie vor der Knopfzeile und gilt fuer beide Zweige. */}{eventFehler && <div className="text-[10px] rounded-xl px-3 py-2" style={{background:C.fehlerFlaeche,color:C.fehler}}>{eventFehler}</div>}<div className="flex gap-2"><button type="submit" className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{background:C.ink,color:C.white}}>{t("allg.speichern")}</button><button type="button" onClick={()=>{setShowCreate(false);setEventFehler("");}} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{background:C.paperDim,color:C.textDim}}>{t("allg.abbrechen")}</button></div></form>}
+      </div> : <div className="space-y-2"><div className="flex gap-1.5 flex-wrap">{[["1","Mo"],["2","Di"],["3","Mi"],["4","Do"],["5","Fr"],["6","Sa"],["7","So"]].map(([num,label])=>{const n=Number(num);const active=eventDraft.weekdays.includes(n);return <button type="button" key={num} onClick={()=>setEventDraft({...eventDraft,weekdays:active?eventDraft.weekdays.filter((w)=>w!==n):[...eventDraft.weekdays,n]})} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?C.red:C.paperDim,color:active?C.white:C.textDim}}>{label}</button>;})}</div><div className="grid grid-cols-2 gap-2"><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.beginnPflicht")}</span><input type="time" value={eventDraft.startTime} onChange={(e)=>setEventDraft({...eventDraft,startTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></label><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.endePflicht")}</span><input type="time" value={eventDraft.endTime} onChange={(e)=>setEventDraft({...eventDraft,endTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></label></div><div className="grid grid-cols-2 gap-2"><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.ersterTermin")}</span><input type="date" value={eventDraft.rangeStart} onChange={(e)=>setEventDraft({...eventDraft,rangeStart:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></label><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.letzterTermin")}</span><input type="date" value={eventDraft.rangeEnd} onChange={(e)=>setEventDraft({...eventDraft,rangeEnd:e.target.value})} className="erg-datetime px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim,color:C.ink}}/></label></div></div>}<label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.ort")}</span><input value={eventDraft.location} onChange={(e)=>setEventDraft({...eventDraft,location:e.target.value})} placeholder={t("ph.ortPflicht")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></label><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.beschreibungLabel")}</span><textarea value={eventDraft.desc} onChange={(e)=>setEventDraft({...eventDraft,desc:e.target.value})} placeholder={t("feld.beschreibung")} rows={2} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none" style={{background:C.paperDim}}/></label><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.helferstationen")}</span><input value={eventDraft.helferStationen} onChange={(e)=>setEventDraft({...eventDraft,helferStationen:e.target.value})} placeholder={`${t("ph.helferstationen")} — ${sportText(t, currentClub?.sport, "dutyStationExamples")}`} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></label>{/* Die Meldung stand vorher IM Zweig fuer Einzeltermine. Bei einer Serie erschien sie deshalb nie, und das Speichern blieb wieder stumm - genau der Fehler, den sie beheben sollte. Jetzt steht sie vor der Knopfzeile und gilt fuer beide Zweige. */}{eventFehler && <div className="text-[10px] rounded-xl px-3 py-2" style={{background:C.fehlerFlaeche,color:C.fehler}}>{eventFehler}</div>}<div className="flex gap-2"><button type="submit" disabled={eventSpeichert} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{background:eventSpeichert?C.line:C.ink,color:C.white,opacity:eventSpeichert?.7:1}}>{eventSpeichert?t("allg.wirdGespeichert"):t("allg.speichern")}</button><button type="button" onClick={()=>{setShowCreate(false);setEventFehler("");}} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{background:C.paperDim,color:C.textDim}}>{t("allg.abbrechen")}</button></div></form>}
       <SponsorSlot slotKey="events_header" bookings={werbeplaetze} onImpression={onSponsorImpression} onClick={onSponsorClick} visible={featureEnabled("sponsor_events_header")} />
       <div className="flex items-center gap-2 mb-3">
         <div className="flex gap-2 overflow-x-auto pb-1 flex-1 min-w-0" style={{ scrollbarWidth: "none" }}>
@@ -5290,6 +5316,16 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
      ab. Die Regel gilt ausnahmslos: erst alle Hooks, dann jeder Ausstieg. */
   const [text, setText] = useState("");
   const [sendeFehler, setSendeFehler] = useState("");
+  const [sendet, setSendet] = useState(false);
+  /* Die Sperre liegt in einer REFERENZ, nicht nur im Zustand.
+     Zwei Klicks im selben Durchlauf - ein Doppeltipp auf dem Telefon ist genau
+     das - lesen beide denselben alten Zustandswert, weil React ihn erst zum
+     naechsten Zeichnen setzt. Beide kaemen also durch. Eine Referenz aendert
+     sich sofort und haelt den zweiten auf; der Zustand daneben dient nur der
+     Anzeige.
+     Nachgewiesen: Mit der reinen Zustandssperre stand die Testnachricht nach
+     zwei Klicks zweimal im Verlauf. */
+  const sendetRef = useRef(false);
   /* Abstimmungen. Der Stand kommt vollstaendig aus abstimmung_ergebnis() -
      einschliesslich der Entscheidung, ob das Ergebnis ueberhaupt gezeigt
      werden darf. Hier wird nichts nachgerechnet. */
@@ -5583,8 +5619,17 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
   };
 
   const send = async () => {
-    if (!text.trim() || !canPost) return;
+    if (!text.trim() || !canPost || sendetRef.current) return;
     const inhalt = text.trim();
+    /* Sperre UND das Feld sofort leeren. Ohne beides schickte ein zweiter
+       Tipp - auf dem Telefon leicht passiert, solange die Antwort laeuft -
+       dieselbe Nachricht ein zweites Mal: doppelt im Verlauf, doppelt als
+       Push bei allen anderen. Das Leeren geschieht vor dem Warten, damit das
+       Feld nicht scheinbar haengenbleibt; scheitert das Senden, kommt der
+       Text unten wieder hinein. */
+    sendetRef.current = true;
+    setSendet(true);
+    setText("");
 
     /* In der Datenbank gefuehrte Kanaele: schreiben und auf die Bestaetigung
        warten. Erst danach steht die Nachricht in der Ansicht - sonst sieht der
@@ -5600,6 +5645,10 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
         .maybeSingle();
       if (error) {
         setSendeFehler(t("chat.sendenFehler"));
+        /* Der Text kommt zurueck ins Feld - sonst waere er weg, obwohl er nie
+           angekommen ist. */
+        setText(inhalt);
+        freigeben();
         return;
       }
       if (gespeichert) {
@@ -5616,7 +5665,19 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
     /* Spiegelbild der Sichtbarkeit: Benachrichtigt wird, wer den Kanal auch
        sehen darf - siehe benachrichtigen(). */
     benachrichtigen(`${user.name}: ${inhalt}`);
-    setText("");
+    freigeben();
+  };
+
+  /* Erst im NAECHSTEN Durchlauf freigeben, nicht sofort.
+     Ohne Wartepunkt - im Demo-Betrieb, aber auch bei einer sehr schnellen
+     Antwort - laeuft send() vollstaendig innerhalb des ersten Klicks durch.
+     Die Sperre waere beim zweiten Klick schon wieder offen, und "text" traegt
+     dann immer noch den alten Wert, weil React setText("") erst zum naechsten
+     Zeichnen anwendet. Ergebnis: dieselbe Nachricht ein zweites Mal.
+     Nachgewiesen: Mit sofortiger Freigabe stand die Testnachricht nach drei
+     Klicks dreimal im Verlauf. */
+  const freigeben = () => {
+    requestAnimationFrame(() => { sendetRef.current = false; setSendet(false); });
   };
 
   return (
@@ -6527,7 +6588,13 @@ function TeamsView({ currentUser, members, setMembers, currentClub }) {
     if (!assignRuleId || !selectedPlayerId) return;
     setAssigningPenalty(true); setPenaltyMessage("");
     const { error } = await supabase.from("team_penalty_assignments")
-      .insert({ team_id: selectedTeamId, rule_id: assignRuleId, membership_id: selectedPlayerId, assigned_by: currentUser.id });
+      /* assigned_by zeigt auf profiles(id), nicht auf club_memberships(id) -
+         nachgeprueft am Fremdschluessel. Hier stand currentUser.id, also die
+         MITGLIEDSCHAFT: Der Eintrag scheiterte damit jedes Mal, und der
+         Bildschirm meldete nur "konnte nicht zugewiesen werden".
+         membership_id daneben ist dagegen richtig eine Mitgliedschaft - die
+         beiden Spalten meinen wirklich Verschiedenes. */
+      .insert({ team_id: selectedTeamId, rule_id: assignRuleId, membership_id: selectedPlayerId, assigned_by: currentUser.authProfileId });
     if (error) { setPenaltyMessage(t("straf.zuweisenFehler")); setAssigningPenalty(false); return; }
     setAssignRuleId(""); setPenaltyMessage(t("straf.wurdeZugewiesen")); setAssigningPenalty(false);
   };
@@ -6921,7 +6988,11 @@ function TeamPenaltyCatalog({ user }) {
     const rule = rules.find((r) => r.id === assignRuleId);
     if (databaseMembership) {
       const { error } = await supabase.from("team_penalty_assignments")
-        .insert({ team_id: selectedTeamId, rule_id: assignRuleId, membership_id: assignPlayerId, assigned_by: user.id });
+        /* Dieselbe Verwechslung wie in TeamsView: assigned_by zeigt auf
+           profiles, user.id ist die Mitgliedschaft. Zwei Zeilen weiter oben
+           wird created_by richtig mit authProfileId belegt - das Bauteil
+           kannte den Unterschied also, nur hier nicht. */
+        .insert({ team_id: selectedTeamId, rule_id: assignRuleId, membership_id: assignPlayerId, assigned_by: user.authProfileId });
       if (error) { setMessage(t("straf.zuweisenFehler")); setAssigning(false); return; }
       setLocalAssignments((current) => [...current]);
     } else {
@@ -12622,7 +12693,7 @@ export default function ClubMemberOrganisationApp() {
         /* Bestehende Eintraege behalten ihre im Geraet berechneten Felder
            (Punkte, Familienverknuepfungen); neue kommen dazu. Ein blosses
            Ersetzen wuerde diese Felder bei jedem Aktualisieren wegwerfen. */
-        const aktualisiert = data.map((row) => {
+        const aktualisiert = data.map((row, index) => {
           const rollen = (row.membership_roles || []).map((r) => r.role);
           const funktionen = row.team_members || [];
           const teams = [...new Set(funktionen.map((f) => f.teams?.name).filter(Boolean))];
@@ -12632,6 +12703,23 @@ export default function ClubMemberOrganisationApp() {
             id: row.id, authProfileId: row.profile_id, clubId: row.club_id,
             name: row.display_name, email: row.email || alt?.email || "",
             status: row.status, roles: rollen.length ? rollen : (alt?.roles || ["mitglied"]),
+            /* Dieselbe Ableitung wie beim Anmelden (loadSupabaseMembership).
+               Sie fehlte hier - und weil die Abfrage ausdruecklich auch
+               "pending" holt, kamen wartende Bewerber ohne dieses Feld in die
+               Liste. Fuer bereits bekannte Zeilen rettete "...(alt || {})" den
+               alten Wert, fuer NEUE blieb er undefined, also falsch.
+               Folge: Wer sich gerade beworben hatte, galt nach dem naechsten
+               Aktualisieren als vollwertiges Mitglied - stand zur Wahl
+               "Athlet/in der Saison", tauchte in jeder Personenauswahl auf und
+               bekam Chatnachrichten des Vereins ins Postfach. Nach Abmelden
+               und Anmelden war der Zustand wieder richtig; genau das machte
+               den Fehler sprunghaft.
+               Die Zeile steht bewusst NACH dem Streuen von alt, damit sie den
+               alten Wert ueberschreibt statt ihn zu erben. */
+            accountPending: !!row.is_managed_profile || row.status === "pending",
+            /* Ohne Farbe zeichnet der Avatarkreis mit background:undefined -
+               weisse Initialen auf durchsichtigem Grund. */
+            color: alt?.color || AVATAR_FARBEN[index % 5],
             team: teams[0] || alt?.team || null, teams,
             teamFilter: row.team_filter || "alle",
           };
