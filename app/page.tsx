@@ -6645,6 +6645,7 @@ function TeamPenaltyCatalog({ user }) {
     const { error } = await supabase.rpc("mannschaft_funktionen_setzen", {
       target_team: selectedTeamId,
       p_zusagen: feld === "zusagen_aktiv" ? wert : null,
+      p_zusagen_spiele: feld === "zusagen_spiele_aktiv" ? wert : null,
       p_strafen: feld === "strafen_aktiv" ? wert : null,
     });
     setSchaltet("");
@@ -6675,7 +6676,7 @@ function TeamPenaltyCatalog({ user }) {
         return;
       }
       const { data, error } = await supabase.from("team_members")
-        .select("team_id,function,teams(id,name,is_adult,zusagen_aktiv,strafen_aktiv)")
+        .select("team_id,function,teams(id,name,is_adult,zusagen_aktiv,zusagen_spiele_aktiv,strafen_aktiv)")
         .eq("membership_id", user.id)
         .in("function", ["spieler", "trainer", "teammanager", "kapitaen"]);
       if (error) { setMessage(t("tm.ladenFehler")); setLoading(false); return; }
@@ -6880,6 +6881,7 @@ function TeamPenaltyCatalog({ user }) {
         <div className="rounded-xl p-3 mb-3" style={{ background: C.paperDim }}>
           <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>{t("tm.wasDieMannschaftSieht")}</div>
           {[["zusagen_aktiv", t("tm.zusagenErlauben"), t("tm.zusagenErlaubenHinweis")],
+            ["zusagen_spiele_aktiv", t("tm.zusagenSpiele"), t("tm.zusagenSpieleHinweis")],
             ["strafen_aktiv", t("tm.strafenZeigen"), t("tm.strafenZeigenHinweis")]].map(([feld, titel, hinweis]) => {
             const an = gewaehlteMannschaft?.[feld] === true;
             return (
@@ -9030,6 +9032,20 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
       </div>
       </>}
 
+      {/* Trainerinnen und Trainer haben eigene Einstellungen, die weder in
+          die Vereinsverwaltung noch unter die eigenen Kontodaten gehoeren:
+          Sie betreffen die MANNSCHAFT, nicht den Verein und nicht die Person.
+          Vorher lagen sie in "Verein & Mitgliedschaft" - mit dem Abriegeln
+          dieses Ordners waeren sie fuer Trainer unerreichbar geworden.
+          Der Abschnitt erscheint nur, wenn jemand die Rolle auch hat. */}
+      {user.roles.includes("trainer") && <>
+      <SectionTitle eyebrow={t("rolle.trainer")} title={t("pf.trainerbereich")} />
+      <div className="space-y-2 mb-6">
+        <ProfileSettingsCard icon={Trophy} title={t("pf.trainerRollen")} description={t("pf.trainerRollenHinweis")} color={C.red} onClick={() => setProfileUnderlay("trainer")}/>
+        <ProfileSettingsCard icon={ClipboardList} title={t("pf.mannschaftseinstellungen")} description={t("pf.mannschaftseinstellungenHinweis")} color={C.secondary} onClick={() => setProfileUnderlay("penalties")}/>
+      </div>
+      </>}
+
       {/* Die zweite Augenbraue hiess ebenfalls "Verein verwalten" - ein
           Uebernahmefehler. Sichtbar wird er erst jetzt: Wer den Abschnitt
           darueber nicht mehr sieht, laese sonst "Verein verwalten" ueber
@@ -9127,8 +9143,6 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
               Sie gehoert zur Vereinsverwaltung und bekommt deren Rollen. */}
           {darfVereinVerwalten(user) && <ProfileSettingsCard icon={Eye} title="Mitgliederübersicht" description="Alle Vereinsmitglieder ansehen (nur lesen)" color={C.textDim} onClick={() => setProfileUnderlay("board-overview")}/>}
           {darfVereinVerwalten(user) && <ProfileSettingsCard icon={UserPlus} title="Beitrittsanfragen" description="Neue Mitglieder annehmen oder ablehnen" color={C.secondary} onClick={() => setProfileUnderlay("join-requests")}/>}
-          {user.roles.includes("trainer") && <ProfileSettingsCard icon={Trophy} title="Trainer & Rollen" description="Trainer-Mannschaften auswählen und Kapitänsrolle zuweisen" color={C.red} onClick={() => setProfileUnderlay("trainer")}/>}
-          {user.roles.some((role) => ["spieler", "trainer", "teammanager", "kapitaen"].includes(role)) && <ProfileSettingsCard icon={ClipboardList} title="Strafenkatalog" description="Regeln und Kosten der Mannschaften verwalten" onClick={() => setProfileUnderlay("penalties")}/>}
         </div>
       </ProfileUnderlay>}
 
@@ -9226,8 +9240,8 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
       {profileUnderlay === "calendar" && <ProfileUnderlay title="Kalender synchronisieren" onClose={() => setProfileUnderlay("")} onSave={entitlement.tier !== "none" ? ()=>sectionSaveRef.current?.() : undefined}><LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Kalender-Abo"><CalendarSyncSettings user={user} saveRef={sectionSaveRef}/></LockedFeature></ProfileUnderlay>}
       {profileUnderlay === "feedback" && <ProfileUnderlay title="App bewerten" onClose={() => setProfileUnderlay("")}><FeedbackSettings/></ProfileUnderlay>}
       {profileUnderlay === "bug" && <ProfileUnderlay title="Fehler melden" onClose={() => setProfileUnderlay("")}><BugReportSettings user={user}/></ProfileUnderlay>}
-      {profileUnderlay === "trainer" && <ProfileUnderlay title="Trainer & Rollen" eyebrow="Mannschaftsverwaltung" onClose={() => setProfileUnderlay("")}><TrainerTeamSettings user={user} members={members} setMembers={setMembers}/></ProfileUnderlay>}
-      {profileUnderlay === "penalties" && <ProfileUnderlay title="Strafenkatalog" eyebrow="Mannschaftsverwaltung" onClose={() => setProfileUnderlay("")}><TeamPenaltyCatalog user={user}/></ProfileUnderlay>}
+      {profileUnderlay === "trainer" && (user.roles.includes("trainer") || darfVereinVerwalten(user)) && <ProfileUnderlay title={t("pf.trainerRollen")} eyebrow="Mannschaftsverwaltung" onClose={() => setProfileUnderlay("")}><TrainerTeamSettings user={user} members={members} setMembers={setMembers}/></ProfileUnderlay>}
+      {profileUnderlay === "penalties" && (user.roles.includes("trainer") || darfVereinVerwalten(user)) && <ProfileUnderlay title={t("pf.mannschaftseinstellungen")} eyebrow="Mannschaftsverwaltung" onClose={() => setProfileUnderlay("")}><TeamPenaltyCatalog user={user}/></ProfileUnderlay>}
       {profileUnderlay === "family" && <ProfileUnderlay title="Familie & Verknüpfungen" onClose={() => setProfileUnderlay("")}><SectionTitle eyebrow="Familie" title="Stammbaum"/><div className="mb-2"><FamilyTree user={user} members={members}/></div><div className="text-[11px] mb-5" style={{ color: C.textDim }}>{eligible ? t("help.berechtigt") : t("help.unter16")}</div><FamilyLinkManager user={user} members={members} setMembers={setMembers}/></ProfileUnderlay>}
       {profileUnderlay === "users" && darfVereinVerwalten(user) && <ProfileUnderlay title="Benutzerverwaltung" eyebrow="Sys-Administration" onClose={() => setProfileUnderlay("")}><SysAdminUserManager members={members} setMembers={setMembers}/></ProfileUnderlay>}
       {profileUnderlay === "board-overview" && darfVereinVerwalten(user) && <ProfileUnderlay title="Mitgliederübersicht" eyebrow="Vorstand" onClose={() => setProfileUnderlay("")}><BoardMemberOverview members={members} currentUser={user}/></ProfileUnderlay>}
@@ -12815,7 +12829,7 @@ export default function ClubMemberOrganisationApp() {
     if (!isRealAccount || !currentUser?.clubId) return;
     const loadEvents = async () => {
       const { data, error } = await supabase.from("events")
-        .select("id,type,status,title,description,starts_at,location,home_away,series_id,helper_slots,created_by,created_at,teams(name,zusagen_aktiv)")
+        .select("id,type,status,title,description,starts_at,location,home_away,series_id,helper_slots,created_by,created_at,teams(name,zusagen_aktiv,zusagen_spiele_aktiv)")
         .eq("club_id", currentUser.clubId)
         /* Zwei Jahre zurueck, nach vorn unbegrenzt.
            Vorher kam die gesamte Geschichte mit - bei einem Verein mit fuenf
@@ -12842,7 +12856,13 @@ export default function ClubMemberOrganisationApp() {
              Mannschaft. Vereinsweite Termine haben keinen Trainer - dort
              bleibt die Frage stehen, weil sonst niemand sie freigeben
              koennte. */
-          zusagenAktiv: team ? team.zusagen_aktiv === true : true,
+          /* Zwei Schalter statt einem: Ein Trainer, der vor dem Training
+             wissen will, wer kommt, bekam die Abfrage bisher zwangslaeufig
+             auch unter jedes Spiel. zusagen_aktiv gilt jetzt fuer Trainings
+             und alles Uebrige, zusagen_spiele_aktiv fuer Spiele. */
+          zusagenAktiv: team
+            ? (row.type === "spiel" ? team.zusagen_spiele_aktiv === true : team.zusagen_aktiv === true)
+            : true,
           erstelltVon: row.created_by || null,
           erstelltAm: row.created_at || null,
           title: row.title,
