@@ -2332,7 +2332,7 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub, offeneS
           man vor dem Formular und weiss nicht, wieso man wieder hier ist. */}
       {verdraengt && (
         <div className="rounded-xl px-3.5 py-3 mb-5 text-[11px]" style={{ background: C.sekundaerWeich, border: `1px solid ${C.edge}`, color: C.ink, fontFamily: "Inter" }}>
-          Dieses Gerät wurde abgemeldet, weil dein Konto inzwischen auf zwei anderen Geräten angemeldet ist. Pro Konto sind zwei Geräte möglich. Melde dich hier wieder an — dann fällt stattdessen das älteste heraus.
+          {t("login.verdraengtHinweis")}
         </div>
       )}
 
