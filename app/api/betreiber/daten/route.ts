@@ -35,8 +35,18 @@ export async function GET() {
        Reiter "Werbeanzeigen" braucht. Sie stehen dort neben der eigenen
        Werbung, weil der Betreiber beim Verkauf eines Platzes wissen muss,
        was auf den anderen Plaetzen schon laeuft. Die Einzelheiten dazu
-       zeigt die Vereinsansicht ohnehin schon. */
-    admin.from("anzeigen").select("id,platz,titel,aktiv,laeuft_bis,impressionen,klicks,club_id,clubs(name)")
+       zeigt die Vereinsansicht ohnehin schon.
+
+       OHNE Einbetten des Vereinsnamens ueber clubs(name), obwohl das kuerzer
+       waere. Genau das hat diese Route lahmgelegt: Die neue Tabelle
+       anzeigen_statistik hat Fremdschluessel auf anzeigen UND clubs, PostgREST
+       liest sie deshalb als Verbindungstabelle zwischen beiden, und das
+       Einbetten wurde mehrdeutig - PGRST201, HTTP 500, keine Uebersicht mehr.
+       Ein Verweis "clubs!anzeigen_club_id_fkey(name)" wuerde es heute
+       aufloesen, aber die naechste Tabelle mit zwei Fremdschluesseln bricht
+       die naechste Abfrage. Der Name steht ohnehin schon in vereine; ihn dort
+       nachzuschlagen kann keine kuenftige Tabelle kaputtmachen. */
+    admin.from("anzeigen").select("id,platz,titel,aktiv,laeuft_bis,impressionen,klicks,club_id")
       .not("club_id", "is", null).order("platz"),
     /* Die Zahlen ueber alle Vereine hinweg. Sie liessen sich auch aus der
        Vereinsliste rechnen - aber nur die, die schon geladen ist. Wer
@@ -45,15 +55,31 @@ export async function GET() {
     admin.rpc("betreiber_kennzahlen"),
   ]);
 
-  if (vereine.error || anfragen.error || anzeigen.error || sponsoren.error) {
-    console.error("Betreiberübersicht konnte nicht geladen werden", vereine.error || anfragen.error || anzeigen.error || sponsoren.error);
+  /* Was die Uebersicht AUSMACHT, muss da sein: Vereine, Anfragen, die eigenen
+     Anzeigen. Faellt eines davon aus, ist die Seite ohne Aussage und sagt das
+     auch. */
+  if (vereine.error || anfragen.error || anzeigen.error) {
+    console.error("Betreiberübersicht konnte nicht geladen werden", vereine.error || anfragen.error || anzeigen.error);
     return NextResponse.json({ error: "Die Übersicht konnte nicht geladen werden." }, { status: 500 });
   }
 
-  /* Die Kennzahlen duerfen fehlen, ohne dass die Seite leer bleibt: Sie sind
-     eine Zusammenfassung dessen, was daneben ohnehin steht. Ein Fehler dort
-     kostet die Kopfzeile, nicht die Uebersicht. */
+  /* Kennzahlen und Sponsorenliste duerfen fehlen, ohne dass die Seite leer
+     bleibt. Beide sind Beiwerk: die einen eine Zusammenfassung dessen, was
+     daneben ohnehin steht, die andere eine Nachschlageliste fuer einen
+     Unterreiter.
+     Die Sponsorenliste stand bis eben in derselben Prüfung wie die
+     Vereinsliste - eine neu hinzugefuegte Nebenabfrage konnte damit die ganze
+     Konsole abschalten, und genau das ist passiert. Eine Ergaenzung darf nie
+     mehr kosten als sich selbst. */
   if (kennzahlen.error) console.error("Kennzahlen konnten nicht geladen werden", kennzahlen.error);
+  if (sponsoren.error) console.error("Sponsorenliste konnte nicht geladen werden", sponsoren.error);
+
+  /* Der Vereinsname zu einer club_id - nachgeschlagen statt eingebettet.
+     betreiber_uebersicht fuehrt jeden Verein, die Zuordnung ist also
+     vollstaendig. */
+  const vereinsName = new Map(
+    (vereine.data || []).map((v: Record<string, unknown>) => [v.id as string, String(v.name ?? "")]),
+  );
 
   return NextResponse.json({
     vereine: vereine.data || [],
@@ -61,11 +87,7 @@ export async function GET() {
     anzeigen: anzeigen.data || [],
     sponsoren: (sponsoren.data || []).map((a: Record<string, unknown>) => ({
       ...a,
-      /* Supabase liefert die verbundene Zeile je nach Beziehung als Objekt
-         oder als einelementige Liste. Beides hier auf einen Namen bringen,
-         damit die Oberflaeche nicht raten muss. */
-      verein: (Array.isArray(a.clubs) ? (a.clubs[0] as { name?: string })?.name : (a.clubs as { name?: string })?.name) || "—",
-      clubs: undefined,
+      verein: vereinsName.get(a.club_id as string) || "—",
     })),
     kennzahlen: kennzahlen.error ? null : (kennzahlen.data?.[0] ?? null),
   });
