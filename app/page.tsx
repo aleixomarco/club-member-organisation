@@ -1155,6 +1155,15 @@ const INITIAL_CLUBS = [
 /* ------------------------------------------------------------------ */
 /* Mock accounts                                                       */
 /* ------------------------------------------------------------------ */
+/* Die Rollen sind erfunden - aber nicht beliebig. Wer im Demo-Betrieb
+   nachsieht, WER WAS SEHEN DARF, zieht seine Schluesse daraus; weichen sie
+   vom echten Verein ab, sind die Schluesse falsch.
+   Genau das ist passiert: Jose Aleixo trug hier nur "trainer" und "mitglied",
+   im Verein ist er zusaetzlich Vereinsadministrator, Organisator und
+   Redakteur. Im Demo-Betrieb fehlte ihm deshalb der Abschnitt "Verein
+   verwalten" - und es sah aus, als greife die Rechtepruefung nicht.
+   Wer eine Rolle hier aendert, sollte sie deshalb gegen den echten Verein
+   halten. */
 const INITIAL_MEMBERS = [
   { id: "m1", clubId: DEMO_CLUB_ID, name: "Marco Aleixo", email: "marco@cmo.app", password: "demo", team: "Herren 1", number: 14, since: 2019, roles: ["sysadmin", "vorstand", "spieler", "mitglied"], color: C.red, points: 740, tippPoints: 14, badges: ["streak", "loyalty", "fairplay", "referrer"], birthdate: "1994-05-12" },
   { id: "m2", clubId: DEMO_CLUB_ID, name: "Marco Aleixo", email: "marco.kapitaen@cmo.app", password: "demo", team: "Damen 1", number: 7, since: 2021, roles: ["kapitaen", "spieler", "mitglied"], color: C.secondary, points: 410, tippPoints: 9, badges: ["loyalty"], birthdate: "1998-03-02" },
@@ -1165,7 +1174,7 @@ const INITIAL_MEMBERS = [
   { id: "m6", clubId: DEMO_CLUB_ID, name: "Simone Iwanowski", email: "simone@cmo.app", password: "demo", team: "Geschäftsstelle", number: null, since: 2020, roles: ["geschaeftsfuehrung", "mitglied"], color: AVATAR_FARBEN[2], points: 60, tippPoints: 4, badges: [], birthdate: "1980-11-03" },
   { id: "m7", clubId: DEMO_CLUB_ID, name: "Guido Rath", email: "guido@cmo.app", password: "demo", team: "Geschäftsstelle", number: null, since: 2022, roles: ["redakteur", "sponsorenmanager", "mitglied"], color: AVATAR_FARBEN[2], points: 40, tippPoints: 0, badges: [], birthdate: "1990-07-08" },
   { id: "m8", clubId: DEMO_CLUB_ID, name: "Simone Iwanowski", email: "simone.finanzen@cmo.app", password: "demo", team: "Geschäftsstelle", number: null, since: 2024, roles: ["finanzmanager", "mitglied"], color: AVATAR_FARBEN[2], points: 20, tippPoints: 0, badges: [], birthdate: "1988-04-19" },
-  { id: "m9", clubId: DEMO_CLUB_ID, name: "Jose Aleixo", email: "jose@cmo.app", password: "demo", team: "Herren 1", teams: ["Herren 1", "U15"], trainerTeams: ["Herren 1", "U15"], number: null, since: 2021, roles: ["trainer", "mitglied"], color: C.red, points: 35, tippPoints: 0, badges: [], birthdate: "1983-02-08" },
+  { id: "m9", clubId: DEMO_CLUB_ID, name: "Jose Aleixo", email: "jose@cmo.app", password: "demo", team: "Herren 1", teams: ["Herren 1", "U15"], trainerTeams: ["Herren 1", "U15"], number: null, since: 2021, roles: ["vereinsadmin", "organisator", "redakteur", "trainer", "mitglied"], color: C.red, points: 35, tippPoints: 0, badges: [], birthdate: "1983-02-08" },
   { id: "m10", clubId: DEMO_CLUB_ID, name: "Adrian Börkei", email: "adrian@cmo.app", password: "demo", team: "Damen 1", playerTeams: ["Damen 1"], number: null, since: 2023, roles: ["spieler", "mitglied"], color: AVATAR_FARBEN[2], points: 10, tippPoints: 0, badges: [] },
   { id: "m11", clubId: DEMO_CLUB_ID, name: "Sandro Caramano", email: "sandro@cmo.app", password: "demo", team: "Herren 1", playerTeams: ["Herren 1"], number: null, since: 2022, roles: ["spieler", "mitglied"], color: AVATAR_FARBEN[2], points: 10, tippPoints: 0, badges: [] },
   { id: "m12", clubId: DEMO_CLUB_ID, name: "Cristiano Neves", email: "cristiano@cmo.app", password: "demo", team: "Herren 2", playerTeams: ["Herren 2"], number: null, since: 2024, roles: ["spieler", "mitglied"], color: AVATAR_FARBEN[2], points: 10, tippPoints: 0, badges: [] },
