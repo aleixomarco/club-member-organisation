@@ -22,6 +22,41 @@ import { FirebaseMessaging } from "@capacitor-firebase/messaging";
  */
 const imGeraet = () => Capacitor.isNativePlatform();
 
+/* Welcher Token GEHOERT DIESEM GERAET.
+ *
+ * Beim Abmelden muss genau eine Zeile aus push_subscriptions verschwinden -
+ * die dieses Geraets. Dafuer braucht es den Token. Firebase liefert ihn
+ * normalerweise auf Zuruf, aber ausgerechnet im haeufigsten Abmeldefall nicht:
+ * Wer die Benachrichtigungen zuerst in den iOS-Einstellungen abschaltet und
+ * den Schalter danach in der App umlegt, bekommt von getToken() keinen Token
+ * mehr, weil die Erlaubnis schon weg ist.
+ *
+ * Vorher fiel der Code dann darauf zurueck, ALLE Zeilen des Mitglieds zu
+ * loeschen. Wer die App auf iPhone und iPad hatte und sie auf dem iPad
+ * abschaltete, bekam ab da auch auf dem iPhone nichts mehr - ohne jeden
+ * Hinweis, dass etwas passiert ist.
+ *
+ * Deshalb merkt sich jedes Geraet seinen Token selbst. Der Schluessel traegt
+ * die Mitgliedschaft, weil auf einem Geraet nacheinander verschiedene Konten
+ * angemeldet sein koennen.
+ *
+ * Alle Zugriffe in try/catch: In einem privaten Fenster und in manchen
+ * WebViews wirft schon das blosse Lesen von localStorage. Ein Merker, der
+ * fehlschlagen darf, ist besser als einer, der die Abmeldung mitreisst. */
+const tokenSchluessel = (membershipId: string) => `cmo.push.token.${membershipId}`;
+
+function tokenMerken(membershipId: string, token: string) {
+  try { window.localStorage.setItem(tokenSchluessel(membershipId), token); } catch { /* egal */ }
+}
+
+function gemerkterToken(membershipId: string): string {
+  try { return window.localStorage.getItem(tokenSchluessel(membershipId)) || ""; } catch { return ""; }
+}
+
+function merkerVergessen(membershipId: string) {
+  try { window.localStorage.removeItem(tokenSchluessel(membershipId)); } catch { /* egal */ }
+}
+
 async function tokenSpeichern(membershipId: string, token: string) {
   if (!supabase) return false;
   const plattform = Capacitor.getPlatform();
@@ -31,6 +66,7 @@ async function tokenSpeichern(membershipId: string, token: string) {
       { membership_id: membershipId, fcm_token: token, platform: plattform, last_seen_at: new Date().toISOString() },
       { onConflict: "membership_id,fcm_token" }
     );
+  if (!error) tokenMerken(membershipId, token);
   return !error;
 }
 
@@ -106,6 +142,7 @@ export async function pushTokenAuffrischen(membershipId: string): Promise<boolea
       { membership_id: membershipId, fcm_token: token, platform, last_seen_at: new Date().toISOString() },
       { onConflict: "membership_id,fcm_token" },
     );
+    if (!error) tokenMerken(membershipId, token);
     return !error;
   } catch {
     /* Still. Das hier laeuft im Hintergrund beim Start; ein Fehler darf den
@@ -155,6 +192,10 @@ export async function enablePushNotifications(membershipId: string): Promise<Ena
     const ua = navigator.userAgent || "";
     const platform = /iphone|ipad|ipod/i.test(ua) ? "ios" : /android/i.test(ua) ? "android" : "web";
 
+    /* Ohne Datenbank gibt es keine Zeile zu schreiben. Vorher warf die naechste
+       Zeile hier eine Ausnahme, die der umgebende catch zu "setup_failed"
+       machte - eine irrefuehrende Meldung fuer einen Betrieb ohne Datenbank. */
+    if (!supabase) return { error: "save_failed" };
     const { error } = await supabase
       .from("push_subscriptions")
       .upsert(
@@ -162,6 +203,7 @@ export async function enablePushNotifications(membershipId: string): Promise<Ena
         { onConflict: "membership_id,fcm_token" }
       );
     if (error) return { error: "save_failed" };
+    tokenMerken(membershipId, token);
 
     return { token };
   } catch (err) {
@@ -202,16 +244,22 @@ export async function disablePushNotifications(membershipId: string): Promise<{ 
   if (imGeraet()) {
     try {
       /* Erst die Zeile loeschen, dann den Token wegwerfen. Andersherum kennt
-         man den Token nicht mehr und muesste alle Zeilen dieses Mitglieds
-         loeschen - damit floege auch die Anmeldung eines zweiten Geraets raus. */
+         man den Token nicht mehr.
+         Liefert Firebase keinen - der Regelfall, wenn die Erlaubnis in den
+         iOS-Einstellungen schon entzogen wurde -, greift der eigene Merker.
+         Erst wenn auch der leer ist, bleibt nichts als alle Zeilen zu
+         loeschen; dann ist dieses Geraet das einzige, von dem wir je etwas
+         wussten. */
       const { token } = await FirebaseMessaging.getToken().catch(() => ({ token: "" }));
+      const meiner = token || gemerkterToken(membershipId);
       if (supabase) {
-        if (token) {
-          await supabase.from("push_subscriptions").delete().eq("membership_id", membershipId).eq("fcm_token", token);
+        if (meiner) {
+          await supabase.from("push_subscriptions").delete().eq("membership_id", membershipId).eq("fcm_token", meiner);
         } else {
           await supabase.from("push_subscriptions").delete().eq("membership_id", membershipId);
         }
       }
+      merkerVergessen(membershipId);
       await FirebaseMessaging.deleteToken().catch(() => {});
       return { success: true };
     } catch {
@@ -228,11 +276,15 @@ export async function disablePushNotifications(membershipId: string): Promise<{ 
     const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: registration || undefined }).catch(() => null);
     const { deleteToken } = await import("firebase/messaging");
     await deleteToken(messaging).catch(() => {});
-    if (token) {
-      await supabase.from("push_subscriptions").delete().eq("membership_id", membershipId).eq("fcm_token", token);
-    } else {
-      await supabase.from("push_subscriptions").delete().eq("membership_id", membershipId);
+    const meiner = token || gemerkterToken(membershipId);
+    if (supabase) {
+      if (meiner) {
+        await supabase.from("push_subscriptions").delete().eq("membership_id", membershipId).eq("fcm_token", meiner);
+      } else {
+        await supabase.from("push_subscriptions").delete().eq("membership_id", membershipId);
+      }
     }
+    merkerVergessen(membershipId);
     return { success: true };
   } catch (err) {
     return { error: "failed" };
