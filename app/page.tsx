@@ -2050,7 +2050,13 @@ function NewClubScreen({ onCreate, goBack }) {
   const [busy, setBusy] = useState(false);
   const submit = async (e) => {
     e.preventDefault();
-    if (!form.name.trim() || !form.shortName.trim() || !form.registerNumber.trim()) { setError(t("verein.pflichtfelder")); return; }
+    /* Die Vereinsregisternummer steht hier nicht mehr. Ein nicht eingetragener
+       Verein hat keine, und wer gerade gruendet, hat sie noch nicht - beide
+       kamen sonst an dieser Zeile nicht vorbei. Die Datenbank laesst sie seit
+       20260909020000_registernummer_freiwillig ebenfalls weg; waere sie nur
+       hier gefallen, scheiterte das Anlegen weiter unten an
+       "Required club data missing". */
+    if (!form.name.trim() || !form.shortName.trim()) { setError(t("verein.pflichtfelder")); return; }
     setBusy(true); setError("");
     const ergebnis = await onCreate({
       id: form.name.trim().toLowerCase().replace(/[^a-z0-9äöüß]+/g, "-").replace(/^-+|-+$/g, "") + "-" + Date.now(),
