@@ -1947,7 +1947,9 @@ function ClubSelectScreen({ clubs, onSelect, goNewClub, goBack, onAbmelden, onKo
             <ClubLogo club={c} size={36} rounded={9} />
             <div className="text-left flex-1">
               <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{c.name}</div>
-              <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{c.city} · {mitWerten(t("allg.seitJahr"), { jahr: c.foundedYear })}</div>
+              {/* Stadt und Gruendungsjahr unterscheiden zwei gleichnamige
+                  Vereine - dafuer waren 11px zu wenig. */}
+              <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{c.city} · {mitWerten(t("allg.seitJahr"), { jahr: c.foundedYear })}</div>
             </div>
             <ChevronRight size={16} style={{ color: C.textDim, flexShrink: 0 }} />
           </button>
@@ -2594,24 +2596,44 @@ function WohnortFelder({ wert, onAendern, dicht }) {
   };
 
   const feldStil = { background: C.paperDim, color: C.ink, fontFamily: "Inter" };
-  const polster = dicht ? "px-3 py-2 text-xs" : "px-3.5 py-3 text-sm";
+  /* Auch die dichte Fassung bleibt bei 14px. Land, Postleitzahl und Ort sind
+     Suchfelder: Man tippt hinein und trifft eine Auswahl. Bei 12px auf 32px
+     Hoehe ist das auf dem Telefon zu klein - im Profil pflegen gerade die
+     aelteren Mitglieder ihre Adresse. Der Unterschied zwischen dicht und
+     nicht dicht liegt jetzt nur noch in der Hoehe. */
+  const polster = dicht ? "px-3.5 py-2.5 text-sm" : "px-3.5 py-3 text-sm";
   const beschriftung = (text) => (
     <span className="block text-[10px] font-bold mb-1" style={{ color: C.textDim }}>{text}</span>
   );
+  /* Die Trefferliste ist bewusst groesser als die Felder darueber. Sie wird
+     einmal gelesen und einmal angetippt, oft mit dem Daumen und waehrend die
+     Tastatur die halbe Anzeige einnimmt. 12px reichten dafuer nicht: Auf dem
+     Telefon stand dort "58675  H.  Nord..." - und was man raten muss, kann
+     man auch nicht bestaetigen. */
   const liste = (kinder) => (
-    <div className="absolute z-20 left-0 right-0 top-full mt-1 rounded-xl overflow-hidden shadow-xl"
-      style={{ background: C.blatt, border: `1px solid ${C.line}`, maxHeight: 210, overflowY: "auto" }}>
+    <div className="absolute z-20 left-0 right-0 top-full mt-1.5 rounded-2xl overflow-hidden shadow-xl"
+      style={{ background: C.blatt, border: `1px solid ${C.line}`, maxHeight: 320, overflowY: "auto" }}>
       {kinder}
     </div>
   );
-  const eintragsZeile = (e, schluessel) => (
+  /* Trennlinien zwischen den Zeilen: Bei vier Postleitzahlen desselben Ortes
+     ist sonst nicht zu sehen, wo eine Zeile aufhoert. */
+  const eintragsZeile = (e, schluessel, erste) => (
     <button type="button" key={schluessel} onMouseDown={(ev) => ev.preventDefault()}
       onClick={() => uebernehmen(e)}
-      className="w-full px-3 py-2 text-left text-xs flex items-baseline gap-2"
-      style={{ color: C.ink, fontFamily: "Inter" }}>
-      <span className="font-bold" style={{ minWidth: 54 }}>{e.plz}</span>
-      <span className="truncate">{e.ort}</span>
-      {e.region && <span className="text-[10px] truncate" style={{ color: C.textDim }}>{e.region}</span>}
+      className="w-full px-3.5 py-2.5 text-left"
+      style={{ color: C.ink, fontFamily: "Inter", borderTop: erste ? "none" : `1px solid ${C.line}` }}>
+      <div className="flex items-baseline gap-2.5 text-sm">
+        <span className="font-bold shrink-0" style={{ minWidth: 62 }}>{e.plz}</span>
+        <span className="truncate">{e.ort}</span>
+      </div>
+      {/* Das Bundesland steht in einer zweiten Zeile. Neben Postleitzahl und
+          Ort blieb davon "Nord..." uebrig - und ein abgeschnittenes
+          Unterscheidungsmerkmal unterscheidet nichts. Eingerueckt bis unter
+          den Ortsnamen: 62px Spalte plus 10px Abstand. */}
+      {e.region && (
+        <div className="text-xs mt-0.5 truncate" style={{ color: C.textDim, paddingLeft: 72 }}>{e.region}</div>
+      )}
     </button>
   );
 
@@ -2632,48 +2654,57 @@ function WohnortFelder({ wert, onAendern, dicht }) {
         {offen === "land" && liste(<>
           <input autoFocus value={landSuche} onChange={(e) => setLandSuche(e.target.value)}
             placeholder={t("ph.landSuchen")} aria-label={t("ph.landSuchen")}
-            className="w-full px-3 py-2 text-xs outline-none sticky top-0"
+            className="w-full px-3.5 py-3 text-sm outline-none sticky top-0"
             style={{ background: C.white, color: C.ink, borderBottom: `1px solid ${C.line}` }} />
-          {landTreffer.map((l) => (
+          {landTreffer.map((l, i) => (
             <button type="button" key={l.code} onClick={() => {
               /* Land gewechselt: Postleitzahl und Ort gehoeren zum alten Land
                  und werden geleert. */
               ortAutomatisch.current = false;
               onAendern({ ...wert, countryCode: l.code, postalCode: "", city: "" });
               setOffen(""); setLandSuche("");
-            }} className="w-full px-3 py-2 text-left text-xs flex items-center justify-between gap-2"
-              style={{ color: C.ink, fontFamily: "Inter" }}>
+            }} className="w-full px-3.5 py-3 text-left text-sm flex items-center justify-between gap-2"
+              style={{ color: C.ink, fontFamily: "Inter", borderTop: i ? `1px solid ${C.line}` : "none" }}>
               <span className="truncate">{l.name}</span>
-              <span className="text-[10px]" style={{ color: C.textDim }}>{l.code}</span>
+              <span className="text-xs shrink-0" style={{ color: C.textDim }}>{l.code}</span>
             </button>
           ))}
         </>)}
       </label>
 
-      {/* Postleitzahl und Ort - erst wenn ein Land feststeht */}
-      <div className="grid gap-2" style={{ gridTemplateColumns: "5fr 7fr" }}>
-        <label className="block relative">
-          {beschriftung(t("feld.plzPflicht"))}
-          <input value={plz} disabled={!land}
-            onChange={(e) => { setzen({ postalCode: e.target.value }); setOffen("plz"); }}
-            onFocus={() => setOffen("plz")}
-            onBlur={() => window.setTimeout(() => setOffen((o) => (o === "plz" ? "" : o)), 120)}
-            placeholder={t("ph.plz")} inputMode="numeric" autoComplete="postal-code"
-            className={`w-full rounded-xl outline-none ${polster}`}
-            style={{ ...feldStil, opacity: land ? 1 : 0.5 }} />
-          {offen === "plz" && plzTreffer.length > 0 && liste(plzTreffer.map((e, i) => eintragsZeile(e, `${e.plz}-${i}`)))}
-        </label>
-        <label className="block relative">
-          {beschriftung(t("feld.ort"))}
-          <input value={ort} disabled={!land}
-            onChange={(e) => { ortAutomatisch.current = false; setzen({ city: e.target.value }); setOffen("ort"); }}
-            onFocus={() => setOffen("ort")}
-            onBlur={() => window.setTimeout(() => setOffen((o) => (o === "ort" ? "" : o)), 120)}
-            placeholder={t("ph.ort")} autoComplete="address-level2"
-            className={`w-full rounded-xl outline-none ${polster}`}
-            style={{ ...feldStil, opacity: land ? 1 : 0.5 }} />
-          {offen === "ort" && ortTreffer.length > 0 && liste(ortTreffer.map((e, i) => eintragsZeile(e, `${e.plz}-${i}`)))}
-        </label>
+      {/* Postleitzahl und Ort - erst wenn ein Land feststeht.
+
+          Die Trefferliste haengt an der ZEILE, nicht am einzelnen Feld. Vorher
+          lag sie im Postleitzahlfeld, und das ist fuenf von zwoelf Raster-
+          einheiten breit: Von "58675 Hemer Nordrhein-Westfalen" blieb dort
+          "58675 H. Nord..." uebrig. Ueber die ganze Zeile gelegt steht der
+          Treffer vollstaendig da - und weil immer nur EINES der beiden Felder
+          offen ist, kommen sich die beiden Listen nicht in die Quere. */}
+      <div className="relative">
+        <div className="grid gap-2" style={{ gridTemplateColumns: "5fr 7fr" }}>
+          <label className="block">
+            {beschriftung(t("feld.plzPflicht"))}
+            <input value={plz} disabled={!land}
+              onChange={(e) => { setzen({ postalCode: e.target.value }); setOffen("plz"); }}
+              onFocus={() => setOffen("plz")}
+              onBlur={() => window.setTimeout(() => setOffen((o) => (o === "plz" ? "" : o)), 120)}
+              placeholder={t("ph.plz")} inputMode="numeric" autoComplete="postal-code"
+              className={`w-full rounded-xl outline-none ${polster}`}
+              style={{ ...feldStil, opacity: land ? 1 : 0.5 }} />
+          </label>
+          <label className="block">
+            {beschriftung(t("feld.ort"))}
+            <input value={ort} disabled={!land}
+              onChange={(e) => { ortAutomatisch.current = false; setzen({ city: e.target.value }); setOffen("ort"); }}
+              onFocus={() => setOffen("ort")}
+              onBlur={() => window.setTimeout(() => setOffen((o) => (o === "ort" ? "" : o)), 120)}
+              placeholder={t("ph.ort")} autoComplete="address-level2"
+              className={`w-full rounded-xl outline-none ${polster}`}
+              style={{ ...feldStil, opacity: land ? 1 : 0.5 }} />
+          </label>
+        </div>
+        {offen === "plz" && plzTreffer.length > 0 && liste(plzTreffer.map((e, i) => eintragsZeile(e, `${e.plz}-${i}`, i === 0)))}
+        {offen === "ort" && ortTreffer.length > 0 && liste(ortTreffer.map((e, i) => eintragsZeile(e, `${e.plz}-${i}`, i === 0)))}
       </div>
 
       {/* Was gerade passiert - oder eben nicht. Ein Feld ohne Vorschlaege
@@ -2932,8 +2963,20 @@ function NutzerWahl({ personen, wert, onWaehlen, leerLabel = "nicht zugewiesen",
     .sort((a, b) => String(a.name || "").trim().localeCompare(String(b.name || "").trim(), "de", { sensitivity: "base" }))
     .filter((p) => !q || String(p.name || "").toLowerCase().includes(q));
   const groesse = klein ? "text-[11px] px-2 py-1.5" : "text-xs px-3 py-2";
+  /* Der KNOPF richtet sich nach seiner Umgebung - er steht oft in einer engen
+     Zeile neben einer Aufgabe. Die aufgeklappte LISTE tut das nicht: Sie wird
+     gelesen und getroffen, nicht ueberflogen. Darum ist sie immer 14px gross,
+     auch wenn der Knopf darueber 11px klein ist. */
+  const listenGroesse = "text-sm px-3.5 py-2.5";
   return (
-    <div className="flex-1 min-w-0">
+    /* Solange die Liste offen ist, nimmt die Auswahl die ganze Zeile ein.
+       Zugeklappt steht sie neben Datumsfeld und Knopf und teilt sich die
+       Breite mit ihnen - aufgeklappt waere die Trefferliste dann nur ein
+       Drittel breit, und lange Namen brechen dort in drei 11px-Zeilen um.
+       flexBasis 100% schiebt die Nachbarn in die naechste Zeile; dazu tragen
+       die betroffenen Zeilen flex-wrap. In einem Elternteil ohne Flex - etwa
+       im Protokollkopf - hat die Angabe keine Wirkung. */
+    <div className="flex-1 min-w-0" style={{ flexBasis: offen ? "100%" : undefined }}>
       <button type="button" onClick={() => { setOffen((o) => !o); setSuche(""); }}
         aria-expanded={offen}
         className={`w-full text-left rounded-lg outline-none flex items-center justify-between gap-1 ${groesse}`}
@@ -2945,31 +2988,31 @@ function NutzerWahl({ personen, wert, onWaehlen, leerLabel = "nicht zugewiesen",
         <div className="mt-1 rounded-lg overflow-hidden" style={{ border: `1px solid ${C.line}`, background: C.glass }}>
           <input autoFocus value={suche} onChange={(e) => setSuche(e.target.value)}
             placeholder={t("ph.namenSuchen")} aria-label={t("feld.nutzerSuchen")}
-            className={`w-full outline-none ${groesse}`}
+            className={`w-full outline-none ${listenGroesse}`}
             style={{ background: C.white, color: C.ink, borderBottom: `1px solid ${C.line}` }} />
-          <div style={{ maxHeight: 190, overflowY: "auto" }}>
+          <div style={{ maxHeight: 280, overflowY: "auto" }}>
             <button type="button" onClick={() => { onWaehlen(""); setOffen(false); }}
-              className={`w-full text-left ${groesse}`} style={{ color: C.textDim, fontFamily: "Inter" }}>{leerLabel}</button>
+              className={`w-full text-left ${listenGroesse}`} style={{ color: C.textDim, fontFamily: "Inter" }}>{leerLabel}</button>
             {/* Vorschlaege zuerst, aber nur solange nicht gesucht wird - wer
                 tippt, will Treffer sehen, keine Sortierung nach Verdacht. */}
             {!q && (vorschlaege || []).length > 0 && (
               <>
-                <div className="px-2 py-1 text-[10px] font-bold" style={{ color: C.textDim, background: C.paperDim }}>{t("sys.vorschlag")}</div>
+                <div className="px-3.5 py-1.5 text-xs font-bold" style={{ color: C.textDim, background: C.paperDim }}>{t("sys.vorschlag")}</div>
                 {(personen || []).filter((p) => vorschlaege.includes(p.id)).map((p) => (
                   <button type="button" key={`v-${p.id}`} onClick={() => { onWaehlen(p.id); setOffen(false); }}
-                    className={`w-full text-left ${groesse}`}
+                    className={`w-full text-left ${listenGroesse}`}
                     style={{ color: C.ink, fontFamily: "Inter", fontWeight: 700, borderTop: `1px solid ${C.line}` }}>
                     {p.name}
                   </button>
                 ))}
-                <div className="px-2 py-1 text-[10px] font-bold" style={{ color: C.textDim, background: C.paperDim }}>{t("mit.alle")}</div>
+                <div className="px-3.5 py-1.5 text-xs font-bold" style={{ color: C.textDim, background: C.paperDim }}>{t("mit.alle")}</div>
               </>
             )}
             {treffer.length === 0 ? (
-              <div className={groesse} style={{ color: C.textDim }}>{t("allg.niemandGefunden")}</div>
+              <div className={listenGroesse} style={{ color: C.textDim }}>{t("allg.niemandGefunden")}</div>
             ) : treffer.map((p) => (
               <button type="button" key={p.id} onClick={() => { onWaehlen(p.id); setOffen(false); }}
-                className={`w-full text-left ${groesse}`}
+                className={`w-full text-left ${listenGroesse}`}
                 style={{ color: C.ink, fontFamily: "Inter", fontWeight: p.id === wert ? 700 : 500,
                          background: p.id === wert ? C.paperDim : "transparent", borderTop: `1px solid ${C.line}` }}>
                 {p.name}
@@ -3728,7 +3771,7 @@ function HelperSlots({ ev, members, currentUser, dutyPlan, setDutyPlan, eligible
       {darfVerwalten && ev.helperSlots?.length > 0 && (
         <div className="rounded-lg p-2 mt-1" style={{ background: C.paperDim }}>
           <div className="text-[10px] font-bold mb-1.5" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("helf.jemanden")}</div>
-          <div className="flex gap-1.5 items-start">
+          <div className="flex gap-1.5 items-start flex-wrap">
             <NutzerWahl personen={members} wert={eintragPerson} onWaehlen={setEintragPerson} leerLabel="Person wählen …" klein />
             <select value={eintragStation} onChange={(e) => setEintragStation(e.target.value)}
               aria-label={t("aria.stationWaehlen")}
@@ -5818,7 +5861,7 @@ function FamilyLinkManager({ user, members, setMembers, adminMode = false }) {
     <div className="flex items-center justify-between"><div><div className="text-sm font-bold" style={{color:C.ink}}>{t("fam.verknuepfung")}</div><div className="text-[11px]" style={{color:C.textDim}}>{adminMode ? `Sysadmin bearbeitet das Profil von ${user.name}.` : t("fam.selbstVerwalten")} Verknüpfungen gelten automatisch für beide Profile.</div></div><button disabled={saving} onClick={()=>setOpen(!open)} className="px-3 py-1.5 rounded-full text-xs font-bold" style={{background:C.paperDim,color:C.ink}}>{open?t("allg.schliessen"):t("fam.verknuepfenKnopf")}</button></div>
     {message&&<div className="mt-2 text-[11px] font-semibold" style={{color:C.red}}>{meldungstext(message)}</div>}
     {familyConnections.length>0&&<div className="mt-3 pt-3 space-y-1.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] font-bold mb-1" style={{color:C.textDim}}>BESTEHENDE VERKNÜPFUNGEN</div>{familyConnections.map((member)=><div key={member.id} className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{background:C.paperDim}}><div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold" style={{background:member.color,color:C.white}}>{initialsOf(member.name)}</div><div className="flex-1 min-w-0"><div className="text-xs font-bold truncate" style={{color:C.ink}}>{member.name}</div><div className="text-[10px]" style={{color:C.textDim}}>{(()=>{const v=(user.familyLinks||[]).find((l)=>l.memberId===member.id);return v?verwandtschaftLabel(t,v.wort,v.relation):t("fam.familie");})()}</div></div><button onClick={()=>removeConnection(member)} className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold" style={{background:C.fehlerFlaeche,color:C.fehler}}>{t("allg.loeschen")}</button></div>)}</div>}
-    {open&&<div className="mt-3 pt-3" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[11px] font-bold mb-1">{t("fam.rolle")}</div><div className="flex flex-wrap gap-1.5 mb-2">{VERWANDTSCHAFT.map((v)=><button type="button" key={v.id} onClick={()=>{setGrad(v.id);setQuery("");}} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:grad===v.id?C.red:C.paperDim,color:grad===v.id?C.white:C.textDim}}>{t(`fam.grad.${v.id}`)}</button>)}</div><input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder={userIsParent?t("ph.vorhandenenAthletSuchen"):t("ph.vorhandenesElternteilSuchen")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim}}/>{query&&<div className="space-y-1">{results.map(m=><button key={m.id} onClick={()=>connect(m.id)} className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs" style={{background:C.paperDim,color:C.ink}}><span>{m.name} · {m.team}</span><span style={{color:C.red}}>{t("fam.verbinden")}</span></button>)}{results.length===0&&<div className="text-[11px] py-2" style={{color:C.textDim}}>{t("fam.keinProfil")}</div>}</div>}{userIsParent&&<div className="mt-3 pt-3" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[11px] font-bold mb-2">{t("fam.kindAnlegen")}</div><div className="flex gap-2"><input value={newName} onChange={(e)=>setNewName(e.target.value)} placeholder={t("feld.vollerName")} className="flex-1 px-3 py-2 rounded-lg text-xs outline-none" style={{background:C.paperDim}}/><button onClick={createDependent} disabled={!newName.trim()} className="px-3 rounded-lg text-xs font-bold" style={{background:newName.trim()?C.red:C.line,color:"#fff"}}>{t("allg.anlegen")}</button></div><div className="text-[10px] mt-2" style={{color:C.textDim}}>Das Kind kann sein vorläufiges Profil später beim Erstellen des eigenen Kontos übernehmen.</div></div>}</div>}
+    {open&&<div className="mt-3 pt-3" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[11px] font-bold mb-1">{t("fam.rolle")}</div><div className="flex flex-wrap gap-1.5 mb-2">{VERWANDTSCHAFT.map((v)=><button type="button" key={v.id} onClick={()=>{setGrad(v.id);setQuery("");}} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:grad===v.id?C.red:C.paperDim,color:grad===v.id?C.white:C.textDim}}>{t(`fam.grad.${v.id}`)}</button>)}</div><input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder={userIsParent?t("ph.vorhandenenAthletSuchen"):t("ph.vorhandenesElternteilSuchen")} className="w-full px-3.5 py-3 rounded-xl text-sm outline-none mb-2" style={{background:C.paperDim}}/>{query&&<div className="space-y-1">{results.map(m=><button key={m.id} onClick={()=>connect(m.id)} className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-lg text-sm" style={{background:C.paperDim,color:C.ink}}><span className="truncate text-left">{m.name} · {m.team}</span><span style={{color:C.red}}>{t("fam.verbinden")}</span></button>)}{results.length===0&&<div className="text-[11px] py-2" style={{color:C.textDim}}>{t("fam.keinProfil")}</div>}</div>}{userIsParent&&<div className="mt-3 pt-3" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[11px] font-bold mb-2">{t("fam.kindAnlegen")}</div><div className="flex gap-2"><input value={newName} onChange={(e)=>setNewName(e.target.value)} placeholder={t("feld.vollerName")} className="flex-1 px-3 py-2 rounded-lg text-xs outline-none" style={{background:C.paperDim}}/><button onClick={createDependent} disabled={!newName.trim()} className="px-3 rounded-lg text-xs font-bold" style={{background:newName.trim()?C.red:C.line,color:"#fff"}}>{t("allg.anlegen")}</button></div><div className="text-[10px] mt-2" style={{color:C.textDim}}>Das Kind kann sein vorläufiges Profil später beim Erstellen des eigenen Kontos übernehmen.</div></div>}</div>}
   </div>;
 }
 
@@ -7737,7 +7780,7 @@ function DutyTasksSection({ ev, currentUser, sport, onNeuLaden, dutyPlan, member
                 {task.dueDate ? ` · Frist ${new Date(task.dueDate).toLocaleDateString("de-DE")}` : ""}
               </div>
               {canManage && (
-                <div className="flex gap-1.5">
+                <div className="flex gap-1.5 flex-wrap">
                   <NutzerWahl personen={members} wert={task.assigneeId || ""} onWaehlen={(v) => assignTask(task.id, v)} leerLabel="niemand zugewiesen" klein />
                   <input type="date" value={task.dueDate || ""} onChange={(e) => setDueDate(task.id, e.target.value)} className="px-2 py-1.5 rounded-lg text-[11px] outline-none" style={{ background: C.glass, color: C.ink }}/>
                   <button onClick={() => toggleDone(task)} className="px-2 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: task.done ? C.erfolgFlaeche : C.white, color: task.done ? C.secondary : C.textDim }}>{task.done ? t("auf.erledigt") : t("auf.erledigtFrage")}</button>
@@ -8203,7 +8246,7 @@ function BoardMemberOverview({ members, currentUser }) {
     .sort((a, b) => a.name.localeCompare(b.name, "de"));
   return <div>
     <div className="text-[11px] mb-3" style={{ color: C.textDim }}>{t("mit.nurLesen")}</div>
-    <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("ph.mitgliedSuchen")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-3" style={{ background: C.paperDim, color: C.ink }}/>
+    <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("ph.mitgliedSuchen")} className="w-full px-3.5 py-3 rounded-xl text-sm outline-none mb-3" style={{ background: C.paperDim, color: C.ink }}/>
     {loading && !liveMembers && supabase && <div className="text-xs py-3" style={{ color: C.textDim }}>{t("allg.laedt")}</div>}
     {message && <div className="text-[11px] mb-2" style={{ color: C.red }}>{meldungstext(message)}</div>}
     <div className="space-y-2">
@@ -8211,8 +8254,10 @@ function BoardMemberOverview({ members, currentUser }) {
         <div className="flex items-center gap-3 mb-1.5">
           <div className="w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0" style={{ background: m.color, color: C.white }}>{initialsOf(m.name)}</div>
           <div className="flex-1 min-w-0">
-            <div className="text-xs font-bold truncate" style={{ color: C.ink }}>{m.name}</div>
-            <div className="text-[10px] truncate" style={{ color: C.textDim }}>{m.email || "—"}</div>
+            <div className="text-sm font-bold truncate" style={{ color: C.ink }}>{m.name}</div>
+            {/* Die E-Mail unterscheidet zwei gleiche Namen. In 10px und
+                abgeschnitten unterschied sie nichts. */}
+            <div className="text-xs truncate" style={{ color: C.textDim }}>{m.email || "—"}</div>
           </div>
           <ChevronRight size={14} style={{ color: C.textDim }}/>
         </div>
@@ -8464,7 +8509,7 @@ function SysAdminUserManager({ members, setMembers }) {
       <input value={suche} onChange={(e) => setSuche(e.target.value)}
         placeholder={selected ? t("ph.anderenNutzerSuchen") : t("ph.nutzerSuchen")}
         aria-label={t("feld.nutzerSuchen")}
-        className="w-full px-3 py-3 rounded-xl text-xs outline-none"
+        className="w-full px-3.5 py-3 rounded-xl text-sm outline-none"
         style={{ background: C.glass, border: `1px solid ${C.line}`, color: C.ink }} />
       {(!selected || suche.trim()) && (() => {
         const q = suche.trim().toLowerCase();
@@ -8475,10 +8520,10 @@ function SysAdminUserManager({ members, setMembers }) {
         return (
           <div className="mt-2 rounded-xl overflow-hidden" style={{ border: `1px solid ${C.line}`, background: C.glass, maxHeight: 260, overflowY: "auto" }}>
             {treffer.length === 0 ? (
-              <div className="px-3 py-3 text-xs" style={{ color: C.textDim }}>{t("allg.niemandGefunden")}</div>
+              <div className="px-3.5 py-3 text-sm" style={{ color: C.textDim }}>{t("allg.niemandGefunden")}</div>
             ) : treffer.map((member, i) => (
               <button key={member.id} onClick={() => { setSelectedId(member.id); setSuche(""); }}
-                className="w-full text-left px-3 py-2.5 text-xs"
+                className="w-full text-left px-3.5 py-3 text-sm"
                 style={{ color: C.ink, fontFamily: "Inter", fontWeight: member.id === selectedId ? 700 : 500,
                          borderTop: i ? `1px solid ${C.line}` : "none",
                          background: member.id === selectedId ? C.paperDim : "transparent" }}>
@@ -8573,7 +8618,7 @@ function ProfileDataSettings({ user, setMembers, saveRef }) {
         dieselbe Komponente: Wer beim Anmelden Vorschlaege bekommt und
         sie im Profil nicht mehr findet, haelt das zu Recht fuer einen
         Fehler. */}
-    {section(t("feld.adresse"), <><label className="block mb-2"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("ph.strasse")}</span><input value={form.street} onChange={(e)=>setForm({...form,street:e.target.value})} placeholder={t("ph.strasse")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/></label><WohnortFelder dicht wert={form} onAendern={(w)=>setForm({...form,...w})}/></>)}
+    {section(t("feld.adresse"), <><label className="block mb-2"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("ph.strasse")}</span><input value={form.street} onChange={(e)=>setForm({...form,street:e.target.value})} placeholder={t("ph.strasse")} className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none" style={inputStyle}/></label><WohnortFelder dicht wert={form} onAendern={(w)=>setForm({...form,...w})}/></>)}
   </div>;
 }
 
@@ -9802,9 +9847,9 @@ function TeilnehmerWahl({ alle, gewaehlt, onAendern }) {
             return (
               <button type="button" key={id} onClick={() => umschalten(id)}
                 aria-label={`${person?.name || id} entfernen`}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px]"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs"
                 style={{ background: C.ink, color: C.white, fontWeight: 700 }}>
-                {person?.name || t("allg.unbekannt")} <X size={10} />
+                {person?.name || t("allg.unbekannt")} <X size={13} />
               </button>
             );
           })}
@@ -9830,23 +9875,23 @@ function TeilnehmerWahl({ alle, gewaehlt, onAendern }) {
               </span>}
             </div>
             <input value={suche} onChange={(e) => setSuche(e.target.value)} placeholder={t("ph.nameSuchen")}
-              className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2"
+              className="w-full px-3.5 py-3 rounded-xl text-sm outline-none mb-2"
               style={{ background: C.white, border: `1px solid ${C.line}`, color: C.ink }} />
             <div className="flex-1 overflow-y-auto rounded-xl" style={{ border: `1px solid ${C.line}` }}>
               {gefiltert.length === 0 && (
-                <div className="px-3 py-4 text-xs text-center" style={{ color: C.textDim }}>{t("allg.keinTreffer")}</div>
+                <div className="px-3.5 py-4 text-sm text-center" style={{ color: C.textDim }}>{t("allg.keinTreffer")}</div>
               )}
               {gefiltert.map((m, i) => {
                 const drin = gewaehlt.includes(m.id);
                 return (
                   <button type="button" key={m.id} onClick={() => umschalten(m.id)}
-                    className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left"
+                    className="w-full flex items-center gap-2.5 px-3.5 py-3 text-left"
                     style={{ background: drin ? C.erfolgFlaeche : C.white, borderTop: i ? `1px solid ${C.line}` : "none" }}>
                     <span className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0"
                       style={{ background: drin ? C.erfolg : C.paperDim, border: `1px solid ${drin ? C.erfolg : C.line}` }}>
                       {drin && <Check size={12} color={C.white} />}
                     </span>
-                    <span className="text-xs" style={{ color: C.ink, fontWeight: drin ? 700 : 400 }}>{m.name}</span>
+                    <span className="text-sm" style={{ color: C.ink, fontWeight: drin ? 700 : 400 }}>{m.name}</span>
                   </button>
                 );
               })}
@@ -10024,7 +10069,7 @@ function ProtokollePanel({ members, protocols, setProtocols, clubId, onSpeichern
         <div className="rounded-2xl p-3 mb-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
           <input value={newTaskText} onChange={(e) => setNewTaskText(e.target.value)} placeholder={t("ph.neueAufgabe")}
             className="w-full px-3 py-2 rounded-lg text-sm outline-none mb-2" style={{ background: C.paperDim, fontFamily: "Inter", color: C.ink }} />
-          <div className="flex gap-2 mb-2">
+          <div className="flex gap-2 mb-2 flex-wrap">
             <NutzerWahl personen={members} wert={newTaskAssignee} onWaehlen={setNewTaskAssignee} />
             <input type="date" value={newTaskDue} onChange={(e) => setNewTaskDue(e.target.value)} className="text-xs px-2 py-1.5 rounded-lg outline-none" style={{ background: C.paperDim, fontFamily: "Inter", border: `1px solid ${C.line}` }} />
           </div>
@@ -10039,7 +10084,7 @@ function ProtokollePanel({ members, protocols, setProtocols, clubId, onSpeichern
                   <input value={t.text} onChange={(e) => updateDraftTask(t.id, { text: e.target.value })} className="flex-1 text-xs outline-none bg-transparent" style={{ fontFamily: "Inter", fontWeight: 600, color: C.ink }} />
                   <button onClick={() => removeDraftTask(t.id)}><X size={13} style={{ color: C.textDim }} /></button>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   <NutzerWahl personen={members} wert={t.assignee} onWaehlen={(v) => updateDraftTask(t.id, { assignee: v })} klein />
                   <input type="date" value={t.due} onChange={(e) => updateDraftTask(t.id, { due: e.target.value })} className="text-[11px] px-2 py-1.5 rounded-lg outline-none" style={{ background: C.paperDim, fontFamily: "Inter", border: `1px solid ${C.line}` }} />
                 </div>
