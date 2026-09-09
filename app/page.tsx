@@ -1193,12 +1193,18 @@ const tageAb = (tage, stunde, minute = 0) => {
   const zwei = (n) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${zwei(d.getMonth() + 1)}-${zwei(d.getDate())}T${zwei(d.getHours())}:${zwei(d.getMinutes())}:00`;
 };
+/* Zwei der Trainings tragen dieselbe seriesId. Ohne sie liesse sich im
+   Demo-Betrieb gar nicht pruefen, was beim Absagen einer Reihe passiert - die
+   Frage "nur dieser Termin oder die ganze Reihe?" erscheint nur, wenn der
+   Termin zu einer gehoert. Genau daran ist mir der Fall beim Pruefen zuerst
+   entgangen. */
+const DEMO_SERIE = "00000000-0000-4000-8000-0000000000a1";
 const EVENTS = [
-  { id: 1, type: "training", team: "Herren 1", title: "Training Herren 1", date: tageAb(2, 18, 30), location: "Hemberghalle, Iserlohn", desc: "Reguläres Mannschaftstraining. Schienbeinschoner nicht vergessen!", carpool: false, youthClassIds: ["herren1"] },
+  { id: 1, type: "training", team: "Herren 1", title: "Training Herren 1", seriesId: DEMO_SERIE, date: tageAb(2, 18, 30), location: "Hemberghalle, Iserlohn", desc: "Reguläres Mannschaftstraining. Schienbeinschoner nicht vergessen!", carpool: false, youthClassIds: ["herren1"] },
   { id: 2, type: "spiel", team: "Herren 1", title: "Heimspiel vs. Herringen", date: tageAb(7, 19, 0), location: "Hemberghalle, Iserlohn", desc: "Bundesliga, Spieltag 3. Support von den Rängen ist gewünscht!", carpool: false, home: true, helperSlots: ["Theke", "Zeitnahme", "Grill", "Kasse"] },
   { id: 3, type: "spiel", team: "Herren 1", title: "Auswärtsspiel bei ERC Wimbern", date: tageAb(14, 20, 0), location: "Wimbern · 85 km", desc: "Gemeinsame Abfahrt ab Hemberghalle. Fahrgemeinschaft bitte eintragen.", carpool: true, home: false },
   { id: 4, type: "event", title: "Sommerfest & Saisonabschluss", date: tageAb(21, 15, 0), location: "Vereinsheim am Hemberg", desc: "Grillen, Siegerehrung U11–U15, abends DJ. Familien sind herzlich willkommen.", carpool: false, helperSlots: ["Aufbau", "Kuchenbuffet", "Abbau"] },
-  { id: 5, type: "training", team: "Herren 1", title: "Torwarttraining Spezial", date: tageAb(9, 19, 0), location: "Hemberghalle", desc: "Extra-Einheit mit Torwarttrainer Miguel Costa.", carpool: false, youthClassIds: ["herren1", "damen1"] },
+  { id: 5, type: "training", team: "Herren 1", title: "Torwarttraining Spezial", seriesId: DEMO_SERIE, date: tageAb(9, 19, 0), location: "Hemberghalle", desc: "Extra-Einheit mit Torwarttrainer Miguel Costa.", carpool: false, youthClassIds: ["herren1", "damen1"] },
   { id: 6, type: "spiel", team: "Herren 1", title: "Heimspiel vs. Cronenberg", date: tageAb(28, 19, 0), location: "Hemberghalle, Iserlohn", desc: "Bundesliga, Spieltag 5.", carpool: false, home: true, helperSlots: ["Theke", "Zeitnahme", "Grill", "Kasse"] },
   { id: 7, type: "spiel", team: "U11", title: "U11 Heimspiel vs. Hüls", date: tageAb(13, 11, 0), location: "Hemberghalle, Iserlohn", desc: "Jugendspieltag der U11.", carpool: false, home: true },
   { id: 8, type: "spiel", team: "U15", title: "U15 bei RSC Cronenberg", date: tageAb(20, 13, 30), location: "Wuppertal", desc: "Auswärtsspiel der U15.", carpool: true, home: false },
@@ -3963,6 +3969,10 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
   const [open, setOpen] = useState(initialOpen);
   const [absageOffen, setAbsageOffen] = useState(false);
   const [absageGrund, setAbsageGrund] = useState("");
+  /* Bei einer Reihe wird zuerst der Umfang gewaehlt, dann der Grund getippt.
+     "" heisst: noch nicht gewaehlt - dann steht die Frage da, nicht das Feld.
+     Ein Einzeltermin ueberspringt den Schritt, dort gibt es nichts zu waehlen. */
+  const [absageUmfang, setAbsageUmfang] = useState("");
   const meta = typeMeta[ev.type];
 
   const helperEligible = ev.helperSlots ? (isFormalMember(currentUser) && (ev.type !== "spiel" || age(currentUser.birthdate) >= 16)) : false;
@@ -4012,23 +4022,51 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
               Das Feld ist Pflicht - ein leerer Grund ist kein Grund. */}
           {canCancelTraining && !ev.cancelled && (absageOffen ? (
             <div className="rounded-xl p-3 mb-3" style={{ background: C.fehlerFlaeche, border: `1px solid ${C.fehlerRand}` }}>
+              {/* Schritt 1 bei einer Reihe: Wie weit reicht die Absage?
+                  Die Frage steht VOR dem Grund, weil sie die Absage aendert und
+                  nicht nur begleitet - wer den Grund schon getippt hat und dann
+                  merkt, dass er die ganze Reihe meint, muesste sonst von vorn
+                  anfangen. Dieselbe Reihenfolge wie beim Loeschen. */}
+              {ev.seriesId && !absageUmfang ? (<>
+                <div className="text-[11px] font-bold mb-1" style={{ color: C.ink, fontFamily: "Inter" }}>{t("ev.reiheFrage")}</div>
+                <div className="text-[11px] mb-2.5" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("ev.absageWiederholtHinweis")}</div>
+                <button onClick={() => setAbsageUmfang("einzeln")}
+                  className="w-full py-2.5 rounded-lg text-xs font-bold mb-2"
+                  style={{ background: C.ink, color: C.white }}>{t("ev.nurDiesen")}</button>
+                <button onClick={() => setAbsageUmfang("serie")}
+                  className="w-full py-2.5 rounded-lg text-xs font-bold mb-2"
+                  style={{ background: C.white, color: C.fehler, border: `1px solid ${C.fehlerRand}` }}>{t("ev.ganzeReiheAbsagen")}</button>
+                <button onClick={() => { setAbsageOffen(false); setAbsageUmfang(""); setAbsageGrund(""); }}
+                  className="w-full py-2 text-xs font-bold" style={{ color: C.textDim }}>{t("allg.abbrechen")}</button>
+              </>) : (<>
+              {/* Schritt 2: der Grund. Bei einer Reihe steht darueber, was
+                  gerade abgesagt wird - sonst tippt man den Grund, ohne noch
+                  zu wissen, wofuer er gilt. */}
+              {ev.seriesId && (
+                <div className="text-[11px] mb-1.5" style={{ color: C.fehler, fontFamily: "Inter", fontWeight: 700 }}>
+                  {absageUmfang === "serie" ? t("ev.ganzeReiheAbsagen") : t("ev.nurDiesen")}
+                  {" · "}
+                  <button type="button" onClick={() => setAbsageUmfang("")} style={{ textDecoration: "underline" }}>{t("allg.aendern")}</button>
+                </div>
+              )}
               <div className="text-[11px] font-bold mb-1.5" style={{ color: C.ink, fontFamily: "Inter" }}>{t("ev.absageGrund")}</div>
               <input value={absageGrund} onChange={(e) => setAbsageGrund(e.target.value)} maxLength={140}
                 autoFocus placeholder={t("ph.absagegrundBeispiel")}
                 className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2"
                 style={{ background: C.white, border: `1px solid ${C.line}`, color: C.ink, fontFamily: "Inter" }} />
               <div className="flex gap-2">
-                <button onClick={() => { if (absageGrund.trim()) { onCancelTraining(ev.id, absageGrund.trim()); setAbsageOffen(false); setAbsageGrund(""); } }}
+                <button onClick={() => { if (absageGrund.trim()) { onCancelTraining(ev.id, absageGrund.trim(), ev.seriesId && absageUmfang === "serie" ? ev.seriesId : null); setAbsageOffen(false); setAbsageGrund(""); setAbsageUmfang(""); } }}
                   disabled={!absageGrund.trim()}
                   className="flex-1 py-2 rounded-lg text-xs font-bold"
                   style={{ background: absageGrund.trim() ? C.fehler : C.line, color: absageGrund.trim() ? C.white : C.textDim }}>
                   {t("ev.jetztAbsagen")}
                 </button>
-                <button onClick={() => { setAbsageOffen(false); setAbsageGrund(""); }}
+                <button onClick={() => { setAbsageOffen(false); setAbsageGrund(""); setAbsageUmfang(""); }}
                   className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>
-                  Abbrechen
+                  {t("allg.abbrechen")}
                 </button>
               </div>
+              </>)}
             </div>
           ) :           <button onClick={()=>setAbsageOffen(true)} className="w-full py-2.5 rounded-xl text-xs font-bold mb-3" style={{background:C.fehlerFlaeche,color:C.fehler,border: `1px solid ${C.fehlerRand}`}}>{meta.label}{ev.team?` für ${ev.team}`:""} absagen</button>)}{canCancelTraining&&<button onClick={()=>onDeleteTraining(ev.id, ev.team, ev.seriesId)} className="w-full py-2.5 rounded-xl text-xs font-bold mb-3" style={{background:C.paperDim,color:C.fehler}}>{meta.label} endgültig löschen</button>}
 
@@ -4362,7 +4400,25 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
      naechsten Laden war er auch beim Absagenden wieder da. Ein stummer
      Fehlschlag ist schlimmer als eine Fehlermeldung. */
   const [terminFehler, setTerminFehler] = useState("");
-  const cancelTraining = async (eventId, grund) => {
+  const cancelTraining = async (eventId, grund, seriesId) => {
+    /* Die ganze Reihe absagen laeuft ueber absage_serie und NICHT ueber
+       zwanzig einzelne Aufrufe. Zwei Gruende: Die Rechte gehoeren in die
+       Datenbank, und der Meldeausloeser erkennt eine Reihenabsage daran, dass
+       alle Termine dasselbe cancelled_at tragen - das entsteht nur, wenn EINE
+       Anweisung sie absetzt. Einzeln abgesetzt gaebe es wieder eine
+       Push-Nachricht je Termin.
+       Abgesagt werden nur Termine, die noch nicht begonnen haben. */
+    if (supabase && seriesId) {
+      const { data, error } = await supabase.rpc("absage_serie", { target_series: seriesId, grund: (grund || "").trim() });
+      if (error) { setTerminFehler(t("ev.absageFehler")); return; }
+      if (!data) { setTerminFehler(t("ev.absageNichtGespeichert")); return; }
+      setTerminFehler("");
+      const jetzt = Date.now();
+      setEvents((all) => all.map((item) => (item.seriesId === seriesId && !item.cancelled
+        && new Date(item.date).getTime() >= jetzt)
+        ? { ...item, cancelled: true, cancelledBy: currentUser.id } : item));
+      return;
+    }
     if (supabase && typeof eventId === "string") {
       const { data, error } = await supabase.from("events")
         .update({ status: "cancelled", cancelled_at: new Date().toISOString(),
