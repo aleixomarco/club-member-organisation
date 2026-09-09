@@ -6480,6 +6480,10 @@ function TeamsView({ currentUser, members, setMembers, currentClub }) {
   const databaseMembership = !!supabase && isDbId(currentUser.id);
   const canCreate = currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role));
   const canAssignPlayers = currentUser.roles.some((role) => ["vereinsadmin", "sysadmin", "trainer", "teammanager"].includes(role));
+  /* Eine geoeffnete Mannschaft ist eine Ebene. Der Pfeil oben links fuehrt
+     deshalb erst zurueck in die Mannschaftsliste und erst von dort zur
+     Startseite - und nicht in einem Sprung nach Hause. */
+  useZurueck(() => { setSelectedTeamId(""); setShowPlayerPicker(false); setEditingTeam(false); }, !!selectedTeamId);
   const [canManagePenalties, setCanManagePenalties] = useState(false);
   const [penaltyRules, setPenaltyRules] = useState([]);
   const [assignRuleId, setAssignRuleId] = useState("");
@@ -11941,6 +11945,25 @@ function useSprache() {
  * Komponenten eine Eigenschaft zu geben, die sie selbst nicht brauchen.
  * Deshalb ein Kontext, wie bei der Sprache.
  */
+/* Das Register fuer den Zurueck-Pfeil.
+   Eine Ansicht, die eine Detailebene oeffnet - eine Mannschaft, einen Kanal -,
+   meldet hier an, wie man sie wieder schliesst. Die Kopfzeile ruft immer den
+   ZULETZT angemeldeten Handler; so kommt man Ebene fuer Ebene heraus, in der
+   Reihenfolge, in der man hineingegangen ist. */
+const ZurueckKontext = React.createContext(null);
+function useZurueck(handler, aktiv) {
+  const anmelden = React.useContext(ZurueckKontext);
+  const gemerkt = useRef(handler);
+  gemerkt.current = handler;
+  useEffect(() => {
+    if (!aktiv || !anmelden) return undefined;
+    /* Der angemeldete Handler ruft ueber die Referenz - so bleibt die
+       Anmeldung stabil, auch wenn sich der Handler bei jedem Zeichnen neu
+       bildet. Ohne das meldete sich die Ansicht endlos an und wieder ab. */
+    return anmelden(() => gemerkt.current());
+  }, [aktiv, anmelden]);
+}
+
 const MitgliederKontext = React.createContext([]);
 
 /* Die Tabellen halten den Ersteller unterschiedlich fest: mal als
@@ -12528,23 +12551,46 @@ export default function ClubMemberOrganisationApp() {
   /* Angemeldet, aber (noch) ohne freigegebene Mitgliedschaft — siehe login(). */
   const [pendingAccount, setPendingAccount] = useState(null);
   const [tab, setTab] = useState("home");
-  const [tabHistory, setTabHistory] = useState([]);
+  /* Der Zurueck-Pfeil geht eine Ebene HOCH, nicht einen Schritt zurueck.
+     Vorher lag hier ein Verlaufsstapel: Wer Home -> Chat -> Teams ging, kam
+     ueber den Pfeil nach Chat zurueck - also seitwaerts, nicht hoch. Das ist
+     die Bedienung eines Browsers, nicht die einer App.
+     Jetzt gilt eine feste Ordnung:
+       Detailebene (z. B. eine geoeffnete Mannschaft) -> eine Ebene hoeher
+       Unterseite                                     -> ihr Reiter
+       ein Reiter                                     -> Startseite
+       Startseite                                     -> kein Pfeil
+     Die Detailebenen kennt die Kopfzeile nicht von selbst; sie liegen im
+     Zustand der einzelnen Ansichten. Deshalb ein Register: Wer eine Ebene
+     oeffnet, traegt sich mit useZurueck ein und wieder aus. */
+  const zurueckStapel = useRef([]);
+  const [zurueckTiefe, setZurueckTiefe] = useState(0);
+  const zurueckAnmelden = useCallback((handler) => {
+    zurueckStapel.current = [...zurueckStapel.current, handler];
+    setZurueckTiefe(zurueckStapel.current.length);
+    return () => {
+      zurueckStapel.current = zurueckStapel.current.filter((h) => h !== handler);
+      setZurueckTiefe(zurueckStapel.current.length);
+    };
+  }, []);
   const [showSplash, setShowSplash] = useState(true);
   const [eventFocusRequest, setEventFocusRequest] = useState(null);
-  const navigateTab = (nextTab) => {
-    setTab((current) => {
-      if (current !== nextTab) setTabHistory((h) => [...h, current]);
-      return nextTab;
-    });
-  };
-  const goBack = () => {
-    setTabHistory((h) => {
-      if (h.length === 0) return h;
-      setTab(h[h.length - 1]);
-      return h.slice(0, -1);
-    });
-  };
+  const navigateTab = (nextTab) => setTab(nextTab);
   const [subView, setSubView] = useState(null);
+
+  /* Immer nur EINE Ebene, von innen nach aussen.
+     Steht bewusst NACH der Deklaration von subView: kannHoeher wird beim
+     Zeichnen ausgewertet, nicht erst beim Klicken. Weiter oben warf es
+     deshalb bei jedem Durchlauf "Cannot access 'subView' before
+     initialization" - ein weisser Bildschirm. scripts/pruefe-typen.mjs hat
+     genau das gemeldet (TS2448). */
+  const eineEbeneHoch = () => {
+    const offen = zurueckStapel.current;
+    if (offen.length > 0) { offen[offen.length - 1](); return; }
+    if (subView) { setSubView(null); return; }
+    if (tab !== "home") { setTab("home"); }
+  };
+  const kannHoeher = zurueckTiefe > 0 || !!subView || tab !== "home";
   /* Neulade-Signal.
      Die Lader unten hingen allein an Nutzer und Verein - sie liefen also nur
      beim Anmelden oder beim Vereinswechsel. Wer die App offen liess, sah
@@ -13634,7 +13680,7 @@ export default function ClubMemberOrganisationApp() {
       : [...current.filter((item) => item.id !== member.id), member]);
     setSelectedClubId(member.clubId);
     setCurrentUserId(member.id);
-    setTab("home"); setTabHistory([]); setSubView(null);
+    setTab("home"); setSubView(null);
   };
   const loadSupabaseMembership = async (profileId, clubId) => {
     /* Ohne Verein gibt es nichts zu laden. Ohne diese Zeile ging die Abfrage
@@ -14332,7 +14378,7 @@ export default function ClubMemberOrganisationApp() {
     if (supabase) await supabase.auth.signOut();
     setCurrentUserId(null); setSelectedClubId(null);
     setMeineMitgliedschaften([]); setOffeneSitzung(null); setPendingAccount(null);
-    setAuthScreen("login"); setTab("home"); setTabHistory([]); setSubView(null); setStartseiteTeam(null);
+    setAuthScreen("login"); setTab("home"); setSubView(null); setStartseiteTeam(null);
   };
   useEffect(() => {
     if (!currentUser || !currentUser.autoLogoutDays) return;
@@ -14365,7 +14411,7 @@ export default function ClubMemberOrganisationApp() {
   const returnToClubOverview = () => {
     setCurrentUserId(null); setSelectedClubId(null);
     setAuthScreen(meineMitgliedschaften.length > 0 ? "meineVereine" : "club");
-    setTab("home"); setTabHistory([]); setSubView(null); setEventFocusRequest(null); setStartseiteTeam(null);
+    setTab("home"); setSubView(null); setEventFocusRequest(null); setStartseiteTeam(null);
   };
   /* "Alle ansehen" unter den Vereins-News.
      Stand vorher auf setChatChannelId("news") + Chat-Reiter - ein Rest aus der
@@ -14563,6 +14609,7 @@ export default function ClubMemberOrganisationApp() {
      dass sie durch jede Ebene gereicht werden muss. */
   return (
     <SprachKontext.Provider value={sprache || "de"}>
+    <ZurueckKontext.Provider value={zurueckAnmelden}>
     <MitgliederKontext.Provider value={members}>
     {updateProbe
       ? <UpdateSperre installiert="1.2" verfuegbar="1.3" storeUrl={null} probe onProbeEnde={() => setUpdateProbe(false)} />
@@ -14628,8 +14675,8 @@ export default function ClubMemberOrganisationApp() {
             ) : (
               <div className="erg-topbar flex items-center px-4 pt-3 pb-2 flex-shrink-0">
                 <div className="flex items-center gap-2">
-                  {tabHistory.length > 0 ? (
-                    <button onClick={goBack} aria-label={t("allg.zurueck")} className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
+                  {kannHoeher ? (
+                    <button onClick={eineEbeneHoch} aria-label={t("allg.zurueck")} className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
                       <ArrowLeft size={15} style={{ color: C.ink }} />
                     </button>
                   ) : (
@@ -14762,6 +14809,7 @@ export default function ClubMemberOrganisationApp() {
       </div>
     </div>
     </MitgliederKontext.Provider>
+    </ZurueckKontext.Provider>
     </SprachKontext.Provider>
   );
 }
