@@ -6900,6 +6900,18 @@ function TeamPenaltyCatalog({ user }) {
   return <div className="rounded-2xl p-4 mb-5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
     <div className="flex items-center gap-2 mb-1 text-sm font-bold" style={{ color: C.ink }}><ClipboardList size={16} style={{ color: C.red }}/> Strafenkatalog</div>
     <div className="text-[11px] mb-3" style={{ color: C.textDim }}>{t("straf.getrennt")}</div>
+    {/* Steht fest da, nicht erst nach dem Antippen.
+        Ohne Datenbank kippen die Schalter zwar, gespeichert wird nichts - und
+        genau das sieht man ihnen nicht an. Wer hier prueft, ob eine
+        Einstellung wirkt, haelt sie danach fuer kaputt. Der Hinweis gehoert
+        deshalb VOR die Schalter, nicht als Meldung dahinter. */}
+    {!databaseMembership && (
+      <div className="rounded-xl px-3 py-2.5 mb-3 text-[11px] flex items-start gap-2"
+        style={{ background: C.paperDim, border: `1px dashed ${C.line}`, color: C.textDim }}>
+        <AlertCircle size={13} style={{ flexShrink: 0, marginTop: 1 }} />
+        <span>{t("sys.demoOhneSpeicher")}</span>
+      </div>
+    )}
     {loading ? <div className="text-xs py-3" style={{ color: C.textDim }}>{t("tm.laden")}</div> : teams.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Der Strafenkatalog ist nur für Erwachsenenmannschaften verfügbar. Dir ist aktuell keine Erwachsenenmannschaft als Athlet/in, Kapitän/in, Trainer/in oder Teammanager/in zugeordnet.</div> : <>
       <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>MANNSCHAFT</div>
       <select value={selectedTeamId} onChange={(event) => { setSelectedTeamId(event.target.value); setMessage(""); setShowHistory(false); }} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-3" style={{ background: C.paperDim, color: C.ink }}>{teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select>
