@@ -22,12 +22,33 @@ export default function PasswordResetPage() {
   useEffect(() => {
     if (!supabase) { setFailed(true); return; }
     let settled = false;
-    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "PASSWORD_RECOVERY" || session) { settled = true; setReady(true); }
+
+    /* Der Nachweis muss aus dem LINK kommen, nicht aus einer beliebigen
+       Anmeldung.
+       Vorher stand hier "if (event === \"PASSWORD_RECOVERY\" || session)" -
+       jede bestehende Sitzung schaltete das Formular frei. Wer ein
+       entsperrtes Telefon in die Hand bekam, konnte diese Seite aufrufen und
+       das Passwort des angemeldeten Kontos neu setzen, ohne das alte zu
+       kennen. Der reguläre Weg (Profil > Konto > Passwort ändern) verlangt
+       ausdrücklich das alte Passwort; hier ließ sich das umgehen.
+       Supabase hängt das Token als Fragment an die Adresse
+       (#access_token=…&type=recovery). Genau dieses "type=recovery" ist der
+       Nachweis - eine Sitzung allein ist keiner. */
+    const fragment = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const abfrage = new URLSearchParams(window.location.search);
+    const ausLink = fragment.get("type") === "recovery"
+      || abfrage.get("type") === "recovery"
+      || !!fragment.get("access_token")
+      || !!abfrage.get("code");
+
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") { settled = true; setReady(true); }
     });
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) { settled = true; setReady(true); }
-    });
+    if (ausLink) {
+      supabase.auth.getSession().then(({ data }) => {
+        if (data.session) { settled = true; setReady(true); }
+      });
+    }
     /* Ohne gültiges Token bleibt sonst ein Ladezustand stehen, der nie endet. */
     const timer = setTimeout(() => { if (!settled) setFailed(true); }, 4000);
     return () => { sub.subscription.unsubscribe(); clearTimeout(timer); };
