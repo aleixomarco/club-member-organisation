@@ -11,7 +11,7 @@ import {
   Bug, Smartphone, Save, Plus, Building2, ExternalLink, Phone, Copy, PlayCircle, ChevronUp
 , ListFilter, Globe, Download, BarChart3, GripVertical
 } from "lucide-react";
-import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { ANMELDUNG_MERKEN, isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { SPRACHEN, gespeicherteSprache, spracheMerken, uebersetze } from "@/lib/sprachen";
 import { enablePushNotifications, disablePushNotifications, listenForForegroundMessages, pushTokenAuffrischen } from "@/lib/firebase-push";
 import { Capacitor } from "@capacitor/core";
@@ -2236,6 +2236,16 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub, offeneS
   const [busy, setBusy] = useState(false);
   const [resetNote, setResetNote] = useState("");
   const [uebernahmeLaeuft, setUebernahmeLaeuft] = useState(false);
+  /* Vorgabe: ja. Wer nichts waehlt, bekommt genau das Verhalten von vorher -
+     die Anmeldung ueberlebt das Schliessen der App. Der Haken ist fuer den
+     umgekehrten Fall da: ein geteiltes Geraet im Vereinsheim, auf dem nicht
+     das Konto des Vorgaengers offen bleiben soll.
+     Gelesen wird der gespeicherte Wert, damit die Wahl beim naechsten Mal
+     wieder so dasteht, wie man sie gesetzt hat. */
+  const [merken, setMerken] = useState(true);
+  useEffect(() => {
+    try { setMerken(window.localStorage.getItem(ANMELDUNG_MERKEN) !== "nein"); } catch { /* gesperrt */ }
+  }, []);
 
   /* Die Mitgliedschaft dieser Sitzung im gerade gewaehlten Verein - falls es
      eine gibt. Nur dann lohnt der Knopf. */
@@ -2285,6 +2295,9 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub, offeneS
   const submit = async (e) => {
     onVerdraengtGelesen?.();
     e && e.preventDefault();
+    /* VOR dem Anmelden festhalten: Der Speicher entscheidet beim Schreiben der
+       Sitzung, wohin sie geht - danach waere es zu spaet. */
+    try { window.localStorage.setItem(ANMELDUNG_MERKEN, merken ? "ja" : "nein"); } catch { /* gesperrt */ }
     setBusy(true);
     const result = await onLogin(email.trim(), password);
     setBusy(false);
@@ -2360,6 +2373,27 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub, offeneS
         {error && <div className="flex items-center gap-1.5 text-xs mb-3" style={{ color: C.red, fontFamily: "Inter" }}><AlertCircle size={13} /> {error}</div>}
         <button type="button" onClick={requestReset} disabled={busy} className="text-xs mb-2 underline" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("login.vergessen")}</button>
         {resetNote && <div role="status" className="text-[11px] mb-3 rounded-xl px-3 py-2" style={{ background: C.erfolgFlaeche, color: C.erfolg, fontFamily: "Inter" }}>{resetNote}</div>}
+        {/* Direkt ueber dem Anmelden-Knopf - dort, wo man ihn liest, bevor
+            man drueckt. Die ganze Zeile ist anklickbar: Ein 20 Pixel grosses
+            Kaestchen ist auf dem Telefon kein Ziel. */}
+        <label className="flex items-center gap-2.5 mb-3 cursor-pointer">
+          <span className="flex items-center justify-center flex-shrink-0"
+            style={{ width: 20, height: 20, borderRadius: 6,
+                     border: `1.5px solid ${merken ? C.ink : C.line}`,
+                     background: merken ? C.ink : "transparent" }}>
+            {merken && <Check size={12} style={{ color: C.white }} strokeWidth={3.5} />}
+          </span>
+          <input type="checkbox" checked={merken} onChange={(e) => setMerken(e.target.checked)}
+            className="sr-only" aria-label={t("login.anmeldungSpeichern")} />
+          <span className="min-w-0">
+            <span className="block text-xs" style={{ color: C.ink, fontFamily: "Inter", fontWeight: 600 }}>
+              {t("login.anmeldungSpeichern")}
+            </span>
+            <span className="block text-[10px] leading-snug" style={{ color: C.textDim, fontFamily: "Inter" }}>
+              {merken ? t("login.merkenAn") : t("login.merkenAus")}
+            </span>
+          </span>
+        </label>
         <button type="submit" disabled={busy} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm" style={{ background: C.ink, color: "#fff", fontFamily: "Inter", fontWeight: 700, opacity: busy ? 0.65 : 1 }}>
           {busy ? t("login.laeuft") : t("login.anmeldenKnopf")} {!busy && <ArrowRight size={15} />}
         </button>
