@@ -1175,7 +1175,7 @@ const INITIAL_MEMBERS = [
   { id: "m7", clubId: DEMO_CLUB_ID, name: "Guido Rath", email: "guido@cmo.app", password: "demo", team: "Geschäftsstelle", number: null, since: 2022, roles: ["redakteur", "sponsorenmanager", "mitglied"], color: AVATAR_FARBEN[2], points: 40, tippPoints: 0, badges: [], birthdate: "1990-07-08" },
   { id: "m8", clubId: DEMO_CLUB_ID, name: "Simone Iwanowski", email: "simone.finanzen@cmo.app", password: "demo", team: "Geschäftsstelle", number: null, since: 2024, roles: ["finanzmanager", "mitglied"], color: AVATAR_FARBEN[2], points: 20, tippPoints: 0, badges: [], birthdate: "1988-04-19" },
   { id: "m9", clubId: DEMO_CLUB_ID, name: "Jose Aleixo", email: "jose@cmo.app", password: "demo", team: "Herren 1", teams: ["Herren 1", "U15"], trainerTeams: ["Herren 1", "U15"], number: null, since: 2021, roles: ["vereinsadmin", "organisator", "redakteur", "trainer", "mitglied"], color: C.red, points: 35, tippPoints: 0, badges: [], birthdate: "1983-02-08" },
-  { id: "m10", clubId: DEMO_CLUB_ID, name: "Adrian Börkei", email: "adrian@cmo.app", password: "demo", team: "Damen 1", playerTeams: ["Damen 1"], number: null, since: 2023, roles: ["spieler", "mitglied"], color: AVATAR_FARBEN[2], points: 10, tippPoints: 0, badges: [] },
+  { id: "m10", clubId: DEMO_CLUB_ID, name: "Adrian Börkei", email: "adrian@cmo.app", password: "demo", team: "Damen 1", playerTeams: ["Damen 1"], number: null, since: 2023, roles: ["organisator", "mitglied"], color: AVATAR_FARBEN[2], points: 10, tippPoints: 0, badges: [] },
   { id: "m11", clubId: DEMO_CLUB_ID, name: "Sandro Caramano", email: "sandro@cmo.app", password: "demo", team: "Herren 1", playerTeams: ["Herren 1"], number: null, since: 2022, roles: ["spieler", "mitglied"], color: AVATAR_FARBEN[2], points: 10, tippPoints: 0, badges: [] },
   { id: "m12", clubId: DEMO_CLUB_ID, name: "Cristiano Neves", email: "cristiano@cmo.app", password: "demo", team: "Herren 2", playerTeams: ["Herren 2"], number: null, since: 2024, roles: ["spieler", "mitglied"], color: AVATAR_FARBEN[2], points: 10, tippPoints: 0, badges: [] },
   { id: "m13", clubId: DEMO_CLUB_ID, name: "Tobias Demke", email: "tobias@cmo.app", password: "demo", team: "U11", playerTeams: ["U11"], number: null, since: 2025, roles: ["spieler", "mitglied"], color: AVATAR_FARBEN[2], points: 10, tippPoints: 0, badges: [] },
@@ -11820,7 +11820,15 @@ function AdminView({
   const canSponsor = canManageSponsors(currentUser);
   const canDutyTemplates = dutyFeatureOn && !isAdmin(currentUser) && currentUser.roles.includes("organisator");
   const sponsorOnly = !isAdmin(currentUser) && canSponsor && !canDutyTemplates;
-  const restrictedOnly = !isAdmin(currentUser) && (canSponsor || canDutyTemplates);
+  /* Auch der reine Organisator gehoert in die eingeschraenkte Ansicht.
+     Vorher fiel er durch: canDutyTemplates verlangt zusaetzlich, dass die
+     Helferplanung im Verein eingeschaltet ist. Ist sie aus und ist er kein
+     Sponsorenmanager, war restrictedOnly falsch - und die volle
+     Verwaltungsliste haette ihm Bereiche gezeigt, die er nicht bedienen darf.
+     Die Umfragen stehen ohnehin in restrictedPanels, er sieht also nie eine
+     leere Seite. */
+  const restrictedOnly = !isAdmin(currentUser)
+    && (canSponsor || canDutyTemplates || currentUser.roles.includes("organisator"));
   const restrictedPanels = [
     ...(canSponsor ? [["sponsoring", "Sponsoring"]] : []),
     ...(canDutyTemplates ? [["duty-templates", t("help.saetzeTitel").replace("{begriff}", t(dutyCfg.dutyTabLabel))]] : []),
@@ -14887,7 +14895,13 @@ export default function ClubMemberOrganisationApp() {
                 {!subView && tab === "teams" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Teams-Verwaltung"><TeamsView currentUser={currentUser} members={clubMembers} setMembers={setMembers} currentClub={currentClub} /></LockedFeature>}
                 {!subView && tab === "chat" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Chat"><ChatView user={currentUser} channels={channels} setChannels={setChannels} activeId={chatChannelId} setActiveId={setChatChannelId} members={clubMembers} /></LockedFeature>}
                 {!subView && tab === "redaktion" && currentUserCanEditNews && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Redaktion"><RedaktionView user={currentUser} news={vereinsNews} setNews={setVereinsNews} /></LockedFeature>}
-                {!subView && tab === "admin" && (currentUserIsAdmin || currentUserCanEditSponsors) && (
+                {/* canManageDuty gehoert mit in die Bedingung: Der Reiter
+                    "Verwaltung" wird oben genau danach eingeblendet
+                    (isAdminUser || canEditSponsors || canManageDutyUser).
+                    Hier fehlte der dritte Teil - ein reiner Organisator sah
+                    den Reiter also in der Leiste und darunter eine leere
+                    Seite. */}
+                {!subView && tab === "admin" && (currentUserIsAdmin || currentUserCanEditSponsors || canManageDuty(currentUser)) && (
                   <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Verwaltung">
                   <AdminView bereichWunsch={verwaltungsBereich} onBereichUebernommen={() => setVerwaltungsBereich(null)}
                     goFahrzeuge={() => setSubView("vehicles")} goAufgaben={() => setSubView("tasks")} members={clubMembers} setMembers={setMembers} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} seasonVotes={seasonVotes}
