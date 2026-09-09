@@ -3856,6 +3856,13 @@ function CarpoolSection({ ev, currentUser }) {
   const t = useT();
   const [carpools, setCarpools] = useState([]);
   const [abfahrt, setAbfahrt] = useState("");
+  /* Datum und Uhrzeit getrennt, weil das Telefon dafuer zwei passende
+     Tastaturen hat - ein einzelnes datetime-local-Feld ist auf iOS ein
+     Walzenrad, in dem man beides zugleich drehen muss. Vorbelegt wird der Tag
+     des Termins: In aller Regel faehrt man am selben Tag los, und wer am
+     Vorabend startet, aendert eine Zahl statt vier zu tippen. */
+  const [abfahrtTag, setAbfahrtTag] = useState("");
+  const [abfahrtZeit, setAbfahrtZeit] = useState("");
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [seats, setSeats] = useState("");
@@ -3865,7 +3872,7 @@ function CarpoolSection({ ev, currentUser }) {
   const load = useCallback(async () => {
     setLoading(true);
     const { data, error } = await supabase.from("carpools")
-      .select("id,seats_available,note,departure,driver_membership_id,created_at,club_memberships(display_name),carpool_passengers(membership_id,club_memberships(display_name))")
+      .select("id,seats_available,note,departure,departure_at,driver_membership_id,created_at,club_memberships(display_name),carpool_passengers(membership_id,club_memberships(display_name))")
       .eq("event_id", ev.id)
       .order("created_at", { ascending: true });
     if (error) { setLoading(false); return; }
@@ -3875,7 +3882,7 @@ function CarpoolSection({ ev, currentUser }) {
         const m = Array.isArray(p.club_memberships) ? p.club_memberships[0] : p.club_memberships;
         return { membershipId: p.membership_id, name: m?.display_name || "—" };
       });
-      return { erstelltAm: row.created_at, id: row.id, seats: row.seats_available, departure: row.departure, note: row.note, driverId: row.driver_membership_id, driverName: driver?.display_name || "—", passengers };
+      return { erstelltAm: row.created_at, id: row.id, seats: row.seats_available, departure: row.departure, departureAt: row.departure_at, note: row.note, driverId: row.driver_membership_id, driverName: driver?.display_name || "—", passengers };
     }));
     setLoading(false);
   }, [ev.id]);
@@ -3889,10 +3896,14 @@ function CarpoolSection({ ev, currentUser }) {
        App per roter Meldung genau die Eingabe verlangt hatte, die sie danach
        nicht mehr annehmen konnte. */
     if (!abfahrt.trim()) { setMessage(t("fzg.abfahrtsortFehlt")); return; }
+    /* Auch die Abfahrtszeit ist Pflicht. Ohne sie stand im Angebot nur ein
+       Ort, und wer mitfahren wollte, fragte im Chat nach der Uhrzeit - genau
+       diese Rueckfrage soll die App abnehmen. */
+    if (!abfahrtTag || !abfahrtZeit) { setMessage(t("fzg.abfahrtszeitFehlt")); return; }
     setSaving(true); setMessage("");
-    const { error } = await supabase.from("carpools").insert({ event_id: ev.id, driver_membership_id: currentUser.id, seats_available: seatCount, departure: abfahrt.trim(), note: note.trim() || null });
+    const { error } = await supabase.from("carpools").insert({ event_id: ev.id, driver_membership_id: currentUser.id, seats_available: seatCount, departure: abfahrt.trim(), departure_at: new Date(`${abfahrtTag}T${abfahrtZeit}`).toISOString(), note: note.trim() || null });
     if (error) { setMessage(t("fzg.fahrgemeinschaftFehler")); setSaving(false); return; }
-    setSeats(""); setNote(""); setAbfahrt(""); setShowCreate(false); setSaving(false);
+    setSeats(""); setNote(""); setAbfahrt(""); setAbfahrtTag(""); setAbfahrtZeit(""); setShowCreate(false); setSaving(false);
     await load();
   };
   const join = async (carpoolId) => {
@@ -3929,7 +3940,8 @@ function CarpoolSection({ ev, currentUser }) {
                   <div className="text-xs font-bold" style={{ color: C.ink }}>{c.driverName} fährt{isDriver ? t("allg.duKlammer") : ""}</div>
                   <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: free > 0 ? C.erfolgFlaeche : C.fehlerFlaeche, color: free > 0 ? C.erfolg : C.fehler }}>{free > 0 ? `${free} frei` : "voll"}</span>
                 </div>
-                {c.departure && <div className="text-[10px] mb-1 flex items-start gap-1" style={{ color: C.ink }}><MapPin size={11} style={{ color: C.textDim, flexShrink: 0, marginTop: 1 }} /><span>Abfahrt: {c.departure}</span></div>}
+                {c.departure && <div className="text-[10px] mb-1 flex items-start gap-1" style={{ color: C.ink }}><MapPin size={11} style={{ color: C.textDim, flexShrink: 0, marginTop: 1 }} /><span>{t("fahr.abfahrtOrt")}: {c.departure}</span></div>}
+                {c.departureAt && <div className="text-[10px] mb-1 flex items-center gap-1" style={{ color: C.ink }}><Clock size={11} style={{ color: C.textDim, flexShrink: 0 }} /><span>{new Date(c.departureAt).toLocaleString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</span></div>}
                 {c.note && <div className="text-[10px] mb-1" style={{ color: C.textDim }}>{c.note}</div>}
                 {c.passengers.length > 0 && <div className="text-[10px] mb-1.5" style={{ color: C.textDim }}>Mitfahrer: {c.passengers.map((p) => p.name).join(", ")}</div>}
                 <div className="flex gap-2">
@@ -3944,15 +3956,36 @@ function CarpoolSection({ ev, currentUser }) {
           {carpools.length === 0 && <div className="text-[11px] rounded-xl p-2.5" style={{ background: C.paperDim, color: C.textDim }}>{t("fahr.keine")}</div>}
         </div>
         {!showCreate ? (
-          <button onClick={() => setShowCreate(true)} className="w-full py-2 rounded-lg text-xs font-bold" style={{ background: C.ink, color: C.white }}>{t("fahr.anbieten")}</button>
+          <button onClick={() => {
+            const tag = ev?.date ? new Date(ev.date) : null;
+            if (tag && !Number.isNaN(tag.getTime())) {
+              /* Ortszeit, nicht toISOString - das waere UTC und schoebe den Tag
+                 abends um eine Stelle nach vorn. */
+              const zweistellig = (z) => String(z).padStart(2, "0");
+              setAbfahrtTag(`${tag.getFullYear()}-${zweistellig(tag.getMonth() + 1)}-${zweistellig(tag.getDate())}`);
+            }
+            setShowCreate(true);
+          }} className="w-full py-2 rounded-lg text-xs font-bold" style={{ background: C.ink, color: C.white }}>{t("fahr.anbieten")}</button>
         ) : (
           <div className="rounded-xl p-2.5" style={{ background: C.paperDim }}>
             <input value={seats} onChange={(e) => setSeats(e.target.value)} inputMode="numeric" placeholder={t("ph.freiePlaetze")} className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-1.5" style={{ background: C.glass, color: C.ink }}/>
             <input value={abfahrt} onChange={(e) => setAbfahrt(e.target.value)} placeholder={t("ph.abfahrtsadresse")} className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-1.5" style={{ background: C.glass, color: C.ink }}/>
+            <div className="grid grid-cols-2 gap-1.5 mb-1.5">
+              <label className="block">
+                <span className="block text-[10px] font-bold mb-1" style={{ color: C.textDim }}>{t("fahr.abfahrtDatum")}</span>
+                <input type="date" value={abfahrtTag} onChange={(e) => setAbfahrtTag(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.glass, color: C.ink }} />
+              </label>
+              <label className="block">
+                <span className="block text-[10px] font-bold mb-1" style={{ color: C.textDim }}>{t("fahr.abfahrtUhrzeit")}</span>
+                <input type="time" value={abfahrtZeit} onChange={(e) => setAbfahrtZeit(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.glass, color: C.ink }} />
+              </label>
+            </div>
             <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={t("ph.notizKofferraum")} className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-1.5" style={{ background: C.glass, color: C.ink }}/>
             <div className="flex gap-2">
               <button onClick={createCarpool} disabled={saving || !seats.trim()} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: seats.trim() ? C.ink : C.line, color: C.white }}>{saving ? "…" : t("ev.anbieten")}</button>
-              <button onClick={() => { setShowCreate(false); setSeats(""); setNote(""); setAbfahrt(""); }} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>{t("allg.abbrechen")}</button>
+              <button onClick={() => { setShowCreate(false); setSeats(""); setNote(""); setAbfahrt(""); setAbfahrtTag(""); setAbfahrtZeit(""); }} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>{t("allg.abbrechen")}</button>
             </div>
           </div>
         )}
