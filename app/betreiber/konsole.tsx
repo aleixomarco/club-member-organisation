@@ -123,6 +123,7 @@ export default function BetreiberKonsole() {
   const [offen, setOffen] = useState<Verein | null>(null);
   const [meldung, setMeldung] = useState("");
   const [kennzahlen, setKennzahlen] = useState<Kennzahlen | null>(null);
+  const [exportLaeuft, setExportLaeuft] = useState(false);
   const [nurStille, setNurStille] = useState(false);
   const [nachricht, setNachricht] = useState<Verein | null>(null);
 
@@ -153,6 +154,43 @@ export default function BetreiberKonsole() {
     setLaeuft(false);
     if (!antwort.ok) { setFehler(inhalt.error || "Anmeldung fehlgeschlagen."); return; }
     setPasswort(""); await laden();
+  };
+
+  /* Der Export laeuft ueber einen unsichtbaren Link, nicht ueber
+     window.open: Ein neues Fenster wuerde vom Browser als Aufklappfenster
+     blockiert, sobald zwischen Klick und Antwort mehr als ein Augenblick
+     liegt - und die Mappe zu bauen dauert genau das.
+     Der Dateiname kommt aus der Antwort (Content-Disposition); ihn hier noch
+     einmal zu bilden hiesse, ihn an zwei Stellen zu pflegen. */
+  const exportieren = async () => {
+    if (exportLaeuft) return;
+    setExportLaeuft(true);
+    setFehler("");
+    try {
+      const antwort = await fetch("/api/betreiber/export");
+      if (!antwort.ok) {
+        const inhalt = await antwort.json().catch(() => null);
+        setFehler(inhalt?.error || "Der Export konnte nicht erstellt werden.");
+        return;
+      }
+      const kopf = antwort.headers.get("Content-Disposition") || "";
+      const name = /filename="([^"]+)"/.exec(kopf)?.[1] || "CMO-Vereinsdaten.xlsx";
+      const daten = await antwort.blob();
+      const adresse = URL.createObjectURL(daten);
+      const link = document.createElement("a");
+      link.href = adresse;
+      link.download = name;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      /* Die Adresse wieder freigeben - sonst haelt der Browser die ganze
+         Mappe im Speicher, bis die Seite neu geladen wird. */
+      URL.revokeObjectURL(adresse);
+    } catch {
+      setFehler("Der Export konnte nicht erstellt werden.");
+    } finally {
+      setExportLaeuft(false);
+    }
   };
 
   const abmelden = async () => {
@@ -231,7 +269,15 @@ export default function BetreiberKonsole() {
           {vereine.length} Vereine · {freigeschaltet} freigeschaltet · {anfragen.length} offene Anfragen
           {amLimit > 0 && <> · <b style={{ color: "#B3261E" }}>{amLimit} an der Grenze</b></>}
         </span>
-        <button onClick={abmelden} style={{ ...knopfLeise, marginLeft: "auto" }}>Abmelden</button>
+        {/* Der Export steht neben dem Abmelden, nicht bei den Vereinen:
+            Er betrifft ALLE Daten, nicht den Verein, den man gerade ansieht.
+            Ein Knopf in einer Vereinszeile haette das Gegenteil nahegelegt. */}
+        <button onClick={exportieren} disabled={exportLaeuft}
+          style={{ ...knopfLeise, marginLeft: "auto", opacity: exportLaeuft ? 0.6 : 1 }}
+          title="Alle Vereinsdaten als Excel-Mappe herunterladen">
+          {exportLaeuft ? "Mappe wird gebaut …" : "Excel-Export"}
+        </button>
+        <button onClick={abmelden} style={knopfLeise}>Abmelden</button>
       </header>
 
       {/* Die Zahlen ueber alle Vereine. Sie stehen bewusst VOR den Anfragen:
