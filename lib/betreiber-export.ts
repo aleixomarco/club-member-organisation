@@ -23,7 +23,7 @@ export type Spalte = {
   titel: string;
   feld: string;
   breite?: number;
-  art?: "text" | "zahl" | "geld" | "datum" | "zeitpunkt" | "ja_nein" | "liste";
+  art?: "text" | "zahl" | "geld" | "prozent" | "datum" | "zeitpunkt" | "ja_nein" | "liste";
 };
 
 export type Blatt = {
@@ -47,7 +47,8 @@ function wertFuer(art: Spalte["art"], roh: unknown): unknown {
   if (roh === null || roh === undefined) return null;
   switch (art) {
     case "zahl":
-    case "geld": {
+    case "geld":
+    case "prozent": {
       if (typeof roh === "number") return Number.isFinite(roh) ? roh : null;
       const n = Number(roh);
       /* NaN waere in Excel eine Fehlerzelle (#NUM!) und liesse sich weder
@@ -74,6 +75,10 @@ function zahlenformat(art: Spalte["art"]): string | undefined {
   switch (art) {
     case "geld": return '#,##0.00 "€"';
     case "zahl": return "#,##0";
+    /* Eine Quote braucht die Nachkommastelle. Mit "#,##0" stuende in der
+       Zelle 12,8 und auf dem Bildschirm 13 - eine Zahl, die niemand
+       nachrechnen kann und die bei jeder zweiten Anzeige falsch wirkt. */
+    case "prozent": return '#,##0.0 "%"';
     case "datum": return "DD.MM.YYYY";
     case "zeitpunkt": return "DD.MM.YYYY HH:mm";
     default: return undefined;

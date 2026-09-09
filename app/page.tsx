@@ -1685,7 +1685,11 @@ function SponsorSlot({ slotKey, bookings, onImpression, onClick, visible = true 
      ihres Zeitraums kommen die Aktionsfelder leer zurueck. Hier steht deshalb
      keine zweite, moeglicherweise abweichende Rechnung. */
   const laeuft = !!anzeige.aktion_titel;
-  const open = () => { onClick?.(slotKey); setShowDetails(true); };
+  /* Das Oeffnen der Karte ist der Sponsorenknopf selbst - im Bericht steht er
+     als "Anzeige geoeffnet". Alles, was danach im Inserat angetippt wird,
+     zaehlt getrennt: Wer nur die Karte oeffnet, hat hingesehen; wer anruft,
+     ist ein Kontakt. Eine Zahl fuer beides wuerde das verwischen. */
+  const open = () => { onClick?.(slotKey, "anzeige"); setShowDetails(true); };
 
   return (
     <>
@@ -1718,11 +1722,18 @@ function SponsorSlot({ slotKey, bookings, onImpression, onClick, visible = true 
                 <div className="text-sm font-bold mb-1" style={{ color: C.red }}>{anzeige.aktion_titel}</div>
                 {anzeige.aktion_text && <div className="text-[11px] leading-relaxed" style={{ color: C.ink }}>{anzeige.aktion_text}</div>}
                 {anzeige.aktion_bis && <div className="text-[10px] mt-2" style={{ color: C.textDim }}>Läuft noch bis {new Date(anzeige.aktion_bis).toLocaleDateString("de-DE")}</div>}
-                {anzeige.aktion_url && <a href={anzeige.aktion_url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between rounded-xl px-3 py-2.5 text-xs font-bold mt-2.5" style={{ background: C.red, color: C.aufPrimaer }}>{t("sp.zurAktion")} <ExternalLink size={14}/></a>}
+                {anzeige.aktion_url && <a href={anzeige.aktion_url} target="_blank" rel="noopener noreferrer" onClick={() => onClick?.(slotKey, "aktion")} className="flex items-center justify-between rounded-xl px-3 py-2.5 text-xs font-bold mt-2.5" style={{ background: C.red, color: C.aufPrimaer }}>{t("sp.zurAktion")} <ExternalLink size={14}/></a>}
               </div>
             )}
 
-            {anzeige.ziel_url && <a href={anzeige.ziel_url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between rounded-xl px-3 py-2.5 text-xs font-bold mt-3" style={{ background: C.paperDim, color: C.ink }}>{t("sp.website")} <ExternalLink size={14}/></a>}
+            {anzeige.ziel_url && <a href={anzeige.ziel_url} target="_blank" rel="noopener noreferrer" onClick={() => onClick?.(slotKey, "website")} className="flex items-center justify-between rounded-xl px-3 py-2.5 text-xs font-bold mt-3" style={{ background: C.paperDim, color: C.ink }}>{t("sp.website")} <ExternalLink size={14}/></a>}
+            {/* Anrufen und Schreiben sind die beiden Wege, auf denen aus einer
+                Einblendung ein Gespraech wird. Sie stehen deshalb als eigene
+                Knoepfe da und nicht als Text im Beschreibungsfeld - und werden
+                einzeln gezaehlt, weil genau das die Zahl ist, nach der ein
+                Sponsor fragt. */}
+            {anzeige.telefon && <a href={`tel:${String(anzeige.telefon).replace(/[^+0-9]/g, "")}`} onClick={() => onClick?.(slotKey, "telefon")} className="flex items-center justify-between rounded-xl px-3 py-2.5 text-xs font-bold mt-2" style={{ background: C.paperDim, color: C.ink }}>{t("sp.anrufen")} <Phone size={14}/></a>}
+            {anzeige.email && <a href={`mailto:${anzeige.email}`} onClick={() => onClick?.(slotKey, "email")} className="flex items-center justify-between rounded-xl px-3 py-2.5 text-xs font-bold mt-2" style={{ background: C.paperDim, color: C.ink }}>{t("sp.schreiben")} <Mail size={14}/></a>}
           </div>
           {anzeige.bild_url && <img src={anzeige.bild_url} alt={anzeige.titel} className="w-full block" style={{ maxHeight: 280, objectFit: "cover" }}/>}
         </div>
@@ -10534,6 +10545,351 @@ function OverviewPanel({ members, events, protocols, dutyPlan, seasonVotes, goPa
  * bleiben, eine Rabattaktion nicht. Wer eine Aktion eintraegt, muss deshalb
  * sagen, bis wann sie laeuft - die Datenbank besteht darauf, und dieses
  * Formular fragt vorher danach, statt den Fehler durchzureichen. */
+/* ------------------------------------------------------------------ */
+/* Kennzahlen einer Anzeige                                            */
+/* ------------------------------------------------------------------ */
+/* Was ein Sponsor wissen will - und warum zwei Zahlen dafuer nicht reichen.
+ *
+ * Bis hierher trug jede Anzeige genau zwei Werte: Einblendungen und Klicks.
+ * Wer damit vor einen Sponsor tritt, kann seine Frage nicht beantworten. Sie
+ * lautet nie "wie viele Klicks", sondern:
+ *
+ *   "Hat mich jemand angerufen?"      -> Telefon getrennt von Webseite
+ *   "Wann war etwas los?"             -> Tage statt einer Gesamtsumme
+ *   "Wie viele koennen mich sehen?"   -> Reichweite als Massstab
+ *
+ * Deshalb steht hier nicht eine Zahl gross in der Mitte, sondern eine
+ * Aufstellung, die man weitergeben kann.
+ *
+ * LIVE heisst: Die Seite fragt beim Oeffnen und danach alle 30 Sekunden nach,
+ * und sie schreibt dazu, von wann der Stand ist. Ein Dashboard ohne diesen
+ * Zeitstempel behauptet Aktualitaet, die es nicht belegen kann - und wer eine
+ * Zahl an einen Sponsor weitergibt, sollte sagen koennen, wann sie galt. */
+
+const KPI_FENSTER = [7, 30, 90, 365];
+
+function kpiElementName(t, element) {
+  if (element === "anzeige") return t("kpi.elAnzeige");
+  if (element === "website") return t("kpi.elWebsite");
+  if (element === "telefon") return t("kpi.elTelefon");
+  if (element === "email") return t("kpi.elEmail");
+  if (element === "aktion") return t("kpi.elAktion");
+  return element;
+}
+
+const kpiZahl = (n) => Number(n || 0).toLocaleString("de-DE");
+const kpiTag = (wert) => {
+  const d = new Date(wert);
+  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
+};
+const kpiDatum = (wert) => {
+  const d = new Date(wert);
+  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
+};
+
+/* Der Verlauf als Saeulen.
+ *
+ * Ohne Diagrammbibliothek: 90 Rechtecke sind kein Grund, 200 KB nachzuladen -
+ * und in einer App, die im Zug geoeffnet wird, ist das der Unterschied
+ * zwischen "da" und "laedt noch".
+ *
+ * Zwei Saeulen uebereinander statt nebeneinander: Bei 90 Tagen waere jede
+ * Saeule sonst zwei Pixel breit. Die helle ist die Einblendung, die dunkle
+ * der Klick - der Klick ist immer die kleinere Zahl und liegt deshalb
+ * sichtbar davor. */
+function KpiVerlauf({ verlauf }) {
+  const t = useT();
+  if (!verlauf || verlauf.length === 0) return null;
+  const hoehe = 92;
+  const groesste = Math.max(1, ...verlauf.map((v) => Number(v.impressionen) || 0), ...verlauf.map((v) => Number(v.klicks) || 0));
+  const breite = 100 / verlauf.length;
+
+  return (
+    <div>
+      <svg viewBox={`0 0 100 ${hoehe}`} preserveAspectRatio="none" className="w-full" style={{ height: 110 }} role="img" aria-label={t("kpi.verlauf")}>
+        {verlauf.map((v, i) => {
+          const e = ((Number(v.impressionen) || 0) / groesste) * (hoehe - 2);
+          const k = ((Number(v.klicks) || 0) / groesste) * (hoehe - 2);
+          const x = i * breite;
+          const w = Math.max(breite * 0.72, 0.35);
+          return (
+            <g key={v.tag}>
+              <rect x={x} y={hoehe - e} width={w} height={e} fill={C.sekundaerWeich} />
+              <rect x={x} y={hoehe - k} width={w} height={k} fill={C.secondary} />
+            </g>
+          );
+        })}
+      </svg>
+      <div className="flex justify-between mt-1">
+        <span className="text-[9px]" style={{ color: C.textDim, fontFamily: "JetBrains Mono" }}>{kpiTag(verlauf[0].tag)}</span>
+        <span className="text-[9px]" style={{ color: C.textDim, fontFamily: "JetBrains Mono" }}>{kpiTag(verlauf[verlauf.length - 1].tag)}</span>
+      </div>
+      <div className="flex items-center gap-4 mt-1.5">
+        <span className="flex items-center gap-1.5 text-[10px]" style={{ color: C.textDim }}>
+          <span className="w-2.5 h-2.5 rounded-sm" style={{ background: C.sekundaerWeich }} />{t("kpi.einblendungen")}
+        </span>
+        <span className="flex items-center gap-1.5 text-[10px]" style={{ color: C.textDim }}>
+          <span className="w-2.5 h-2.5 rounded-sm" style={{ background: C.secondary }} />{t("kpi.klicks")}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function KpiKachel({ wert, titel, unten }) {
+  return (
+    <div className="rounded-2xl px-3 py-2.5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
+      <div className="text-xl leading-tight" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>{wert}</div>
+      <div className="text-[10px] font-bold mt-0.5" style={{ color: C.ink }}>{titel}</div>
+      {unten && <div className="text-[9px] leading-snug mt-0.5" style={{ color: C.textDim }}>{unten}</div>}
+    </div>
+  );
+}
+
+/* Ein Balken je Element. Die laengste Zeile bestimmt die Breite, damit man
+   die Verhaeltnisse sieht, ohne die Zahlen nebeneinanderzulegen. */
+function KpiElemente({ elemente }) {
+  const t = useT();
+  if (!elemente || elemente.length === 0) {
+    return <div className="text-[11px]" style={{ color: C.textDim }}>{t("kpi.nochKeineKlicks")}</div>;
+  }
+  const groesste = Math.max(1, ...elemente.map((e) => Number(e.klicks) || 0));
+  return (
+    <div className="space-y-2">
+      {elemente.map((e) => (
+        <div key={e.element}>
+          <div className="flex items-baseline justify-between mb-1">
+            <span className="text-[11px]" style={{ color: C.ink, fontWeight: 600 }}>{kpiElementName(t, e.element)}</span>
+            <span className="text-[11px]" style={{ color: C.ink, fontFamily: "JetBrains Mono", fontWeight: 700 }}>{kpiZahl(e.klicks)}</span>
+          </div>
+          <div className="h-1.5 rounded-full overflow-hidden" style={{ background: C.paperDim }}>
+            <div className="h-full rounded-full" style={{ width: `${Math.round(((Number(e.klicks) || 0) / groesste) * 100)}%`, background: C.secondary }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SponsorKennzahlen({ anzeigeId, titel, platzLabel, vereinsName, onClose }) {
+  const t = useT();
+  const [tage, setTage] = useState(30);
+  const [daten, setDaten] = useState(null);
+  const [laedt, setLaedt] = useState(true);
+  const [fehler, setFehler] = useState("");
+  const [zeigeBericht, setZeigeBericht] = useState(false);
+  const [hinweis, setHinweis] = useState("");
+  /* Ein Merker, der wirklich abfaengt: Nach jedem await wird er geprueft,
+     BEVOR etwas gesetzt wird. Ein Merker, der nur gesetzt und nie gelesen
+     wird, sieht behoben aus und ist es nicht. */
+  const offen = useRef(true);
+  useEffect(() => { offen.current = true; return () => { offen.current = false; }; }, []);
+  useZurueck(onClose, true);
+
+  const laden = useCallback(async (still) => {
+    if (!supabase || !anzeigeId) { setLaedt(false); return; }
+    if (!still) setLaedt(true);
+    const { data, error } = await supabase.rpc("anzeigen_kennzahlen", { ziel: anzeigeId, tage });
+    if (!offen.current) return;
+    setLaedt(false);
+    if (error) { setFehler(t("kpi.ladenFehler")); return; }
+    setFehler(""); setDaten(data || null);
+  }, [anzeigeId, tage]);
+
+  useEffect(() => { laden(false); }, [laden]);
+  /* Nachfragen, solange die Seite offen ist. Dreissig Sekunden sind der
+     Mittelweg: schnell genug, dass zwei Leute nebeneinander dieselbe Zahl
+     sehen, selten genug, dass ein offener Bildschirm die Datenbank nicht
+     beschaeftigt. */
+  useEffect(() => {
+    if (!supabase || !anzeigeId) return undefined;
+    const uhr = setInterval(() => laden(true), 30000);
+    return () => clearInterval(uhr);
+  }, [laden, anzeigeId]);
+
+  const fenster = daten?.fenster || {};
+  const einblendungen = Number(fenster.impressionen) || 0;
+  const klicks = Number(fenster.klicks) || 0;
+  const elemente = daten?.elemente || [];
+  const kontakte = elemente.filter((e) => e.element !== "anzeige").reduce((summe, e) => summe + (Number(e.klicks) || 0), 0);
+  /* Die Klickrate steht nur da, wo sie etwas bedeutet. Bei drei Einblendungen
+     ist "33 %" keine Quote, sondern ein Zufall - und in einem Bericht an
+     einen Sponsor eine Behauptung, die beim naechsten Mal zusammenbricht. */
+  const quote = einblendungen >= 20 ? (klicks / einblendungen) * 100 : null;
+  const verlauf = daten?.verlauf || [];
+  const bester = verlauf.reduce((beste, v) => ((Number(v.klicks) || 0) > (Number(beste?.klicks) || 0) ? v : beste), null);
+  const vereine = daten?.vereine || [];
+
+  const berichtZeilen = () => {
+    const kopf = [
+      `${vereinsName || ""} — ${t("kpi.berichtTitel")}`.trim(),
+      `${titel}${platzLabel ? ` · ${platzLabel}` : ""}`,
+      `${t("kpi.zeitraum")}: ${kpiDatum(daten?.zeitraum?.von)} – ${kpiDatum(daten?.zeitraum?.bis)} (${daten?.zeitraum?.tage} ${t("kpi.tage")})`,
+      "",
+      `${t("kpi.einblendungen")}: ${kpiZahl(einblendungen)}`,
+    ];
+    for (const e of elemente) kopf.push(`${kpiElementName(t, e.element)}: ${kpiZahl(e.klicks)}`);
+    if (quote !== null) kopf.push(`${t("kpi.klickrate")}: ${quote.toFixed(1).replace(".", ",")} %`);
+    kopf.push("");
+    kopf.push(`${t("kpi.reichweite")}: ${kpiZahl(daten?.reichweite)}`);
+    if (bester && Number(bester.klicks) > 0) kopf.push(`${t("kpi.besterTag")}: ${kpiDatum(bester.tag)} (${kpiZahl(bester.klicks)})`);
+    kopf.push("");
+    kopf.push(`${t("kpi.stand")}: ${daten?.stand ? new Date(daten.stand).toLocaleString("de-DE") : "—"}`);
+    return kopf.join("\n");
+  };
+
+  const berichtTeilen = async () => {
+    const text = berichtZeilen();
+    try {
+      if (navigator.share) { await navigator.share({ title: `${t("kpi.berichtTitel")} — ${titel}`, text }); return; }
+      await navigator.clipboard.writeText(text);
+      setHinweis(t("kpi.kopiert"));
+    } catch {
+      /* Abgebrochenes Teilen ist kein Fehler - der Nutzer hat sich anders
+         entschieden. Nur wenn auch die Zwischenablage nicht will, sagen wir
+         etwas. */
+      try { await navigator.clipboard.writeText(text); setHinweis(t("kpi.kopiert")); } catch { setHinweis(t("kpi.teilenFehler")); }
+    }
+  };
+
+  return (
+    <div className="erg-underlay absolute inset-0 z-40 flex flex-col">
+      <div className="erg-underlay-bar flex items-center gap-3 px-4 py-3 flex-shrink-0" style={{ borderBottom: `1px solid ${C.line}` }}>
+        <button onClick={onClose} aria-label={t("aria.zurueckUebersicht")} className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: C.glass, border: `1px solid ${C.edge}` }}><ArrowLeft size={16}/></button>
+        <div className="flex-1 min-w-0">
+          <div className="text-[9px] uppercase tracking-widest font-bold" style={{ color: C.red }}>{zeigeBericht ? t("kpi.berichtTitel") : t("kpi.rubrik")}</div>
+          <div className="text-base font-bold truncate" style={{ fontFamily: "Oswald", color: C.ink }}>{titel}</div>
+        </div>
+        <button onClick={() => laden(false)} aria-label={t("kpi.aktualisieren")} className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: C.glass, border: `1px solid ${C.edge}`, opacity: laedt ? .5 : 1 }}><RefreshCw size={15}/></button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-24">
+        {fehler && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-3" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{fehler}</div>}
+        {hinweis && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-3" style={{ background: C.sekundaerWeich, color: C.ink }}>{hinweis}</div>}
+
+        {laedt && !daten && <div className="text-xs py-6 text-center" style={{ color: C.textDim }}>{t("allg.laedt")}</div>}
+
+        {daten && !zeigeBericht && (
+          <>
+            <div className="flex gap-1.5 mb-3">
+              {KPI_FENSTER.map((n) => (
+                <button key={n} onClick={() => setTage(n)} aria-pressed={tage === n}
+                  className="flex-1 py-2 rounded-xl text-[11px]"
+                  style={{ background: tage === n ? C.ink : C.paperDim, color: tage === n ? C.white : C.ink, fontWeight: 700, border: `1px solid ${C.line}` }}>
+                  {n === 365 ? t("kpi.jahr") : `${n} ${t("kpi.tage")}`}
+                </button>
+              ))}
+            </div>
+
+            <div className="text-[10px] mb-3" style={{ color: C.textDim, fontFamily: "JetBrains Mono" }}>
+              {t("kpi.stand")} {daten.stand ? new Date(daten.stand).toLocaleTimeString("de-DE") : "—"} · {t("kpi.aktualisiertSich")}
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              <KpiKachel wert={kpiZahl(einblendungen)} titel={t("kpi.einblendungen")} unten={`${t("kpi.gesamt")} ${kpiZahl(daten.gesamt?.impressionen)}`} />
+              <KpiKachel wert={kpiZahl(klicks)} titel={t("kpi.klicks")} unten={`${t("kpi.gesamt")} ${kpiZahl(daten.gesamt?.klicks)}`} />
+              <KpiKachel wert={quote === null ? "—" : `${quote.toFixed(1).replace(".", ",")} %`} titel={t("kpi.klickrate")} unten={quote === null ? t("kpi.zuWenigDaten") : t("kpi.klickrateHinweis")} />
+              <KpiKachel wert={kpiZahl(kontakte)} titel={t("kpi.kontakte")} unten={t("kpi.kontakteHinweis")} />
+            </div>
+
+            <div className="rounded-2xl p-3 mb-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
+              <div className="text-xs font-bold mb-2" style={{ color: C.ink }}>{t("kpi.verlauf")}</div>
+              {einblendungen === 0 && klicks === 0
+                ? <div className="text-[11px]" style={{ color: C.textDim }}>{t("kpi.nochNichts")}</div>
+                : <KpiVerlauf verlauf={verlauf} />}
+            </div>
+
+            <div className="rounded-2xl p-3 mb-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
+              <div className="text-xs font-bold mb-2" style={{ color: C.ink }}>{t("kpi.elemente")}</div>
+              <KpiElemente elemente={elemente} />
+            </div>
+
+            {vereine.length > 1 && (
+              <div className="rounded-2xl p-3 mb-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
+                <div className="text-xs font-bold mb-2" style={{ color: C.ink }}>{t("kpi.vereine")}</div>
+                {vereine.map((v) => (
+                  <div key={v.club_id} className="flex items-baseline justify-between py-1">
+                    <span className="text-[11px] truncate" style={{ color: C.ink }}>{v.verein}</span>
+                    <span className="text-[11px] flex-shrink-0 ml-2" style={{ color: C.textDim, fontFamily: "JetBrains Mono" }}>{kpiZahl(v.impressionen)} · {kpiZahl(v.klicks)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="rounded-2xl p-3 mb-3" style={{ background: C.paperDim, border: `1px solid ${C.line}` }}>
+              <div className="flex items-baseline justify-between">
+                <span className="text-[11px] font-bold" style={{ color: C.ink }}>{t("kpi.reichweite")}</span>
+                <span className="text-sm" style={{ color: C.ink, fontFamily: "Oswald", fontWeight: 700 }}>{kpiZahl(daten.reichweite)}</span>
+              </div>
+              <div className="text-[10px] leading-snug mt-1" style={{ color: C.textDim }}>{t("kpi.reichweiteHinweis")}</div>
+            </div>
+
+            <button onClick={() => { setZeigeBericht(true); setHinweis(""); }} className="w-full px-3 py-3 rounded-xl text-xs" style={{ background: C.ink, color: C.white, fontWeight: 700 }}>
+              {t("kpi.bericht")}
+            </button>
+          </>
+        )}
+
+        {daten && zeigeBericht && (
+          <>
+            {/* Die Uebergabe. Bewusst schmucklos: Was hier steht, geht an
+                jemanden ausserhalb des Vereins - eine Seite mit Farbverlaeufen
+                und Sportbegriffen liest sich wie Werbung, eine Aufstellung mit
+                Zeitraum und Stand wie ein Nachweis. */}
+            <div className="rounded-2xl p-4 mb-3" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+              <div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.textDim }}>{vereinsName}</div>
+              <div className="text-lg mt-0.5" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>{titel}</div>
+              <div className="text-[11px]" style={{ color: C.textDim }}>{platzLabel}</div>
+              <div className="text-[11px] mt-2 pb-3" style={{ color: C.textDim, borderBottom: `1px solid ${C.line}` }}>
+                {kpiDatum(daten.zeitraum?.von)} – {kpiDatum(daten.zeitraum?.bis)} · {daten.zeitraum?.tage} {t("kpi.tage")}
+              </div>
+
+              <div className="flex items-baseline justify-between pt-3">
+                <span className="text-xs" style={{ color: C.ink, fontWeight: 700 }}>{t("kpi.einblendungen")}</span>
+                <span className="text-base" style={{ color: C.ink, fontFamily: "Oswald", fontWeight: 700 }}>{kpiZahl(einblendungen)}</span>
+              </div>
+              {elemente.map((e) => (
+                <div key={e.element} className="flex items-baseline justify-between pt-1.5">
+                  <span className="text-[11px]" style={{ color: C.textDim }}>{kpiElementName(t, e.element)}</span>
+                  <span className="text-[11px]" style={{ color: C.ink, fontFamily: "JetBrains Mono", fontWeight: 700 }}>{kpiZahl(e.klicks)}</span>
+                </div>
+              ))}
+              {quote !== null && (
+                <div className="flex items-baseline justify-between pt-1.5">
+                  <span className="text-[11px]" style={{ color: C.textDim }}>{t("kpi.klickrate")}</span>
+                  <span className="text-[11px]" style={{ color: C.ink, fontFamily: "JetBrains Mono", fontWeight: 700 }}>{quote.toFixed(1).replace(".", ",")} %</span>
+                </div>
+              )}
+
+              <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${C.line}` }}>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-[11px]" style={{ color: C.textDim }}>{t("kpi.reichweite")}</span>
+                  <span className="text-[11px]" style={{ color: C.ink, fontFamily: "JetBrains Mono", fontWeight: 700 }}>{kpiZahl(daten.reichweite)}</span>
+                </div>
+                {bester && Number(bester.klicks) > 0 && (
+                  <div className="flex items-baseline justify-between pt-1.5">
+                    <span className="text-[11px]" style={{ color: C.textDim }}>{t("kpi.besterTag")}</span>
+                    <span className="text-[11px]" style={{ color: C.ink, fontFamily: "JetBrains Mono", fontWeight: 700 }}>{kpiDatum(bester.tag)} · {kpiZahl(bester.klicks)}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="text-[10px] mt-3" style={{ color: C.textDim }}>
+                {t("kpi.stand")}: {daten.stand ? new Date(daten.stand).toLocaleString("de-DE") : "—"}
+              </div>
+            </div>
+
+            <div className="text-[10px] leading-relaxed mb-3" style={{ color: C.textDim }}>{t("kpi.berichtHinweis")}</div>
+
+            <button onClick={berichtTeilen} className="w-full px-3 py-3 rounded-xl text-xs mb-2" style={{ background: C.ink, color: C.white, fontWeight: 700 }}>{t("kpi.teilen")}</button>
+            <button onClick={() => { setZeigeBericht(false); setHinweis(""); }} className="w-full px-3 py-2.5 rounded-xl text-xs" style={{ background: C.paperDim, color: C.ink, fontWeight: 600, border: `1px solid ${C.line}` }}>{t("kpi.zurueckZuZahlen")}</button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChanged, onChanged }) {
   const t = useT();
   const [eigene, setEigene] = useState([]);
@@ -10543,6 +10899,10 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
   const [speichert, setSpeichert] = useState(false);
   const [fehler, setFehler] = useState("");
   const [savingSlot, setSavingSlot] = useState("");
+  /* Welche Anzeige gerade in der Kennzahlenansicht offen ist. Bewusst die
+     ganze Zeile und nicht nur die Kennung: Die Ansicht braucht Titel und
+     Platz fuer den Bericht, und beides steht hier ohnehin schon. */
+  const [zahlenFuer, setZahlenFuer] = useState(null);
   const frei = currentClub?.sponsoringFrei === true;
 
   const ladeEigene = useCallback(async () => {
@@ -10569,6 +10929,7 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
   };
   const leer = (platz) => ({
     id: null, platz, titel: "", text: "", bild_pfad: "", ziel_url: "",
+    telefon: "", email: "",
     aktion_titel: "", aktion_text: "", aktion_url: "",
     laeuft_von: tag(new Date().toISOString()), laeuft_bis: "",
     aktion_von: tag(new Date().toISOString()), aktion_bis: "", aktiv: true,
@@ -10579,6 +10940,7 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
     setFehler("");
     setEntwurf(vorhanden
       ? { ...vorhanden, text: vorhanden.text || "", bild_pfad: vorhanden.bild_pfad || "", ziel_url: vorhanden.ziel_url || "",
+          telefon: vorhanden.telefon || "", email: vorhanden.email || "",
           aktion_titel: vorhanden.aktion_titel || "", aktion_text: vorhanden.aktion_text || "", aktion_url: vorhanden.aktion_url || "",
           laeuft_von: tag(vorhanden.laeuft_von), laeuft_bis: tag(vorhanden.laeuft_bis),
           aktion_von: tag(vorhanden.aktion_von) || tag(new Date().toISOString()), aktion_bis: tag(vorhanden.aktion_bis) }
@@ -10620,6 +10982,7 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
       club_id: currentClub.id, platz: entwurf.platz,
       titel: entwurf.titel.trim(), text: entwurf.text.trim() || null,
       bild_pfad: entwurf.bild_pfad || null, ziel_url: entwurf.ziel_url.trim() || null,
+      telefon: entwurf.telefon.trim() || null, email: entwurf.email.trim() || null,
       aktion_titel: entwurf.aktion_titel.trim() || null,
       aktion_text: entwurf.aktion_text.trim() || null,
       aktion_url: entwurf.aktion_url.trim() || null,
@@ -10733,7 +11096,14 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
                   {meiner.aktion_titel} · {laeuftAktion ? `läuft bis ${new Date(meiner.aktion_bis).toLocaleDateString("de-DE")}` : "beendet"}
                 </div>}
                 {abgelaufen && <div className="text-[11px] mt-0.5" style={{ color: C.textDim }}>{t("sp.laufzeitBeendet")}</div>}
-                <div className="text-[10px] mt-1.5" style={{ color: C.textDim, fontFamily: "JetBrains Mono" }}>{meiner.impressionen ?? 0} Einblendungen · {meiner.klicks ?? 0} Klicks</div>
+                <div className="text-[10px] mt-1.5" style={{ color: C.textDim, fontFamily: "JetBrains Mono" }}>{meiner.impressionen ?? 0} {t("kpi.einblendungen")} · {meiner.klicks ?? 0} {t("kpi.klicks")}</div>
+                {/* Die zwei Zahlen daruber sind die Gesamtsumme seit Beginn.
+                    Was der Sponsor fragt - wann, was, wie oft angerufen -
+                    steht dahinter. */}
+                <button onClick={() => setZahlenFuer(meiner)} className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-[11px] mt-2" style={{ background: C.glass, color: C.ink, fontWeight: 700, border: `1px solid ${C.line}` }}>
+                  <span className="flex items-center gap-1.5"><BarChart3 size={13} style={{ color: C.secondary }} />{t("kpi.zahlenAnsehen")}</span>
+                  <ChevronRight size={13} style={{ color: C.textDim }} />
+                </button>
               </div>
             )}
 
@@ -10749,6 +11119,12 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
                 <input value={entwurf.titel} onChange={(e) => setzen("titel", e.target.value)} placeholder={t("ph.sponsorName")} maxLength={120} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} />
                 <textarea value={entwurf.text} onChange={(e) => setzen("text", e.target.value)} placeholder={t("ph.kurzerText")} rows={2} maxLength={400} className="w-full px-3 py-2 rounded-lg text-xs outline-none resize-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} />
                 <input type="url" inputMode="url" value={entwurf.ziel_url} onChange={(e) => setzen("ziel_url", e.target.value)} placeholder="https://website-des-sponsors.de" className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} />
+                {/* Telefon und E-Mail sind nicht nur Zierde: Sie werden im
+                    Inserat zu eigenen Knoepfen und im Bericht zu eigenen
+                    Zeilen. "Vier Anrufe" ist die Zahl, mit der ein Sponsor
+                    etwas anfangen kann. */}
+                <input type="tel" inputMode="tel" value={entwurf.telefon} onChange={(e) => setzen("telefon", e.target.value)} placeholder={t("ph.sponsorTelefon")} maxLength={40} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} />
+                <input type="email" inputMode="email" value={entwurf.email} onChange={(e) => setzen("email", e.target.value)} placeholder={t("ph.sponsorEmail")} maxLength={160} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} />
                 <label className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs cursor-pointer" style={{ background: C.paperDim, color: C.ink, border: `1px solid ${C.line}` }}>
                   <ImageIcon size={14} /><span className="flex-1">{entwurf.bild_pfad ? t("allg.bildErsetzen") : t("allg.bildHochladen")}</span>
                   <input type="file" accept="image/*" className="hidden" onChange={(e) => bildHochladen(e.target.files?.[0])} />
@@ -10793,6 +11169,19 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
           </div>
         );
       })}
+
+      {/* Die Kennzahlen liegen UEBER dem Panel, nicht an dessen Stelle: Wer
+          sie schliesst, steht wieder genau an dem Platz, von dem er kam -
+          und nicht oben in einer neu geladenen Liste. */}
+      {zahlenFuer && (
+        <SponsorKennzahlen
+          anzeigeId={zahlenFuer.id}
+          titel={zahlenFuer.titel}
+          platzLabel={SPONSOR_SLOT_DEFS.find((d) => d.key === zahlenFuer.platz)?.label || zahlenFuer.platz}
+          vereinsName={currentClub?.name || ""}
+          onClose={() => setZahlenFuer(null)}
+        />
+      )}
     </div>
   );
 }
@@ -14583,14 +14972,21 @@ export default function ClubMemberOrganisationApp() {
   /* Gezaehlt wird an der Anzeige selbst, damit die Zahl auch die Mitglieder
      erfasst - und nicht nur die Administratoren, die als einzige den
      Zustandsblock speichern durften. Fehler bleiben still: Eine nicht
-     gezaehlte Einblendung ist kein Grund, dem Mitglied etwas anzuzeigen. */
-  const zaehle = (slotKey, art) => {
+     gezaehlte Einblendung ist kein Grund, dem Mitglied etwas anzuzeigen.
+
+     Mitgegeben wird, WELCHES Element angetippt wurde und in WELCHEM Verein.
+     Beides steht im Sponsorenbericht: "vier Anrufe und elf Aufrufe der
+     Webseite" ist eine Auskunft, "fuenfzehn Klicks" ist keine. Der Verein
+     zaehlt, weil eine Betreiberanzeige in jedem Verein laeuft - ohne ihn
+     waere nicht zu sagen, wo sie wirkt. */
+  const zaehle = (slotKey, art, element) => {
     const id = werbeplaetze?.[slotKey]?.id;
-    if (!supabase || !id) return;
-    supabase.rpc("anzeige_zaehlen", { ziel: id, art }).then(() => {}, () => {});
+    if (!supabase || !id || !currentUser?.clubId) return;
+    supabase.rpc("anzeige_ereignis", { ziel: id, art, teil: element, verein: currentUser.clubId })
+      .then(() => {}, () => {});
   };
-  const onSponsorImpression = (slotKey) => zaehle(slotKey, "impression");
-  const onSponsorClick = (slotKey) => zaehle(slotKey, "klick");
+  const onSponsorImpression = (slotKey) => zaehle(slotKey, "impression", "anzeige");
+  const onSponsorClick = (slotKey, element = "anzeige") => zaehle(slotKey, "klick", element);
   /* Der Knopf hiess "Alle Aktivitaetsdaten zuruecksetzen" und versprach genau
      das. Getan hat er etwas anderes: Er schrieb nichts in die Datenbank,
      sondern ersetzte den Bildschirminhalt durch die Demo-Daten des ERG

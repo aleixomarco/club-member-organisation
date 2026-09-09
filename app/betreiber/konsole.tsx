@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 /* Die Verwaltung der Vereine, für den Betreiber.
  *
@@ -31,8 +31,33 @@ type Kennzahlen = {
 
 type Anzeige = {
   id: string; platz: string; titel: string; text: string | null; ziel_url: string | null;
+  telefon: string | null; email: string | null;
   aktion_titel: string | null; laeuft_bis: string | null; aktiv: boolean;
   impressionen: number; klicks: number;
+};
+
+/* Ein Sponsor eines Vereins, so viel wie die Auswahlliste braucht. Nicht zu
+   verwechseln mit dem Typ Sponsor weiter unten - der gehoert zur
+   Vereinsansicht und traegt Bild, Aktionstext und Laufzeiten. */
+type VereinsAnzeige = {
+  id: string; platz: string; titel: string; aktiv: boolean; laeuft_bis: string | null;
+  impressionen: number; klicks: number; club_id: string; verein: string;
+};
+
+/* Was anzeigen_kennzahlen() zurueckgibt. Die Datenbank rechnet, diese Seite
+   stellt dar - deshalb steht hier keine einzige eigene Summe. */
+type Kpi = {
+  stand: string;
+  anzeige: { id: string; titel: string; platz: string; herkunft: string; aktiv: boolean;
+    laeuft_von: string | null; laeuft_bis: string | null; laeuft_gerade: boolean;
+    ziel_url: string | null; telefon: string | null; email: string | null };
+  zeitraum: { von: string; bis: string; tage: number };
+  gesamt: { impressionen: number; klicks: number };
+  fenster: { impressionen: number; klicks: number; tage_mit_kontakt: number };
+  verlauf: { tag: string; impressionen: number; klicks: number }[];
+  elemente: { element: string; klicks: number }[];
+  vereine: { verein: string; club_id: string; impressionen: number; klicks: number }[];
+  reichweite: number;
 };
 
 type Anfrage = {
@@ -83,6 +108,13 @@ const PLATZ_NAMEN: Record<string, string> = {
   events_header: "Termine – Kopfbereich", profile_bottom: "Profil – unten",
 };
 
+/* Die Elemente einer Anzeige, ausgeschrieben. "telefon" ist ein Spaltenwert,
+   "Angerufen" ist eine Auskunft. */
+const ELEMENT_NAMEN: Record<string, string> = {
+  anzeige: "Anzeige geöffnet", website: "Website", telefon: "Angerufen",
+  email: "E-Mail", aktion: "Zur Aktion",
+};
+
 const TARIF_NAMEN: Record<string, string> = {
   none: "kostenlos", basic: "Basic", plus: "Plus", pro: "Pro", premium: "Premium",
 };
@@ -117,6 +149,12 @@ export default function BetreiberKonsole() {
   const [vereine, setVereine] = useState<Verein[]>([]);
   const [anfragen, setAnfragen] = useState<Anfrage[]>([]);
   const [anzeigen, setAnzeigen] = useState<Anzeige[]>([]);
+  const [sponsoren, setSponsoren] = useState<VereinsAnzeige[]>([]);
+  /* Zwei Reiter, weil die Konsole zwei Aufgaben hat, die nichts miteinander
+     zu tun haben: Vereine betreuen und Werbung verkaufen. Untereinander auf
+     einer Seite hiess das bisher, an fuenf Vereinstabellen vorbeizuscrollen,
+     um eine Anzeige zu bearbeiten. */
+  const [reiter, setReiter] = useState<"vereine" | "werbung">("vereine");
   const [anzeigeOffen, setAnzeigeOffen] = useState<Partial<Anzeige> | null>(null);
   const [detail, setDetail] = useState<{ verein: Verein; mitglieder: Mitglied[]; zielgruppe: Zielgruppe | null; sponsoren: Sponsor[] } | null>(null);
   const [suche, setSuche] = useState("");
@@ -138,6 +176,7 @@ export default function BetreiberKonsole() {
     const inhalt = await antwort.json().catch(() => ({}));
     if (!antwort.ok) { setFehler(inhalt.error || "Die Übersicht konnte nicht geladen werden."); return; }
     setVereine(inhalt.vereine || []); setAnfragen(inhalt.anfragen || []); setAnzeigen(inhalt.anzeigen || []);
+    setSponsoren(inhalt.sponsoren || []);
     setKennzahlen(inhalt.kennzahlen || null); setFehler("");
   }, []);
 
@@ -195,7 +234,7 @@ export default function BetreiberKonsole() {
 
   const abmelden = async () => {
     await fetch("/api/betreiber/abmelden", { method: "POST" });
-    setAngemeldet(false); setVereine([]); setAnfragen([]); setAnzeigen([]); setKennzahlen(null);
+    setAngemeldet(false); setVereine([]); setAnfragen([]); setAnzeigen([]); setSponsoren([]); setKennzahlen(null);
   };
 
   const vereinOeffnen = async (v: Verein) => {
@@ -280,10 +319,21 @@ export default function BetreiberKonsole() {
         <button onClick={abmelden} style={knopfLeise}>Abmelden</button>
       </header>
 
+      {/* Die zwei Aufgaben der Konsole. Vorher lagen sie untereinander auf
+          einer Seite: Wer eine Anzeige aendern wollte, scrollte an der
+          Vereinstabelle vorbei - und wer einen Verein suchte, an der
+          Werbung. */}
+      <nav style={{ display: "flex", gap: 6, marginBottom: 20 }}>
+        {([["vereine", "Vereine"], ["werbung", "Werbeanzeigen"]] as const).map(([wert, label]) => (
+          <button key={wert} onClick={() => setReiter(wert)} aria-pressed={reiter === wert}
+            style={reiter === wert ? reiterAktiv : reiterLeise}>{label}</button>
+        ))}
+      </nav>
+
       {/* Die Zahlen ueber alle Vereine. Sie stehen bewusst VOR den Anfragen:
           Die Anfragen sagen, was heute zu tun ist - diese Zeile sagt, wie es
           um das Ganze steht. */}
-      {kennzahlen && (
+      {reiter === "vereine" && kennzahlen && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(132px, 1fr))", gap: 10, marginBottom: 24 }}>
           {[
             { wert: kennzahlen.vereine, titel: "Vereine", unten: `${kennzahlen.neu_30} neu in 30 Tagen`, warnung: false },
@@ -306,6 +356,7 @@ export default function BetreiberKonsole() {
       {fehler && <p role="status" style={fehlerText}>{fehler}</p>}
       {meldung && <p role="status" style={{ ...fehlerText, background: "rgba(231,243,236,0.72)", color: "#1E6B3A" }}>{meldung}</p>}
 
+      {reiter === "vereine" && (<>
       {/* Anfragen zuerst: Sie sind das Einzige, was auf eine Reaktion wartet. */}
       <section style={{ marginBottom: 28 }}>
         <h2 style={ueberschrift}>Offene Anfragen</h2>
@@ -421,35 +472,18 @@ export default function BetreiberKonsole() {
           </table>
         </div>
       </section>
+      </>)}
 
-      {/* Die eigene Werbung. Sie gilt in jedem Verein und tritt zurueck, sobald
-          ein Verein einen eigenen Sponsor auf denselben Platz setzt. Bisher
-          liess sie sich nur von Hand im SQL-Editor anlegen. */}
-      <section style={{ marginTop: 28 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10, flexWrap: "wrap" }}>
-          <h2 style={{ ...ueberschrift, marginBottom: 0 }}>Eigene Werbeplätze</h2>
-          <button style={knopfLeise} disabled={laeuft} onClick={() => setAnzeigeOffen({ platz: "dashboard_top", aktiv: true })}>Neue Anzeige</button>
-        </div>
-        <p style={{ ...hinweis, marginTop: -4 }}>
-          Gilt in jedem Verein. Wo ein Verein einen eigenen, laufenden Sponsor auf demselben Platz hat, tritt Ihre Anzeige zurück.
-        </p>
-        {anzeigen.length === 0 ? (
-          <p style={{ ...karte, color: "#8A7F85", fontSize: 13 }}>Noch keine eigene Anzeige — die Plätze bleiben leer, solange kein Verein sie belegt.</p>
-        ) : (
-          <div style={{ display: "grid", gap: 8 }}>
-            {anzeigen.map((a) => (
-              <div key={a.id} style={{ ...karte, display: "flex", gap: 12, alignItems: "baseline", flexWrap: "wrap" }}>
-                <span style={abzeichen}>{PLATZ_NAMEN[a.platz] || a.platz}</span>
-                <b style={{ fontSize: 14 }}>{a.titel}</b>
-                {!a.aktiv && <span style={{ ...abzeichen, background: "#F0EBEE" }}>ausgeschaltet</span>}
-                {a.laeuft_bis && <span style={{ fontSize: 12, color: "#8A7F85" }}>bis {datum(a.laeuft_bis)}</span>}
-                <span style={{ fontSize: 12, color: "#8A7F85", marginLeft: "auto" }}>{a.impressionen} Einblendungen · {a.klicks} Klicks</span>
-                <button style={knopfLeise} disabled={laeuft} onClick={() => setAnzeigeOffen(a)}>Bearbeiten</button>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+      {reiter === "werbung" && (
+        <WerbeReiter
+          anzeigen={anzeigen}
+          sponsoren={sponsoren}
+          laeuft={laeuft}
+          onNeu={() => setAnzeigeOffen({ platz: "dashboard_top", aktiv: true })}
+          onBearbeiten={(a) => setAnzeigeOffen(a)}
+          onFehler={setFehler}
+        />
+      )}
 
       {detail && <VereinsDetail daten={detail} onSchliessen={() => setDetail(null)} />}
 
@@ -529,6 +563,327 @@ const Zahl = ({ wert, label }: { wert: React.ReactNode; label: string }) => (
     <div style={{ fontSize: 11, color: "#8A7F85", marginTop: 2 }}>{label}</div>
   </div>
 );
+
+/* ------------------------------------------------------------------ */
+/* Reiter "Werbeanzeigen"                                              */
+/* ------------------------------------------------------------------ */
+/* Zwei Ansichten auf dieselbe Sache.
+ *
+ * "Anzeigen" ist die Verwaltung: anlegen, ändern, abschalten.
+ * "KPI" ist die Auswertung — und die beginnt mit einer Auswahl, weil es keine
+ * sinnvolle Sammelzahl über alle Anzeigen gibt. Ein Sponsor der Bäckerei und
+ * eine Aktion des Betreibers laufen auf verschiedenen Plätzen, in
+ * verschiedenen Vereinen und über verschiedene Zeiträume; ihre Klicks zu
+ * addieren ergäbe eine Zahl, die niemandem gehört.
+ *
+ * Die Auswahl führt beides auf: die eigene Werbung zuerst, darunter die
+ * Sponsoren der Vereine. Letztere stehen hier, weil beim Verkauf eines
+ * Werbeplatzes die Frage aufkommt, was auf den anderen Plätzen schon läuft. */
+function WerbeReiter({ anzeigen, sponsoren, laeuft, onNeu, onBearbeiten, onFehler }: {
+  anzeigen: Anzeige[]; sponsoren: VereinsAnzeige[]; laeuft: boolean;
+  onNeu: () => void; onBearbeiten: (a: Anzeige) => void; onFehler: (text: string) => void;
+}) {
+  const [unterReiter, setUnterReiter] = useState<"anzeigen" | "kpi">("anzeigen");
+  const [gewaehlt, setGewaehlt] = useState("");
+  const [tage, setTage] = useState(30);
+  const [kpi, setKpi] = useState<Kpi | null>(null);
+  const [kpiLaeuft, setKpiLaeuft] = useState(false);
+
+  /* Der Merker fängt wirklich ab: Wer schnell zwischen zwei Anzeigen wechselt,
+     bekäme sonst die Antwort der ersten Abfrage über die zweite geschrieben —
+     und sähe die Zahlen einer Anzeige unter dem Namen einer anderen. */
+  const laufendeAbfrage = useRef(0);
+
+  const kpiLaden = useCallback(async (ziel: string, zeitraum: number) => {
+    if (!ziel) { setKpi(null); return; }
+    const meine = ++laufendeAbfrage.current;
+    setKpiLaeuft(true);
+    const antwort = await fetch(`/api/betreiber/kpi?anzeige=${encodeURIComponent(ziel)}&tage=${zeitraum}`).catch(() => null);
+    if (meine !== laufendeAbfrage.current) return;
+    setKpiLaeuft(false);
+    if (!antwort) { onFehler("Keine Verbindung zum Server."); return; }
+    const inhalt = await antwort.json().catch(() => ({}));
+    if (meine !== laufendeAbfrage.current) return;
+    if (!antwort.ok) { onFehler(inhalt.error || "Die Kennzahlen konnten nicht geladen werden."); setKpi(null); return; }
+    setKpi(inhalt.kennzahlen || null);
+  }, [onFehler]);
+
+  useEffect(() => { kpiLaden(gewaehlt, tage); }, [gewaehlt, tage, kpiLaden]);
+
+  const waehlen = (ziel: string) => { setGewaehlt(ziel); if (ziel) setUnterReiter("kpi"); };
+
+  return (
+    <>
+      <div style={{ display: "flex", gap: 6, marginBottom: 18 }}>
+        {([["anzeigen", "Anzeigen"], ["kpi", "KPI"]] as const).map(([wert, label]) => (
+          <button key={wert} onClick={() => setUnterReiter(wert)}
+            style={unterReiter === wert ? reiterAktiv : reiterLeise}>{label}</button>
+        ))}
+      </div>
+
+      {unterReiter === "anzeigen" && (
+        <>
+          <section>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10, flexWrap: "wrap" }}>
+              <h2 style={{ ...ueberschrift, marginBottom: 0 }}>Eigene Werbeplätze</h2>
+              <button style={knopfLeise} disabled={laeuft} onClick={onNeu}>Neue Anzeige</button>
+            </div>
+            <p style={{ ...hinweis, marginTop: -4 }}>
+              Gilt in jedem Verein. Wo ein Verein einen eigenen, laufenden Sponsor auf demselben Platz hat, tritt Ihre Anzeige zurück.
+            </p>
+            {anzeigen.length === 0 ? (
+              <p style={{ ...karte, color: "#8A7F85", fontSize: 13 }}>Noch keine eigene Anzeige — die Plätze bleiben leer, solange kein Verein sie belegt.</p>
+            ) : (
+              <div style={{ display: "grid", gap: 8 }}>
+                {anzeigen.map((a) => (
+                  <div key={a.id} style={{ ...karte, display: "flex", gap: 12, alignItems: "baseline", flexWrap: "wrap" }}>
+                    <span style={abzeichen}>{PLATZ_NAMEN[a.platz] || a.platz}</span>
+                    <b style={{ fontSize: 14 }}>{a.titel}</b>
+                    {!a.aktiv && <span style={{ ...abzeichen, background: "#F0EBEE" }}>ausgeschaltet</span>}
+                    {a.laeuft_bis && <span style={{ fontSize: 12, color: "#8A7F85" }}>bis {datum(a.laeuft_bis)}</span>}
+                    <span style={{ fontSize: 12, color: "#8A7F85", marginLeft: "auto" }}>{a.impressionen} Einblendungen · {a.klicks} Klicks</span>
+                    <button style={knopfLeise} onClick={() => waehlen(a.id)}>Kennzahlen</button>
+                    <button style={knopfLeise} disabled={laeuft} onClick={() => onBearbeiten(a)}>Bearbeiten</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section style={{ marginTop: 28 }}>
+            <h2 style={ueberschrift}>Sponsoren der Vereine</h2>
+            <p style={{ ...hinweis, marginTop: -4 }}>
+              Von den Vereinen selbst eingetragen. Sie lassen sich hier nicht ändern — nur nachsehen, was wo läuft.
+            </p>
+            {sponsoren.length === 0 ? (
+              <p style={{ ...karte, color: "#8A7F85", fontSize: 13 }}>Kein Verein hat bisher einen eigenen Sponsor eingetragen.</p>
+            ) : (
+              <div style={{ display: "grid", gap: 8 }}>
+                {sponsoren.map((a) => (
+                  <div key={a.id} style={{ ...karte, display: "flex", gap: 12, alignItems: "baseline", flexWrap: "wrap" }}>
+                    <span style={abzeichen}>{PLATZ_NAMEN[a.platz] || a.platz}</span>
+                    <b style={{ fontSize: 14 }}>{a.titel}</b>
+                    <span style={{ fontSize: 12, color: "#8A7F85" }}>{a.verein}</span>
+                    {!a.aktiv && <span style={{ ...abzeichen, background: "#F0EBEE" }}>ausgeschaltet</span>}
+                    <span style={{ fontSize: 12, color: "#8A7F85", marginLeft: "auto" }}>{a.impressionen} Einblendungen · {a.klicks} Klicks</span>
+                    <button style={knopfLeise} onClick={() => waehlen(a.id)}>Kennzahlen</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </>
+      )}
+
+      {unterReiter === "kpi" && (
+        <section>
+          <h2 style={ueberschrift}>Kennzahlen</h2>
+          <div style={{ ...karte, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 14 }}>
+            <label style={{ fontSize: 13, color: "#4A424A", fontWeight: 600 }}>Anzeige</label>
+            <select value={gewaehlt} onChange={(e) => setGewaehlt(e.target.value)} style={{ ...feld, margin: 0, maxWidth: 420, flex: "1 1 260px" }}>
+              <option value="">— bitte wählen —</option>
+              {anzeigen.length > 0 && (
+                <optgroup label="Eigene Werbung">
+                  {anzeigen.map((a) => (
+                    <option key={a.id} value={a.id}>{a.titel} · {PLATZ_NAMEN[a.platz] || a.platz}{a.aktiv ? "" : " (aus)"}</option>
+                  ))}
+                </optgroup>
+              )}
+              {sponsoren.length > 0 && (
+                <optgroup label="Sponsoren der Vereine">
+                  {sponsoren.map((a) => (
+                    <option key={a.id} value={a.id}>{a.titel} · {a.verein}{a.aktiv ? "" : " (aus)"}</option>
+                  ))}
+                </optgroup>
+              )}
+            </select>
+            <div style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
+              {[7, 30, 90, 365].map((n) => (
+                <button key={n} onClick={() => setTage(n)} style={tage === n ? reiterAktiv : reiterLeise}>
+                  {n === 365 ? "1 Jahr" : `${n} Tage`}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {!gewaehlt && (
+            <p style={{ ...karte, color: "#8A7F85", fontSize: 13 }}>
+              Wählen Sie oben eine Anzeige. Eine Sammelzahl über alle Anzeigen gäbe es zwar,
+              sie würde aber Plätze, Vereine und Laufzeiten vermischen und niemandem gehören.
+            </p>
+          )}
+
+          {gewaehlt && kpiLaeuft && !kpi && <p style={{ ...karte, color: "#8A7F85", fontSize: 13 }}>Wird geladen …</p>}
+
+          {gewaehlt && kpi && <KpiAnsicht kpi={kpi} laedt={kpiLaeuft} onNeuLaden={() => kpiLaden(gewaehlt, tage)} />}
+        </section>
+      )}
+    </>
+  );
+}
+
+/* Die Auswertung selbst.
+ *
+ * Gerechnet wird hier nichts, was die Datenbank schon gerechnet hat — bis auf
+ * die Klickrate, und die nur, wo sie etwas bedeutet: Bei zwölf Einblendungen
+ * ist "25 %" keine Quote, sondern ein Zufall, und in einem Angebot an ein
+ * Unternehmen eine Zahl, die beim nächsten Mal zusammenbricht. */
+function KpiAnsicht({ kpi, laedt, onNeuLaden }: { kpi: Kpi; laedt: boolean; onNeuLaden: () => void }) {
+  const einblendungen = Number(kpi.fenster?.impressionen) || 0;
+  const klicks = Number(kpi.fenster?.klicks) || 0;
+  const quote = einblendungen >= 20 ? (klicks / einblendungen) * 100 : null;
+  const kontakte = (kpi.elemente || []).filter((e) => e.element !== "anzeige")
+    .reduce((summe, e) => summe + (Number(e.klicks) || 0), 0);
+  const bester = (kpi.verlauf || []).reduce<{ tag: string; klicks: number } | null>(
+    (beste, v) => ((Number(v.klicks) || 0) > (Number(beste?.klicks) || 0) ? { tag: v.tag, klicks: Number(v.klicks) || 0 } : beste), null);
+  const zahl = (n: unknown) => Number(n || 0).toLocaleString("de-DE");
+
+  const kacheln = [
+    { wert: zahl(einblendungen), titel: "Einblendungen", unten: `${zahl(kpi.gesamt?.impressionen)} seit Beginn` },
+    { wert: zahl(klicks), titel: "Klicks", unten: `${zahl(kpi.gesamt?.klicks)} seit Beginn` },
+    { wert: quote === null ? "—" : `${quote.toFixed(1).replace(".", ",")} %`, titel: "Klickrate",
+      unten: quote === null ? "zu wenige Einblendungen" : "Klicks je Einblendung" },
+    { wert: zahl(kontakte), titel: "Kontakte", unten: "Website, Anruf, E-Mail, Aktion" },
+    { wert: zahl(kpi.reichweite), titel: "Mögliche Reichweite", unten: "Mitglieder, die sie sehen können" },
+    { wert: bester && bester.klicks > 0 ? datum(bester.tag) : "—", titel: "Bester Tag",
+      unten: bester && bester.klicks > 0 ? `${zahl(bester.klicks)} Klicks` : "noch kein Klick" },
+  ];
+
+  return (
+    <>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+        <b style={{ fontSize: 16 }}>{kpi.anzeige?.titel}</b>
+        <span style={abzeichen}>{PLATZ_NAMEN[kpi.anzeige?.platz] || kpi.anzeige?.platz}</span>
+        <span style={{ ...abzeichen, background: kpi.anzeige?.laeuft_gerade ? "rgba(231,243,236,0.9)" : "#F0EBEE", color: kpi.anzeige?.laeuft_gerade ? "#1E6B3A" : "#8A7F85" }}>
+          {kpi.anzeige?.laeuft_gerade ? "läuft" : "läuft nicht"}
+        </span>
+        <span style={{ fontSize: 12, color: "#8A7F85" }}>
+          {datum(kpi.zeitraum?.von)} – {datum(kpi.zeitraum?.bis)}
+        </span>
+        <span style={{ fontSize: 12, color: "#8A7F85", marginLeft: "auto" }}>
+          Stand {kpi.stand ? new Date(kpi.stand).toLocaleTimeString("de-DE") : "—"}
+        </span>
+        <button style={{ ...knopfLeise, opacity: laedt ? 0.6 : 1 }} disabled={laedt} onClick={onNeuLaden}>Aktualisieren</button>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, marginBottom: 18 }}>
+        {kacheln.map((k) => (
+          <div key={k.titel} style={{ ...karte, padding: "12px 14px" }}>
+            <div style={{ fontSize: 24, fontWeight: 700, lineHeight: 1.1, color: "#2A2028" }}>{k.wert}</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#4A424A", marginTop: 2 }}>{k.titel}</div>
+            <div style={{ fontSize: 11, color: "#8A7F85", marginTop: 2 }}>{k.unten}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ ...karte, marginBottom: 14 }}>
+        <h3 style={{ fontSize: 14, fontWeight: 700, margin: "0 0 10px" }}>Verlauf</h3>
+        {einblendungen === 0 && klicks === 0
+          ? <p style={{ fontSize: 13, color: "#8A7F85", margin: 0 }}>In diesem Zeitraum wurde die Anzeige nicht gesehen.</p>
+          : <KpiVerlauf verlauf={kpi.verlauf || []} />}
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 14 }}>
+        <div style={karte}>
+          <h3 style={{ fontSize: 14, fontWeight: 700, margin: "0 0 10px" }}>Was angetippt wurde</h3>
+          {(kpi.elemente || []).length === 0 ? (
+            <p style={{ fontSize: 13, color: "#8A7F85", margin: 0 }}>Noch nichts angetippt.</p>
+          ) : (
+            <KpiBalken zeilen={(kpi.elemente || []).map((e) => ({
+              name: ELEMENT_NAMEN[e.element] || e.element, wert: Number(e.klicks) || 0,
+            }))} />
+          )}
+        </div>
+
+        <div style={karte}>
+          <h3 style={{ fontSize: 14, fontWeight: 700, margin: "0 0 10px" }}>Nach Verein</h3>
+          {(kpi.vereine || []).length === 0 ? (
+            <p style={{ fontSize: 13, color: "#8A7F85", margin: 0 }}>Noch kein Verein mit Kontakten.</p>
+          ) : (
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <thead>
+                <tr>
+                  <th style={{ ...spaltenKopf, textAlign: "left" }}>Verein</th>
+                  <th style={{ ...spaltenKopf, textAlign: "right" }}>Einbl.</th>
+                  <th style={{ ...spaltenKopf, textAlign: "right" }}>Klicks</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(kpi.vereine || []).map((v) => (
+                  <tr key={v.club_id}>
+                    <td style={{ padding: "6px 0", borderTop: "1px solid #EFE9ED" }}>{v.verein}</td>
+                    <td style={{ padding: "6px 0", borderTop: "1px solid #EFE9ED", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{zahl(v.impressionen)}</td>
+                    <td style={{ padding: "6px 0", borderTop: "1px solid #EFE9ED", textAlign: "right", fontVariantNumeric: "tabular-nums", fontWeight: 700 }}>{zahl(v.klicks)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+      <p style={{ ...hinweis, marginTop: 14 }}>
+        Gezählt wird als Tagessumme je Anzeige, Verein und Element — ohne Bezug zu einzelnen
+        Mitgliedern. „Mögliche Reichweite" ist keine gemessene Zahl, sondern wie viele
+        Mitglieder die Anzeige überhaupt sehen können.
+      </p>
+    </>
+  );
+}
+
+/* Säulen für den Verlauf. Ohne Diagrammbibliothek: 365 Rechtecke rechtfertigen
+   kein weiteres Paket im Bündel. Die helle Säule ist die Einblendung, die
+   dunkle der Klick — der Klick ist immer die kleinere Zahl und liegt deshalb
+   sichtbar davor. */
+function KpiVerlauf({ verlauf }: { verlauf: { tag: string; impressionen: number; klicks: number }[] }) {
+  if (verlauf.length === 0) return null;
+  const hoehe = 120;
+  const groesste = Math.max(1, ...verlauf.map((v) => Number(v.impressionen) || 0), ...verlauf.map((v) => Number(v.klicks) || 0));
+  const breite = 100 / verlauf.length;
+  return (
+    <>
+      <svg viewBox={`0 0 100 ${hoehe}`} preserveAspectRatio="none" style={{ width: "100%", height: 150, display: "block" }} role="img" aria-label="Verlauf der Einblendungen und Klicks">
+        {verlauf.map((v, i) => {
+          const e = ((Number(v.impressionen) || 0) / groesste) * (hoehe - 2);
+          const k = ((Number(v.klicks) || 0) / groesste) * (hoehe - 2);
+          return (
+            <g key={v.tag}>
+              <rect x={i * breite} y={hoehe - e} width={Math.max(breite * 0.72, 0.3)} height={e} fill="#E7D9E1" />
+              <rect x={i * breite} y={hoehe - k} width={Math.max(breite * 0.72, 0.3)} height={k} fill="#B3261E" />
+            </g>
+          );
+        })}
+      </svg>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#8A7F85", marginTop: 4 }}>
+        <span>{datum(verlauf[0].tag)}</span>
+        <span>{datum(verlauf[verlauf.length - 1].tag)}</span>
+      </div>
+      <div style={{ display: "flex", gap: 16, marginTop: 8, fontSize: 12, color: "#8A7F85" }}>
+        <span><span style={{ display: "inline-block", width: 10, height: 10, background: "#E7D9E1", borderRadius: 2, marginRight: 6 }} />Einblendungen</span>
+        <span><span style={{ display: "inline-block", width: 10, height: 10, background: "#B3261E", borderRadius: 2, marginRight: 6 }} />Klicks</span>
+      </div>
+    </>
+  );
+}
+
+function KpiBalken({ zeilen }: { zeilen: { name: string; wert: number }[] }) {
+  const groesste = Math.max(1, ...zeilen.map((z) => z.wert));
+  return (
+    <div style={{ display: "grid", gap: 10 }}>
+      {zeilen.map((z) => (
+        <div key={z.name}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4 }}>
+            <span>{z.name}</span>
+            <b style={{ fontVariantNumeric: "tabular-nums" }}>{z.wert.toLocaleString("de-DE")}</b>
+          </div>
+          <div style={{ height: 6, borderRadius: 999, background: "#F0EBEE", overflow: "hidden" }}>
+            <div style={{ height: "100%", width: `${Math.round((z.wert / groesste) * 100)}%`, background: "#B3261E", borderRadius: 999 }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function VereinsDetail({ daten, onSchliessen }: {
   daten: { verein: Verein; mitglieder: Mitglied[]; zielgruppe: Zielgruppe | null; sponsoren: Sponsor[] };
@@ -1067,3 +1422,14 @@ const abzeichen: React.CSSProperties = { fontSize: 11, fontWeight: 700, backgrou
 const fehlerText: React.CSSProperties = { fontSize: 13, background: "rgba(253,236,236,0.9)", color: "#B3261E", borderRadius: 10, padding: "9px 12px", margin: "0 0 12px" };
 const beschriftung: React.CSSProperties = { display: "block", fontSize: 12, fontWeight: 700, marginBottom: 4, color: "#4A424A" };
 const hinweis: React.CSSProperties = { fontSize: 11, color: "#8A7F85", margin: "-4px 0 12px", lineHeight: 1.5 };
+const spaltenKopf: React.CSSProperties = { fontSize: 11, textTransform: "uppercase", letterSpacing: ".06em", color: "#8A7F85", fontWeight: 700, padding: "0 0 6px" };
+/* Reiter. Der aktive ist gefuellt, nicht nur unterstrichen: Auf hellem Grund
+   ist eine Linie unter einem Wort schnell die Linie unter dem falschen Wort. */
+const reiterAktiv: React.CSSProperties = {
+  padding: "8px 16px", borderRadius: 999, border: "1px solid #2A2028", background: "#2A2028",
+  color: "#FFFFFF", fontSize: 13, fontWeight: 700, cursor: "pointer",
+};
+const reiterLeise: React.CSSProperties = {
+  padding: "8px 16px", borderRadius: 999, border: "1px solid #DDD6DA", background: "#FFFFFF",
+  color: "#4A424A", fontSize: 13, fontWeight: 600, cursor: "pointer",
+};

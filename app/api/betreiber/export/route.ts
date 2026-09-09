@@ -9,6 +9,19 @@ export const dynamic = "force-dynamic";
    als die Vorgabe von zehn Sekunden. */
 export const maxDuration = 60;
 
+/* Beschriftungen fuer die beiden Anzeigen-Blaetter. Sie stehen auch in der
+   Konsole - dort fuer den Bildschirm, hier fuer die Mappe. Doppelt, weil das
+   eine ein Client-Bauteil ist und das andere auf dem Server laeuft; ein
+   gemeinsames Modul dafuer waere mehr Verdrahtung als Ersparnis. */
+const PLATZ_NAMEN: Record<string, string> = {
+  dashboard_top: "Start – oben", dashboard_bottom: "Start – unter den News",
+  events_header: "Termine – Kopfbereich", profile_bottom: "Profil – unten",
+};
+const ELEMENT_NAMEN: Record<string, string> = {
+  anzeige: "Anzeige geöffnet", website: "Website", telefon: "Angerufen",
+  email: "E-Mail", aktion: "Zur Aktion",
+};
+
 /* Alle Vereinsdaten als Excel-Mappe.
  *
  * WOZU
@@ -52,18 +65,27 @@ export async function GET() {
   const erzeugtAm = new Date();
 
   try {
-    const [vereine, teams, termine, abos, plaene, anfragen, anzeigen, kennzahlen] = await Promise.all([
+    const [vereine, teams, termine, abos, plaene, anfragen, anzeigen, statistik, kennzahlen] = await Promise.all([
       admin.from("betreiber_uebersicht").select("*").order("name"),
       admin.from("teams").select("id,club_id,name,category,active,is_adult,zusagen_aktiv,zusagen_spiele_aktiv,strafen_aktiv,created_at"),
       admin.from("events").select("id,club_id,team_id,type,status,title,starts_at,ends_at,location,home_away,opponent,home_score,away_score,series_id,created_at"),
       admin.from("club_subscriptions").select("club_id,plan_id,provider,status,current_period_start,current_period_end,cancel_at_period_end,last_payment_at"),
       admin.from("subscription_plans").select("id,code,name,interval,price_cents,currency"),
       admin.from("club_access_requests").select("club_name,contact_name,contact_email,contact_phone,expected_accounts,status,quelle,rechnungsnummer,betrag,zahlweise,created_at,freigeschaltet_am,ablehnungsgrund"),
-      admin.from("anzeigen").select("platz,titel,text,ziel_url,laeuft_bis,aktiv,impressionen,klicks").order("platz"),
+      admin.from("anzeigen").select("id,club_id,platz,titel,text,ziel_url,telefon,email,laeuft_von,laeuft_bis,aktiv,impressionen,klicks").order("platz"),
+      /* Die Tageszahlen. Ein Jahr zurueck und gedeckelt: Wer eine Anzeige
+         gegenueber einem Unternehmen abrechnet, braucht den Zeitraum, nicht
+         die Vorgeschichte - und eine Mappe mit hunderttausend Zeilen oeffnet
+         niemand mehr. */
+      admin.from("anzeigen_statistik")
+        .select("anzeige_id,club_id,tag,element,impressionen,klicks")
+        .gte("tag", new Date(Date.now() - 365 * 86400000).toISOString().slice(0, 10))
+        .order("tag", { ascending: false })
+        .limit(20000),
       admin.rpc("betreiber_kennzahlen"),
     ]);
 
-    const ersterFehler = [vereine, teams, termine, abos, plaene, anfragen, anzeigen]
+    const ersterFehler = [vereine, teams, termine, abos, plaene, anfragen, anzeigen, statistik]
       .find((a) => a.error);
     if (ersterFehler?.error) {
       console.error("Export konnte nicht geladen werden", ersterFehler.error);
@@ -73,6 +95,11 @@ export async function GET() {
     const vereinsZeilen = (vereine.data || []) as Zeile[];
     const vereinsName = new Map(vereinsZeilen.map((v) => [v.id as string, String(v.name ?? "")]));
     const teamName = new Map(((teams.data || []) as Zeile[]).map((t) => [t.id as string, String(t.name ?? "")]));
+    /* Die Tageszahlen tragen nur Kennungen. Ohne diese beiden Zuordnungen
+       staende im Blatt eine Spalte voller UUIDs - ein Datenbankauszug, keine
+       Auswertung. */
+    const anzeigenName = new Map(((anzeigen.data || []) as Zeile[]).map((a) => [a.id as string, String(a.titel ?? "")]));
+    const anzeigenPlatz = new Map(((anzeigen.data || []) as Zeile[]).map((a) => [a.id as string, String(a.platz ?? "")]));
     const planName = new Map(((plaene.data || []) as Zeile[]).map((p) => [p.id as string, p]));
 
     /* Die Mitglieder je Verein ueber die vorhandene Funktion - sie liefert
@@ -173,7 +200,11 @@ export async function GET() {
           { titel: "Strafenkatalog", feld: "strafen_aktiv", art: "ja_nein" },
           { titel: "Angelegt am", feld: "created_at", art: "datum" },
         ],
-        zeilen: ((teams.data || []) as Zeile[]).map((t) => ({
+        /* Der Rueckgabetyp muss ausdruecklich Zeile sein: Ohne ihn engt
+           TypeScript das Ergebnis auf die drei hier ergaenzten Felder ein,
+           und der Vergleich unten liest name auf einem Typ, der es nicht
+           mehr kennt. Zur Laufzeit war es immer da - der Spread traegt es. */
+        zeilen: ((teams.data || []) as Zeile[]).map((t): Zeile => ({
           ...t,
           verein: vereinsName.get(t.club_id as string) ?? "",
           mitglieder: mitglieder.filter((m) =>
@@ -200,7 +231,7 @@ export async function GET() {
           { titel: "Tore Auswärts", feld: "away_score", art: "zahl" },
           { titel: "Teil einer Reihe", feld: "reihe", art: "ja_nein" },
         ],
-        zeilen: ((termine.data || []) as Zeile[]).map((e) => ({
+        zeilen: ((termine.data || []) as Zeile[]).map((e): Zeile => ({
           ...e,
           verein: vereinsName.get(e.club_id as string) ?? "",
           mannschaft: e.team_id ? (teamName.get(e.team_id as string) ?? "") : "",
@@ -255,16 +286,56 @@ export async function GET() {
       {
         name: "Anzeigen",
         spalten: [
+          { titel: "Herkunft", feld: "herkunft" },
+          { titel: "Verein", feld: "verein", breite: 24 },
           { titel: "Platz", feld: "platz" },
           { titel: "Titel", feld: "titel", breite: 28 },
           { titel: "Text", feld: "text", breite: 40 },
           { titel: "Ziel", feld: "ziel_url", breite: 34 },
+          { titel: "Telefon", feld: "telefon" },
+          { titel: "E-Mail", feld: "email", breite: 26 },
+          { titel: "Läuft von", feld: "laeuft_von", art: "datum" },
           { titel: "Läuft bis", feld: "laeuft_bis", art: "datum" },
           { titel: "Aktiv", feld: "aktiv", art: "ja_nein" },
           { titel: "Einblendungen", feld: "impressionen", art: "zahl" },
           { titel: "Klicks", feld: "klicks", art: "zahl" },
+          { titel: "Klickrate", feld: "klickrate", art: "prozent" },
         ],
-        zeilen: (anzeigen.data || []) as Zeile[],
+        zeilen: ((anzeigen.data || []) as Zeile[]).map((a): Zeile => ({
+          ...a,
+          herkunft: a.club_id ? "Sponsor des Vereins" : "Werbung des Betreibers",
+          verein: a.club_id ? (vereinsName.get(a.club_id as string) ?? "") : "— gilt überall —",
+          /* Die Klickrate steht nur da, wo sie etwas bedeutet. Bei zwölf
+             Einblendungen ist "25 %" kein Wert, sondern ein Zufall - und in
+             einer Mappe, die an ein Unternehmen geht, eine Behauptung, die
+             beim naechsten Mal zusammenbricht. */
+          klickrate: Number(a.impressionen) >= 20
+            ? Math.round((Number(a.klicks) / Number(a.impressionen)) * 1000) / 10
+            : null,
+        })),
+      },
+      {
+        /* Die Tageszahlen. Das ist das Blatt, das man einem Unternehmen in die
+           Hand gibt: Es beantwortet "wann" und "was wurde angetippt", und beides
+           ohne Bezug zu einzelnen Mitgliedern - gezaehlt wird als Tagessumme. */
+        name: "Anzeigen je Tag",
+        hinweis: "Tagessummen der letzten zwölf Monate, je Anzeige, Verein und Element. Keine Angaben zu einzelnen Mitgliedern.",
+        spalten: [
+          { titel: "Tag", feld: "tag", art: "datum" },
+          { titel: "Anzeige", feld: "anzeige", breite: 28 },
+          { titel: "Platz", feld: "platz" },
+          { titel: "Verein", feld: "verein", breite: 24 },
+          { titel: "Element", feld: "element_name" },
+          { titel: "Einblendungen", feld: "impressionen", art: "zahl" },
+          { titel: "Klicks", feld: "klicks", art: "zahl" },
+        ],
+        zeilen: ((statistik.data || []) as Zeile[]).map((z): Zeile => ({
+          ...z,
+          anzeige: anzeigenName.get(z.anzeige_id as string) ?? "",
+          platz: PLATZ_NAMEN[anzeigenPlatz.get(z.anzeige_id as string) ?? ""] ?? "",
+          verein: vereinsName.get(z.club_id as string) ?? "",
+          element_name: ELEMENT_NAMEN[z.element as string] ?? z.element,
+        })),
       },
     ];
 
