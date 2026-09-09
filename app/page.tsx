@@ -1942,6 +1942,28 @@ function BeitrittsScreen({ club, vorschlagName, onBeitreten, goBack }) {
   );
 }
 
+/* Der Bildschirm zwischen Passwort und Startseite.
+ *
+ * Er zeigt bewusst NICHTS ausser dem Ladekreis - kein halbes Menue, keine
+ * Vereinsauswahl, keine Kacheln, die gleich wieder verschwinden. Wer nach dem
+ * Anmelden eine Sekunde lang "Neuen Verein registrieren" sieht, haelt das fuer
+ * eine Aufforderung und nicht fuer einen Zwischenschritt.
+ *
+ * Die Farben kommen aus dem Rahmen, damit der Uebergang zur Startseite nicht
+ * durch einen Helligkeitssprung geht. */
+function AnmeldungLaedt() {
+  const t = useT();
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center gap-4 px-6" role="status" aria-live="polite">
+      <div className="w-11 h-11 rounded-full flex items-center justify-center"
+        style={{ background: C.glass, border: `1px solid ${C.edge}` }}>
+        <RefreshCw size={18} style={{ color: C.red, animation: "ptrDreht .8s linear infinite" }} />
+      </div>
+      <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("login.wirdGeladen")}</div>
+    </div>
+  );
+}
+
 function ClubSelectScreen({ clubs, onSelect, goNewClub, goBack, onAbmelden, onKontoLoeschen, geladen = true, onErneutVersuchen }) {
   const t = useT();
   const [query, setQuery] = useState("");
@@ -12436,6 +12458,13 @@ export default function ClubMemberOrganisationApp() {
      Reihenfolge jetzt: login -> meineVereine -> hinein. Wer nur einem Verein
      angehoert, sieht meineVereine gar nicht; er landet direkt drin. */
   const [authScreen, setAuthScreen] = useState("login"); // login | meineVereine | club | newclub | register
+  /* Deckt die ganze Anmeldung ab - vom Passwort bis zu dem Augenblick, in dem
+     der Verein geladen ist. Solange sie laeuft, wird KEINER der Auth-Bildschirme
+     gezeigt, sondern ein Ladekreis. Vorher blitzte dazwischen auf, was gerade
+     in authScreen stand; wer genau hinsah, erwischte fuer eine Sekunde die
+     Vereinssuche mit "Neuen Verein registrieren" - und dachte, er muesse dort
+     etwas tun. */
+  const [anmeldungLaeuft, setAnmeldungLaeuft] = useState(false);
   const [meineMitgliedschaften, setMeineMitgliedschaften] = useState([]);
   /* Wurde dieses Geraet verdraengt, soll die Anmeldung sagen warum - sonst
      steht man vor einem Formular und weiss nicht, wieso man wieder hier ist. */
@@ -13791,6 +13820,19 @@ export default function ClubMemberOrganisationApp() {
     return () => { cancelled = true; };
   }, []);
   const attemptLogin = async (email, password) => {
+    setAnmeldungLaeuft(true);
+    try {
+      return await anmeldungDurchfuehren(email, password);
+    } finally {
+      /* In finally, damit der Ladekreis auch bei falschem Passwort, bei einem
+         Netzabbruch und bei jedem vorzeitigen return wieder verschwindet. Die
+         Funktion hat ein Dutzend Ausstiege; sie einzeln aufzuraeumen hiesse,
+         einen davon zu vergessen. */
+      setAnmeldungLaeuft(false);
+    }
+  };
+
+  const anmeldungDurchfuehren = async (email, password) => {
     if (!supabase) {
       /* OHNE DATENBANK: Anmeldung gegen die Demodaten.
        *
@@ -13911,11 +13953,19 @@ export default function ClubMemberOrganisationApp() {
   /* Traegt die Mitgliedschaften dieses Kontos zusammen und entscheidet, wohin
      es weitergeht: bei genau einem Verein direkt hinein, bei mehreren zur
      Auswahl, bei keinem auf die Vereinssuche. */
+  /* Gibt null zurueck, wenn die Abfrage FEHLSCHLAEGT - und eine leere Liste
+     nur dann, wenn es wirklich keine Mitgliedschaft gibt. Vorher stand hier
+     "const { data } =", der Fehler fiel unter den Tisch, und beides sah
+     gleich aus: keine Zeilen. Der Aufrufer schloss daraus "kein Verein" und
+     schickte den Nutzer in die Vereinssuche - fuer einen Sekundenbruchteil,
+     bis der naechste Versuch doch noch klappte. Genau dieses Aufblitzen war
+     der Fehler. */
   const mitgliedschaftenLaden = async (profileId) => {
-    const { data } = await supabase.from("club_memberships")
+    const { data, error } = await supabase.from("club_memberships")
       .select("id,club_id,display_name,status,clubs(name,short_name)")
       .eq("profile_id", profileId)
       .in("status", ["active", "pending"]);
+    if (error) return null;
 
     const liste = (data || []).map((m) => {
       const verein = Array.isArray(m.clubs) ? m.clubs[0] : m.clubs;
@@ -13929,6 +13979,10 @@ export default function ClubMemberOrganisationApp() {
 
   const nachDerAnmeldung = async (profileId) => {
     const liste = await mitgliedschaftenLaden(profileId);
+    /* Abfrage fehlgeschlagen: Dann wissen wir NICHT, ob es einen Verein gibt.
+       In die Vereinssuche zu schicken waere geraten - der Aufrufer versucht es
+       gleich darauf ohnehin noch einmal ueber loadSupabaseMembership. */
+    if (liste === null) return { code: "membership_missing" };
 
     if (liste.length === 1) {
       setSelectedClubId(liste[0].club_id);
@@ -14465,7 +14519,9 @@ export default function ClubMemberOrganisationApp() {
       <div className="erg-canvas erg-frame relative w-full flex flex-col overflow-hidden">
         {showSplash && <AppSplashIntro onDone={() => setShowSplash(false)} />}
         {!currentUser ? (
-          pendingAccount ? (
+          anmeldungLaeuft ? (
+            <AnmeldungLaedt />
+          ) : pendingAccount ? (
             <PendingAccountScreen account={pendingAccount} onLeave={leavePendingAccount} onDelete={deletePendingAccount} />
           ) : authScreen === "meineVereine" ? (
             <MeineVereineScreen
