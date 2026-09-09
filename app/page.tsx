@@ -947,6 +947,16 @@ const rollenLabel = (t, schluessel) => (ROLE_META[schluessel] ? t(`rolle.${schlu
 const isAdmin = (m) => !!m && m.roles.some((r) => ROLE_META[r]?.admin);
 const isFormalMember = (m) => !!m && m.roles.some((r) => ROLE_META[r]?.formalMember);
 const isSysAdmin = (m) => !!m && m.roles.includes("sysadmin");
+/* Wer den Verein verwaltet: Vereinsadministration und Organisation.
+   Bewusst NICHT ueber isAdmin() bzw. ROLE_META.admin gebaut - dort haengen
+   achtundzwanzig weitere Stellen dran, von den Vereinsfarben bis zu den
+   Spielergebnissen. Wuerde organisator dort admin:true bekommen, oeffnete
+   das alles auf einmal.
+   sysadmin steht mit dabei, weil register_new_club dem Gruender eines
+   Vereins beide Rollen zugleich gibt; ihn hier auszusperren wuerde
+   Vereine aussperren, die nur diesen einen Zugang haben. */
+const darfVereinVerwalten = (m) =>
+  !!m && m.roles.some((r) => ["vereinsadmin", "organisator", "sysadmin"].includes(r));
 
 /* Mannschaftszugehoerigkeit: siehe lib/mannschaften.mjs */const canWriteNews = (m) => isAdmin(m) || (!!m && m.roles.includes("redakteur"));
 /* Die eigene Sponsorenverwaltung des Vereins.
@@ -6109,45 +6119,6 @@ function TrainerTeamSettings({ user, members, setMembers }) {
     {message && <div role="status" className="text-[11px] mt-2" style={{ color: istErfolg(message) ? C.erfolg : C.fehler }}>{meldungstext(message)}</div>}
   </div>;
 }
-
-function PlayerTeamSettings({ user, setMembers }) {
-  const t = useT();
-  const [teams, setTeams] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState("");
-  const databaseMembership = !!supabase && isDbId(user.id);
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true); setMessage("");
-      if (!databaseMembership) {
-        const names = memberPlayerTeams(user);
-        setTeams(names.map((name) => ({ id: name, name })));
-        setLoading(false); return;
-      }
-      const [{ data: teamData, error: teamError }, { data: assignmentData, error: assignmentError }] = await Promise.all([
-        supabase.from("teams").select("id,name,category").eq("club_id", user.clubId).eq("active", true).order("name"),
-        supabase.from("team_members").select("team_id").eq("membership_id", user.id).eq("function", "spieler"),
-      ]);
-      if (teamError || assignmentError) { setMessage(t("tm.meineLadenFehler")); setLoading(false); return; }
-      /* Hier standen zwei Aufrufe von setMyTeamIds - einer Funktion, die es
-         nirgends gibt. Sie warfen mitten im Laden, noch vor setLoading(false),
-         sodass "Meine Mannschaften" dauerhaft auf t("allg.wirdGeladen") stand.
-         Gelesen wurde der Wert nie: Die Kanaele filtert die Datenbankregel
-         "members read channels" ueber team_members, und in der Ansicht
-         entscheidet memberInTeam ueber alle Mannschaften der Person. */
-      const myIds = (assignmentData || []).map((entry) => entry.team_id);
-      setTeams((teamData || []).filter((team) => myIds.includes(team.id)));
-      setLoading(false);
-    };
-    load();
-  }, [user.id, user.clubId, databaseMembership]);
-  return <div className="rounded-2xl p-4 mb-5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
-    <div className="flex items-center gap-2 mb-1 text-sm font-bold" style={{ color: C.ink }}><Users size={15} style={{ color: C.secondary }}/> Meine Mannschaften</div>
-    <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Deine Mannschaftszuordnung wird von Trainer, Teammanager oder Vereins-Admin verwaltet.</div>
-    {loading ? <div className="text-xs py-3" style={{ color: C.textDim }}>{t("allg.laedt")}</div> : teams.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{t("tm.keineZuordnung")}</div> : <div className="flex flex-wrap gap-2">{teams.map((team) => <span key={team.id} className="px-3 py-1.5 rounded-full text-xs font-bold" style={{ background: C.erfolgFlaeche, color: C.erfolg }}>{team.name}</span>)}</div>}
-    {message && <div role="status" className="text-[11px] mt-2" style={{ color: C.red }}>{meldungstext(message)}</div>}
-  </div>;
-}
 /* Ein Schalter, wie er in den Mannschaftsmeldungen mehrfach vorkommt.
    Bewusst klein gehalten: ToggleCard bringt eine Ueberschrift und eine
    Umrandung mit, das waere hier vier Mal hintereinander zu laut. */
@@ -8026,50 +7997,6 @@ function DutyTemplatesPanel({ currentUser, sport }) {
   );
 }
 
-function PlayerDataCard({ user, setMembers }) {
-  const t = useT();
-  const [editing, setEditing] = useState(false);
-  const [number, setNumber] = useState(user.number ?? "");
-
-  const save = () => {
-    setMembers((ms) => ms.map((m) => (m.id === user.id ? { ...m, number: number === "" ? null : Number(number) } : m)));
-    setEditing(false);
-  };
-  const cancel = () => { setNumber(user.number ?? ""); setEditing(false); };
-
-  return (
-    <div className="rounded-2xl p-4 mb-5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2 text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}><Star size={15} style={{ color: C.secondary }} /> Athletendaten</div>
-        {!editing && (
-          <button onClick={() => setEditing(true)} className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: C.paperDim, color: C.ink, fontFamily: "Inter" }}>{t("allg.bearbeiten")}</button>
-        )}
-      </div>
-
-      {!editing ? (
-        <div>
-          <div className="rounded-xl px-3 py-2.5" style={{ background: C.paperDim }}>
-            <div className="text-[10px] uppercase tracking-widest" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("feld.rueckennummer")}</div>
-            <div className="text-sm" style={{ fontFamily: "JetBrains Mono", fontWeight: 700, color: C.ink }}>{user.number ?? "—"}</div>
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-2.5">
-          <div>
-            <div className="text-[11px] mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("feld.rueckennummer")}</div>
-            <input type="number" min="0" max="99" value={number} onChange={(e) => setNumber(e.target.value)} placeholder={t("ph.beispiel14")}
-              className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={{ background: C.paperDim, fontFamily: "JetBrains Mono", color: C.ink }} />
-          </div>
-          <div className="flex gap-2">
-            <button onClick={save} className="flex-1 py-2 rounded-lg text-xs" style={{ background: C.red, color: C.aufPrimaer, fontFamily: "Inter", fontWeight: 700 }}>{t("allg.speichern")}</button>
-            <button onClick={cancel} className="px-4 py-2 rounded-lg text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter", fontWeight: 700 }}>{t("allg.abbrechen")}</button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 /* Zugang und Freischaltung.
  *
  * Hier stand bis zum 31.08.2026 der In-App-Kauf: Tarifauswahl, Preise,
@@ -9094,14 +9021,20 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
           Nur die Kachel mit den Vereinsfunktionen bleibt der Vereinsleitung
           vorbehalten - haette ich den ganzen Abschnitt hinter isAdmin gelassen,
           haetten alle anderen den Zugang zu ihren eigenen Angaben verloren. */}
+      {darfVereinVerwalten(user) && <>
       <SectionTitle eyebrow={t("pf.vereinVerwalten")} title={t("pf.vereinseinstellungen")} />
       <div className="space-y-2 mb-6">
         {isAdmin(user) && <ProfileSettingsCard icon={Settings} title="Vereinseinstellungen" description="Funktionen wie Fahrzeugbuchung, Tippspiel & Athlet/in der Saison ein- oder ausblenden" color={C.red} onClick={() => setProfileFolder("clubsettings")}/>}
         <ProfileSettingsCard icon={Trophy} title={t("pf.vereinMitglied")} description="Athleten-, Trainer- und Vereinsrollen" color={C.red} onClick={() => setProfileFolder("club")}/>
         <ProfileSettingsCard icon={Euro} title={t("pf.zugang")} description="Freischaltung des Vereins und Vereine werben Vereine" color={C.red} onClick={() => setProfileFolder("billing")}/>
       </div>
+      </>}
 
-      <SectionTitle eyebrow={t("pf.vereinVerwalten")} title={t("pf.einstellungen")} />
+      {/* Die zweite Augenbraue hiess ebenfalls "Verein verwalten" - ein
+          Uebernahmefehler. Sichtbar wird er erst jetzt: Wer den Abschnitt
+          darueber nicht mehr sieht, laese sonst "Verein verwalten" ueber
+          seinen eigenen Kontoeinstellungen. */}
+      <SectionTitle eyebrow={t("pf.einstellungen2")} title={t("pf.einstellungen")} />
       <div className="space-y-2 mb-6">
         <ProfileSettingsCard icon={User} title={t("pf.persoenlich")} description="Stammdaten, Kontakte, Familie" color={C.secondary} onClick={() => setProfileFolder("personal")}/>
         <ProfileSettingsCard icon={KeyRound} title={t("pf.konto")} description="Passwort, Sicherheit, Rechtliches, Account" color={AVATAR_FARBEN[2]} onClick={() => setProfileFolder("security")}/>
@@ -9183,12 +9116,17 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
         </div>
       </ProfileUnderlay>}
 
-      {profileFolder === "club" && <ProfileUnderlay title="Verein & Mitgliedschaft" eyebrow="Einstellungen" onClose={() => setProfileFolder("")}>
+      {/* Auch der Unterbau selbst, nicht nur die Kachel: Der Ordner laesst
+          sich sonst ueber setProfileFolder weiter oeffnen, und wer die Kachel
+          nicht sieht, soll auch den Inhalt nicht sehen. */}
+      {profileFolder === "club" && darfVereinVerwalten(user) && <ProfileUnderlay title="Verein & Mitgliedschaft" eyebrow="Einstellungen" onClose={() => setProfileFolder("")}>
         <div className="space-y-2">
-          {user.roles.includes("sysadmin") && <ProfileSettingsCard icon={UserPlus} title="Benutzerverwaltung" description="Alle Vereinsnutzer auswählen und deren Einstellungen verwalten" color={AVATAR_FARBEN[2]} onClick={() => setProfileUnderlay("users")}/>}
-          {user.roles.includes("vorstand") && <ProfileSettingsCard icon={Eye} title="Mitgliederübersicht" description="Alle Vereinsmitglieder ansehen (nur lesen)" color={C.textDim} onClick={() => setProfileUnderlay("board-overview")}/>}
-          {user.roles.some((role) => ["sysadmin","vereinsadmin","vorstand"].includes(role)) && <ProfileSettingsCard icon={UserPlus} title="Beitrittsanfragen" description="Neue Mitglieder annehmen oder ablehnen" color={C.secondary} onClick={() => setProfileUnderlay("join-requests")}/>}
-          {user.roles.includes("spieler") && <ProfileSettingsCard icon={Star} title="Athletenprofil" description="Mannschaften und Rückennummer verwalten" color={C.secondary} onClick={() => setProfileUnderlay("player")}/>}
+          {darfVereinVerwalten(user) && <ProfileSettingsCard icon={UserPlus} title="Benutzerverwaltung" description="Alle Vereinsnutzer auswählen und deren Einstellungen verwalten" color={AVATAR_FARBEN[2]} onClick={() => setProfileUnderlay("users")}/>}
+          {/* Hing an der Rolle "vorstand". Die ist seit 20260905180000
+              abgeschafft - die Kachel war damit fuer niemanden mehr sichtbar.
+              Sie gehoert zur Vereinsverwaltung und bekommt deren Rollen. */}
+          {darfVereinVerwalten(user) && <ProfileSettingsCard icon={Eye} title="Mitgliederübersicht" description="Alle Vereinsmitglieder ansehen (nur lesen)" color={C.textDim} onClick={() => setProfileUnderlay("board-overview")}/>}
+          {darfVereinVerwalten(user) && <ProfileSettingsCard icon={UserPlus} title="Beitrittsanfragen" description="Neue Mitglieder annehmen oder ablehnen" color={C.secondary} onClick={() => setProfileUnderlay("join-requests")}/>}
           {user.roles.includes("trainer") && <ProfileSettingsCard icon={Trophy} title="Trainer & Rollen" description="Trainer-Mannschaften auswählen und Kapitänsrolle zuweisen" color={C.red} onClick={() => setProfileUnderlay("trainer")}/>}
           {user.roles.some((role) => ["spieler", "trainer", "teammanager", "kapitaen"].includes(role)) && <ProfileSettingsCard icon={ClipboardList} title="Strafenkatalog" description="Regeln und Kosten der Mannschaften verwalten" onClick={() => setProfileUnderlay("penalties")}/>}
         </div>
@@ -9288,13 +9226,12 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
       {profileUnderlay === "calendar" && <ProfileUnderlay title="Kalender synchronisieren" onClose={() => setProfileUnderlay("")} onSave={entitlement.tier !== "none" ? ()=>sectionSaveRef.current?.() : undefined}><LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Kalender-Abo"><CalendarSyncSettings user={user} saveRef={sectionSaveRef}/></LockedFeature></ProfileUnderlay>}
       {profileUnderlay === "feedback" && <ProfileUnderlay title="App bewerten" onClose={() => setProfileUnderlay("")}><FeedbackSettings/></ProfileUnderlay>}
       {profileUnderlay === "bug" && <ProfileUnderlay title="Fehler melden" onClose={() => setProfileUnderlay("")}><BugReportSettings user={user}/></ProfileUnderlay>}
-      {profileUnderlay === "player" && <ProfileUnderlay title="Athletenprofil" onClose={() => setProfileUnderlay("")}><PlayerTeamSettings user={user} setMembers={setMembers}/><PlayerDataCard user={user} setMembers={setMembers}/></ProfileUnderlay>}
       {profileUnderlay === "trainer" && <ProfileUnderlay title="Trainer & Rollen" eyebrow="Mannschaftsverwaltung" onClose={() => setProfileUnderlay("")}><TrainerTeamSettings user={user} members={members} setMembers={setMembers}/></ProfileUnderlay>}
       {profileUnderlay === "penalties" && <ProfileUnderlay title="Strafenkatalog" eyebrow="Mannschaftsverwaltung" onClose={() => setProfileUnderlay("")}><TeamPenaltyCatalog user={user}/></ProfileUnderlay>}
       {profileUnderlay === "family" && <ProfileUnderlay title="Familie & Verknüpfungen" onClose={() => setProfileUnderlay("")}><SectionTitle eyebrow="Familie" title="Stammbaum"/><div className="mb-2"><FamilyTree user={user} members={members}/></div><div className="text-[11px] mb-5" style={{ color: C.textDim }}>{eligible ? t("help.berechtigt") : t("help.unter16")}</div><FamilyLinkManager user={user} members={members} setMembers={setMembers}/></ProfileUnderlay>}
-      {profileUnderlay === "users" && user.roles.includes("sysadmin") && <ProfileUnderlay title="Benutzerverwaltung" eyebrow="Sys-Administration" onClose={() => setProfileUnderlay("")}><SysAdminUserManager members={members} setMembers={setMembers}/></ProfileUnderlay>}
-      {profileUnderlay === "board-overview" && user.roles.includes("vorstand") && <ProfileUnderlay title="Mitgliederübersicht" eyebrow="Vorstand" onClose={() => setProfileUnderlay("")}><BoardMemberOverview members={members} currentUser={user}/></ProfileUnderlay>}
-      {profileUnderlay === "join-requests" && user.roles.some((role) => ["sysadmin","vereinsadmin","vorstand"].includes(role)) && <ProfileUnderlay title="Beitrittsanfragen" eyebrow="Verwalten" onClose={() => setProfileUnderlay("")}><JoinRequestsManager currentUser={user}/></ProfileUnderlay>}
+      {profileUnderlay === "users" && darfVereinVerwalten(user) && <ProfileUnderlay title="Benutzerverwaltung" eyebrow="Sys-Administration" onClose={() => setProfileUnderlay("")}><SysAdminUserManager members={members} setMembers={setMembers}/></ProfileUnderlay>}
+      {profileUnderlay === "board-overview" && darfVereinVerwalten(user) && <ProfileUnderlay title="Mitgliederübersicht" eyebrow="Vorstand" onClose={() => setProfileUnderlay("")}><BoardMemberOverview members={members} currentUser={user}/></ProfileUnderlay>}
+      {profileUnderlay === "join-requests" && darfVereinVerwalten(user) && <ProfileUnderlay title="Beitrittsanfragen" eyebrow="Verwalten" onClose={() => setProfileUnderlay("")}><JoinRequestsManager currentUser={user}/></ProfileUnderlay>}
       {profileUnderlay === "account" && <ProfileUnderlay title="Kontoeinstellungen" onClose={() => setProfileUnderlay("")}>
         <div className="rounded-2xl p-4 mb-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="flex items-center gap-2 text-sm font-bold mb-1" style={{ color: C.ink }}><ShieldCheck size={16} style={{ color: C.sekundaerAufHell }}/> Sicherheit</div><div className="text-[11px]" style={{ color: C.textDim }}>Dein Konto ist über Supabase geschützt. Passwortänderungen und Wiederherstellung erfolgen über deine hinterlegte E-Mail-Adresse.</div></div>
         <div className="space-y-2 mb-6"><a href="/datenschutz" className="w-full flex items-center justify-between rounded-2xl px-3.5 py-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}><span className="text-xs font-bold" style={{ color: C.ink }}>{t("recht.datenschutz")}</span><ChevronRight size={14} style={{ color: C.textDim }}/></a><a href="/nutzungsbedingungen" className="w-full flex items-center justify-between rounded-2xl px-3.5 py-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}><span className="text-xs font-bold" style={{ color: C.ink }}>{t("recht.nutzung")}</span><ChevronRight size={14} style={{ color: C.textDim }}/></a></div>
