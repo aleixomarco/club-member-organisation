@@ -49,8 +49,18 @@ const PLAY_STORE: string | null = null;
  * discoverable", using true) - genau dafuer. Beitreten kann trotzdem nur, wen
  * die Vereinsleitung freigibt. */
 async function vereinLaden(kennung: string) {
+  /* Dieselbe Frage wie lib/supabase.ts, woertlich: URL und PUBLISHABLE_KEY.
+     Hier stand zusaetzlich "|| NEXT_PUBLIC_SUPABASE_ANON_KEY". Damit konnten
+     die beiden Stellen auseinanderlaufen: Mit URL und altem anon-Schluessel
+     war supabase in lib/supabase.ts null - die App lief also sichtbar im
+     Demo-Betrieb, waehrend diese Serverkomponente still die echte Datenbank
+     abfragte. Wer dann prueft, ob sein oertlicher Betrieb wirklich getrennt
+     ist, prueft es an der falschen Stelle.
+     Der anon-Schluessel ist ohnehin die alte Schreibweise: Er steht weder in
+     .env.example noch bei Vercel, die Rueckfallebene war also nirgends
+     tragend. */
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   if (!url || !key) return null;
   try {
     const antwort = await fetch(
