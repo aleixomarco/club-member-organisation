@@ -1103,18 +1103,44 @@ function age(birthdate) {
 /* ------------------------------------------------------------------ */
 /* Vereine (mandantenfähig)                                            */
 /* ------------------------------------------------------------------ */
-/* Bewusst leer.
-   Hier standen drei erfundene Vereine - ERG Iserlohn, TSV Musterstadt und
-   SV Beispiel 04. Sie waren als Anschauungsmaterial gedacht, landeten aber in
-   der Vereinssuche der ausgelieferten App: Der Zustand startet mit dieser
-   Liste, und bis die Datenbank antwortet, sieht ein neuer Nutzer drei Vereine,
-   die es nirgends gibt. Wer schnell tippt, tritt einem davon bei - und landet
-   im Nichts.
-   Besonders irrefuehrend war "TSV Musterstadt": Der echte Demo-Verein heisst
-   "SV Musterstadt" und ist laengst ausgeblendet. Wer die Attrappe sah, hielt
-   die Ausblendung fuer kaputt.
-   Leer ist richtig: Bis die echten Vereine geladen sind, gibt es eben keine. */
-const INITIAL_CLUBS = [];
+/* Ein einziger Verein - und nur, wenn keine Datenbank da ist.
+
+   Hier standen einmal drei erfundene Vereine: ERG Iserlohn, TSV Musterstadt
+   und SV Beispiel 04. Sie landeten in der Vereinssuche der ausgelieferten
+   App - der Zustand startete mit dieser Liste, und bis die Datenbank
+   antwortete, sah ein neuer Nutzer drei Vereine, die es nirgends gibt. Wer
+   schnell tippt, tritt einem davon bei und landet im Nichts. Die Liste wurde
+   daraufhin geleert.
+
+   Zwei Tage spaeter kam die eigentliche Absicherung: Der Zustand startet
+   seitdem mit "supabase ? [] : INITIAL_CLUBS" - mit Datenbank leer, ohne
+   Datenbank mit dieser Liste. Von hier kann seitdem nichts mehr in die echte
+   Vereinssuche gelangen, das Leeren war also nicht mehr noetig. Nur hat es
+   niemand zurueckgenommen, und seitdem gehoerten die neunzehn Demo-
+   Mitglieder einem Verein an, den es nicht gab: currentClub war ueberall
+   undefined, und in der Kopfzeile stand "seit undefined".
+
+   Deshalb wieder ein Verein, aber genau einer - und er heisst DEMO. Das
+   Kuerzel steht gross in der Kopfzeile; wer es dort liest, weiss ohne
+   Nachdenken, dass er nicht in echten Daten arbeitet. Genau daran fehlte es
+   frueher: "TSV Musterstadt" sah aus wie ein echter Verein, und weil der
+   echte Demo-Verein in der Datenbank "SV Musterstadt" heisst, hielt man
+   dessen Ausblendung fuer kaputt. */
+const INITIAL_CLUBS = [
+  {
+    id: DEMO_CLUB_ID, name: "Demo-Verein", shortName: "DEMO", city: "Iserlohn",
+    foundedYear: 1965, logoUrl: null, hidden: false,
+    registerNumber: "VR 0000", currency: "EUR",
+    referralCode: "DEMO-2026", referralCreditMonths: 0,
+    /* Beide gehoeren zum Anlegen eines neuen Vereins: Solange die Anmeldung
+       laeuft, traegt der Verein sie im Zustand mit. Hier stehen sie nur, weil
+       dieser eine Eintrag die Form vorgibt, an der sich alles andere misst. */
+    pendingRegistration: false, logoDataUrl: null,
+    sport: "rollhockey",
+    primaryColor: DEFAULT_CLUB_COLORS.primary, secondaryColor: DEFAULT_CLUB_COLORS.secondary,
+    sponsoringFrei: true,
+  },
+];
 
 /* ------------------------------------------------------------------ */
 /* Mock accounts                                                       */
@@ -14391,7 +14417,8 @@ export default function ClubMemberOrganisationApp() {
                   )}
                   <div>
                     <div className="text-xs leading-none" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink, letterSpacing: 0.5 }}>{currentClub?.shortName}</div>
-                    <div className="text-[10px]" style={{ color: C.textDim }}>{mitWerten(t("allg.seitJahr"), { jahr: currentClub?.foundedYear })}</div>
+                    {/* Ohne Verein lieber nichts als "seit undefined". */}
+                    {currentClub?.foundedYear && <div className="text-[10px]" style={{ color: C.textDim }}>{mitWerten(t("allg.seitJahr"), { jahr: currentClub.foundedYear })}</div>}
                   </div>
                   {/* Die Glocke. Sie zeigt nur eine Zahl, wenn es etwas zu
                       sehen gibt - eine dauerhaft leere Glocke waere ein Knopf,
