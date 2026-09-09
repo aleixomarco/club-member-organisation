@@ -1942,6 +1942,61 @@ function BeitrittsScreen({ club, vorschlagName, onBeitreten, goBack }) {
   );
 }
 
+/* Eine Fehlergrenze fuer EINEN Bereich.
+ *
+ * app/error.tsx faengt den Absturz der ganzen Seite ab - besser als eine
+ * weisse Flaeche, aber immer noch alles auf einmal weg. Diese Grenze steht
+ * enger: Sie umschliesst den Inhalt des gerade offenen Reiters. Stuerzt dort
+ * etwas ab, bleibt die Navigation stehen, und ein Antippen eines anderen
+ * Reiters fuehrt aus dem Fehler heraus.
+ *
+ * Warum eine Klasse: getDerivedStateFromError und componentDidCatch gibt es
+ * nur dort. React bietet dafuer keinen Haken an - das ist kein Stilfrage,
+ * sondern der einzige Weg.
+ *
+ * Der Schluessel von aussen (key={tab}) setzt die Grenze beim Reiterwechsel
+ * zurueck. Ohne ihn bliebe der Fehlerzustand haengen, und ein einmal
+ * abgestuerzter Bereich waere bis zum Neuladen tot.
+ *
+ * Geworfene Fehler landen ausserdem in der Konsole. Ohne das verschwaende ein
+ * Absturz spurlos - und niemand koennte sagen, was ihn ausgeloest hat. */
+class Fehlergrenze extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { fehler: null };
+  }
+  static getDerivedStateFromError(fehler) {
+    return { fehler };
+  }
+  componentDidCatch(fehler, info) {
+    console.error("Fehlergrenze:", fehler, info?.componentStack);
+  }
+  render() {
+    if (this.state.fehler) {
+      return <BereichAbgestuerzt onErneut={() => this.setState({ fehler: null })} />;
+    }
+    return this.props.children;
+  }
+}
+
+/* Getrennt von der Klasse, weil hier useT() gebraucht wird - Haken gibt es in
+   Klassen nicht. */
+function BereichAbgestuerzt({ onErneut }) {
+  const t = useT();
+  return (
+    <div className="px-6 py-16 flex flex-col items-center text-center gap-3">
+      <div className="w-12 h-12 rounded-full flex items-center justify-center"
+        style={{ background: C.fehlerFlaeche, color: C.fehler }}>
+        <AlertCircle size={20} />
+      </div>
+      <div className="text-sm font-bold" style={{ color: C.ink }}>{t("fehler.bereichTitel")}</div>
+      <div className="text-xs" style={{ color: C.textDim, maxWidth: 260 }}>{t("fehler.bereichText")}</div>
+      <button onClick={onErneut} className="mt-1 px-4 py-2.5 rounded-xl text-xs font-bold"
+        style={{ background: C.ink, color: C.white }}>{t("fehler.erneutVersuchen")}</button>
+    </div>
+  );
+}
+
 /* Der Bildschirm zwischen Passwort und Startseite.
  *
  * Er zeigt bewusst NICHTS ausser dem Ladekreis - kein halbes Menue, keine
@@ -14637,48 +14692,53 @@ export default function ClubMemberOrganisationApp() {
             )}
 
             <ZumAktualisierenZiehen key={`${tab}-${subView || ""}`} onAktualisieren={datenNeuLaden} className="tabFade flex-1 overflow-y-auto" style={{ background: C.paper }}>
-              {subView === "season" && featureEnabled("season_award") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Athlet/in der Saison"><SeasonVoteView currentUser={currentUser} members={clubMembers} seasonVotes={seasonVotes} setSeasonVotes={setSeasonVotes} onVote={saisonStimmeAbgeben} onUnvote={saisonStimmeZuruecknehmen} /></LockedFeature>}
-              {subView === "tipp" && featureEnabled("tippspiel") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Tippspiel"><TippView members={clubMembers} currentUser={currentUser} events={events} tippPredictions={tippPredictions} setTippPredictions={setTippPredictions} tippResults={tippResults} onTippSpeichern={tippSpeichern} onZurueck={() => setSubView(null)} /></LockedFeature>}
-              {subView === "postfach" && <PostfachView eintraege={postfach} laedt={postfachLaedt} onGelesen={postfachGelesen} onAlleLoeschen={postfachAlleLoeschen} onLoeschen={postfachLoeschen}  onOeffnen={meldungOeffnen}/>}
-              {subView === "duty" && featureEnabled("duty_roster") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Helferplanung"><DutyView members={clubMembers} currentUser={currentUser} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={dienstSetzen} /></LockedFeature>}
-              {subView === "tasks" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Aufgaben"><TasksView currentUser={currentUser} members={clubMembers} /></LockedFeature>}
-              {subView === "vehicles" && featureEnabled("vehicle_booking") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Vereinsfahrzeuge"><VehiclesView currentUser={currentUser} currentClub={currentClub} /></LockedFeature>}
+              {/* Stuerzt EIN Reiter ab, bleibt der Rest der App bedienbar - und der
+                  naechste Reiterwechsel fuehrt aus dem Fehler heraus, weil der
+                  Schluessel die Grenze zuruecksetzt. */}
+              <Fehlergrenze key={`grenze-${tab}-${subView || ""}`}>
+                {subView === "season" && featureEnabled("season_award") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Athlet/in der Saison"><SeasonVoteView currentUser={currentUser} members={clubMembers} seasonVotes={seasonVotes} setSeasonVotes={setSeasonVotes} onVote={saisonStimmeAbgeben} onUnvote={saisonStimmeZuruecknehmen} /></LockedFeature>}
+                {subView === "tipp" && featureEnabled("tippspiel") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Tippspiel"><TippView members={clubMembers} currentUser={currentUser} events={events} tippPredictions={tippPredictions} setTippPredictions={setTippPredictions} tippResults={tippResults} onTippSpeichern={tippSpeichern} onZurueck={() => setSubView(null)} /></LockedFeature>}
+                {subView === "postfach" && <PostfachView eintraege={postfach} laedt={postfachLaedt} onGelesen={postfachGelesen} onAlleLoeschen={postfachAlleLoeschen} onLoeschen={postfachLoeschen}  onOeffnen={meldungOeffnen}/>}
+                {subView === "duty" && featureEnabled("duty_roster") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Helferplanung"><DutyView members={clubMembers} currentUser={currentUser} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={dienstSetzen} /></LockedFeature>}
+                {subView === "tasks" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Aufgaben"><TasksView currentUser={currentUser} members={clubMembers} /></LockedFeature>}
+                {subView === "vehicles" && featureEnabled("vehicle_booking") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Vereinsfahrzeuge"><VehiclesView currentUser={currentUser} currentClub={currentClub} /></LockedFeature>}
 
-              {!subView && tab === "home" && (
-                <Dashboard user={currentUser} onFavoritMannschaft={setzeFavoritMannschaft} members={clubMembers} events={events} channels={channels} news={vereinsNews} dutyPlan={dutyPlan} seasonVotes={seasonVotes} tippPredictions={tippPredictions} tippResults={tippResults} polls={polls} setPolls={setPolls} onVote={stimmeAbgeben} onUnvote={stimmeZuruecknehmen}
-                  umfrageFokus={umfrageFokus} onUmfrageFokusErledigt={() => setUmfrageFokus(null)}
-                  werbeplaetze={werbeplaetze} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick}
-                  goEvents={goToMyNextMatch} goSeason={() => setSubView("season")} goTipp={() => setSubView("tipp")} goDuty={() => setSubView("duty")} goTasks={() => setSubView("tasks")} goVehicles={() => setSubView("vehicles")} goNews={currentUserCanEditNews ? goNews : null}
-                  currentClub={currentClub} featureEnabled={featureEnabled} dashboardTileOrder={dashboardTileOrder} entitlement={entitlement} goSubscribe={goSubscribe}
-                  mannschaften={startseiteAuswahl} gewaehlteMannschaft={startseiteWahl} onMannschaftWechsel={setStartseiteTeam} />
-              )}
-              {!subView && tab === "events" && (
-                <EventsView onNeuLaden={datenNeuLaden} currentUser={currentUser} members={clubMembers} events={events} setEvents={setEvents} carpools={carpools} setCarpools={setCarpools}
-                  dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={dienstSetzen} entitlement={entitlement} goSubscribe={goSubscribe}
-                  werbeplaetze={werbeplaetze} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick}
-                  focusRequest={eventFocusRequest} onFocusApplied={()=>setEventFocusRequest(null)}
-                  currentClub={currentClub} featureEnabled={featureEnabled} />
-              )}
-              {!subView && tab === "teams" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Teams-Verwaltung"><TeamsView currentUser={currentUser} members={clubMembers} setMembers={setMembers} currentClub={currentClub} /></LockedFeature>}
-              {!subView && tab === "chat" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Chat"><ChatView user={currentUser} channels={channels} setChannels={setChannels} activeId={chatChannelId} setActiveId={setChatChannelId} members={clubMembers} /></LockedFeature>}
-              {!subView && tab === "redaktion" && currentUserCanEditNews && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Redaktion"><RedaktionView user={currentUser} news={vereinsNews} setNews={setVereinsNews} /></LockedFeature>}
-              {!subView && tab === "admin" && (currentUserIsAdmin || currentUserCanEditSponsors) && (
-                <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Verwaltung">
-                <AdminView bereichWunsch={verwaltungsBereich} onBereichUebernommen={() => setVerwaltungsBereich(null)}
-                  goFahrzeuge={() => setSubView("vehicles")} goAufgaben={() => setSubView("tasks")} members={clubMembers} setMembers={setMembers} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} seasonVotes={seasonVotes}
-                  currentUser={currentUser} channels={channels} setChannels={setChannels} maintenanceMode={maintenanceMode} setMaintenanceMode={setMaintenanceMode} onResetDemo={resetDemoData}
-                  protocols={protocols} setProtocols={setProtocols}
-                  welcomeAutomation={welcomeAutomation} setWelcomeAutomation={setWelcomeAutomation}
-                  werbeplaetze={werbeplaetze} onWerbeplaetzeGeaendert={ladeWerbeplaetze} polls={polls} setPolls={setPolls}
-                  onUmfrageAnlegen={umfrageAnlegen} onUmfrageUmschalten={umfrageUmschalten} onDienstSetzen={dienstSetzen}
-                  onProtokollSpeichern={protokollSpeichern} onProtokollLoeschen={protokollLoeschen} onAufgabeUmschalten={aufgabeUmschalten}
-                  onEinstellung={vereinseinstellungSetzen}
-                  tippResults={tippResults} onSaveTippResult={saveTippResult} onDeleteTippResult={deleteTippResult}
-                  dashboardTileOrder={dashboardTileOrder} setDashboardTileOrder={setDashboardTileOrder}
-                  currentClub={currentClub} onClubLogoUpdated={updateCurrentClubLogo} onClubColorsUpdated={updateCurrentClubColors} clubFeatures={clubFeatures} onClubFeaturesChanged={loadClubFeatures} />
-                </LockedFeature>
-              )}
-              {!subView && tab === "profile" && <ProfileView sprache={sprache} onSpracheWaehlen={spracheWaehlen} ziel={profilZiel} onZielErreicht={() => setProfilZiel("")} user={currentUser} members={clubMembers} setMembers={setMembers} currentClub={currentClub} dutyPlan={dutyPlan} punkteZiel={punkteZiel} punktePraemie={punktePraemie} werbeplaetze={werbeplaetze} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick} onLogout={logout} clubFeatures={clubFeatures} onClubFeaturesChanged={loadClubFeatures} entitlement={entitlement} goSubscribe={goSubscribe} dashboardTileOrder={dashboardTileOrder} setDashboardTileOrder={setDashboardTileOrder} />}
+                {!subView && tab === "home" && (
+                  <Dashboard user={currentUser} onFavoritMannschaft={setzeFavoritMannschaft} members={clubMembers} events={events} channels={channels} news={vereinsNews} dutyPlan={dutyPlan} seasonVotes={seasonVotes} tippPredictions={tippPredictions} tippResults={tippResults} polls={polls} setPolls={setPolls} onVote={stimmeAbgeben} onUnvote={stimmeZuruecknehmen}
+                    umfrageFokus={umfrageFokus} onUmfrageFokusErledigt={() => setUmfrageFokus(null)}
+                    werbeplaetze={werbeplaetze} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick}
+                    goEvents={goToMyNextMatch} goSeason={() => setSubView("season")} goTipp={() => setSubView("tipp")} goDuty={() => setSubView("duty")} goTasks={() => setSubView("tasks")} goVehicles={() => setSubView("vehicles")} goNews={currentUserCanEditNews ? goNews : null}
+                    currentClub={currentClub} featureEnabled={featureEnabled} dashboardTileOrder={dashboardTileOrder} entitlement={entitlement} goSubscribe={goSubscribe}
+                    mannschaften={startseiteAuswahl} gewaehlteMannschaft={startseiteWahl} onMannschaftWechsel={setStartseiteTeam} />
+                )}
+                {!subView && tab === "events" && (
+                  <EventsView onNeuLaden={datenNeuLaden} currentUser={currentUser} members={clubMembers} events={events} setEvents={setEvents} carpools={carpools} setCarpools={setCarpools}
+                    dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={dienstSetzen} entitlement={entitlement} goSubscribe={goSubscribe}
+                    werbeplaetze={werbeplaetze} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick}
+                    focusRequest={eventFocusRequest} onFocusApplied={()=>setEventFocusRequest(null)}
+                    currentClub={currentClub} featureEnabled={featureEnabled} />
+                )}
+                {!subView && tab === "teams" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Teams-Verwaltung"><TeamsView currentUser={currentUser} members={clubMembers} setMembers={setMembers} currentClub={currentClub} /></LockedFeature>}
+                {!subView && tab === "chat" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Chat"><ChatView user={currentUser} channels={channels} setChannels={setChannels} activeId={chatChannelId} setActiveId={setChatChannelId} members={clubMembers} /></LockedFeature>}
+                {!subView && tab === "redaktion" && currentUserCanEditNews && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Redaktion"><RedaktionView user={currentUser} news={vereinsNews} setNews={setVereinsNews} /></LockedFeature>}
+                {!subView && tab === "admin" && (currentUserIsAdmin || currentUserCanEditSponsors) && (
+                  <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Verwaltung">
+                  <AdminView bereichWunsch={verwaltungsBereich} onBereichUebernommen={() => setVerwaltungsBereich(null)}
+                    goFahrzeuge={() => setSubView("vehicles")} goAufgaben={() => setSubView("tasks")} members={clubMembers} setMembers={setMembers} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} seasonVotes={seasonVotes}
+                    currentUser={currentUser} channels={channels} setChannels={setChannels} maintenanceMode={maintenanceMode} setMaintenanceMode={setMaintenanceMode} onResetDemo={resetDemoData}
+                    protocols={protocols} setProtocols={setProtocols}
+                    welcomeAutomation={welcomeAutomation} setWelcomeAutomation={setWelcomeAutomation}
+                    werbeplaetze={werbeplaetze} onWerbeplaetzeGeaendert={ladeWerbeplaetze} polls={polls} setPolls={setPolls}
+                    onUmfrageAnlegen={umfrageAnlegen} onUmfrageUmschalten={umfrageUmschalten} onDienstSetzen={dienstSetzen}
+                    onProtokollSpeichern={protokollSpeichern} onProtokollLoeschen={protokollLoeschen} onAufgabeUmschalten={aufgabeUmschalten}
+                    onEinstellung={vereinseinstellungSetzen}
+                    tippResults={tippResults} onSaveTippResult={saveTippResult} onDeleteTippResult={deleteTippResult}
+                    dashboardTileOrder={dashboardTileOrder} setDashboardTileOrder={setDashboardTileOrder}
+                    currentClub={currentClub} onClubLogoUpdated={updateCurrentClubLogo} onClubColorsUpdated={updateCurrentClubColors} clubFeatures={clubFeatures} onClubFeaturesChanged={loadClubFeatures} />
+                  </LockedFeature>
+                )}
+                {!subView && tab === "profile" && <ProfileView sprache={sprache} onSpracheWaehlen={spracheWaehlen} ziel={profilZiel} onZielErreicht={() => setProfilZiel("")} user={currentUser} members={clubMembers} setMembers={setMembers} currentClub={currentClub} dutyPlan={dutyPlan} punkteZiel={punkteZiel} punktePraemie={punktePraemie} werbeplaetze={werbeplaetze} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick} onLogout={logout} clubFeatures={clubFeatures} onClubFeaturesChanged={loadClubFeatures} entitlement={entitlement} goSubscribe={goSubscribe} dashboardTileOrder={dashboardTileOrder} setDashboardTileOrder={setDashboardTileOrder} />}
+              </Fehlergrenze>
             </ZumAktualisierenZiehen>
 
             {!subView && (
