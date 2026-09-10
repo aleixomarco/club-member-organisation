@@ -10684,7 +10684,11 @@ function SponsorKennzahlen({ anzeigeId, titel, platzLabel, vereinsName, onClose 
      wird, sieht behoben aus und ist es nicht. */
   const offen = useRef(true);
   useEffect(() => { offen.current = true; return () => { offen.current = false; }; }, []);
-  useZurueck(onClose, true);
+  /* Der Zurueck-Pfeil geht eine Ebene hoch, nicht raus: Aus dem Bericht
+     zurueck zu den Zahlen, erst von dort aus der Ansicht. Vorher schloss er
+     aus dem Bericht heraus alles - wer nur nachsehen wollte, was oben stand,
+     landete wieder in der Sponsorenliste. */
+  useZurueck(() => { if (zeigeBericht) { setZeigeBericht(false); setHinweis(""); return; } onClose(); }, true);
 
   const laden = useCallback(async (still) => {
     if (!supabase || !anzeigeId) { setLaedt(false); return; }
@@ -10708,14 +10712,26 @@ function SponsorKennzahlen({ anzeigeId, titel, platzLabel, vereinsName, onClose 
   }, [laden, anzeigeId]);
 
   const fenster = daten?.fenster || {};
+  /* Ein Trichter, drei Stufen - jede eine Teilmenge der vorigen:
+       Einblendungen  wie oft das Inserat auf dem Platz stand
+       Oeffnungen     wie oft es aufgeklappt wurde
+       Kontakte       wie oft danach ein Weg nach draussen genommen wurde
+     Die Zahlen kommen fertig aus der Datenbank. Vorher rechnete diese Ansicht
+     selbst - und teilte die Klicks ALLER fuenf Elemente durch die
+     Einblendungen, die es nur an einem gibt. Wer oeffnete, anrief und schrieb,
+     erzeugte vier "Klicks" bei einer Einblendung; die "Klickrate" stand dann
+     bei 400 %. In einem Nachweis an einen zahlenden Sponsor ist eine Quote
+     ueber 100 % schlimmer als gar keine - sie faellt auf, und danach glaubt
+     niemand mehr die uebrigen Zahlen. */
   const einblendungen = Number(fenster.impressionen) || 0;
+  const oeffnungen = Number(fenster.oeffnungen) || 0;
+  const kontakte = Number(fenster.kontakte) || 0;
   const klicks = Number(fenster.klicks) || 0;
   const elemente = daten?.elemente || [];
-  const kontakte = elemente.filter((e) => e.element !== "anzeige").reduce((summe, e) => summe + (Number(e.klicks) || 0), 0);
-  /* Die Klickrate steht nur da, wo sie etwas bedeutet. Bei drei Einblendungen
-     ist "33 %" keine Quote, sondern ein Zufall - und in einem Bericht an
-     einen Sponsor eine Behauptung, die beim naechsten Mal zusammenbricht. */
-  const quote = einblendungen >= 20 ? (klicks / einblendungen) * 100 : null;
+  /* Die Quote steht nur da, wo sie etwas bedeutet. Bei drei Einblendungen ist
+     "33 %" keine Quote, sondern ein Zufall - und in einem Bericht an einen
+     Sponsor eine Behauptung, die beim naechsten Mal zusammenbricht. */
+  const quote = einblendungen >= 20 ? (oeffnungen / einblendungen) * 100 : null;
   const verlauf = daten?.verlauf || [];
   const bester = verlauf.reduce((beste, v) => ((Number(v.klicks) || 0) > (Number(beste?.klicks) || 0) ? v : beste), null);
   const vereine = daten?.vereine || [];
@@ -10729,7 +10745,7 @@ function SponsorKennzahlen({ anzeigeId, titel, platzLabel, vereinsName, onClose 
       `${t("kpi.einblendungen")}: ${kpiZahl(einblendungen)}`,
     ];
     for (const e of elemente) kopf.push(`${kpiElementName(t, e.element)}: ${kpiZahl(e.klicks)}`);
-    if (quote !== null) kopf.push(`${t("kpi.klickrate")}: ${quote.toFixed(1).replace(".", ",")} %`);
+    if (quote !== null) kopf.push(`${t("kpi.oeffnungsrate")}: ${quote.toFixed(1).replace(".", ",")} %`);
     kopf.push("");
     kopf.push(`${t("kpi.reichweite")}: ${kpiZahl(daten?.reichweite)}`);
     if (bester && Number(bester.klicks) > 0) kopf.push(`${t("kpi.besterTag")}: ${kpiDatum(bester.tag)} (${kpiZahl(bester.klicks)})`);
@@ -10744,10 +10760,14 @@ function SponsorKennzahlen({ anzeigeId, titel, platzLabel, vereinsName, onClose 
       if (navigator.share) { await navigator.share({ title: `${t("kpi.berichtTitel")} — ${titel}`, text }); return; }
       await navigator.clipboard.writeText(text);
       setHinweis(t("kpi.kopiert"));
-    } catch {
-      /* Abgebrochenes Teilen ist kein Fehler - der Nutzer hat sich anders
-         entschieden. Nur wenn auch die Zwischenablage nicht will, sagen wir
-         etwas. */
+    } catch (fehler) {
+      /* Ein abgebrochenes Teilen ist kein Fehler - der Nutzer hat sich anders
+         entschieden, und dann soll gar nichts passieren. Vorher schrieb der
+         Code in diesem Fall in die Zwischenablage und meldete "kopiert": eine
+         Meldung ueber etwas, das der Nutzer gerade abgelehnt hatte.
+         Die Zwischenablage bleibt der Rueckfall fuer ECHTE Fehler - etwa wenn
+         das Geraet gar nicht teilen kann. */
+      if ((fehler as Error)?.name === "AbortError") return;
       try { await navigator.clipboard.writeText(text); setHinweis(t("kpi.kopiert")); } catch { setHinweis(t("kpi.teilenFehler")); }
     }
   };
@@ -10787,8 +10807,8 @@ function SponsorKennzahlen({ anzeigeId, titel, platzLabel, vereinsName, onClose 
 
             <div className="grid grid-cols-2 gap-2 mb-4">
               <KpiKachel wert={kpiZahl(einblendungen)} titel={t("kpi.einblendungen")} unten={`${t("kpi.gesamt")} ${kpiZahl(daten.gesamt?.impressionen)}`} />
-              <KpiKachel wert={kpiZahl(klicks)} titel={t("kpi.klicks")} unten={`${t("kpi.gesamt")} ${kpiZahl(daten.gesamt?.klicks)}`} />
-              <KpiKachel wert={quote === null ? "—" : `${quote.toFixed(1).replace(".", ",")} %`} titel={t("kpi.klickrate")} unten={quote === null ? t("kpi.zuWenigDaten") : t("kpi.klickrateHinweis")} />
+              <KpiKachel wert={kpiZahl(oeffnungen)} titel={t("kpi.oeffnungen")} unten={t("kpi.oeffnungenHinweis")} />
+              <KpiKachel wert={quote === null ? "—" : `${quote.toFixed(1).replace(".", ",")} %`} titel={t("kpi.oeffnungsrate")} unten={quote === null ? t("kpi.zuWenigDaten") : t("kpi.oeffnungsrateHinweis")} />
               <KpiKachel wert={kpiZahl(kontakte)} titel={t("kpi.kontakte")} unten={t("kpi.kontakteHinweis")} />
             </div>
 
@@ -10856,7 +10876,7 @@ function SponsorKennzahlen({ anzeigeId, titel, platzLabel, vereinsName, onClose 
               ))}
               {quote !== null && (
                 <div className="flex items-baseline justify-between pt-1.5">
-                  <span className="text-[11px]" style={{ color: C.textDim }}>{t("kpi.klickrate")}</span>
+                  <span className="text-[11px]" style={{ color: C.textDim }}>{t("kpi.oeffnungsrate")}</span>
                   <span className="text-[11px]" style={{ color: C.ink, fontFamily: "JetBrains Mono", fontWeight: 700 }}>{quote.toFixed(1).replace(".", ",")} %</span>
                 </div>
               )}

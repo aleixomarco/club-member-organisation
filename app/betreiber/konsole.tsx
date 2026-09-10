@@ -53,7 +53,7 @@ type Kpi = {
     ziel_url: string | null; telefon: string | null; email: string | null };
   zeitraum: { von: string; bis: string; tage: number };
   gesamt: { impressionen: number; klicks: number };
-  fenster: { impressionen: number; klicks: number; tage_mit_kontakt: number };
+  fenster: { impressionen: number; klicks: number; oeffnungen: number; kontakte: number; tage_mit_kontakt: number };
   verlauf: { tag: string; impressionen: number; klicks: number }[];
   elemente: { element: string; klicks: number }[];
   vereine: { verein: string; club_id: string; impressionen: number; klicks: number }[];
@@ -729,20 +729,24 @@ function WerbeReiter({ anzeigen, sponsoren, laeuft, onNeu, onBearbeiten, onFehle
  * ist "25 %" keine Quote, sondern ein Zufall, und in einem Angebot an ein
  * Unternehmen eine Zahl, die beim nächsten Mal zusammenbricht. */
 function KpiAnsicht({ kpi, laedt, onNeuLaden }: { kpi: Kpi; laedt: boolean; onNeuLaden: () => void }) {
+  /* Ein Trichter, drei Stufen - jede eine Teilmenge der vorigen. Die Zahlen
+     kommen fertig aus der Datenbank; diese Ansicht rechnet nur noch die Quote,
+     und die aus Öffnungen, nicht aus Klicks. Vorher teilte sie die Klicks aller
+     fünf Elemente durch die Einblendungen, die es nur an einem gibt - und stand
+     dadurch bei einem lebhaften Inserat über 100 %. */
   const einblendungen = Number(kpi.fenster?.impressionen) || 0;
-  const klicks = Number(kpi.fenster?.klicks) || 0;
-  const quote = einblendungen >= 20 ? (klicks / einblendungen) * 100 : null;
-  const kontakte = (kpi.elemente || []).filter((e) => e.element !== "anzeige")
-    .reduce((summe, e) => summe + (Number(e.klicks) || 0), 0);
+  const oeffnungen = Number(kpi.fenster?.oeffnungen) || 0;
+  const kontakte = Number(kpi.fenster?.kontakte) || 0;
+  const quote = einblendungen >= 20 ? (oeffnungen / einblendungen) * 100 : null;
   const bester = (kpi.verlauf || []).reduce<{ tag: string; klicks: number } | null>(
     (beste, v) => ((Number(v.klicks) || 0) > (Number(beste?.klicks) || 0) ? { tag: v.tag, klicks: Number(v.klicks) || 0 } : beste), null);
   const zahl = (n: unknown) => Number(n || 0).toLocaleString("de-DE");
 
   const kacheln = [
     { wert: zahl(einblendungen), titel: "Einblendungen", unten: `${zahl(kpi.gesamt?.impressionen)} seit Beginn` },
-    { wert: zahl(klicks), titel: "Klicks", unten: `${zahl(kpi.gesamt?.klicks)} seit Beginn` },
-    { wert: quote === null ? "—" : `${quote.toFixed(1).replace(".", ",")} %`, titel: "Klickrate",
-      unten: quote === null ? "zu wenige Einblendungen" : "Klicks je Einblendung" },
+    { wert: zahl(oeffnungen), titel: "Öffnungen", unten: "Inserat aufgeklappt" },
+    { wert: quote === null ? "—" : `${quote.toFixed(1).replace(".", ",")} %`, titel: "Öffnungsrate",
+      unten: quote === null ? "zu wenige Einblendungen" : "Geöffnet je Einblendung" },
     { wert: zahl(kontakte), titel: "Kontakte", unten: "Website, Anruf, E-Mail, Aktion" },
     { wert: zahl(kpi.reichweite), titel: "Mögliche Reichweite", unten: "Mitglieder, die sie sehen können" },
     { wert: bester && bester.klicks > 0 ? datum(bester.tag) : "—", titel: "Bester Tag",
@@ -778,7 +782,7 @@ function KpiAnsicht({ kpi, laedt, onNeuLaden }: { kpi: Kpi; laedt: boolean; onNe
 
       <div style={{ ...karte, marginBottom: 14 }}>
         <h3 style={{ fontSize: 14, fontWeight: 700, margin: "0 0 10px" }}>Verlauf</h3>
-        {einblendungen === 0 && klicks === 0
+        {einblendungen === 0 && (Number(kpi.fenster?.klicks) || 0) === 0
           ? <p style={{ fontSize: 13, color: "#8A7F85", margin: 0 }}>In diesem Zeitraum wurde die Anzeige nicht gesehen.</p>
           : <KpiVerlauf verlauf={kpi.verlauf || []} />}
       </div>

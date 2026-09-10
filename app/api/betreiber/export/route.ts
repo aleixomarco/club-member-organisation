@@ -100,6 +100,39 @@ export async function GET() {
        Auswertung. */
     const anzeigenName = new Map(((anzeigen.data || []) as Zeile[]).map((a) => [a.id as string, String(a.titel ?? "")]));
     const anzeigenPlatz = new Map(((anzeigen.data || []) as Zeile[]).map((a) => [a.id as string, String(a.platz ?? "")]));
+
+    /* Einblendungen und Oeffnungen je Anzeige, aus denselben Tageszeilen, die
+       auch im Blatt "Anzeigen je Tag" stehen.
+       Frueher kam die Quote aus anzeigen.klicks / anzeigen.impressionen. Das
+       war doppelt falsch: klicks zaehlt die Antipper ALLER fuenf Elemente,
+       impressionen entsteht nur an einem - eine Anzeige, die geoeffnet, deren
+       Webseite aufgerufen und deren Nummer gewaehlt wurde, kam so auf 300 %.
+       Und es war die Summe seit Beginn, waehrend App und Konsole den Zeitraum
+       nahmen: dieselbe Ueberschrift, zwei Grundmengen. Jetzt rechnen alle drei
+       Oeffnungen geteilt durch Einblendungen. */
+    const proAnzeige = new Map<string, { einblendungen: number; oeffnungen: number }>();
+    for (const z of (statistik.data || []) as Zeile[]) {
+      const schluessel = z.anzeige_id as string;
+      const stand = proAnzeige.get(schluessel) || { einblendungen: 0, oeffnungen: 0 };
+      stand.einblendungen += Number(z.impressionen) || 0;
+      if (z.element === "anzeige") stand.oeffnungen += Number(z.klicks) || 0;
+      proAnzeige.set(schluessel, stand);
+    }
+
+    /* Die Tageszeilen sind gedeckelt. Wird der Deckel erreicht, deckt das Blatt
+       NICHT die zwoelf Monate ab, die sein Hinweis verspricht - und niemand
+       saehe es, weil eine gedeckelte Antwort kein Fehler ist. Dann sagt der
+       Hinweis, was wirklich drinsteht. Eine genannte Grenze ist eine
+       Einschraenkung; eine verschwiegene ist eine falsche Angabe. */
+    const TAGESZEILEN_GRENZE = 20000;
+    const tageszeilen = (statistik.data || []) as Zeile[];
+    const gedeckelt = tageszeilen.length >= TAGESZEILEN_GRENZE;
+    const aeltesterTag = tageszeilen.length
+      ? String(tageszeilen[tageszeilen.length - 1].tag ?? "")
+      : "";
+    if (gedeckelt) {
+      console.error(`Export: Blatt "Anzeigen je Tag" bei ${TAGESZEILEN_GRENZE} Zeilen gedeckelt, aeltester enthaltener Tag ${aeltesterTag}`);
+    }
     const planName = new Map(((plaene.data || []) as Zeile[]).map((p) => [p.id as string, p]));
 
     /* Die Mitglieder je Verein ueber die vorhandene Funktion - sie liefert
@@ -299,19 +332,21 @@ export async function GET() {
           { titel: "Aktiv", feld: "aktiv", art: "ja_nein" },
           { titel: "Einblendungen", feld: "impressionen", art: "zahl" },
           { titel: "Klicks", feld: "klicks", art: "zahl" },
-          { titel: "Klickrate", feld: "klickrate", art: "prozent" },
+          { titel: "Öffnungsrate (12 Mon.)", feld: "oeffnungsrate", art: "prozent" },
         ],
         zeilen: ((anzeigen.data || []) as Zeile[]).map((a): Zeile => ({
           ...a,
           herkunft: a.club_id ? "Sponsor des Vereins" : "Werbung des Betreibers",
           verein: a.club_id ? (vereinsName.get(a.club_id as string) ?? "") : "— gilt überall —",
-          /* Die Klickrate steht nur da, wo sie etwas bedeutet. Bei zwölf
+          /* Die Quote steht nur da, wo sie etwas bedeutet. Bei zwölf
              Einblendungen ist "25 %" kein Wert, sondern ein Zufall - und in
              einer Mappe, die an ein Unternehmen geht, eine Behauptung, die
              beim naechsten Mal zusammenbricht. */
-          klickrate: Number(a.impressionen) >= 20
-            ? Math.round((Number(a.klicks) / Number(a.impressionen)) * 1000) / 10
-            : null,
+          oeffnungsrate: (() => {
+            const k = proAnzeige.get(a.id as string);
+            if (!k || k.einblendungen < 20) return null;
+            return Math.round((k.oeffnungen / k.einblendungen) * 1000) / 10;
+          })(),
         })),
       },
       {
@@ -319,7 +354,9 @@ export async function GET() {
            Hand gibt: Es beantwortet "wann" und "was wurde angetippt", und beides
            ohne Bezug zu einzelnen Mitgliedern - gezaehlt wird als Tagessumme. */
         name: "Anzeigen je Tag",
-        hinweis: "Tagessummen der letzten zwölf Monate, je Anzeige, Verein und Element. Keine Angaben zu einzelnen Mitgliedern.",
+        hinweis: gedeckelt
+          ? `ACHTUNG: gekürzt. Es passen nur ${TAGESZEILEN_GRENZE.toLocaleString("de-DE")} Zeilen in dieses Blatt — enthalten sind die NEUESTEN, beginnend am ${aeltesterTag}. Ältere Tage fehlen, und der ${aeltesterTag} selbst kann unvollständig sein. Für den ganzen Zeitraum die Kennzahlen je Anzeige verwenden.`
+          : "Tagessummen der letzten zwölf Monate, je Anzeige, Verein und Element. Keine Angaben zu einzelnen Mitgliedern.",
         spalten: [
           { titel: "Tag", feld: "tag", art: "datum" },
           { titel: "Anzeige", feld: "anzeige", breite: 28 },
