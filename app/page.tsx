@@ -958,6 +958,23 @@ const isSysAdmin = (m) => !!m && m.roles.includes("sysadmin");
 const darfVereinVerwalten = (m) =>
   !!m && m.roles.some((r) => ["vereinsadmin", "organisator", "sysadmin"].includes(r));
 
+/* Wer Trainings ueberhaupt etwas angehen.
+ *
+ * Ein Fan kommt zu den Spielen. Wann eine Mannschaft trainiert, ist fuer ihn
+ * ohne Belang - und es ist auch nichts, was ein Verein nach aussen geben will:
+ * Trainingszeiten sagen, wann eine Halle mit Kindern belegt ist.
+ *
+ * Die Regel greift NICHT an "hat genau die Rolle fan". In der Produktion
+ * tragen zwei von drei Fans zusaetzlich "mitglied" - eine Pruefung auf die
+ * blosse Rolle haette also bei zweien von dreien nichts bewirkt. Massgeblich
+ * ist, ob jemand ausser Fan zu sein noch einen sportlichen oder
+ * organisatorischen Grund hat, den Trainingsplan zu sehen. Wer beides ist -
+ * Fan und Spieler - sieht ihn weiter. */
+const TRAININGS_ROLLEN = ["spieler", "trainer", "kapitaen", "teammanager",
+                          "vereinsadmin", "organisator", "sysadmin"];
+const istNurFan = (m) =>
+  !!m && m.roles.includes("fan") && !m.roles.some((r) => TRAININGS_ROLLEN.includes(r));
+
 /* Mannschaftszugehoerigkeit: siehe lib/mannschaften.mjs */const canWriteNews = (m) => isAdmin(m) || (!!m && m.roles.includes("redakteur"));
 /* Die eigene Sponsorenverwaltung des Vereins.
  *
@@ -1171,6 +1188,12 @@ const INITIAL_MEMBERS = [
   { id: "v1", clubId: DEMO_CLUB_ID, name: "Dirk Iwanowski", email: "dirk@cmo.app", password: "demo", team: "Vorstand", number: null, since: 2015, roles: ["vorstand", "mitglied"], color: C.ink, points: 60, tippPoints: 2, badges: ["loyalty"], birthdate: "1975-01-20" },
   { id: "m4", clubId: DEMO_CLUB_ID, name: "Rodrigo Neves", email: "rodrigo@cmo.app", password: "demo", team: "U11", number: 5, since: 2024, roles: ["spieler", "mitglied"], color: AVATAR_FARBEN[2], points: 30, tippPoints: 0, badges: [], birthdate: "2015-06-01", familyId: "fam-thomas", familyRole: "kind" },
   { id: "m5", clubId: DEMO_CLUB_ID, name: "Maria Aleixo", email: "maria@cmo.app", password: "demo", team: "Eltern / Angehörige", number: null, since: 2023, roles: ["mitglied"], color: AVATAR_FARBEN[2], points: 20, tippPoints: 0, badges: [], birthdate: "1952-02-11", familyId: "fam-thomas", familyRole: "grosseltern" },
+  /* Ein Fan im Demo-Bestand. Vorher gab es keinen - die Fan-Ansicht liess sich
+     dadurch ueberhaupt nicht ansehen, obwohl sie sich von jeder anderen
+     unterscheidet (keine Trainings auf der Startseite, kein Helferdienst).
+     Zwei Rollen wie bei zwei von drei echten Fans in der Produktion: Wer nur
+     auf "fan" allein pruefte, haette den haeufigeren Fall verfehlt. */
+  { id: "m20", clubId: DEMO_CLUB_ID, name: "Renate Voss", email: "renate@cmo.app", password: "demo", team: "Fan", number: null, since: 2024, roles: ["mitglied", "fan"], color: AVATAR_FARBEN[4], points: 5, tippPoints: 0, badges: [], birthdate: "1968-06-03" },
   { id: "m6", clubId: DEMO_CLUB_ID, name: "Simone Iwanowski", email: "simone@cmo.app", password: "demo", team: "Geschäftsstelle", number: null, since: 2020, roles: ["geschaeftsfuehrung", "mitglied"], color: AVATAR_FARBEN[2], points: 60, tippPoints: 4, badges: [], birthdate: "1980-11-03" },
   { id: "m7", clubId: DEMO_CLUB_ID, name: "Guido Rath", email: "guido@cmo.app", password: "demo", team: "Geschäftsstelle", number: null, since: 2022, roles: ["redakteur", "sponsorenmanager", "mitglied"], color: AVATAR_FARBEN[2], points: 40, tippPoints: 0, badges: [], birthdate: "1990-07-08" },
   { id: "m8", clubId: DEMO_CLUB_ID, name: "Simone Iwanowski", email: "simone.finanzen@cmo.app", password: "demo", team: "Geschäftsstelle", number: null, since: 2024, roles: ["finanzmanager", "mitglied"], color: AVATAR_FARBEN[2], points: 20, tippPoints: 0, badges: [], birthdate: "1988-04-19" },
@@ -3642,7 +3665,10 @@ function Dashboard({ user, members, events, channels, news, dutyPlan, seasonVote
           Spielkachel und liess das Training unberuehrt. */}
       <MannschaftsWahl mannschaften={mannschaften} gewaehlt={gewaehlteMannschaft} onWechsel={onMannschaftWechsel} favorit={user.teamFilter || "alle"} onFavorit={onFavoritMannschaft} />
       <Scoreboard nextEvent={nextEvent} goTo={goEvents} auswahlVorhanden={mannschaften.length > 1} />
-      <NextTrainingCard training={naechstesTraining} team={gewaehlteMannschaft} auswahlVorhanden={mannschaften.length > 1} />
+      {/* Fuer Fans faellt die Trainingskachel ganz weg - nicht in den leeren
+          Zustand ("kein Training eingetragen"), denn der wuerde behaupten, es
+          gaebe keines. Die Spielkachel darueber bleibt. */}
+      {!istNurFan(user) && <NextTrainingCard training={naechstesTraining} team={gewaehlteMannschaft} auswahlVorhanden={mannschaften.length > 1} />}
 
       {taskReminder !== null && (
         <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 mb-5" style={{ background: C.primaerWeich, border: `1px solid ${C.edge}` }}>
