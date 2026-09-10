@@ -992,6 +992,19 @@ const istNurFan = (m) =>
  * Funktion fuer abgeschaltet. */
 const SPONSOREN_VERWALTUNG_SICHTBAR = true;
 
+/* "Vereine werben Vereine" ist ausgeblendet.
+ *
+ * Das Werbeprogramm bleibt in der Datenbank bestehen - Codes, eingeloeste
+ * Monate und club_referral_codes ruehrt diese Zeile nicht an. Ausgeblendet
+ * ist nur, was ein Nutzer davon sieht: das Eingabefeld beim Anlegen eines
+ * Vereins, die Karte im Profil und die Ansicht mit dem eigenen Code.
+ *
+ * Ein Schalter statt geloeschter Zeilen, weil Ausblenden und Abschaffen
+ * zweierlei sind: Bereits vergebene Gutschriften stehen weiter in
+ * clubs.referral_credit_months, und der Betreiber sieht sie in seiner
+ * Konsole. Wer das Programm wieder anbietet, setzt hier true. */
+const EMPFEHLUNGEN_SICHTBAR = false;
+
 const canManageSponsors = (m) => SPONSOREN_VERWALTUNG_SICHTBAR && (isAdmin(m) || (!!m && m.roles.includes("sponsorenmanager")));
 const canManageDuty = (m) => isAdmin(m) || (!!m && m.roles.includes("organisator"));
 /* Abo und Vertragsdaten des Vereins gehen nur die Rollen etwas an, die den Verein
@@ -2231,7 +2244,7 @@ function NewClubScreen({ onCreate, goBack }) {
         <Field icon={MapPin} placeholder={t("feld.stadt")} value={form.city} onChange={set("city")} />
         <Field icon={Building2} placeholder={t("ph.registernummer")} value={form.registerNumber} onChange={set("registerNumber")} />
         <select value={form.currency} onChange={set("currency")} className="w-full px-3.5 py-3 rounded-xl text-sm mb-3 outline-none" style={{background:C.paperDim,color:C.ink}}><option value="EUR">{t("waehr.eur")}</option><option value="CHF">{t("waehr.chf")}</option><option value="GBP">{t("waehr.gbp")}</option><option value="USD">{t("waehr.usd")}</option><option value="DKK">{t("waehr.dkk")}</option><option value="NOK">{t("waehr.nok")}</option><option value="SEK">{t("waehr.sek")}</option><option value="PLN">{t("waehr.pln")}</option><option value="CZK">{t("waehr.czk")}</option></select>
-        <Field icon={Gift} placeholder={t("ph.empfehlungscode")} value={form.referralCode} onChange={set("referralCode")} />
+        {EMPFEHLUNGEN_SICHTBAR && <Field icon={Gift} placeholder={t("ph.empfehlungscode")} value={form.referralCode} onChange={set("referralCode")} />}
         <ClubColorPicker primary={form.primaryColor} secondary={form.secondaryColor} onChange={(primaryColor, secondaryColor) => setForm((f) => ({ ...f, primaryColor, secondaryColor }))} />
         <label className="w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-xs mb-3 cursor-pointer" style={{background:C.paperDim,color:C.textDim}}><span>{form.logoDataUrl?t("verein.logoAusgewaehlt"):t("verein.logoWaehlenOptional")}</span><ImageIcon size={16}/><input type="file" accept="image/*" className="hidden" onChange={(e)=>{const file=e.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>setForm((old)=>({...old,logoDataUrl:String(reader.result||"")}));reader.readAsDataURL(file);}}/></label>
         {error && <div className="flex items-center gap-1.5 text-xs mb-3" style={{ color: C.red, fontFamily: "Inter" }}><AlertCircle size={13} /> {error}</div>}
@@ -9262,7 +9275,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
       <div className="space-y-2 mb-6">
         {isAdmin(user) && <ProfileSettingsCard icon={Settings} title="Vereinseinstellungen" description="Funktionen wie Fahrzeugbuchung, Tippspiel & Athlet/in der Saison ein- oder ausblenden" color={C.red} onClick={() => setProfileFolder("clubsettings")}/>}
         <ProfileSettingsCard icon={Trophy} title={t("pf.vereinMitglied")} description="Athleten-, Trainer- und Vereinsrollen" color={C.red} onClick={() => setProfileFolder("club")}/>
-        <ProfileSettingsCard icon={Euro} title={t("pf.zugang")} description="Freischaltung des Vereins und Vereine werben Vereine" color={C.red} onClick={() => setProfileFolder("billing")}/>
+        <ProfileSettingsCard icon={Euro} title={t("pf.zugangNur")} description={t("pf.zugangText")} color={C.red} onClick={() => setProfileFolder("billing")}/>
       </div>
       </>}
 
@@ -9399,10 +9412,10 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
         </div>
       </ProfileUnderlay>}
 
-      {profileFolder === "billing" && <ProfileUnderlay title="Zugang & Empfehlungen" eyebrow="Einstellungen" onClose={() => setProfileFolder("")}>
+      {profileFolder === "billing" && <ProfileUnderlay title={t("pf.zugangNur")} eyebrow="Einstellungen" onClose={() => setProfileFolder("")}>
         <div className="space-y-2">
           <ProfileSettingsCard icon={Euro} title="Zugang des Vereins" description="Was freigeschaltet ist und wie viele Zugänge belegt sind" onClick={() => setProfileUnderlay("subscription")}/>
-          {(!referralAlreadyUsed || user.roles.includes("sysadmin")) && <ProfileSettingsCard icon={Building2} title="Vereine werben Vereine" description="Einen Verein werben und drei Gratismonate erhalten" color={C.red} onClick={() => setProfileUnderlay("referral")}/>}
+          {EMPFEHLUNGEN_SICHTBAR && (!referralAlreadyUsed || user.roles.includes("sysadmin")) && <ProfileSettingsCard icon={Building2} title="Vereine werben Vereine" description="Einen Verein werben und drei Gratismonate erhalten" color={C.red} onClick={() => setProfileUnderlay("referral")}/>}
         </div>
       </ProfileUnderlay>}
 
@@ -9480,7 +9493,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
       {profileUnderlay === "notifications" && <ProfileUnderlay title="Benachrichtigungen" onClose={() => setProfileUnderlay("")} onSave={()=>sectionSaveRef.current?.()}><NotificationSettings user={user} setMembers={setMembers} saveRef={sectionSaveRef}/></ProfileUnderlay>}
       {profileUnderlay === "password" && <ProfileUnderlay title="Passwort ändern" onClose={() => setProfileUnderlay("")} onSave={()=>sectionSaveRef.current?.()}><PasswordSettings user={user} onLogout={onLogout} saveRef={sectionSaveRef}/></ProfileUnderlay>}
       {profileUnderlay === "security" && <ProfileUnderlay title="Sicherheit" onClose={() => setProfileUnderlay("")} onSave={()=>sectionSaveRef.current?.()}><SecuritySettings user={user} setMembers={setMembers} saveRef={sectionSaveRef}/></ProfileUnderlay>}
-      {profileUnderlay === "referral" && <ProfileUnderlay title="Vereine werben Vereine" onClose={() => setProfileUnderlay("")}><ReferralSettings user={user} club={currentClub}/></ProfileUnderlay>}
+      {EMPFEHLUNGEN_SICHTBAR && profileUnderlay === "referral" && <ProfileUnderlay title="Vereine werben Vereine" onClose={() => setProfileUnderlay("")}><ReferralSettings user={user} club={currentClub}/></ProfileUnderlay>}
       {/* Ohne Premium gibt es hier nichts zu speichern — der Knopf entfällt, sonst
           stünde er wirkungslos über der Sperrmeldung. */}
       {profileUnderlay === "calendar" && <ProfileUnderlay title="Kalender synchronisieren" onClose={() => setProfileUnderlay("")} onSave={entitlement.tier !== "none" ? ()=>sectionSaveRef.current?.() : undefined}><LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Kalender-Abo"><CalendarSyncSettings user={user} saveRef={sectionSaveRef}/></LockedFeature></ProfileUnderlay>}
