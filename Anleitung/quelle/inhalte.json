@@ -1,0 +1,778 @@
+[
+ {
+  "key": "mitglied",
+  "abschnitte": [
+   {
+    "titel": "Anmelden und Verein wählen",
+    "wo": "App öffnen > Startbildschirm vor der Anmeldung",
+    "punkte": [
+     "Beim ersten Start wählst du deine Sprache, sieben stehen zur Wahl.",
+     "Dann meldest du dich an oder legst ein Konto mit E-Mail und Passwort an.",
+     "Danach tippst du den Verein an, in den du willst.",
+     "Bist du in keinem Verein, suchst du ihn und fragst den Beitritt an – als Mitglied, Athlet/in oder Fan."
+    ],
+    "hinweis": "Die Vereinsleitung gibt den Beitritt erst frei, bis dahin steht dort „Aufnahme offen“. Über „Verein wechseln“ oben rechts kommst du zurück zur Auswahl.",
+    "bildschirm": "Anmeldung / Meine Vereine"
+   },
+   {
+    "titel": "Die Startseite",
+    "wo": "Untere Leiste > Home",
+    "punkte": [
+     "Oben stehen dein Vorname, das Wappen deines Vereins und die Glocke für Benachrichtigungen.",
+     "Bei mehreren Mannschaften wählst du oben die Mannschaft aus, mit dem Stern legst du deine Standardmannschaft fest.",
+     "Darunter stehen dein nächstes Spiel und dein nächstes Training.",
+     "Geburtstage des Tages erscheinen als farbige Zeile.",
+     "Unter „Mitmachen“ führen Kacheln zu Athlet/in der Saison, Tippspiel, Helferplanung, Aufgaben und Vereinsfahrzeugen."
+    ],
+    "hinweis": "Welche Kacheln du siehst, entscheidet dein Verein. Ein Schloss heißt: Der Verein hat dafür noch keinen Vollzugang.",
+    "bildschirm": "Startseite"
+   },
+   {
+    "titel": "Termine und Zusagen",
+    "wo": "Untere Leiste > Termine",
+    "punkte": [
+     "Oben filterst du nach Alle, Training, Spiele oder Events, bei mehreren Mannschaften auch nach Mannschaft.",
+     "Das Kalendersymbol schaltet auf die Monatsansicht.",
+     "Tippst du einen Termin an, klappt er auf und zeigt Beschreibung, Ort und Uhrzeit.",
+     "Bei „Bist du dabei?“ sagst du zu oder ab.",
+     "Der runde Knopf mit den Pfeilen überträgt die Termine in den Kalender deines Telefons."
+    ],
+    "hinweis": "Zugesagt ist voreingestellt, nur eine Absage trägst du ein. Wer zu- oder abgesagt hat, sehen nur Trainer, Kapitäne, Teammanager und die Vereinsleitung; Termine anlegen darfst du nicht, und der Kalenderabgleich braucht den Vollzugang.",
+    "bildschirm": "Termine"
+   },
+   {
+    "titel": "Mitfahren und Fahrten anbieten",
+    "wo": "Termine > Termin antippen > Bereich „Fahrgemeinschaft“",
+    "punkte": [
+     "Bei Auswärtsterminen steht im aufgeklappten Termin der Bereich Fahrgemeinschaft.",
+     "Du bietest eine Fahrt an und gibst dabei freie Plätze, Abfahrtsort und Abfahrtszeit an.",
+     "Bei einer fremden Fahrt tippst du auf Mitfahren, solange Plätze frei sind.",
+     "Genauso trägst du dich wieder aus, deine eigene Fahrt löschst du."
+    ],
+    "hinweis": "Bei Heimspielen gibt es den Bereich nicht.",
+    "bildschirm": "Termine > aufgeklappter Auswärtstermin"
+   },
+   {
+    "titel": "Helferdienste übernehmen",
+    "wo": "Home > Kachel „Helferplanung“",
+    "punkte": [
+     "Die Kachel zeigt schon auf der Startseite, ob du zu einem Dienst eingeteilt bist.",
+     "In der Liste stehen alle Termine mit offenen Stationen, etwa Theke, Kasse oder Zeitnahme.",
+     "Ein Tipp auf eine Station trägt dich ein, ein zweiter trägt dich aus.",
+     "Bei einem Heimspiel übernimmst du Stationen auch direkt im Termin."
+    ],
+    "hinweis": "An Heimspielen hilfst du erst ab 16 mit; bist du jünger, nennt dir die App Familienmitglieder, die einspringen können. Fans helfen nicht mit. Braucht den Vollzugang, und der Verein kann die Helferplanung ausblenden.",
+    "bildschirm": "Startseite > Helferplanung"
+   },
+   {
+    "titel": "Aufgaben übernehmen",
+    "wo": "Home > Kachel „Aufgaben“",
+    "punkte": [
+     "Ganz oben stehen Aufgaben, die dir aus einer Vorstandssitzung persönlich zugewiesen wurden, die hakst du mit „Als erledigt“ ab.",
+     "Darunter folgen die Aufgaben des Vereins und deiner Mannschaften.",
+     "Jede Karte zeigt, wie viele Plätze frei sind und bis wann die Aufgabe fällig ist.",
+     "Mit „Eintragen“ meldest du dich, mit „Austragen“ wieder ab.",
+     "Danach setzt du die Aufgabe auf „Erledigt“."
+    ],
+    "hinweis": "Neue Aufgaben legen nur Rollen mit Verantwortung an, du trägst dich ein. Braucht den Vollzugang.",
+    "bildschirm": "Startseite > Aufgaben"
+   },
+   {
+    "titel": "Vereinsfahrzeug anfragen",
+    "wo": "Home > Kachel „Vereinsfahrzeuge“",
+    "punkte": [
+     "Ein Monatskalender zeigt, welches Fahrzeug wann belegt ist.",
+     "Du wählst Fahrzeug, Beginn und Ende und schickst die Anfrage ab.",
+     "Dein Knopf heißt „Anfragen“, bestätigen muss die Vereinsleitung.",
+     "Im Kalender siehst du danach, ob deine Anfrage bestätigt wurde."
+    ],
+    "hinweis": "Ohne Telefonnummer geht es nicht – trag sie vorher im Profil unter „Persönliche Daten“ ein. Je nach Sportart heißt die Kachel „Mannschaftsbus“. Braucht den Vollzugang und kann vom Verein ausgeblendet werden.",
+    "bildschirm": "Startseite > Vereinsfahrzeuge"
+   },
+   {
+    "titel": "Im Chat schreiben",
+    "wo": "Untere Leiste > Chat",
+    "punkte": [
+     "Oben wählst du den Kanal, es gibt die des Vereins und die deiner Mannschaften.",
+     "Unten tippst du deine Nachricht und schickst sie mit dem roten Knopf.",
+     "Über das Pluszeichen hängst du eine Abstimmung an.",
+     "Fremde Nachrichten meldest du, oder du blendest den Verfasser aus und holst ihn oben wieder zurück.",
+     "Deine eigenen Nachrichten löschst du."
+    ],
+    "hinweis": "In manchen Kanälen schreiben nur bestimmte Rollen, dort steht statt des Eingabefelds ein Hinweis. Der Chat braucht den Vollzugang.",
+    "bildschirm": "Chat"
+   },
+   {
+    "titel": "News und Umfragen",
+    "wo": "Home > „Neueste Nachrichten“ und „Deine Stimme zählt“",
+    "punkte": [
+     "Die zwei neuesten Vereins-News stehen auf der Startseite, mit Bild, falls eines dabei ist.",
+     "Darunter stehen laufende Umfragen, ein Tipp auf eine Antwort gibt deine Stimme ab.",
+     "Erst nach dem Abstimmen siehst du, wie die anderen gestimmt haben.",
+     "Mit „Auswahl zurücknehmen“ löschst du deine Stimme."
+    ],
+    "hinweis": "Eine eigene News-Seite haben nur Redakteure, du liest die Nachrichten auf der Startseite.",
+    "bildschirm": "Startseite"
+   },
+   {
+    "titel": "Tippspiel und Athlet/in der Saison",
+    "wo": "Home > Kacheln „Tippspiel“ und „Athlet/in der Saison“",
+    "punkte": [
+     "Beim Tippspiel wählst du oben die Runde deiner Mannschaft und trittst ihr bei.",
+     "Du trägst zu jedem Spiel ein Ergebnis ein und tippst auf Abgeben, bis zum Anpfiff nimmst du den Tipp zurück.",
+     "Die Tabelle zeigt deinen Platz in dieser Runde.",
+     "Bei „Athlet/in der Saison“ tippst du auf einen Namen, ein zweiter Tipp nimmt die Stimme zurück.",
+     "Das Ergebnis der Wahl siehst du erst nach dem Stichtag."
+    ],
+    "hinweis": "Jede Mannschaft hat ihre eigene Tipprunde, die Runden werden nicht gemischt. Beides braucht den Vollzugang und kann vom Verein ausgeblendet werden.",
+    "bildschirm": "Startseite > Tippspiel / Athlet/in der Saison"
+   },
+   {
+    "titel": "Mannschaften und Strafenkatalog",
+    "wo": "Untere Leiste > Teams; Strafenkatalog unter Profil > Einstellungen",
+    "punkte": [
+     "Unter „Teams“ stehen zuerst deine Mannschaften, darunter alle des Vereins.",
+     "Ein Tipp auf eine Mannschaft zeigt ihren Kader.",
+     "Im Profil öffnest du den Strafenkatalog und siehst, was welche Strafe kostet.",
+     "Oben wählst du dort die Mannschaft, aufgeführt sind nur Erwachsenenmannschaften."
+    ],
+    "hinweis": "Einer Mannschaft zuordnen können dich nur Trainer, Teammanager oder die Vereinsleitung. Offene Strafen sehen nur die Verantwortlichen der Mannschaft, und der Trainer kann den Katalog ganz ausblenden. Teams braucht den Vollzugang.",
+    "bildschirm": "Teams / Profil > Strafenkatalog"
+   },
+   {
+    "titel": "Profil, Punkte, Benachrichtigungen",
+    "wo": "Untere Leiste > Profil; Glocke oben rechts",
+    "punkte": [
+     "Die Glocke oben rechts zeigt ungelesene Meldungen, ein Tipp öffnet dein Postfach, dort liest, markierst oder löschst du sie.",
+     "Im Profil stehen oben dein Name, deine Mannschaften und deine Rollen.",
+     "Unter „Persönliche Daten“ pflegst du Stammdaten, Adresse, Telefonnummern und Familienverknüpfungen.",
+     "Der Balken „Vereinspunkte“ zeigt, wie weit du vom Ziel des Vereins entfernt bist.",
+     "Unter „Benachrichtigungen“ schaltest du Push-Nachrichten ein und legst für jede Art fest, ob du sie bekommst."
+    ],
+    "hinweis": "Punkte gibt es fürs Mitmachen: Helferdienste, Aufgaben, Umfragen, Tipps und Vereinstreue; Ziel und Prämie legt der Verein fest. Deine Anmelde-E-Mail änderst du hier nicht. Sprache, Einladungslink, Fehlermeldung und „Konto löschen“ stehen ebenfalls im Profil, übersetzt sind bisher vor allem Anmeldung und Registrierung.",
+    "bildschirm": "Profil / Benachrichtigungen"
+   }
+  ],
+  "einleitung": "Mitglied ist jeder im Verein, vom Fan bis zur Athletin. Du siehst Termine, sagst zu oder ab, hilfst bei Aufgaben und Diensten mit, schreibst im Chat und pflegst dein Profil.",
+  "rolle": "Mitglied / Athlet/in"
+ },
+ {
+  "key": "trainer",
+  "abschnitte": [
+   {
+    "titel": "Dein Trainerbereich",
+    "wo": "Reiter Profil > Abschnitt \"Trainerbereich\"",
+    "punkte": [
+     "Mit der Trainerrolle erscheint im Reiter Profil der Abschnitt \"Trainerbereich\".",
+     "Darin findest du \"Trainer & Rollen\" und \"Mannschaftseinstellungen\".",
+     "Unter \"Trainer & Rollen\" stehen alle Mannschaften, für die du eingetragen bist.",
+     "Wer dort eingetragen ist, bestimmt der Vereinsadmin — ändern kannst du das hier nicht."
+    ],
+    "bildschirm": "Profil > Trainerbereich",
+    "hinweis": "Je Mannschaft gibt es nur eine Trainerin oder einen Trainer; ist der Platz besetzt, lehnt die App eine zweite Eintragung ab. Teammanager dürfen mehrere sein."
+   },
+   {
+    "titel": "Was deine Mannschaft sieht",
+    "wo": "Profil > Trainerbereich > Mannschaftseinstellungen",
+    "punkte": [
+     "Ganz oben stehen unter \"Was diese Mannschaft sieht\" drei Schalter.",
+     "\"Zu- und Absagen\" schaltet die Abfrage bei Trainings und allen übrigen Terminen ein.",
+     "\"Zusagen bei Spielen\" gilt nur für Spiele.",
+     "\"Strafenkatalog\" zeigt oder versteckt Regeln und Kosten für alle in der Mannschaft.",
+     "Jeder Schalter wirkt sofort, einen Speichern-Knopf gibt es nicht."
+    ],
+    "bildschirm": "Profil > Trainerbereich > Mannschaftseinstellungen",
+    "hinweis": "Zu Beginn sind die Zu- und Absagen aus und der Strafenkatalog an. Die Schalter siehst du nur für Mannschaften, die du selbst führst."
+   },
+   {
+    "titel": "Kapitän oder Kapitänin bestimmen",
+    "wo": "Profil > Trainerbereich > Trainer & Rollen",
+    "punkte": [
+     "Wähle unter \"Mannschaft\" das Team aus.",
+     "Wähle darunter unter \"Kapitän\" jemanden aus dem Kader.",
+     "Zur Auswahl stehen nur aktive Athletinnen und Athleten dieser Mannschaft.",
+     "Tippe auf \"Speichern\", fertig."
+    ],
+    "bildschirm": "Profil > Trainerbereich > Trainer & Rollen",
+    "hinweis": "Jede Mannschaft hat genau einen Kapitän; wählst du jemand Neues, gibt der bisherige die Rolle in dieser Mannschaft ab."
+   },
+   {
+    "titel": "Training oder Spiel ansetzen",
+    "wo": "Reiter Termine > Knopf \"＋ Eintragen\"",
+    "punkte": [
+     "Wähle oben \"Training\" oder \"Spiel\" und darunter deine Mannschaft.",
+     "Zur Auswahl stehen nur die Mannschaften, für die du eingetragen bist.",
+     "Trage Titel, Datum, Beginn, Ende und Ort ein.",
+     "Kreuzt du bei einem Training \"Wiederholend\" an, wählst du Wochentage und Zeitraum, und die App legt die ganze Reihe an.",
+     "Ins Feld \"Helferstationen\" schreibst du, wer beim Termin gebraucht wird."
+    ],
+    "bildschirm": "Termine > Eintragen",
+    "hinweis": "Bei einem Spiel kannst du zusätzlich \"Heimspiel\" ankreuzen. Ein Vereinsevent für alle Mitglieder legt nur die Vereinsleitung an."
+   },
+   {
+    "titel": "Absagen und löschen",
+    "wo": "Reiter Termine > Termin antippen",
+    "punkte": [
+     "Öffne den Termin, tippe auf \"absagen\" und gib einen Grund an — ohne Grund geht es nicht.",
+     "Gehört der Termin zu einer Reihe, fragt die App zuerst: nur dieser oder die ganze Reihe.",
+     "Der Termin bleibt mit dem Vermerk \"Abgesagt\" stehen, damit alle es sehen.",
+     "Soll er ganz verschwinden, tippe darunter auf \"endgültig löschen\".",
+     "Beides geht nur bei deinen eigenen Mannschaften."
+    ],
+    "bildschirm": "Termine > einzelner Termin",
+    "hinweis": ""
+   },
+   {
+    "titel": "Wer ist dabei",
+    "wo": "Reiter Termine > Termin antippen > Knopf \"Wer ist dabei?\"",
+    "punkte": [
+     "Ist die Abfrage für deine Mannschaft an, sagt jedes Mitglied im Termin mit einem Tipp zu oder ab.",
+     "Den Knopf \"Wer ist dabei?\" sehen nur du und die anderen, die die Mannschaft führen.",
+     "Er öffnet die Namensliste mit Zugesagt und Abgesagt und zeigt, wie viele von wie vielen zugesagt haben.",
+     "Wer nichts antippt, gilt als zugesagt."
+    ],
+    "bildschirm": "Termine > einzelner Termin",
+    "hinweis": "Die Liste erscheint nur, wenn du den passenden Schalter in den Mannschaftseinstellungen angeschaltet hast — für Trainings und für Spiele getrennt."
+   },
+   {
+    "titel": "Kader und Aufgaben",
+    "wo": "Reiter Teams > Mannschaft antippen; Startseite > Kachel \"Aufgaben\"",
+    "punkte": [
+     "Im Reiter Teams öffnest du deine Mannschaft und siehst den Kader.",
+     "Mit \"+ Zuweisen\" ordnest du Athletinnen und Athleten der Mannschaft zu, höchstens drei Mannschaften je Person.",
+     "Für Kinder ohne eigenes Handy legst du dort \"Spieler ohne Account\" mit Vor- und Nachnamen an.",
+     "Tippst du eine Person im Kader an, siehst du ihre offenen Strafen und kannst ihr direkt eine geben.",
+     "Über die Kachel \"Aufgaben\" auf der Startseite legst du unter \"Aufgaben · deine Mannschaft\" Aufgaben an und teilst Verantwortliche ein."
+    ],
+    "bildschirm": "Teams > einzelne Mannschaft",
+    "hinweis": "Den Reiter Teams und die Aufgaben gibt es nur, wenn der Verein freigeschaltet ist; sonst steht dort ein Hinweis."
+   },
+   {
+    "titel": "Strafenkatalog führen",
+    "wo": "Profil > Trainerbereich > Mannschaftseinstellungen",
+    "punkte": [
+     "Unter \"Neue Regel\" trägst du Titel und Betrag in Euro ein, zum Beispiel \"Zu spät\" und 5,00 €.",
+     "Bestehende Regeln änderst oder löschst du.",
+     "Unter \"Strafe zuweisen\" wählst du eine Person und eine Regel.",
+     "In der Liste \"Vergebene Strafen\" hakst du ab, was bezahlt ist, oder entfernst einen Eintrag.",
+     "Oben rechts filterst du nach einer einzelnen Regel, darüber steht die Summe je Person."
+    ],
+    "bildschirm": "Profil > Trainerbereich > Mannschaftseinstellungen",
+    "hinweis": "Den Strafenkatalog gibt es nur für Erwachsenenmannschaften, und jede Mannschaft führt ihre eigenen Regeln und Kosten. Eine Saison archiviert die Vereinsleitung."
+   }
+  ],
+  "einleitung": "Du führst eine Mannschaft: Du setzt Trainings und Spiele an, sagst sie ab und siehst, wer dabei ist. Du entscheidest auch, was deine Mannschaft in der App sieht.",
+  "rolle": "Trainerin und Trainer"
+ },
+ {
+  "key": "vereinsadmin",
+  "abschnitte": [
+   {
+    "titel": "Dein Reiter Verwaltung",
+    "wo": "Unten in der Leiste > Reiter „Verwaltung“ (Schild-Symbol) neben „Profil“",
+    "punkte": [
+     "Mit deiner Rolle bekommst du unten den Reiter „Verwaltung“.",
+     "Ganz oben steht deine Aufgabenliste: offene Mitgliedsanträge, fehlende Spielergebnisse, fällige Aufgaben und Fahrzeuganfragen.",
+     "Tippst du eine Zeile an, springst du dorthin, wo du sie erledigst.",
+     "Darunter stehen deine Bereiche: Übersicht, Spielergebnisse, Vereinsprofil, Mitgliedsanträge, Funktionen, Automatisierung, Helferplanung, Protokolle, Umfragen, Sponsoring, Athlet/in der Saison und Rollen.",
+     "Über das Zahnrad im Profil erreichst du „Verein & Mitgliedschaft“, „Vereinseinstellungen“ und „Zugang des Vereins“."
+    ],
+    "bildschirm": "Verwaltung (Übersicht mit Aufgabenliste und Bereichen)",
+    "hinweis": "Der ganze Reiter braucht den Vollzugang des Vereins. Ohne Freischaltung siehst du dort nur ein Schloss und diesen Hinweis."
+   },
+   {
+    "titel": "Zugang und Abo",
+    "wo": "Reiter „Profil“ > Zahnrad > „Zugang des Vereins“",
+    "punkte": [
+     "Unter „Zugang des Vereins“ siehst du, ob der Vollzugang läuft und wie viele bezahlte Zugänge belegt sind.",
+     "Fehlt der Vollzugang, stellst du hier die Anfrage: Ansprechpartner, Rechnungsmail, Telefon, Zahl der Zugänge und ob ihr eigenes Sponsoring wollt.",
+     "Du kannst die Anfrage wieder zurückziehen; mehr als eine offene Anfrage je Verein geht nicht.",
+     "Dich kostet die App nichts, bezahlt wird immer vom Verein."
+    ],
+    "bildschirm": "Profil > Zugang des Vereins",
+    "hinweis": ""
+   },
+   {
+    "titel": "Mannschaften anlegen",
+    "wo": "Reiter „Teams“ > Knopf „+ Team“ oben rechts",
+    "punkte": [
+     "Mit „+ Team“ legst du eine Mannschaft an: Name, Kategorie und der Schalter „Erwachsene“.",
+     "Öffnest du eine Mannschaft, benennst du sie über „Bearbeiten“ um oder legst sie über „Archivieren“ still; die Historie bleibt.",
+     "Unter „Athlet/innen“ weist du mit „+ Zuweisen“ Leute zu, höchstens drei Mannschaften je Person.",
+     "Für Kinder ohne eigenes Handy legst du dort „Spieler ohne Account“ nur mit dem Namen an.",
+     "Nur angelegte Mannschaften kannst du später bei Rollen, Terminen und Beitrittsanfragen auswählen."
+    ],
+    "bildschirm": "Teams (Mannschaftsliste und geöffnete Mannschaft)"
+   },
+   {
+    "titel": "Mitglieder aufnehmen und verwalten",
+    "wo": "Reiter „Verwaltung“ > „Mitgliedsanträge“",
+    "punkte": [
+     "Oben stehen die offenen Anträge mit Name, E-Mail, gewünschter Rolle und Wunschmannschaft.",
+     "Mit „Freigeben“ nimmst du die Person auf; „Ablehnen“ heißt nur „diesmal nicht“, sie darf sich sofort wieder bewerben.",
+     "Unter „Mitglieder verwalten“ beendest du eine Mitgliedschaft, reaktivierst sie oder sperrst jemanden dauerhaft; nur die Sperre hält eine neue Anfrage auf.",
+     "„Entfernen“ löscht die Mitgliedschaft endgültig samt Rollen, Mannschaft und Helfereinteilungen; das Konto der Person bleibt.",
+     "Name, Kontaktmail, Geburtstag, Mitglied seit, Status, Rollen, Teams und Familie änderst du im Profil unter „Verein & Mitgliedschaft“ > „Benutzerverwaltung“."
+    ],
+    "bildschirm": "Verwaltung > Mitgliedsanträge",
+    "hinweis": "Sind alle bezahlten Zugänge belegt, kannst du niemanden mehr freigeben; dann braucht ihr mehr Zugänge."
+   },
+   {
+    "titel": "Rollen vergeben",
+    "wo": "Reiter „Verwaltung“ > „Rollen“ > Mitglied antippen",
+    "punkte": [
+     "Tippe ein Mitglied an und tippe die Rollen an, die es bekommen oder abgeben soll.",
+     "Zur Wahl stehen: Vereins-Administrator, Organisator/in, Trainer/in, Kapitän/in, Teammanager/in, Redakteur, Sponsorenmanager, Athlet/in und Fan.",
+     "„Mitglied“ hat jeder und lässt sich nicht abwählen; eine Rolle bleibt immer bestehen.",
+     "Bei Trainer/in und Teammanager/in wählst du die Mannschaften dazu; nimmst du die Rolle weg, fällt die Mannschaft mit weg.",
+     "Ganz unten führst du ein Profil ohne eigenes Konto mit dem echten Konto zusammen, sobald die Person sich registriert hat."
+    ],
+    "bildschirm": "Verwaltung > Rollen",
+    "hinweis": "Je Mannschaft gibt es nur einen Teammanager. Gibst du die Mannschaft weiter, verliert der bisherige genau diese Mannschaft, nicht die Rolle."
+   },
+   {
+    "titel": "Logo und Farben einstellen",
+    "wo": "Reiter „Verwaltung“ > „Vereinsprofil“",
+    "punkte": [
+     "Oben wählst du das Vereinslogo aus deinen Bildern: JPG, PNG oder WebP bis 2 MB.",
+     "Darunter stellst du die beiden Vereinsfarben ein und speicherst.",
+     "Die Farben gelten in der ganzen App und für alle Mitglieder.",
+     "Ein neues Logo ersetzt das alte sofort."
+    ],
+    "bildschirm": "Verwaltung > Vereinsprofil"
+   },
+   {
+    "titel": "Funktionen ein- und ausschalten",
+    "wo": "Reiter „Verwaltung“ > „Funktionen“ (oder Profil > „Vereinseinstellungen“)",
+    "punkte": [
+     "Je Funktion gibt es einen Schalter: Helferplanung, Fahrzeugbuchung, Tippspiel und Athlet/in der Saison.",
+     "Was du abschaltest, sehen die Mitglieder nicht mehr.",
+     "Mit den Pfeilen nach oben und unten sortierst du die Kacheln auf der Startseite unter „Aktionen & Abstimmungen“.",
+     "„Aufgaben“ ist immer aktiv und lässt sich nicht abschalten.",
+     "Im Profil unter „Vereinseinstellungen“ siehst du außerdem zum Nachlesen, wer im Verein welche Rolle hat."
+    ],
+    "bildschirm": "Verwaltung > Funktionen"
+   },
+   {
+    "titel": "Termine, News und Ergebnisse",
+    "wo": "Reiter „Termine“, Reiter „Redaktion“, Reiter „Verwaltung“ > „Spielergebnisse/Tippspiel“",
+    "punkte": [
+     "Im Reiter „Termine“ legst nur du Vereinstermine für alle an.",
+     "Trainings und Spiele trägst du für jede Mannschaft ein, sagst sie ab oder löschst sie.",
+     "Der Reiter „Redaktion“ gehört dir: dort schreibst und veröffentlichst du Vereins-News.",
+     "Unter „Spielergebnisse/Tippspiel“ trägst du nach dem Spiel die Tore ein; erst dann bekommen die Tipps ihre Punkte.",
+     "Ein falsches Ergebnis löschst du dort wieder; die Tippspiel-Punkte dafür verfallen."
+    ],
+    "bildschirm": "Verwaltung > Spielergebnisse/Tippspiel",
+    "hinweis": "Vereinstermine für den ganzen Verein brauchen den Vollzugang."
+   },
+   {
+    "titel": "Weitere Bereiche der Verwaltung",
+    "wo": "Reiter „Verwaltung“ > Protokolle, Umfragen, Helferplanung, Sponsoring, Automatisierung, Athlet/in der Saison",
+    "punkte": [
+     "In „Protokolle“ hältst du Sitzungen mit Datum, Anwesenden und Text fest und machst daraus Aufgaben mit Verantwortlichem und Frist.",
+     "In „Umfragen“ veröffentlichst du eine Frage mit mindestens zwei Antworten und stellst sie später auf inaktiv.",
+     "In „Helferplanung“ legst du Stationen als Vorlage an, pflegst die Helfersätze und teilst Helfer auf Termine ein.",
+     "In „Sponsoring“ bereitest du Anzeigen für die Werbeplätze der App vor und legst die Laufzeiten fest.",
+     "In „Automatisierung“ schaltest du die Begrüßung neuer Mitglieder im Kanal „Vereins-News“ ein."
+    ],
+    "bildschirm": "Verwaltung > Protokolle",
+    "hinweis": "Sponsoring-Anzeigen kannst du immer vorbereiten, sichtbar werden sie erst mit dem Sponsoring-Zusatz. Helferplanung und Athlet/in der Saison verschwinden, wenn du sie unter „Funktionen“ abschaltest."
+   }
+  ],
+  "einleitung": "Die Vereinsadministration ist die höchste Rolle im Verein. Du nimmst Mitglieder auf, vergibst Rollen, legst Mannschaften an, pflegst Logo und Farben und schaltest Funktionen für alle ein oder aus.",
+  "rolle": "Vereinsadministration (Vereins-Administrator)"
+ },
+ {
+  "key": "organisator",
+  "abschnitte": [
+   {
+    "titel": "Termine anlegen",
+    "wo": "Reiter \"Termine\" > Knopf \"+\" oben rechts",
+    "punkte": [
+     "Du legst Trainings und Spiele für jede Mannschaft an, nicht nur für deine eigene.",
+     "Im Formular wählst du Art, Mannschaft, Titel, Ort und Zeit; beim Spiel setzt du den Haken \"Heimspiel\".",
+     "Beim Training kreuzt du \"wiederholend\" an, wählst Wochentage, Uhrzeit und Zeitraum, und die ganze Reihe entsteht.",
+     "Unter \"Helferstationen\" trägst du gleich ein, welche Dienste es an diesem Termin gibt."
+    ],
+    "bildschirm": "Termine > Termin eintragen (Formular)",
+    "hinweis": "Ein Vereinsevent legt nur der Vereinsadmin an; du wählst zwischen Training und Spiel."
+   },
+   {
+    "titel": "Termine absagen und löschen",
+    "wo": "Reiter \"Termine\" > Termin antippen > Knöpfe unten in der Karte",
+    "punkte": [
+     "Du sagst Trainings und Spiele aller Mannschaften ab; ein Grund ist Pflicht und geht mit der Absage raus.",
+     "Gehört der Termin zu einer Trainingsreihe, fragt die App: nur dieser Termin oder die ganze Reihe.",
+     "Mit \"endgültig löschen\" verschwindet der Termin ganz, ebenfalls einzeln oder als ganze Reihe.",
+     "Löschst du eine Reihe, gehen auch die vergangenen Termine mit."
+    ],
+    "bildschirm": "Termine > aufgeklappte Terminkarte mit Absagegrund",
+    "hinweis": "Ein Vereinsevent sagt nur der Vereinsadmin ab."
+   },
+   {
+    "titel": "Sätze und Stationen anlegen",
+    "wo": "Reiter \"Verwaltung\" unten > Kachel \"Sätze & Stationen\"",
+    "punkte": [
+     "Den Reiter \"Verwaltung\" siehst du wegen deiner Rolle, dort aber nur deine Bereiche.",
+     "Ein Satz ist eine Vorlage wie \"Heimspiel\": Du gibst ihm einen Namen und legst ihn an.",
+     "Zu jedem Satz fügst du Stationen hinzu, etwa Kasse, Theke oder Zeitnahme; einzelne Stationen und ganze Sätze löschst du wieder.",
+     "Diese Sätze lädst du später an jedem Termin mit einem Tipp vor."
+    ],
+    "bildschirm": "Verwaltung > Sätze & Stationen",
+    "hinweis": "Der Vereinsadmin muss die Helferplanung unter \"Funktionen\" eingeschaltet und der Verein freigeschaltet sein. Die Kachel \"Umfragen\" siehst du dort auch, anlegen darf Umfragen aber nur die Vereinsleitung."
+   },
+   {
+    "titel": "Stationen am Termin pflegen",
+    "wo": "Reiter \"Termine\" > Termin aufklappen > Abschnitt mit dem Dienstnamen deiner Sportart",
+    "punkte": [
+     "Mit \"Satz vorladen\" holst du eine fertige Liste von Stationen auf den Termin.",
+     "Einzelne Stationen entfernst du wieder oder räumst alle auf einmal ab.",
+     "Sind schon Leute eingetragen, warnt dich die App vorher und nennt die Zahl.",
+     "Zu jeder Station hinterlegst du eine verantwortliche Person und ein Datum und hakst sie ab."
+    ],
+    "bildschirm": "Termine > Terminkarte, Abschnitt Helferdienst/Hallendienst",
+    "hinweis": "Wie der Abschnitt heißt, hängt von der Sportart ab, zum Beispiel \"Hallendienst\" oder \"Kioskdienst\"."
+   },
+   {
+    "titel": "Helfer einteilen",
+    "wo": "Reiter \"Termine\" > Termin aufklappen > Helferstationen",
+    "punkte": [
+     "Bei jeder Station siehst du, wer eingetragen ist; zwei Personen passen hinein.",
+     "Über \"Jemanden eintragen\" wählst du Person und Station und trägst sie selbst ein.",
+     "Ein Tipp auf einen Namen nimmt die Person wieder heraus.",
+     "Die Kachel \"Helferplanung\" auf der Startseite zeigt alle Termine mit offenen Helferstellen."
+    ],
+    "bildschirm": "Termine > Terminkarte, Abschnitt Helferstationen",
+    "hinweis": "An Heimspielen teilst du nur Mitglieder ab 16 Jahren ein, bei anderen Terminen gilt das nicht."
+   },
+   {
+    "titel": "Aufgaben und Fahrzeuge",
+    "wo": "Startseite > Kachel \"Aufgaben\" oder \"Fahrzeuge\"",
+    "punkte": [
+     "Unter \"Aufgaben\" legst du Aufgaben für den Verein und für jede Mannschaft an, mit Beschreibung, Frist und Zahl der Plätze.",
+     "Verantwortliche trägst du gleich beim Anlegen ein; andere Mitglieder melden sich selbst freiwillig.",
+     "Löschen darf eine Aufgabe nur, wer sie angelegt hat; ändern darfst du auch fremde.",
+     "Fahrzeuge buchst du direkt ohne Anfrage und nimmst Anfragen anderer an oder lehnst sie ab."
+    ],
+    "bildschirm": "Startseite > Aufgaben / Fahrzeuge",
+    "hinweis": "Fahrzeuge neu eintragen oder ändern darf nur die Vereinsleitung."
+   },
+   {
+    "titel": "Mitglieder und offene Punkte",
+    "wo": "Reiter \"Profil\" > \"Verein & Mitgliedschaft\"; offene Punkte oben im Reiter \"Verwaltung\"",
+    "punkte": [
+     "Unter \"Beitrittsanfragen\" nimmst du neue Mitglieder an oder lehnst sie ab; neue Anfragen meldet dir die Glocke.",
+     "Unter \"Benutzerverwaltung\" pflegst du Name, E-Mail, Geburtsdatum, Eintrittsjahr und Mannschaften eines Mitglieds.",
+     "\"Mitgliederübersicht\" zeigt dir alle Mitglieder zum Nachlesen.",
+     "Oben im Reiter \"Verwaltung\" stehen die offenen Punkte: wartende Anträge, fehlende Spielergebnisse, fällige Aufgaben. Ein Tipp bringt dich hin."
+    ],
+    "bildschirm": "Profil > Verein & Mitgliedschaft",
+    "hinweis": "Rollen vergeben, das Vereinsprofil ändern und Funktionen ein- oder ausschalten darf nur der Vereinsadmin."
+   }
+  ],
+  "einleitung": "Als Organisator/in planst du für den ganzen Verein: Termine aller Mannschaften, die Helferdienste dazu, Aufgaben und Fahrzeuge. Du bist kein Vereinsadmin, darfst aber deutlich mehr als ein einfaches Mitglied.",
+  "rolle": "Organisator/in"
+ },
+ {
+  "key": "sponsoren",
+  "abschnitte": [
+   {
+    "titel": "Dein Bereich in der App",
+    "wo": "Unten in der Leiste auf \"Sponsoren\" (Schild-Zeichen) > Knopf \"Sponsoring\"",
+    "punkte": [
+     "Unten in der Leiste hast du einen eigenen Reiter \"Sponsoren\", andere Mitglieder sehen ihn nicht.",
+     "Oben steht \"Sponsorenmanager – Anzeigen & Kampagnen\".",
+     "Es gibt zwei Knöpfe: \"Sponsoring\" und \"Umfragen\", deine Arbeit liegt unter \"Sponsoring\".",
+     "Der Rest der Vereinsverwaltung bleibt für dich zu."
+    ],
+    "bildschirm": "Sponsoren > Sponsoring",
+    "hinweis": "Eigene Sponsoren kosten extra. Ist dein Verein noch nicht freigeschaltet, steht oben \"Eigene Sponsoren sind noch nicht freigeschaltet\": Du trägst alles ein, aber niemand sieht es. Die Freischaltung fragt die Vereinsleitung zusammen mit dem Vollzugang an."
+   },
+   {
+    "titel": "Die vier Werbeplätze",
+    "wo": "Reiter Sponsoren > Sponsoring > die vier Kästen untereinander",
+    "punkte": [
+     "Die vier Plätze sind: Start oben, Start unter den News, Termine oben und Profil unten.",
+     "In jedem Kasten steht, was gerade läuft: dein Sponsor, eine Anzeige des Betreibers oder nichts.",
+     "Trägst du einen eigenen Sponsor ein, weicht die Werbung des Betreibers von diesem Platz.",
+     "Mit dem Schalter \"Werbefläche eingeblendet\" blendest du einen Platz ganz aus, dann sieht dort niemand etwas."
+    ],
+    "bildschirm": "Sponsoren > Sponsoring",
+    "hinweis": ""
+   },
+   {
+    "titel": "Einen Sponsor eintragen",
+    "wo": "Reiter Sponsoren > Sponsoring > im Kasten des Platzes \"Eigenen Sponsor eintragen\"",
+    "punkte": [
+     "Trag den Namen des Sponsors und einen kurzen Text ein.",
+     "Webseite, Telefonnummer und E-Mail werden im Inserat zu Knöpfen zum Anrufen und Schreiben.",
+     "Über \"Bild hochladen\" fügst du ein Logo oder Foto an, höchstens 2 MB.",
+     "Unter \"Der Sponsor steht auf dem Platz\" trägst du Beginn und Ende mit Datum und Uhrzeit ein, beides ist Pflicht.",
+     "Tipp auf \"Speichern\". Später öffnest du denselben Kasten mit \"Sponsor bearbeiten\"."
+    ],
+    "bildschirm": "Sponsoren > Sponsoring > Sponsor bearbeiten",
+    "hinweis": "Nach dem Ende der Laufzeit zeigt die App den Sponsor nicht mehr, im Kasten steht \"Die Laufzeit ist beendet\". Ganz weg ist er erst mit \"Sponsor von diesem Platz entfernen\"."
+   },
+   {
+    "titel": "Eine befristete Aktion",
+    "wo": "Im selben Formular unter \"Die Aktion (optional)\"",
+    "punkte": [
+     "Für einen Rabatt, einen Gutschein oder ein Sonderangebot trägst du Titel und Text ein.",
+     "Dazu legst du einen Link zur Aktion.",
+     "Die Aktion läuft genauso lange wie der Sponsor, ein eigenes Datum brauchst du nicht.",
+     "Ist die Zeit um, verschwindet der Aktionsknopf von selbst, der Sponsor bleibt stehen."
+    ],
+    "bildschirm": "Sponsoren > Sponsoring > Sponsor bearbeiten",
+    "hinweis": "Ohne Aktionstitel erscheint gar keine Aktion."
+   },
+   {
+    "titel": "Zahlen ansehen",
+    "wo": "Reiter Sponsoren > Sponsoring > im Kasten des Sponsors \"Zahlen ansehen\"",
+    "punkte": [
+     "Oben wählst du den Zeitraum: 7, 30 oder 90 Tage oder 1 Jahr.",
+     "Du siehst Einblendungen (wie oft der Sponsor auf dem Platz stand), Öffnungen (wie oft jemand das Inserat aufgeklappt hat) und Kontakte (Website, Anruf, E-Mail, Aktion).",
+     "Darunter zeigt \"Was angetippt wurde\", welcher Knopf wie oft genommen wurde.",
+     "\"Mögliche Reichweite\" sagt, wie viele Mitglieder die Anzeige sehen können, gemessen ist diese Zahl nicht.",
+     "Die Ansicht frischt sich alle 30 Sekunden auf, der Pfeil oben rechts lädt sofort neu."
+    ],
+    "bildschirm": "Sponsoren > Sponsoring > Zahlen ansehen",
+    "hinweis": "Die Öffnungsrate steht erst ab 20 Einblendungen da, vorher siehst du einen Strich und \"zu wenige Einblendungen\"."
+   },
+   {
+    "titel": "Bericht für den Sponsor",
+    "wo": "Reiter Sponsoren > Sponsoring > Zahlen ansehen > ganz unten \"Bericht für den Sponsor\"",
+    "punkte": [
+     "Der Bericht listet Zeitraum, Einblendungen, Öffnungen, Kontakte und den besten Tag untereinander.",
+     "Mit \"Bericht teilen\" gibst du ihn weiter, etwa per E-Mail. Kann dein Gerät nicht teilen, landet der Text in der Zwischenablage.",
+     "Du gibst den Bericht unverändert an den Sponsor, er nennt keine einzelnen Mitglieder.",
+     "Der Pfeil oben links bringt dich zurück zu den Zahlen."
+    ],
+    "bildschirm": "Sponsoren > Sponsoring > Zahlen ansehen > Bericht für den Sponsor",
+    "hinweis": ""
+   }
+  ],
+  "einleitung": "Du betreust die Sponsoren deines Vereins in der App. Du trägst sie auf den vier Werbeplätzen ein, hinterlegst Aktionen und siehst, wie oft sie gesehen und angetippt wurden.",
+  "rolle": "Sponsorenbetreuung"
+ },
+ {
+  "key": "redaktion",
+  "abschnitte": [
+   {
+    "titel": "Dein Reiter Redaktion",
+    "wo": "Unten in der Leiste auf „Redaktion“ tippen, zwischen „Mannschaften“ und „Chat“.",
+    "punkte": [
+     "Diesen Reiter sehen nur Redakteure und die Vereinsleitung.",
+     "Oben rechts tippst du auf „+ Neue News“ und schreibst Titel und Text.",
+     "Ein Bild kannst du dazulegen: JPG, PNG oder WEBP, höchstens 5 MB.",
+     "Solange Titel oder Text fehlen, bleibt „Veröffentlichen“ grau.",
+     "Mit „Veröffentlichen“ sehen alle Mitglieder die News sofort."
+    ],
+    "bildschirm": "Redaktion",
+    "hinweis": "Der Reiter braucht den Vollzugang des Vereins. Läuft kein Abo, steht dort nur der Hinweis, dass die Funktion freigeschaltet werden muss."
+   },
+   {
+    "titel": "News ändern und löschen",
+    "wo": "Reiter Redaktion > Abschnitt „Alle News“.",
+    "punkte": [
+     "Bei jeder veröffentlichten News stehen oben rechts „Bearbeiten“ und „Löschen“.",
+     "„Bearbeiten“ öffnet dasselbe Formular, du änderst Titel, Text oder Bild und speicherst.",
+     "Beim Löschen fragt die App einmal nach, danach ist die News weg und das Bild auch."
+    ],
+    "bildschirm": "Redaktion > Alle News",
+    "hinweis": "Du bearbeitest hier alle News des Vereins, nicht nur deine eigenen."
+   },
+   {
+    "titel": "Wo deine News ankommen",
+    "wo": "Startseite > Abschnitt „Vereins-News“, bei jedem Mitglied.",
+    "punkte": [
+     "Auf der Startseite stehen die zwei neuesten Nachrichten mit Bild und Datum.",
+     "„Alle ansehen“ bringt dich zurück in deinen Reiter Redaktion.",
+     "Jede neue News meldet die App allen aktiven Mitgliedern des Vereins.",
+     "Wer das nicht will, stellt es unter Profil > Benachrichtigungen bei „Vereins-News“ ab."
+    ],
+    "bildschirm": "Startseite",
+    "hinweis": "Die Meldung geht immer an den ganzen Verein, einen kleineren Kreis kannst du nicht wählen."
+   },
+   {
+    "titel": "Der Kanal Vereins-News",
+    "wo": "Reiter Chat > oben in der Kanalleiste „📣 Vereins-News“.",
+    "punkte": [
+     "Diesen Kanal sieht jedes Mitglied des Vereins, auch wer in keiner Mannschaft steht.",
+     "Schreiben dürfen nur du und die Vereinsleitung, alle anderen lesen mit.",
+     "Was du schickst, meldet die App allen, die den Kanal sehen dürfen.",
+     "Deine eigenen Nachrichten löschst du unter der Nachricht, fremde nicht."
+    ],
+    "bildschirm": "Chat > Vereins-News",
+    "hinweis": "Auch der Chat braucht den Vollzugang des Vereins."
+   },
+   {
+    "titel": "Abstimmungen und Mannschaftskanäle",
+    "wo": "Reiter Chat > Kanal „Vereins-News“ > Plus links neben dem Schreibfeld.",
+    "punkte": [
+     "Über das Plus legst du eine Abstimmung an: eine Frage und mindestens zwei Antworten.",
+     "Unter „Einstellungen“ wählst du Mehrfachauswahl, anonyme Stimmen, wann das Ergebnis sichtbar wird und wann Schluss ist.",
+     "Beenden darf eine Abstimmung nur, wer sie gestellt hat, und die Vereinsleitung.",
+     "Mannschaftskanäle siehst du nur, wenn du selbst in der Mannschaft stehst oder dein Kind dort spielt; als Redakteur nicht.",
+     "Steht unten statt des Schreibfelds ein grauer Hinweis, darfst du dort nur mitlesen."
+    ],
+    "bildschirm": "Chat > Vereins-News",
+    "hinweis": "Die Umfragen auf der Startseite legt die Vereinsverwaltung an, den Reiter „Verwaltung“ hast du nicht."
+   }
+  ],
+  "einleitung": "Als Redakteur schreibst du die Vereins-News und sprichst im Chat für den ganzen Verein. Dafür hast du den Reiter „Redaktion“ und darfst im Kanal „Vereins-News“ schreiben.",
+  "rolle": "Redakteur"
+ },
+ {
+  "key": "eltern",
+  "abschnitte": [
+   {
+    "titel": "Familie im Profil öffnen",
+    "wo": "Reiter „Profil\" > Kachel „Persönliche Daten\" > „Familie\"",
+    "punkte": [
+     "Oben siehst du deinen Stammbaum mit Großeltern, Eltern und Kindern.",
+     "Ist noch niemand eingetragen, steht dort nur ein Hinweis.",
+     "Darunter steht, ob du für Heimspiel-Helferdienste alt genug bist (ab 16).",
+     "Ganz unten liegt „Familienverknüpfung\" mit dem Knopf „＋ Verknüpfen\"."
+    ],
+    "bildschirm": "Profil > Persönliche Daten > Familie",
+    "hinweis": "Diesen Bereich hat jedes Mitglied, ohne besondere Rolle und ohne Freischaltung."
+   },
+   {
+    "titel": "Vorhandenes Profil verknüpfen",
+    "wo": "Reiter „Profil\" > „Persönliche Daten\" > „Familie\" > Knopf „＋ Verknüpfen\"",
+    "punkte": [
+     "Wähle zuerst, was du für die andere Person bist: Vater, Mutter, Sohn, Tochter, Opa oder Oma.",
+     "Tippe den Namen ins Suchfeld und bei der richtigen Person auf „Verbinden\".",
+     "Die Verknüpfung steht danach in beiden Profilen, die andere Person muss nichts bestätigen.",
+     "Mit „Löschen\" neben dem Eintrag löst du die Verbindung wieder, auch auf der anderen Seite."
+    ],
+    "bildschirm": "Profil > Persönliche Daten > Familie, Bereich „Familienverknüpfung\" aufgeklappt",
+    "hinweis": "Die Suche findet nur Personen mit eigenem Konto in deinem Verein. Profile ohne Konto tauchen dort nicht auf."
+   },
+   {
+    "titel": "Kind ohne Konto anlegen",
+    "wo": "Reiter „Profil\" > „Persönliche Daten\" > „Familie\" > „＋ Verknüpfen\" > „Vater\" oder „Mutter\" > „Kind ohne Account vorläufig anlegen\"",
+    "punkte": [
+     "Trage Vor- und Nachnamen ein und tippe auf „Anlegen\".",
+     "Dein Kind bekommt sofort ein betreutes Profil mit den Rollen Mitglied und Athlet/in.",
+     "Die Verknüpfung zu dir entsteht dabei automatisch.",
+     "Mehr als den Namen trägst du hier nicht ein, Mannschaft und Geburtsdatum ergänzt später der Trainer oder die Vereinsverwaltung."
+    ],
+    "bildschirm": "Profil > Persönliche Daten > Familie, Bereich „Kind ohne Account vorläufig anlegen\"",
+    "hinweis": "Das Feld erscheint nur, wenn du oben „Vater\" oder „Mutter\" gewählt hast. Ein betreutes Profil hat kein Passwort und keine E-Mail, dein Kind kann sich damit nicht anmelden."
+   },
+   {
+    "titel": "Was die Verknüpfung bringt",
+    "wo": "Reiter „Chat\" und Glocke oben; Reiter „Profil\" > „Benachrichtigungen & Kalender\"",
+    "punkte": [
+     "Im Chat siehst du den Mannschaftskanal deines Kindes, auch wenn du selbst nicht in der Mannschaft bist.",
+     "Lesen ja, schreiben nein: dort schreiben nur Trainer, Kapitän, Teammanager und die Vereinsverwaltung.",
+     "Du bekommst Meldungen zu Trainings und Spielen der Mannschaft, neu, geändert oder abgesagt.",
+     "Unter „Benachrichtigungen\" schaltest du einzelne Meldungen ab, darunter den Schalter „Familienverknüpfungen\"."
+    ],
+    "bildschirm": "Chat mit dem Mannschaftskanal des Kindes",
+    "hinweis": "Das greift erst, wenn dein Kind in einer Mannschaft ist. Ohne Mannschaft gibt es weder Kanal noch Termin-Meldungen."
+   },
+   {
+    "titel": "Betreutes Profil zusammenführen",
+    "wo": "Dein Kind registriert sich selbst; danach Reiter „Verwaltung\" > „Rollen\" > „Profile ohne Konto zusammenführen\"",
+    "punkte": [
+     "Dein Kind legt sich ein eigenes Konto an und tritt damit dem Verein bei.",
+     "Danach wählt ein Vereins-Administrator das alte Platzhalter-Profil und das neue Konto aus und tippt auf „Zusammenführen\".",
+     "Rollen, Mannschaften, Familienverknüpfungen, Beiträge, Aufgaben und Helferdienste wandern mit.",
+     "Das betreute Profil verschwindet danach."
+    ],
+    "bildschirm": "Verwaltung > Rollen, Bereich „Profile ohne Konto zusammenführen\"",
+    "hinweis": "Als Elternteil kannst du das nicht selbst, diesen Bereich sieht nur der Vereins-Administrator oder der Sys-Admin."
+   }
+  ],
+  "einleitung": "„Elternteil\\\" ist keine Rolle, die dir jemand zuteilt: Du trägst die Verknüpfung selbst in deinem Profil ein. Sie verbindet dein Konto mit dem deines Kindes und bringt dir dessen Mannschaftskanal und dessen Termine.",
+  "rolle": "Elternteil"
+ },
+ {
+  "key": "betreiber",
+  "abschnitte": [
+   {
+    "titel": "Anmelden und Überblick",
+    "wo": "Seite /betreiber aufrufen > Passwort eingeben",
+    "punkte": [
+     "Du meldest dich mit einem eigenen Passwort an, nicht mit deinem Vereinskonto.",
+     "Ganz oben steht in einer Zeile, wie viele Vereine es gibt, wie viele freigeschaltet sind und wie viele Anfragen offen sind. Vereine an ihrer Zugangsgrenze stehen rot daneben.",
+     "Darunter liegen sechs Kacheln: Vereine, Freigeschaltet, Konten, Still, Fast voll und Gesperrt. \"Still\" und \"Fast voll\" werden rot, sobald dort etwas steht.",
+     "Es gibt zwei Reiter, \"Vereine\" und \"Werbeanzeigen\", rechts oben \"Excel-Export\" und \"Abmelden\".",
+     "Mit \"Excel-Export\" lädst du eine Mappe herunter: Übersicht, Vereine, Mitglieder, Mannschaften, Termine, Abos, Zugangsanfragen, Anzeigen und Anzeigen je Tag."
+    ],
+    "hinweis": "In der Mappe stehen Namen, E-Mail-Adressen und Geburtsdaten echter Menschen. Behandle sie wie eine Mitgliederliste auf Papier und lösche sie, wenn du sie nicht mehr brauchst.",
+    "bildschirm": "Vereinsverwaltung > Reiter \"Vereine\", Kopfzeile mit Kennzahlen"
+   },
+   {
+    "titel": "Anfragen bis zur Freischaltung",
+    "wo": "Reiter \"Vereine\" > Bereich \"Offene Anfragen\" ganz oben",
+    "punkte": [
+     "Jede Anfrage zeigt Verein, Ansprechpartner, E-Mail, Telefon, die gewünschten Zugänge und ob sie über die Website oder die App kam. Wünscht der Verein eigene Sponsoren, steht das gelb in der Zeile.",
+     "Der Weg steht als Kette in der Zeile: Angefragt, Rechnung erstellt, Rechnung versendet, Bezahlt, Freigeschaltet. Erledigte Schritte tragen ihr Datum.",
+     "Im ersten Schritt trägst du Rechnungsnummer, Betrag und monatlich oder jährlich ein, danach klickst du dich mit je einem Knopf weiter.",
+     "Erst nach \"Bezahlt\" erscheint \"Verein freischalten …\", danach hakst du \"Bestätigungsmail versendet\" ab.",
+     "Mit \"Ablehnen …\" beendest du eine Anfrage; der Grund bleibt hinterlegt, und der Verein kann jederzeit neu anfragen."
+    ],
+    "hinweis": "Einen Verein, der noch nicht in der App angelegt ist, kannst du nicht freischalten. Die Vereinsverwaltung meldet dir das an dieser Stelle.",
+    "bildschirm": "Vereinsverwaltung > Vereine > Offene Anfragen"
+   },
+   {
+    "titel": "Die Vereinsliste",
+    "wo": "Reiter \"Vereine\" > Tabelle unter den Anfragen",
+    "punkte": [
+     "Jede Zeile zeigt Tarif, belegte und vereinbarte Zugänge, Lebenszeichen, Sponsoren, Laufzeitende, Guthaben und Ansprechpartner.",
+     "Die Spalte \"Leben\" sagt, wann zuletzt etwas passiert ist, und darunter, wie viele Mitglieder in 30 Tagen aktiv waren und wie viele Termine und Nachrichten es gab.",
+     "Über der Tabelle suchst du, und mit einem Haken zeigst du nur die stillen Vereine.",
+     "\"Freischalten …\" öffnet ein Fenster für Stufe (Basic bis 100, Plus bis 350, Pro bis 1.000 Zugänge), Laufzeit von einem Monat bis zwei Jahren, vereinbarte Zugänge, eigene Sponsoren und Rechnungsnummer. Wählst du eine niedrigere Stufe als bisher, warnt dich das Fenster rot vor der Herabstufung.",
+     "Hat ein Verein Empfehlungsguthaben, hängst du die Monate mit dem Knopf in der Spalte \"Guthaben\" an die Laufzeit an.",
+     "\"Sperren\" wirft den Verein auf die kostenlose Stufe zurück: drei Zugänge, nur Trainings- und Spielpläne. Bestehende Konten bleiben, neue kommen nicht mehr dazu."
+    ],
+    "hinweis": "Beim Sperren fallen vereinbarte Zugangszahl und Sponsorenzusatz weg, beim erneuten Freischalten trägst du beides neu ein. Lässt du \"Vereinbarte Zugänge\" leer, ändert sich nichts, eine 0 setzt auf die Zahl des Tarifs zurück.",
+    "bildschirm": "Vereinsverwaltung > Vereine > Tabelle, Fenster \"Freischalten\""
+   },
+   {
+    "titel": "Ein Verein im Detail",
+    "wo": "Reiter \"Vereine\" > Vereinsnamen in der Tabelle antippen",
+    "punkte": [
+     "Oben steht die \"Zielgruppe\": Mitglieder, davon aktiv, Durchschnittsalter, Mannschaften, App-Nutzung der letzten 30 Tage, Altersgruppen und Geschlecht.",
+     "Diese Zahlen enthalten keine Namen und sind das, was du einem Werbepartner zeigen kannst.",
+     "Darunter stehen die gebuchten Sponsoren des Vereins mit Bild, Aktion, Laufzeit, Einblendungen und Klicks. Ist der Sponsorenzusatz nicht freigeschaltet, steht dort statt der Liste ein Hinweis.",
+     "Ganz unten liegt die Mitgliederliste mit Name, E-Mail, Status, Alter, Rollen, Mannschaft, Punkten und Geräten; du suchst darin und filterst nach Rolle oder Mannschaft."
+    ],
+    "hinweis": "Gruppen unter fünf Personen zeigt die Zielgruppe nicht. Die Mitgliederliste ist für Rückfragen und Betrieb gedacht, nicht für Werbepartner.",
+    "bildschirm": "Vereinsverwaltung > Vereine > Vereinsansicht (Zielgruppe, Sponsoren, Mitglieder)"
+   },
+   {
+    "titel": "Nachricht an einen Verein",
+    "wo": "Reiter \"Vereine\" > in der Vereinszeile auf \"Nachricht …\"",
+    "punkte": [
+     "Du schreibst Titel und Text, der Vereinsname steht automatisch davor.",
+     "Die Nachricht landet in der Glocke der App und löst dieselbe Push-Meldung aus wie jede andere Nachricht.",
+     "Ohne Haken geht sie nur an die Vereinsleitung, das ist voreingestellt.",
+     "Mit Haken geht sie an alle Mitglieder: daneben steht, wie viele Menschen das sind, und du bestätigst noch einmal.",
+     "Nach dem Senden siehst du, an wie viele Personen die Nachricht ging."
+    ],
+    "hinweis": "Titel und Text dürfen nicht leer sein, sonst kannst du nicht senden.",
+    "bildschirm": "Vereinsverwaltung > Vereine > Fenster \"Nachricht an …\""
+   },
+   {
+    "titel": "Werbeanzeigen und Kennzahlen",
+    "wo": "Reiter \"Werbeanzeigen\" > Unterreiter \"Anzeigen\" oder \"KPI\"",
+    "punkte": [
+     "Unter \"Eigene Werbeplätze\" legst du mit \"Neue Anzeige\" Werbung an, die in jedem Verein gilt. Du wählst den Platz (Start oben, Start unter den News, Termine im Kopfbereich, Profil unten), Titel, Text, Ziel-Adresse, Enddatum und ob sie an oder aus ist.",
+     "Hat ein Verein auf demselben Platz einen laufenden eigenen Sponsor, tritt deine Anzeige dort zurück.",
+     "Unter \"Sponsoren der Vereine\" siehst du alle Sponsoren, die Vereine selbst eingetragen haben; ändern kannst du sie nicht.",
+     "Der Knopf \"Kennzahlen\" in einer Zeile springt zum Unterreiter \"KPI\" und zeigt die Zahlen dieser einen Anzeige. Oben wählst du eine Anzeige und den Zeitraum: 7 Tage, 30 Tage, 90 Tage oder 1 Jahr.",
+     "Du siehst Einblendungen, Öffnungen, Öffnungsrate, Kontakte, mögliche Reichweite und den besten Tag, dazu den Verlauf, was angetippt wurde und die Verteilung nach Verein."
+    ],
+    "hinweis": "Eine Sammelzahl über alle Anzeigen gibt es bewusst nicht. Die Öffnungsrate bleibt leer, solange es weniger als 20 Einblendungen gibt, und \"Mögliche Reichweite\" ist nicht gemessen, sondern sagt, wie viele Mitglieder die Anzeige sehen könnten.",
+    "bildschirm": "Vereinsverwaltung > Werbeanzeigen > Anzeigen und KPI"
+   }
+  ],
+  "einleitung": "Du betreibst die App und betreust alle Vereine, die sie nutzen. Deine Oberfläche heißt \\\"Vereinsverwaltung\\\", hat einen eigenen Zugang und gehört nicht zur Vereins-App: kein Verein und kein Vereinsadmin kommt hinein.",
+  "rolle": "Betreiber (Vereinsverwaltung)"
+ }
+]

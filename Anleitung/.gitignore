@@ -1,0 +1,15 @@
+# Die fertigen Mappen und die Screenshots bleiben draussen.
+#
+# Neunundvierzig Megabyte Binaerdateien, die sich jederzeit neu erzeugen
+# lassen - und zwar bei jeder Aenderung an der App neu, weil die Screenshots
+# dann veralten. In der Versionsverwaltung wuerde jede Fassung vollstaendig
+# mitgeschleppt; nach einem halben Jahr traegt das Projekt ein Gigabyte
+# Bilder, die niemand mehr ansieht.
+#
+# Die Quelle daneben (quelle/) bleibt drin. Sie ist Code.
+*.pdf
+quelle/bilder/
+quelle/chrome-*/
+quelle/vorschau/
+quelle/*.png
+quelle/qrlesen
