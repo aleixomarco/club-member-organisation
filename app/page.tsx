@@ -1482,6 +1482,33 @@ function totalTippPoints(userId, predictions, results, begegnungen = []) {
    bei ihm nie gegeben hat. Protokolle legt der Vorstand selbst an. */
 const INITIAL_PROTOCOLS = [];
 
+/* Beispielaufgaben des Demo-Vereins - die Rohdaten.
+   Sie stehen hier bei den uebrigen Demodaten und nicht in demoAufgaben(), aus
+   demselben Grund wie INITIAL_MEMBERS und EVENTS: Es sind erfundene Inhalte,
+   keine Beschriftungen der App, und uebersetzt wird daran nichts. Innerhalb
+   einer Funktion haelt scripts/pruefe-uebersetzung.mjs jeden Text fuer eine
+   vergessene Uebersetzung.
+   Die Faelligkeit ist ein Abstand in Tagen ab heute - gerechnet wird erst beim
+   Laden, damit die Liste nicht nach einem Monat voller ueberfaelliger
+   Aufgaben steht.
+   Spalten: Kennung, Mannschaft (null = ganzer Verein), Titel, Beschreibung,
+   faellig in Tagen, Plaetze, Freiwillige, Verantwortliche, angelegt von,
+   angelegt vor Tagen, erledigt vor Tagen (null = offen). */
+const DEMO_MANNSCHAFTEN = ["Herren 1", "Herren 2", "Damen 1", "U15", "U11"];
+const DEMO_AUFGABEN = [
+  ["demo-a1", null, "Hallenaufbau zum Heimspieltag", "Banden stellen, Tore aufbauen, Kampfgericht einrichten. Treffpunkt 9 Uhr am Halleneingang.", 3, 4, ["m3", "m11"], ["m10"], "m10", 5, null],
+  ["demo-a2", null, "Kuchen fürs Sommerfest", "Wer backt? Bitte vorher kurz im Chat sagen, was du mitbringst.", 12, 6, ["m5", "m15"], [], "m10", 3, null],
+  ["demo-a3", null, "Flyer zum Saisonstart verteilen", "Rund um die Hemberghalle und in den Schulen der Umgebung.", 5, 3, [], ["m7"], "m9", 2, null],
+  ["demo-a4", null, "Vereinsheim streichen", "Farbe und Rollen sind da. Bitte Arbeitskleidung mitbringen.", 20, 5, ["m1", "m9"], [], "v1", 8, null],
+  ["demo-a5", null, "Getränkelieferung annehmen", "Lieferung für das Heimspiel, Leergut gleich zurückgeben.", -2, 1, ["m10"], [], "v1", 6, 1],
+  ["demo-t1", "Herren 1", "Trikotwäsche nach dem Heimspiel", "Trikots mitnehmen, waschen und zum nächsten Training zurückbringen.", 4, 1, ["m11"], [], "m9", 2, null],
+  ["demo-t2", "U11", "Fahrdienst zum Auswärtsspiel", "Drei Autos gesucht, Abfahrt 8:30 Uhr an der Halle.", 6, 3, ["m17"], [], "m9", 3, null],
+  ["demo-t3", "Damen 1", "Kabine nach dem Training aufräumen", "Einmal durchfegen und die Mülleimer leeren.", 2, 2, [], [], "m2", 1, null],
+  ["demo-t4", "U15", "Ballsäcke auffüllen", "Die Luftpumpe liegt im Materialraum.", 8, 1, [], [], "m9", 4, null],
+  ["demo-t5", "Herren 2", "Schiedsrichter betreuen", "Empfang, Getränke, Kabine zeigen.", 9, 1, ["m12"], [], "m9", 2, null],
+];
+const DEMO_PROTOKOLLAUFGABE = { text: "Hallenzeiten für den Winter mit der Stadt klären", faelligIn: 10, sitzung: "Vorstandssitzung", sitzungVor: 7 };
+
 /* ------------------------------------------------------------------ */
 /* Helpers                                                              */
 /* ------------------------------------------------------------------ */
@@ -3742,7 +3769,7 @@ function Dashboard({ user, members, events, channels, news, dutyPlan, seasonVote
           gaebe keines. Die Spielkachel darueber bleibt. */}
       {!istNurFan(user) && <NextTrainingCard training={naechstesTraining} team={gewaehlteMannschaft} auswahlVorhanden={mannschaften.length > 1} />}
 
-      {taskReminder !== null && (
+      {taskReminder !== null && !istNurFan(user) && (
         <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 mb-5" style={{ background: C.primaerWeich, border: `1px solid ${C.edge}` }}>
           <ClipboardList size={16} style={{ color: C.red }} />
           <div className="text-sm flex-1" style={{ fontFamily: "Inter", color: C.ink }}>{t("auf.schonProzent1")}<b>{taskReminder}%</b>{t("auf.schonProzent2")}<button onClick={goTasks} className="underline font-bold">{t("allg.jetztEintragen")}</button></div>
@@ -3755,28 +3782,12 @@ function Dashboard({ user, members, events, channels, news, dutyPlan, seasonVote
         </div>
       )}
 
-      <DashboardSection accent={C.red} background={C.primaerWeich}>
-        <SectionTitle eyebrow={t("home.mitmachen")} title={t("home.aktionen")} />
-        <div>
-          {resolveDashboardTileOrder(dashboardTileOrder).map((tileKey) => {
-            switch (tileKey) {
-              case "season_award":
-                return featureEnabled("season_award") && <FeatureRow key={tileKey} icon={Trophy} title="Athlet/in der Saison" subtitle={seasonSubtitle} onClick={goSeason} accent={C.secondary} locked={featureLocked} />;
-              case "tippspiel":
-                return featureEnabled("tippspiel") && <FeatureRow key={tileKey} icon={Target} title="Tippspiel" subtitle={tippSubtitle} onClick={goTipp} accent={C.red} locked={featureLocked} />;
-              case "duty_roster":
-                return featureEnabled("duty_roster") && <FeatureRow key={tileKey} icon={ClipboardList} title="Helferplanung" subtitle={dutySubtitle} onClick={goDuty} accent={C.secondary} locked={featureLocked} />;
-              case "tasks":
-                return <FeatureRow key={tileKey} icon={ClipboardList} title="Aufgaben" subtitle="Für den Verein mithelfen" onClick={goTasks} accent={C.red} locked={featureLocked} />;
-              case "vehicle_booking":
-                return featureEnabled("vehicle_booking") && <FeatureRow key={tileKey} icon={Car} title={sportText(t, sport, "vehicleTabLabel")} subtitle="Kalender & Buchung" onClick={goVehicles} accent={C.secondary} locked={featureLocked} />;
-              default:
-                return null;
-            }
-          })}
-        </div>
-      </DashboardSection>
-
+      {/* Die News stehen vor "Aktionen & Abstimmungen": Was im Verein passiert,
+          liest man zuerst, mitmachen kommt danach.
+          Der untere Werbeplatz bleibt DIREKT unter den News. Er heisst bei
+          Vereinen und Sponsoren "Start - unter den News" und ist so verkauft;
+          mit den Abschnitten allein getauscht, stuende er ploetzlich unter den
+          Aktionen. */}
       <DashboardSection accent={C.red} background={C.primaerWeich}>
         <SectionTitle eyebrow="Vereins-News" title="Neueste Nachrichten" right={goNews ? <button onClick={goNews} className="text-xs font-bold" style={{ color: C.red, fontFamily: "Inter" }}>{t("allg.alleAnsehen")}</button> : null} />
         <div className="rounded-2xl px-3" style={{ background: "rgba(255,255,255,0.82)", border: `1px solid ${C.white}` }}>
@@ -3794,6 +3805,28 @@ function Dashboard({ user, members, events, channels, news, dutyPlan, seasonVote
       </DashboardSection>
 
       <SponsorSlot slotKey="dashboard_bottom" bookings={werbeplaetze} onImpression={onSponsorImpression} onClick={onSponsorClick} visible={featureEnabled("sponsor_dashboard_bottom")} />
+
+      <DashboardSection accent={C.red} background={C.primaerWeich}>
+        <SectionTitle eyebrow={t("home.mitmachen")} title={t("home.aktionen")} />
+        <div>
+          {resolveDashboardTileOrder(dashboardTileOrder).map((tileKey) => {
+            switch (tileKey) {
+              case "season_award":
+                return featureEnabled("season_award") && <FeatureRow key={tileKey} icon={Trophy} title="Athlet/in der Saison" subtitle={seasonSubtitle} onClick={goSeason} accent={C.secondary} locked={featureLocked} />;
+              case "tippspiel":
+                return featureEnabled("tippspiel") && <FeatureRow key={tileKey} icon={Target} title="Tippspiel" subtitle={tippSubtitle} onClick={goTipp} accent={C.red} locked={featureLocked} />;
+              case "duty_roster":
+                return !istNurFan(user) && featureEnabled("duty_roster") && <FeatureRow key={tileKey} icon={ClipboardList} title="Helferplanung" subtitle={dutySubtitle} onClick={goDuty} accent={C.secondary} locked={featureLocked} />;
+              case "tasks":
+                return !istNurFan(user) && <FeatureRow key={tileKey} icon={ClipboardList} title="Aufgaben" subtitle="Für den Verein mithelfen" onClick={goTasks} accent={C.red} locked={featureLocked} />;
+              case "vehicle_booking":
+                return featureEnabled("vehicle_booking") && <FeatureRow key={tileKey} icon={Car} title={sportText(t, sport, "vehicleTabLabel")} subtitle="Kalender & Buchung" onClick={goVehicles} accent={C.secondary} locked={featureLocked} />;
+              default:
+                return null;
+            }
+          })}
+        </div>
+      </DashboardSection>
 
       {/* Die Abstimmungen erscheinen nur, wenn es welche gibt. Vorher stand die
           Ueberschrift auch dann da, wenn der Verein keine einzige angelegt hat. */}
@@ -7401,17 +7434,36 @@ function TasksView({ currentUser, members }) {
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [form, setForm] = useState({ title: "", description: "", dueDate: "", slots: "1", teamId: "", verantwortliche: [], startTime: "", endTime: "" });
   const canCreateClubTask = currentUser.roles.some((r) => !["spieler", "mitglied"].includes(r));
+  /* Im Demo-Betrieb aendern die Knoepfe nur, was auf dem Bildschirm steht.
+     Ohne das warfen sie: Jeder Handgriff unten geht sonst geradewegs an die
+     Datenbank, und die gibt es hier nicht. */
+  const lokalAendern = (taskId, aendern) => {
+    setClubTasks((liste) => liste.map((x) => (x.id === taskId ? aendern(x) : x)));
+    setTeamTasks((liste) => liste.map((x) => (x.id === taskId ? aendern(x) : x)));
+  };
   /* Abhaken heisst: aus der Liste nehmen. Die Zeile bleibt im Protokoll, nur
      mit Haken - die Regel "eigene protokollaufgabe abhaken" erlaubt genau
      diesen einen Schreibzugriff. */
   const protokollAufgabeErledigen = async (id) => {
     setMessage("");
+    if (!supabase) { setProtokollAufgaben((liste) => liste.filter((a) => a.id !== id)); return; }
     const { error } = await supabase.from("protocol_tasks").update({ done: true }).eq("id", id);
     if (error) { setMessage(t("auf.hakenFehler")); return; }
     setProtokollAufgaben((liste) => liste.filter((a) => a.id !== id));
   };
   const loadAll = useCallback(async () => {
-    if (!databaseMembership) { setLoading(false); return; }
+    if (!databaseMembership) {
+      /* Ohne Datenbank die Beispielaufgaben des Demo-Vereins - sonst stand
+         hier nur "gibt es nur in einem echten Verein", und der Support-Reiter
+         war im Demo halb leer. Mit Datenbank, aber ohne echte Mitgliedschaft
+         bleibt es beim Hinweis unten. */
+      if (!supabase) {
+        const demo = demoAufgaben(currentUser, members);
+        setClubTasks(demo.verein); setTeamTasks(demo.mannschaft); setProtokollAufgaben(demo.protokoll);
+        setMyTeams(demo.meineTeams); setManageableTeamIds(demo.verwaltbar);
+      }
+      setLoading(false); return;
+    }
     setLoading(true); setMessage("");
     /* Nur die eigenen und nur die offenen. Abgehakte verschwinden aus der
        Liste - im Protokoll bleiben sie mit ihrem Haken stehen, dort ist der
@@ -7472,6 +7524,7 @@ function TasksView({ currentUser, members }) {
   useEffect(() => { loadAll(); }, [loadAll]);
   const resetForm = () => setForm({ title: "", description: "", dueDate: "", slots: "1", teamId: "", verantwortliche: [], startTime: "", endTime: "" });
   const createTask = async (teamId) => {
+    if (!supabase) { setMessage(t("auf.demoNichtSpeichern")); return; }
     if (!form.title.trim()) { setMessage(t("allg.titelEingeben")); return; }
     const slotsNeeded = Math.max(1, Number(form.slots) || 1);
     if (editingTaskId) {
@@ -7511,6 +7564,7 @@ function TasksView({ currentUser, members }) {
     else { setShowCreateClub(true); setShowCreateTeamId(""); }
   };
   const signUp = async (taskId) => {
+    if (!supabase) { lokalAendern(taskId, (x) => ({ ...x, signups: [...x.signups, { membershipId: currentUser.id, name: currentUser.name }] })); return; }
     setMessage("");
     const { error } = await supabase.from("club_task_signups").insert({ task_id: taskId, membership_id: currentUser.id });
     if (error) { setMessage(t("help.eintragenNichtMoeglich")); return; }
@@ -7518,6 +7572,7 @@ function TasksView({ currentUser, members }) {
     supabase.rpc("check_task_reminder_threshold", { target_club: currentUser.clubId });
   };
   const withdraw = async (taskId) => {
+    if (!supabase) { lokalAendern(taskId, (x) => ({ ...x, signups: x.signups.filter((e) => e.membershipId !== currentUser.id) })); return; }
     setMessage("");
     const { error } = await supabase.from("club_task_signups").delete().eq("task_id", taskId).eq("membership_id", currentUser.id);
     if (error) { setMessage(t("allg.entfernenFehler")); return; }
@@ -7526,12 +7581,14 @@ function TasksView({ currentUser, members }) {
   /* Abhaken. Die Datenbank entscheidet, wer das darf - der Verantwortliche,
      wer sich eingetragen hat, der Ersteller oder die Vereinsleitung. */
   const erledigenUmschalten = async (task) => {
+    if (!supabase) { lokalAendern(task.id, (x) => ({ ...x, erledigtAm: x.erledigtAm ? null : new Date().toISOString(), erledigtVon: x.erledigtAm ? null : currentUser.id })); return; }
     setMessage("");
     const { error } = await supabase.rpc("aufgabe_erledigen", { target_task: task.id, erledigt: !task.erledigtAm });
     if (error) { setMessage(t("auf.erledigenFehler")); return; }
     await loadAll();
   };
   const removeTask = async (task) => {
+    if (!supabase) { setClubTasks((l) => l.filter((x) => x.id !== task.id)); setTeamTasks((l) => l.filter((x) => x.id !== task.id)); return; }
     if (!window.confirm(`Aufgabe „${task.title}“ wirklich löschen?`)) return;
     const { error } = await supabase.from("club_tasks").delete().eq("id", task.id);
     if (error) { setMessage(t("allg.loeschenFehler")); return; }
@@ -7582,7 +7639,7 @@ function TasksView({ currentUser, members }) {
       </div>
     );
   };
-  if (!databaseMembership) return <div className="px-4 pt-4 pb-24"><div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{t("auf.nurEchterVerein")}</div></div>;
+  if (!databaseMembership && supabase) return <div className="px-4 pt-4 pb-24"><div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{t("auf.nurEchterVerein")}</div></div>;
   return (
     <div className="px-4 pt-4 pb-24">
       <SectionTitle eyebrow="Verein" title="Aufgaben" right={canCreateClubTask ? <button onClick={() => { if (showCreateClub) { setEditingTaskId(null); resetForm(); } setShowCreateClub((v) => !v); }} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showCreateClub ? t("allg.schliessen") : "+ Aufgabe"}</button> : null}/>
@@ -7626,6 +7683,41 @@ function TasksView({ currentUser, members }) {
       </>}
     </div>
   );
+}
+
+/* Beispielaufgaben fuer den Demo-Betrieb.
+ *
+ * Nur ohne Datenbank - in der Produktion kommen die Aufgaben aus club_tasks,
+ * und diese Funktion wird dort nie aufgerufen. Die Rohdaten stehen oben bei
+ * den uebrigen Demodaten (DEMO_AUFGABEN); hier wird nur umgerechnet. */
+function demoAufgaben(currentUser, members) {
+  const name = (id) => (members || []).find((m) => m.id === id)?.name || "—";
+  const person = (id) => ({ membershipId: id, name: name(id) });
+  const tag = (n) => tageAb(n, 0).slice(0, 10);
+  const vorTagen = (n) => new Date(Date.now() - n * 86400000).toISOString();
+  const alle = DEMO_AUFGABEN.map(([id, mannschaft, title, description, faelligIn, slots, freiwillige, verantwortliche, von, erstellt, erledigtVor]) => ({
+    id, teamId: mannschaft, teamName: mannschaft, title, description,
+    dueDate: faelligIn === null ? null : tag(faelligIn), slots,
+    createdBy: von, createdAt: vorTagen(erstellt),
+    erledigtAm: erledigtVor === null ? null : vorTagen(erledigtVor),
+    erledigtVon: erledigtVor === null ? null : von,
+    signups: freiwillige.map(person), verantwortliche: verantwortliche.map(person),
+  }));
+  const vereinsweit = isAdmin(currentUser) || currentUser.roles.includes("organisator");
+  const eigene = DEMO_MANNSCHAFTEN.filter((n) => n === currentUser.team || (currentUser.teams || []).includes(n));
+  const fuehrt = currentUser.roles.some((r) => ["trainer", "kapitaen", "teammanager"].includes(r));
+  const leitung = isAdmin(currentUser) || currentUser.roles.some((r) => ["vorstand", "organisator"].includes(r));
+  const p = DEMO_PROTOKOLLAUFGABE;
+  return {
+    verein: alle.filter((x) => !x.teamId),
+    mannschaft: alle.filter((x) => x.teamId),
+    meineTeams: (vereinsweit ? DEMO_MANNSCHAFTEN : eigene).map((n) => ({ id: n, name: n })),
+    verwaltbar: vereinsweit ? DEMO_MANNSCHAFTEN : (fuehrt ? eigene : []),
+    protokoll: leitung ? [{
+      id: "demo-p1", text: p.text, due_date: tag(p.faelligIn), done: false,
+      protocol_id: "demo-prot", protocols: { title: p.sitzung, meeting_date: tag(-p.sitzungVor) },
+    }] : [],
+  };
 }
 
 function VehiclesView({ currentUser, currentClub }) {
@@ -10127,6 +10219,64 @@ function DutyView({ members, currentUser, events, dutyPlan, setDutyPlan, onDiens
     </div>
   );
 }
+/* Der Support-Reiter.
+ *
+ * Alles, womit man dem Verein hilft, an einer Stelle: die Aufgaben, fuer die
+ * man sich eintraegt, die Helferdienste an den Terminen - und fuer die, die
+ * einteilen duerfen, das Einteilen selbst. Die drei Bausteine gab es schon;
+ * neu ist, dass sie beieinander stehen statt verstreut ueber Startseite und
+ * Verwalten-Reiter.
+ *
+ * Bewusst NICHT hier: das Board mit den Leitungsaufgaben aus dem
+ * Verwalten-Reiter. Dort stehen auch Mitgliedsantraege und fehlende
+ * Spielergebnisse - Dinge nur fuer die Vereinsleitung, die in einem Reiter
+ * fuer alle nichts verloren haben. */
+function SupportView({ currentUser, members, events, dutyPlan, setDutyPlan, onDienstSetzen, dutyOn, bereichWunsch, onBereichUebernommen }) {
+  const t = useT();
+  const darfEinteilen = dutyOn && canManageDuty(currentUser);
+  const bereiche = [
+    ["aufgaben", t("auf.titel")],
+    ...(dutyOn ? [["helfer", t("sup.helferdienste")]] : []),
+    ...(darfEinteilen ? [["einteilen", t("sup.einteilen")]] : []),
+  ];
+  const [bereich, setBereich] = useState("aufgaben");
+  useEffect(() => {
+    if (!bereichWunsch) return;
+    if (bereiche.some(([k]) => k === bereichWunsch)) setBereich(bereichWunsch);
+    onBereichUebernommen?.();
+  }, [bereichWunsch, onBereichUebernommen]);
+  /* Wird die Helferplanung im Verein abgeschaltet, waehrend man auf
+     "Helferdienste" steht, faellt der Bereich weg - dann zurueck auf die
+     Aufgaben statt auf eine leere Seite. */
+  const aktiv = bereiche.some(([k]) => k === bereich) ? bereich : "aufgaben";
+
+  return (
+    <div>
+      <div className="px-4 pt-4">
+        <SectionTitle eyebrow={t("home.mitmachen")} title={t("nav.support")} />
+        <div className="text-xs mb-3 -mt-2" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("sup.einleitung")}</div>
+        {bereiche.length > 1 && (
+          <div className="flex gap-1.5 flex-wrap">
+            {bereiche.map(([k, l]) => (
+              <button key={k} onClick={() => setBereich(k)} aria-pressed={aktiv === k}
+                className="px-3.5 py-2 rounded-full text-xs"
+                style={{ fontFamily: "Inter", fontWeight: 700,
+                         background: aktiv === k ? C.ink : C.paperDim,
+                         color: aktiv === k ? C.white : C.textDim,
+                         border: `1px solid ${aktiv === k ? C.ink : C.line}` }}>
+                {l}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      {aktiv === "aufgaben" && <TasksView currentUser={currentUser} members={members} />}
+      {aktiv === "helfer" && <DutyView members={members} currentUser={currentUser} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={onDienstSetzen} />}
+      {aktiv === "einteilen" && <div className="px-4 pt-4 pb-24"><AdminDutyPanel members={members} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onSetzen={onDienstSetzen} /></div>}
+    </div>
+  );
+}
+
 function AdminDutyPanel({ members, events, dutyPlan, setDutyPlan, onSetzen }) {
   const helperEvents = (events || []).filter((e) => e.helperSlots && e.helperSlots.length);
   const formalMembers = members.filter((m) => isFormalMember(m));
@@ -10580,7 +10730,7 @@ function TodoBoard({ currentClub, goPanel, goFahrzeuge, goAufgaben }) {
   );
 }
 
-function OverviewPanel({ members, events, protocols, dutyPlan, seasonVotes, goPanel }) {
+function OverviewPanel({ members, events, protocols, dutyPlan, seasonVotes, goPanel, goHelfer }) {
   const t = useT();
   const openTasks = protocols.flatMap((p) => p.tasks.filter((t) => !t.done)).length;
 
@@ -10601,7 +10751,7 @@ function OverviewPanel({ members, events, protocols, dutyPlan, seasonVotes, goPa
     <div className="grid grid-cols-2 gap-3">
       <StatCard icon={Users} label="Mitglieder" value={members.length} sub="alle formale Mitglieder" accent={C.ink} />
       <StatCard icon={ClipboardList} label="Offene Aufgaben" value={openTasks} sub="aus Protokollen" accent={C.red} onClick={() => goPanel("protokolle")} />
-      <StatCard icon={AlertCircle} label="Helfer-Lücken" value={openSlots} sub={`von ${totalSlots} Plätzen offen`} accent={C.secondary} onClick={() => goPanel("duty")} />
+      <StatCard icon={AlertCircle} label="Helfer-Lücken" value={openSlots} sub={`von ${totalSlots} Plätzen offen`} accent={C.secondary} onClick={() => goHelfer?.()} />
       <StatCard icon={Trophy} label="Saison-Stimmen" value={seasonTotal} sub="Athlet/in der Saison" accent={C.secondary} onClick={() => goPanel("season")} />
       <StatCard icon={CalendarDays} label="Nächstes Event" value={nextEvent ? formatDate(nextEvent.date) : "—"} sub={nextEvent ? nextEvent.title : t("ev.keinTerminGeplant")} accent={C.red} />
     </div>
@@ -12288,7 +12438,7 @@ function ClaimManagedPlayerPanel({ members, setMembers, currentUser }) {
 
 function AdminView({
   bereichWunsch, onBereichUebernommen,
-  goFahrzeuge, goAufgaben,
+  goFahrzeuge, goAufgaben, goHelferEinteilen,
   members, setMembers, events, dutyPlan, setDutyPlan, seasonVotes, currentUser,
   channels, setChannels, maintenanceMode, setMaintenanceMode, onResetDemo,
   protocols, setProtocols,
@@ -12330,7 +12480,7 @@ function AdminView({
     setPanel(bereichWunsch);
     onBereichUebernommen?.();
   }, [bereichWunsch, onBereichUebernommen]);
-  const panels = restrictedOnly ? restrictedPanels : [["overview", t("allg.uebersicht")], ["automation", t("sys.automatisierung")], ...(dutyFeatureOn ? [["duty", t("help.helferplanung")], ["duty-templates", t("help.saetzeTitel").replace("{begriff}", t(dutyCfg.dutyTabLabel))]] : []), ["protokolle", t("prot.protokolle")], ["polls", t("umf.umfragen")], ...(SPONSOREN_VERWALTUNG_SICHTBAR ? [["sponsoring", "Sponsoring"]] : []), ["season", t("sais.athletDerSaison")]];
+  const panels = restrictedOnly ? restrictedPanels : [["overview", t("allg.uebersicht")], ["automation", t("sys.automatisierung")], ...(dutyFeatureOn ? [["duty-templates", t("help.saetzeTitel").replace("{begriff}", t(dutyCfg.dutyTabLabel))]] : []), ["protokolle", t("prot.protokolle")], ["polls", t("umf.umfragen")], ...(SPONSOREN_VERWALTUNG_SICHTBAR ? [["sponsoring", "Sponsoring"]] : []), ["season", t("sais.athletDerSaison")]];
   if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.push(["roles", t("sys.rollen")]);
   if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.splice(1, 0, ["memberships", t("mit.antraege")]);
   if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.splice(1, 0, ["clubprofile", t("verein.profil")]);
@@ -12377,7 +12527,7 @@ function AdminView({
         ))}
       </div>
 
-      {panel === "overview" && <OverviewPanel members={members} events={events} protocols={protocols} dutyPlan={dutyPlan} seasonVotes={seasonVotes} goPanel={setPanel} />}
+      {panel === "overview" && <OverviewPanel members={members} events={events} protocols={protocols} dutyPlan={dutyPlan} seasonVotes={seasonVotes} goPanel={setPanel} goHelfer={goHelferEinteilen} />}
       {panel === "memberships" && currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role)) && <MembershipApprovalsPanel club={currentClub} members={members} setMembers={setMembers} />}
       {panel === "clubprofile" && currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role)) && <><ClubLogoPanel club={currentClub} onLogoUpdated={onClubLogoUpdated} /><ClubColorPanel club={currentClub} onColorsUpdated={onClubColorsUpdated} /></>}
 
@@ -12385,7 +12535,9 @@ function AdminView({
         <AutomationsPanel welcomeAutomation={welcomeAutomation} setWelcomeAutomation={setWelcomeAutomation} onEinstellung={onEinstellung} />
       )}
 
-      {panel === "duty" && dutyFeatureOn && <AdminDutyPanel members={members} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onSetzen={onDienstSetzen} />}
+      {/* "Helferplanung" (Helfer einteilen) steht seit dem Support-Reiter dort -
+          neben den Helferdiensten, fuer die man sich eintraegt. Hier bleiben
+          "Saetze & Stationen": Das ist Einrichtung, nicht Tagesgeschaeft. */}
       {panel === "duty-templates" && <DutyTemplatesPanel currentUser={currentUser} sport={currentClub?.sport} />}
       {panel === "functions" && canManageClubFeatures && <ClubFeatureSettingsPanel currentClub={currentClub} clubFeatures={clubFeatures} onFeaturesChanged={onClubFeaturesChanged} dashboardTileOrder={dashboardTileOrder} setDashboardTileOrder={setDashboardTileOrder} />}
       {panel === "protokolle" && <ProtokollePanel members={members} protocols={protocols} setProtocols={setProtocols} clubId={currentUser.clubId} onSpeichern={onProtokollSpeichern} onAufgabe={onAufgabeUmschalten} onLoeschen={onProtokollLoeschen} />}
@@ -12594,7 +12746,7 @@ function Erstellt({ von, am, rahmenlos = false }) {
   );
 }
 
-function baseTabs(t, isAdminUser, canEditNews, canEditSponsors, canManageDutyUser) {
+function baseTabs(t, isAdminUser, canEditNews, canEditSponsors, canManageDutyUser, zeigeSupport = false) {
   const tabs = [
     { id: "home", label: t("nav.home"), icon: Home },
     { id: "events", label: t("nav.events"), icon: CalendarDays },
@@ -12602,6 +12754,14 @@ function baseTabs(t, isAdminUser, canEditNews, canEditSponsors, canManageDutyUse
     { id: "chat", label: t("nav.chat"), icon: MessageCircle },
     { id: "profile", label: t("nav.profile"), icon: User },
   ];
+  /* Support: Aufgaben und Helferdienste in einem eigenen Reiter.
+     Vorher erreichte ein Mitglied beides nur ueber zwei Kacheln mitten auf
+     der Startseite, und die Vereinsleitung teilte Helfer irgendwo zwischen
+     Spielergebnissen und Rollen im Verwalten-Reiter ein. Wer mithelfen will,
+     soll dafuer nicht suchen muessen.
+     Fuer Fans nicht: Sie tragen sich weder fuer Helferdienste ein noch fuer
+     Vereinsaufgaben - DutyView laesst sie gar nicht erst zu. */
+  if (zeigeSupport) tabs.splice(tabs.findIndex((tab) => tab.id === "profile"), 0, { id: "support", label: t("nav.support"), icon: ClipboardList });
   if (canEditNews) tabs.splice(tabs.findIndex((tab) => tab.id === "chat"), 0, { id: "redaktion", label: t("nav.news"), icon: Newspaper });
   if (isAdminUser || canEditSponsors || canManageDutyUser) tabs.splice(tabs.findIndex((tab) => tab.id === "profile"), 0, { id: "admin", label: canEditSponsors && !isAdminUser ? t("nav.sponsors") : t("nav.admin"), icon: ShieldCheck });
   return tabs;
@@ -13163,6 +13323,13 @@ export default function ClubMemberOrganisationApp() {
   const [eventFocusRequest, setEventFocusRequest] = useState(null);
   const navigateTab = (nextTab) => setTab(nextTab);
   const [subView, setSubView] = useState(null);
+  /* In welchem Bereich der Support-Reiter aufgehen soll. Wer auf der
+     Startseite "Helferplanung" antippt, will die Helferdienste sehen und
+     nicht erst die Aufgaben; wer im Verwalten-Reiter auf "Helfer-Luecken"
+     tippt, will einteilen. Der Wunsch wird einmal verbraucht, wie beim
+     Verwalten-Reiter. */
+  const [supportBereich, setSupportBereich] = useState(null);
+  const goSupport = (bereich = "aufgaben") => { setSubView(null); setSupportBereich(bereich); setTab("support"); };
 
   /* Immer nur EINE Ebene, von innen nach aussen.
      Steht bewusst NACH der Deklaration von subView: kannHoeher wird beim
@@ -15157,7 +15324,7 @@ export default function ClubMemberOrganisationApp() {
   const currentUserCanEditNews = canWriteNews(currentUser);
   const currentUserCanEditSponsors = canManageSponsors(currentUser);
   const currentUserCanManageDuty = canManageDuty(currentUser);
-  const TABS = baseTabs(t, currentUserIsAdmin, currentUserCanEditNews, currentUserCanEditSponsors, currentUserCanManageDuty);
+  const TABS = baseTabs(t, currentUserIsAdmin, currentUserCanEditNews, currentUserCanEditSponsors, currentUserCanManageDuty, !!currentUser && !istNurFan(currentUser));
   const clubPrimary = currentClub?.primaryColor || DEFAULT_CLUB_COLORS.primary;
   const clubSecondary = currentClub?.secondaryColor || DEFAULT_CLUB_COLORS.secondary;
   /* Alle abgeleiteten Toene werden hier einmal ausgerechnet und als Variablen
@@ -15390,7 +15557,7 @@ export default function ClubMemberOrganisationApp() {
                   <Dashboard user={currentUser} onFavoritMannschaft={setzeFavoritMannschaft} members={clubMembers} events={events} channels={channels} news={vereinsNews} dutyPlan={dutyPlan} seasonVotes={seasonVotes} tippPredictions={tippPredictions} tippResults={tippResults} polls={polls} setPolls={setPolls} onVote={stimmeAbgeben} onUnvote={stimmeZuruecknehmen}
                     umfrageFokus={umfrageFokus} onUmfrageFokusErledigt={() => setUmfrageFokus(null)}
                     werbeplaetze={werbeplaetze} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick}
-                    goEvents={goToMyNextMatch} goSeason={() => setSubView("season")} goTipp={() => setSubView("tipp")} goDuty={() => setSubView("duty")} goTasks={() => setSubView("tasks")} goVehicles={() => setSubView("vehicles")} goNews={currentUserCanEditNews ? goNews : null}
+                    goEvents={goToMyNextMatch} goSeason={() => setSubView("season")} goTipp={() => setSubView("tipp")} goDuty={() => goSupport("helfer")} goTasks={() => goSupport("aufgaben")} goVehicles={() => setSubView("vehicles")} goNews={currentUserCanEditNews ? goNews : null}
                     currentClub={currentClub} featureEnabled={featureEnabled} dashboardTileOrder={dashboardTileOrder} entitlement={entitlement} goSubscribe={goSubscribe}
                     mannschaften={startseiteAuswahl} gewaehlteMannschaft={startseiteWahl} onMannschaftWechsel={setStartseiteTeam} />
                 )}
@@ -15410,10 +15577,11 @@ export default function ClubMemberOrganisationApp() {
                     Hier fehlte der dritte Teil - ein reiner Organisator sah
                     den Reiter also in der Leiste und darunter eine leere
                     Seite. */}
+                {!subView && tab === "support" && !!currentUser && !istNurFan(currentUser) && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("nav.support")}><SupportView currentUser={currentUser} members={clubMembers} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={dienstSetzen} dutyOn={featureEnabled("duty_roster")} bereichWunsch={supportBereich} onBereichUebernommen={() => setSupportBereich(null)} /></LockedFeature>}
                 {!subView && tab === "admin" && (currentUserIsAdmin || currentUserCanEditSponsors || canManageDuty(currentUser)) && (
                   <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Verwaltung">
                   <AdminView bereichWunsch={verwaltungsBereich} onBereichUebernommen={() => setVerwaltungsBereich(null)}
-                    goFahrzeuge={() => setSubView("vehicles")} goAufgaben={() => setSubView("tasks")} members={clubMembers} setMembers={setMembers} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} seasonVotes={seasonVotes}
+                    goFahrzeuge={() => setSubView("vehicles")} goAufgaben={() => goSupport("aufgaben")} goHelferEinteilen={() => goSupport("einteilen")} members={clubMembers} setMembers={setMembers} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} seasonVotes={seasonVotes}
                     currentUser={currentUser} channels={channels} setChannels={setChannels} maintenanceMode={maintenanceMode} setMaintenanceMode={setMaintenanceMode} onResetDemo={resetDemoData}
                     protocols={protocols} setProtocols={setProtocols}
                     welcomeAutomation={welcomeAutomation} setWelcomeAutomation={setWelcomeAutomation}
