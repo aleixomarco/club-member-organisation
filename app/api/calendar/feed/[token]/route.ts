@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { getSupabaseAdmin, mitZweitemVersuch } from "@/lib/supabase-admin";
 
 export const dynamic = "force-dynamic";
 
@@ -22,14 +22,22 @@ export async function GET(_request: Request, context: { params: Promise<{ token:
      Ein Datenbankfehler sah damit aus wie ein unbekannter Token, und die
      Ursache war von aussen nicht zu erkennen: Genau das hat die Suche nach
      dem fehlgeschlagenen Kalenderabo unnoetig lange gemacht. */
-  const { data: subscription, error: leseFehler } = await admin
+  const { data: subscription, error: leseFehler } = await mitZweitemVersuch(() => admin
     .from("calendar_subscriptions")
     .select("profile_id,club_id,enabled,sync_interval,event_types,team_ids")
     .eq("token", token)
-    .maybeSingle();
+    .maybeSingle());
 
   if (leseFehler) {
     console.error("Kalender-Feed: Abo konnte nicht gelesen werden", leseFehler);
+    /* Ein Zeitversatz ist kein kaputter Server, sondern ein "gleich wieder".
+       Mit 500 halten manche Kalenderprogramme das Abo fuer dauerhaft defekt
+       und fragen seltener oder gar nicht mehr nach; 503 mit Retry-After sagt
+       genau das Richtige. */
+    if (leseFehler.code === "PGRST303") {
+      return NextResponse.json({ error: "Kalender gerade nicht verfügbar" },
+        { status: 503, headers: { "Retry-After": "60" } });
+    }
     return NextResponse.json({ error: "Kalender konnte nicht geladen werden", code: leseFehler.code }, { status: 500 });
   }
   if (!subscription) return NextResponse.json({ error: "Kalenderverbindung nicht gefunden" }, { status: 404 });
