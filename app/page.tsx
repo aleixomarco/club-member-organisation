@@ -958,22 +958,29 @@ const isSysAdmin = (m) => !!m && m.roles.includes("sysadmin");
 const darfVereinVerwalten = (m) =>
   !!m && m.roles.some((r) => ["vereinsadmin", "organisator", "sysadmin"].includes(r));
 
-/* Wer Trainings ueberhaupt etwas angehen.
+/* Wen Trainings nichts angehen.
  *
  * Ein Fan kommt zu den Spielen. Wann eine Mannschaft trainiert, ist fuer ihn
- * ohne Belang - und es ist auch nichts, was ein Verein nach aussen geben will:
+ * ohne Belang - und es ist auch nichts, was ein Verein nach aussen gibt:
  * Trainingszeiten sagen, wann eine Halle mit Kindern belegt ist.
  *
  * Die Regel greift NICHT an "hat genau die Rolle fan". In der Produktion
  * tragen zwei von drei Fans zusaetzlich "mitglied" - eine Pruefung auf die
- * blosse Rolle haette also bei zweien von dreien nichts bewirkt. Massgeblich
- * ist, ob jemand ausser Fan zu sein noch einen sportlichen oder
- * organisatorischen Grund hat, den Trainingsplan zu sehen. Wer beides ist -
- * Fan und Spieler - sieht ihn weiter. */
-const TRAININGS_ROLLEN = ["spieler", "trainer", "kapitaen", "teammanager",
-                          "vereinsadmin", "organisator", "sysadmin"];
+ * blosse Rolle haette bei zweien von dreien nichts bewirkt.
+ *
+ * Aufgezaehlt sind die Rollen, die NICHTS aufschliessen, nicht die, die etwas
+ * aufschliessen. Der erste Versuch zaehlte die sportlichen Rollen auf und
+ * uebersah dabei vier: club_role in der Datenbank kennt fuenfzehn Rollen,
+ * ROLE_META hier nur elf - eltern, vorstand, geschaeftsfuehrung und
+ * finanzmanager fehlen. Ein Elternteil, das auch Fan ist, haette den
+ * Trainingsplan seines Kindes verloren.
+ * Andersherum kann das nicht passieren: Eine kuenftige neue Rolle schliesst
+ * automatisch auf, und im schlimmsten Fall sieht ein Fan mit Zusatzrolle den
+ * Trainingsplan - das ist der harmlosere von zwei Fehlern. */
+const ZUSCHAUER_ROLLEN = ["fan", "mitglied"];
 const istNurFan = (m) =>
-  !!m && m.roles.includes("fan") && !m.roles.some((r) => TRAININGS_ROLLEN.includes(r));
+  !!m && Array.isArray(m.roles) && m.roles.includes("fan")
+  && m.roles.every((r) => ZUSCHAUER_ROLLEN.includes(r));
 
 /* Mannschaftszugehoerigkeit: siehe lib/mannschaften.mjs */const canWriteNews = (m) => isAdmin(m) || (!!m && m.roles.includes("redakteur"));
 /* Die eigene Sponsorenverwaltung des Vereins.
