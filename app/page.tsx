@@ -3587,9 +3587,6 @@ function Dashboard({ user, members, events, channels, news, dutyPlan, seasonVote
      hatten. Jetzt steht dort die tatsaechliche Quote. */
   const [taskReminder, setTaskReminder] = useState(null);
   useEffect(() => {
-    /* Verspaetete Antwort nicht mehr schreiben - siehe Termin-Lader. */
-    return () => { abgebrochen = true; };
-    let abgebrochen = false;
     const databaseMembership = !!supabase && isDbId(user.id);
     if (!databaseMembership || !user.clubId) return;
     const checkReminder = async () => {
@@ -4419,9 +4416,6 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
      stehen, zu denen es auch etwas zu sehen gibt. */
   const [clubTeams, setClubTeams] = useState(null);
   useEffect(() => {
-    /* Verspaetete Antwort nicht mehr schreiben - siehe Termin-Lader. */
-    return () => { abgebrochen = true; };
-    let abgebrochen = false;
     if (!(supabase && isDbId(currentUser.clubId))) { setClubTeams(null); return; }
     supabase.from("teams").select("name").eq("club_id", currentUser.clubId).eq("active", true).order("name")
       .then(({ data }) => setClubTeams([...new Set((data || []).map((t) => t.name).filter(Boolean))]));
@@ -5430,9 +5424,6 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
      Vereinsausschluss ist etwas anderes und bleibt der Vereinsleitung. */
   const [blocked, setBlocked] = useState([]);
   useEffect(() => {
-    /* Verspaetete Antwort nicht mehr schreiben - siehe Termin-Lader. */
-    return () => { abgebrochen = true; };
-    let abgebrochen = false;
     if (!supabase || !user.authProfileId || !isDbId(user.clubId)) return;
     let weg = false;
     supabase.from("blocked_authors").select("blocked_profile_id")
@@ -7958,9 +7949,6 @@ function DutyTasksSection({ ev, currentUser, sport, onNeuLaden, dutyPlan, member
   }, [ev.id, loadTasks]);
 
   useEffect(() => {
-    /* Verspaetete Antwort nicht mehr schreiben - siehe Termin-Lader. */
-    return () => { abgebrochen = true; };
-    let abgebrochen = false;
     if (!canManage) return;
     (async () => {
       const [{ data: templateRows }, { data: memberRows }] = await Promise.all([
@@ -8478,9 +8466,6 @@ function BoardMemberOverview({ members, currentUser }) {
   const [message, setMessage] = useState("");
   const [selectedMember, setSelectedMember] = useState(null);
   useEffect(() => {
-    /* Verspaetete Antwort nicht mehr schreiben - siehe Termin-Lader. */
-    return () => { abgebrochen = true; };
-    let abgebrochen = false;
     const load = async () => {
       setLoading(true); setMessage("");
       if (!supabase || !currentUser?.clubId) { setLiveMembers(null); setLoading(false); return; }
@@ -8950,9 +8935,6 @@ function NotificationSettings({ user, setMembers, saveRef }) {
   };
   const save = async()=>{ if(supabase&&user.authProfileId){const {error}=await supabase.from("profiles").update({notification_master:master,notification_preferences:prefs}).eq("id",user.authProfileId);if(error){setMessage("Benachrichtigungen konnten nicht gespeichert werden.");return;}} setMembers((items)=>items.map((item)=>item.id===user.id?{...item,notificationMaster:master,notificationPreferences:prefs}:item));setMessage("Benachrichtigungen gespeichert.");};
   useEffect(() => { saveRef.current = save; });
-    /* Verspaetete Antwort nicht mehr schreiben - siehe Termin-Lader. */
-    return () => { abgebrochen = true; };
-    let abgebrochen = false;
   return <div>{message&&<div role="status" className="mb-4 text-[11px] rounded-xl px-3 py-2" style={{background:istErfolg(message)?C.erfolgFlaeche:C.fehlerFlaeche,color:istErfolg(message)?C.erfolg:C.fehler}}>{meldungstext(message)}</div>}{/* Die Push-Karte erscheint nur ausserhalb der nativen App. In der
       nativen Huelle laeuft die Oberflaeche in einem WKWebView, und dort gibt es
       weder Notification noch serviceWorker - enablePushNotifications kehrte
@@ -9653,9 +9635,6 @@ function TippRundenPanel({ currentClub }) {
     setZeilen(data || []);
   }, [currentClub?.id]);
   useEffect(() => { laden(); }, [laden]);
-    /* Verspaetete Antwort nicht mehr schreiben - siehe Termin-Lader. */
-    return () => { abgebrochen = true; };
-    let abgebrochen = false;
 
   const umschalten = async (zeile) => {
     setFehler("");
