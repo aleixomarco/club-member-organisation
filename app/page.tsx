@@ -800,19 +800,44 @@ const ROLE_META = {
   trainer: { label: "Trainer/in", color: C.red, admin: false, formalMember: true, selfService: false },
   kapitaen: { label: "Kapitän/in", color: C.red, admin: false, formalMember: true, selfService: false },
   teammanager: { label: "Teammanager/in", color: C.secondary, admin: false, formalMember: true, selfService: false },
-  spieler: { label: "Athlet/in", color: C.secondary, admin: false, formalMember: true, selfService: true },
-  mitglied: { label: "Mitglied", color: C.textDim, admin: false, formalMember: true, selfService: true, alwaysOn: true },
+  /* Athlet/in ist keine Selbstauskunft mehr: Bewerber sagen nur noch
+     "Mitglied" oder "Fan", die Vereinsleitung vergibt die Athletenrolle bei
+     der Freigabe. Aeltere App-Staende schicken 'spieler' weiter - die
+     Datenbank nimmt es an (register_for_club). */
+  spieler: { label: "Athlet/in", color: C.secondary, admin: false, formalMember: true, selfService: false },
+  /* Stufe 1: Jede Mitgliedschaft ist GENAU eines von beiden, Mitglied oder
+     Fan (stufe: true). Frueher stand hier alwaysOn - "mitglied" als
+     Basisrolle fuer alle, in der Rollenvergabe nicht abwaehlbar. Genau das
+     machte aus jedem Fan, dem jemand eine Rolle gab, einen Fan mit
+     Mitgliedsrechten. Jetzt ist Mitglied eine Seite einer Wahl. */
+  mitglied: { label: "Mitglied", color: C.textDim, admin: false, formalMember: true, selfService: true, stufe: true },
   /* Ein Fan folgt dem Verein, ist aber KEIN formales Mitglied: formalMember
      false haelt ihn aus der Mitgliederzahl und der Helferpflicht heraus.
      Wuerde hier true stehen, taeuchte er ueberall auf, wo es um Pflichten
-     geht. */
-  fan: { label: "Fan", color: C.secondary, admin: false, formalMember: false, selfService: true },
+     geht. Ein Fan hat nie weitere Rollen - das setzt die Datenbank durch
+     (Ausloeser membership_roles_fan_exklusiv). */
+  fan: { label: "Fan", color: C.secondary, admin: false, formalMember: false, selfService: true, stufe: true },
   organisator: { label: "Organisator/in", color: C.secondary, admin: false, formalMember: true, selfService: false },
 };
 const ROLE_OVERVIEW_KEYS = ["vereinsadmin", "organisator", "trainer", "teammanager", "kapitaen", "spieler"];
 /* Sys-Admin ist eine plattformweite Rolle für den Produkt-Owner, keine Vereinsrolle — daher in der
    Rollenvergabe der Vereine nicht wähl-/sichtbar. Technisch höchste vergebbare Rolle ist Vereins-Administrator. */
 const ASSIGNABLE_ROLES = Object.keys(ROLE_META).filter((r) => r !== "sysadmin");
+/* Stufe 1 (Mitglied oder Fan) und alles, was nur ein Mitglied zusaetzlich
+   bekommen kann. Die Oberflaeche zeigt die beiden Gruppen getrennt: erst die
+   Wahl der Stufe, darunter - nur bei Mitglied - die Zusatzrollen. */
+const STUFEN = Object.keys(ROLE_META).filter((r) => ROLE_META[r].stufe);
+const ZUSATZROLLEN = ASSIGNABLE_ROLES.filter((r) => !ROLE_META[r].stufe);
+/* Die Stufe aus einem Rollensatz. 'fan' entscheidet: Die Datenbank laesst
+   keinen Fan mit weiteren Rollen mehr zu, alles andere ist Mitglied - auch
+   ein Satz ohne jede Stufenzeile (Altbestand), damit dort niemand
+   stillschweigend zum Fan wird. */
+const stufeVon = (rollen) => ((rollen || []).includes("fan") ? "fan" : "mitglied");
+/* Der vollstaendige Rollensatz aus Stufe und Zusatzrollen - so, wie ihn die
+   Datenbank (rollensatz_bilden) auch bildet. */
+const rollenAusStufe = (stufe, zusatz) => (stufe === "fan"
+  ? ["fan"]
+  : ["mitglied", ...[...new Set(zusatz || [])].filter((r) => !STUFEN.includes(r))]);
 /* Aus einem Anmeldefehler eine Meldung machen, die stimmt.
  *
  * Vorher wurde JEDER Fehlschlag zu "E-Mail oder Passwort ist falsch" - auch
@@ -1053,6 +1078,18 @@ const notifyClubAdmins = async (clubId, notifType, title, body, excludeMembershi
    lesen. Kennt ROLE_META den Schluessel nicht (eine abgeschaffte Rolle in
    alten Daten), wird der Schluessel selbst gezeigt statt gar nichts. */
 const rollenLabel = (t, schluessel) => (ROLE_META[schluessel] ? t(`rolle.${schluessel}`) : schluessel);
+/* Was die Rollen-RPCs der Datenbank melden, in einen Satz fuer Menschen.
+   Die Waechter werfen feste Schluesselwoerter (letzter_vereinsadmin,
+   fan_exklusiv, rolle_nicht_erlaubt) statt Saetzen - uebersetzen kann nur die
+   App. Ohne diese Zuordnung stuende bei "den letzten Admin zum Fan machen"
+   nur "Rollenaenderung fehlgeschlagen", und niemand wuesste, warum. */
+const rollenFehlerText = (error, t, rueckfall) => {
+  const text = `${error?.message || ""} ${error?.details || ""}`;
+  if (text.includes("letzter_vereinsadmin")) return t("stufe.letzterAdmin");
+  if (text.includes("rolle_nicht_erlaubt")) return t("stufe.nurLeitung");
+  if (text.includes("fan_exklusiv") || text.includes("fan_keine_mannschaft")) return t("stufe.fanExklusiv");
+  return rueckfall;
+};
 
 const isAdmin = (m) => !!m && m.roles.some((r) => ROLE_META[r]?.admin);
 const isFormalMember = (m) => !!m && m.roles.some((r) => ROLE_META[r]?.formalMember);
@@ -1074,9 +1111,11 @@ const darfVereinVerwalten = (m) =>
  * ohne Belang - und es ist auch nichts, was ein Verein nach aussen gibt:
  * Trainingszeiten sagen, wann eine Halle mit Kindern belegt ist.
  *
- * Die Regel greift NICHT an "hat genau die Rolle fan". In der Produktion
- * tragen zwei von drei Fans zusaetzlich "mitglied" - eine Pruefung auf die
- * blosse Rolle haette bei zweien von dreien nichts bewirkt.
+ * Die Regel greift NICHT an "hat genau die Rolle fan". Bis zur Migration
+ * 20260911110000 trugen zwei von drei Fans zusaetzlich "mitglied". Seitdem
+ * haelt ein Fan nur noch 'fan' - die Datenbank laesst nichts anderes mehr zu.
+ * Die tolerante Pruefung bleibt trotzdem: Ein Geraet kann noch einen Stand von
+ * davor im Speicher haben, und fuer den soll die Fan-Ansicht weiter stimmen.
  *
  * Aufgezaehlt sind die Rollen, die NICHTS aufschliessen, nicht die, die etwas
  * aufschliessen. Der erste Versuch zaehlte die sportlichen Rollen auf und
@@ -1345,9 +1384,11 @@ const INITIAL_MEMBERS = [
   /* Ein Fan im Demo-Bestand. Vorher gab es keinen - die Fan-Ansicht liess sich
      dadurch ueberhaupt nicht ansehen, obwohl sie sich von jeder anderen
      unterscheidet (keine Trainings auf der Startseite, kein Helferdienst).
-     Zwei Rollen wie bei zwei von drei echten Fans in der Produktion: Wer nur
-     auf "fan" allein pruefte, haette den haeufigeren Fall verfehlt. */
-  { id: "m20", clubId: DEMO_CLUB_ID, name: "Renate Voss", email: "renate@cmo.app", password: "demo", team: "Fan", number: null, since: 2024, roles: ["mitglied", "fan"], color: AVATAR_FARBEN[4], points: 5, tippPoints: 0, badges: [], birthdate: "1968-06-03" },
+     Nur 'fan', ohne "mitglied": Ein Fan hat keine weiteren Rollen - so setzt
+     es seit 20260911110000 auch die Datenbank durch. Vorher stand hier
+     ["mitglied", "fan"] nach dem Vorbild der damaligen Produktion; die Demo
+     haette damit einen Zustand gezeigt, den es nicht mehr geben kann. */
+  { id: "m20", clubId: DEMO_CLUB_ID, name: "Renate Voss", email: "renate@cmo.app", password: "demo", team: "Fan", number: null, since: 2024, roles: ["fan"], color: AVATAR_FARBEN[4], points: 5, tippPoints: 0, badges: [], birthdate: "1968-06-03" },
   { id: "m6", clubId: DEMO_CLUB_ID, name: "Simone Iwanowski", email: "simone@cmo.app", password: "demo", team: "Geschäftsstelle", number: null, since: 2020, roles: ["geschaeftsfuehrung", "mitglied"], color: AVATAR_FARBEN[2], points: 60, tippPoints: 4, badges: [], birthdate: "1980-11-03" },
   { id: "m7", clubId: DEMO_CLUB_ID, name: "Guido Rath", email: "guido@cmo.app", password: "demo", team: "Geschäftsstelle", number: null, since: 2022, roles: ["redakteur", "sponsorenmanager", "mitglied"], color: AVATAR_FARBEN[2], points: 40, tippPoints: 0, badges: [], birthdate: "1990-07-08" },
   { id: "m8", clubId: DEMO_CLUB_ID, name: "Simone Iwanowski", email: "simone.finanzen@cmo.app", password: "demo", team: "Geschäftsstelle", number: null, since: 2024, roles: ["finanzmanager", "mitglied"], color: AVATAR_FARBEN[2], points: 20, tippPoints: 0, badges: [], birthdate: "1988-04-19" },
@@ -2122,6 +2163,57 @@ function MeineVereineScreen({ mitgliedschaften, onOeffnen, onWeitererVerein, onA
   );
 }
 
+/* Stufe 1 waehlen - Mitglied oder Fan - und, nur bei Mitglied, die
+ * Zusatzrollen.
+ *
+ * EIN Baustein fuer alle vier Stellen: Beitritt, Registrierung, Freigabe
+ * einer Anfrage und Rollenvergabe. Vorher hatte jede ihre eigene Liste, und
+ * sie liefen auseinander - die alte Freigabe bot "Eltern" an, das die
+ * Datenbank ablehnt, und kannte "Fan" gar nicht.
+ *
+ * Bei Fan verschwinden die Zusatzrollen ganz, statt ausgegraut dazustehen:
+ * Ein Fan hat nie weitere Rollen, es gibt dort nichts zu waehlen.
+ * Ohne onZusatz (Bewerberseite) gibt es nur die Stufe - weitere Rollen
+ * vergibt die Vereinsleitung bei der Freigabe.
+ */
+function StufenWahl({ stufe, onStufe, zusatz = [], onZusatz = null, gesperrteRollen = [], stufeGesperrt = false, mitHinweis = false }) {
+  const t = useT();
+  return (
+    <div>
+      <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label={t("stufe.titel")}>
+        {STUFEN.map((s) => {
+          const Icon = s === "fan" ? Star : User;
+          const aktiv = stufe === s;
+          const aus = stufeGesperrt && !aktiv;
+          return <button type="button" key={s} role="radio" aria-checked={aktiv} disabled={aus} onClick={() => onStufe(s)}
+            className="rounded-xl py-2.5 px-1 flex items-center justify-center gap-1.5"
+            style={{ background: aktiv ? C.fehlerFlaeche : C.paperDim, border: aktiv ? `1px solid ${C.red}` : "1px solid transparent", color: aktiv ? C.red : C.textDim, opacity: aus ? .45 : 1 }}>
+            <Icon size={15} /><span className="text-[11px] font-bold">{rollenLabel(t, s)}</span>
+          </button>;
+        })}
+      </div>
+      {mitHinweis && <div className="text-[11px] mt-2" style={{ color: C.textDim, fontFamily: "Inter" }}>{stufe === "fan" ? t("stufe.fanHinweis") : t("stufe.mitgliedHinweis")}</div>}
+      {onZusatz && (stufe === "fan"
+        ? <div className="text-[11px] mt-2" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("stufe.fanKeineRollen")}</div>
+        : <div className="mt-2.5">
+            <div className="text-[10px] mb-1.5 font-bold" style={{ color: C.textDim }}>{t("stufe.zusatzrollen")}</div>
+            <div className="flex flex-wrap gap-1.5">
+              {ZUSATZROLLEN.map((r) => {
+                const aktiv = zusatz.includes(r);
+                const aus = gesperrteRollen.includes(r);
+                return <button key={r} type="button" disabled={aus} aria-pressed={aktiv}
+                  onClick={() => onZusatz(aktiv ? zusatz.filter((x) => x !== r) : [...zusatz, r])}
+                  className="px-2.5 py-1 rounded-full text-[11px]"
+                  style={{ fontFamily: "Inter", fontWeight: 700, background: aktiv ? (ROLE_META[r]?.color || C.paperDim) : C.paperDim, color: aktiv ? "#fff" : C.textDim, opacity: aus ? .45 : 1 }}>
+                  {rollenLabel(t, r)}
+                </button>;
+              })}
+            </div>
+          </div>)}
+    </div>
+  );
+}
+
 /* Einem weiteren Verein beitreten - mit dem Konto, das schon angemeldet ist.
  *
  * Vorher gab es diesen Weg nicht. "Weiterem Verein beitreten" fuehrte in die
@@ -2161,13 +2253,7 @@ function BeitrittsScreen({ club, vorschlagName, onBeitreten, goBack }) {
         <Field icon={User} placeholder={t("feld.vollerName")} value={name} onChange={(e) => setName(e.target.value)} />
 
         <div className="text-xs font-semibold mb-2" style={{ color: C.ink, fontFamily: "Inter" }}>{t("verein.beitrittAls")}</div>
-        <div className="grid grid-cols-3 gap-2 mb-4">
-          {[{ id: "mitglied", label: t("rol.mitgliedLabel"), icon: User }, { id: "spieler", label: t("rol.athletLabel"), icon: Trophy }, { id: "fan", label: "Fan", icon: Star }].map((typ) => {
-            const Icon = typ.icon; const aktiv = art === typ.id;
-            return <button type="button" key={typ.id} onClick={() => setArt(typ.id)} className="rounded-xl py-3 px-1 flex flex-col items-center gap-1.5"
-              style={{ background: aktiv ? C.fehlerFlaeche : C.paperDim, border: aktiv ? `1px solid ${C.red}` : "1px solid transparent", color: aktiv ? C.red : C.textDim }}><Icon size={17}/><span className="text-[11px] font-bold">{typ.label}</span></button>;
-          })}
-        </div>
+        <div className="mb-4"><StufenWahl stufe={art} onStufe={setArt} mitHinweis /></div>
 
         {/* Kein Mannschaftsfeld mehr.
             Es stand hier als Wunsch-Text, weil ein Neuling die Mannschaften des
@@ -3120,7 +3206,10 @@ function WohnortFelder({ wert, onAendern, dicht }) {
 
 function RegisterScreen({ onRegister, members, club, goLogin }) {
   const t = useT();
-  const [form, setForm] = useState({ firstName: "", lastName: "", email: "", team: supabase ? "" : TEAMS[0], birthdate: "", password: "", password2: "", accountType: "mitglied", relativeId: "", childName: "", childBirthdate: "", childTeam: "U11", countryCode: "DE", postalCode: "", city: "" });
+  /* accountType ist die Stufe: "mitglied" oder "fan". Der Name bleibt, weil
+     register() ihn als account_role in die Kontodaten schreibt und
+     register_for_club genau diesen Wert erwartet. */
+  const [form, setForm] = useState({ firstName: "", lastName: "", email: "", team: supabase ? "" : TEAMS[0], birthdate: "", password: "", password2: "", accountType: "mitglied", countryCode: "DE", postalCode: "", city: "" });
   const [legalAccepted, setLegalAccepted] = useState(false);
   const [captchaToken, setCaptchaToken] = useState(null);
   const [captchaRunde, setCaptchaRunde] = useState(0);
@@ -3136,10 +3225,13 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
-  const [relativeSearch, setRelativeSearch] = useState("");
-  const possibleRelatives = members.filter((m) => !m.accountPending && m.id && (
-    form.accountType === "eltern" ? m.roles.includes("spieler") : form.accountType === "spieler" ? m.roles.includes("eltern") : false
-  )).filter((m) => m.name.toLowerCase().includes(relativeSearch.toLowerCase()));
+  /* Hier stand die Suche fuer den Kasten "Elternteil verknuepfen". Er
+     erschien fuer Athlet/in und Fan, wirkte aber nur im Demo-Betrieb -
+     register() liess die Angaben mit Datenbank fallen -, und seine Treffer
+     hingen an der abgeschafften Rolle "eltern", die Liste blieb also leer.
+     Mit der Wahl zwischen Mitglied und Fan haette ihn nur noch der Fan
+     gesehen, dem Familienverknuepfungen nichts oeffnen. Familien verknuepft
+     die Vereinsleitung in der Benutzerverwaltung. */
   /* Ohne vorgewaehlten Verein wird nur das KONTO angelegt. Der Verein kommt
      danach - genau in der Reihenfolge, in der die App seit dem Umbau
      funktioniert: erst anmelden, dann Verein waehlen.
@@ -3148,6 +3240,14 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
      Wer ein Konto anlegen will, will ein Formular sehen, keine Vereinsliste. */
   const ohneVerein = !club?.id;
   const isFirstAccount = !ohneVerein && members.length === 0;
+  /* Keine Stufenwahl, wo es nichts zu waehlen gibt:
+     - beim Anlegen eines NEUEN Vereins (pendingRegistration): register_new_club
+       bekommt gar keine Rolle, der Gruender ist Mitglied und Administrator;
+     - beim ersten Konto im Demo-Verein, das Vereins-Administrator wird.
+     Mit Datenbank sagt isFirstAccount nichts - vor der Anmeldung sind die
+     Mitglieder des Vereins nicht lesbar, die Liste ist immer leer. Deshalb
+     zaehlt es dort nicht. */
+  const stufeWahlVerborgen = !!club?.pendingRegistration || (!supabase && isFirstAccount);
   /* Ohne Verein hat dieser Bildschirm keinen Sinn - und ohne diese Absicherung
      auch keinen Bestand: club.name im Untertitel warf einen TypeError, und weil
      es im Projekt keine ErrorBoundary gibt, blieb der ganze Bildschirm weiss. */
@@ -3192,11 +3292,12 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
     setError("");
     /* Ein Fan bekommt NUR die Fan-Rolle, nicht zusaetzlich "mitglied" - sonst
        zaehlte er als formales Mitglied und der Verein wuerde ihm Beitraege
-       berechnen. Der Zweig "eltern" ist Altbestand: Die Rolle gibt es nicht
-       mehr, die Auswahl auch nicht; er faellt beim naechsten Aufraeumen weg. */
-    const typeRoles = form.accountType === "spieler" ? ["mitglied", "spieler"]
-      : form.accountType === "fan" ? ["fan"]
-      : ["mitglied"];
+       berechnen. Weitere Rollen (Athlet/in usw.) vergibt die Vereinsleitung
+       bei der Freigabe.
+       Wer Vereins-Administrator wird, ist immer Mitglied: Ein Fan hat keine
+       weiteren Rollen, auch nicht die Leitung (wie register_for_club). */
+    const stufe = stufeWahlVerborgen ? "mitglied" : form.accountType;
+    const typeRoles = rollenAusStufe(stufe, []);
     setBusy(true);
     const result = await onRegister({
       id: "m" + Date.now(),
@@ -3214,7 +3315,7 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
       team: form.team,
       number: null,
       since: new Date().getFullYear(),
-      roles: isFirstAccount ? ["vereinsadmin", ...typeRoles] : typeRoles,
+      roles: isFirstAccount ? ["vereinsadmin", ...rollenAusStufe("mitglied", [])] : typeRoles,
       color: AVATAR_FARBEN[Math.floor(Math.random() * 6)],
       points: 0,
       tippPoints: 0,
@@ -3226,7 +3327,7 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
       countryCode: form.countryCode,
       postalCode: form.postalCode.trim(),
       city: form.city.trim(),
-    }, { relativeId: form.relativeId || null, accountType: form.accountType, child: form.accountType === "eltern" && !form.relativeId && form.childName.trim() ? { name: form.childName.trim(), birthdate: form.childBirthdate, team: form.childTeam } : null });
+    }, { accountType: stufe });
     setBusy(false);
     if (mitCaptcha) setCaptchaRunde((r) => r + 1);
     if (result?.error) setError(result.error);
@@ -3296,15 +3397,9 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
 
         {/* Rolle, Mannschaft und Familienverknuepfung ergeben ohne Verein
             keinen Sinn - danach wird beim Beitritt gefragt. */}
-        {!ohneVerein && <>
+        {!ohneVerein && !stufeWahlVerborgen && <>
         <div className="text-xs font-semibold mb-2" style={{ color: C.ink, fontFamily: "Inter" }}>{t("reg.alsWas")}</div>
-        <div className="grid grid-cols-3 gap-2 mb-4">
-          {[{ id: "mitglied", label: t("rol.mitgliedLabel"), icon: User }, { id: "spieler", label: t("rol.athletLabel"), icon: Trophy }, { id: "fan", label: "Fan", icon: Star }].map((type) => {
-            const Icon = type.icon; const active = form.accountType === type.id;
-            return <button type="button" key={type.id} onClick={() => setForm((f) => ({ ...f, accountType: type.id, relativeId: "" }))} className="rounded-xl py-3 px-1 flex flex-col items-center gap-1.5"
-              style={{ background: active ? C.fehlerFlaeche : C.paperDim, border: active ? `1px solid ${C.red}` : "1px solid transparent", color: active ? C.red : C.textDim }}><Icon size={17}/><span className="text-[11px] font-bold">{type.label}</span></button>;
-          })}
-        </div>
+        <div className="mb-4"><StufenWahl stufe={form.accountType} onStufe={(s) => setForm((f) => ({ ...f, accountType: s }))} mitHinweis /></div>
 
         {/* Die Mannschaften des Vereins lassen sich hier nicht laden: Die Regel
             auf teams lautet "using (public.is_club_member(club_id))", und wer
@@ -3318,17 +3413,6 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
             als Wunsch in requested_team, und die Vereinsverwaltung ordnet bei
             der Freigabe zu. */}
 
-        {form.accountType !== "mitglied" && <div className="rounded-2xl p-3 mb-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
-          <div className="text-xs font-bold mb-1" style={{ color: C.ink }}>{form.accountType === "eltern" ? t("fam.kindVerknuepfen") : t("fam.elternteilVerknuepfen")}</div>
-          <div className="text-[11px] mb-2" style={{ color: C.textDim }}>Ist das Profil bereits vorhanden, suche es hier. Die Verbindung wird automatisch auf beiden Profilen angezeigt.</div>
-          <div className="flex items-center gap-2 rounded-xl px-3 py-2 mb-2" style={{ background: C.paperDim }}><Users size={14}/><input value={relativeSearch} onChange={(e)=>setRelativeSearch(e.target.value)} placeholder={form.accountType === "eltern" ? t("ph.athletSuchen") : t("ph.elternteilSuchen")} className="flex-1 bg-transparent outline-none text-xs"/></div>
-          {relativeSearch && <div className="space-y-1 mb-2">{possibleRelatives.slice(0,4).map((m)=><button type="button" key={m.id} onClick={()=>setForm((f)=>({...f,relativeId:m.id}))} className="w-full flex items-center justify-between p-2 rounded-lg text-xs" style={{ background: form.relativeId===m.id ? C.fehlerFlaeche : C.paperDim, color:C.ink }}><span>{m.name} · {m.team}</span>{form.relativeId===m.id&&<Check size={13}/>}</button>)}</div>}
-          {form.accountType === "eltern" && !form.relativeId && <div className="pt-2" style={{ borderTop:`1px solid ${C.line}` }}>
-            <div className="text-[11px] font-bold mb-2" style={{color:C.ink}}>{t("reg.kindVorlaeufig")}</div>
-            <input value={form.childName} onChange={set("childName")} placeholder={t("ph.nameKind")} className="w-full px-3 py-2 rounded-lg text-xs mb-2 outline-none" style={{background:C.paperDim}}/>
-            {form.childName && <div className="grid grid-cols-2 gap-2"><input type="date" value={form.childBirthdate} onChange={set("childBirthdate")} className="px-2 py-2 rounded-lg text-xs" style={{background:C.paperDim}}/><select value={form.childTeam} onChange={set("childTeam")} className="px-2 py-2 rounded-lg text-xs" style={{background:C.paperDim}}>{TEAMS.filter(t=>t!=="Eltern / Angehörige").map(t=><option key={t}>{t}</option>)}</select></div>}
-          </div>}
-        </div>}
         </>}
 
         <Field icon={Lock} type="password" placeholder={t("login.passwort")} value={form.password} onChange={set("password")} />
@@ -7665,7 +7749,10 @@ function TasksView({ currentUser, members }) {
   const [showCreateTeamId, setShowCreateTeamId] = useState("");
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [form, setForm] = useState({ title: "", description: "", dueDate: "", slots: "1", teamId: "", verantwortliche: [], startTime: "", endTime: "" });
-  const canCreateClubTask = currentUser.roles.some((r) => !["spieler", "mitglied"].includes(r));
+  /* "fan" steht mit in der Liste: Die Pruefung fragt "hat eine Rolle AUSSER
+     den einfachen" - ein Fan traegt nur 'fan' und hatte damit bisher eine
+     solche Rolle, durfte also Vereinsaufgaben anlegen. */
+  const canCreateClubTask = currentUser.roles.some((r) => !["spieler", "mitglied", "fan"].includes(r));
   /* Im Demo-Betrieb aendern die Knoepfe nur, was auf dem Bildschirm steht.
      Ohne das warfen sie: Jeder Handgriff unten geht sonst geradewegs an die
      Datenbank, und die gibt es hier nicht. */
@@ -9095,58 +9182,15 @@ function MemberDetailPanel({ member, onClose }) {
   );
 }
 
-function JoinRequestsManager({ currentUser }) {
-  const t = useT();
-  const [requests, setRequests] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState("");
-  const [roleChoice, setRoleChoice] = useState({});
-  const [busyId, setBusyId] = useState("");
-  const ROLE_OPTIONS = ["mitglied", "spieler", "eltern", "trainer", "teammanager"];
-  const loadRequests = async () => {
-    setLoading(true); setMessage("");
-    if (!supabase) { setLoading(false); return; }
-    const { data, error } = await supabase.from("club_memberships")
-      .select("id,display_name,email,requested_role,member_since,created_at")
-      .eq("club_id", currentUser.clubId)
-      .eq("status", "pending")
-      .order("created_at", { ascending: true });
-    if (error) { setMessage(t("zug.anfragenLadenFehler")); setLoading(false); return; }
-    setRequests(data || []);
-    setLoading(false);
-  };
-  useEffect(() => { loadRequests(); }, [currentUser.clubId]);
-  const respond = async (request, approve) => {
-    setBusyId(request.id); setMessage("");
-    const { error } = await supabase.rpc("respond_to_join_request", {
-      target_membership: request.id,
-      approve,
-      granted_role: approve ? (roleChoice[request.id] || request.requested_role || "mitglied") : null,
-    });
-    if (error) { setMessage(t("allg.aktionFehler")); setBusyId(""); return; }
-    setRequests((current) => current.filter((r) => r.id !== request.id));
-    setMessage(approve ? (OK_ZEICHEN + t("fzg.anfrageAngenommen")) : t("fzg.anfrageAbgelehnt"));
-    setBusyId("");
-  };
-  return <div>
-    <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Neue Mitglieder, die deinem Verein beitreten möchten. Beim Annehmen legst du die finale Rolle fest.</div>
-    {loading ? <div className="text-xs py-3" style={{ color: C.textDim }}>{t("allg.laedt")}</div> : requests.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{t("mit.keineAnfragen")}</div> : <div className="space-y-2">
-      {requests.map((r) => <div key={r.id} className="rounded-2xl p-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
-        <div className="text-xs font-bold mb-0.5" style={{ color: C.ink }}>{r.display_name}</div>
-        <div className="text-[10px] mb-2" style={{ color: C.textDim }}>{r.email} · angefragte Rolle: {rollenLabel(t, r.requested_role) || t("rol.mitgliedLabel")}</div>
-        <select value={roleChoice[r.id] || r.requested_role || "mitglied"} onChange={(e) => setRoleChoice({ ...roleChoice, [r.id]: e.target.value })} className="w-full px-3 py-2 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim, color: C.ink }}>
-          {ROLE_OPTIONS.map((role) => <option key={role} value={role}>{rollenLabel(t, role)}</option>)}
-        </select>
-        <div className="flex gap-2">
-          <button disabled={busyId === r.id} onClick={() => respond(r, false)} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.red }}>{t("allg.ablehnen")}</button>
-          <button disabled={busyId === r.id} onClick={() => respond(r, true)} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{t("allg.annehmen")}</button>
-        </div>
-      </div>)}
-    </div>}
-    {message && <div role="status" className="text-[11px] mt-3" style={{ color: istErfolg(message) ? C.erfolg : C.fehler }}>{meldungstext(message)}</div>}
-  </div>;
-}
-function SysAdminUserManager({ members, setMembers }) {
+/* Hier stand JoinRequestsManager - eine zweite Freigabe fuer Beitrittsanfragen
+   neben MembershipApprovalsPanel. Die beiden liefen auseinander: Diese las
+   requested_role (von niemandem je geschrieben, also immer leer), bot die
+   abgeschaffte Rolle "Eltern" an, kannte "Fan" nicht, und ihr Ablehnen
+   scheiterte an einem Status, den die Datenbank nicht kennt. Die
+   Profilkachel "Beitrittsanfragen" zeigt jetzt dieselbe Freigabe wie die
+   Verwaltung (MembershipApprovalsPanel mit nurAnfragen) - ein Schreibweg,
+   beitritt_entscheiden. */
+function SysAdminUserManager({ members, setMembers, currentUser = null }) {
   const t = useT();
   const [selectedId, setSelectedId] = useState("");
   const [suche, setSuche] = useState("");
@@ -9268,7 +9312,7 @@ function SysAdminUserManager({ members, setMembers }) {
     {selected && <><div className="rounded-2xl p-4 mb-4 flex items-center gap-3" style={{ background: C.ink, color: C.white }}><div className="w-11 h-11 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: selected.color }}>{initialsOf(selected.name)}</div><div className="min-w-0"><div className="text-base font-bold truncate" style={{ fontFamily: "Oswald" }}>{selected.name}</div><div className="text-[10px] truncate" style={{ color: C.textDim }}>{selected.email || t("pf.ohneEigeneMail")}</div></div></div>
       <div className="grid grid-cols-2 gap-2 mb-4">{[["overview", t("pf.stammdaten")], ["roles", t("rol.rollenTrainer")], ["teams", t("tm.athletenTeamsKurz")], ["family", t("fam.familie")]].map(([id, label]) => <button key={id} onClick={() => { setSection(id); setMessage(""); }} className="py-2.5 rounded-xl text-[11px] font-bold" style={{ background: section === id ? C.ink : C.white, color: section === id ? C.white : C.textDim, border: `1px solid ${section === id ? C.ink : C.line}` }}>{label}</button>)}</div>
       {section === "overview" && <div className="rounded-2xl p-4 space-y-2" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="text-sm font-bold mb-2" style={{ color: C.ink }}>{t("verein.profilBearbeiten")}</div><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder={t("ph.anzeigename")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/><input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} placeholder={t("ph.kontaktmail")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/><div className="grid grid-cols-2 gap-2"><input type="date" value={form.birthdate} onChange={(event) => setForm({ ...form, birthdate: event.target.value })} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/><input type="number" min="1800" max="2200" value={form.since} onChange={(event) => setForm({ ...form, since: event.target.value })} placeholder={t("ph.mitgliedSeit")} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/></div><select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}><option value="active">{t("status.aktiv")}</option><option value="pending">{t("status.ausstehend")}</option><option value="inactive">{t("status.inaktiv")}</option><option value="blocked">{t("status.gesperrt")}</option></select><button onClick={saveProfile} disabled={saving} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: C.red, color: C.aufPrimaer }}>{saving ? t("allg.wirdGespeichert") : t("pf.stammdatenSpeichern")}</button></div>}
-      {section === "roles" && <RolesPanel members={[selected]} setMembers={setMembers}/>}
+      {section === "roles" && <RolesPanel members={[selected]} setMembers={setMembers} currentUser={currentUser} alleMitglieder={members}/>}
       {section === "teams" && <div className="rounded-2xl p-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>{!selected.roles.includes("spieler") ? <div className="text-xs" style={{ color: C.textDim }}>{t("tm.rolleAthletZuerst")}</div> : <><div className="flex items-center justify-between mb-2"><div className="text-sm font-bold">{t("tm.athletenTeams")}</div><span className="text-[10px] font-bold" style={{ color: playerTeamIds.length === 3 ? C.red : C.textDim }}>{playerTeamIds.length}/3</span></div><div className="space-y-2 mb-3">{teams.map((team) => { const active = playerTeamIds.includes(team.id); return <button key={team.id} onClick={() => togglePlayerTeam(team.id)} className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left" style={{ background: active ? C.erfolgFlaeche : C.paperDim, border: active ? `1px solid ${C.secondary}` : "1px solid transparent" }}><span className="text-xs font-bold">{team.name}</span>{active && <Check size={14} style={{ color: C.erfolg }}/>}</button>; })}</div><button onClick={savePlayerTeams} disabled={saving || JSON.stringify([...playerTeamIds].sort()) === JSON.stringify([...savedPlayerTeamIds].sort())} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white, opacity: JSON.stringify([...playerTeamIds].sort()) === JSON.stringify([...savedPlayerTeamIds].sort()) ? .35 : 1 }}>{saving ? t("allg.wirdGespeichert") : t("tm.mannschaftenSpeichern")}</button></>}</div>}
       {section === "family" && <><FamilyTree user={selected} members={members}/><div className="mt-3"><FamilyLinkManager user={selected} members={members} setMembers={setMembers} adminMode /></div></>}
       {message && <div role="status" className="text-[11px] mt-3 rounded-xl px-3 py-2" style={{ background: istErfolg(message) ? C.erfolgFlaeche : C.fehlerFlaeche, color: istErfolg(message) ? C.erfolg : C.fehler }}>{meldungstext(message)}</div>}
@@ -9920,9 +9964,9 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
       {profileUnderlay === "penalties" && (user.roles.includes("trainer") || darfVereinVerwalten(user)
         || ["spieler", "teammanager", "kapitaen"].some((r) => user.roles.includes(r))) && <ProfileUnderlay title={t("pf.mannschaftseinstellungen")} eyebrow="Mannschaftsverwaltung" onClose={() => setProfileUnderlay("")}><TeamPenaltyCatalog user={user}/></ProfileUnderlay>}
       {profileUnderlay === "family" && <ProfileUnderlay title="Familie & Verknüpfungen" onClose={() => setProfileUnderlay("")}><SectionTitle eyebrow="Familie" title="Stammbaum"/><div className="mb-2"><FamilyTree user={user} members={members}/></div><FamilyLinkManager user={user} members={members} setMembers={setMembers}/></ProfileUnderlay>}
-      {profileUnderlay === "users" && darfVereinVerwalten(user) && <ProfileUnderlay title="Benutzerverwaltung" eyebrow="Sys-Administration" onClose={() => setProfileUnderlay("")}><SysAdminUserManager members={members} setMembers={setMembers}/></ProfileUnderlay>}
+      {profileUnderlay === "users" && darfVereinVerwalten(user) && <ProfileUnderlay title="Benutzerverwaltung" eyebrow="Sys-Administration" onClose={() => setProfileUnderlay("")}><SysAdminUserManager members={members} setMembers={setMembers} currentUser={user}/></ProfileUnderlay>}
       {profileUnderlay === "board-overview" && darfVereinVerwalten(user) && <ProfileUnderlay title="Mitgliederübersicht" eyebrow="Vorstand" onClose={() => setProfileUnderlay("")}><BoardMemberOverview members={members} currentUser={user}/></ProfileUnderlay>}
-      {profileUnderlay === "join-requests" && darfVereinVerwalten(user) && <ProfileUnderlay title="Beitrittsanfragen" eyebrow="Verwalten" onClose={() => setProfileUnderlay("")}><JoinRequestsManager currentUser={user}/></ProfileUnderlay>}
+      {profileUnderlay === "join-requests" && darfVereinVerwalten(user) && <ProfileUnderlay title="Beitrittsanfragen" eyebrow="Verwalten" onClose={() => setProfileUnderlay("")}><MembershipApprovalsPanel club={{ id: user.clubId }} members={members} setMembers={setMembers} currentUser={user} nurAnfragen /></ProfileUnderlay>}
       {profileUnderlay === "account" && <ProfileUnderlay title="Kontoeinstellungen" onClose={() => setProfileUnderlay("")}>
         <div className="rounded-2xl p-4 mb-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="flex items-center gap-2 text-sm font-bold mb-1" style={{ color: C.ink }}><ShieldCheck size={16} style={{ color: C.sekundaerAufHell }}/> Sicherheit</div><div className="text-[11px]" style={{ color: C.textDim }}>Dein Konto ist über Supabase geschützt. Passwortänderungen und Wiederherstellung erfolgen über deine hinterlegte E-Mail-Adresse.</div></div>
         <div className="space-y-2 mb-6"><a href="/datenschutz" className="w-full flex items-center justify-between rounded-2xl px-3.5 py-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}><span className="text-xs font-bold" style={{ color: C.ink }}>{t("recht.datenschutz")}</span><ChevronRight size={14} style={{ color: C.textDim }}/></a><a href="/nutzungsbedingungen" className="w-full flex items-center justify-between rounded-2xl px-3.5 py-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}><span className="text-xs font-bold" style={{ color: C.ink }}>{t("recht.nutzung")}</span><ChevronRight size={14} style={{ color: C.textDim }}/></a></div>
@@ -11914,7 +11958,7 @@ function MatchResultsPanel({ results, onSave, onDelete, events, currentClub }) {
 /* ------------------------------------------------------------------ */
 /* Rollenverwaltung                                                     */
 /* ------------------------------------------------------------------ */
-function RolesPanel({ members, setMembers }) {
+function RolesPanel({ members, setMembers, currentUser = null, alleMitglieder = null }) {
   const t = useT();
   /* Die Mannschaften kommen aus dem Verein, nicht aus der Demo-Konstante.
      YOUTH_CLASSES ist eine feste Liste - Herren 1, Herren 2, Damen 1, U15, U11 -,
@@ -11945,57 +11989,72 @@ function RolesPanel({ members, setMembers }) {
   };
   const closeMember = () => { setExpandedId(null); setDraftRoles([]); };
 
-  const toggleDraftRole = (role) => {
-    if (ROLE_META[role]?.alwaysOn) return; // t("rol.mitgliedLabel") ist Basisrolle für alle
-    setDraftRoles((roles) => {
-      const has = roles.includes(role);
-      if (has && roles.length === 1) return roles; // mindestens eine Rolle behalten
-      return has ? roles.filter((r) => r !== role) : [...roles, role];
-    });
+  /* vereinsadmin und sysadmin vergibt und entzieht nur, wer selbst eine der
+     beiden Rollen hat - dieselbe Regel wie in mitgliedsrollen_setzen. Ein
+     Organisator sieht die Rolle, kann sie aber nicht umschalten und einen
+     Administrator nicht zum Fan machen. */
+  const darfLeitung = !!currentUser && currentUser.roles.some((r) => ["vereinsadmin", "sysadmin"].includes(r));
+  /* Der Entwurf ist immer ein vollstaendiger Rollensatz: genau eine Stufe,
+     bei Mitglied dazu die Zusatzrollen. Frueher war es eine flache Liste, in
+     der "mitglied" fest eingeschaltet war und "fan" sich mit allem
+     kombinieren liess - so entstanden Fans mit Trainer- und Admin-Rechten.
+     Rollen, die hier nicht zur Wahl stehen (sysadmin), bleiben erhalten,
+     solange die Stufe Mitglied bleibt. */
+  const draftStufe = stufeVon(draftRoles);
+  const draftZusatz = draftRoles.filter((r) => !STUFEN.includes(r));
+  const stufeWaehlen = (member, stufe) => {
+    if (stufe === draftStufe) return;
+    setMessage("");
+    if (stufe === "fan") {
+      if (!darfLeitung && member.roles.some((r) => ["vereinsadmin", "sysadmin"].includes(r))) { setMessage(t("stufe.nurLeitung")); return; }
+      /* Rueckfrage nur, wenn wirklich etwas wegfaellt. Fan heisst: alle
+         weiteren Rollen und alle Mannschaften weg - auch Leitung und
+         Trainerschaft. Das soll kein Fehltipp ausloesen. */
+      if (draftZusatz.length && !window.confirm(t("stufe.wechselZuFanFrage").replace("{name}", member.name))) return;
+    }
+    setDraftRoles(rollenAusStufe(stufe, []));
   };
+  const zusatzSetzen = (zusatz) => setDraftRoles(rollenAusStufe("mitglied", zusatz));
 
   const saveMemberRoles = async (memberId) => {
     const member = members.find((item) => item.id === memberId);
     if (!member) return;
+    /* Nur Rollen, die es noch gibt. Frueher schrieb diese Funktion die
+       Differenz zwischen Entwurf und dem Stand IM GERAET - ein veralteter
+       Stand brachte so vier abgeschaffte Rollen zurueck, ohne dass jemand sie
+       angeklickt hatte. Jetzt geht der ganze Satz an die Datenbank, und was
+       hier nicht mehr existiert, faellt dort weg. */
+    const bekannt = (r) => Object.prototype.hasOwnProperty.call(ROLE_META, r);
+    const stufe = stufeVon(draftRoles);
+    const zusatz = stufe === "fan" ? [] : draftRoles.filter((r) => bekannt(r) && !STUFEN.includes(r));
+    const neu = rollenAusStufe(stufe, zusatz);
     setSaving(true);
     setMessage("");
     if (supabase && isDbId(memberId)) {
-      /* Nur Rollen schreiben, die es noch gibt.
-         Diese Funktion schreibt die Differenz zwischen Entwurf und dem Stand IM
-         GERAET. Nach dem Zusammenlegen der Rollen war dieser Stand veraltet: Er
-         enthielt Vorstand, Geschaeftsfuehrung, Finanzmanager und Eltern noch,
-         obwohl die Datenbank sie nicht mehr hatte. Beim naechsten Speichern
-         legte die Schleife sie wieder an - vier geloeschte Rollen kamen so
-         zurueck, ohne dass jemand sie angeklickt hatte.
-         Der Filter gegen ROLE_META schliesst das aus: Was in der App nicht
-         mehr existiert, kann auch nicht mehr geschrieben werden. Entfernt wird
-         dagegen ungefiltert, damit Altbestand beim naechsten Speichern
-         verschwindet statt sich zu halten. */
-      const bekannt = (r) => Object.prototype.hasOwnProperty.call(ROLE_META, r);
-      const toAdd = draftRoles.filter((r) => bekannt(r) && !member.roles.includes(r));
-      const toRemove = member.roles.filter((r) => !draftRoles.includes(r) || !bekannt(r));
-      const grantedBy = (await supabase.auth.getUser()).data.user?.id || null;
-      for (const role of toAdd) {
-        const { error } = await supabase.from("membership_roles").insert({ membership_id: memberId, role, granted_by: grantedBy });
-        if (error) { setMessage(t("mit.rollenaenderungFehler")); setSaving(false); return; }
-      }
-      for (const role of toRemove) {
-        const { error } = await supabase.from("membership_roles").delete().eq("membership_id", memberId).eq("role", role);
-        if (error) { setMessage(t("mit.rollenaenderungFehler")); setSaving(false); return; }
-        /* Wer die Rolle verliert, gibt auch die Mannschaften ab. Vorher blieben
-           die Zeilen in team_members stehen: Die Person zaehlte weiter zur
-           Mannschaft - sah also deren Chat und Termine - und blockierte
-           ausserdem den Manager-Platz, den je Mannschaft nur einer hat. In der
-           Oberflaeche war davon nichts zu sehen, die Rolle war ja weg. */
-        if (role === "teammanager" || role === "trainer" || role === "kapitaen") {
-          await supabase.from("team_members").delete().eq("membership_id", memberId).eq("function", role);
-        }
-      }
+      /* Ein Aufruf, eine Transaktion (mitgliedsrollen_setzen). Die alte
+         Schleife fuegte erst ein und loeschte dann: Am Fan-Waechter scheitert
+         genau diese Reihenfolge bei jedem Wechsel zwischen Mitglied und Fan,
+         und ein Fehler mittendrin - etwa beim letzten Vereins-Administrator -
+         liess einen halben Stand zurueck. Die Mannschaften entzogener Rollen
+         raeumt die Datenbank mit ab, beim Fan alle; frueher blieben die
+         Zeilen einer entzogenen Athletenrolle stehen. */
+      const { error } = await supabase.rpc("mitgliedsrollen_setzen", { target_membership: memberId, stufe, zusatzrollen: zusatz });
+      if (error) { setMessage(rollenFehlerText(error, t, t("mit.rollenaenderungFehler"))); setSaving(false); return; }
+    } else if (member.roles.includes("vereinsadmin") && !neu.includes("vereinsadmin")) {
+      /* Demo-Betrieb: dieselbe Regel wie der Waechter letzter_vereinsadmin -
+         allein im Verein darf die Rolle fallen, sonst braucht es einen
+         weiteren Administrator. */
+      const alle = alleMitglieder || members;
+      const andereAdmins = alle.filter((x) => x.id !== memberId && !x.accountPending && x.roles.includes("vereinsadmin"));
+      const andereKonten = alle.filter((x) => x.id !== memberId && !x.accountPending);
+      if (!andereAdmins.length && andereKonten.length) { setMessage(t("stufe.letzterAdmin")); setSaving(false); return; }
     }
     setMembers((ms) => ms.map((m) => (m.id === memberId
-      ? { ...m, roles: draftRoles.filter((r) => Object.prototype.hasOwnProperty.call(ROLE_META, r)),
-          ...(!draftRoles.includes("teammanager") ? { managedTeam: null, managedTeams: [] } : {}),
-          ...(!draftRoles.includes("trainer") ? { trainerTeams: [] } : {}) }
+      ? { ...m, roles: neu,
+          ...(!neu.includes("teammanager") ? { managedTeam: null, managedTeams: [] } : {}),
+          ...(!neu.includes("trainer") ? { trainerTeams: [] } : {}),
+          ...(!neu.includes("spieler") ? { playerTeams: [] } : {}),
+          ...(stufe === "fan" ? { teams: [] } : {}) }
       : m)));
     setSaving(false);
     closeMember();
@@ -12110,19 +12169,12 @@ function RolesPanel({ members, setMembers }) {
             </button>
             {expanded && (
               <div className="px-3 pb-3">
-                <div className="flex flex-wrap gap-1.5">
-                  {ASSIGNABLE_ROLES.map((r) => {
-                    const active = draftRoles.includes(r);
-                    return (
-                      <button key={r} type="button" onClick={() => toggleDraftRole(r)} className="px-2.5 py-1 rounded-full text-[11px]"
-                        style={{ fontFamily: "Inter", fontWeight: 700, background: active ? (ROLE_META[r]?.color || C.paperDim) : C.paperDim, color: active ? "#fff" : C.textDim }}>
-                        {rollenLabel(t, r)}
-                      </button>
-                    );
-                  })}
-                </div>
-                {m.roles.includes("trainer")&&<div className="mt-2.5 pt-2.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] mb-2 font-bold" style={{color:C.textDim}}>TRAINER FÜR · MEHRERE MANNSCHAFTEN MÖGLICH</div><div className="flex flex-wrap gap-1.5">{waehlbareMannschaften.length===0&&<span className="text-[11px]" style={{color:C.textDim}}>{t("tm.keineAngelegt")}</span>}{waehlbareMannschaften.map((team)=>{const active=(m.trainerTeams||[]).includes(team.name);return <button type="button" key={team.name} onClick={()=>toggleTrainerTeam(m.id,team.name)} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?ROLE_META.trainer.color:C.paperDim,color:active?C.white:C.textDim}}>{active?"✓ ":""}{team.name}</button>})}</div></div>}
-                {m.roles.includes("teammanager")&&<div className="mt-2.5 pt-2.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] mb-2 font-bold" style={{color:C.textDim}}>{t("rol.teammanagerHinweis")}</div><div className="flex flex-wrap gap-1.5">{waehlbareMannschaften.length===0&&<span className="text-[11px]" style={{color:C.textDim}}>{t("tm.keineAngelegt")}</span>}{waehlbareMannschaften.map((team)=>{const active=(m.managedTeams||[]).includes(team.name);return <button type="button" key={team.name} onClick={()=>toggleManagedTeam(m.id,team.name)} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?ROLE_META.teammanager.color:C.paperDim,color:active?C.white:C.textDim}}>{active?"\u2713 ":""}{team.name}</button>})}</div></div>}
+                <StufenWahl stufe={draftStufe} onStufe={(s) => stufeWaehlen(m, s)}
+                  zusatz={draftZusatz} onZusatz={zusatzSetzen}
+                  gesperrteRollen={darfLeitung ? [] : ["vereinsadmin"]}
+                  stufeGesperrt={!darfLeitung && m.roles.some((r) => ["vereinsadmin", "sysadmin"].includes(r))} />
+                {m.roles.includes("trainer")&&draftStufe!=="fan"&&<div className="mt-2.5 pt-2.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] mb-2 font-bold" style={{color:C.textDim}}>TRAINER FÜR · MEHRERE MANNSCHAFTEN MÖGLICH</div><div className="flex flex-wrap gap-1.5">{waehlbareMannschaften.length===0&&<span className="text-[11px]" style={{color:C.textDim}}>{t("tm.keineAngelegt")}</span>}{waehlbareMannschaften.map((team)=>{const active=(m.trainerTeams||[]).includes(team.name);return <button type="button" key={team.name} onClick={()=>toggleTrainerTeam(m.id,team.name)} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?ROLE_META.trainer.color:C.paperDim,color:active?C.white:C.textDim}}>{active?"✓ ":""}{team.name}</button>})}</div></div>}
+                {m.roles.includes("teammanager")&&draftStufe!=="fan"&&<div className="mt-2.5 pt-2.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] mb-2 font-bold" style={{color:C.textDim}}>{t("rol.teammanagerHinweis")}</div><div className="flex flex-wrap gap-1.5">{waehlbareMannschaften.length===0&&<span className="text-[11px]" style={{color:C.textDim}}>{t("tm.keineAngelegt")}</span>}{waehlbareMannschaften.map((team)=>{const active=(m.managedTeams||[]).includes(team.name);return <button type="button" key={team.name} onClick={()=>toggleManagedTeam(m.id,team.name)} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?ROLE_META.teammanager.color:C.paperDim,color:active?C.white:C.textDim}}>{active?"\u2713 ":""}{team.name}</button>})}</div></div>}
                 <div className="flex gap-2 mt-3 pt-3" style={{ borderTop: `1px solid ${C.line}` }}>
                   <button type="button" onClick={closeMember} disabled={saving} className="flex-1 py-2 rounded-lg text-xs" style={{ background: C.paperDim, color: C.ink, fontFamily: "Inter", fontWeight: 700 }}>{t("allg.abbrechen")}</button>
                   <button type="button" onClick={() => saveMemberRoles(m.id)} disabled={saving} className="flex-1 py-2 rounded-lg text-xs" style={{ background: C.ink, color: "#fff", fontFamily: "Inter", fontWeight: 700, opacity: saving ? 0.6 : 1 }}>{saving ? t("allg.speichertKurz") : t("allg.speichern")}</button>
@@ -12285,7 +12337,7 @@ function ClubColorPanel({ club, onColorsUpdated }) {
   </div>;
 }
 
-function MembershipApprovalsPanel({ club, members, setMembers }) {
+function MembershipApprovalsPanel({ club, members, setMembers, currentUser = null, nurAnfragen = false }) {
   const t = useT();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -12294,6 +12346,23 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
   const [activeMembers, setActiveMembers] = useState([]);
   const [loadingActive, setLoadingActive] = useState(true);
   const [showActive, setShowActive] = useState(false);
+  /* Wer vereinsadmin vergeben darf - siehe rollensatz_bilden. Ein
+     Organisator entscheidet Anfragen, macht aber niemanden zum Admin. */
+  const darfLeitung = !!currentUser && currentUser.roles.some((r) => ["vereinsadmin", "sysadmin"].includes(r));
+  /* Die Entscheidung je Anfrage: Stufe und Zusatzrollen. Vorbelegt mit dem,
+     was der Bewerber selbst angegeben hat - das sind die Rollenzeilen der
+     wartenden Mitgliedschaft, geschrieben von register_for_club. Aeltere
+     App-Staende konnten dort noch Athlet/in angeben; das steht dann als
+     Zusatzrolle vorausgewaehlt. */
+  const [entscheidungen, setEntscheidungen] = useState({});
+  const entscheidungVon = (request) => {
+    if (entscheidungen[request.id]) return entscheidungen[request.id];
+    const rollen = (request.membership_roles || []).map((entry) => entry.role);
+    const stufe = stufeVon(rollen);
+    return { stufe, zusatz: stufe === "fan" ? [] : rollen.filter((r) => ZUSATZROLLEN.includes(r)) };
+  };
+  const entscheidungSetzen = (request, aenderung) =>
+    setEntscheidungen((alle) => ({ ...alle, [request.id]: { ...entscheidungVon(request), ...aenderung } }));
 
   const loadActiveMembers = async () => {
     setLoadingActive(true);
@@ -12304,7 +12373,9 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
     if (!error) setActiveMembers(data || []);
     setLoadingActive(false);
   };
-  useEffect(() => { loadActiveMembers(); }, [club?.id]);
+  /* Nur fuer die Mitgliederpflege darunter - die gibt es in der Profilkachel
+     "Beitrittsanfragen" (nurAnfragen) nicht. */
+  useEffect(() => { if (!nurAnfragen) loadActiveMembers(); }, [club?.id, nurAnfragen]);
 
   /* Die Sperrliste ist eine Sicht auf dieselben Daten, kein zweiter Bestand.
      Gesperrte stehen deshalb NICHT zusaetzlich in der Mitgliederliste darueber -
@@ -12414,46 +12485,37 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
 
   useEffect(() => { loadRequests(); }, [club?.id]);
 
-  const decide = async (request, nextStatus) => {
+  const decide = async (request, approve) => {
     setWorkingId(request.id); setMessage("");
+    const { stufe, zusatz } = entscheidungVon(request);
+    const neu = rollenAusStufe(stufe, zusatz);
     if (!supabase) {
-      setMembers((items) => items.map((member) => member.id === request.id ? { ...member, accountPending: nextStatus !== "active", accountRejected: nextStatus === "blocked" } : member));
+      setMembers((items) => items.map((member) => member.id === request.id ? { ...member, ...(approve ? { roles: neu } : {}), accountPending: !approve, accountRejected: !approve } : member));
       setRequests((items) => items.filter((item) => item.id !== request.id));
-      setMessage(nextStatus === "active" ? (OK_ZEICHEN + t("mit.wurdeFreigegeben")) : (OK_ZEICHEN + t("mit.wurdeAbgelehnt")));
+      setMessage(approve ? (OK_ZEICHEN + t("mit.wurdeFreigegeben")) : (OK_ZEICHEN + t("mit.wurdeAbgelehnt")));
       setWorkingId(null); return;
     }
-    /* Ablehnen heisst "diesmal nicht" - und stellt sich keiner neuen Anfrage in
-       den Weg.
+    /* Ein Aufruf fuer Status UND Rollen (beitritt_entscheiden). Vorher setzte
+       dieses Panel nur den Status und liess die Rollen, wie der Bewerber sie
+       angegeben hatte; wer sich als Fan beworben hatte, liess sich hier gar
+       nicht als Mitglied aufnehmen. Die Mannschaftszuordnung aus der Anfrage
+       macht jetzt ebenfalls die Datenbank - im selben Schritt statt in einem
+       zweiten Aufruf, der fehlschlagen konnte, nachdem die Freigabe schon
+       stand.
 
-       Vorher setzte es den Status auf 'blocked'. register_for_club weist damit
-       jede weitere Anfrage dauerhaft ab: Wer einmal abgelehnt wurde, kam nie
-       wieder herein, auch nach Jahren nicht und ohne dass es jemandem auffiel.
-
-       Jetzt geht die Mitgliedschaft auf 'inactive', blocked_until wird
-       ausdruecklich geleert, und die Person kann sich sofort erneut bewerben -
-       so oft sie moechte. Entschieden wird jedes Mal neu von der
-       Vereinsleitung.
-
-       rejection_count zaehlt weiter mit. Er sperrt nichts, er sagt der
-       Vereinsleitung nur, dass hier schon einmal abgelehnt wurde.
-
-       Wer wirklich draussen bleiben soll, laesst sich weiterhin auf 'blocked'
-       setzen - dann aber als bewusste Entscheidung, nicht als Nebenwirkung
-       eines Ablehnens. */
-    const abgelehnt = nextStatus !== "active";
-    const aenderung = abgelehnt
-      ? {
-          status: "inactive",
-          rejection_count: (request.rejection_count || 0) + 1,
-          blocked_until: null,
-        }
-      : { status: nextStatus, blocked_until: null };
-    const { error: statusError } = await supabase.from("club_memberships").update(aenderung).eq("id", request.id).eq("club_id", club.id);
+       Ablehnen heisst "diesmal nicht" und stellt sich keiner neuen Anfrage in
+       den Weg: Die Mitgliedschaft geht auf 'inactive', blocked_until wird
+       geleert, rejection_count zaehlt mit (er sperrt nichts, er sagt der
+       Vereinsleitung nur, dass hier schon einmal abgelehnt wurde). Wer
+       wirklich draussen bleiben soll, wird ausdruecklich gesperrt. */
+    const { error } = await supabase.rpc("beitritt_entscheiden", {
+      target_membership: request.id, approve, stufe, zusatzrollen: stufe === "fan" ? [] : zusatz,
+    });
     /* Die Zugangsgrenze setzt ein Trigger in der Datenbank durch, damit sie auf
        jedem Weg greift. Er meldet sich mit "club_account_limit_reached" - ohne
        diese Uebersetzung stuende hier eine rohe Postgres-Meldung. */
-    if (statusError) {
-      const grenzeErreicht = `${statusError.message}${statusError.details || ""}`.includes("club_account_limit_reached");
+    if (error) {
+      const grenzeErreicht = `${error.message}${error.details || ""}`.includes("club_account_limit_reached");
       setMessage(grenzeErreicht
         /* Dieser Satz erscheint genau dann, wenn ein Verein an seine
            Zugangsgrenze stoesst - also im wichtigsten Moment. Er schickte den
@@ -12462,17 +12524,14 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
            die dort bewusst nicht steht. Das kaufmaennische Und stand
            ausserdem als "&amp;" im Klartext auf dem Bildschirm. */
         ? t("zug.ausgeschoepft")
-        : t("allg.entscheidungNichtGespeichert"));
+        : rollenFehlerText(error, t, t("allg.entscheidungNichtGespeichert")));
       setWorkingId(null); return;
     }
-
-    const requestedRoles = (request.membership_roles || []).map((entry) => entry.role);
-    if (nextStatus === "active" && requestedRoles.includes("spieler") && request.requested_team) {
-      const { data: team } = await supabase.from("teams").select("id").eq("club_id", club.id).eq("name", request.requested_team).maybeSingle();
-      if (team) await supabase.from("team_members").upsert({ team_id: team.id, membership_id: request.id, function: "spieler" }, { onConflict: "team_id,membership_id,function" });
-    }
+    setMembers((items) => approve
+      ? items.map((member) => member.id === request.id ? { ...member, roles: neu, status: "active", accountPending: false } : member)
+      : items.filter((member) => member.id !== request.id));
     setRequests((items) => items.filter((item) => item.id !== request.id));
-    setMessage(nextStatus === "active"
+    setMessage(approve
       ? t("mit.wurdeFreigegeben")
       : t("mit.abgelehnt"));
     setWorkingId(null);
@@ -12489,15 +12548,33 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
     {loading ? <div className="text-xs py-5 text-center" style={{ color: C.textDim }}>{t("mit.antraegeLaden")}</div> : requests.length === 0 ?
       <div className="rounded-2xl p-5 text-center" style={{ background: C.glass, border: `1px solid ${C.line}` }}><CheckCircle2 size={24} className="mx-auto mb-2" style={{ color: C.sekundaerAufHell }}/><div className="text-sm font-bold">{t("mit.keineAntraegeKurz")}</div><div className="text-[11px] mt-1" style={{ color: C.textDim }}>{t("mit.neueAutomatisch")}</div></div> :
       <div className="space-y-3">{requests.map((request) => {
-        const roles = (request.membership_roles || []).map((entry) => rollenLabel(t, entry.role));
+        const angefragt = (request.membership_roles || []).map((entry) => entry.role);
+        const angefragteZusatz = stufeVon(angefragt) === "fan" ? [] : angefragt.filter((r) => ZUSATZROLLEN.includes(r));
+        const entscheidung = entscheidungVon(request);
+        const alsFan = entscheidung.stufe === "fan";
         return <div key={request.id} className="rounded-2xl p-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
           <div className="flex items-start gap-3 mb-3"><div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: C.red, color: C.aufPrimaer }}>{initialsOf(request.display_name)}</div><div className="min-w-0"><div className="text-sm font-bold truncate" style={{ color: C.ink }}>{request.display_name}</div><div className="text-[11px] truncate" style={{ color: C.textDim }}>{request.email || t("pf.keineEmail")}</div></div></div>
-          <div className="grid grid-cols-2 gap-2 mb-3"><div className="rounded-xl px-3 py-2" style={{ background: C.paperDim }}><div className="text-[9px] uppercase tracking-wider" style={{ color: C.textDim }}>{t("mit.registrierung")}</div><div className="text-xs font-bold mt-0.5">{roles.filter((role) => role !== "Mitglied").join(", ") || t("rol.mitgliedLabel")}</div></div><div className="rounded-xl px-3 py-2" style={{ background: C.paperDim }}><div className="text-[9px] uppercase tracking-wider" style={{ color: C.textDim }}>{t("tm.mannschaft")}</div><div className="text-xs font-bold mt-0.5">{request.requested_team || t("bei.nochOffen")}</div></div></div>
-          <div className="flex gap-2"><button disabled={workingId === request.id} onClick={() => decide(request, "active")} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.secondary, color: C.aufSekundaer, opacity: workingId === request.id ? .6 : 1 }}>{t("mit.freigeben")}</button><button disabled={workingId === request.id} onClick={() => decide(request, "blocked")} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.fehlerFlaeche, color: C.fehler, opacity: workingId === request.id ? .6 : 1 }}>{t("allg.ablehnen")}</button></div>
+          <div className={`grid ${alsFan ? "grid-cols-1" : "grid-cols-2"} gap-2 mb-3`}><div className="rounded-xl px-3 py-2" style={{ background: C.paperDim }}><div className="text-[9px] uppercase tracking-wider" style={{ color: C.textDim }}>{t("stufe.angefragtAls")}</div><div className="text-xs font-bold mt-0.5">{[stufeVon(angefragt), ...angefragteZusatz].map((r) => rollenLabel(t, r)).join(", ")}</div></div>{!alsFan && <div className="rounded-xl px-3 py-2" style={{ background: C.paperDim }}><div className="text-[9px] uppercase tracking-wider" style={{ color: C.textDim }}>{t("tm.mannschaft")}</div><div className="text-xs font-bold mt-0.5">{request.requested_team || t("bei.nochOffen")}</div></div>}</div>
+          {/* Die Vereinsleitung entscheidet die Stufe, nicht der Bewerber: Hat er
+              sich vertan, stellt sie hier um. Fan -> Mitglied oeffnet die
+              Zusatzrollen, Mitglied -> Fan leert sie. */}
+          <div className="mb-3">
+            <div className="text-[9px] uppercase tracking-wider mb-1.5" style={{ color: C.textDim }}>{t("stufe.aufnehmenAls")}</div>
+            <StufenWahl stufe={entscheidung.stufe}
+              onStufe={(s) => entscheidungSetzen(request, { stufe: s, zusatz: s === "fan" ? [] : entscheidung.zusatz })}
+              zusatz={entscheidung.zusatz} onZusatz={(zusatz) => entscheidungSetzen(request, { zusatz })}
+              gesperrteRollen={darfLeitung ? [] : ["vereinsadmin"]} />
+          </div>
+          <div className="flex gap-2"><button disabled={workingId === request.id} onClick={() => decide(request, true)} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.secondary, color: C.aufSekundaer, opacity: workingId === request.id ? .6 : 1 }}>{t("mit.freigeben")}</button><button disabled={workingId === request.id} onClick={() => decide(request, false)} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.fehlerFlaeche, color: C.fehler, opacity: workingId === request.id ? .6 : 1 }}>{t("allg.ablehnen")}</button></div>
         </div>;
       })}</div>}
     <button onClick={loadRequests} disabled={loading} className="w-full mt-3 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.textDim }}>{t("allg.listeAktualisieren")}</button>
 
+    {/* Mitglieder beenden, sperren, entfernen: Das schreibt direkt in
+        club_memberships und darf nur, wer vereinsadmin oder sysadmin ist
+        (Regel "admins manage memberships"). Die Profilkachel fuer den
+        Organisator zeigt deshalb nur die Anfragen. */}
+    {!nurAnfragen && <>
     <button onClick={() => setShowActive((v) => !v)} className="w-full flex items-center justify-between mt-6 mb-3">
       <div className="text-sm font-bold" style={{ color: C.ink }}>{t("mit.verwalten")}</div>
       <ChevronRight size={15} style={{ color: C.textDim, transform: showActive ? "rotate(90deg)" : "none", transition: "transform .15s" }}/>
@@ -12561,6 +12638,7 @@ function MembershipApprovalsPanel({ club, members, setMembers }) {
         </div>
       </div>
     )}
+    </>}
   </div>;
 }
 
@@ -12761,7 +12839,11 @@ function ClaimManagedPlayerPanel({ members, setMembers, currentUser }) {
       if (!src) return ms.filter((m) => m.id !== managedId);
       return ms.filter((m) => m.id !== managedId).map((m) => m.id === realId ? {
         ...m,
-        roles: [...new Set([...m.roles, ...src.roles])],
+        /* Wie claim_managed_membership: Wer ein Spielerprofil uebernimmt, ist
+           kein Fan mehr - 'fan' faellt, 'mitglied' kommt dazu. */
+        roles: m.roles.includes("fan")
+          ? rollenAusStufe("mitglied", src.roles)
+          : [...new Set([...m.roles, ...src.roles.filter((r) => r !== "fan")])],
         playerTeams: [...new Set([...(m.playerTeams || []), ...(src.playerTeams || [])])],
         teams: [...new Set([...(m.teams || []), ...(src.teams || [])])],
       } : m);
@@ -12822,6 +12904,10 @@ function AdminView({
     ...(canSponsor ? [["sponsoring", "Sponsoring"]] : []),
     ...(canDutyTemplates ? [["duty-templates", t("help.saetzeTitel").replace("{begriff}", t(dutyCfg.dutyTabLabel))]] : []),
     ["polls", t("umf.umfragen")],
+    /* Der Organisator entscheidet Beitrittsanfragen mit (beitritt_entscheiden)
+       - und bekommt die Meldung dazu. Ohne diesen Bereich fuehrte ihn die
+       Glocke auf eine Seite, die es fuer ihn nicht gab. */
+    ...(currentUser.roles.includes("organisator") ? [["memberships", t("mit.antraege")]] : []),
   ];
   const [panel, setPanel] = useState(restrictedOnly ? restrictedPanels[0][0] : "overview");
   /* Aus der Glocke heraus soll die Verwaltung gleich im richtigen Bereich
@@ -12886,7 +12972,7 @@ function AdminView({
       </div>
 
       {panel === "overview" && <OverviewPanel members={members} events={events} protocols={protocols} dutyPlan={dutyPlan} seasonVotes={seasonVotes} goPanel={panelWaehlen} goHelfer={goHelferEinteilen} />}
-      {panel === "memberships" && currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role)) && <MembershipApprovalsPanel club={currentClub} members={members} setMembers={setMembers} />}
+      {panel === "memberships" && darfVereinVerwalten(currentUser) && <MembershipApprovalsPanel club={currentClub} members={members} setMembers={setMembers} currentUser={currentUser} nurAnfragen={!currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))} />}
       {panel === "clubprofile" && currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role)) && <><ClubLogoPanel club={currentClub} onLogoUpdated={onClubLogoUpdated} /><ClubColorPanel club={currentClub} onColorsUpdated={onClubColorsUpdated} /></>}
 
       {panel === "automation" && (
@@ -12901,7 +12987,7 @@ function AdminView({
       {panel === "protokolle" && <ProtokollePanel members={members} protocols={protocols} setProtocols={setProtocols} clubId={currentUser.clubId} onSpeichern={onProtokollSpeichern} onAufgabe={onAufgabeUmschalten} onLoeschen={onProtokollLoeschen} />}
       {panel === "sponsoring" && <SponsoringPanel bookings={werbeplaetze} currentClub={currentClub} clubFeatures={clubFeatures} onFeaturesChanged={onClubFeaturesChanged} onChanged={onWerbeplaetzeGeaendert} />}
       {panel === "polls" && <PollManagerPanel polls={polls} setPolls={setPolls} clubId={currentUser.clubId} onAnlegen={onUmfrageAnlegen} onUmschalten={onUmfrageUmschalten} />}
-      {panel === "roles" && <><RolesPanel members={members} setMembers={setMembers} /><ClaimManagedPlayerPanel members={members} setMembers={setMembers} currentUser={currentUser} /></>}
+      {panel === "roles" && <><RolesPanel members={members} setMembers={setMembers} currentUser={currentUser} /><ClaimManagedPlayerPanel members={members} setMembers={setMembers} currentUser={currentUser} /></>}
       {panel === "results" && currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role)) && <MatchResultsPanel results={tippResults} onSave={onSaveTippResult} onDelete={onDeleteTippResult} events={events} currentClub={currentClub} />}
       {panel === "families" && isSysAdmin(currentUser) && <AdminFamilyPanel members={members} setMembers={setMembers} />}
       {panel === "system" && isSysAdmin(currentUser) && (
