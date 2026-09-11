@@ -211,7 +211,9 @@ revoke all on function public.fan_ohne_mannschaft() from public, anon, authentic
 /* Aus Stufe und Zusatzrollen den vollstaendigen Rollensatz bilden - und
    dabei alles pruefen, was keine Oberflaeche garantieren kann:
      - Stufe ist 'mitglied' oder 'fan'
-     - ein Fan bekommt keine Zusatzrolle (Ausnahme statt Verwerfen)
+     - ein Fan bekommt keine Zusatzrolle. Mitgeschickte Zusatzrollen fallen
+       still weg: Wer "Fan" waehlt, meint Fan - eine Aufnahme darf nicht
+       daran scheitern, dass vor dem Umschalten schon Rollen angehakt waren.
      - nur Rollen, die es noch gibt (die abgeschafften fallen hier durch)
      - vereinsadmin und sysadmin aendert nur, wer selbst eine davon hat.
        Verglichen wird mit dem bisherigen Satz: Ein Organisator darf einem
@@ -245,9 +247,8 @@ begin
     from unnest(coalesce(zusatzrollen, '{}'::public.club_role[])) z
    where z is not null and z not in ('mitglied', 'fan');
 
-  if stufe = 'fan' and cardinality(v_zusatz) > 0 then
-    raise exception 'fan_exklusiv' using errcode = 'check_violation',
-      detail = 'Ein Fan hat keine weiteren Rollen.';
+  if stufe = 'fan' then
+    v_zusatz := '{}';
   end if;
   if not (v_zusatz <@ v_erlaubt) then
     raise exception 'rolle_nicht_erlaubt' using errcode = 'check_violation',
@@ -285,21 +286,20 @@ language plpgsql
 security definer
 set search_path = ''
 as $$
-declare
-  v_bisher public.club_role[];
 begin
-  select coalesce(array_agg(r.role), '{}') into v_bisher
-    from public.membership_roles r where r.membership_id = target_membership;
-
   delete from public.membership_roles r
    where r.membership_id = target_membership and r.role <> all(neu);
 
   if 'fan' = any(neu) then
     delete from public.team_members tm where tm.membership_id = target_membership;
   else
+    /* Jede Mannschaftszeile ohne passende Rolle faellt weg - nicht nur die der
+       gerade entzogenen Rollen. Sonst ueberlebte etwa die Trainer-Zeile eines
+       Ehemaligen, der erneut anfragt und ohne Trainerrolle aufgenommen wird,
+       und mit ihr Kanal und Rechte der Mannschaft. */
     delete from public.team_members tm
      where tm.membership_id = target_membership
-       and tm.function = any(v_bisher) and tm.function <> all(neu);
+       and tm.function <> all(neu);
   end if;
 
   insert into public.membership_roles (membership_id, role, granted_by)
@@ -583,8 +583,11 @@ begin
         updated_at = now()
   returning id into new_membership_id;
 
-  /* A: Erneute Anfrage - alte Rollen weg, bevor die neue Angabe gilt. */
+  /* A: Erneute Anfrage - alte Rollen UND alte Mannschaften weg, bevor die
+     neue Angabe gilt. Welche Mannschaften jemand bekommt, entscheidet die
+     Vereinsleitung bei der Aufnahme neu. */
   if bisher is not null then
+    delete from public.team_members tm where tm.membership_id = new_membership_id;
     begin
       delete from public.membership_roles r where r.membership_id = new_membership_id;
     exception when raise_exception then
