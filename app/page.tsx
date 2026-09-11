@@ -1271,16 +1271,6 @@ function unlinkFamilyRecords(list, firstId, secondId) {
     return familyLinks.length !== (member.familyLinks || []).length ? { ...member, familyLinks } : member;
   });
 }
-/* Heimspiel-Stationen erst ab 16. Ausgeschlossen wird aber nur, wer
-   NACHWEISLICH juenger ist: age() liefert ohne Geburtsdatum 0, und so galt
-   jedes Mitglied ohne Angabe als Kind - bei ERG Iserlohn 12 von 13. "Helfer
-   einteilen" bot dann nur noch eine einzige Person an, und wer selbst kein
-   Geburtsdatum hinterlegt hatte, konnte sich fuer kein Heimspiel eintragen.
-   ACHTUNG: Das taugt nur fuer das EIGENE Profil. Die Geburtsdaten anderer
-   liefert die Datenbank nie aus (profiles: "users read own profile") - fuer
-   die Einteilung durch die Leitung gilt helfer_altersstatus, siehe
-   AdminDutyPanel. */
-const unter16 = (m) => !!m?.birthdate && age(m.birthdate) < 16;
 function age(birthdate) {
   if (!birthdate) return 0;
   const b = new Date(birthdate);
@@ -4465,7 +4455,7 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
   const [absageUmfang, setAbsageUmfang] = useState("");
   const meta = typeMeta[ev.type];
 
-  const helperEligible = ev.helperSlots ? (isFormalMember(currentUser) && (ev.type !== "spiel" || !unter16(currentUser))) : false;
+  const helperEligible = ev.helperSlots ? isFormalMember(currentUser) : false;
   const eventIsReal = !!supabase && isDbId(ev.id);
 
   return (
@@ -9596,7 +9586,6 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
   const goal = punkteZiel || 1000;
   const meinePunkte = user.points || 0;
   const meineBadges = verdienteBadges(user, dutyPlan);
-  const eligible = isFormalMember(user) && !unter16(user);
   const vorhandeneVideos = useVorhandeneHowToVideos();
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleteError, setDeleteError] = useState("");
@@ -9930,7 +9919,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
       {profileUnderlay === "trainer" && (user.roles.includes("trainer") || darfVereinVerwalten(user)) && <ProfileUnderlay title={t("pf.trainerRollen")} eyebrow="Mannschaftsverwaltung" onClose={() => setProfileUnderlay("")}><TrainerTeamSettings user={user} members={members} setMembers={setMembers}/></ProfileUnderlay>}
       {profileUnderlay === "penalties" && (user.roles.includes("trainer") || darfVereinVerwalten(user)
         || ["spieler", "teammanager", "kapitaen"].some((r) => user.roles.includes(r))) && <ProfileUnderlay title={t("pf.mannschaftseinstellungen")} eyebrow="Mannschaftsverwaltung" onClose={() => setProfileUnderlay("")}><TeamPenaltyCatalog user={user}/></ProfileUnderlay>}
-      {profileUnderlay === "family" && <ProfileUnderlay title="Familie & Verknüpfungen" onClose={() => setProfileUnderlay("")}><SectionTitle eyebrow="Familie" title="Stammbaum"/><div className="mb-2"><FamilyTree user={user} members={members}/></div><div className="text-[11px] mb-5" style={{ color: C.textDim }}>{eligible ? t("help.berechtigt") : t("help.unter16")}</div><FamilyLinkManager user={user} members={members} setMembers={setMembers}/></ProfileUnderlay>}
+      {profileUnderlay === "family" && <ProfileUnderlay title="Familie & Verknüpfungen" onClose={() => setProfileUnderlay("")}><SectionTitle eyebrow="Familie" title="Stammbaum"/><div className="mb-2"><FamilyTree user={user} members={members}/></div><FamilyLinkManager user={user} members={members} setMembers={setMembers}/></ProfileUnderlay>}
       {profileUnderlay === "users" && darfVereinVerwalten(user) && <ProfileUnderlay title="Benutzerverwaltung" eyebrow="Sys-Administration" onClose={() => setProfileUnderlay("")}><SysAdminUserManager members={members} setMembers={setMembers}/></ProfileUnderlay>}
       {profileUnderlay === "board-overview" && darfVereinVerwalten(user) && <ProfileUnderlay title="Mitgliederübersicht" eyebrow="Vorstand" onClose={() => setProfileUnderlay("")}><BoardMemberOverview members={members} currentUser={user}/></ProfileUnderlay>}
       {profileUnderlay === "join-requests" && darfVereinVerwalten(user) && <ProfileUnderlay title="Beitrittsanfragen" eyebrow="Verwalten" onClose={() => setProfileUnderlay("")}><JoinRequestsManager currentUser={user}/></ProfileUnderlay>}
@@ -10470,19 +10459,11 @@ function DutyView({ members, currentUser, events, dutyPlan, setDutyPlan, onDiens
   });
   const helperEvents = (events || []).filter((e) => e.helperSlots && e.helperSlots.length);
   const formalMember = isFormalMember(currentUser);
-  const oldEnough = !unter16(currentUser);
-  const familyHelpers = (!formalMember || !oldEnough) ? members.filter((m) => m.familyId && m.familyId === currentUser.familyId && m.id !== currentUser.id && isFormalMember(m) && !!m.birthdate && age(m.birthdate) >= 16) : [];
 
   return (
     <div className="px-4 pt-4 pb-24">
       <div className="text-xs mb-4" style={{ color: C.textDim, fontFamily: "Inter" }}>Von der Theke beim Heimspiel bis zum Kuchenbuffet auf dem Sommerfest — hier findest du alle offenen Helferstellen. Trag dich direkt ein!</div>
 
-      {!oldEnough && (
-        <div className="rounded-2xl p-4 mb-5 text-xs" style={{ background: C.sekundaerWeich, border: `1px solid ${C.edge}`, color: C.ink, fontFamily: "Inter" }}>
-          An Theke, Zeitnahme, Grill und Kasse bei Heimspielen helfen erst ab 16 Jahren mit — beim Sommerfest kannst du trotzdem schon zupacken.
-          {familyHelpers.length > 0 && <> Für Heimspiele kann deine Familie einspringen: {familyHelpers.map((f) => f.name).join(", ")}.</>}
-        </div>
-      )}
 
       {helperEvents.length === 0 && (
         /* Ohne Leerfassung blieb hier eine weisse Flaeche: helperEvents filtert
@@ -10495,7 +10476,7 @@ function DutyView({ members, currentUser, events, dutyPlan, setDutyPlan, onDiens
         </div>
       )}
       {helperEvents.map((ev) => {
-        const eligible = formalMember && (ev.type !== "spiel" || oldEnough);
+        const eligible = formalMember;
         const plan = dutyPlan?.[ev.id] || {};
         const belegt = ev.helperSlots.reduce((n, st) => n + Math.min((plan[st] || []).length, STATION_CAP), 0);
         const gesamt = ev.helperSlots.length * STATION_CAP;
@@ -10641,33 +10622,12 @@ function SupportView({ currentUser, members, events, dutyPlan, setDutyPlan, onDi
       </div>
       {aktiv === "aufgaben" && <TasksView currentUser={currentUser} members={members} />}
       {aktiv === "helfer" && <DutyView members={members} currentUser={currentUser} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={onDienstSetzen} />}
-      {aktiv === "einteilen" && <div className="px-4 pt-4 pb-24"><AdminDutyPanel members={members} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onSetzen={onDienstSetzen} clubId={currentClub?.id || currentUser.clubId} /></div>}
+      {aktiv === "einteilen" && <div className="px-4 pt-4 pb-24"><AdminDutyPanel members={members} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onSetzen={onDienstSetzen} /></div>}
     </div>
   );
 }
 
-function AdminDutyPanel({ members, events, dutyPlan, setDutyPlan, onSetzen, clubId }) {
-  const t = useT();
-  /* Wer ist 16+? Die Geburtsdaten der anderen sieht die Leitung nicht - die
-     Datenbank liefert je Mitgliedschaft nur ja / nein / unbekannt
-     (helfer_altersstatus). Profile ohne eigenes Konto (Kinder aus "Familie")
-     zaehlen dort als "nein". Solange nichts geladen ist - oder das Laden
-     scheitert -, wird bei Heimspielen niemand angeboten, statt womoeglich
-     ein Kind. */
-  const [altersstatus, setAltersstatus] = useState(null);
-  useEffect(() => {
-    if (!supabase || !isDbId(clubId)) { setAltersstatus(null); return undefined; }
-    let abgebrochen = false;
-    supabase.rpc("helfer_altersstatus", { target_club: clubId }).then(({ data, error }) => {
-      if (!abgebrochen) setAltersstatus(error ? new Map() : new Map((data || []).map((z) => [z.membership_id, z.ab16])));
-    });
-    return () => { abgebrochen = true; };
-  }, [clubId]);
-  const ab16Status = (m) => {
-    if (altersstatus) return altersstatus.has(m.id) ? altersstatus.get(m.id) : false;
-    if (supabase) return false;
-    return m.birthdate ? age(m.birthdate) >= 16 : null;
-  };
+function AdminDutyPanel({ members, events, dutyPlan, setDutyPlan, onSetzen }) {
   const helperEvents = (events || []).filter((e) => e.helperSlots && e.helperSlots.length);
   const formalMembers = members.filter((m) => isFormalMember(m));
   const add = (eventId, station, memberId) => {
@@ -10691,7 +10651,7 @@ function AdminDutyPanel({ members, events, dutyPlan, setDutyPlan, onSetzen, club
   };
   return (
     <div>
-      <div className="text-xs mb-4" style={{ color: C.textDim, fontFamily: "Inter" }}>{formalMembers.length} Vereinsmitglieder sind hinterlegt und einteilbar (Heimspiel-Stationen zusätzlich ab 16 Jahren).</div>
+      <div className="text-xs mb-4" style={{ color: C.textDim, fontFamily: "Inter" }}>{formalMembers.length} Vereinsmitglieder sind hinterlegt und einteilbar.</div>
       {helperEvents.length === 0 && (
         <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>
           Noch keine Termine mit Helferdiensten. Lege einen Termin an und weise ihm Dienste zu.
@@ -10699,7 +10659,7 @@ function AdminDutyPanel({ members, events, dutyPlan, setDutyPlan, onSetzen, club
       )}
       {helperEvents.map((ev) => {
         const plan = dutyPlan[ev.id] || {};
-        const pool = ev.type === "spiel" ? formalMembers.filter((m) => ab16Status(m) !== false) : formalMembers;
+        const pool = formalMembers;
         return (
           <div key={ev.id} className="rounded-2xl mb-4 p-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
             <div className="text-sm mb-3" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{ev.title} · {formatDate(ev.date)}</div>
@@ -10723,7 +10683,7 @@ function AdminDutyPanel({ members, events, dutyPlan, setDutyPlan, onSetzen, club
                       <select onChange={(e) => { add(ev.id, station, e.target.value); e.target.value = ""; }} defaultValue=""
                         className="text-xs px-2 py-1.5 rounded-lg outline-none" style={{ background: C.paper, fontFamily: "Inter", border: `1px solid ${C.line}` }}>
                         <option value="">+ Mitglied zuteilen</option>
-                        {pool.filter((m) => !list.includes(m.id)).map((m) => <option key={m.id} value={m.id}>{m.name}{ev.type === "spiel" && ab16Status(m) === null ? ` (${t("helf.alterUnbekannt")})` : ""}</option>)}
+                        {pool.filter((m) => !list.includes(m.id)).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
                       </select>
                     )}
                   </div>
