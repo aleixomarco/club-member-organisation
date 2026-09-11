@@ -1271,6 +1271,12 @@ function unlinkFamilyRecords(list, firstId, secondId) {
     return familyLinks.length !== (member.familyLinks || []).length ? { ...member, familyLinks } : member;
   });
 }
+/* Heimspiel-Stationen erst ab 16. Ausgeschlossen wird aber nur, wer
+   NACHWEISLICH juenger ist: age() liefert ohne Geburtsdatum 0, und so galt
+   jedes Mitglied ohne Angabe als Kind - bei ERG Iserlohn 12 von 13. "Helfer
+   einteilen" bot dann nur noch eine einzige Person an, und wer selbst kein
+   Geburtsdatum hinterlegt hatte, konnte sich fuer kein Heimspiel eintragen. */
+const unter16 = (m) => !!m?.birthdate && age(m.birthdate) < 16;
 function age(birthdate) {
   if (!birthdate) return 0;
   const b = new Date(birthdate);
@@ -4408,7 +4414,7 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
   const [absageUmfang, setAbsageUmfang] = useState("");
   const meta = typeMeta[ev.type];
 
-  const helperEligible = ev.helperSlots ? (isFormalMember(currentUser) && (ev.type !== "spiel" || age(currentUser.birthdate) >= 16)) : false;
+  const helperEligible = ev.helperSlots ? (isFormalMember(currentUser) && (ev.type !== "spiel" || !unter16(currentUser))) : false;
   const eventIsReal = !!supabase && isDbId(ev.id);
 
   return (
@@ -9536,7 +9542,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
   const goal = punkteZiel || 1000;
   const meinePunkte = user.points || 0;
   const meineBadges = verdienteBadges(user, dutyPlan);
-  const eligible = isFormalMember(user) && age(user.birthdate) >= 16;
+  const eligible = isFormalMember(user) && !unter16(user);
   const vorhandeneVideos = useVorhandeneHowToVideos();
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleteError, setDeleteError] = useState("");
@@ -10399,10 +10405,19 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
 /* ------------------------------------------------------------------ */
 function DutyView({ members, currentUser, events, dutyPlan, setDutyPlan, onDienstSetzen }) {
   const t = useT();
+  /* Aufgeklappte Termine. Zugeklappt steht nur Termin, Belegung und ob man
+     selbst dabei ist - so passen mehrere Termine auf eine Seite. Antippen
+     klappt die Stationen auf, erneutes Antippen wieder zu. */
+  const [offen, setOffen] = useState(() => new Set());
+  const umschalten = (id) => setOffen((alt) => {
+    const neu = new Set(alt);
+    if (neu.has(id)) neu.delete(id); else neu.add(id);
+    return neu;
+  });
   const helperEvents = (events || []).filter((e) => e.helperSlots && e.helperSlots.length);
   const formalMember = isFormalMember(currentUser);
-  const oldEnough = age(currentUser.birthdate) >= 16;
-  const familyHelpers = (!formalMember || !oldEnough) ? members.filter((m) => m.familyId && m.familyId === currentUser.familyId && m.id !== currentUser.id && isFormalMember(m) && age(m.birthdate) >= 16) : [];
+  const oldEnough = !unter16(currentUser);
+  const familyHelpers = (!formalMember || !oldEnough) ? members.filter((m) => m.familyId && m.familyId === currentUser.familyId && m.id !== currentUser.id && isFormalMember(m) && !unter16(m)) : [];
 
   return (
     <div className="px-4 pt-4 pb-24">
@@ -10427,16 +10442,30 @@ function DutyView({ members, currentUser, events, dutyPlan, setDutyPlan, onDiens
       )}
       {helperEvents.map((ev) => {
         const eligible = formalMember && (ev.type !== "spiel" || oldEnough);
+        const plan = dutyPlan?.[ev.id] || {};
+        const belegt = ev.helperSlots.reduce((n, st) => n + Math.min((plan[st] || []).length, STATION_CAP), 0);
+        const gesamt = ev.helperSlots.length * STATION_CAP;
+        const binDabei = ev.helperSlots.some((st) => (plan[st] || []).includes(currentUser.id));
+        const aufgeklappt = offen.has(ev.id);
         return (
-          <div key={ev.id} className="rounded-2xl mb-4 p-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{ev.title}</div>
-                <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{formatDate(ev.date)} · {formatTime(ev.date)}</div>
+          <div key={ev.id} className="rounded-2xl mb-3 overflow-hidden" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
+            <button type="button" onClick={() => umschalten(ev.id)} aria-expanded={aufgeklappt}
+              className="w-full text-left flex items-center gap-3 p-4">
+              <div className="flex-1 min-w-0">
+                <div className="text-sm truncate" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{ev.title}</div>
+                <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>
+                  {formatDate(ev.date)} · {formatTime(ev.date)} · {mitWerten(t("sup.plaetzeBelegt"), { belegt, gesamt })}
+                  {binDabei && <span style={{ color: C.red, fontWeight: 700 }}> · {t("sup.duBistDabei")}</span>}
+                </div>
               </div>
-              <Pill bg={ev.home ? C.red : typeMeta[ev.type].color}>{ev.home ? t("ev.heimspiel") : typeMeta[ev.type].label}</Pill>
-            </div>
-            <HelperSlots ev={ev} members={members} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} eligible={eligible} onSetzen={onDienstSetzen} darfVerwalten={canManageDuty(currentUser)} />
+              <div className="flex-shrink-0"><Pill bg={ev.home ? C.red : typeMeta[ev.type].color}>{ev.home ? t("ev.heimspiel") : typeMeta[ev.type].label}</Pill></div>
+              <ChevronDown size={16} style={{ color: C.textDim, flexShrink: 0, transform: aufgeklappt ? "rotate(180deg)" : "none", transition: "transform .15s" }} />
+            </button>
+            {aufgeklappt && (
+              <div className="px-4 pb-4">
+                <HelperSlots ev={ev} members={members} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} eligible={eligible} onSetzen={onDienstSetzen} darfVerwalten={canManageDuty(currentUser)} />
+              </div>
+            )}
           </div>
         );
       })}
@@ -10595,7 +10624,7 @@ function AdminDutyPanel({ members, events, dutyPlan, setDutyPlan, onSetzen }) {
       )}
       {helperEvents.map((ev) => {
         const plan = dutyPlan[ev.id] || {};
-        const pool = ev.type === "spiel" ? formalMembers.filter((m) => age(m.birthdate) >= 16) : formalMembers;
+        const pool = ev.type === "spiel" ? formalMembers.filter((m) => !unter16(m)) : formalMembers;
         return (
           <div key={ev.id} className="rounded-2xl mb-4 p-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
             <div className="text-sm mb-3" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{ev.title} · {formatDate(ev.date)}</div>
