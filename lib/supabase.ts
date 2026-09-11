@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { fetchMitZweitemVersuch } from "./zeitversatz";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -93,5 +94,7 @@ export const supabase = isSupabaseConfigured
         detectSessionInUrl: true,
         storage: typeof window === "undefined" ? undefined : anmeldungsSpeicher,
       },
+      /* Zeitversatz bei Supabase: siehe lib/zeitversatz.ts. */
+      global: { fetch: fetchMitZweitemVersuch },
     })
   : null;

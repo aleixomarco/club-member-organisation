@@ -14172,10 +14172,17 @@ export default function ClubMemberOrganisationApp() {
      noch einmal aufrufen kann. Vorher lief die Abfrage genau einmal beim
      Start; schlug sie fehl, blieb die App fuer den Rest ihrer Laufzeit ohne
      Vereine, ohne dass irgendetwas es noch einmal versucht haette. */
-  const vereineHolen = useCallback(async () => {
+  const vereineHolen = useCallback(async (versuch = 0) => {
     if (!supabase) return;
     const { data, error } = await supabase.from("clubs").select("id,name,short_name,city,founded_year,logo_url,register_number,currency,referral_code,referral_credit_months,sport,primary_color,secondary_color,sponsoring_freigeschaltet,hidden").order("name");
-    if (error) { setVereineGeladen(false); return; }
+    if (error) {
+      /* Nicht beim ersten Fehlschlag aufgeben: Ein kurzer Netzaussetzer beim
+         Aufwachen des Telefons liess die Kopfzeile sonst bis zum Neuladen ohne
+         Vereinslogo und -namen. Zwei weitere Versuche nach 2 und 5 Sekunden,
+         dann erst der Zustand "nicht geladen" mit dem Knopf zum Neuversuch. */
+      if (versuch < 2) { window.setTimeout(() => vereineHolen(versuch + 1), versuch === 0 ? 2000 : 5000); return; }
+      setVereineGeladen(false); return;
+    }
     /* Bewusst "data" statt "data?.length": Eine erfolgreiche, aber leere
        Antwort ist eine Aussage - dann gibt es wirklich keinen Verein - und
        darf nicht wie ein Fehlschlag behandelt werden. */
