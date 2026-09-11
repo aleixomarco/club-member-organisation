@@ -1275,7 +1275,11 @@ function unlinkFamilyRecords(list, firstId, secondId) {
    NACHWEISLICH juenger ist: age() liefert ohne Geburtsdatum 0, und so galt
    jedes Mitglied ohne Angabe als Kind - bei ERG Iserlohn 12 von 13. "Helfer
    einteilen" bot dann nur noch eine einzige Person an, und wer selbst kein
-   Geburtsdatum hinterlegt hatte, konnte sich fuer kein Heimspiel eintragen. */
+   Geburtsdatum hinterlegt hatte, konnte sich fuer kein Heimspiel eintragen.
+   ACHTUNG: Das taugt nur fuer das EIGENE Profil. Die Geburtsdaten anderer
+   liefert die Datenbank nie aus (profiles: "users read own profile") - fuer
+   die Einteilung durch die Leitung gilt helfer_altersstatus, siehe
+   AdminDutyPanel. */
 const unter16 = (m) => !!m?.birthdate && age(m.birthdate) < 16;
 function age(birthdate) {
   if (!birthdate) return 0;
@@ -2077,7 +2081,10 @@ function MeineVereineScreen({ mitgliedschaften, onOeffnen, onWeitererVerein, onA
     else if (ergebnis?.error) setFehler(ergebnis.error);
   };
   return (
-    <div className="flex flex-col h-full px-6 pt-10 pb-6 overflow-y-auto" style={{ background: C.paper }}>
+    /* px-4 statt px-6: Am Laptop begrenzt .erg-frame .px-4 den Inhalt auf die
+       860-Pixel-Spalte, die auch jede Ansicht im Verein hat. Mit px-6 zog
+       sich die Vereinsliste ueber den ganzen Bildschirm. */
+    <div className="flex flex-col h-full px-4 pt-10 pb-6 overflow-y-auto" style={{ background: C.paper }}>
       <div className="flex flex-col items-center mb-8">
         <div className="flex items-center justify-center mb-4" style={{ width: 76, height: 76, borderRadius: 24, background: "rgba(255,255,255,0.72)", border: "1px solid rgba(255,255,255,0.9)" }}>
           <AppBrandMark size={46} />
@@ -3599,7 +3606,9 @@ function ZumAktualisierenZiehen({ onAktualisieren, className, style, children })
     </div>
   );
 }
-function Scoreboard({ nextEvent, goTo, auswahlVorhanden = false }) {
+/* Die Karte ist reine Anzeige - ein Antippen fuehrte frueher in den
+   Termine-Reiter, das war nicht gewollt. */
+function Scoreboard({ nextEvent, auswahlVorhanden = false }) {
   const t = useT();
   const { d, h, m } = useCountdown(nextEvent ? nextEvent.date : "2099-01-01T00:00:00");
   const digit = (n) => String(n).padStart(2, "0");
@@ -3623,7 +3632,7 @@ function Scoreboard({ nextEvent, goTo, auswahlVorhanden = false }) {
   }
 
   return (
-    <div className="rounded-3xl p-5 mb-6 relative overflow-hidden cursor-pointer" style={{ background: `linear-gradient(160deg, color-mix(in srgb, ${C.red} 82%, #fff) 0%, ${C.red} 55%, ${C.redDark} 100%)`, boxShadow: `0 22px 46px color-mix(in srgb, ${C.red} 34%, transparent), inset 0 1px 0 rgba(255,255,255,0.35)` }} onClick={goTo}>
+    <div className="rounded-3xl p-5 mb-6 relative overflow-hidden" style={{ background: `linear-gradient(160deg, color-mix(in srgb, ${C.red} 82%, #fff) 0%, ${C.red} 55%, ${C.redDark} 100%)`, boxShadow: `0 22px 46px color-mix(in srgb, ${C.red} 34%, transparent), inset 0 1px 0 rgba(255,255,255,0.35)` }}>
       <div className="absolute pointer-events-none" style={{ top: "-40%", left: "-10%", width: "80%", height: "100%", background: "radial-gradient(circle, rgba(255,255,255,0.28), transparent 65%)" }} />
       <div className="relative flex items-center justify-between mb-4">
         <span className="text-[10px] font-extrabold uppercase px-3.5 py-1.5 rounded-full" style={{ fontFamily: "Inter", letterSpacing: "0.14em", color: "#fff", background: "rgba(255,255,255,0.22)", border: "1px solid rgba(255,255,255,0.3)" }}>{t("home.naechstesSpiel")}</span>
@@ -3845,12 +3854,46 @@ function Dashboard({ user, members, events, channels, news, dutyPlan, seasonVote
      neu berechnet wird, der gerade ein Ergebnis eintraegt. Nach jedem Neuladen
      stand deshalb bei allen 0, und die Kachel zeigte t("tipp.platzVon") fuer
      jeden, der zufaellig oben in der Liste stand. */
+  /* Platz nur unter denen, die mitspielen.
+     Vorher zaehlte die Kachel alle Vereinsmitglieder - wer als Einziger
+     tippte, stand trotzdem auf "Platz 4 von 13". Jetzt dieselbe Grundlage wie
+     die Tippansicht: die Runde(n), in denen man beigetreten ist, und deren
+     Tabelle aus der Datenbank. Bei Punktgleichheit teilt man sich den Platz.
+     Spielt man in mehreren Runden, zaehlt die der gewaehlten Mannschaft. */
+  const [tippStand, setTippStand] = useState(null);
+  const tippVereinId = currentClub?.id || user.clubId;
+  useEffect(() => {
+    if (!supabase || !isDbId(tippVereinId) || featureLocked) { setTippStand(null); return undefined; }
+    let abgebrochen = false;
+    (async () => {
+      const { data: runden } = await supabase.rpc("tipprunden_fuer_verein", { target_club: tippVereinId });
+      const meine = (runden || []).filter((r) => r.aktiv && r.ich_dabei && r.runde_id);
+      if (!meine.length) { if (!abgebrochen) setTippStand({ dabei: false }); return; }
+      const runde = meine.find((r) => r.team_name === gewaehlteMannschaft) || meine[0];
+      const { data: tabelle, error } = await supabase.rpc("tipp_tabelle", { target_runde: runde.runde_id });
+      if (abgebrochen) return;
+      if (error || !Array.isArray(tabelle)) { setTippStand(null); return; }
+      const ich = tabelle.find((z) => z.membership_id === user.id);
+      if (!ich) { setTippStand({ dabei: false }); return; }
+      setTippStand({ platz: 1 + tabelle.filter((z) => z.punkte > ich.punkte).length, gesamt: tabelle.length, team: meine.length > 1 ? runde.team_name : "" });
+    })();
+    return () => { abgebrochen = true; };
+  }, [tippVereinId, user.id, gewaehlteMannschaft, featureLocked, tippResults]);
+  /* Demo ohne Datenbank: Teilnehmer ist, wer mindestens einen Tipp abgegeben hat. */
   const tippBegegnungenJetzt = tippBegegnungen(events);
-  const leaderboard = [...members]
-    .map((m) => ({ ...m, punkte: totalTippPoints(m.id, tippPredictions, tippResults, tippBegegnungenJetzt) }))
-    .sort((a, b) => b.punkte - a.punkte);
-  const myRank = leaderboard.findIndex((m) => m.id === user.id) + 1;
-  const tippSubtitle = `Platz ${myRank} von ${leaderboard.length}`;
+  const demoTippStand = (() => {
+    if (supabase) return null;
+    const teilnehmer = members
+      .filter((m) => Object.values(tippPredictions[m.id] || {}).some((p) => p && p.home !== "" && p.away !== ""))
+      .map((m) => ({ id: m.id, punkte: totalTippPoints(m.id, tippPredictions, tippResults, tippBegegnungenJetzt) }));
+    const ich = teilnehmer.find((z) => z.id === user.id);
+    if (!ich) return { dabei: false };
+    return { platz: 1 + teilnehmer.filter((z) => z.punkte > ich.punkte).length, gesamt: teilnehmer.length, team: "" };
+  })();
+  const tippStandJetzt = supabase ? tippStand : demoTippStand;
+  const tippSubtitle = !tippStandJetzt ? ""
+    : tippStandJetzt.dabei === false ? t("tipp.nochNichtDabei")
+    : mitWerten(t("tipp.platzVonN"), { platz: tippStandJetzt.platz, gesamt: tippStandJetzt.gesamt }) + (tippStandJetzt.team ? ` · ${tippStandJetzt.team}` : "");
   /* Der Anteil in Prozent, sobald der Hinweis faellig ist - sonst null. Vorher
      stand hier ein blosses true und im Text eine feste 70. Angezeigt wurde damit
      immer "Schon 70%", auch wenn sich laengst neunzig Prozent eingetragen
@@ -3931,7 +3974,7 @@ function Dashboard({ user, members, events, channels, news, dutyPlan, seasonVote
       {/* Ein Auswahlfeld fuer beide Kacheln - vorher steckte es in der
           Spielkachel und liess das Training unberuehrt. */}
       <MannschaftsWahl mannschaften={mannschaften} gewaehlt={gewaehlteMannschaft} onWechsel={onMannschaftWechsel} favorit={user.teamFilter || "alle"} onFavorit={onFavoritMannschaft} />
-      <Scoreboard nextEvent={nextEvent} goTo={goEvents} auswahlVorhanden={mannschaften.length > 1} />
+      <Scoreboard nextEvent={nextEvent} auswahlVorhanden={mannschaften.length > 1} />
       {/* Fuer Fans faellt die Trainingskachel ganz weg - nicht in den leeren
           Zustand ("kein Training eingetragen"), denn der wuerde behaupten, es
           gaebe keines. Die Spielkachel darueber bleibt. */}
@@ -10420,7 +10463,7 @@ function DutyView({ members, currentUser, events, dutyPlan, setDutyPlan, onDiens
   const helperEvents = (events || []).filter((e) => e.helperSlots && e.helperSlots.length);
   const formalMember = isFormalMember(currentUser);
   const oldEnough = !unter16(currentUser);
-  const familyHelpers = (!formalMember || !oldEnough) ? members.filter((m) => m.familyId && m.familyId === currentUser.familyId && m.id !== currentUser.id && isFormalMember(m) && !unter16(m)) : [];
+  const familyHelpers = (!formalMember || !oldEnough) ? members.filter((m) => m.familyId && m.familyId === currentUser.familyId && m.id !== currentUser.id && isFormalMember(m) && !!m.birthdate && age(m.birthdate) >= 16) : [];
 
   return (
     <div className="px-4 pt-4 pb-24">
@@ -10590,12 +10633,33 @@ function SupportView({ currentUser, members, events, dutyPlan, setDutyPlan, onDi
       </div>
       {aktiv === "aufgaben" && <TasksView currentUser={currentUser} members={members} />}
       {aktiv === "helfer" && <DutyView members={members} currentUser={currentUser} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={onDienstSetzen} />}
-      {aktiv === "einteilen" && <div className="px-4 pt-4 pb-24"><AdminDutyPanel members={members} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onSetzen={onDienstSetzen} /></div>}
+      {aktiv === "einteilen" && <div className="px-4 pt-4 pb-24"><AdminDutyPanel members={members} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onSetzen={onDienstSetzen} clubId={currentClub?.id || currentUser.clubId} /></div>}
     </div>
   );
 }
 
-function AdminDutyPanel({ members, events, dutyPlan, setDutyPlan, onSetzen }) {
+function AdminDutyPanel({ members, events, dutyPlan, setDutyPlan, onSetzen, clubId }) {
+  const t = useT();
+  /* Wer ist 16+? Die Geburtsdaten der anderen sieht die Leitung nicht - die
+     Datenbank liefert je Mitgliedschaft nur ja / nein / unbekannt
+     (helfer_altersstatus). Profile ohne eigenes Konto (Kinder aus "Familie")
+     zaehlen dort als "nein". Solange nichts geladen ist - oder das Laden
+     scheitert -, wird bei Heimspielen niemand angeboten, statt womoeglich
+     ein Kind. */
+  const [altersstatus, setAltersstatus] = useState(null);
+  useEffect(() => {
+    if (!supabase || !isDbId(clubId)) { setAltersstatus(null); return undefined; }
+    let abgebrochen = false;
+    supabase.rpc("helfer_altersstatus", { target_club: clubId }).then(({ data, error }) => {
+      if (!abgebrochen) setAltersstatus(error ? new Map() : new Map((data || []).map((z) => [z.membership_id, z.ab16])));
+    });
+    return () => { abgebrochen = true; };
+  }, [clubId]);
+  const ab16Status = (m) => {
+    if (altersstatus) return altersstatus.has(m.id) ? altersstatus.get(m.id) : false;
+    if (supabase) return false;
+    return m.birthdate ? age(m.birthdate) >= 16 : null;
+  };
   const helperEvents = (events || []).filter((e) => e.helperSlots && e.helperSlots.length);
   const formalMembers = members.filter((m) => isFormalMember(m));
   const add = (eventId, station, memberId) => {
@@ -10627,7 +10691,7 @@ function AdminDutyPanel({ members, events, dutyPlan, setDutyPlan, onSetzen }) {
       )}
       {helperEvents.map((ev) => {
         const plan = dutyPlan[ev.id] || {};
-        const pool = ev.type === "spiel" ? formalMembers.filter((m) => !unter16(m)) : formalMembers;
+        const pool = ev.type === "spiel" ? formalMembers.filter((m) => ab16Status(m) !== false) : formalMembers;
         return (
           <div key={ev.id} className="rounded-2xl mb-4 p-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
             <div className="text-sm mb-3" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{ev.title} · {formatDate(ev.date)}</div>
@@ -10651,7 +10715,7 @@ function AdminDutyPanel({ members, events, dutyPlan, setDutyPlan, onSetzen }) {
                       <select onChange={(e) => { add(ev.id, station, e.target.value); e.target.value = ""; }} defaultValue=""
                         className="text-xs px-2 py-1.5 rounded-lg outline-none" style={{ background: C.paper, fontFamily: "Inter", border: `1px solid ${C.line}` }}>
                         <option value="">+ Mitglied zuteilen</option>
-                        {pool.filter((m) => !list.includes(m.id)).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                        {pool.filter((m) => !list.includes(m.id)).map((m) => <option key={m.id} value={m.id}>{m.name}{ev.type === "spiel" && ab16Status(m) === null ? ` (${t("helf.alterUnbekannt")})` : ""}</option>)}
                       </select>
                     )}
                   </div>
