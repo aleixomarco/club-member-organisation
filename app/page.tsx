@@ -2089,9 +2089,14 @@ function MeineVereineScreen({ mitgliedschaften, onOeffnen, onWeitererVerein, onA
           <button key={m.id} onClick={() => oeffnen(m)} disabled={laedt}
             className="w-full flex items-center gap-3 rounded-2xl px-3.5 py-3.5 text-left"
             style={{ background: C.glass, border: `1px solid ${C.edge}`, opacity: laedt ? .6 : 1 }}>
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0" style={{ background: C.red, color: C.aufPrimaer, fontFamily: "Inter" }}>
-              {(m.clubShortName || m.clubName || "?").slice(0, 2).toUpperCase()}
-            </div>
+            {/* Das Vereinslogo, sobald eines hochgeladen ist - daran erkennt man
+                seinen Verein schneller als an zwei Buchstaben. Ohne Logo bleibt
+                das Kuerzel. */}
+            {m.clubLogoUrl
+              ? <ClubLogo club={{ name: m.clubName, shortName: m.clubShortName, logoUrl: m.clubLogoUrl, primaryColor: m.clubColor || undefined }} size={40} rounded={8} />
+              : <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0" style={{ background: C.red, color: C.aufPrimaer, fontFamily: "Inter" }}>
+                  {(m.clubShortName || m.clubName || "?").slice(0, 2).toUpperCase()}
+                </div>}
             <div className="flex-1 min-w-0">
               <div className="text-sm font-bold truncate" style={{ color: C.ink, fontFamily: "Inter" }}>{m.clubName}</div>
               <div className="text-[11px] truncate" style={{ color: C.textDim, fontFamily: "Inter" }}>
@@ -14644,7 +14649,9 @@ export default function ClubMemberOrganisationApp() {
     setPostfachLaedt(true);
     const { data, error } = await supabase.from("user_notifications")
       .select("id,kind,title,body,read_at,created_at,ziel_art,ziel_id")
-      .eq("club_id", selectedClubId)
+      /* Kontomeldungen ohne Verein (etwa "Neues Geraet angemeldet") stehen
+         in jedem Verein - einmal, statt je Verein eine Kopie. */
+      .or(`club_id.eq.${selectedClubId},club_id.is.null`)
       .order("created_at", { ascending: false })
       .limit(100);
     setPostfachLaedt(false);
@@ -15146,14 +15153,14 @@ export default function ClubMemberOrganisationApp() {
      der Fehler. */
   const mitgliedschaftenLaden = async (profileId) => {
     const { data, error } = await supabase.from("club_memberships")
-      .select("id,club_id,display_name,status,clubs(name,short_name)")
+      .select("id,club_id,display_name,status,clubs(name,short_name,logo_url,primary_color)")
       .eq("profile_id", profileId)
       .in("status", ["active", "pending"]);
     if (error) return null;
 
     const liste = (data || []).map((m) => {
       const verein = Array.isArray(m.clubs) ? m.clubs[0] : m.clubs;
-      return { ...m, clubName: verein?.name || t("verein.vereinLabel"), clubShortName: verein?.short_name || "" };
+      return { ...m, clubName: verein?.name || t("verein.vereinLabel"), clubShortName: verein?.short_name || "", clubLogoUrl: verein?.logo_url || null, clubColor: verein?.primary_color || null };
     }).sort((a, b) => a.clubName.localeCompare(b.clubName, "de"));
 
     setMeineMitgliedschaften(liste);

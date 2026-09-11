@@ -311,7 +311,12 @@ Deno.serve(async (anfrage) => {
        Ohne das steht da nur "zugestellt: 0" und man raet, warum. */
     const abgelehnt: string[] = [];
 
-    for (const geraet of geraete as { fcm_token: string }[]) {
+    /* Ein Geraet steht einmal JE VEREIN in push_subscriptions. Fuer eine
+       Kontomeldung ohne Verein (club_id null, etwa "Neues Geraet angemeldet")
+       kaemen sonst so viele Pushes an, wie das Geraet Vereine hat. */
+    const eindeutig = [...new Map((geraete as { fcm_token: string }[]).map((g) => [g.fcm_token, g])).values()];
+
+    for (const geraet of eindeutig) {
       const antwort = await fetch(
         `https://fcm.googleapis.com/v1/projects/${konto.project_id || FCM_PROJEKT}/messages:send`,
         {
@@ -354,7 +359,7 @@ Deno.serve(async (anfrage) => {
         .catch((e) => console.error("Aufraeumen fehlgeschlagen", e));
     }
 
-    return Response.json({ zugestellt, aufgeraeumt: totgeglaubt.length, geraete: geraete.length, ...(abgelehnt.length ? { abgelehnt } : {}) });
+    return Response.json({ zugestellt, aufgeraeumt: totgeglaubt.length, geraete: eindeutig.length, ...(abgelehnt.length ? { abgelehnt } : {}) });
   } catch (fehler) {
     console.error("Versand fehlgeschlagen", fehler);
     return Response.json({ fehler: String(fehler) }, { status: 500 });
