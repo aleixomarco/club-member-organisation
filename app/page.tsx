@@ -3866,9 +3866,17 @@ function Dashboard({ user, members, events, channels, news, dutyPlan, seasonVote
     if (!supabase || !isDbId(tippVereinId) || featureLocked) { setTippStand(null); return undefined; }
     let abgebrochen = false;
     (async () => {
-      const { data: runden } = await supabase.rpc("tipprunden_fuer_verein", { target_club: tippVereinId });
-      const meine = (runden || []).filter((r) => r.aktiv && r.ich_dabei && r.runde_id);
-      if (!meine.length) { if (!abgebrochen) setTippStand({ dabei: false }); return; }
+      const { data: runden, error: rundenFehler } = await supabase.rpc("tipprunden_fuer_verein", { target_club: tippVereinId });
+      if (abgebrochen) return;
+      /* Scheitert die Abfrage, wissen wir nichts - dann kein Untertitel statt
+         "Noch nicht dabei" fuer jemanden, der laengst mitspielt. Und ohne eine
+         einzige aktive Runde im Verein gibt es nichts, wobei man mitspielen
+         koennte. */
+      if (rundenFehler || !Array.isArray(runden)) { setTippStand(null); return; }
+      const aktive = runden.filter((r) => r.aktiv && r.runde_id);
+      if (!aktive.length) { setTippStand(null); return; }
+      const meine = aktive.filter((r) => r.ich_dabei);
+      if (!meine.length) { setTippStand({ dabei: false }); return; }
       const runde = meine.find((r) => r.team_name === gewaehlteMannschaft) || meine[0];
       const { data: tabelle, error } = await supabase.rpc("tipp_tabelle", { target_runde: runde.runde_id });
       if (abgebrochen) return;
@@ -8634,7 +8642,7 @@ function DutyTemplatesPanel({ currentUser, sport }) {
         const open = expandedId === satz.id;
         return (
           <div key={satz.id} className="rounded-2xl mb-2.5 overflow-hidden" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
-            <button className="w-full text-left p-3.5 flex items-center justify-between" onClick={() => setExpandedId(open ? null : satz.id)}>
+            <button className="w-full text-left p-3.5 flex items-center justify-between" aria-expanded={open} onClick={() => setExpandedId(open ? null : satz.id)}>
               <div>
                 <div className="text-sm font-bold" style={{ color: C.ink }}>{satz.name}</div>
                 <div className="text-[10px]" style={{ color: C.textDim }}>{satz.items.length} Station{satz.items.length === 1 ? "" : "en"}</div>
@@ -9081,7 +9089,7 @@ function MemberDetailPanel({ member, onClose }) {
           <div className="text-[10px] uppercase tracking-widest font-bold mb-2" style={{ color: C.textDim }}>{t("auf.titel")}</div>
           {tasks.length === 0 ? <div className="text-[11px] rounded-xl p-3 mb-4" style={{ background: C.paperDim, color: C.textDim }}>{t("auf.keineEingetragen")}</div> : (
             <div className="space-y-1.5 mb-4">
-              {tasks.map((t) => <div key={t.id} className="px-3 py-2 rounded-xl" style={{ background: C.paperDim }}><div className="text-xs font-bold" style={{ color: C.ink }}>{t.title}</div><div className="text-[10px]" style={{ color: C.textDim }}>{t.teamName ? `${t.teamName} · ` : t("verein.mitPunktRaum")}{t.dueDate ? `Fällig bis ${new Date(t.dueDate).toLocaleDateString("de-DE")}` : t("auf.keinFaelligkeitsdatum")}</div></div>)}
+              {tasks.map((aufgabe) => <div key={aufgabe.id} className="px-3 py-2 rounded-xl" style={{ background: C.paperDim }}><div className="text-xs font-bold" style={{ color: C.ink }}>{aufgabe.title}</div><div className="text-[10px]" style={{ color: C.textDim }}>{aufgabe.teamName ? `${aufgabe.teamName} · ` : t("verein.mitPunktRaum")}{aufgabe.dueDate ? `Fällig bis ${new Date(aufgabe.dueDate).toLocaleDateString("de-DE")}` : t("auf.keinFaelligkeitsdatum")}</div></div>)}
             </div>
           )}
           <div className="text-[10px] uppercase tracking-widest font-bold mb-2" style={{ color: C.textDim }}>{t("fahr.titel")}</div>
