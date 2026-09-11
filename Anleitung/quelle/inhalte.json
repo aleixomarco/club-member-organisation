@@ -75,7 +75,7 @@
      "Bei einem Heimspiel übernimmst du Stationen auch direkt im Termin.",
      "Die Kachel „Helferplanung“ auf der Startseite führt ebenfalls hierher."
     ],
-    "hinweis": "An Heimspielen hilfst du erst ab 16 mit; bist du jünger, nennt dir die App Familienmitglieder, die einspringen können. Fans helfen nicht mit. Braucht den Vollzugang, und der Verein kann die Helferplanung ausblenden.",
+    "hinweis": "Zugeklappt zeigt jeder Termin, wie viele Plätze belegt sind und ob du dabei bist – antippen klappt die Stationen auf.",
     "bildschirm": "Support > Helferdienste"
    },
    {
@@ -475,7 +475,7 @@
      "Wen du einteilst, der bekommt eine Benachrichtigung; wer sich selbst einträgt, nicht."
     ],
     "bildschirm": "Support > Helfer einteilen",
-    "hinweis": "An Heimspielen teilst du nur Mitglieder ab 16 Jahren ein, bei anderen Terminen gilt das nicht."
+    "hinweis": "Alle Mitglieder sind für alle Stationen einteilbar – wen ihr wo einsetzt, entscheidet der Verein."
    },
    {
     "titel": "Aufgaben und Fahrzeuge",
@@ -664,7 +664,6 @@
     "punkte": [
      "Oben siehst du deinen Stammbaum mit Großeltern, Eltern und Kindern.",
      "Ist noch niemand eingetragen, steht dort nur ein Hinweis.",
-     "Darunter steht, ob du für Heimspiel-Helferdienste alt genug bist (ab 16).",
      "Ganz unten liegt „Familienverknüpfung“ mit dem Knopf „＋ Verknüpfen“."
     ],
     "bildschirm": "Profil > Persönliche Daten > Familie",
