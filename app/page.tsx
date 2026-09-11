@@ -8559,7 +8559,7 @@ function DutyTemplatesPanel({ currentUser, sport }) {
   const addItem = async (templateId) => {
     const title = (newItemTitles[templateId] || "").trim();
     if (!title) return;
-    const template = templates.find((t) => t.id === templateId);
+    const template = templates.find((s) => s.id === templateId);
     const nextOrder = template?.items.length || 0;
     const { error } = await supabase.from("duty_task_template_items").insert({ template_id: templateId, title, sort_order: nextOrder });
     if (error) { setMessage(t("help.stationHinzufuegenFehler")); setMessageOk(false); return; }
@@ -8584,31 +8584,34 @@ function DutyTemplatesPanel({ currentUser, sport }) {
       </div>
       {templates.length === 0 ? (
         <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{t("helf.keineSaetze")}</div>
-      ) : templates.map((t) => {
-        const open = expandedId === t.id;
+      ) : templates.map((satz) => {
+        /* Hiess frueher (t) => ... und verdeckte damit die Uebersetzung t().
+           Zugeklappt fiel das nicht auf; beim Aufklappen rief die Karte
+           t("allg.entfernen") auf einem Satz auf - der Bereich stuerzte ab. */
+        const open = expandedId === satz.id;
         return (
-          <div key={t.id} className="rounded-2xl mb-2.5 overflow-hidden" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
-            <button className="w-full text-left p-3.5 flex items-center justify-between" onClick={() => setExpandedId(open ? null : t.id)}>
+          <div key={satz.id} className="rounded-2xl mb-2.5 overflow-hidden" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
+            <button className="w-full text-left p-3.5 flex items-center justify-between" onClick={() => setExpandedId(open ? null : satz.id)}>
               <div>
-                <div className="text-sm font-bold" style={{ color: C.ink }}>{t.name}</div>
-                <div className="text-[10px]" style={{ color: C.textDim }}>{t.items.length} Station{t.items.length === 1 ? "" : "en"}</div>
+                <div className="text-sm font-bold" style={{ color: C.ink }}>{satz.name}</div>
+                <div className="text-[10px]" style={{ color: C.textDim }}>{satz.items.length} Station{satz.items.length === 1 ? "" : "en"}</div>
               </div>
               <ChevronDown size={16} style={{ color: C.textDim, transform: open ? "rotate(180deg)" : "none", transition: "transform .2s" }} />
             </button>
             {open && (
               <div className="px-3.5 pb-3.5">
-                {t.items.map((item) => (
+                {satz.items.map((item) => (
                   <div key={item.id} className="flex items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 mb-1.5" style={{ background: C.paperDim }}>
                     <span className="text-xs" style={{ color: C.ink }}>{item.title}</span>
                     <button onClick={() => removeItem(item.id)} className="text-[10px] font-bold" style={{ color: C.red }}>{t("allg.entfernen")}</button>
                   </div>
                 ))}
                 <div className="flex gap-2 mt-2">
-                  <input value={newItemTitles[t.id] || ""} onChange={(e) => setNewItemTitles((all) => ({ ...all, [t.id]: e.target.value }))} maxLength={60} placeholder={`Station, ${t(cfg.dutyStationExamples)}`} className="flex-1 px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}/>
-                  <button onClick={() => addItem(t.id)} disabled={!(newItemTitles[t.id] || "").trim()} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: (newItemTitles[t.id] || "").trim() ? C.ink : C.line, color: C.white }}>+ Station</button>
+                  <input value={newItemTitles[satz.id] || ""} onChange={(e) => setNewItemTitles((all) => ({ ...all, [satz.id]: e.target.value }))} maxLength={60} placeholder={`Station, ${t(cfg.dutyStationExamples)}`} className="flex-1 px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}/>
+                  <button onClick={() => addItem(satz.id)} disabled={!(newItemTitles[satz.id] || "").trim()} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: (newItemTitles[satz.id] || "").trim() ? C.ink : C.line, color: C.white }}>+ Station</button>
                 </div>
-                <button onClick={() => deleteTemplate(t.id)} className="w-full mt-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.paperDim, color: C.red }}>{t("helf.satzLoeschen")}</button>
-                <Erstellt von={t.erstelltVon} am={t.erstelltAm} />
+                <button onClick={() => deleteTemplate(satz.id)} className="w-full mt-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.paperDim, color: C.red }}>{t("helf.satzLoeschen")}</button>
+                <Erstellt von={satz.erstelltVon} am={satz.erstelltAm} />
               </div>
             )}
           </div>
