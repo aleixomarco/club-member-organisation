@@ -929,7 +929,7 @@ function CaptchaFeld({ onToken, runde = 0 }) {
       <div ref={ort} />
       {gestoert && (
         <div role="status" className="text-[11px] rounded-xl px-3 py-2 mt-1" style={{ background: C.fehlerFlaeche, color: C.fehler, fontFamily: "Inter" }}>
-          {t("captcha.nichtGeladen")}{" "}
+          {t("captcha.gestoert")}{" "}
           <button type="button" onClick={() => { setGestoert(false); meldeToken.current?.(null); setVersuch((v) => v + 1); }} className="underline font-bold">{t("captcha.neuVersuchen")}</button>
         </div>
       )}
@@ -2613,6 +2613,13 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub, offeneS
   const [captchaToken, setCaptchaToken] = useState(null);
   const [captchaRunde, setCaptchaRunde] = useState(0);
   const mitCaptcha = captchaAktiv();
+  /* Ist die Pruefung entschieden - Token da oder gestoert -, gehoert die
+     "laeuft noch"-Meldung vom ersten Tippen weg. Sonst standen drei Meldungen
+     uebereinander, und die oberste stimmte laengst nicht mehr. */
+  const captchaMeldet = (token) => {
+    setCaptchaToken(token);
+    if (token !== null) setError((alt) => (alt === t("captcha.bitteWarten") ? "" : alt));
+  };
   /* Vorgabe: ja. Wer nichts waehlt, bekommt genau das Verhalten von vorher -
      die Anmeldung ueberlebt das Schliessen der App. Der Haken ist fuer den
      umgekehrten Fall da: ein geteiltes Geraet im Vereinsheim, auf dem nicht
@@ -2778,7 +2785,7 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub, offeneS
             </span>
           </span>
         </label>
-        {mitCaptcha && <CaptchaFeld onToken={setCaptchaToken} runde={captchaRunde} />}
+        {mitCaptcha && <CaptchaFeld onToken={captchaMeldet} runde={captchaRunde} />}
         <button type="submit" disabled={busy} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm" style={{ background: C.ink, color: "#fff", fontFamily: "Inter", fontWeight: 700, opacity: busy ? 0.65 : 1 }}>
           {busy ? t("login.laeuft") : t("login.anmeldenKnopf")} {!busy && <ArrowRight size={15} />}
         </button>
@@ -3110,6 +3117,13 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
   const [captchaToken, setCaptchaToken] = useState(null);
   const [captchaRunde, setCaptchaRunde] = useState(0);
   const mitCaptcha = captchaAktiv();
+  /* Ist die Pruefung entschieden - Token da oder gestoert -, gehoert die
+     "laeuft noch"-Meldung vom ersten Tippen weg. Sonst standen drei Meldungen
+     uebereinander, und die oberste stimmte laengst nicht mehr. */
+  const captchaMeldet = (token) => {
+    setCaptchaToken(token);
+    if (token !== null) setError((alt) => (alt === t("captcha.bitteWarten") ? "" : alt));
+  };
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
@@ -3317,7 +3331,7 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
         {error && <div className="flex items-center gap-1.5 text-xs mb-3" style={{ color: C.red, fontFamily: "Inter" }}><AlertCircle size={13} /> {error}</div>}
         {notice && <div className="flex items-center gap-1.5 text-xs mb-3" style={{ color: C.erfolg, fontFamily: "Inter" }}><CheckCircle2 size={13} /> {notice}</div>}
 
-        {mitCaptcha && <CaptchaFeld onToken={setCaptchaToken} runde={captchaRunde} />}
+        {mitCaptcha && <CaptchaFeld onToken={captchaMeldet} runde={captchaRunde} />}
         <button type="submit" disabled={busy || !legalAccepted} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm" style={{ background: C.red, color: C.aufPrimaer, fontFamily: "Inter", fontWeight: 700, opacity: (busy || !legalAccepted) ? 0.65 : 1 }}>
           <UserPlus size={15} /> {busy ? t("reg.kontoWirdErstellt") : t("reg.titel")}
         </button>
@@ -9350,8 +9364,9 @@ function PasswordSettings({ user, onLogout, saveRef }) {
   const t = useT();
   const [form,setForm]=useState({old:"",next:"",repeat:"",logoutAll:false}); const [message,setMessage]=useState("");
   const [captchaToken,setCaptchaToken]=useState(null); const [captchaRunde,setCaptchaRunde]=useState(0); const mitCaptcha=captchaAktiv();
+  const captchaMeldet=(token)=>{setCaptchaToken(token);if(token!==null)setMessage((alt)=>(t("captcha.bitteWarten")===alt?"":alt));};
   const save=async()=>{if(!supabase){setMessage(t("sich.passwortNurEchtesKonto"));return;}if(form.next.length<8||form.next!==form.repeat){setMessage(t("sich.neuesPasswortRegeln"));return;}if(mitCaptcha&&captchaToken===null){setMessage(t("captcha.bitteWarten"));return;}const {error:loginError}=await supabase.auth.signInWithPassword({email:user.email,password:form.old,options:captchaToken?{captchaToken}:undefined});if(mitCaptcha)setCaptchaRunde((r)=>r+1);if(loginError){/* Nur der Fall t("login.passwortFalsch") darf so heissen. Ein Netzfehler oder eine Bremse wegen zu vieler Versuche haben nichts mit dem alten Passwort zu tun; hier ist die Verwechslung besonders aergerlich, weil man dann das eine Passwort sucht, das man sicher kennt. Eine Preisgabe ist das nicht: Wer hier steht, ist bereits angemeldet und kennt seine eigene Adresse. */const falschesPasswort=loginError.code==="invalid_credentials"||/invalid login credentials/i.test(String(loginError.message||""));/* Hier darf die Sperre beim Namen genannt werden: Wer bis hierher kommt, ist angemeldet und kennt seine eigene Adresse - es gibt nichts zu verraten. */const gesperrt=loginError.code==="user_banned"||/user is banned/i.test(String(loginError.message||""));setMessage(gesperrt?t("login.kontoGesperrt"):falschesPasswort?t("sich.altesPasswortFalsch"):anmeldeFehlerText(loginError, t));return;}const {error}=await supabase.auth.updateUser({password:form.next});if(error){const zuSchwach=error.code==="weak_password"||/password/i.test(String(error.message||""))&&/short|weak|least/i.test(String(error.message||""));setMessage(zuSchwach?t("sich.passwortSchwach"):t("sich.passwortAendernFehler")+anmeldeFehlerText(error, t));return;}if(form.logoutAll){await supabase.auth.signOut({scope:"global"});await onLogout();return;}setForm({old:"",next:"",repeat:"",logoutAll:false});setMessage((OK_ZEICHEN + t("sich.passwortGeaendert")));}; useEffect(() => { saveRef.current = save; });
-  return <div className="rounded-2xl p-4 space-y-3" style={{background:C.glass,border:`1px solid ${C.line}`}}><input type="password" value={form.old} onChange={(e)=>setForm({...form,old:e.target.value})} placeholder={t("ph.altesPasswort")} className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><input type="password" value={form.next} onChange={(e)=>setForm({...form,next:e.target.value})} placeholder={t("ph.neuesPasswort")} className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><input type="password" value={form.repeat} onChange={(e)=>setForm({...form,repeat:e.target.value})} placeholder={t("ph.neuesPasswortWdh")} className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><ToggleCard title="Von allen Geräten ausloggen" desc="Nach der Änderung werden alle bestehenden Sitzungen beendet." value={form.logoutAll} onChange={(v)=>setForm((old)=>({...old,logoutAll:typeof v==="function"?v(old.logoutAll):v}))}/>{mitCaptcha&&<CaptchaFeld onToken={setCaptchaToken} runde={captchaRunde}/>}{message&&<div className="text-[11px]" style={{color:istErfolg(message)?C.erfolg:C.fehler}}>{meldungstext(message)}</div>}</div>;
+  return <div className="rounded-2xl p-4 space-y-3" style={{background:C.glass,border:`1px solid ${C.line}`}}><input type="password" value={form.old} onChange={(e)=>setForm({...form,old:e.target.value})} placeholder={t("ph.altesPasswort")} className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><input type="password" value={form.next} onChange={(e)=>setForm({...form,next:e.target.value})} placeholder={t("ph.neuesPasswort")} className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><input type="password" value={form.repeat} onChange={(e)=>setForm({...form,repeat:e.target.value})} placeholder={t("ph.neuesPasswortWdh")} className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><ToggleCard title="Von allen Geräten ausloggen" desc="Nach der Änderung werden alle bestehenden Sitzungen beendet." value={form.logoutAll} onChange={(v)=>setForm((old)=>({...old,logoutAll:typeof v==="function"?v(old.logoutAll):v}))}/>{mitCaptcha&&<CaptchaFeld onToken={captchaMeldet} runde={captchaRunde}/>}{message&&<div className="text-[11px]" style={{color:istErfolg(message)?C.erfolg:C.fehler}}>{meldungstext(message)}</div>}</div>;
 }
 
 function SecuritySettings({user,setMembers,saveRef}) { const t = useT(); const [days,setDays]=useState(user.autoLogoutDays??"");const [message,setMessage]=useState("");const save=async()=>{const value=days===""?null:Number(days);if(supabase&&user.authProfileId){const {error}=await supabase.from("profiles").update({auto_logout_days:value}).eq("id",user.authProfileId);if(error){setMessage("Einstellung konnte nicht gespeichert werden.");return;}}setMembers((items)=>items.map((item)=>item.id===user.id?{...item,autoLogoutDays:value}:item));localStorage.setItem(`cmo-last-activity-${user.authProfileId||user.id}`,String(Date.now()));setMessage("Sicherheitseinstellung gespeichert.");};useEffect(() => { saveRef.current = save; });return <div className="rounded-2xl p-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">{t("sich.autoLogout")}</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>{t("sich.autoLogoutHinweis")}</div><select value={days} onChange={(e)=>setDays(e.target.value)} className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}><option value="">{t("kal.nieKurz")}</option><option value="30">{t("sich.tage30")}</option><option value="60">{t("sich.tage60")}</option><option value="90">{t("sich.tage90")}</option></select>{message&&<div className="text-[11px] mt-3" style={{color:C.secondary}}>{meldungstext(message)}</div>}</div>; }
