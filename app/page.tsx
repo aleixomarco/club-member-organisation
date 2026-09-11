@@ -10181,7 +10181,7 @@ function DutyView({ members, currentUser, events, dutyPlan, setDutyPlan, onDiens
   const familyHelpers = (!formalMember || !oldEnough) ? members.filter((m) => m.familyId && m.familyId === currentUser.familyId && m.id !== currentUser.id && isFormalMember(m) && age(m.birthdate) >= 16) : [];
 
   return (
-    <div className="px-4 pt-4 pb-10">
+    <div className="px-4 pt-4 pb-24">
       <div className="text-xs mb-4" style={{ color: C.textDim, fontFamily: "Inter" }}>Von der Theke beim Heimspiel bis zum Kuchenbuffet auf dem Sommerfest — hier findest du alle offenen Helferstellen. Trag dich direkt ein!</div>
 
       {!oldEnough && (
@@ -10231,8 +10231,40 @@ function DutyView({ members, currentUser, events, dutyPlan, setDutyPlan, onDiens
  * Verwalten-Reiter. Dort stehen auch Mitgliedsantraege und fehlende
  * Spielergebnisse - Dinge nur fuer die Vereinsleitung, die in einem Reiter
  * fuer alle nichts verloren haben. */
-function SupportView({ currentUser, members, events, dutyPlan, setDutyPlan, onDienstSetzen, dutyOn, bereichWunsch, onBereichUebernommen }) {
+function SupportView({ currentUser, members, events, dutyPlan, setDutyPlan, onDienstSetzen, dutyOn, bereichWunsch, onBereichUebernommen, currentClub, goVerwaltung, goFahrzeuge }) {
   const t = useT();
+  /* Wofuer bin ich eingeteilt? Aus dem Helferplan (Station an einem Termin)
+     und aus den Stationen, die mir jemand zugewiesen hat. Bisher stand das nur
+     verstreut an den einzelnen Terminen - wer wissen wollte, wann er dran ist,
+     musste jeden Termin aufklappen. */
+  const [meineStationen, setMeineStationen] = useState([]);
+  useEffect(() => {
+    if (!supabase || !isDbId(currentUser.id)) { setMeineStationen([]); return undefined; }
+    let abgebrochen = false;
+    supabase.from("duty_tasks").select("id,title,due_date,event_id")
+      .eq("assignee_membership_id", currentUser.id).eq("done", false)
+      .then(({ data }) => { if (!abgebrochen) setMeineStationen(data || []); });
+    return () => { abgebrochen = true; };
+  }, [currentUser.id]);
+  const heute = new Date(); heute.setHours(0, 0, 0, 0);
+  const terminZu = (id) => (events || []).find((ev) => String(ev.id) === String(id)) || null;
+  const meineEinteilungen = !dutyOn ? [] : [
+    ...(events || [])
+      .filter((ev) => !ev.cancelled && new Date(ev.date) >= heute)
+      .flatMap((ev) => Object.entries(dutyPlan?.[ev.id] || {})
+        .filter(([, liste]) => (liste || []).includes(currentUser.id))
+        .map(([station]) => ({ key: `plan-${ev.id}-${station}`, titel: station, detail: `${ev.title} · ${formatDate(ev.date)}`, zeit: new Date(ev.date) }))),
+    ...meineStationen.map((st) => {
+      const ev = terminZu(st.event_id);
+      return { key: `station-${st.id}`, titel: st.title,
+        detail: ev ? `${ev.title} · ${formatDate(ev.date)}` : st.due_date ? formatDate(st.due_date) : "",
+        zeit: ev ? new Date(ev.date) : st.due_date ? new Date(st.due_date) : null };
+    }).filter((z) => !z.zeit || z.zeit >= heute),
+  ].sort((a, b) => (a.zeit?.getTime() ?? Infinity) - (b.zeit?.getTime() ?? Infinity));
+  /* Die offenen Punkte der Verwaltung stehen hier ein zweites Mal - fuer die,
+     die sie abarbeiten. offene_punkte_fuer_verein laesst ohnehin nur
+     Vereinsleitung und Organisation zu. */
+  const siehtOffenePunkte = isAdmin(currentUser) || currentUser.roles.includes("organisator");
   const darfEinteilen = dutyOn && canManageDuty(currentUser);
   const bereiche = [
     ["aufgaben", t("auf.titel")],
@@ -10255,6 +10287,29 @@ function SupportView({ currentUser, members, events, dutyPlan, setDutyPlan, onDi
       <div className="px-4 pt-4">
         <SectionTitle eyebrow={t("home.mitmachen")} title={t("nav.support")} />
         <div className="text-xs mb-3 -mt-2" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("sup.einleitung")}</div>
+        {meineEinteilungen.length > 0 && (
+          <div className="mb-4">
+            <SectionTitle eyebrow={t("sup.eingeteiltEyebrow")} title={t("sup.eingeteiltTitel")} />
+            <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${C.line}` }}>
+              {meineEinteilungen.map((z, i) => (
+                <button key={z.key} onClick={() => setBereich("helfer")}
+                  className="w-full text-left flex items-center gap-2 px-4 py-2.5"
+                  style={{ background: C.white, borderTop: i ? `1px solid ${C.line}` : "none" }}>
+                  <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: C.red }} />
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-xs font-bold truncate" style={{ color: C.ink, fontFamily: "Inter" }}>{z.titel}</span>
+                    {z.detail && <span className="block text-[11px] truncate" style={{ color: C.textDim, fontFamily: "Inter" }}>{z.detail}</span>}
+                  </span>
+                  <ChevronRight size={13} style={{ color: C.textDim, flexShrink: 0 }} />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {siehtOffenePunkte && (
+          <TodoBoard currentClub={currentClub} goPanel={goVerwaltung} goFahrzeuge={goFahrzeuge}
+            goAufgaben={() => setBereich("aufgaben")} goHelfer={() => setBereich(darfEinteilen ? "einteilen" : "helfer")} />
+        )}
         {bereiche.length > 1 && (
           <div className="flex gap-1.5 flex-wrap">
             {bereiche.map(([k, l]) => (
@@ -12480,7 +12535,11 @@ function AdminView({
      hin. */
   useEffect(() => {
     if (!bereichWunsch) return;
-    setPanel(bereichWunsch);
+    /* Ueber panelWaehlen, nicht setPanel: Ein Sprung aus dem Support-Reiter
+       oder der Glocke kann auf einen Bereich zeigen, den es fuer diese Person
+       nicht gibt (Organisator, "memberships"). Der Effekt laeuft nach dem
+       Rendern, panelWaehlen ist dann definiert. */
+    panelWaehlen(bereichWunsch);
     onBereichUebernommen?.();
   }, [bereichWunsch, onBereichUebernommen]);
   const panels = restrictedOnly ? restrictedPanels : [["overview", t("allg.uebersicht")], ["automation", t("sys.automatisierung")], ...(dutyFeatureOn ? [["duty-templates", t("help.saetzeTitel").replace("{begriff}", t(dutyCfg.dutyTabLabel))]] : []), ["protokolle", t("prot.protokolle")], ["polls", t("umf.umfragen")], ...(SPONSOREN_VERWALTUNG_SICHTBAR ? [["sponsoring", "Sponsoring"]] : []), ["season", t("sais.athletDerSaison")]];
@@ -13338,6 +13397,7 @@ export default function ClubMemberOrganisationApp() {
      Verwalten-Reiter. */
   const [supportBereich, setSupportBereich] = useState(null);
   const goSupport = (bereich = "aufgaben") => { setSubView(null); setSupportBereich(bereich); setTab("support"); };
+  const goVerwaltung = (bereich) => { setSubView(null); setVerwaltungsBereich(bereich); setTab("admin"); };
 
   /* Immer nur EINE Ebene, von innen nach aussen.
      Steht bewusst NACH der Deklaration von subView: kannHoeher wird beim
@@ -13885,6 +13945,11 @@ export default function ClubMemberOrganisationApp() {
   const meldungOeffnen = (e) => {
     if (!e?.ziel_art || !e?.ziel_id) return;
     if (e.ziel_art === "aufgabe") { setOffeneAufgabe(e.ziel_id); return; }
+    /* Einteilungen in der Helferplanung und Protokollaufgaben fuehren in den
+       Support-Reiter: dort stehen sie unter "Für dich eingeteilt" bzw.
+       "Dir zugewiesen" (Migration 20260911030000). */
+    if (e.ziel_art === "helferdienst") { goSupport("helfer"); return; }
+    if (e.ziel_art === "protokollaufgabe") { goSupport("aufgaben"); return; }
     if (e.ziel_art === "termin") {
       setSubView(null);
       setEventFocusRequest({ team: "alle", eventId: e.ziel_id, requestedAt: Date.now() });
@@ -15585,7 +15650,7 @@ export default function ClubMemberOrganisationApp() {
                     Hier fehlte der dritte Teil - ein reiner Organisator sah
                     den Reiter also in der Leiste und darunter eine leere
                     Seite. */}
-                {!subView && tab === "support" && !!currentUser && !istNurFan(currentUser) && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("nav.support")}><SupportView currentUser={currentUser} members={clubMembers} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={dienstSetzen} dutyOn={featureEnabled("duty_roster")} bereichWunsch={supportBereich} onBereichUebernommen={() => setSupportBereich(null)} /></LockedFeature>}
+                {!subView && tab === "support" && !!currentUser && !istNurFan(currentUser) && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("nav.support")}><SupportView currentUser={currentUser} members={clubMembers} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={dienstSetzen} dutyOn={featureEnabled("duty_roster")} bereichWunsch={supportBereich} onBereichUebernommen={() => setSupportBereich(null)} currentClub={currentClub} goVerwaltung={goVerwaltung} goFahrzeuge={() => setSubView("vehicles")} /></LockedFeature>}
                 {!subView && tab === "admin" && (currentUserIsAdmin || currentUserCanEditSponsors || canManageDuty(currentUser)) && (
                   <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Verwaltung">
                   <AdminView bereichWunsch={verwaltungsBereich} onBereichUebernommen={() => setVerwaltungsBereich(null)}
@@ -15612,10 +15677,13 @@ export default function ClubMemberOrganisationApp() {
                   {TABS.map((t) => {
                     const activeTab = tab === t.id;
                     return (
-                      <button key={t.id} onClick={() => navigateTab(t.id)} className="flex flex-col items-center gap-1 flex-1 py-2 rounded-2xl"
+                      /* min-w-0 und truncate: Mit acht Reitern (Support kam dazu) lief die
+                         Leiste auf 320 px in Sprachen mit langen Woertern ueber den Rand -
+                         "Amministrazione" ist allein 75 px breit. Jetzt wird gekuerzt. */
+                      <button key={t.id} onClick={() => navigateTab(t.id)} className="flex flex-col items-center gap-1 flex-1 min-w-0 py-2 rounded-2xl"
                         style={activeTab ? { background: `linear-gradient(155deg, color-mix(in srgb, ${C.red} 78%, #fff), ${C.red})`, boxShadow: `0 8px 18px color-mix(in srgb, ${C.red} 38%, transparent)` } : undefined}>
                         <t.icon size={18} style={{ color: activeTab ? "#fff" : C.textDim }} strokeWidth={activeTab ? 2.4 : 2} />
-                        <span className="text-[9px]" style={{ fontFamily: "Inter", fontWeight: activeTab ? 700 : 500, color: activeTab ? "#fff" : C.textDim }}>{t.label}</span>
+                        <span className="text-[9px] block max-w-full truncate" style={{ fontFamily: "Inter", fontWeight: activeTab ? 700 : 500, color: activeTab ? "#fff" : C.textDim }}>{t.label}</span>
                       </button>
                     );
                   })}
