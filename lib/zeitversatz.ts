@@ -16,8 +16,22 @@
  * Die Anfragekoerper von supabase-js sind Zeichenketten, FormData oder Blobs;
  * die lassen sich ein zweites Mal senden.
  */
+/* Ergaenzung 12.09.: Auch ein kurzer Aussetzer bei Supabase (502/503/504,
+ * "Gateway Timeout") bekommt einen zweiten Versuch - aber NUR bei lesenden
+ * Anfragen. Ein POST kann schon angekommen sein, bevor die Antwort ausfiel;
+ * ihn zu wiederholen hiesse im Zweifel doppelt speichern. */
+const VORUEBERGEHEND = new Set([502, 503, 504]);
+const nurLesend = (eingabe: RequestInfo | URL, init?: RequestInit) => {
+  const methode = (init?.method || (eingabe instanceof Request ? eingabe.method : "GET")).toUpperCase();
+  return methode === "GET" || methode === "HEAD";
+};
+
 export const fetchMitZweitemVersuch: typeof fetch = async (eingabe, init) => {
   const antwort = await fetch(eingabe, init);
+  if (VORUEBERGEHEND.has(antwort.status) && nurLesend(eingabe, init)) {
+    await new Promise((weiter) => setTimeout(weiter, 1500));
+    return fetch(eingabe, init);
+  }
   if (antwort.status !== 401) return antwort;
   try {
     const inhalt = await antwort.clone().json();

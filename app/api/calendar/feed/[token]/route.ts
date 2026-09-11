@@ -18,7 +18,10 @@ async function lies<T extends { error: { code?: string | null } | null }>(was: s
   const ergebnis = await mitZweitemVersuch(abfrage);
   if (ergebnis.error) {
     console.error(`Kalender-Feed: ${was}`, ergebnis.error);
-    if (ergebnis.error.code === "PGRST303") throw new Zeitversatz();
+    /* Zeitversatz und kurze Aussetzer bei Supabase ("Gateway Timeout", kein
+       Code) sind ein "gleich wieder", kein kaputter Kalender - also 503. */
+    const text = String((ergebnis.error as { message?: string }).message || "");
+    if (ergebnis.error.code === "PGRST303" || /timeout|gateway|fetch failed|network/i.test(text)) throw new Zeitversatz();
   }
   return ergebnis;
 }
