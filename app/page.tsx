@@ -851,7 +851,12 @@ const ASSIGNABLE_ROLES = Object.keys(ROLE_META).filter((r) => r !== "sysadmin");
  * Ein Token gilt nur einmal. Nach jedem Versuch setzt das Formular das Feld
  * zurueck (runde + 1), sonst scheiterte der zweite Versuch am verbrauchten
  * Token. */
-const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "";
+/* Websiteschluessel des Turnstile-Widgets "CMO" (Hostname
+   club-member-organisation.vercel.app). Oeffentlich - er steht ohnehin im
+   ausgelieferten Code. Vercel-Vorschauadressen stehen nicht in der
+   Hostliste; dort meldet das Feld eine Stoerung, die Anmeldung geht trotzdem
+   an Supabase (siehe unten). */
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "0x4AAAAAAEwnCGOeC1NaVcTJ";
 const captchaAktiv = () => !!supabase && !!TURNSTILE_SITE_KEY;
 let turnstileLaden = null;
 function turnstileSkript() {
@@ -885,7 +890,13 @@ function CaptchaFeld({ onToken, runde = 0 }) {
   useEffect(() => { meldeToken.current = onToken; });
   useEffect(() => {
     let weg = false;
-    const stoerung = () => { if (!weg) { meldeToken.current?.(null); setGestoert(true); } };
+    /* false heisst "gestoert", null heisst "laeuft noch". Bei einer Stoerung
+       blockiert das Formular NICHT: Die Anfrage geht ohne Token an Supabase.
+       Ist der Schutz dort aus, klappt die Anmeldung; ist er an, kommt die
+       Captcha-Meldung. Die App sperrt so nie mehr aus als der Server - sonst
+       stuende etwa, wer Cloudflare per Werbeblocker sperrt, schon vor dem
+       Einschalten vor verschlossener Tuer. */
+    const stoerung = () => { if (!weg) { meldeToken.current?.(false); setGestoert(true); } };
     turnstileSkript().then((ts) => {
       if (weg || !ort.current) return;
       widget.current = ts.render(ort.current, {
@@ -919,7 +930,7 @@ function CaptchaFeld({ onToken, runde = 0 }) {
       {gestoert && (
         <div role="status" className="text-[11px] rounded-xl px-3 py-2 mt-1" style={{ background: C.fehlerFlaeche, color: C.fehler, fontFamily: "Inter" }}>
           {t("captcha.nichtGeladen")}{" "}
-          <button type="button" onClick={() => { setGestoert(false); setVersuch((v) => v + 1); }} className="underline font-bold">{t("captcha.neuVersuchen")}</button>
+          <button type="button" onClick={() => { setGestoert(false); meldeToken.current?.(null); setVersuch((v) => v + 1); }} className="underline font-bold">{t("captcha.neuVersuchen")}</button>
         </div>
       )}
     </div>
@@ -2629,7 +2640,7 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub, offeneS
        meldete also Erfolg, wo keiner war. */
     if (!address) { setError(t("login.emailZuerst")); return; }
     if (!supabase) { setError(t("konto.zuruecksetzenNurEcht")); return; }
-    if (mitCaptcha && !captchaToken) { setError(t("captcha.bitteWarten")); return; }
+    if (mitCaptcha && captchaToken === null) { setError(t("captcha.bitteWarten")); return; }
     setBusy(true);
     const { error: resetFehler } = await supabase.auth.resetPasswordForEmail(address, {
       redirectTo: `${window.location.origin}/passwort-neu`,
@@ -2669,7 +2680,7 @@ function LoginScreen({ onLogin, members, club, goRegister, goChangeClub, offeneS
     /* VOR dem Anmelden festhalten: Der Speicher entscheidet beim Schreiben der
        Sitzung, wohin sie geht - danach waere es zu spaet. */
     try { window.localStorage.setItem(ANMELDUNG_MERKEN, merken ? "ja" : "nein"); } catch { /* gesperrt */ }
-    if (mitCaptcha && !captchaToken) { setError(t("captcha.bitteWarten")); return; }
+    if (mitCaptcha && captchaToken === null) { setError(t("captcha.bitteWarten")); return; }
     setBusy(true);
     const result = await onLogin(email.trim(), password, captchaToken);
     setBusy(false);
@@ -3155,7 +3166,7 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
     if (form.password !== form.password2) { setError(t("reg.passwoerterUngleich")); return; }
     if (!ohneVerein && members.some((m) => m.email.toLowerCase() === form.email.trim().toLowerCase())) { setError(t("reg.kontoExistiert")); return; }
     if (!legalAccepted) { setError(t("reg.bitteAkzeptieren")); return; }
-    if (mitCaptcha && !captchaToken) { setError(t("captcha.bitteWarten")); return; }
+    if (mitCaptcha && captchaToken === null) { setError(t("captcha.bitteWarten")); return; }
     setError("");
     /* Ein Fan bekommt NUR die Fan-Rolle, nicht zusaetzlich "mitglied" - sonst
        zaehlte er als formales Mitglied und der Verein wuerde ihm Beitraege
@@ -9339,7 +9350,7 @@ function PasswordSettings({ user, onLogout, saveRef }) {
   const t = useT();
   const [form,setForm]=useState({old:"",next:"",repeat:"",logoutAll:false}); const [message,setMessage]=useState("");
   const [captchaToken,setCaptchaToken]=useState(null); const [captchaRunde,setCaptchaRunde]=useState(0); const mitCaptcha=captchaAktiv();
-  const save=async()=>{if(!supabase){setMessage(t("sich.passwortNurEchtesKonto"));return;}if(form.next.length<8||form.next!==form.repeat){setMessage(t("sich.neuesPasswortRegeln"));return;}if(mitCaptcha&&!captchaToken){setMessage(t("captcha.bitteWarten"));return;}const {error:loginError}=await supabase.auth.signInWithPassword({email:user.email,password:form.old,options:captchaToken?{captchaToken}:undefined});if(mitCaptcha)setCaptchaRunde((r)=>r+1);if(loginError){/* Nur der Fall t("login.passwortFalsch") darf so heissen. Ein Netzfehler oder eine Bremse wegen zu vieler Versuche haben nichts mit dem alten Passwort zu tun; hier ist die Verwechslung besonders aergerlich, weil man dann das eine Passwort sucht, das man sicher kennt. Eine Preisgabe ist das nicht: Wer hier steht, ist bereits angemeldet und kennt seine eigene Adresse. */const falschesPasswort=loginError.code==="invalid_credentials"||/invalid login credentials/i.test(String(loginError.message||""));/* Hier darf die Sperre beim Namen genannt werden: Wer bis hierher kommt, ist angemeldet und kennt seine eigene Adresse - es gibt nichts zu verraten. */const gesperrt=loginError.code==="user_banned"||/user is banned/i.test(String(loginError.message||""));setMessage(gesperrt?t("login.kontoGesperrt"):falschesPasswort?t("sich.altesPasswortFalsch"):anmeldeFehlerText(loginError, t));return;}const {error}=await supabase.auth.updateUser({password:form.next});if(error){const zuSchwach=error.code==="weak_password"||/password/i.test(String(error.message||""))&&/short|weak|least/i.test(String(error.message||""));setMessage(zuSchwach?t("sich.passwortSchwach"):t("sich.passwortAendernFehler")+anmeldeFehlerText(error, t));return;}if(form.logoutAll){await supabase.auth.signOut({scope:"global"});await onLogout();return;}setForm({old:"",next:"",repeat:"",logoutAll:false});setMessage((OK_ZEICHEN + t("sich.passwortGeaendert")));}; useEffect(() => { saveRef.current = save; });
+  const save=async()=>{if(!supabase){setMessage(t("sich.passwortNurEchtesKonto"));return;}if(form.next.length<8||form.next!==form.repeat){setMessage(t("sich.neuesPasswortRegeln"));return;}if(mitCaptcha&&captchaToken===null){setMessage(t("captcha.bitteWarten"));return;}const {error:loginError}=await supabase.auth.signInWithPassword({email:user.email,password:form.old,options:captchaToken?{captchaToken}:undefined});if(mitCaptcha)setCaptchaRunde((r)=>r+1);if(loginError){/* Nur der Fall t("login.passwortFalsch") darf so heissen. Ein Netzfehler oder eine Bremse wegen zu vieler Versuche haben nichts mit dem alten Passwort zu tun; hier ist die Verwechslung besonders aergerlich, weil man dann das eine Passwort sucht, das man sicher kennt. Eine Preisgabe ist das nicht: Wer hier steht, ist bereits angemeldet und kennt seine eigene Adresse. */const falschesPasswort=loginError.code==="invalid_credentials"||/invalid login credentials/i.test(String(loginError.message||""));/* Hier darf die Sperre beim Namen genannt werden: Wer bis hierher kommt, ist angemeldet und kennt seine eigene Adresse - es gibt nichts zu verraten. */const gesperrt=loginError.code==="user_banned"||/user is banned/i.test(String(loginError.message||""));setMessage(gesperrt?t("login.kontoGesperrt"):falschesPasswort?t("sich.altesPasswortFalsch"):anmeldeFehlerText(loginError, t));return;}const {error}=await supabase.auth.updateUser({password:form.next});if(error){const zuSchwach=error.code==="weak_password"||/password/i.test(String(error.message||""))&&/short|weak|least/i.test(String(error.message||""));setMessage(zuSchwach?t("sich.passwortSchwach"):t("sich.passwortAendernFehler")+anmeldeFehlerText(error, t));return;}if(form.logoutAll){await supabase.auth.signOut({scope:"global"});await onLogout();return;}setForm({old:"",next:"",repeat:"",logoutAll:false});setMessage((OK_ZEICHEN + t("sich.passwortGeaendert")));}; useEffect(() => { saveRef.current = save; });
   return <div className="rounded-2xl p-4 space-y-3" style={{background:C.glass,border:`1px solid ${C.line}`}}><input type="password" value={form.old} onChange={(e)=>setForm({...form,old:e.target.value})} placeholder={t("ph.altesPasswort")} className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><input type="password" value={form.next} onChange={(e)=>setForm({...form,next:e.target.value})} placeholder={t("ph.neuesPasswort")} className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><input type="password" value={form.repeat} onChange={(e)=>setForm({...form,repeat:e.target.value})} placeholder={t("ph.neuesPasswortWdh")} className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><ToggleCard title="Von allen Geräten ausloggen" desc="Nach der Änderung werden alle bestehenden Sitzungen beendet." value={form.logoutAll} onChange={(v)=>setForm((old)=>({...old,logoutAll:typeof v==="function"?v(old.logoutAll):v}))}/>{mitCaptcha&&<CaptchaFeld onToken={setCaptchaToken} runde={captchaRunde}/>}{message&&<div className="text-[11px]" style={{color:istErfolg(message)?C.erfolg:C.fehler}}>{meldungstext(message)}</div>}</div>;
 }
 
