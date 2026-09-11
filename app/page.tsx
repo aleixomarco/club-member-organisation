@@ -1024,6 +1024,30 @@ const canManageDuty = (m) => isAdmin(m) || (!!m && m.roles.includes("organisator
 const SUBSCRIPTION_ROLES = ["sysadmin", "vereinsadmin", "geschaeftsfuehrung", "vorstand"];
 const canManageSubscription = (m) => !!m && m.roles.some((r) => SUBSCRIPTION_ROLES.includes(r));
 
+/* Mehr Zugaenge anfragen - per E-Mail an den Betreiber.
+ *
+ * Vereine ohne Tarif haben drei Zugaenge. Ihre Vereinsleitung sieht oben auf
+ * der Startseite einen Hinweis; wer ihn antippt, landet im Mailprogramm des
+ * eigenen Geraets, Empfaenger, Betreff und Text sind schon ausgefuellt.
+ *
+ * Der Text ist in jeder Sprache der App Deutsch und woertlich so vorgegeben:
+ * Er geht an den Betreiber, nicht an ein Mitglied. So halten es auch die
+ * Fehlermeldung und das Melden einer Chatnachricht.
+ *
+ * Kein Preis, kein Kaufknopf, kein Verweis auf eine Zahlungsseite - nur ein
+ * Kontakt. Das haelt die Grenze ein, die SubscriptionPanel fuer Apples
+ * Richtlinie 3.1.3 beschreibt.
+ *
+ * Zeilenumbrueche als CRLF, wie RFC 6068 es fuer mailto vorsieht. Mit einem
+ * blossen LF setzen manche Mailprogramme alles in eine Zeile. */
+const KAPAZITAET_EMPFAENGER = "info@idbranding.de";
+const kapazitaetsMailLink = (vereinsname) => {
+  const verein = String(vereinsname || "").trim() || "ein Verein";
+  const betreff = `Vereinskapazität erhöhen – ${verein}`;
+  const text = `Hallo,\r\nwir sind ${verein} und wollen unsere Vereinskapazität erhöhen. Gerne eine Rückmeldung!\r\nDanke!`;
+  return `mailto:${KAPAZITAET_EMPFAENGER}?subject=${encodeURIComponent(betreff)}&body=${encodeURIComponent(text)}`;
+};
+
 // "App kennenlernen": Kurzvideos, gefiltert nach den Aktionen, die die Rolle
 // des jeweiligen Nutzers tatsächlich ausführen kann (gleiche Berechtigungslogik
 // wie die Aktion selbst, z. B. canCreateSportEvent für Trainings).
@@ -1616,13 +1640,21 @@ function useClubEntitlement(user) {
        * wegen eines Funklochs aus seiner eigenen App auszusperren waere der
        * deutlich groessere Schaden. */
       let tier = null;
+      let fehler = null;
       try {
-        ({ data: tier } = await supabase.rpc("member_entitlement_tier", { target_membership: user.id }));
+        ({ data: tier, error: fehler } = await supabase.rpc("member_entitlement_tier", { target_membership: user.id }));
       } catch {
         if (!cancelled) setState({ loading: false, tier: "pro" });
         return;
       }
       if (cancelled) return;
+      /* Supabase wirft bei einem Fehler fast nie, es antwortet mit error:
+         Funkloch, Zeitueberschreitung, 401, 5xx. Der catch oben griff deshalb
+         so gut wie nie - tier blieb null, wurde zu "none", und ein zahlender
+         Verein sah Schloesser und den Hinweis auf die kostenlose Stufe. Es
+         gilt dieselbe Regel wie im catch: im Zweifel freigeschaltet. Damit
+         laeuft auch sync_club_role_entitlement nicht mehr auf einen Fehler. */
+      if (fehler) { setState({ loading: false, tier: "pro" }); return; }
       setState({ loading: false, tier: tier || "none" });
       // Kein aktives Vereinsabo (mehr) -> Rollen jenseits "mitglied" zurücksetzen.
       // Bei erneutem Abo werden sie NICHT automatisch wiederhergestellt (siehe SQL-Funktion).
@@ -3678,6 +3710,26 @@ function Dashboard({ user, members, events, channels, news, dutyPlan, seasonVote
         <ClubLogo club={currentClub} size={72} rounded={20} />
       </div>
 
+      {/* Verein auf den drei kostenlosen Zugaengen: Hinweis ganz oben, ein
+          Antippen oeffnet die fertige Mail an den Betreiber.
+          Nur fuer die Vereinsleitung - wer den Verein nicht wirtschaftlich
+          vertritt, bekommt auch sonst keine Aufforderung zum Tarif zu sehen
+          (SUBSCRIPTION_ROLES). featureLocked ist erst wahr, wenn die Datenbank
+          ausdruecklich "kein Tarif" geantwortet hat - waehrend des Ladens und
+          bei einem Fehler bleibt der Hinweis weg (useClubEntitlement).
+          Der Vereinsname kommt aus currentClub; er muss der Verein sein, zu dem
+          die Mitgliedschaft gehoert, sonst stuende in der Mail ein fremder. */}
+      {featureLocked && canManageSubscription(user) && currentClub?.id === user.clubId && (
+        <a href={kapazitaetsMailLink(currentClub?.name)} className="flex items-center gap-3 rounded-xl px-3 py-3 mb-4"
+          style={{ background: C.primaerWeich, border: `1px solid ${C.edge}`, textDecoration: "none" }}>
+          <Mail size={18} style={{ color: C.red, flexShrink: 0 }} />
+          <div className="flex-1 min-w-0" style={{ fontFamily: "Inter" }}>
+            <div className="text-sm font-bold" style={{ color: C.ink }}>{t("home.kapazitaetTitel")}</div>
+            <div className="text-xs mt-0.5" style={{ color: C.ink }}>{t("home.kapazitaetText").replace("{mail}", KAPAZITAET_EMPFAENGER)}</div>
+          </div>
+          <ChevronRight size={16} style={{ color: C.textDim, flexShrink: 0 }} />
+        </a>
+      )}
 
       <SponsorSlot slotKey="dashboard_top" bookings={werbeplaetze} onImpression={onSponsorImpression} onClick={onSponsorClick} visible={featureEnabled("sponsor_dashboard_top")} />
 
