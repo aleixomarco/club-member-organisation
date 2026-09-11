@@ -12012,7 +12012,11 @@ function RolesPanel({ members, setMembers, currentUser = null, alleMitglieder = 
          Trainerschaft. Das soll kein Fehltipp ausloesen. */
       if (draftZusatz.length && !window.confirm(t("stufe.wechselZuFanFrage").replace("{name}", member.name))) return;
     }
-    setDraftRoles(rollenAusStufe(stufe, []));
+    /* Zurueck zu Mitglied stellt die gespeicherten Rollen wieder her, statt
+       leer anzufangen. Sonst ging beim Umentscheiden (Mitglied -> Fan ->
+       Mitglied) still verloren, was hier gar nicht waehlbar ist - etwa
+       Sys-Admin -, und das Speichern haette es entzogen. */
+    setDraftRoles(rollenAusStufe(stufe, stufe === "mitglied" ? member.roles.filter((r) => !STUFEN.includes(r)) : []));
   };
   const zusatzSetzen = (zusatz) => setDraftRoles(rollenAusStufe("mitglied", zusatz));
 
@@ -12054,6 +12058,10 @@ function RolesPanel({ members, setMembers, currentUser = null, alleMitglieder = 
           ...(!neu.includes("teammanager") ? { managedTeam: null, managedTeams: [] } : {}),
           ...(!neu.includes("trainer") ? { trainerTeams: [] } : {}),
           ...(!neu.includes("spieler") ? { playerTeams: [] } : {}),
+          /* Ohne Kapitaensrolle keine Kapitaensmannschaft - sonst zaehlte ein
+             zum Fan gemachter Kapitaen weiter zur Mannschaft (memberCaptainTeams
+             liest captainTeams ohne Blick auf die Rollen). */
+          ...(!neu.includes("kapitaen") ? { captainTeams: [] } : {}),
           ...(stufe === "fan" ? { teams: [] } : {}) }
       : m)));
     setSaving(false);
@@ -12359,7 +12367,11 @@ function MembershipApprovalsPanel({ club, members, setMembers, currentUser = nul
     if (entscheidungen[request.id]) return entscheidungen[request.id];
     const rollen = (request.membership_roles || []).map((entry) => entry.role);
     const stufe = stufeVon(rollen);
-    return { stufe, zusatz: stufe === "fan" ? [] : rollen.filter((r) => ZUSATZROLLEN.includes(r)) };
+    /* sysadmin steht nicht unter den waehlbaren Zusatzrollen, bleibt aber in
+       der Vorauswahl, wenn die Anfrage ihn traegt (ein zurueckkehrender
+       Gruender). Fehlte er, entzoege die Freigabe ihn still - oder scheiterte
+       bei einem Organisator an rollensatz_bilden. */
+    return { stufe, zusatz: stufe === "fan" ? [] : rollen.filter((r) => ZUSATZROLLEN.includes(r) || r === "sysadmin") };
   };
   const entscheidungSetzen = (request, aenderung) =>
     setEntscheidungen((alle) => ({ ...alle, [request.id]: { ...entscheidungVon(request), ...aenderung } }));
