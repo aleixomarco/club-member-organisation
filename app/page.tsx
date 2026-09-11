@@ -14904,7 +14904,23 @@ export default function ClubMemberOrganisationApp() {
           city: draft.city || null,
         } },
       });
-      if (error) return { error: registrierFehlerText(error, t) };
+      if (error) {
+        /* Plattformweite Obergrenze fuer Konten (Migration
+           20260911010000_konten_obergrenze.sql). Die Sperre sitzt allein in der
+           Datenbank, GoTrue meldet sie nur als 500 "Database error saving new
+           user". Ob es die Grenze war, sagt erst diese Frage - dann steht hier
+           ein verstaendlicher Satz statt "gerade nicht moeglich".
+           Bewusst KEINE Frage vor signUp: Wer sich mit einer noch nicht
+           bestaetigten Adresse erneut registriert, bekommt von GoTrue nur eine
+           neue Bestaetigungsmail, es entsteht kein Konto. Die Datenbank laesst
+           das auch an der Grenze zu, eine Vorabfrage haette es verhindert - und
+           in dieser App ist das der einzige Weg zu einer neuen Mail. */
+        if (Number(error.status || 0) >= 500) {
+          const { data: nochFrei } = await supabase.rpc("registrierung_moeglich");
+          if (nochFrei === false) return { error: t("reg.pausiert") };
+        }
+        return { error: registrierFehlerText(error, t) };
+      }
       if (!data.session || !data.user) {
         return { ok: true, message: nurKonto
           ? t("reg.kontoAngelegt")
