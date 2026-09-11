@@ -83,7 +83,8 @@
     "wo": "Support > Aufgaben",
     "punkte": [
      "Unter „Aufgaben“ stehen zuerst die Aufgaben, die dir aus einer Vorstandssitzung (Protokoll) persönlich zugewiesen wurden; die hakst du mit „Als erledigt“ ab.",
-     "Darunter folgen die Aufgaben des Vereins und deiner Mannschaften.",
+     "Darunter zeigt „Aufgaben nach Bereich“ je eine Kachel für den ganzen Verein und jede deiner Mannschaften: wie viele Aufgaben offen sind, wie viele insgesamt, wie viele noch ohne Eintrag und wie viele erledigt; überfällige stehen rot.",
+     "Ein Tipp auf eine Kachel zeigt die Aufgaben dieses Bereichs, ein zweiter Tipp schließt sie wieder.",
      "Jede Karte zeigt, wie viele Plätze frei sind und bis wann die Aufgabe fällig ist.",
      "Mit „Eintragen“ meldest du dich, mit „Austragen“ wieder ab.",
      "Danach setzt du die Aufgabe auf „Erledigt“.",
@@ -259,7 +260,7 @@
      "Mit \"+ Zuweisen\" ordnest du Athletinnen und Athleten der Mannschaft zu, höchstens drei Mannschaften je Person.",
      "Für Kinder ohne eigenes Handy legst du dort \"Spieler ohne Account\" mit Vor- und Nachnamen an.",
      "Tippst du eine Person im Kader an, siehst du ihre offenen Strafen und kannst ihr direkt eine geben.",
-     "Im Reiter Support unter „Aufgaben“ legst du im Abschnitt mit dem Namen deiner Mannschaft (z. B. „Aufgaben · Herren 1“) Aufgaben an und teilst Verantwortliche ein; nur sie bekommen eine Benachrichtigung."
+     "Im Reiter Support unter „Aufgaben“ tippst du auf die Kachel deiner Mannschaft und legst dort mit „+ Aufgabe“ Aufgaben an und teilst Verantwortliche ein; nur sie bekommen eine Benachrichtigung."
     ],
     "bildschirm": "Teams > einzelne Mannschaft",
     "hinweis": "Den Reiter Teams und die Aufgaben gibt es nur, wenn der Verein freigeschaltet ist; sonst steht dort ein Hinweis."
@@ -303,7 +304,7 @@
      "Unter „Helfer einteilen“ siehst du alle Termine mit Helferstationen und teilst über „+ Mitglied zuteilen“ Mitglieder ein; das × am Namen nimmt sie wieder heraus. Die Eingeteilten bekommen eine Benachrichtigung.",
      "Über den Knöpfen, direkt unter „Für dich eingeteilt“, steht die Tafel mit den offenen Punkten deines Vereins: wartende Mitgliedsanträge, fehlende Spielergebnisse, fällige Aufgaben, unbesetzte Helferstationen und Fahrzeuganfragen.",
      "Ein Tipp auf einen offenen Punkt bringt dich dorthin, wo du ihn erledigst.",
-     "Unter „Aufgaben“ legst du Vereins- und Mannschaftsaufgaben an. Benachrichtigt werden nur die Verantwortlichen, nicht der ganze Verein."
+     "Unter „Aufgaben“ siehst du in „Aufgaben nach Bereich“ für den Verein und jede Mannschaft, wie viele Aufgaben offen, ohne Eintrag, erledigt oder überfällig sind, und legst Aufgaben an. Benachrichtigt werden nur die Verantwortlichen, nicht der ganze Verein."
     ],
     "hinweis": "Die Tafel mit den offenen Punkten sehen Vereinsadmin und Organisation; ist nichts offen, steht dort „Nichts offen“. Fans lassen sich nicht einteilen.",
     "bildschirm": "Support > Helfer einteilen"
@@ -480,6 +481,7 @@
     "titel": "Aufgaben und Fahrzeuge",
     "wo": "Reiter \"Support\" > \"Aufgaben\"; Home > Kachel \"Vereinsfahrzeuge\"",
     "punkte": [
+     "Die Kacheln unter \"Aufgaben nach Bereich\" zeigen dir für den Verein und jede Mannschaft, wie viele Aufgaben offen, ohne Eintrag, erledigt oder überfällig sind; ein Tipp öffnet den Bereich.",
      "Unter \"Aufgaben\" legst du Aufgaben für den Verein und für jede Mannschaft an, mit Beschreibung, Frist und Zahl der Plätze.",
      "Verantwortliche trägst du gleich beim Anlegen ein, nur sie werden benachrichtigt; andere Mitglieder melden sich selbst freiwillig.",
      "Löschen darf eine Aufgabe nur, wer sie angelegt hat; ändern darfst du auch fremde.",
