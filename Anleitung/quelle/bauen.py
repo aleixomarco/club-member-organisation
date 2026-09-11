@@ -26,43 +26,46 @@ BILDER = {
  ("mitglied","Anmelden und Verein wählen"): "01-anmeldung",
  ("mitglied","Die Startseite"): "02-startseite",
  ("mitglied","Termine und Zusagen"): "03-termine",
- ("mitglied","Mitfahren und Fahrten anbieten"): "04-termin-detail",
+ ("mitglied","Mitfahren und Fahrten anbieten"): "38-fahrgemeinschaft",
+ ("mitglied","Der Reiter Support"): "36-support",
  ("mitglied","Helferdienste übernehmen"): "20-helferplanung",
  ("mitglied","Aufgaben übernehmen"): "21-aufgaben",
- ("mitglied","Vereinsfahrzeug anfragen"): "22-fahrzeuge",
  ("mitglied","Im Chat schreiben"): "06-chat",
- ("mitglied","News und Umfragen"): "24-athlet",
- ("mitglied","Tippspiel und Athlet/in der Saison"): "23-tippspiel",
+ ("mitglied","News und Umfragen"): "37-news",
+ ("mitglied","Tippspiel und Athlet/in der Saison"): "24-athlet",
  ("mitglied","Mannschaften und Strafenkatalog"): "05-teams",
  ("mitglied","Profil, Punkte, Benachrichtigungen"): "07-profil",
  ("trainer","Dein Trainerbereich"): "11-trainerbereich",
+ ("trainer","Kapitän oder Kapitänin bestimmen"): "11-trainerbereich",
  ("trainer","Training oder Spiel ansetzen"): "27-termin-anlegen",
- ("trainer","Absagen und löschen"): "04-termin-detail",
+ ("trainer","Absagen und löschen"): "40-training-absagen",
  ("trainer","Kader und Aufgaben"): "33-team-detail",
- ("trainer","Strafenkatalog führen"): "26-strafenkatalog",
  ("vereinsadmin","Dein Reiter Verwaltung"): "09-verwaltung",
+ ("vereinsadmin","Support: offene Punkte und Helfer einteilen"): "32-helferplanung-verwaltung",
  ("vereinsadmin","Mannschaften anlegen"): "33-team-detail",
  ("vereinsadmin","Mitglieder aufnehmen und verwalten"): "31-mitgliedsantraege",
  ("vereinsadmin","Rollen vergeben"): "28-rollen",
  ("vereinsadmin","Logo und Farben einstellen"): "30-vereinsprofil",
  ("vereinsadmin","Funktionen ein- und ausschalten"): "29-funktionen",
  ("organisator","Termine anlegen"): "27-termin-anlegen",
- ("organisator","Termine absagen und löschen"): "04-termin-detail",
- ("organisator","Sätze und Stationen anlegen"): "32-helferplanung-verwaltung",
- ("organisator","Helfer einteilen"): "20-helferplanung",
- ("organisator","Aufgaben und Fahrzeuge"): "22-fahrzeuge",
+ ("organisator","Termine absagen und löschen"): "40-training-absagen",
+ ("organisator","Stationen am Termin pflegen"): "04-termin-detail",
+ ("organisator","Helfer einteilen"): "32-helferplanung-verwaltung",
+ ("organisator","Aufgaben und Fahrzeuge"): "36-support",
  ("sponsoren","Dein Bereich in der App"): "12-sponsoren",
  ("sponsoren","Die vier Werbeplätze"): "12-sponsoren",
  ("redaktion","Dein Reiter Redaktion"): "10-redaktion",
  ("redaktion","News ändern und löschen"): "35-redaktion-news",
  ("redaktion","Wo deine News ankommen"): "02-startseite",
- ("redaktion","Der Kanal Vereins-News"): "06-chat",
- ("eltern","Familie im Profil öffnen"): "25-persoenliche-daten",
- ("eltern","Vorhandenes Profil verknüpfen"): "25-persoenliche-daten",
+ ("redaktion","Der Kanal Vereins-News"): "39-news-kanal",
+ ("eltern","Familie im Profil öffnen"): "41-familie",
+ ("eltern","Vorhandenes Profil verknüpfen"): "42-verknuepfen",
  ("eltern","Betreutes Profil zusammenführen"): "28-rollen",
  ("betreiber","Anmelden und Überblick"): "13-betreiber-vereine",
+ ("betreiber","Anfragen bis zur Freischaltung"): "13-betreiber-vereine",
  ("betreiber","Die Vereinsliste"): "13-betreiber-vereine",
- ("betreiber","Werbeanzeigen und Kennzahlen"): "15-betreiber-kpi",
+ ("betreiber","Werbeanzeigen anlegen"): "14-betreiber-anzeigen",
+ ("betreiber","Kennzahlen (KPI)"): "15-betreiber-kpi",
 }
 QUER = {"13-betreiber-vereine", "14-betreiber-anzeigen", "15-betreiber-kpi"}
 
@@ -121,8 +124,20 @@ def e(t):
     return html.escape(text)
 
 def pfad(text):
-    teile = [t.strip() for t in str(text or "").replace("&gt;", ">").split(">") if t.strip()]
-    return '<span class="pfeil">›</span>'.join(f'<span class="stufe">{e(t)}</span>' for t in teile)
+    """Der Weg als Kette. Mehrere Wege stehen in der Quelle mit ";" getrennt
+    und bekommen je eine eigene Zeile mit "oder" davor - vorher lief der zweite
+    Weg als Fortsetzung des ersten in dieselbe Kette, und "(oder Home" stand
+    als eigener Schritt da."""
+    wege = [w.strip() for w in str(text or "").replace("&gt;", ">").split(";") if w.strip()]
+    zeilen = []
+    for i, weg in enumerate(wege):
+        if weg.lower().startswith("oder "):
+            weg = weg[5:].strip()
+        teile = [t.strip() for t in weg.split(">") if t.strip()]
+        kette = '<span class="pfeil">›</span>'.join(f'<span class="stufe">{e(t)}</span>' for t in teile)
+        oder = '<span class="oder">oder</span>' if i else ""
+        zeilen.append(f'<span class="pfad-weg">{oder}{kette}</span>')
+    return "".join(zeilen)
 
 def zurueck():
     """Der Weg zurück zur Übersicht. Auf jeder Seite an derselben Stelle -
@@ -133,6 +148,15 @@ def fuss(rolle, farbe, anker):
     return (f'<div class="fuss"><a class="fuss-links" href="#{anker}">{e(rolle)}</a>'
             f'<a class="fuss-rechts" href="#inhalt" style="color:{farbe}">@@SEITE@@</a></div>')
 
+
+SCHLUSS_APP = """
+    <div><b>Etwas fehlt dir?</b><span>Wende dich an die Vereinsleitung — viele Funktionen sind absichtlich abschaltbar.</span></div>
+    <div><b>Etwas geht nicht?</b><span>Im Reiter Profil ganz unten, in der Kachel „Bewertung abgeben, Fehler melden“, findest du „Fehler melden“ — nicht im Reiter Support. Das landet direkt beim Betreiber.</span></div>
+    <div><b>Neu im Verein?</b><span>Lies Teil 1. Alles Weitere kommt mit deinen Rollen von selbst dazu.</span></div>"""
+SCHLUSS_INTERN = """
+    <div><b>Ein Verein will mehr?</b><span>Anfragen stehen unter „Offene Anfragen“. Mails aus dem Hinweis „Mehr Zugänge für euren Verein?“ kommen an info@idbranding.de.</span></div>
+    <div><b>Ein Mitglied meldet einen Fehler?</b><span>„Fehler melden“ im Profil erzeugt eine Ticketnummer und öffnet eine Mail an info@idbranding.de.</span></div>
+    <div><b>Kontengrenze erreicht?</b><span>Die Kachel „Konten gesamt“ wird ab 90 % rot. Anheben im SQL-Editor, die Zeile steht bei „Anmelden und Überblick“.</span></div>"""
 
 def bauen(ausgabe):
     rollen = [NACH_KEY[k] for k in ausgabe["rollen"] if k in NACH_KEY]
@@ -185,7 +209,7 @@ def bauen(ausgabe):
       </ul>
     </div>
   </div>
-  <div class="einstieg-fuss">Diese Seite gehört nicht in die Hand eines Vereins.</div>
+  <div class="einstieg-fuss">Diese Seite gehört nicht in die Hand eines Vereins. Die Vereins-App selbst gibt es im App&nbsp;Store und im Browser unter club-member-organisation.vercel.app — in Kürze auch bei Google&nbsp;Play.</div>
   {fuss(ausgabe["kopf"], "#2A2028", "start")}
 </section>
 """)
@@ -218,7 +242,7 @@ def bauen(ausgabe):
       </ul>
     </div>
   </div>
-  <div class="einstieg-fuss">Bei Google&nbsp;Play liegt die App noch nicht — auf Android nimmst du den Browser. Anmelden kannst du dich in beiden Wegen mit demselben Konto.</div>
+  <div class="einstieg-fuss">In Kürze auch bei Google&nbsp;Play erhältlich — bis dahin nimmst du auf Android den Browser. Anmelden kannst du dich in beiden Wegen mit demselben Konto.</div>
   {fuss(ausgabe["kopf"], "#B3261E", "start")}
 </section>
 """)
@@ -229,7 +253,7 @@ def bauen(ausgabe):
   {zurueck()}
   <div class="lese-kopf"><div class="eyebrow">Zum Anfang</div><h2>So liest du dieses Dokument</h2></div>
   <div class="lese-raster">
-    <div class="lese-karte"><div class="ziffer">1</div><h3>Links das Bild</h3><p>Jede Seite zeigt genau den Bildschirm, um den es geht. So erkennst du ihn in der App sofort wieder.</p></div>
+    <div class="lese-karte"><div class="ziffer">1</div><h3>Links das Bild</h3><p>Wo es einen Bildschirm dazu gibt, siehst du ihn links. So erkennst du ihn {"in der Vereinsverwaltung" if ausgabe.get("intern") else "in der App"} sofort wieder.</p></div>
     <div class="lese-karte"><div class="ziffer">2</div><h3>Rechts der Weg</h3><p>Die graue Kette oben nennt den Weg dorthin — Reiter für Reiter, Knopf für Knopf.</p></div>
     <div class="lese-karte"><div class="ziffer">3</div><h3>Dann die Punkte</h3><p>Ein Satz je Handgriff. Kein Fachwort, keine Umschweife.</p></div>
     <div class="lese-karte"><div class="ziffer">4</div><h3>Zuletzt der Hinweis</h3><p>Der farbige Kasten nennt Voraussetzungen: eine Freischaltung, eine Rolle, eine Altersgrenze.</p></div>
@@ -257,7 +281,7 @@ def bauen(ausgabe):
   <div class="eyebrow">Übersicht</div>
   <h2 class="inh-h2">Inhalt</h2>
   <p class="inh-hilfe">Jede Zeile ist ein Sprung. Zurück kommst du oben rechts auf jeder Seite.</p>
-  <div class="inh-spalten{" zwei" if themen_gesamt + rollen_gesamt <= 26 else ""}">{''.join(zeilen)}</div>
+  <div class="inh-spalten{" eins" if themen_gesamt + rollen_gesamt <= 10 else " zwei" if themen_gesamt + rollen_gesamt <= 26 else ""}">{''.join(zeilen)}</div>
 </section>
 """)
 
@@ -312,11 +336,7 @@ def bauen(ausgabe):
   {zurueck()}
   <h2>Noch Fragen?</h2>
   <p>Dieses Dokument beschreibt den Stand der App zum Zeitpunkt der Erstellung. Kommt eine Funktion dazu, wächst es mit.</p>
-  <div class="schluss-karten">
-    <div><b>Etwas fehlt dir?</b><span>Wende dich an die Vereinsleitung — viele Funktionen sind absichtlich abschaltbar.</span></div>
-    <div><b>Etwas geht nicht?</b><span>Im Profil unten findest du „Fehler melden“. Das landet direkt beim Betreiber.</span></div>
-    <div><b>Neu im Verein?</b><span>Lies Teil 1. Alles Weitere kommt mit deinen Rollen von selbst dazu.</span></div>
-  </div>
+  <div class="schluss-karten">{SCHLUSS_INTERN if ausgabe.get("intern") else SCHLUSS_APP}</div>
   <div class="schluss-fuss">Club Member Organisation · Die Screenshots stammen aus einem Demo-Verein; Namen und Zahlen darin sind erfunden.</div>
 </section>
 """)
@@ -369,8 +389,8 @@ p { font-size: 10.5pt; line-height: 1.55; color: #4A424A; margin: 0; }
 .intern-marke { margin-top: 8mm; align-self: flex-start; font-size: 8.5pt; font-weight: 700; letter-spacing: .1em;
                 text-transform: uppercase; color: #B3261E; background: #FCF1F1; border: 1px solid #F0D9D9;
                 border-radius: 99px; padding: 2mm 5mm; }
-.phone.gross { width: 66mm; border-radius: 7mm; box-shadow: 0 14mm 26mm rgba(60,30,45,.22); }
-.quer.gross { width: 100%; border-radius: 3mm; box-shadow: 0 10mm 22mm rgba(60,30,45,.2); }
+.phone.gross { width: 66mm; border-radius: 7mm; box-shadow: none; border: 0.3mm solid #E6DEE3; }
+.quer.gross { width: 100%; border-radius: 3mm; box-shadow: none; border: 0.3mm solid #E6DEE3; }
 
 /* So kommst du hinein */
 .einstieg { flex-direction: column; }
@@ -414,6 +434,7 @@ p { font-size: 10.5pt; line-height: 1.55; color: #4A424A; margin: 0; }
 .inh-spalten { column-count: 3; column-gap: 10mm; font-size: 9pt; }
 /* Wenige Eintraege in drei Spalten lassen die halbe Seite leer. */
 .inh-spalten.zwei { column-count: 2; column-gap: 14mm; font-size: 9.5pt; }
+.inh-spalten.eins { column-count: 1; max-width: 150mm; font-size: 10pt; }
 .inh-spalten.zwei .inh-zeile { padding-top: 1.2mm; padding-bottom: 1.2mm; }
 .inh-rolle { break-inside: avoid; display: flex; align-items: baseline; gap: 2.5mm; margin: 5mm 0 2mm;
              border-bottom: 1.5px solid var(--f); padding-bottom: 1.2mm; }
@@ -437,12 +458,15 @@ p { font-size: 10.5pt; line-height: 1.55; color: #4A424A; margin: 0; }
 .bildspalte { width: 33%; display: flex; align-items: center; justify-content: center;
               background: linear-gradient(155deg, #FBF6F8, #F4EDF1); border-radius: 6mm; padding: 8mm; }
 .bildspalte.breit { width: 52%; padding: 5mm; }
-.phone { max-height: 152mm; width: auto; border-radius: 5mm; box-shadow: 0 6mm 14mm rgba(60,30,45,.16); }
-.quer { width: 100%; border-radius: 3mm; box-shadow: 0 6mm 14mm rgba(60,30,45,.16); }
+.phone { max-height: 152mm; width: auto; border-radius: 5mm; box-shadow: none; border: 0.3mm solid #E6DEE3; }
+.quer { width: 100%; border-radius: 3mm; box-shadow: none; border: 0.3mm solid #E6DEE3; }
 .textspalte { flex: 1; display: flex; flex-direction: column; padding-top: 4mm; padding-bottom: 12mm; overflow: hidden; }
 .pfad { display: flex; flex-wrap: wrap; align-items: center; gap: 1.5mm; margin-bottom: 6mm; }
 .stufe { font-size: 8.5pt; font-weight: 600; background: #F2EDF0; color: #4A424A; border-radius: 99px; padding: 1.4mm 3.5mm; }
 .pfeil { color: #B9AFB6; font-size: 9pt; }
+.pfad-weg { display: flex; flex-wrap: wrap; align-items: center; gap: 1.5mm; flex-basis: 100%; }
+.pfad-weg + .pfad-weg { margin-top: 1.6mm; }
+.oder { font-size: 8pt; color: #8A7F85; margin-right: .5mm; }
 .thema ul { list-style: none; margin: 0 0 6mm; padding: 0; }
 .thema li { font-size: 11pt; line-height: 1.5; color: #3A333A; padding-left: 7mm; margin-bottom: 3.6mm; position: relative; }
 .thema li::before { content: ""; position: absolute; left: 0; top: 2.1mm; width: 2.6mm; height: 2.6mm;

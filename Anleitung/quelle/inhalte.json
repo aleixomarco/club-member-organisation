@@ -20,9 +20,9 @@
     "punkte": [
      "Oben stehen dein Vorname, das Wappen deines Vereins und die Glocke für Benachrichtigungen.",
      "Bei mehreren Mannschaften wählst du oben die Mannschaft aus, mit dem Stern legst du deine Standardmannschaft fest.",
-     "Darunter stehen dein nächstes Spiel und dein nächstes Training.",
-     "Geburtstage des Tages erscheinen als farbige Zeile.",
-     "Unter „Mitmachen“ führen Kacheln zu Athlet/in der Saison, Tippspiel, Helferplanung, Aufgaben und Vereinsfahrzeugen."
+     "Darunter stehen dein nächstes Spiel und dein nächstes Training; als Fan siehst du nur die Spiele.",
+     "Dann folgen die neuesten Vereins-News, darunter unter „Mitmachen · Aktionen & Abstimmungen“ die Kacheln zu Athlet/in der Saison, Tippspiel, Helferplanung, Aufgaben und Vereinsfahrzeugen – Helferplanung und Aufgaben öffnen den Reiter Support. Ganz unten stehen die Umfragen unter „Deine Stimme zählt“.",
+     "Geburtstage des Tages erscheinen als farbige Zeile."
     ],
     "hinweis": "Welche Kacheln du siehst, entscheidet dein Verein. Ein Schloss heißt: Der Verein hat dafür noch keinen Vollzugang.",
     "bildschirm": "Startseite"
@@ -53,29 +53,45 @@
     "bildschirm": "Termine > aufgeklappter Auswärtstermin"
    },
    {
-    "titel": "Helferdienste übernehmen",
-    "wo": "Home > Kachel „Helferplanung“",
+    "titel": "Der Reiter Support",
+    "wo": "Untere Leiste > Support (neben Chat)",
     "punkte": [
-     "Die Kachel zeigt schon auf der Startseite, ob du zu einem Dienst eingeteilt bist.",
+     "Im Reiter Support liegen alle Aufgaben und Helferdienste deines Vereins an einem Ort.",
+     "Ganz oben steht „Für dich eingeteilt“: jeder Dienst, für den du eingeteilt bist, mit Termin und Datum. Ein Tipp öffnet ihn.",
+     "Darunter wählst du zwischen „Aufgaben“ und „Helferdienste“.",
+     "Du siehst die Aufgaben des Vereins, deiner eigenen Mannschaften und die dir aus einem Protokoll zugewiesenen – immer nur für den Verein, den du gerade geöffnet hast.",
+     "Eine Benachrichtigung bekommst du nur, wenn dir jemand eine Aufgabe, eine Station, einen Helferdienst oder eine Protokollaufgabe zuweist; am Abend vorher erinnert dich die App, wenn du eingeteilt oder eingetragen bist. Neue Aufgaben im Verein melden sich nicht bei allen."
+    ],
+    "hinweis": "Fans haben keinen Support-Reiter. Er braucht den Vollzugang des Vereins.",
+    "bildschirm": "Support (mit „Für dich eingeteilt“)"
+   },
+   {
+    "titel": "Helferdienste übernehmen",
+    "wo": "Support > Helferdienste",
+    "punkte": [
+     "Ob du zu einem Dienst eingeteilt bist, zeigen dir die Kachel auf der Startseite und „Für dich eingeteilt“ im Reiter Support.",
      "In der Liste stehen alle Termine mit offenen Stationen, etwa Theke, Kasse oder Zeitnahme.",
      "Ein Tipp auf eine Station trägt dich ein, ein zweiter trägt dich aus.",
-     "Bei einem Heimspiel übernimmst du Stationen auch direkt im Termin."
+     "Bei einem Heimspiel übernimmst du Stationen auch direkt im Termin.",
+     "Die Kachel „Helferplanung“ auf der Startseite führt ebenfalls hierher."
     ],
     "hinweis": "An Heimspielen hilfst du erst ab 16 mit; bist du jünger, nennt dir die App Familienmitglieder, die einspringen können. Fans helfen nicht mit. Braucht den Vollzugang, und der Verein kann die Helferplanung ausblenden.",
-    "bildschirm": "Startseite > Helferplanung"
+    "bildschirm": "Support > Helferdienste"
    },
    {
     "titel": "Aufgaben übernehmen",
-    "wo": "Home > Kachel „Aufgaben“",
+    "wo": "Support > Aufgaben",
     "punkte": [
-     "Ganz oben stehen Aufgaben, die dir aus einer Vorstandssitzung persönlich zugewiesen wurden, die hakst du mit „Als erledigt“ ab.",
+     "Unter „Aufgaben“ stehen zuerst die Aufgaben, die dir aus einer Vorstandssitzung (Protokoll) persönlich zugewiesen wurden; die hakst du mit „Als erledigt“ ab.",
      "Darunter folgen die Aufgaben des Vereins und deiner Mannschaften.",
      "Jede Karte zeigt, wie viele Plätze frei sind und bis wann die Aufgabe fällig ist.",
      "Mit „Eintragen“ meldest du dich, mit „Austragen“ wieder ab.",
-     "Danach setzt du die Aufgabe auf „Erledigt“."
+     "Danach setzt du die Aufgabe auf „Erledigt“.",
+     "Eine Benachrichtigung bekommst du nur, wenn dir jemand eine Aufgabe zuweist; am Abend vor der Frist erinnert dich die App, wenn du eingetragen oder verantwortlich bist.",
+     "Die Kachel „Aufgaben“ auf der Startseite führt ebenfalls hierher."
     ],
     "hinweis": "Neue Aufgaben legen nur Rollen mit Verantwortung an, du trägst dich ein. Braucht den Vollzugang.",
-    "bildschirm": "Startseite > Aufgaben"
+    "bildschirm": "Support > Aufgaben"
    },
    {
     "titel": "Vereinsfahrzeug anfragen",
@@ -106,13 +122,13 @@
     "titel": "News und Umfragen",
     "wo": "Home > „Neueste Nachrichten“ und „Deine Stimme zählt“",
     "punkte": [
-     "Die zwei neuesten Vereins-News stehen auf der Startseite, mit Bild, falls eines dabei ist.",
-     "Darunter stehen laufende Umfragen, ein Tipp auf eine Antwort gibt deine Stimme ab.",
+     "Die zwei neuesten Vereins-News stehen auf der Startseite direkt unter Spiel und Training, mit Bild, falls eines dabei ist.",
+     "Unter den Kacheln bei „Mitmachen“ stehen unter „Deine Stimme zählt“ die laufenden Umfragen; ein Tipp auf eine Antwort gibt deine Stimme ab.",
      "Erst nach dem Abstimmen siehst du, wie die anderen gestimmt haben.",
      "Mit „Auswahl zurücknehmen“ löschst du deine Stimme."
     ],
     "hinweis": "Eine eigene News-Seite haben nur Redakteure, du liest die Nachrichten auf der Startseite.",
-    "bildschirm": "Startseite"
+    "bildschirm": "Startseite > Vereins-News"
    },
    {
     "titel": "Tippspiel und Athlet/in der Saison",
@@ -129,11 +145,11 @@
    },
    {
     "titel": "Mannschaften und Strafenkatalog",
-    "wo": "Untere Leiste > Teams; Strafenkatalog unter Profil > Einstellungen",
+    "wo": "Untere Leiste > Teams",
     "punkte": [
      "Unter „Teams“ stehen zuerst deine Mannschaften, darunter alle des Vereins.",
      "Ein Tipp auf eine Mannschaft zeigt ihren Kader.",
-     "Im Profil öffnest du den Strafenkatalog und siehst, was welche Strafe kostet.",
+     "Im Profil öffnest du unter „Einstellungen“ den Strafenkatalog und siehst, was welche Strafe kostet.",
      "Oben wählst du dort die Mannschaft, aufgeführt sind nur Erwachsenenmannschaften."
     ],
     "hinweis": "Einer Mannschaft zuordnen können dich nur Trainer, Teammanager oder die Vereinsleitung. Offene Strafen sehen nur die Verantwortlichen der Mannschaft, und der Trainer kann den Katalog ganz ausblenden. Teams braucht den Vollzugang.",
@@ -144,10 +160,11 @@
     "wo": "Untere Leiste > Profil; Glocke oben rechts",
     "punkte": [
      "Die Glocke oben rechts zeigt ungelesene Meldungen, ein Tipp öffnet dein Postfach, dort liest, markierst oder löschst du sie.",
+     "Ein Tipp auf eine Meldung führt direkt dorthin, worum es geht: zur News, zum Termin, zur Aufgabe oder zum Helferdienst.",
      "Im Profil stehen oben dein Name, deine Mannschaften und deine Rollen.",
      "Unter „Persönliche Daten“ pflegst du Stammdaten, Adresse, Telefonnummern und Familienverknüpfungen.",
      "Der Balken „Vereinspunkte“ zeigt, wie weit du vom Ziel des Vereins entfernt bist.",
-     "Unter „Benachrichtigungen“ schaltest du Push-Nachrichten ein und legst für jede Art fest, ob du sie bekommst."
+     "Unter „Benachrichtigungen & Kalender“ schaltest du Push-Nachrichten ein und legst für jede Art fest, ob du sie bekommst."
     ],
     "hinweis": "Punkte gibt es fürs Mitmachen: Helferdienste, Aufgaben, Umfragen, Tipps und Vereinstreue; Ziel und Prämie legt der Verein fest. Deine Anmelde-E-Mail änderst du hier nicht. Sprache, Einladungslink, Fehlermeldung und „Konto löschen“ stehen ebenfalls im Profil, übersetzt sind bisher vor allem Anmeldung und Registrierung.",
     "bildschirm": "Profil / Benachrichtigungen"
@@ -161,15 +178,15 @@
   "abschnitte": [
    {
     "titel": "Dein Trainerbereich",
-    "wo": "Reiter Profil > Abschnitt \"Trainerbereich\"",
+    "wo": "Reiter Profil > Abschnitt \"Trainerbereich\" > \"Trainer & Rollen\"",
     "punkte": [
-     "Mit der Trainerrolle erscheint im Reiter Profil der Abschnitt \"Trainerbereich\".",
+     "Mit der Trainerrolle erscheint im Reiter Profil der Abschnitt \"Trainerbereich\"; tippe dort auf \"Trainer & Rollen\".",
      "Darin findest du \"Trainer & Rollen\" und \"Mannschaftseinstellungen\".",
      "Unter \"Trainer & Rollen\" stehen alle Mannschaften, für die du eingetragen bist.",
      "Wer dort eingetragen ist, bestimmt der Vereinsadmin — ändern kannst du das hier nicht."
     ],
     "bildschirm": "Profil > Trainerbereich",
-    "hinweis": "Je Mannschaft gibt es nur eine Trainerin oder einen Trainer; ist der Platz besetzt, lehnt die App eine zweite Eintragung ab. Teammanager dürfen mehrere sein."
+    "hinweis": "Je Mannschaft gibt es nur eine Trainerin oder einen Trainer; ist der Platz besetzt, lehnt die App eine zweite Eintragung ab. Einen Teammanager gibt es je Mannschaft nur einmal – eine Person kann aber mehrere Mannschaften betreuen."
    },
    {
     "titel": "Was deine Mannschaft sieht",
@@ -191,7 +208,7 @@
      "Wähle unter \"Mannschaft\" das Team aus.",
      "Wähle darunter unter \"Kapitän\" jemanden aus dem Kader.",
      "Zur Auswahl stehen nur aktive Athletinnen und Athleten dieser Mannschaft.",
-     "Tippe auf \"Speichern\", fertig."
+     "Tippe auf „Kapitän speichern“, fertig."
     ],
     "bildschirm": "Profil > Trainerbereich > Trainer & Rollen",
     "hinweis": "Jede Mannschaft hat genau einen Kapitän; wählst du jemand Neues, gibt der bisherige die Rolle in dieser Mannschaft ab."
@@ -200,7 +217,7 @@
     "titel": "Training oder Spiel ansetzen",
     "wo": "Reiter Termine > Knopf \"＋ Eintragen\"",
     "punkte": [
-     "Wähle oben \"Training\" oder \"Spiel\" und darunter deine Mannschaft.",
+     "Wähle oben unter „Art“ „Training“ oder „Spiel“ und daneben unter „Mannschaft“ deine Mannschaft; über dem Formular steht, welche Mannschaften du auswählen kannst.",
      "Zur Auswahl stehen nur die Mannschaften, für die du eingetragen bist.",
      "Trage Titel, Datum, Beginn, Ende und Ort ein.",
      "Kreuzt du bei einem Training \"Wiederholend\" an, wählst du Wochentage und Zeitraum, und die App legt die ganze Reihe an.",
@@ -236,13 +253,13 @@
    },
    {
     "titel": "Kader und Aufgaben",
-    "wo": "Reiter Teams > Mannschaft antippen; Startseite > Kachel \"Aufgaben\"",
+    "wo": "Reiter Teams > Mannschaft antippen",
     "punkte": [
      "Im Reiter Teams öffnest du deine Mannschaft und siehst den Kader.",
      "Mit \"+ Zuweisen\" ordnest du Athletinnen und Athleten der Mannschaft zu, höchstens drei Mannschaften je Person.",
      "Für Kinder ohne eigenes Handy legst du dort \"Spieler ohne Account\" mit Vor- und Nachnamen an.",
      "Tippst du eine Person im Kader an, siehst du ihre offenen Strafen und kannst ihr direkt eine geben.",
-     "Über die Kachel \"Aufgaben\" auf der Startseite legst du unter \"Aufgaben · deine Mannschaft\" Aufgaben an und teilst Verantwortliche ein."
+     "Im Reiter Support unter „Aufgaben“ legst du im Abschnitt mit dem Namen deiner Mannschaft (z. B. „Aufgaben · Herren 1“) Aufgaben an und teilst Verantwortliche ein; nur sie bekommen eine Benachrichtigung."
     ],
     "bildschirm": "Teams > einzelne Mannschaft",
     "hinweis": "Den Reiter Teams und die Aufgaben gibt es nur, wenn der Verein freigeschaltet ist; sonst steht dort ein Hinweis."
@@ -271,14 +288,25 @@
     "titel": "Dein Reiter Verwaltung",
     "wo": "Unten in der Leiste > Reiter „Verwaltung“ (Schild-Symbol) neben „Profil“",
     "punkte": [
-     "Mit deiner Rolle bekommst du unten den Reiter „Verwaltung“.",
-     "Ganz oben steht deine Aufgabenliste: offene Mitgliedsanträge, fehlende Spielergebnisse, fällige Aufgaben und Fahrzeuganfragen.",
-     "Tippst du eine Zeile an, springst du dorthin, wo du sie erledigst.",
-     "Darunter stehen deine Bereiche: Übersicht, Spielergebnisse, Vereinsprofil, Mitgliedsanträge, Funktionen, Automatisierung, Helferplanung, Protokolle, Umfragen, Sponsoring, Athlet/in der Saison und Rollen.",
+     "Mit deiner Rolle bekommst du unten den Reiter „Verwaltung“, direkt neben „Profil“.",
+     "Oben stehen deine Bereiche: Übersicht, Spielergebnisse/Tippspiel, Funktionen, Vereinsprofil, Mitgliedsanträge, Automatisierung, Helferdienst-Sätze, Protokolle, Umfragen, Sponsoring, Athlet/in der Saison und Rollen.",
+     "Deine offenen Punkte – wartende Anträge, fehlende Spielergebnisse, fällige Aufgaben, unbesetzte Helferstationen, Fahrzeuganfragen – stehen im Reiter „Support“ in der Tafel „offene Punkte“, direkt unter „Für dich eingeteilt“.",
      "Über das Zahnrad im Profil erreichst du „Verein & Mitgliedschaft“, „Vereinseinstellungen“ und „Zugang des Vereins“."
     ],
-    "bildschirm": "Verwaltung (Übersicht mit Aufgabenliste und Bereichen)",
+    "bildschirm": "Verwaltung (Bereiche)",
     "hinweis": "Der ganze Reiter braucht den Vollzugang des Vereins. Ohne Freischaltung siehst du dort nur ein Schloss und diesen Hinweis."
+   },
+   {
+    "titel": "Support: offene Punkte und Helfer einteilen",
+    "wo": "Untere Leiste > Support",
+    "punkte": [
+     "Unter „Helfer einteilen“ siehst du alle Termine mit Helferstationen und teilst über „+ Mitglied zuteilen“ Mitglieder ein; das × am Namen nimmt sie wieder heraus. Die Eingeteilten bekommen eine Benachrichtigung.",
+     "Über den Knöpfen, direkt unter „Für dich eingeteilt“, steht die Tafel mit den offenen Punkten deines Vereins: wartende Mitgliedsanträge, fehlende Spielergebnisse, fällige Aufgaben, unbesetzte Helferstationen und Fahrzeuganfragen.",
+     "Ein Tipp auf einen offenen Punkt bringt dich dorthin, wo du ihn erledigst.",
+     "Unter „Aufgaben“ legst du Vereins- und Mannschaftsaufgaben an. Benachrichtigt werden nur die Verantwortlichen, nicht der ganze Verein."
+    ],
+    "hinweis": "Die Tafel mit den offenen Punkten sehen Vereinsadmin und Organisation; ist nichts offen, steht dort „Nichts offen“. Fans lassen sich nicht einteilen.",
+    "bildschirm": "Support > Helfer einteilen"
    },
    {
     "titel": "Zugang und Abo",
@@ -287,7 +315,8 @@
      "Unter „Zugang des Vereins“ siehst du, ob der Vollzugang läuft und wie viele bezahlte Zugänge belegt sind.",
      "Fehlt der Vollzugang, stellst du hier die Anfrage: Ansprechpartner, Rechnungsmail, Telefon, Zahl der Zugänge und ob ihr eigenes Sponsoring wollt.",
      "Du kannst die Anfrage wieder zurückziehen; mehr als eine offene Anfrage je Verein geht nicht.",
-     "Dich kostet die App nichts, bezahlt wird immer vom Verein."
+     "Dich kostet die App nichts, bezahlt wird immer vom Verein.",
+     "Nutzt ihr die kostenlose Stufe mit drei Zugängen, steht oben auf der Startseite „Mehr Zugänge für euren Verein?“; ein Tipp öffnet eine fertige E-Mail an info@idbranding.de."
     ],
     "bildschirm": "Profil > Zugang des Vereins",
     "hinweis": ""
@@ -310,7 +339,8 @@
     "punkte": [
      "Oben stehen die offenen Anträge mit Name, E-Mail, gewünschter Rolle und Wunschmannschaft.",
      "Mit „Freigeben“ nimmst du die Person auf; „Ablehnen“ heißt nur „diesmal nicht“, sie darf sich sofort wieder bewerben.",
-     "Unter „Mitglieder verwalten“ beendest du eine Mitgliedschaft, reaktivierst sie oder sperrst jemanden dauerhaft; nur die Sperre hält eine neue Anfrage auf.",
+     "Wird jemand aufgenommen, bekommen Vereinsadmin und Organisation die Benachrichtigung „Neues Mitglied“; die übrigen Mitglieder bekommen keine.",
+     "Unter „Mitgliedschaften verwalten“ beendest du eine Mitgliedschaft („Beenden“), holst sie zurück („Reaktivieren“) oder sperrst jemanden dauerhaft („Sperren“); nur die Sperre hält eine neue Anfrage auf.",
      "„Entfernen“ löscht die Mitgliedschaft endgültig samt Rollen, Mannschaft und Helfereinteilungen; das Konto der Person bleibt.",
      "Name, Kontaktmail, Geburtstag, Mitglied seit, Status, Rollen, Teams und Familie änderst du im Profil unter „Verein & Mitgliedschaft“ > „Benutzerverwaltung“."
     ],
@@ -335,7 +365,7 @@
     "wo": "Reiter „Verwaltung“ > „Vereinsprofil“",
     "punkte": [
      "Oben wählst du das Vereinslogo aus deinen Bildern: JPG, PNG oder WebP bis 2 MB.",
-     "Darunter stellst du die beiden Vereinsfarben ein und speicherst.",
+     "Darunter wählst du unter „Vereinsfarben“ ein Farbpaar, zum Beispiel „Rot & Schwarz“, oder stellst deine eigenen zwei Farben ein.",
      "Die Farben gelten in der ganzen App und für alle Mitglieder.",
      "Ein neues Logo ersetzt das alte sofort."
     ],
@@ -343,7 +373,7 @@
    },
    {
     "titel": "Funktionen ein- und ausschalten",
-    "wo": "Reiter „Verwaltung“ > „Funktionen“ (oder Profil > „Vereinseinstellungen“)",
+    "wo": "Reiter „Verwaltung“ > „Funktionen“; oder Profil > „Vereinseinstellungen“",
     "punkte": [
      "Je Funktion gibt es einen Schalter: Helferplanung, Fahrzeugbuchung, Tippspiel und Athlet/in der Saison.",
      "Was du abschaltest, sehen die Mitglieder nicht mehr.",
@@ -368,16 +398,16 @@
    },
    {
     "titel": "Weitere Bereiche der Verwaltung",
-    "wo": "Reiter „Verwaltung“ > Protokolle, Umfragen, Helferplanung, Sponsoring, Automatisierung, Athlet/in der Saison",
+    "wo": "Reiter „Verwaltung“ > Protokolle, Umfragen, Helferdienst-Sätze, Sponsoring, Automatisierung, Athlet/in der Saison",
     "punkte": [
-     "In „Protokolle“ hältst du Sitzungen mit Datum, Anwesenden und Text fest und machst daraus Aufgaben mit Verantwortlichem und Frist.",
+     "In „Protokolle“ hältst du Sitzungen mit Datum, Anwesenden und Text fest und machst daraus Aufgaben mit Verantwortlichem und Frist; der Verantwortliche wird benachrichtigt.",
      "In „Umfragen“ veröffentlichst du eine Frage mit mindestens zwei Antworten und stellst sie später auf inaktiv.",
-     "In „Helferplanung“ legst du Stationen als Vorlage an, pflegst die Helfersätze und teilst Helfer auf Termine ein.",
+     "In „Helferdienst-Sätze“ legst du Stationen als Vorlage an und pflegst die Helfersätze; eingeteilt wird im Reiter „Support“ unter „Helfer einteilen“.",
      "In „Sponsoring“ bereitest du Anzeigen für die Werbeplätze der App vor und legst die Laufzeiten fest.",
-     "In „Automatisierung“ schaltest du die Begrüßung neuer Mitglieder im Kanal „Vereins-News“ ein."
+     "In „Automatisierung“ schaltest du den Willkommensbeitrag für neue Mitglieder ein; er steht in den News, ohne alle zu benachrichtigen."
     ],
     "bildschirm": "Verwaltung > Protokolle",
-    "hinweis": "Sponsoring-Anzeigen kannst du immer vorbereiten, sichtbar werden sie erst mit dem Sponsoring-Zusatz. Helferplanung und Athlet/in der Saison verschwinden, wenn du sie unter „Funktionen“ abschaltest."
+    "hinweis": "Schaltest du unter „Funktionen“ die Helferplanung ab, verschwinden hier die „Helferdienst-Sätze“ und im Reiter „Support“ die Helferdienste. Ebenso verschwindet „Athlet/in der Saison“, wenn du es abschaltest. Sponsoring-Anzeigen kannst du immer vorbereiten, sichtbar werden sie erst mit dem Sponsoring-Zusatz."
    }
   ],
   "einleitung": "Die Vereinsadministration ist die höchste Rolle im Verein. Du nimmst Mitglieder auf, vergibst Rollen, legst Mannschaften an, pflegst Logo und Farben und schaltest Funktionen für alle ein oder aus.",
@@ -388,11 +418,11 @@
   "abschnitte": [
    {
     "titel": "Termine anlegen",
-    "wo": "Reiter \"Termine\" > Knopf \"+\" oben rechts",
+    "wo": "Reiter \"Termine\" > Knopf \"＋ Eintragen\" oben rechts",
     "punkte": [
      "Du legst Trainings und Spiele für jede Mannschaft an, nicht nur für deine eigene.",
      "Im Formular wählst du Art, Mannschaft, Titel, Ort und Zeit; beim Spiel setzt du den Haken \"Heimspiel\".",
-     "Beim Training kreuzt du \"wiederholend\" an, wählst Wochentage, Uhrzeit und Zeitraum, und die ganze Reihe entsteht.",
+     "Beim Training kreuzt du \"Wiederholend\" an, wählst Wochentage, Uhrzeit und Zeitraum, und die ganze Reihe entsteht.",
      "Unter \"Helferstationen\" trägst du gleich ein, welche Dienste es an diesem Termin gibt."
     ],
     "bildschirm": "Termine > Termin eintragen (Formular)",
@@ -412,14 +442,14 @@
    },
    {
     "titel": "Sätze und Stationen anlegen",
-    "wo": "Reiter \"Verwaltung\" unten > Kachel \"Sätze & Stationen\"",
+    "wo": "Reiter \"Verwaltung\" unten > Knopf \"Helferdienst-Sätze\"",
     "punkte": [
      "Den Reiter \"Verwaltung\" siehst du wegen deiner Rolle, dort aber nur deine Bereiche.",
      "Ein Satz ist eine Vorlage wie \"Heimspiel\": Du gibst ihm einen Namen und legst ihn an.",
      "Zu jedem Satz fügst du Stationen hinzu, etwa Kasse, Theke oder Zeitnahme; einzelne Stationen und ganze Sätze löschst du wieder.",
      "Diese Sätze lädst du später an jedem Termin mit einem Tipp vor."
     ],
-    "bildschirm": "Verwaltung > Sätze & Stationen",
+    "bildschirm": "Verwaltung > Helferdienst-Sätze",
     "hinweis": "Der Vereinsadmin muss die Helferplanung unter \"Funktionen\" eingeschaltet und der Verein freigeschaltet sein. Die Kachel \"Umfragen\" siehst du dort auch, anlegen darf Umfragen aber nur die Vereinsleitung."
    },
    {
@@ -436,22 +466,22 @@
    },
    {
     "titel": "Helfer einteilen",
-    "wo": "Reiter \"Termine\" > Termin aufklappen > Helferstationen",
+    "wo": "Reiter \"Support\" > \"Helfer einteilen\"; oder Reiter \"Termine\" > Termin aufklappen > Helferstationen",
     "punkte": [
+     "Im Reiter Support unter \"Helfer einteilen\" siehst du alle Termine mit Helferstationen auf einen Blick.",
      "Bei jeder Station siehst du, wer eingetragen ist; zwei Personen passen hinein.",
-     "Über \"Jemanden eintragen\" wählst du Person und Station und trägst sie selbst ein.",
-     "Ein Tipp auf einen Namen nimmt die Person wieder heraus.",
-     "Die Kachel \"Helferplanung\" auf der Startseite zeigt alle Termine mit offenen Helferstellen."
+     "Im Reiter Support wählst du bei jeder Station über \"+ Mitglied zuteilen\" eine Person aus; das × am Namen nimmt sie wieder heraus. In der aufgeklappten Terminkarte geht dasselbe über \"Jemanden eintragen\" mit Person und Station.",
+     "Wen du einteilst, der bekommt eine Benachrichtigung; wer sich selbst einträgt, nicht."
     ],
-    "bildschirm": "Termine > Terminkarte, Abschnitt Helferstationen",
+    "bildschirm": "Support > Helfer einteilen",
     "hinweis": "An Heimspielen teilst du nur Mitglieder ab 16 Jahren ein, bei anderen Terminen gilt das nicht."
    },
    {
     "titel": "Aufgaben und Fahrzeuge",
-    "wo": "Startseite > Kachel \"Aufgaben\" oder \"Fahrzeuge\"",
+    "wo": "Reiter \"Support\" > \"Aufgaben\"; Home > Kachel \"Vereinsfahrzeuge\"",
     "punkte": [
      "Unter \"Aufgaben\" legst du Aufgaben für den Verein und für jede Mannschaft an, mit Beschreibung, Frist und Zahl der Plätze.",
-     "Verantwortliche trägst du gleich beim Anlegen ein; andere Mitglieder melden sich selbst freiwillig.",
+     "Verantwortliche trägst du gleich beim Anlegen ein, nur sie werden benachrichtigt; andere Mitglieder melden sich selbst freiwillig.",
      "Löschen darf eine Aufgabe nur, wer sie angelegt hat; ändern darfst du auch fremde.",
      "Fahrzeuge buchst du direkt ohne Anfrage und nimmst Anfragen anderer an oder lehnst sie ab."
     ],
@@ -460,12 +490,12 @@
    },
    {
     "titel": "Mitglieder und offene Punkte",
-    "wo": "Reiter \"Profil\" > \"Verein & Mitgliedschaft\"; offene Punkte oben im Reiter \"Verwaltung\"",
+    "wo": "Reiter \"Profil\" > \"Verein & Mitgliedschaft\"; Reiter \"Support\" > offene Punkte",
     "punkte": [
-     "Unter \"Beitrittsanfragen\" nimmst du neue Mitglieder an oder lehnst sie ab; neue Anfragen meldet dir die Glocke.",
+     "Unter \"Beitrittsanfragen\" nimmst du neue Mitglieder an oder lehnst sie ab; neue Anfragen und neue Mitglieder meldet dir die Glocke.",
      "Unter \"Benutzerverwaltung\" pflegst du Name, E-Mail, Geburtsdatum, Eintrittsjahr und Mannschaften eines Mitglieds.",
      "\"Mitgliederübersicht\" zeigt dir alle Mitglieder zum Nachlesen.",
-     "Oben im Reiter \"Verwaltung\" stehen die offenen Punkte: wartende Anträge, fehlende Spielergebnisse, fällige Aufgaben. Ein Tipp bringt dich hin."
+     "Oben im Reiter \"Support\" stehen die offenen Punkte: wartende Anträge, fehlende Spielergebnisse, fällige Aufgaben, unbesetzte Helferstationen und Fahrzeuganfragen. Ein Tipp bringt dich hin."
     ],
     "bildschirm": "Profil > Verein & Mitgliedschaft",
     "hinweis": "Rollen vergeben, das Vereinsprofil ändern und Funktionen ein- oder ausschalten darf nur der Vereinsadmin."
@@ -560,9 +590,9 @@
   "abschnitte": [
    {
     "titel": "Dein Reiter Redaktion",
-    "wo": "Unten in der Leiste auf „Redaktion“ tippen, zwischen „Mannschaften“ und „Chat“.",
+    "wo": "Unten in der Leiste auf „Redaktion“ tippen, zwischen „Teams“ und „Chat“.",
     "punkte": [
-     "Diesen Reiter sehen nur Redakteure und die Vereinsleitung.",
+     "Diesen Reiter sehen nur Redakteure und Vereins-Administratoren; Organisator/innen haben ihn nicht.",
      "Oben rechts tippst du auf „+ Neue News“ und schreibst Titel und Text.",
      "Ein Bild kannst du dazulegen: JPG, PNG oder WEBP, höchstens 5 MB.",
      "Solange Titel oder Text fehlen, bleibt „Veröffentlichen“ grau.",
@@ -587,7 +617,7 @@
     "wo": "Startseite > Abschnitt „Vereins-News“, bei jedem Mitglied.",
     "punkte": [
      "Auf der Startseite stehen die zwei neuesten Nachrichten mit Bild und Datum.",
-     "„Alle ansehen“ bringt dich zurück in deinen Reiter Redaktion.",
+     "Neben „Neueste Nachrichten“ steht bei dir und der Vereinsleitung „Alle ansehen“, der Link bringt dich in deinen Reiter Redaktion. Normale Mitglieder wie im Bild haben ihn nicht.",
      "Jede neue News meldet die App allen aktiven Mitgliedern des Vereins.",
      "Wer das nicht will, stellt es unter Profil > Benachrichtigungen bei „Vereins-News“ ab."
     ],
@@ -628,66 +658,66 @@
   "abschnitte": [
    {
     "titel": "Familie im Profil öffnen",
-    "wo": "Reiter „Profil\" > Kachel „Persönliche Daten\" > „Familie\"",
+    "wo": "Reiter „Profil“ > Kachel „Persönliche Daten“ > „Familie“",
     "punkte": [
      "Oben siehst du deinen Stammbaum mit Großeltern, Eltern und Kindern.",
      "Ist noch niemand eingetragen, steht dort nur ein Hinweis.",
      "Darunter steht, ob du für Heimspiel-Helferdienste alt genug bist (ab 16).",
-     "Ganz unten liegt „Familienverknüpfung\" mit dem Knopf „＋ Verknüpfen\"."
+     "Ganz unten liegt „Familienverknüpfung“ mit dem Knopf „＋ Verknüpfen“."
     ],
     "bildschirm": "Profil > Persönliche Daten > Familie",
     "hinweis": "Diesen Bereich hat jedes Mitglied, ohne besondere Rolle und ohne Freischaltung."
    },
    {
     "titel": "Vorhandenes Profil verknüpfen",
-    "wo": "Reiter „Profil\" > „Persönliche Daten\" > „Familie\" > Knopf „＋ Verknüpfen\"",
+    "wo": "Reiter „Profil“ > „Persönliche Daten“ > „Familie“ > Knopf „＋ Verknüpfen“",
     "punkte": [
      "Wähle zuerst, was du für die andere Person bist: Vater, Mutter, Sohn, Tochter, Opa oder Oma.",
-     "Tippe den Namen ins Suchfeld und bei der richtigen Person auf „Verbinden\".",
+     "Tippe den Namen ins Suchfeld und bei der richtigen Person auf „Verbinden“.",
      "Die Verknüpfung steht danach in beiden Profilen, die andere Person muss nichts bestätigen.",
-     "Mit „Löschen\" neben dem Eintrag löst du die Verbindung wieder, auch auf der anderen Seite."
+     "Mit „Löschen“ neben dem Eintrag löst du die Verbindung wieder, auch auf der anderen Seite."
     ],
     "bildschirm": "Profil > Persönliche Daten > Familie, Bereich „Familienverknüpfung\" aufgeklappt",
     "hinweis": "Die Suche findet nur Personen mit eigenem Konto in deinem Verein. Profile ohne Konto tauchen dort nicht auf."
    },
    {
     "titel": "Kind ohne Konto anlegen",
-    "wo": "Reiter „Profil\" > „Persönliche Daten\" > „Familie\" > „＋ Verknüpfen\" > „Vater\" oder „Mutter\" > „Kind ohne Account vorläufig anlegen\"",
+    "wo": "Reiter „Profil“ > „Persönliche Daten“ > „Familie“ > „＋ Verknüpfen“ > „Vater“ oder „Mutter“ > „Kind ohne Account vorläufig anlegen“",
     "punkte": [
-     "Trage Vor- und Nachnamen ein und tippe auf „Anlegen\".",
+     "Trage Vor- und Nachnamen ein und tippe auf „Anlegen“.",
      "Dein Kind bekommt sofort ein betreutes Profil mit den Rollen Mitglied und Athlet/in.",
      "Die Verknüpfung zu dir entsteht dabei automatisch.",
      "Mehr als den Namen trägst du hier nicht ein, Mannschaft und Geburtsdatum ergänzt später der Trainer oder die Vereinsverwaltung."
     ],
     "bildschirm": "Profil > Persönliche Daten > Familie, Bereich „Kind ohne Account vorläufig anlegen\"",
-    "hinweis": "Das Feld erscheint nur, wenn du oben „Vater\" oder „Mutter\" gewählt hast. Ein betreutes Profil hat kein Passwort und keine E-Mail, dein Kind kann sich damit nicht anmelden."
+    "hinweis": "Das Feld erscheint nur, wenn du oben „Vater“ oder „Mutter“ gewählt hast. Ein betreutes Profil hat kein Passwort und keine E-Mail, dein Kind kann sich damit nicht anmelden."
    },
    {
     "titel": "Was die Verknüpfung bringt",
-    "wo": "Reiter „Chat\" und Glocke oben; Reiter „Profil\" > „Benachrichtigungen & Kalender\"",
+    "wo": "Reiter „Chat“ und Glocke oben; Reiter „Profil“ > „Benachrichtigungen & Kalender“",
     "punkte": [
      "Im Chat siehst du den Mannschaftskanal deines Kindes, auch wenn du selbst nicht in der Mannschaft bist.",
      "Lesen ja, schreiben nein: dort schreiben nur Trainer, Kapitän, Teammanager und die Vereinsverwaltung.",
      "Du bekommst Meldungen zu Trainings und Spielen der Mannschaft, neu, geändert oder abgesagt.",
-     "Unter „Benachrichtigungen\" schaltest du einzelne Meldungen ab, darunter den Schalter „Familienverknüpfungen\"."
+     "Unter „Benachrichtigungen“ schaltest du einzelne Meldungen ab, darunter den Schalter „Familienverknüpfungen“."
     ],
     "bildschirm": "Chat mit dem Mannschaftskanal des Kindes",
     "hinweis": "Das greift erst, wenn dein Kind in einer Mannschaft ist. Ohne Mannschaft gibt es weder Kanal noch Termin-Meldungen."
    },
    {
     "titel": "Betreutes Profil zusammenführen",
-    "wo": "Dein Kind registriert sich selbst; danach Reiter „Verwaltung\" > „Rollen\" > „Profile ohne Konto zusammenführen\"",
+    "wo": "Dein Kind registriert sich selbst; danach Reiter „Verwaltung“ > „Rollen“ > „Profile ohne Konto zusammenführen“",
     "punkte": [
      "Dein Kind legt sich ein eigenes Konto an und tritt damit dem Verein bei.",
-     "Danach wählt ein Vereins-Administrator das alte Platzhalter-Profil und das neue Konto aus und tippt auf „Zusammenführen\".",
+     "Danach wählt ein Vereins-Administrator das alte Platzhalter-Profil und das neue Konto aus und tippt auf „Zusammenführen“.",
      "Rollen, Mannschaften, Familienverknüpfungen, Beiträge, Aufgaben und Helferdienste wandern mit.",
      "Das betreute Profil verschwindet danach."
     ],
     "bildschirm": "Verwaltung > Rollen, Bereich „Profile ohne Konto zusammenführen\"",
-    "hinweis": "Als Elternteil kannst du das nicht selbst, diesen Bereich sieht nur der Vereins-Administrator oder der Sys-Admin."
+    "hinweis": "Als Elternteil kannst du das nicht selbst, diesen Bereich sieht nur der Vereins-Administrator oder der Sys-Admin. Der Bereich „Profile ohne Konto zusammenführen“ steht unter der Mitgliederliste und erscheint nur, solange es im Verein mindestens ein Profil ohne Konto gibt."
    }
   ],
-  "einleitung": "„Elternteil\\\" ist keine Rolle, die dir jemand zuteilt: Du trägst die Verknüpfung selbst in deinem Profil ein. Sie verbindet dein Konto mit dem deines Kindes und bringt dir dessen Mannschaftskanal und dessen Termine.",
+  "einleitung": "„Elternteil“ ist keine Rolle, die dir jemand zuteilt: Du trägst die Verknüpfung selbst in deinem Profil ein. Sie verbindet dein Konto mit dem deines Kindes und bringt dir dessen Mannschaftskanal und dessen Termine.",
   "rolle": "Elternteil"
  },
  {
@@ -699,11 +729,12 @@
     "punkte": [
      "Du meldest dich mit einem eigenen Passwort an, nicht mit deinem Vereinskonto.",
      "Ganz oben steht in einer Zeile, wie viele Vereine es gibt, wie viele freigeschaltet sind und wie viele Anfragen offen sind. Vereine an ihrer Zugangsgrenze stehen rot daneben.",
-     "Darunter liegen sechs Kacheln: Vereine, Freigeschaltet, Konten, Still, Fast voll und Gesperrt. \"Still\" und \"Fast voll\" werden rot, sobald dort etwas steht.",
+     "Darunter liegen sieben Kacheln: Vereine, Freigeschaltet, Konten, Still, Fast voll, Gesperrt und Konten gesamt. \"Still\" und \"Fast voll\" werden rot, sobald dort etwas steht.",
+     "\"Konten gesamt\" zählt jedes Konto auf der Plattform gegen die Obergrenze von vorerst 50.000. Ab 90 % wird die Kachel rot; ist die Grenze erreicht, steht darunter \"Neue Registrierungen sind pausiert\" und niemand kann sich mehr registrieren.",
      "Es gibt zwei Reiter, \"Vereine\" und \"Werbeanzeigen\", rechts oben \"Excel-Export\" und \"Abmelden\".",
      "Mit \"Excel-Export\" lädst du eine Mappe herunter: Übersicht, Vereine, Mitglieder, Mannschaften, Termine, Abos, Zugangsanfragen, Anzeigen und Anzeigen je Tag."
     ],
-    "hinweis": "In der Mappe stehen Namen, E-Mail-Adressen und Geburtsdaten echter Menschen. Behandle sie wie eine Mitgliederliste auf Papier und lösche sie, wenn du sie nicht mehr brauchst.",
+    "hinweis": "In der Mappe stehen Namen, E-Mail-Adressen und Geburtsdaten echter Menschen. Behandle sie wie eine Mitgliederliste auf Papier und lösche sie, wenn du sie nicht mehr brauchst. Die Kontengrenze hebst du im SQL-Editor von Supabase an: update public.plattform_grenzen set konten_obergrenze = 100000, geaendert_am = now() where id;",
     "bildschirm": "Vereinsverwaltung > Reiter \"Vereine\", Kopfzeile mit Kennzahlen"
    },
    {
@@ -714,7 +745,8 @@
      "Der Weg steht als Kette in der Zeile: Angefragt, Rechnung erstellt, Rechnung versendet, Bezahlt, Freigeschaltet. Erledigte Schritte tragen ihr Datum.",
      "Im ersten Schritt trägst du Rechnungsnummer, Betrag und monatlich oder jährlich ein, danach klickst du dich mit je einem Knopf weiter.",
      "Erst nach \"Bezahlt\" erscheint \"Verein freischalten …\", danach hakst du \"Bestätigungsmail versendet\" ab.",
-     "Mit \"Ablehnen …\" beendest du eine Anfrage; der Grund bleibt hinterlegt, und der Verein kann jederzeit neu anfragen."
+     "Mit \"Ablehnen …\" beendest du eine Anfrage; der Grund bleibt hinterlegt, und der Verein kann jederzeit neu anfragen.",
+     "Vereine auf der kostenlosen Stufe (drei Zugänge) können dir auch direkt schreiben: Ihre Vereinsleitung sieht oben auf der Startseite den Hinweis „Mehr Zugänge für euren Verein?“; ein Tipp öffnet eine fertige E-Mail an info@idbranding.de. Diese Mails kommen ins Postfach, nicht unter „Offene Anfragen“."
     ],
     "hinweis": "Einen Verein, der noch nicht in der App angelegt ist, kannst du nicht freischalten. Die Vereinsverwaltung meldet dir das an dieser Stelle.",
     "bildschirm": "Vereinsverwaltung > Vereine > Offene Anfragen"
@@ -751,7 +783,7 @@
     "punkte": [
      "Du schreibst Titel und Text, der Vereinsname steht automatisch davor.",
      "Die Nachricht landet in der Glocke der App und löst dieselbe Push-Meldung aus wie jede andere Nachricht.",
-     "Ohne Haken geht sie nur an die Vereinsleitung, das ist voreingestellt.",
+     "Ohne Haken geht sie nur an die Vereinsadministration (Vereinsadmins); Organisator/innen bekommen sie nicht. Das ist voreingestellt.",
      "Mit Haken geht sie an alle Mitglieder: daneben steht, wie viele Menschen das sind, und du bestätigst noch einmal.",
      "Nach dem Senden siehst du, an wie viele Personen die Nachricht ging."
     ],
@@ -759,20 +791,29 @@
     "bildschirm": "Vereinsverwaltung > Vereine > Fenster \"Nachricht an …\""
    },
    {
-    "titel": "Werbeanzeigen und Kennzahlen",
-    "wo": "Reiter \"Werbeanzeigen\" > Unterreiter \"Anzeigen\" oder \"KPI\"",
+    "titel": "Werbeanzeigen anlegen",
+    "wo": "Reiter \"Werbeanzeigen\" > Unterreiter \"Anzeigen\"",
     "punkte": [
      "Unter \"Eigene Werbeplätze\" legst du mit \"Neue Anzeige\" Werbung an, die in jedem Verein gilt. Du wählst den Platz (Start oben, Start unter den News, Termine im Kopfbereich, Profil unten), Titel, Text, Ziel-Adresse, Enddatum und ob sie an oder aus ist.",
      "Hat ein Verein auf demselben Platz einen laufenden eigenen Sponsor, tritt deine Anzeige dort zurück.",
      "Unter \"Sponsoren der Vereine\" siehst du alle Sponsoren, die Vereine selbst eingetragen haben; ändern kannst du sie nicht.",
-     "Der Knopf \"Kennzahlen\" in einer Zeile springt zum Unterreiter \"KPI\" und zeigt die Zahlen dieser einen Anzeige. Oben wählst du eine Anzeige und den Zeitraum: 7 Tage, 30 Tage, 90 Tage oder 1 Jahr.",
+     "Der Knopf \"Kennzahlen\" in einer Zeile springt zum Unterreiter \"KPI\" und zeigt die Zahlen dieser einen Anzeige."
+    ],
+    "hinweis": "",
+    "bildschirm": "Vereinsverwaltung > Werbeanzeigen > Anzeigen"
+   },
+   {
+    "titel": "Kennzahlen (KPI)",
+    "wo": "Reiter \"Werbeanzeigen\" > Unterreiter \"KPI\"",
+    "punkte": [
+     "Oben wählst du eine Anzeige und den Zeitraum: 7 Tage, 30 Tage, 90 Tage oder 1 Jahr.",
      "Du siehst Einblendungen, Öffnungen, Öffnungsrate, Kontakte, mögliche Reichweite und den besten Tag, dazu den Verlauf, was angetippt wurde und die Verteilung nach Verein."
     ],
     "hinweis": "Eine Sammelzahl über alle Anzeigen gibt es bewusst nicht. Die Öffnungsrate bleibt leer, solange es weniger als 20 Einblendungen gibt, und \"Mögliche Reichweite\" ist nicht gemessen, sondern sagt, wie viele Mitglieder die Anzeige sehen könnten.",
-    "bildschirm": "Vereinsverwaltung > Werbeanzeigen > Anzeigen und KPI"
+    "bildschirm": "Vereinsverwaltung > Werbeanzeigen > KPI"
    }
   ],
-  "einleitung": "Du betreibst die App und betreust alle Vereine, die sie nutzen. Deine Oberfläche heißt \\\"Vereinsverwaltung\\\", hat einen eigenen Zugang und gehört nicht zur Vereins-App: kein Verein und kein Vereinsadmin kommt hinein.",
+  "einleitung": "Du betreibst die App und betreust alle Vereine, die sie nutzen. Deine Oberfläche heißt „Vereinsverwaltung“, hat einen eigenen Zugang und gehört nicht zur Vereins-App: kein Verein und kein Vereinsadmin kommt hinein.",
   "rolle": "Betreiber (Vereinsverwaltung)"
  }
 ]
