@@ -1332,7 +1332,22 @@ const SPONSOR_SLOT_DEFS = [
    Werbung schaltet ohnehin nur der Betreiber ueber die Sponsor-Slots, die
    Geburtstage kommen jetzt aus den echten Mitgliedern, und Abstimmungen legt
    der Verein selbst an. */
-const INITIAL_POLLS = [];
+/* Nur im Demo-Betrieb (useState(supabase ? [] : INITIAL_POLLS)) - ein echter
+   Verein sieht ausschliesslich seine eigenen Umfragen aus der Datenbank. Die
+   Beispiele sind erkennbar erfunden und stehen fuer Handbuch und Vorfuehrung. */
+const INITIAL_POLLS = [
+  { id: "demo-umfrage-trikot", title: "Welches Trikot tragen wir in der neuen Saison?", active: true, voterIds: [], meineAntwortId: null,
+    options: [{ id: "demo-o1", label: "Rot mit weißen Ärmeln", votes: 14 }, { id: "demo-o2", label: "Schwarz mit rotem Streifen", votes: 9 }, { id: "demo-o3", label: "Ganz in Weiß", votes: 4 }] },
+  { id: "demo-umfrage-abschluss", title: "Saisonabschluss: Grillen oder Bowling?", active: true, voterIds: [], meineAntwortId: null,
+    options: [{ id: "demo-o4", label: "Grillen am Vereinsheim", votes: 11 }, { id: "demo-o5", label: "Bowling in der Stadt", votes: 7 }] },
+];
+
+/* Beispiel-News fuer den Demo-Betrieb, aelteste zuerst - die Startseite zeigt
+   die letzten beiden, die neueste oben. */
+const DEMO_NEWS = [
+  { who: "Jose Aleixo", time: "Gestern · 18:10", title: "Neue Trainingszeiten für die U11", text: "Ab Oktober trainiert die U11 dienstags und donnerstags um 17 Uhr in der Hemberghalle." },
+  { who: "Jose Aleixo", time: "Heute · 09:30", title: "Heimspieltag am Samstag", text: "Ab 17 Uhr ist die Halle offen. Wer beim Aufbau hilft, trägt sich im Reiter Support ein." },
+];
 
 /* Eine Zeile aus messages in die Form bringen, die ChatView erwartet.
    Der Name kommt ueber die Verknuepfung zu profiles; fehlt sie - etwa bei
@@ -7415,6 +7430,25 @@ function TaskCreateForm({ form, setForm, onSubmit, onCancel, editing = false, te
     </div>
   );
 }
+/* Kennzahlen je Bereich (ganzer Verein oder eine Mannschaft) fuer die
+   Uebersicht im Support-Reiter.
+   offen        - nicht erledigt
+   ohneEintrag  - offen, und niemand ist drin: weder verantwortlich
+                  eingetragen noch freiwillig gemeldet
+   ueberfaellig - offen, und die Frist ist vorbei (heute zaehlt noch nicht) */
+function aufgabenKennzahlen(aufgaben) {
+  const heute = new Date().toISOString().slice(0, 10);
+  const tag = (d) => (d instanceof Date ? d.toISOString() : String(d)).slice(0, 10);
+  let offen = 0, ohneEintrag = 0, erledigt = 0, ueberfaellig = 0;
+  for (const a of aufgaben) {
+    if (a.erledigtAm) { erledigt++; continue; }
+    offen++;
+    if ((a.verantwortliche || []).length === 0 && (a.signups || []).length === 0) ohneEintrag++;
+    if (a.dueDate && tag(a.dueDate) < heute) ueberfaellig++;
+  }
+  return { gesamt: aufgaben.length, offen, ohneEintrag, erledigt, ueberfaellig };
+}
+
 function TasksView({ currentUser, members }) {
   const t = useT();
   const databaseMembership = !!supabase && isDbId(currentUser.id);
@@ -7425,6 +7459,10 @@ function TasksView({ currentUser, members }) {
      erfuhr davon nur, wenn er das Protokoll aufschlug. Hier stehen sie,
      solange sie offen sind. */
   const [protokollAufgaben, setProtokollAufgaben] = useState([]);
+  /* null = nur die Uebersicht. Erst ein Tipp auf eine Kachel zeigt die
+     Aufgaben dieses Bereichs - bei vielen Mannschaften stand vorher alles
+     untereinander, und wer nur seine Mannschaft suchte, musste scrollen. */
+  const [gewaehlterBereich, setGewaehlterBereich] = useState(null);
   const [myTeams, setMyTeams] = useState([]);
   const [manageableTeamIds, setManageableTeamIds] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -7640,9 +7678,18 @@ function TasksView({ currentUser, members }) {
     );
   };
   if (!databaseMembership && supabase) return <div className="px-4 pt-4 pb-24"><div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{t("auf.nurEchterVerein")}</div></div>;
+  const bereiche = [
+    { key: "verein", name: t("auf.ganzerVerein"), aufgaben: clubTasks },
+    ...myTeams.map((team) => ({ key: team.id, name: team.name, aufgaben: teamTasks.filter((x) => x.teamId === team.id) })),
+  ];
+  /* Gibt es nur einen Bereich, ist er gleich offen - eine Uebersicht mit einer
+     einzigen Kachel waere nur ein Tipp mehr. Faellt die gewaehlte Mannschaft
+     weg, geht es zurueck auf die Uebersicht. */
+  const aktiverBereich = bereiche.some((b) => b.key === gewaehlterBereich) ? gewaehlterBereich
+    : bereiche.length === 1 ? bereiche[0].key : null;
   return (
     <div className="px-4 pt-4 pb-24">
-      <SectionTitle eyebrow="Verein" title="Aufgaben" right={canCreateClubTask ? <button onClick={() => { if (showCreateClub) { setEditingTaskId(null); resetForm(); } setShowCreateClub((v) => !v); }} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showCreateClub ? t("allg.schliessen") : "+ Aufgabe"}</button> : null}/>
+      <SectionTitle eyebrow="Verein" title="Aufgaben" right={canCreateClubTask ? <button onClick={() => { if (showCreateClub) { setEditingTaskId(null); resetForm(); } else setGewaehlterBereich("verein"); setShowCreateClub((v) => !v); }} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showCreateClub ? t("allg.schliessen") : "+ Aufgabe"}</button> : null}/>
       <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>Vereins- und Mannschaftsaufgaben, für die sich Mitglieder freiwillig eintragen können.</div>
       {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: (istErfolg(message)||istErfolg(message)) ? C.erfolgFlaeche : C.fehlerFlaeche, color: (istErfolg(message)||istErfolg(message)) ? C.erfolg : C.fehler }}>{meldungstext(message)}</div>}
       {loading ? <div className="text-xs py-4" style={{ color: C.textDim }}>{t("auf.laden")}</div> : <>
@@ -7666,10 +7713,38 @@ function TasksView({ currentUser, members }) {
             );
           })}</div>
         </>}
+        {bereiche.length > 1 && <>
+          <SectionTitle eyebrow={t("auf.bereicheEyebrow")} title={t("auf.bereicheTitel")}/>
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            {bereiche.map((b) => {
+              const k = aufgabenKennzahlen(b.aufgaben);
+              const gewaehlt = aktiverBereich === b.key;
+              const leise = gewaehlt ? "rgba(255,255,255,0.78)" : C.textDim;
+              return (
+                <button key={b.key} onClick={() => setGewaehlterBereich(gewaehlt ? null : b.key)} aria-pressed={gewaehlt}
+                  className="rounded-2xl p-3 text-left min-w-0"
+                  style={{ background: gewaehlt ? C.ink : C.glass, border: `1px solid ${gewaehlt ? C.ink : C.line}` }}>
+                  <div className="text-xs font-bold truncate" style={{ color: gewaehlt ? C.white : C.ink, fontFamily: "Inter" }}>{b.name}</div>
+                  <div className="flex items-baseline gap-1 mt-1">
+                    <span style={{ fontFamily: "Oswald", fontWeight: 700, fontSize: 22, lineHeight: 1.1, color: gewaehlt ? C.white : k.offen > 0 ? C.red : C.ink }}>{k.offen}</span>
+                    <span className="text-[10px]" style={{ color: leise, fontFamily: "Inter" }}>{t("auf.kpiOffen")}</span>
+                  </div>
+                  <div className="text-[10px] mt-1 leading-snug" style={{ color: leise, fontFamily: "Inter" }}>
+                    {k.gesamt} {t("auf.kpiGesamt")} · {k.ohneEintrag} {t("auf.kpiOhneEintrag")} · {k.erledigt} {t("auf.kpiErledigt")}
+                  </div>
+                  {k.ueberfaellig > 0 && <div className="text-[10px] font-bold mt-1" style={{ color: gewaehlt ? C.white : C.fehler, fontFamily: "Inter" }}>{k.ueberfaellig} {t("auf.kpiUeberfaellig")}</div>}
+                </button>
+              );
+            })}
+          </div>
+          {!aktiverBereich && <div className="text-[11px] mb-5" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("auf.bereichWaehlen")}</div>}
+        </>}
+        {aktiverBereich === "verein" && <>
         <SectionTitle eyebrow="Vereinsweit" title="Vereinsaufgaben"/>
         {showCreateClub && <TaskCreateForm teams={myTeams} members={members} form={form} setForm={setForm} editing={!!editingTaskId} onSubmit={() => createTask(null)} onCancel={() => { setShowCreateClub(false); resetForm(); setEditingTaskId(null); }}/>}
         {clubTasks.length === 0 ? <div className="text-xs rounded-xl p-3 mb-5" style={{ background: C.paperDim, color: C.textDim }}>{t("auf.keine")}</div> : <div className="mb-5">{clubTasks.map((t) => <TaskCard key={t.id} task={t} canManage={canCreateClubTask} onEdit={openEditTask}/>)}</div>}
-        {myTeams.map((team) => {
+        </>}
+        {myTeams.filter((team) => team.id === aktiverBereich).map((team) => {
           const tasks = teamTasks.filter((t) => t.teamId === team.id);
           const canManage = manageableTeamIds.includes(team.id);
           return (
@@ -13714,7 +13789,7 @@ export default function ClubMemberOrganisationApp() {
   const [chatChannelId, setChatChannelId] = useState("team");
   /* Die Vereins-News. Sie kommen aus news_posts, nicht aus den Chatkanaelen -
      siehe RedaktionView. */
-  const [vereinsNews, setVereinsNews] = useState([]);
+  const [vereinsNews, setVereinsNews] = useState(supabase ? [] : DEMO_NEWS);
   const [seasonVotes, setSeasonVotes] = useState({});
   const [tippPredictions, setTippPredictions] = useState({});
   const [tippResults, setTippResults] = useState({});
