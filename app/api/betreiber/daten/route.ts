@@ -24,7 +24,7 @@ export async function GET() {
     return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
   }
 
-  const [vereine, anfragen, anzeigen, sponsoren, kennzahlen] = await Promise.all([
+  const [vereine, anfragen, anzeigen, sponsoren, kennzahlen, kontenStand] = await Promise.all([
     admin.from("betreiber_uebersicht").select("*").order("name"),
     admin.from("offene_freischaltungen").select("*"),
     /* Die eigenen Werbeplaetze: club_id null heisst "gilt in jedem Verein".
@@ -53,6 +53,11 @@ export async function GET() {
        spaeter nach Vereinen sucht, wuerde eine gefilterte Gesamtsumme
        sehen, und das waere schlimmer als gar keine. */
     admin.rpc("betreiber_kennzahlen"),
+    /* Konten auf der ganzen Plattform gegen die Obergrenze. Die Kachel
+       "Konten" aus den Kennzahlen zaehlt Mitgliedschaften - die Sperre bei
+       der Registrierung zaehlt jedes Konto. Ohne diese Zahl merkte der
+       Betreiber die Sperre erst an Beschwerden. */
+    admin.rpc("betreiber_konten_stand"),
   ]);
 
   /* Was die Uebersicht AUSMACHT, muss da sein: Vereine, Anfragen, die eigenen
@@ -73,6 +78,7 @@ export async function GET() {
      mehr kosten als sich selbst. */
   if (kennzahlen.error) console.error("Kennzahlen konnten nicht geladen werden", kennzahlen.error);
   if (sponsoren.error) console.error("Sponsorenliste konnte nicht geladen werden", sponsoren.error);
+  if (kontenStand.error) console.error("Kontenstand konnte nicht geladen werden", kontenStand.error);
 
   /* Der Vereinsname zu einer club_id - nachgeschlagen statt eingebettet.
      betreiber_uebersicht fuehrt jeden Verein, die Zuordnung ist also
@@ -90,5 +96,6 @@ export async function GET() {
       verein: vereinsName.get(a.club_id as string) || "—",
     })),
     kennzahlen: kennzahlen.error ? null : (kennzahlen.data?.[0] ?? null),
+    kontenStand: kontenStand.error ? null : (kontenStand.data?.[0] ?? null),
   });
 }

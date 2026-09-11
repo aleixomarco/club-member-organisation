@@ -29,6 +29,25 @@ type Kennzahlen = {
   still_30: number; fast_voll: number;
 };
 
+/* Konten auf der ganzen Plattform gegen die Obergrenze aus
+   20260911010000_konten_obergrenze.sql - gezaehlt wie dort, jedes nicht
+   geloeschte Konto. Die Kachel "Konten" daneben zaehlt Mitgliedschaften. */
+type KontenStand = { belegt: number; grenze: number };
+
+/* Rot ab 90 %: Dann bleibt Zeit, die Grenze anzuheben, bevor die
+   Registrierung stehen bleibt. */
+function kontenKachel(k: KontenStand) {
+  const belegt = Number(k.belegt), grenze = Number(k.grenze);
+  const voll = belegt >= grenze;
+  const anteil = grenze > 0 ? Math.floor((belegt / grenze) * 100) : 100;
+  return {
+    wert: belegt.toLocaleString("de-DE"),
+    titel: "Konten gesamt",
+    unten: voll ? "Grenze erreicht · Registrierung pausiert" : `von ${grenze.toLocaleString("de-DE")} · ${anteil} %`,
+    warnung: belegt >= grenze * 0.9,
+  };
+}
+
 type Anzeige = {
   id: string; platz: string; titel: string; text: string | null; ziel_url: string | null;
   telefon: string | null; email: string | null;
@@ -161,6 +180,7 @@ export default function BetreiberKonsole() {
   const [offen, setOffen] = useState<Verein | null>(null);
   const [meldung, setMeldung] = useState("");
   const [kennzahlen, setKennzahlen] = useState<Kennzahlen | null>(null);
+  const [kontenStand, setKontenStand] = useState<KontenStand | null>(null);
   const [exportLaeuft, setExportLaeuft] = useState(false);
   const [nurStille, setNurStille] = useState(false);
   const [nachricht, setNachricht] = useState<Verein | null>(null);
@@ -177,7 +197,7 @@ export default function BetreiberKonsole() {
     if (!antwort.ok) { setFehler(inhalt.error || "Die Übersicht konnte nicht geladen werden."); return; }
     setVereine(inhalt.vereine || []); setAnfragen(inhalt.anfragen || []); setAnzeigen(inhalt.anzeigen || []);
     setSponsoren(inhalt.sponsoren || []);
-    setKennzahlen(inhalt.kennzahlen || null); setFehler("");
+    setKennzahlen(inhalt.kennzahlen || null); setKontenStand(inhalt.kontenStand || null); setFehler("");
   }, []);
 
   useEffect(() => { laden(); }, [laden]);
@@ -234,7 +254,7 @@ export default function BetreiberKonsole() {
 
   const abmelden = async () => {
     await fetch("/api/betreiber/abmelden", { method: "POST" });
-    setAngemeldet(false); setVereine([]); setAnfragen([]); setAnzeigen([]); setSponsoren([]); setKennzahlen(null);
+    setAngemeldet(false); setVereine([]); setAnfragen([]); setAnzeigen([]); setSponsoren([]); setKennzahlen(null); setKontenStand(null);
   };
 
   const vereinOeffnen = async (v: Verein) => {
@@ -333,9 +353,10 @@ export default function BetreiberKonsole() {
       {/* Die Zahlen ueber alle Vereine. Sie stehen bewusst VOR den Anfragen:
           Die Anfragen sagen, was heute zu tun ist - diese Zeile sagt, wie es
           um das Ganze steht. */}
-      {reiter === "vereine" && kennzahlen && (
+      {reiter === "vereine" && (kennzahlen || kontenStand) && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(132px, 1fr))", gap: 10, marginBottom: 24 }}>
           {[
+            ...(kennzahlen ? [
             { wert: kennzahlen.vereine, titel: "Vereine", unten: `${kennzahlen.neu_30} neu in 30 Tagen`, warnung: false },
             { wert: kennzahlen.freigeschaltet, titel: "Freigeschaltet",
               unten: `${kennzahlen.basic} Basic · ${kennzahlen.plus} Plus · ${kennzahlen.pro} Pro`, warnung: false },
@@ -343,6 +364,8 @@ export default function BetreiberKonsole() {
             { wert: kennzahlen.still_30, titel: "Still", unten: "30 Tage ohne Regung", warnung: kennzahlen.still_30 > 0 },
             { wert: kennzahlen.fast_voll, titel: "Fast voll", unten: "90 % der Zugänge belegt", warnung: kennzahlen.fast_voll > 0 },
             { wert: kennzahlen.gesperrt, titel: "Gesperrt", unten: `${kennzahlen.ohne_tarif} ohne Tarif`, warnung: false },
+            ] : []),
+            ...(kontenStand ? [kontenKachel(kontenStand)] : []),
           ].map((k) => (
             <div key={k.titel} style={{ ...karte, padding: "12px 14px" }}>
               <div style={{ fontSize: 24, fontWeight: 700, lineHeight: 1.1, color: k.warnung ? "#B3261E" : "#2A2028" }}>{k.wert}</div>
@@ -351,6 +374,15 @@ export default function BetreiberKonsole() {
             </div>
           ))}
         </div>
+      )}
+
+      {/* Ist die Grenze erreicht, steht es hier ausgeschrieben - eine rote Zahl
+          in einer Kachel uebersieht man, eine pausierte Registrierung nicht. */}
+      {reiter === "vereine" && kontenStand && Number(kontenStand.belegt) >= Number(kontenStand.grenze) && (
+        <p role="status" style={fehlerText}>
+          Neue Registrierungen sind pausiert: {Number(kontenStand.belegt).toLocaleString("de-DE")} von {Number(kontenStand.grenze).toLocaleString("de-DE")} Konten belegt.
+          Die Grenze steht in public.plattform_grenzen.
+        </p>
       )}
 
       {fehler && <p role="status" style={fehlerText}>{fehler}</p>}

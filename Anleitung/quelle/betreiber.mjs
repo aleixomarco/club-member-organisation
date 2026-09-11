@@ -26,7 +26,8 @@ const STUB = `
     sponsoren:[
       {id:"s1",platz:"dashboard_bottom",titel:"Bäckerei Schulte",aktiv:true,laeuft_bis:"2027-01-01T00:00:00Z",impressionen:890,klicks:77,club_id:"a",verein:"TSV Beispielstadt"},
       {id:"s2",platz:"events_header",titel:"Stadtwerke Nordheim",aktiv:true,laeuft_bis:null,impressionen:540,klicks:33,club_id:"a",verein:"TSV Beispielstadt"}],
-    kennzahlen:{vereine:3,freigeschaltet:2,gesperrt:0,neu_30:1,konten:178,mitglieder:264,basic:0,plus:1,pro:1,ohne_tarif:1,still_30:1,fast_voll:1}};
+    kennzahlen:{vereine:3,freigeschaltet:2,gesperrt:0,neu_30:1,konten:178,mitglieder:264,basic:0,plus:1,pro:1,ohne_tarif:1,still_30:1,fast_voll:1},
+    kontenStand:{belegt:312,grenze:50000}};
   const echt = window.fetch.bind(window);
   window.fetch = async (e, o) => {
     const u = typeof e === "string" ? e : (e && e.url) || "";
