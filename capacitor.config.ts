@@ -29,6 +29,13 @@ const config: CapacitorConfig = {
        hoch; sie bietet einen Neuversuch an und laedt von selbst nach, sobald
        die Verbindung zurueck ist. */
     errorPath: "offline.html",
+    /* Captcha (Cloudflare Turnstile) laeuft in einem eingebetteten Fenster von
+       challenges.cloudflare.com. Android-Capacitor prueft in
+       shouldOverrideUrlLoading nicht, ob eine Navigation im Hauptfenster oder
+       in einem eingebetteten Fenster passiert - leitet das Captcha-Fenster
+       intern weiter, oeffnete Capacitor es sonst im externen Browser, und die
+       Anmeldung bliebe haengen. iOS laesst eingebettete Fenster ohnehin zu. */
+    allowNavigation: ["challenges.cloudflare.com"],
   },
   /* Verlangt @capacitor-firebase/messaging fuer iOS: Ohne symlink kollidiert
      die SwiftPM-Paketkennung des Plugins mit der des Firebase-SDK, und der

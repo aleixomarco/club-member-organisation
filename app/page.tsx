@@ -872,39 +872,58 @@ function turnstileSkript() {
   return turnstileLaden;
 }
 function CaptchaFeld({ onToken, runde = 0 }) {
+  const t = useT();
   const ort = useRef(null);
   const widget = useRef(null);
   const meldeToken = useRef(onToken);
+  /* Laedt das Skript nicht, meldet Turnstile einen Fehler oder haelt es den
+     Browser fuer ungeeignet (Cloudflare nennt eingebettete App-Browser nur
+     "eingeschraenkt unterstuetzt"), stuende das Formular sonst ewig auf
+     "Einen Moment". Deshalb eine sichtbare Meldung mit Neuversuch. */
+  const [gestoert, setGestoert] = useState(false);
+  const [versuch, setVersuch] = useState(0);
   useEffect(() => { meldeToken.current = onToken; });
   useEffect(() => {
     let weg = false;
+    const stoerung = () => { if (!weg) { meldeToken.current?.(null); setGestoert(true); } };
     turnstileSkript().then((ts) => {
       if (weg || !ort.current) return;
       widget.current = ts.render(ort.current, {
         sitekey: TURNSTILE_SITE_KEY,
         callback: (token) => meldeToken.current?.(token),
         "expired-callback": () => meldeToken.current?.(null),
-        "error-callback": () => { meldeToken.current?.(null); },
+        "error-callback": () => { stoerung(); return true; },
+        "unsupported-callback": stoerung,
         /* Unsichtbar, solange Cloudflare nicht nachfragen muss - dann erscheint
            ein Kaestchen. Sprache wie das Geraet. */
         appearance: "interaction-only",
         size: "flexible",
         language: "auto",
       });
-    }).catch(() => meldeToken.current?.(null));
+    }).catch(stoerung);
     return () => {
       weg = true;
       if (widget.current && window.turnstile) { try { window.turnstile.remove(widget.current); } catch { /* schon weg */ } }
       widget.current = null;
     };
-  }, []);
+  }, [versuch]);
   useEffect(() => {
     if (runde > 0 && widget.current && window.turnstile) {
       meldeToken.current?.(null);
       try { window.turnstile.reset(widget.current); } catch { /* neu gerendert */ }
     }
   }, [runde]);
-  return <div ref={ort} className="mb-3" />;
+  return (
+    <div className="mb-3">
+      <div ref={ort} />
+      {gestoert && (
+        <div role="status" className="text-[11px] rounded-xl px-3 py-2 mt-1" style={{ background: C.fehlerFlaeche, color: C.fehler, fontFamily: "Inter" }}>
+          {t("captcha.nichtGeladen")}{" "}
+          <button type="button" onClick={() => { setGestoert(false); setVersuch((v) => v + 1); }} className="underline font-bold">{t("captcha.neuVersuchen")}</button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function anmeldeFehlerText(error, t) {
