@@ -4048,7 +4048,7 @@ function HelperSlots({ ev, members, currentUser, dutyPlan, setDutyPlan, eligible
         <div className="rounded-lg p-2 mt-1" style={{ background: C.paperDim }}>
           <div className="text-[10px] font-bold mb-1.5" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("helf.jemanden")}</div>
           <div className="flex gap-1.5 items-start flex-wrap">
-            <NutzerWahl personen={members} wert={eintragPerson} onWaehlen={setEintragPerson} leerLabel="Person wählen …" klein />
+            <NutzerWahl personen={members.filter((m) => !istNurFan(m))} wert={eintragPerson} onWaehlen={setEintragPerson} leerLabel="Person wählen …" klein />
             <select value={eintragStation} onChange={(e) => setEintragStation(e.target.value)}
               aria-label={t("aria.stationWaehlen")}
               className="flex-1 min-w-0 text-[11px] px-2 py-1.5 rounded-lg outline-none"
@@ -8272,7 +8272,7 @@ function DutyTasksSection({ ev, currentUser, sport, onNeuLaden, dutyPlan, member
               </div>
               {canManage && (
                 <div className="flex gap-1.5 flex-wrap">
-                  <NutzerWahl personen={members} wert={task.assigneeId || ""} onWaehlen={(v) => assignTask(task.id, v)} leerLabel="niemand zugewiesen" klein />
+                  <NutzerWahl personen={members.filter((m) => !istNurFan(m))} wert={task.assigneeId || ""} onWaehlen={(v) => assignTask(task.id, v)} leerLabel="niemand zugewiesen" klein />
                   <input type="date" value={task.dueDate || ""} onChange={(e) => setDueDate(task.id, e.target.value)} className="px-2 py-1.5 rounded-lg text-[11px] outline-none" style={{ background: C.glass, color: C.ink }}/>
                   <button onClick={() => toggleDone(task)} className="px-2 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: task.done ? C.erfolgFlaeche : C.white, color: task.done ? C.secondary : C.textDim }}>{task.done ? t("auf.erledigt") : t("auf.erledigtFrage")}</button>
                 </div>
@@ -10231,7 +10231,7 @@ function DutyView({ members, currentUser, events, dutyPlan, setDutyPlan, onDiens
  * Verwalten-Reiter. Dort stehen auch Mitgliedsantraege und fehlende
  * Spielergebnisse - Dinge nur fuer die Vereinsleitung, die in einem Reiter
  * fuer alle nichts verloren haben. */
-function SupportView({ currentUser, members, events, dutyPlan, setDutyPlan, onDienstSetzen, dutyOn, bereichWunsch, onBereichUebernommen, currentClub, goVerwaltung, goFahrzeuge }) {
+function SupportView({ currentUser, members, events, dutyPlan, setDutyPlan, onDienstSetzen, dutyOn, bereichWunsch, onBereichUebernommen, currentClub, goVerwaltung, goFahrzeuge, goTermin }) {
   const t = useT();
   /* Wofuer bin ich eingeteilt? Aus dem Helferplan (Station an einem Termin)
      und aus den Stationen, die mir jemand zugewiesen hat. Bisher stand das nur
@@ -10254,11 +10254,15 @@ function SupportView({ currentUser, members, events, dutyPlan, setDutyPlan, onDi
       .flatMap((ev) => Object.entries(dutyPlan?.[ev.id] || {})
         .filter(([, liste]) => (liste || []).includes(currentUser.id))
         .map(([station]) => ({ key: `plan-${ev.id}-${station}`, titel: station, detail: `${ev.title} · ${formatDate(ev.date)}`, zeit: new Date(ev.date) }))),
-    ...meineStationen.map((st) => {
+    ...meineStationen.flatMap((st) => {
       const ev = terminZu(st.event_id);
-      return { key: `station-${st.id}`, titel: st.title,
+      /* Abgesagt oder nicht geladen: nicht als anstehend zeigen. Fehlt der
+         Termin in der Liste, liegt er ausserhalb des geladenen Zeitraums -
+         ohne Datum stuende die Zeile sonst fuer immer oben. */
+      if (st.event_id && (!ev || ev.cancelled)) return [];
+      return [{ key: `station-${st.id}`, titel: st.title, terminId: ev?.id ?? null,
         detail: ev ? `${ev.title} · ${formatDate(ev.date)}` : st.due_date ? formatDate(st.due_date) : "",
-        zeit: ev ? new Date(ev.date) : st.due_date ? new Date(st.due_date) : null };
+        zeit: ev ? new Date(ev.date) : st.due_date ? new Date(st.due_date) : null }];
     }).filter((z) => !z.zeit || z.zeit >= heute),
   ].sort((a, b) => (a.zeit?.getTime() ?? Infinity) - (b.zeit?.getTime() ?? Infinity));
   /* Die offenen Punkte der Verwaltung stehen hier ein zweites Mal - fuer die,
@@ -10292,7 +10296,10 @@ function SupportView({ currentUser, members, events, dutyPlan, setDutyPlan, onDi
             <SectionTitle eyebrow={t("sup.eingeteiltEyebrow")} title={t("sup.eingeteiltTitel")} />
             <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${C.line}` }}>
               {meineEinteilungen.map((z, i) => (
-                <button key={z.key} onClick={() => setBereich("helfer")}
+                /* Stationen stehen nur am Termin, nicht unter "Helferdienste" -
+                   dorthin fuehrt der Tipp. Einteilungen aus dem Helferplan
+                   oeffnen die Helferdienste. */
+                <button key={z.key} onClick={() => (z.terminId ? goTermin?.(z.terminId) : setBereich("helfer"))}
                   className="w-full text-left flex items-center gap-2 px-4 py-2.5"
                   style={{ background: C.white, borderTop: i ? `1px solid ${C.line}` : "none" }}>
                   <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: C.red }} />
@@ -10665,7 +10672,7 @@ function ProtokollePanel({ members, protocols, setProtocols, clubId, onSpeichern
           <input value={newTaskText} onChange={(e) => setNewTaskText(e.target.value)} placeholder={t("ph.neueAufgabe")}
             className="w-full px-3 py-2 rounded-lg text-sm outline-none mb-2" style={{ background: C.paperDim, fontFamily: "Inter", color: C.ink }} />
           <div className="flex gap-2 mb-2 flex-wrap">
-            <NutzerWahl personen={members} wert={newTaskAssignee} onWaehlen={setNewTaskAssignee} />
+            <NutzerWahl personen={members.filter((m) => !istNurFan(m))} wert={newTaskAssignee} onWaehlen={setNewTaskAssignee} />
             <input type="date" value={newTaskDue} onChange={(e) => setNewTaskDue(e.target.value)} className="text-xs px-2 py-1.5 rounded-lg outline-none" style={{ background: C.paperDim, fontFamily: "Inter", border: `1px solid ${C.line}` }} />
           </div>
           <button onClick={addDraftTask} disabled={!newTaskText.trim()} className="w-full py-2 rounded-lg text-xs" style={{ background: C.ink, color: "#fff", fontFamily: "Inter", fontWeight: 700, opacity: !newTaskText.trim() ? 0.5 : 1 }}>+ Aufgabe hinzufügen</button>
@@ -10680,7 +10687,7 @@ function ProtokollePanel({ members, protocols, setProtocols, clubId, onSpeichern
                   <button onClick={() => removeDraftTask(t.id)}><X size={13} style={{ color: C.textDim }} /></button>
                 </div>
                 <div className="flex gap-2 flex-wrap">
-                  <NutzerWahl personen={members} wert={t.assignee} onWaehlen={(v) => updateDraftTask(t.id, { assignee: v })} klein />
+                  <NutzerWahl personen={members.filter((m) => !istNurFan(m))} wert={t.assignee} onWaehlen={(v) => updateDraftTask(t.id, { assignee: v })} klein />
                   <input type="date" value={t.due} onChange={(e) => updateDraftTask(t.id, { due: e.target.value })} className="text-[11px] px-2 py-1.5 rounded-lg outline-none" style={{ background: C.paperDim, fontFamily: "Inter", border: `1px solid ${C.line}` }} />
                 </div>
               </div>
@@ -13945,11 +13952,19 @@ export default function ClubMemberOrganisationApp() {
   const meldungOeffnen = (e) => {
     if (!e?.ziel_art || !e?.ziel_id) return;
     if (e.ziel_art === "aufgabe") { setOffeneAufgabe(e.ziel_id); return; }
-    /* Einteilungen in der Helferplanung und Protokollaufgaben fuehren in den
-       Support-Reiter: dort stehen sie unter "Für dich eingeteilt" bzw.
-       "Dir zugewiesen" (Migration 20260911030000). */
-    if (e.ziel_art === "helferdienst") { goSupport("helfer"); return; }
-    if (e.ziel_art === "protokollaufgabe") { goSupport("aufgaben"); return; }
+    /* Helferdienste (Einteilung, Station, Erinnerung) oeffnen den Termin:
+       Dort stehen Helferplan und Stationen beieinander - im Support-Reiter
+       fehlen die Stationen, und Fans haben ihn gar nicht. ziel_id ist die
+       Termin-ID (Migrationen 20260911030000 und 20260911050000). */
+    if (e.ziel_art === "helferdienst") {
+      setSubView(null);
+      setEventFocusRequest({ team: "alle", eventId: e.ziel_id, requestedAt: Date.now() });
+      setTab("events");
+      return;
+    }
+    /* Protokollaufgaben stehen im Support-Reiter unter "Dir zugewiesen".
+       Fans haben den Reiter nicht - fuer sie gibt es dort nichts zu sehen. */
+    if (e.ziel_art === "protokollaufgabe") { if (!istNurFan(currentUser)) goSupport("aufgaben"); return; }
     if (e.ziel_art === "termin") {
       setSubView(null);
       setEventFocusRequest({ team: "alle", eventId: e.ziel_id, requestedAt: Date.now() });
@@ -15650,7 +15665,7 @@ export default function ClubMemberOrganisationApp() {
                     Hier fehlte der dritte Teil - ein reiner Organisator sah
                     den Reiter also in der Leiste und darunter eine leere
                     Seite. */}
-                {!subView && tab === "support" && !!currentUser && !istNurFan(currentUser) && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("nav.support")}><SupportView currentUser={currentUser} members={clubMembers} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={dienstSetzen} dutyOn={featureEnabled("duty_roster")} bereichWunsch={supportBereich} onBereichUebernommen={() => setSupportBereich(null)} currentClub={currentClub} goVerwaltung={goVerwaltung} goFahrzeuge={() => setSubView("vehicles")} /></LockedFeature>}
+                {!subView && tab === "support" && !!currentUser && !istNurFan(currentUser) && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("nav.support")}><SupportView currentUser={currentUser} members={clubMembers} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={dienstSetzen} dutyOn={featureEnabled("duty_roster")} bereichWunsch={supportBereich} onBereichUebernommen={() => setSupportBereich(null)} currentClub={currentClub} goVerwaltung={goVerwaltung} goFahrzeuge={() => setSubView("vehicles")} goTermin={(id) => { setSubView(null); setEventFocusRequest({ team: "alle", eventId: id, requestedAt: Date.now() }); setTab("events"); }} /></LockedFeature>}
                 {!subView && tab === "admin" && (currentUserIsAdmin || currentUserCanEditSponsors || canManageDuty(currentUser)) && (
                   <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Verwaltung">
                   <AdminView bereichWunsch={verwaltungsBereich} onBereichUebernommen={() => setVerwaltungsBereich(null)}
