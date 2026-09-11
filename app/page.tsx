@@ -9082,28 +9082,27 @@ function MemberDetailPanel({ member, onClose }) {
   const [loading, setLoading] = useState(true);
   const [penalties, setPenalties] = useState([]);
   const [tasks, setTasks] = useState([]);
-  const [carpoolsAsDriver, setCarpoolsAsDriver] = useState([]);
-  const [carpoolsAsPassenger, setCarpoolsAsPassenger] = useState([]);
   const [message, setMessage] = useState("");
+  /* Was die Leitung hier sieht, haengt an der Stufe: Strafen gibt es nur fuer
+     Spieler, Aufgaben ab Stufe Mitglied, und ein Fan hat keins von beidem.
+     Fahrgemeinschaften stehen hier nicht mehr - sie gehoeren zum Termin, nicht
+     zur Person. */
+  const istFan = (member.roles || []).includes("fan");
+  const istSpieler = !istFan && (member.roles || []).includes("spieler");
+  const leer = Promise.resolve({ data: [], error: null });
   useEffect(() => {
     const load = async () => {
       setLoading(true); setMessage("");
       if (!supabase) { setLoading(false); return; }
-      const [penaltyRes, taskRes, driverRes, passengerRes] = await Promise.all([
-        supabase.from("team_penalty_assignments")
+      const [penaltyRes, taskRes] = await Promise.all([
+        istSpieler ? supabase.from("team_penalty_assignments")
           .select("id,assigned_at,paid_at,archived_season,team_penalty_rules(title,amount),teams(name)")
-          .eq("membership_id", member.id).order("assigned_at", { ascending: false }),
-        supabase.from("club_task_signups")
+          .eq("membership_id", member.id).order("assigned_at", { ascending: false }) : leer,
+        !istFan ? supabase.from("club_task_signups")
           .select("signed_up_at,club_tasks(title,due_date,teams(name))")
-          .eq("membership_id", member.id).order("signed_up_at", { ascending: false }),
-        supabase.from("carpools")
-          .select("id,seats_available,note,departure,events(title,starts_at)")
-          .eq("driver_membership_id", member.id).order("created_at", { ascending: false }),
-        supabase.from("carpool_passengers")
-          .select("joined_at,carpools(events(title,starts_at))")
-          .eq("membership_id", member.id).order("joined_at", { ascending: false }),
+          .eq("membership_id", member.id).order("signed_up_at", { ascending: false }) : leer,
       ]);
-      if (penaltyRes.error || taskRes.error || driverRes.error || passengerRes.error) {
+      if (penaltyRes.error || taskRes.error) {
         setMessage(t("allg.datenTeilweiseFehler"));
       }
       setPenalties((penaltyRes.data || []).map((row) => {
@@ -9116,19 +9115,10 @@ function MemberDetailPanel({ member, onClose }) {
         const team = task && (Array.isArray(task.teams) ? task.teams[0] : task.teams);
         return { id: i, title: task?.title || "—", dueDate: task?.due_date, teamName: team?.name, signedUpAt: row.signed_up_at };
       }));
-      setCarpoolsAsDriver((driverRes.data || []).map((row) => {
-        const event = Array.isArray(row.events) ? row.events[0] : row.events;
-        return { id: row.id, seats: row.seats_available, departure: row.departure, note: row.note, eventTitle: event?.title, eventDate: event?.starts_at };
-      }));
-      setCarpoolsAsPassenger((passengerRes.data || []).map((row, i) => {
-        const carpool = Array.isArray(row.carpools) ? row.carpools[0] : row.carpools;
-        const event = carpool && (Array.isArray(carpool.events) ? carpool.events[0] : carpool.events);
-        return { id: i, eventTitle: event?.title, eventDate: event?.starts_at, joinedAt: row.joined_at };
-      }));
       setLoading(false);
     };
     load();
-  }, [member.id]);
+  }, [member.id, istFan, istSpieler]);
   const openPenalties = penalties.filter((p) => !p.season);
   const paidPenalties = openPenalties.filter((p) => p.paidAt);
   const unpaidPenalties = openPenalties.filter((p) => !p.paidAt);
@@ -9148,6 +9138,8 @@ function MemberDetailPanel({ member, onClose }) {
         </div>
         {message && <div className="text-[11px] mb-3" style={{ color: C.red }}>{meldungstext(message)}</div>}
         {loading ? <div className="text-xs py-4" style={{ color: C.textDim }}>{t("allg.laedt")}</div> : <>
+          {istFan && <div className="text-[11px] rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{t("mit.fanOhneDetails")}</div>}
+          {istSpieler && <>
           <div className="text-[10px] uppercase tracking-widest font-bold mb-2" style={{ color: C.textDim }}>{t("straf.titel")}</div>
           {unpaidPenalties.length === 0 && paidPenalties.length === 0 ? <div className="text-[11px] rounded-xl p-3 mb-4" style={{ background: C.paperDim, color: C.textDim }}>{t("straf.keineAktiven")}</div> : (
             <div className="space-y-1.5 mb-4">
@@ -9163,19 +9155,15 @@ function MemberDetailPanel({ member, onClose }) {
               </div>
             </div>
           )}
+          </>}
+          {!istFan && <>
           <div className="text-[10px] uppercase tracking-widest font-bold mb-2" style={{ color: C.textDim }}>{t("auf.titel")}</div>
           {tasks.length === 0 ? <div className="text-[11px] rounded-xl p-3 mb-4" style={{ background: C.paperDim, color: C.textDim }}>{t("auf.keineEingetragen")}</div> : (
             <div className="space-y-1.5 mb-4">
               {tasks.map((aufgabe) => <div key={aufgabe.id} className="px-3 py-2 rounded-xl" style={{ background: C.paperDim }}><div className="text-xs font-bold" style={{ color: C.ink }}>{aufgabe.title}</div><div className="text-[10px]" style={{ color: C.textDim }}>{aufgabe.teamName ? `${aufgabe.teamName} · ` : t("verein.mitPunktRaum")}{aufgabe.dueDate ? `Fällig bis ${new Date(aufgabe.dueDate).toLocaleDateString("de-DE")}` : t("auf.keinFaelligkeitsdatum")}</div></div>)}
             </div>
           )}
-          <div className="text-[10px] uppercase tracking-widest font-bold mb-2" style={{ color: C.textDim }}>{t("fahr.titel")}</div>
-          {carpoolsAsDriver.length === 0 && carpoolsAsPassenger.length === 0 ? <div className="text-[11px] rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{t("fahr.keineKurz")}</div> : (
-            <div className="space-y-1.5">
-              {carpoolsAsDriver.map((c) => <div key={`d-${c.id}`} className="px-3 py-2 rounded-xl" style={{ background: C.paperDim }}><div className="text-xs font-bold" style={{ color: C.ink }}>Fährt: {c.eventTitle || "—"}</div><div className="text-[10px]" style={{ color: C.textDim }}>{c.eventDate ? new Date(c.eventDate).toLocaleDateString("de-DE") : ""} · {c.seats} Plätze{c.note ? ` · ${c.note}` : ""}</div></div>)}
-              {carpoolsAsPassenger.map((c) => <div key={`p-${c.id}`} className="px-3 py-2 rounded-xl" style={{ background: C.paperDim }}><div className="text-xs font-bold" style={{ color: C.ink }}>Mitfahrer: {c.eventTitle || "—"}</div><div className="text-[10px]" style={{ color: C.textDim }}>{c.eventDate ? new Date(c.eventDate).toLocaleDateString("de-DE") : ""}</div></div>)}
-            </div>
-          )}
+          </>}
         </>}
       </div>
     </div>
@@ -12199,68 +12187,6 @@ function RolesPanel({ members, setMembers, currentUser = null, alleMitglieder = 
 /* ------------------------------------------------------------------ */
 /* System (Sys-Admin)                                                   */
 /* ------------------------------------------------------------------ */
-function SystemPanel({ members, channels, setChannels, maintenanceMode, setMaintenanceMode, onResetDemo, onEinstellung }) {
-  const t = useT();
-  /* Die Sicherheitsabfrage vor dem Zuruecksetzen. Der Zustand war beim Umbau der
-     Kanalverwaltung verschwunden, die beiden Verwendungen weiter unten blieben
-     stehen - damit riss Verwaltung > System mit einem ReferenceError ab, sobald
-     man den Reiter oeffnete. */
-  const [confirmReset, setConfirmReset] = useState(false);
-
-  return (
-    <div className="space-y-6">
-      <ToggleCard title="Wartungsmodus" desc="Hinweis-Banner für alle Nutzer:innen einblenden." value={maintenanceMode} onChange={(w)=>{onEinstellung?.("maintenance_mode",w);setMaintenanceMode(w);}} />
-
-        <div className="rounded-2xl p-3 mb-3" style={{ background: C.paperDim }}>
-          <div className="text-sm mb-1" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{t("chat.kanaele")}</div>
-          <div className="text-[11px] leading-snug" style={{ color: C.textDim }}>
-            Kanäle entstehen automatisch: Jede Mannschaft hat genau einen. Sichtbar ist er
-            für ihre Mitglieder und deren Eltern, schreiben dürfen Trainer, Kapitäne,
-            Teammanager sowie Vorstand und Vereinsverwaltung. Von Hand angelegt wird nichts —
-            so kann kein Kanal entstehen, den niemand pflegt, und keiner fehlen.
-          </div>
-        </div>
-
-      <div>
-        <div className="text-sm mb-2" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{t("sys.konten")}</div>
-        <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${C.line}` }}>
-          {members.map((m, i) => (
-            <div key={m.id} className="px-4 py-2.5" style={{ background: C.glass, borderBottom: i < members.length - 1 ? `1px solid ${C.line}` : "none" }}>
-              <div className="flex items-center justify-between">
-                <span className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{m.name}</span>
-                <span className="text-[10px]" style={{ fontFamily: "JetBrains Mono", color: C.textDim }}>{m.id}</span>
-              </div>
-              <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{m.email} · {m.roles.map((r) => rollenLabel(t, r)).join(", ")}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Nur ohne Datenbank. Fuer einen echten Verein war dieser Knopf eine
-          Falle: Er versprach ein Zuruecksetzen und schob stattdessen die
-          Demo-Inhalte eines fremden Vereins unter - zehn erfundene Spiele in
-          der Hemberghalle Iserlohn, vier Kanaele mit erfundenen Nachrichten.
-          Geschrieben wurde dabei nichts; nach dem Neuladen war alles wieder
-          da. */}
-      {!supabase && <div>
-        <div className="text-sm mb-2" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{t("sys.demoDaten")}</div>
-        {!confirmReset ? (
-          <button onClick={() => setConfirmReset(true)} className="w-full py-3 rounded-2xl text-sm" style={{ background: C.paperDim, color: C.red, fontFamily: "Inter", fontWeight: 700 }}>
-            Tipps, Beiträge & Helfer zurücksetzen
-          </button>
-        ) : (
-          <div className="rounded-2xl p-3" style={{ background: C.fehlerFlaeche, border: `1px solid ${C.fehlerRand}` }}>
-            <div className="text-xs mb-2" style={{ color: C.ink, fontFamily: "Inter" }}>Wirklich alle Aktivitätsdaten zurücksetzen? Konten, Rollen und Protokolle bleiben erhalten.</div>
-            <div className="flex gap-2">
-              <button onClick={() => { onResetDemo(); setConfirmReset(false); }} className="flex-1 py-2 rounded-lg text-xs" style={{ background: C.red, color: C.aufPrimaer, fontFamily: "Inter", fontWeight: 700 }}>{t("sys.jaZuruecksetzen")}</button>
-              <button onClick={() => setConfirmReset(false)} className="flex-1 py-2 rounded-lg text-xs" style={{ background: C.glass, color: C.textDim, fontFamily: "Inter", fontWeight: 700, border: `1px solid ${C.line}` }}>{t("allg.abbrechen")}</button>
-            </div>
-          </div>
-        )}
-      </div>}
-    </div>
-  );
-}
 
 /* ------------------------------------------------------------------ */
 /* Verwaltung (Vorstand / Geschäftsführung / Sys-Admin)                 */
@@ -12946,7 +12872,10 @@ function AdminView({
   if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.splice(1, 0, ["clubprofile", t("verein.profil")]);
   if (canManageClubFeatures) panels.splice(1, 0, ["functions", t("sys.funktionen")]);
   if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.splice(1, 0, ["results", t("sys.spielergebnisse")]);
-  if (isSysAdmin(currentUser)) panels.push(["families", t("fam.profile")], ["system", t("sys.system")]);
+  /* Kein Reiter "System" mehr - auch nicht fuer Sys-Admins. Wartungsmodus,
+     Kontoliste mit internen Kennungen und Demo-Ruecksetzen gehoeren dem
+     Betreiber, nicht einem Verein (Entscheidung des Betreibers, 12.09.2026). */
+  if (isSysAdmin(currentUser)) panels.push(["families", t("fam.profile")]);
 
   return (
     <div className="px-4 pt-4 pb-24">
@@ -12985,7 +12914,12 @@ function AdminView({
 
       {panel === "overview" && <OverviewPanel members={members} events={events} protocols={protocols} dutyPlan={dutyPlan} seasonVotes={seasonVotes} goPanel={panelWaehlen} goHelfer={goHelferEinteilen} />}
       {panel === "memberships" && darfVereinVerwalten(currentUser) && <MembershipApprovalsPanel club={currentClub} members={members} setMembers={setMembers} currentUser={currentUser} nurAnfragen={!currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))} />}
-      {panel === "clubprofile" && currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role)) && <><ClubLogoPanel club={currentClub} onLogoUpdated={onClubLogoUpdated} /><ClubColorPanel club={currentClub} onColorsUpdated={onClubColorsUpdated} /></>}
+      {/* Ohne geladenen Verein kein Logo- und Farbenbereich: ClubColorPanel las
+          club.primaryColor ohne Pruefung, und der ganze Bereich stuerzte ab, wenn
+          die Vereinsdaten beim Start nicht angekommen waren (12.09.). */}
+      {panel === "clubprofile" && currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role)) && (currentClub
+        ? <><ClubLogoPanel club={currentClub} onLogoUpdated={onClubLogoUpdated} /><ClubColorPanel club={currentClub} onColorsUpdated={onClubColorsUpdated} /></>
+        : <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>{t("verein.profilLadenFehler")}</div>)}
 
       {panel === "automation" && (
         <AutomationsPanel welcomeAutomation={welcomeAutomation} setWelcomeAutomation={setWelcomeAutomation} onEinstellung={onEinstellung} />
@@ -13002,9 +12936,6 @@ function AdminView({
       {panel === "roles" && <><RolesPanel members={members} setMembers={setMembers} currentUser={currentUser} /><ClaimManagedPlayerPanel members={members} setMembers={setMembers} currentUser={currentUser} /></>}
       {panel === "results" && currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role)) && <MatchResultsPanel results={tippResults} onSave={onSaveTippResult} onDelete={onDeleteTippResult} events={events} currentClub={currentClub} />}
       {panel === "families" && isSysAdmin(currentUser) && <AdminFamilyPanel members={members} setMembers={setMembers} />}
-      {panel === "system" && isSysAdmin(currentUser) && (
-        <SystemPanel members={members} channels={channels} setChannels={setChannels} maintenanceMode={maintenanceMode} setMaintenanceMode={setMaintenanceMode} onResetDemo={onResetDemo} onEinstellung={onEinstellung} />
-      )}
 
       {panel === "season" && (() => {
         const { counts, total, sorted } = seasonResults(seasonVotes, saisonKandidaten(members));
