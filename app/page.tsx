@@ -10681,7 +10681,7 @@ function AutomationsPanel({ welcomeAutomation, setWelcomeAutomation, onEinstellu
  * etwas zu tun, und die Liste waere sauber und falsch.
  *
  * Jede Zeile weiss, wohin sie fuehrt - die Datenbank liefert das Ziel mit. */
-function TodoBoard({ currentClub, goPanel, goFahrzeuge, goAufgaben }) {
+function TodoBoard({ currentClub, goPanel, goFahrzeuge, goAufgaben, goHelfer }) {
   const t = useT();
   const [punkte, setPunkte] = useState(null);
   const [fehler, setFehler] = useState("");
@@ -10711,9 +10711,12 @@ function TodoBoard({ currentClub, goPanel, goFahrzeuge, goAufgaben }) {
         <div className="px-4 py-3 text-[11px]" style={{ background: C.white, color: C.textDim, fontFamily: "Inter" }}>
           Keine Mitgliedsanträge, keine fehlenden Ergebnisse, keine fälligen Aufgaben.
         </div>
-      ) : /* Fahrzeugbuchungen liegen in einer eigenen Ansicht, nicht in der Verwaltung - ohne die Weiche unten liefe der Klick ins Leere. */
+      ) : /* Fahrzeugbuchungen liegen in einer eigenen Ansicht, nicht in der Verwaltung - ohne die Weiche unten liefe der Klick ins Leere.
+             Dasselbe gilt fuer Helferstationen: Das Einteilen ist aus der
+             Verwaltung in den Support-Reiter umgezogen. offene_punkte_fuer_verein
+             liefert dafuer weiter ziel = 'duty'. */
         punkte.map((p, i) => (
-        <button key={`${p.art}-${p.ziel_id}`} onClick={() => (p.ziel === "vehicle" ? goFahrzeuge?.() : p.ziel === "tasks" ? goAufgaben?.() : goPanel?.(p.ziel))}
+        <button key={`${p.art}-${p.ziel_id}`} onClick={() => (p.ziel === "vehicle" ? goFahrzeuge?.() : p.ziel === "tasks" ? goAufgaben?.() : p.ziel === "duty" ? goHelfer?.() : goPanel?.(p.ziel))}
           className="w-full text-left flex items-center gap-2 px-4 py-2.5"
           style={{ background: C.white, borderTop: i ? `1px solid ${C.line}` : "none" }}>
           <span className="w-1.5 h-1.5 rounded-full flex-shrink-0"
@@ -12481,6 +12484,11 @@ function AdminView({
     onBereichUebernommen?.();
   }, [bereichWunsch, onBereichUebernommen]);
   const panels = restrictedOnly ? restrictedPanels : [["overview", t("allg.uebersicht")], ["automation", t("sys.automatisierung")], ...(dutyFeatureOn ? [["duty-templates", t("help.saetzeTitel").replace("{begriff}", t(dutyCfg.dutyTabLabel))]] : []), ["protokolle", t("prot.protokolle")], ["polls", t("umf.umfragen")], ...(SPONSOREN_VERWALTUNG_SICHTBAR ? [["sponsoring", "Sponsoring"]] : []), ["season", t("sais.athletDerSaison")]];
+  /* Sprungziele von aussen (offene Punkte, Uebersicht) nur auf Bereiche, die
+     es fuer diese Person gibt. Ein unbekanntes Ziel liess sonst die Seite
+     unter den Knoepfen leer - so geschehen, als das Helfer-Einteilen in den
+     Support-Reiter umzog und ein offener Punkt weiter auf "duty" zeigte. */
+  const panelWaehlen = (ziel) => setPanel(panels.some(([k]) => k === ziel) ? ziel : panels[0][0]);
   if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.push(["roles", t("sys.rollen")]);
   if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.splice(1, 0, ["memberships", t("mit.antraege")]);
   if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.splice(1, 0, ["clubprofile", t("verein.profil")]);
@@ -12504,7 +12512,7 @@ function AdminView({
           den Spielergebnissen arbeitete, wusste nicht, dass ein
           Mitgliedsantrag wartet. Was Handlung braucht, gehoert an die erste
           Stelle, nicht hinter einen Reiter. */}
-      <TodoBoard currentClub={currentClub} goPanel={setPanel} goFahrzeuge={goFahrzeuge} goAufgaben={goAufgaben} />
+      <TodoBoard currentClub={currentClub} goPanel={panelWaehlen} goFahrzeuge={goFahrzeuge} goAufgaben={goAufgaben} goHelfer={goHelferEinteilen} />
 
       {/* Zwei Spalten statt waagerecht scrollend.
           Als Pillenleiste passten drei Eintraege auf den Bildschirm, der Rest
@@ -12527,7 +12535,7 @@ function AdminView({
         ))}
       </div>
 
-      {panel === "overview" && <OverviewPanel members={members} events={events} protocols={protocols} dutyPlan={dutyPlan} seasonVotes={seasonVotes} goPanel={setPanel} goHelfer={goHelferEinteilen} />}
+      {panel === "overview" && <OverviewPanel members={members} events={events} protocols={protocols} dutyPlan={dutyPlan} seasonVotes={seasonVotes} goPanel={panelWaehlen} goHelfer={goHelferEinteilen} />}
       {panel === "memberships" && currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role)) && <MembershipApprovalsPanel club={currentClub} members={members} setMembers={setMembers} />}
       {panel === "clubprofile" && currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role)) && <><ClubLogoPanel club={currentClub} onLogoUpdated={onClubLogoUpdated} /><ClubColorPanel club={currentClub} onColorsUpdated={onClubColorsUpdated} /></>}
 
