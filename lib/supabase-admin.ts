@@ -15,13 +15,16 @@ import { createClient } from "@supabase/supabase-js";
  * Ein Versuch mehr genügt. Mehr wäre falsch: Hält der Versatz an, ist das
  * nichts, was sich wegwiederholen lässt - dann soll der Aufrufer eine ehrliche
  * "gerade nicht verfügbar"-Antwort geben können.
+ *
+ * Gewartet wird 1,5 Sekunden. Mit 400 ms scheiterte am 11./12.09. auch der
+ * zweite Versuch mehrfach - der Versatz hielt länger an.
  */
 export async function mitZweitemVersuch<T extends { error: { code?: string | null } | null }>(
   abfrage: () => PromiseLike<T>,
 ): Promise<T> {
   const erst = await abfrage();
   if (erst.error?.code !== "PGRST303") return erst;
-  await new Promise((weiter) => setTimeout(weiter, 400));
+  await new Promise((weiter) => setTimeout(weiter, 1500));
   return abfrage();
 }
 
