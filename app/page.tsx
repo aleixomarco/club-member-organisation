@@ -12503,7 +12503,7 @@ function ClaimManagedPlayerPanel({ members, setMembers, currentUser }) {
 
 function AdminView({
   bereichWunsch, onBereichUebernommen,
-  goFahrzeuge, goAufgaben, goHelferEinteilen,
+  goHelferEinteilen,
   members, setMembers, events, dutyPlan, setDutyPlan, seasonVotes, currentUser,
   channels, setChannels, maintenanceMode, setMaintenanceMode, onResetDemo,
   protocols, setProtocols,
@@ -12573,12 +12573,8 @@ function AdminView({
         </div>
       </div>}
 
-      {/* Das To-Do-Board steht ueber der Reiterleiste, nicht in der Uebersicht.
-          Dort war es nur zu sehen, solange man auf t("allg.uebersicht") stand - wer in
-          den Spielergebnissen arbeitete, wusste nicht, dass ein
-          Mitgliedsantrag wartet. Was Handlung braucht, gehoert an die erste
-          Stelle, nicht hinter einen Reiter. */}
-      <TodoBoard currentClub={currentClub} goPanel={panelWaehlen} goFahrzeuge={goFahrzeuge} goAufgaben={goAufgaben} goHelfer={goHelferEinteilen} />
+      {/* Die offenen Punkte stehen im Support-Reiter (SupportView), nicht mehr
+          hier - dort liegen alle To-Dos an einem Ort. */}
 
       {/* Zwei Spalten statt waagerecht scrollend.
           Als Pillenleiste passten drei Eintraege auf den Bildschirm, der Rest
@@ -15669,7 +15665,7 @@ export default function ClubMemberOrganisationApp() {
                 {!subView && tab === "admin" && (currentUserIsAdmin || currentUserCanEditSponsors || canManageDuty(currentUser)) && (
                   <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Verwaltung">
                   <AdminView bereichWunsch={verwaltungsBereich} onBereichUebernommen={() => setVerwaltungsBereich(null)}
-                    goFahrzeuge={() => setSubView("vehicles")} goAufgaben={() => goSupport("aufgaben")} goHelferEinteilen={() => goSupport("einteilen")} members={clubMembers} setMembers={setMembers} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} seasonVotes={seasonVotes}
+                    goHelferEinteilen={() => goSupport("einteilen")} members={clubMembers} setMembers={setMembers} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} seasonVotes={seasonVotes}
                     currentUser={currentUser} channels={channels} setChannels={setChannels} maintenanceMode={maintenanceMode} setMaintenanceMode={setMaintenanceMode} onResetDemo={resetDemoData}
                     protocols={protocols} setProtocols={setProtocols}
                     welcomeAutomation={welcomeAutomation} setWelcomeAutomation={setWelcomeAutomation}
