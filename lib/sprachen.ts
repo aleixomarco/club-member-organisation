@@ -1329,6 +1329,7 @@ const de: Woerterbuch = {
   "benach.events": "Vereinstermine",
 
   "auf.nichtMehrDa": "Diese Aufgabe gibt es nicht mehr.",
+  "news.nichtMehrDa": "Diesen Beitrag gibt es nicht mehr.",
   "help.frei": "frei",
   "nav.tasks": "Aufgaben",
 };
@@ -2628,6 +2629,7 @@ const en: Woerterbuch = {
   "benach.events": "Club dates",
 
   "auf.nichtMehrDa": "This task no longer exists.",
+  "news.nichtMehrDa": "This news post no longer exists.",
   "help.frei": "free",
   "nav.tasks": "Tasks",
 };
@@ -3927,6 +3929,7 @@ const es: Woerterbuch = {
   "benach.events": "Citas del club",
 
   "auf.nichtMehrDa": "Esta tarea ya no existe.",
+  "news.nichtMehrDa": "Esta noticia ya no existe.",
   "help.frei": "libres",
   "nav.tasks": "Tareas",
 };
@@ -5226,6 +5229,7 @@ const pt: Woerterbuch = {
   "benach.events": "Datas do clube",
 
   "auf.nichtMehrDa": "Esta tarefa já não existe.",
+  "news.nichtMehrDa": "Esta notícia já não existe.",
   "help.frei": "livres",
   "nav.tasks": "Tarefas",
 };
@@ -6525,6 +6529,7 @@ const it: Woerterbuch = {
   "benach.events": "Appuntamenti del club",
 
   "auf.nichtMehrDa": "Questo compito non esiste più.",
+  "news.nichtMehrDa": "Questa notizia non esiste più.",
   "help.frei": "liberi",
   "nav.tasks": "Attività",
 };
@@ -7824,6 +7829,7 @@ const tr: Woerterbuch = {
   "benach.events": "Kulüp tarihleri",
 
   "auf.nichtMehrDa": "Bu görev artık yok.",
+  "news.nichtMehrDa": "Bu haber artık yok.",
   "help.frei": "boş",
   "nav.tasks": "Görevler",
 };
@@ -9123,6 +9129,7 @@ const fr: Woerterbuch = {
   "benach.events": "Dates du club",
 
   "auf.nichtMehrDa": "Cette tâche n'existe plus.",
+  "news.nichtMehrDa": "Cette actualité n'existe plus.",
   "help.frei": "libres",
   "nav.tasks": "Tâches",
 };

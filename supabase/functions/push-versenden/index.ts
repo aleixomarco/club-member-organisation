@@ -327,11 +327,18 @@ Deno.serve(async (anfrage) => {
               token: geraet.fcm_token,
               notification: { title: zeile.title, body: zeile.body ?? "" },
               /* Die Kennung reist mit, damit die App spaeter direkt an die
-                 richtige Stelle springen kann, statt nur zu oeffnen. */
+                 richtige Stelle springen kann, statt nur zu oeffnen.
+                 Dazu das Ziel selbst (ziel_art, ziel_id): Mit ihm springt die
+                 App sofort, ohne die Zeile erst nachzuladen - auch dann, wenn
+                 sie gerade erst startet und noch niemand angemeldet ist.
+                 FCM nimmt in data nur Zeichenketten; ein fehlendes Ziel ist
+                 deshalb "", nicht null. */
               data: {
                 kind: String(zeile.kind ?? ""),
                 club_id: String(zeile.club_id ?? ""),
                 notification_id: String(zeile.id ?? ""),
+                ziel_art: String(zeile.ziel_art ?? ""),
+                ziel_id: String(zeile.ziel_id ?? ""),
               },
               apns: { payload: { aps: { sound: "default", badge: offen } } },
             },

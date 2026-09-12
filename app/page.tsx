@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { ANMELDUNG_MERKEN, isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { SPRACHEN, gespeicherteSprache, spracheMerken, uebersetze } from "@/lib/sprachen";
-import { enablePushNotifications, disablePushNotifications, listenForForegroundMessages, pushTokenAuffrischen } from "@/lib/firebase-push";
+import { enablePushNotifications, disablePushNotifications, listenForForegroundMessages, pushTokenAuffrischen, meldungsTippsAbonnieren } from "@/lib/firebase-push";
 import { Capacitor } from "@capacitor/core";
 import { legal } from "./legal-shell";
 /* Preise werden in der App nicht mehr angezeigt - siehe SubscriptionPanel.
@@ -3839,7 +3839,7 @@ function NextTrainingCard({ training, team, auswahlVorhanden = false }) {
     </div>
   );
 }
-function Dashboard({ user, members, events, channels, news, dutyPlan, seasonVotes, tippPredictions, tippResults, polls, setPolls, onVote, onUnvote, umfrageFokus, onUmfrageFokusErledigt, onFavoritMannschaft, werbeplaetze, onSponsorImpression, onSponsorClick, goEvents, goSeason, goTipp, goDuty, goNews, goTasks, goVehicles, currentClub, featureEnabled, dashboardTileOrder, entitlement, goSubscribe, mannschaften = [], gewaehlteMannschaft = "", onMannschaftWechsel }) {
+function Dashboard({ user, members, events, channels, news, dutyPlan, seasonVotes, tippPredictions, tippResults, polls, setPolls, onVote, onUnvote, umfrageFokus, onUmfrageFokusErledigt, newsFokus, onNewsFokusErledigt, onFavoritMannschaft, werbeplaetze, onSponsorImpression, onSponsorClick, goEvents, goSeason, goTipp, goDuty, goNews, goTasks, goVehicles, currentClub, featureEnabled, dashboardTileOrder, entitlement, goSubscribe, mannschaften = [], gewaehlteMannschaft = "", onMannschaftWechsel }) {
   const t = useT();
   const sport = currentClub?.sport || "rollhockey";
 
@@ -3868,6 +3868,28 @@ function Dashboard({ user, members, events, channels, news, dutyPlan, seasonVote
     }));
     return () => { abgebrochen = true; window.cancelAnimationFrame(kennung); };
   }, [umfrageFokus, onUmfrageFokusErledigt]);
+  /* Dasselbe fuer einen News-Beitrag.
+     Hier stehen nur die zwei neuesten. Ist der gemeinte nicht darunter, geht
+     seine Kennung zurueck, und die App oeffnet ihn einzeln - statt dass die
+     Meldung still auf der Startseite endet und man ihn nirgends findet.
+     Gefragt wird das Dokument, nicht eine eigene Rechnung, welche Beitraege
+     hier stehen: So stimmt es auch, wenn sich die Auswahl einmal aendert. */
+  useEffect(() => {
+    if (!newsFokus?.newsId) return undefined;
+    let abgebrochen = false;
+    const kennung = window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+      if (abgebrochen) return;
+      const knoten = document.getElementById(`news-${newsFokus.newsId}`);
+      onNewsFokusErledigt?.(knoten ? null : newsFokus.newsId);
+      if (!knoten) return;
+      knoten.scrollIntoView({ behavior: "smooth", block: "center" });
+      knoten.style.transition = "box-shadow .3s";
+      knoten.style.boxShadow = `0 0 0 2px ${C.red}`;
+      knoten.style.borderRadius = "12px";
+      window.setTimeout(() => { knoten.style.boxShadow = "none"; }, 1800);
+    }));
+    return () => { abgebrochen = true; window.cancelAnimationFrame(kennung); };
+  }, [newsFokus, onNewsFokusErledigt]);
 
   /* Alle Kacheln in „Aktionen & Abstimmungen" hängen am Premium-Tarif
      (siehe die LockedFeature-Hüllen der jeweiligen Ansichten). Während der
@@ -4087,7 +4109,7 @@ function Dashboard({ user, members, events, channels, news, dutyPlan, seasonVote
         {newsMsgs.length === 0 ? (
           <div className="text-xs py-3" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("news.keine")}</div>
         ) : newsMsgs.map((m, i) => (
-          <div key={i} className="py-3" style={{ borderBottom: i < newsMsgs.length - 1 ? `1px solid ${C.line}` : "none" }}>
+          <div key={i} id={m.id ? `news-${m.id}` : undefined} className="py-3" style={{ borderBottom: i < newsMsgs.length - 1 ? `1px solid ${C.line}` : "none" }}>
             <div className="text-[11px] mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>{m.who} · {m.time}</div>
             {m.imageUrl && <img src={m.imageUrl} alt="" className="w-full rounded-xl mb-2" style={{ maxHeight: 140, objectFit: "cover" }} />}
             {m.title && <div className="text-sm mb-0.5" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>{m.title}</div>}
@@ -6948,7 +6970,7 @@ function MannschaftsMeldungen({ teamId, currentUser, imTeam }) {
   );
 }
 
-function TeamsView({ currentUser, members, setMembers, currentClub }) {
+function TeamsView({ currentUser, members, setMembers, currentClub, teamWunsch = null, onTeamWunschErledigt }) {
   const t = useT();
   const [teams, setTeams] = useState([]);
   const [selectedTeamId, setSelectedTeamId] = useState("");
@@ -7065,6 +7087,15 @@ function TeamsView({ currentUser, members, setMembers, currentClub }) {
     setLoading(false);
   }, [databaseMembership, currentUser.clubId, members]);
   useEffect(() => { loadTeams(); }, [loadTeams]);
+  /* Aus einer Meldung heraus (Mannschaft beigetreten, Strafe) soll gleich
+     die gemeinte Mannschaft offen sein, nicht die Liste. Erst wenn die Liste
+     geladen ist - vorher gibt es nichts aufzuschlagen. Gibt es die Mannschaft
+     nicht (mehr), bleibt die Liste stehen. */
+  useEffect(() => {
+    if (!teamWunsch?.teamId || loading) return;
+    if (teams.some((team) => team.id === teamWunsch.teamId)) setSelectedTeamId(teamWunsch.teamId);
+    onTeamWunschErledigt?.();
+  }, [teamWunsch, loading, teams]);
 
   const rosterFor = (team) => members.filter((member) => member.roles.includes("spieler") && memberPlayerTeams(member).includes(team.name)).sort((a, b) => a.name.localeCompare(b.name, "de"));
   const ownNames = memberPlayerTeams(currentUser);
@@ -9007,7 +9038,7 @@ function HowToVideoLibrary({ user, vorhanden = null }) {
   );
 }
 
-function BoardMemberOverview({ members, currentUser }) {
+function BoardMemberOverview({ members, currentUser, vorauswahl = null, onVorauswahlErledigt }) {
   const t = useT();
   const [search, setSearch] = useState("");
   const [liveMembers, setLiveMembers] = useState(null);
@@ -9046,6 +9077,15 @@ function BoardMemberOverview({ members, currentUser }) {
     };
     load();
   }, [currentUser?.clubId]);
+  /* Aus einer Meldung ("Neues Mitglied") geht das Mitglied gleich im Detail
+     auf. Gewartet wird, bis die Liste geladen ist - vorher steht es nicht
+     darin. Ist es nicht (mehr) aktiv, bleibt die Liste stehen. */
+  useEffect(() => {
+    if (!vorauswahl || loading) return;
+    const treffer = (liveMembers || members).find((m) => m.id === vorauswahl);
+    if (treffer) setSelectedMember(treffer);
+    onVorauswahlErledigt?.();
+  }, [vorauswahl, loading, liveMembers]);
   const source = liveMembers || members;
   const filtered = source
     .filter((m) => m.name.toLowerCase().includes(search.toLowerCase()))
@@ -9609,7 +9649,7 @@ function CalendarSyncSettings({ user, saveRef }) {
   </div>;
 }
 
-function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, currentClub, dutyPlan, punkteZiel, punktePraemie, werbeplaetze, onSponsorImpression, onSponsorClick, onLogout, clubFeatures, onClubFeaturesChanged, entitlement, goSubscribe, dashboardTileOrder, setDashboardTileOrder, ziel, onZielErreicht }) {
+function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, currentClub, dutyPlan, punkteZiel, punktePraemie, werbeplaetze, onSponsorImpression, onSponsorClick, onLogout, clubFeatures, onClubFeaturesChanged, entitlement, goSubscribe, dashboardTileOrder, setDashboardTileOrder, ziel, onZielErreicht, mitgliedZiel = null, onMitgliedZielErreicht }) {
   const t = useT();
   const featureEnabled = (key) => clubFeatures[key] !== false;
   /* Ziel und Praemie legt der VEREIN fest, nicht die App. Ohne Eintrag steht
@@ -9648,9 +9688,14 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
      Kaufbereich soll offen sein, nicht die Uebersicht. Der Wunsch wird
      eingeloest und sofort zurueckgesetzt - sonst spraenge das Profil bei jedem
      spaeteren Besuch wieder dorthin. */
+  /* Ein Ziel kann zwei Ebenen tief sein, "ordner/unterlage": Aus einer
+     Meldung heraus soll etwa gleich "Familie & Verknuepfungen" offen sein,
+     nicht nur der Ordner "Persoenliche Daten" darueber. */
   useEffect(() => {
     if (!ziel) return;
-    setProfileFolder(ziel);
+    const [ordner, unterlage] = String(ziel).split("/");
+    setProfileFolder(ordner);
+    if (unterlage) setProfileUnderlay(unterlage);
     onZielErreicht?.();
   }, [ziel]);
   useEffect(() => {
@@ -9953,7 +9998,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
         || ["spieler", "teammanager", "kapitaen"].some((r) => user.roles.includes(r))) && <ProfileUnderlay title={t("pf.mannschaftseinstellungen")} eyebrow="Mannschaftsverwaltung" onClose={() => setProfileUnderlay("")}><TeamPenaltyCatalog user={user}/></ProfileUnderlay>}
       {profileUnderlay === "family" && <ProfileUnderlay title="Familie & Verknüpfungen" onClose={() => setProfileUnderlay("")}><SectionTitle eyebrow="Familie" title="Stammbaum"/><div className="mb-2"><FamilyTree user={user} members={members}/></div><FamilyLinkManager user={user} members={members} setMembers={setMembers}/></ProfileUnderlay>}
       {profileUnderlay === "users" && darfVereinVerwalten(user) && <ProfileUnderlay title="Benutzerverwaltung" eyebrow="Sys-Administration" onClose={() => setProfileUnderlay("")}><SysAdminUserManager members={members} setMembers={setMembers} currentUser={user}/></ProfileUnderlay>}
-      {profileUnderlay === "board-overview" && darfVereinVerwalten(user) && <ProfileUnderlay title="Mitgliederübersicht" eyebrow="Vorstand" onClose={() => setProfileUnderlay("")}><BoardMemberOverview members={members} currentUser={user}/></ProfileUnderlay>}
+      {profileUnderlay === "board-overview" && darfVereinVerwalten(user) && <ProfileUnderlay title="Mitgliederübersicht" eyebrow="Vorstand" onClose={() => setProfileUnderlay("")}><BoardMemberOverview members={members} currentUser={user} vorauswahl={mitgliedZiel} onVorauswahlErledigt={onMitgliedZielErreicht}/></ProfileUnderlay>}
       {profileUnderlay === "join-requests" && darfVereinVerwalten(user) && <ProfileUnderlay title="Beitrittsanfragen" eyebrow="Verwalten" onClose={() => setProfileUnderlay("")}><MembershipApprovalsPanel club={{ id: user.clubId }} members={members} setMembers={setMembers} currentUser={user} nurAnfragen /></ProfileUnderlay>}
       {profileUnderlay === "account" && <ProfileUnderlay title="Kontoeinstellungen" onClose={() => setProfileUnderlay("")}>
         <div className="rounded-2xl p-4 mb-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="flex items-center gap-2 text-sm font-bold mb-1" style={{ color: C.ink }}><ShieldCheck size={16} style={{ color: C.sekundaerAufHell }}/> Sicherheit</div><div className="text-[11px]" style={{ color: C.textDim }}>Dein Konto ist über Supabase geschützt. Passwortänderungen und Wiederherstellung erfolgen über deine hinterlegte E-Mail-Adresse.</div></div>
@@ -13177,6 +13222,78 @@ const subviewTitel = (t) => ({ season: t("sub.season"), tipp: t("sub.tipp"), dut
  * sich eingetragen hat, ob sie erledigt ist -, weiss nur die Datenbank.
  * Wurde die Aufgabe geloescht, sagt das Fenster das auch, statt leer zu
  * bleiben. */
+/* Ein News-Beitrag, einzeln geoeffnet - aus der Glocke oder einem Push.
+ *
+ * Die Startseite zeigt nur die zwei neuesten Beitraege. Eine Meldung ueber
+ * einen aelteren fuehrte dorthin und liess einen suchen - und wer keine
+ * Redaktionsrechte hat, hat gar keine vollstaendige Liste. Dieses Blatt
+ * zeigt deshalb genau den einen Beitrag.
+ *
+ * Er kommt zuerst aus dem, was die App ohnehin geladen hat (die letzten 100).
+ * Nur wenn er dort fehlt, wird er einzeln nachgeladen. Ist er inzwischen
+ * geloescht, steht genau das da - kein leeres Blatt. */
+function NewsOverlay({ newsId, news, onClose }) {
+  const t = useT();
+  const ausListe = (news || []).find((m) => m.id === newsId) || null;
+  const ausListeDa = !!ausListe;
+  const [nachgeladen, setNachgeladen] = useState(null);
+  const [laedt, setLaedt] = useState(!ausListeDa);
+  const [fehler, setFehler] = useState(false);
+  useEffect(() => {
+    if (ausListeDa) return undefined;
+    if (!supabase || !isDbId(newsId)) { setLaedt(false); return undefined; }
+    let abgebrochen = false;
+    (async () => {
+      const { data, error } = await supabase.from("news_posts")
+        .select("id,title,body,image_path,author_name,created_at").eq("id", newsId).maybeSingle();
+      let bild = null;
+      if (data?.image_path) {
+        const { data: signiert } = await supabase.storage.from("news-images").createSignedUrl(data.image_path, 3600);
+        bild = signiert?.signedUrl || null;
+      }
+      if (abgebrochen) return;
+      setFehler(!!error);
+      setNachgeladen(data ? {
+        id: data.id, title: data.title, text: data.body, imageUrl: bild,
+        who: data.author_name || t("verein.vereinLabel"),
+        time: new Date(data.created_at).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "2-digit" }),
+      } : null);
+      setLaedt(false);
+    })();
+    return () => { abgebrochen = true; };
+  }, [newsId, ausListeDa]);
+  const eintrag = ausListe || nachgeladen;
+
+  return (
+    <div className="absolute inset-0 z-50 flex items-end" style={{ background: "rgba(20,21,26,.72)" }} onClick={onClose}>
+      <div className="w-full rounded-t-3xl px-5 pt-3 pb-8"
+           style={{ background: C.blatt, maxHeight: "88%", overflowY: "auto",
+                    boxShadow: "0 -14px 38px rgba(20,21,26,.30)",
+                    borderTop: `1px solid ${C.edge}` }}
+           onClick={(e) => e.stopPropagation()}>
+        <div className="mx-auto mb-3" style={{ width: 38, height: 4, borderRadius: 999, background: C.line }} />
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.red }}>{t("news.vereinsNews")}</div>
+          <button onClick={onClose} aria-label={t("allg.schliessen")} className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background: C.paperDim, color: C.textDim }}>
+            <X size={14} />
+          </button>
+        </div>
+        {laedt ? <div className="text-xs py-4" style={{ color: C.textDim }}>{t("allg.laedt")}</div>
+         : fehler ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{t("news.ladenFehler")}</div>
+         : !eintrag ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{t("news.nichtMehrDa")}</div>
+         : (
+          <div>
+            <div className="text-[11px] mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>{eintrag.who} · {eintrag.time}</div>
+            {eintrag.imageUrl && <img src={eintrag.imageUrl} alt="" className="w-full rounded-xl mb-3" style={{ maxHeight: 220, objectFit: "cover" }} />}
+            {eintrag.title && <div className="text-base mb-1" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>{eintrag.title}</div>}
+            <div className="text-sm" style={{ fontFamily: "Inter", color: C.ink, whiteSpace: "pre-wrap" }}>{eintrag.text}</div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* Eine Aufgabe, aus der Glocke geoeffnet - mit allem, was die
  * Aufgabenansicht auch kann.
  *
@@ -13424,7 +13541,13 @@ function AufgabeOverlay({ taskId, currentUser, onClose }) {
   );
 }
 
-function PostfachView({ eintraege, laedt, onGelesen, onLoeschen, onAlleLoeschen, onOeffnen }) {
+function PostfachView({ eintraege, laedt, onGelesen, onLoeschen, onAlleLoeschen, onOeffnen, kannOeffnen }) {
+  /* Ob eine Zeile ein Ziel hat, das sich HIER oeffnen laesst, entscheidet
+     die App (meldungOeffenbar): Rechte, eingeschaltete Funktionen und
+     bekannte Arten. Nur "hat eine ziel_art" reichte nicht - eine Aufnahme
+     fuer jemanden, der die Mitgliederuebersicht nicht sehen darf, waere
+     anklickbar gewesen und haette nichts getan. */
+  const oeffenbar = (e) => (kannOeffnen ? kannOeffnen(e) : !!e.ziel_art);
   const t = useT();
   const zeit = (wert) => {
     const d = new Date(wert);
@@ -13468,13 +13591,13 @@ function PostfachView({ eintraege, laedt, onGelesen, onLoeschen, onAlleLoeschen,
       ) : (
         <div className="space-y-2">
           {eintraege.map((e) => (
-            /* Anklickbar, wenn die Meldung ein Ziel hat. Ohne Ziel bleibt sie
-               eine Notiz - dann waere ein Zeiger, der nichts tut, schlimmer
-               als keiner. */
+            /* Anklickbar, wenn die Meldung ein Ziel hat, das sich oeffnen
+               laesst. Sonst bleibt sie eine Notiz - dann waere ein Zeiger,
+               der nichts tut, schlimmer als keiner. */
             <div key={e.id} className="rounded-2xl p-3.5 flex gap-3"
-                 role={e.ziel_art ? "button" : undefined}
-                 onClick={e.ziel_art ? () => onOeffnen?.(e) : undefined}
-                 style={{ background: e.read_at ? C.paperDim : C.glass, border: `1px solid ${e.read_at ? "transparent" : C.edge}`, cursor: e.ziel_art ? "pointer" : "default" }}>
+                 role={oeffenbar(e) ? "button" : undefined}
+                 onClick={oeffenbar(e) ? () => onOeffnen?.(e) : undefined}
+                 style={{ background: e.read_at ? C.paperDim : C.glass, border: `1px solid ${e.read_at ? "transparent" : C.edge}`, cursor: oeffenbar(e) ? "pointer" : "default" }}>
               {!e.read_at && <span className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5" style={{ background: C.red }} />}
               <div className="flex-1 min-w-0">
                 <div className="text-xs" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{e.title}</div>
@@ -14269,37 +14392,104 @@ export default function ClubMemberOrganisationApp() {
      Kennung nicht - ohne ihn bliebe der Wunsch unbemerkt und nichts
      passierte. */
   const [umfrageFokus, setUmfrageFokus] = useState(null);
+  /* Dasselbe fuer einen News-Beitrag. Die Startseite zeigt nur die zwei
+     neuesten; steht der gemeinte nicht darunter, meldet das Dashboard ihn
+     zurueck, und er geht einzeln als Blatt auf (offeneNews). */
+  const [newsFokus, setNewsFokus] = useState(null);
+  const [offeneNews, setOffeneNews] = useState(null);
+  /* Welche Mannschaft der Teams-Reiter aufschlagen soll und welches Mitglied
+     die Mitgliederuebersicht im Profil. Beide Wuensche loest die jeweilige
+     Ansicht einmal ein und setzt sie dann zurueck - sonst spraenge sie bei
+     jedem spaeteren Besuch wieder dorthin. */
+  const [teamWunsch, setTeamWunsch] = useState(null);
+  const [mitgliedZiel, setMitgliedZiel] = useState(null);
+  /* Stabil ueber useCallback: Das Dashboard fuehrt die Rueckmeldung in der
+     Abhaengigkeitsliste seines Effekts. Eine bei jedem Rendern neue Funktion
+     braeche das Heranrollen immer wieder ab, bevor es passiert. */
+  const newsFokusErledigt = useCallback((fehlt) => {
+    setNewsFokus(null);
+    if (fehlt) setOffeneNews(fehlt);
+  }, []);
+
+  /* Kann diese Meldung hier etwas oeffnen?
+     Eine Zeile, die sich antippen laesst und dann nichts tut, sieht kaputt
+     aus. Diese eine Stelle entscheidet deshalb - fuer die Glocke wie fuer den
+     Push -, ob es ein Ziel gibt, das diese Person auch sehen darf.
+     Eine Kennung braucht es seit den Sprungzielen (20260912010000) nicht mehr
+     in jedem Fall: 'sicherheit' und 'familie' haben nie eine, und wo sie
+     fehlt, gibt es meist einen passenden Bereich als Ersatz. */
+  const meldungOeffenbar = (e) => {
+    if (!e?.ziel_art || !currentUser) return false;
+    switch (e.ziel_art) {
+      /* Ohne Kennung bleibt fuer Aufgaben und Helferdienste nur der
+         Support-Reiter - und den haben Fans nicht. */
+      case "aufgabe": case "helferdienst": return !!e.ziel_id || !istNurFan(currentUser);
+      case "protokollaufgabe": return !istNurFan(currentUser);
+      /* Die Fahrzeugansicht gibt es nur, wenn der Verein sie eingeschaltet
+         hat - sonst stuende dort eine leere Seite mit Ueberschrift. */
+      case "fahrzeug": return featureEnabled("vehicle_booking");
+      /* Antraege und Mitgliederuebersicht gehoeren der Vereinsleitung. Hat
+         jemand die Rolle inzwischen verloren, bleibt die Meldung eine Notiz
+         statt einer Tuer, hinter der nichts ist. */
+      case "beitritt": case "mitglied": return darfVereinVerwalten(currentUser);
+      case "termin": case "umfrage": case "chat": case "news": case "strafe": case "mannschaft":
+      case "familie": case "sicherheit": case "verein": case "geburtstag":
+        return true;
+      /* Eine Art, die diese App noch nicht kennt - etwa weil die Datenbank
+         neuer ist. Ein Sprung ins Leere waere schlechter als keiner. */
+      default: return false;
+    }
+  };
+  /* Wohin eine angetippte Meldung fuehrt. Gibt zurueck, ob gesprungen wurde. */
   const meldungOeffnen = (e) => {
-    if (!e?.ziel_art || !e?.ziel_id) return;
-    if (e.ziel_art === "aufgabe") { setOffeneAufgabe(e.ziel_id); return; }
+    if (!meldungOeffenbar(e)) return false;
+    const zielId = e.ziel_id || null;
+    if (e.ziel_art === "aufgabe") { if (zielId) setOffeneAufgabe(zielId); else goSupport("aufgaben"); return true; }
     /* Helferdienste (Einteilung, Station, Erinnerung) oeffnen den Termin:
        Dort stehen Helferplan und Stationen beieinander - im Support-Reiter
        fehlen die Stationen, und Fans haben ihn gar nicht. ziel_id ist die
-       Termin-ID (Migrationen 20260911030000 und 20260911050000). */
+       Termin-ID (Migrationen 20260911030000, 20260911050000, 20260912010000).
+       Haengt ein Dienst an keinem Termin, bleibt nur der Support-Reiter. */
     if (e.ziel_art === "helferdienst") {
+      if (!zielId) { goSupport("helfer"); return true; }
       setSubView(null);
-      setEventFocusRequest({ team: "alle", eventId: e.ziel_id, requestedAt: Date.now() });
+      setEventFocusRequest({ team: "alle", eventId: zielId, requestedAt: Date.now() });
       setTab("events");
-      return;
+      return true;
     }
     /* Protokollaufgaben stehen im Support-Reiter unter "Dir zugewiesen".
-       Fans haben den Reiter nicht - fuer sie gibt es dort nichts zu sehen. */
-    if (e.ziel_art === "protokollaufgabe") { if (!istNurFan(currentUser)) goSupport("aufgaben"); return; }
+       Fans haben den Reiter nicht - meldungOeffenbar laesst sie gar nicht
+       erst hierher. */
+    if (e.ziel_art === "protokollaufgabe") { goSupport("aufgaben"); return true; }
     if (e.ziel_art === "termin") {
       setSubView(null);
-      setEventFocusRequest({ team: "alle", eventId: e.ziel_id, requestedAt: Date.now() });
+      if (zielId) setEventFocusRequest({ team: "alle", eventId: zielId, requestedAt: Date.now() });
       setTab("events");
-      return;
+      return true;
     }
-    /* Die Buchungsanfrage fuehrt dorthin, wo man sie genehmigen kann.
-       Ohne diesen Zweig traegt die Meldung zwar ein Ziel, die App wuesste
-       damit aber nichts anzufangen - die Zeile waere anklickbar und taete
-       nichts. */
-    if (e.ziel_art === "fahrzeug") { setSubView("vehicles"); return; }
+    /* Die Buchungsanfrage fuehrt dorthin, wo man sie genehmigen kann; eine
+       Stornierung dorthin, wo man neu bucht. */
+    if (e.ziel_art === "fahrzeug") { setSubView("vehicles"); return true; }
     /* Eine Beitrittsanfrage fuehrt dorthin, wo man sie annimmt oder ablehnt. */
-    if (e.ziel_art === "beitritt") { setSubView(null); setVerwaltungsBereich("memberships"); setTab("admin"); return; }
-    /* Strafen haengen an einer Mannschaft; die Uebersicht liegt unter Teams. */
-    if (e.ziel_art === "strafe") { setSubView(null); setTab("teams"); return; }
+    if (e.ziel_art === "beitritt") { setSubView(null); setVerwaltungsBereich("memberships"); setTab("admin"); return true; }
+    /* Ein neu aufgenommenes Mitglied: Die Mitgliederuebersicht im Profil
+       (Verein & Mitgliedschaft) oeffnet es gleich im Detail. Bei den offenen
+       Antraegen stuende es nicht mehr - die Aufnahme ist ja erledigt. */
+    if (e.ziel_art === "mitglied") {
+      setSubView(null);
+      setMitgliedZiel(zielId);
+      setProfilZiel("club/board-overview");
+      setTab("profile");
+      return true;
+    }
+    /* Strafen und Mannschaftsmeldungen haengen an einer Mannschaft; ziel_id
+       ist deren Kennung, und der Teams-Reiter schlaegt sie gleich auf. */
+    if (e.ziel_art === "strafe" || e.ziel_art === "mannschaft") {
+      setSubView(null);
+      if (zielId) setTeamWunsch({ teamId: zielId, angefragt: Date.now() });
+      setTab("teams");
+      return true;
+    }
     /* Bis hierher fuehrte die Umfrage nur auf die Startseite. Dort steht sie
        zwar - aber unter den Terminen, den Neuigkeiten und den Aktionen, und
        wer eine Meldung antippt, will nicht suchen. Die Kennung geht deshalb
@@ -14307,19 +14497,36 @@ export default function ClubMemberOrganisationApp() {
        kurz hervor. */
     if (e.ziel_art === "umfrage") {
       setSubView(null);
-      setUmfrageFokus({ pollId: e.ziel_id, angefragt: Date.now() });
+      if (zielId) setUmfrageFokus({ pollId: zielId, angefragt: Date.now() });
       setTab("home");
-      return;
+      return true;
     }
     /* Eine Nachricht - oder eine Abstimmung - aus einem Kanal fuehrt in genau
        diesen Kanal. */
     if (e.ziel_art === "chat") {
       setSubView(null);
-      if (e.ziel_id) setChatChannelId(e.ziel_id);
+      if (zielId) setChatChannelId(zielId);
       setTab("chat");
-      return;
+      return true;
     }
-    if (e.ziel_art === "news") { setSubView(null); setTab("home"); return; }
+    /* Wie die Umfrage: heranrollen und kurz hervorheben. */
+    if (e.ziel_art === "news") {
+      setSubView(null);
+      if (zielId) setNewsFokus({ newsId: zielId, angefragt: Date.now() });
+      setTab("home");
+      return true;
+    }
+    if (e.ziel_art === "familie") { setSubView(null); setProfilZiel("personal/family"); setTab("profile"); return true; }
+    /* Ein neues Geraet: Profil > Konto & Sicherheit - dort meldet man
+       fremde Geraete ab und aendert das Passwort. */
+    if (e.ziel_art === "sicherheit") { setSubView(null); setProfilZiel("security"); setTab("profile"); return true; }
+    /* 'verein' (aufgenommen): Der Verein selbst ist das Ziel - den oeffnet
+       der Sprung schon vorher (siehe offenerSprung); hier bleibt die
+       Startseite. 'geburtstag': Die Startseite zeigt die Geburtstage des
+       Tages ganz oben. */
+    setSubView(null);
+    setTab("home");
+    return true;
   };
 
   /* Steht im App Store eine neuere Version?
@@ -14783,6 +14990,25 @@ export default function ClubMemberOrganisationApp() {
     setPostfach([]); setUngelesen(0);
     const { error } = await supabase.from("user_notifications").delete().eq("profile_id", meinProfil());
     if (error) { setSchreibFehler(t("push.entfernenFehler")); setPostfach(vorher); }
+  };
+
+  /* Eine einzelne Meldung als gelesen vermerken.
+     Bisher gab es nur "alle gelesen". Wer eine Meldung antippte - in der
+     Glocke oder als Push -, sah danach weiter den roten Punkt und den Zaehler
+     auf dem Symbol, obwohl er sie gerade gelesen hatte.
+     Die Regel "users update own notifications" laesst genau die eigenen
+     Zeilen zu. Schlaegt es fehl, bleibt die Meldung ungelesen - kein Grund,
+     jemanden mit einer Fehlermeldung zu stoeren. */
+  const meldungGelesen = async (id) => {
+    if (!supabase || !isDbId(id) || !meinProfil()) return;
+    const jetzt = new Date().toISOString();
+    setPostfach((alle) => alle.map((e) => (e.id === id && !e.read_at ? { ...e, read_at: jetzt } : e)));
+    const { error } = await supabase.from("user_notifications").update({ read_at: jetzt }).eq("id", id).is("read_at", null);
+    if (!error) ungelesenZaehlen();
+  };
+  const meldungAntippen = (e) => {
+    if (!meldungOeffnen(e)) return;
+    meldungGelesen(e.id);
   };
 
   const kachelreihenfolgeSpeichern = async (reihenfolge) => {
@@ -15392,6 +15618,114 @@ export default function ClubMemberOrganisationApp() {
     return ergebnis;
   };
 
+  /* Der angetippte Push - im Browser auch /?meldung=... - wartet hier, bis
+   * die App so weit ist.
+   *
+   * WARUM EIN WARTENDER SPRUNG
+   * Ein Tipp auf dem Sperrbildschirm startet die App oft erst. Dann ist noch
+   * niemand angemeldet und kein Verein geladen; meldungOeffnen haette nichts,
+   * wohin es springen koennte. Der Tipp wird deshalb gemerkt und genau einmal
+   * eingeloest, sobald der richtige Verein offen ist.
+   *
+   * DER RICHTIGE VEREIN
+   * Wer in mehreren Vereinen ist, bekommt Pushes aus allen. Eine Meldung aus
+   * Verein B, geoeffnet in Verein A, fuehrte in A an eine Stelle, die es dort
+   * nicht gibt. Deshalb wird zuerst gewechselt - aber nur in einen Verein, in
+   * dem die Person aktiv Mitglied ist. Kontomeldungen (club_id leer, etwa
+   * "Neues Geraet") gehen im gerade offenen Verein auf.
+   *
+   * WARUM DIE ZEILE MANCHMAL NACHGELADEN WIRD
+   * Der Browser bekommt vom Service Worker bewusst nur die Kennung (keine
+   * Inhalte in der Adresse), und Pushes von vor diesem Stand tragen noch kein
+   * Ziel. In beiden Faellen liest die App die Zeile selbst - die Datenbank
+   * gibt nur eigene heraus - und nimmt Verein und Ziel von dort.
+   *
+   * "laeuft" statt eines Abbruchs im Aufraeumen: Das Nachladen und das
+   * Auffrischen der Vereinsliste aendern selbst Zustand, von dem dieser
+   * Effekt abhaengt. Wuerde das Aufraeumen das Ergebnis verwerfen, finge der
+   * Effekt von vorn an - im schlimmsten Fall endlos. So laeuft jeder Schritt
+   * je Tipp genau einmal. */
+  const [offenerSprung, setOffenerSprung] = useState(null);
+  const sprungWechselZiel = useRef("");
+  useEffect(() => meldungsTippsAbonnieren((tipp) => setOffenerSprung({ ...tipp, geladen: false, aufgefrischt: false })), []);
+  /* Im Browser: /?meldung=<id> vom Service Worker. Einmal lesen und sofort
+     aus der Adresse nehmen - ein Neuladen soll nicht noch einmal springen,
+     und wer die Adresse weitergibt, soll die Kennung nicht mitgeben. */
+  useEffect(() => {
+    try {
+      const adresse = new URL(window.location.href);
+      const kennung = adresse.searchParams.get("meldung");
+      if (!kennung) return;
+      adresse.searchParams.delete("meldung");
+      window.history.replaceState(window.history.state, "", `${adresse.pathname}${adresse.search}${adresse.hash}`);
+      if (isDbId(kennung)) setOffenerSprung({ notification_id: kennung, club_id: "", ziel_art: "", ziel_id: "", geladen: false, aufgefrischt: false });
+    } catch { /* Ohne lesbare Adresse gibt es nichts zu springen. */ }
+  }, []);
+  useEffect(() => {
+    const sprung = offenerSprung;
+    if (!sprung) return;
+    const profilId = offeneSitzung?.profileId || currentUser?.authProfileId || null;
+    const gleicherTipp = (jetzt) => !!jetzt && jetzt.notification_id === sprung.notification_id;
+
+    /* 1. Ziel fehlt: die eigene Zeile lesen. Vorher gibt die Datenbank
+          nichts heraus - ohne Sitzung wird gewartet. */
+    if (!sprung.ziel_art && !sprung.geladen) {
+      if (!supabase || !isDbId(sprung.notification_id)) { setOffenerSprung(null); return; }
+      if (!profilId) return;
+      setOffenerSprung({ ...sprung, geladen: "laeuft" });
+      supabase.from("user_notifications").select("id,club_id,ziel_art,ziel_id")
+        .eq("id", sprung.notification_id).maybeSingle()
+        .then(({ data, error }) => setOffenerSprung((jetzt) => {
+          if (!gleicherTipp(jetzt)) return jetzt;
+          if (error || !data) return null;
+          return { ...jetzt, club_id: data.club_id || "", ziel_art: data.ziel_art || "", ziel_id: data.ziel_id || "", geladen: true };
+        }));
+      return;
+    }
+    if (sprung.geladen === "laeuft" || sprung.aufgefrischt === "laeuft") return;
+
+    const zielVerein = sprung.club_id || "";
+    /* 2. Angekommen: Kein bestimmter Verein verlangt, oder genau der ist offen. */
+    if (currentUser && (!zielVerein || currentUser.clubId === zielVerein)) {
+      sprungWechselZiel.current = "";
+      setOffenerSprung(null);
+      meldungOeffnen(sprung);
+      meldungGelesen(sprung.notification_id);
+      return;
+    }
+    /* Kontomeldung, aber noch kein Verein offen (Auswahl bei mehreren
+       Vereinen, Anmeldung): warten, bis einer offen ist. */
+    if (!zielVerein) return;
+    /* Ohne Datenbank (Demo) gibt es keinen zweiten Verein. */
+    if (!supabase) { setOffenerSprung(null); return; }
+    if (!profilId) return;
+    /* Der Wechsel laeuft schon - auf das Laden warten. */
+    if (sprungWechselZiel.current === zielVerein) return;
+
+    /* 3. In den Verein der Meldung wechseln. */
+    const mitgliedschaft = meineMitgliedschaften.find((m) => m.club_id === zielVerein && m.status === "active");
+    if (!mitgliedschaft) {
+      /* Die Liste kann veraltet sein: Wer gerade aufgenommen wurde ('verein'),
+         steht dort noch als "wartet". Einmal frisch holen, dann entscheiden. */
+      if (!sprung.aufgefrischt) {
+        setOffenerSprung({ ...sprung, aufgefrischt: "laeuft" });
+        mitgliedschaftenLaden(profilId).finally(() => setOffenerSprung((jetzt) => (gleicherTipp(jetzt) ? { ...jetzt, aufgefrischt: true } : jetzt)));
+        return;
+      }
+      /* Kein aktives Mitglied dort (abgelehnt, ausgetreten): Die Meldung
+         laesst sich nirgends oeffnen. Die App bleibt, wo sie ist; gelesen
+         ist sie trotzdem - sie wurde ja angetippt. */
+      setOffenerSprung(null);
+      meldungGelesen(sprung.notification_id);
+      return;
+    }
+    sprungWechselZiel.current = zielVerein;
+    vereinOeffnen(mitgliedschaft).then((ergebnis) => {
+      /* Scheitert das Laden, nicht endlos weiter versuchen. */
+      if (ergebnis?.error || ergebnis?.code) { sprungWechselZiel.current = ""; setOffenerSprung(null); }
+    });
+  }, [offenerSprung, currentUser, meineMitgliedschaften, offeneSitzung]);
+
   const leavePendingAccount = async () => {
     await geraetAbmelden();
     if (supabase) await supabase.auth.signOut();
@@ -15828,6 +16162,7 @@ export default function ClubMemberOrganisationApp() {
       ? <UpdateSperre installiert="1.2" verfuegbar="1.3" storeUrl={null} probe onProbeEnde={() => setUpdateProbe(false)} />
       : updateNoetig && <UpdateSperre {...updateNoetig} />}
     {offeneAufgabe && currentUser && <AufgabeOverlay taskId={offeneAufgabe} currentUser={currentUser} onClose={() => setOffeneAufgabe(null)} />}
+    {offeneNews && currentUser && <NewsOverlay newsId={offeneNews} news={vereinsNews} onClose={() => setOffeneNews(null)} />}
     {currentUser && selectedClubId && <TeamMeldungenAbfrage currentUser={currentUser} clubId={selectedClubId} />}
     <div className="erg-app erg-shell w-full flex items-center justify-center" style={{ fontFamily: "Inter", ...themeVars }}>
       <style>{FONTS}</style>
@@ -15958,7 +16293,7 @@ export default function ClubMemberOrganisationApp() {
               <Fehlergrenze key={`grenze-${tab}-${subView || ""}`}>
                 {subView === "season" && featureEnabled("season_award") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Athlet/in der Saison"><SeasonVoteView currentUser={currentUser} members={clubMembers} seasonVotes={seasonVotes} setSeasonVotes={setSeasonVotes} onVote={saisonStimmeAbgeben} onUnvote={saisonStimmeZuruecknehmen} /></LockedFeature>}
                 {subView === "tipp" && featureEnabled("tippspiel") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Tippspiel"><TippView members={clubMembers} currentUser={currentUser} events={events} tippPredictions={tippPredictions} setTippPredictions={setTippPredictions} tippResults={tippResults} onTippSpeichern={tippSpeichern} onZurueck={() => setSubView(null)} /></LockedFeature>}
-                {subView === "postfach" && <PostfachView eintraege={postfach} laedt={postfachLaedt} onGelesen={postfachGelesen} onAlleLoeschen={postfachAlleLoeschen} onLoeschen={postfachLoeschen}  onOeffnen={meldungOeffnen}/>}
+                {subView === "postfach" && <PostfachView eintraege={postfach} laedt={postfachLaedt} onGelesen={postfachGelesen} onAlleLoeschen={postfachAlleLoeschen} onLoeschen={postfachLoeschen} onOeffnen={meldungAntippen} kannOeffnen={meldungOeffenbar}/>}
                 {subView === "duty" && featureEnabled("duty_roster") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Helferplanung"><DutyView members={clubMembers} currentUser={currentUser} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={dienstSetzen} /></LockedFeature>}
                 {subView === "tasks" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Aufgaben"><TasksView currentUser={currentUser} members={clubMembers} /></LockedFeature>}
                 {subView === "vehicles" && featureEnabled("vehicle_booking") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Vereinsfahrzeuge"><VehiclesView currentUser={currentUser} currentClub={currentClub} /></LockedFeature>}
@@ -15966,6 +16301,7 @@ export default function ClubMemberOrganisationApp() {
                 {!subView && tab === "home" && (
                   <Dashboard user={currentUser} onFavoritMannschaft={setzeFavoritMannschaft} members={clubMembers} events={events} channels={channels} news={vereinsNews} dutyPlan={dutyPlan} seasonVotes={seasonVotes} tippPredictions={tippPredictions} tippResults={tippResults} polls={polls} setPolls={setPolls} onVote={stimmeAbgeben} onUnvote={stimmeZuruecknehmen}
                     umfrageFokus={umfrageFokus} onUmfrageFokusErledigt={() => setUmfrageFokus(null)}
+                    newsFokus={newsFokus} onNewsFokusErledigt={newsFokusErledigt}
                     werbeplaetze={werbeplaetze} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick}
                     goEvents={goToMyNextMatch} goSeason={() => setSubView("season")} goTipp={() => setSubView("tipp")} goDuty={() => goSupport("helfer")} goTasks={() => goSupport("aufgaben")} goVehicles={() => setSubView("vehicles")} goNews={currentUserCanEditNews ? goNews : null}
                     currentClub={currentClub} featureEnabled={featureEnabled} dashboardTileOrder={dashboardTileOrder} entitlement={entitlement} goSubscribe={goSubscribe}
@@ -15978,7 +16314,7 @@ export default function ClubMemberOrganisationApp() {
                     focusRequest={eventFocusRequest} onFocusApplied={()=>setEventFocusRequest(null)}
                     currentClub={currentClub} featureEnabled={featureEnabled} />
                 )}
-                {!subView && tab === "teams" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Teams-Verwaltung"><TeamsView currentUser={currentUser} members={clubMembers} setMembers={setMembers} currentClub={currentClub} /></LockedFeature>}
+                {!subView && tab === "teams" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Teams-Verwaltung"><TeamsView currentUser={currentUser} members={clubMembers} setMembers={setMembers} currentClub={currentClub} teamWunsch={teamWunsch} onTeamWunschErledigt={() => setTeamWunsch(null)} /></LockedFeature>}
                 {!subView && tab === "chat" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Chat"><ChatView user={currentUser} channels={channels} setChannels={setChannels} activeId={chatChannelId} setActiveId={setChatChannelId} members={clubMembers} /></LockedFeature>}
                 {!subView && tab === "redaktion" && currentUserCanEditNews && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Redaktion"><RedaktionView user={currentUser} news={vereinsNews} setNews={setVereinsNews} /></LockedFeature>}
                 {/* canManageDuty gehoert mit in die Bedingung: Der Reiter
@@ -16004,7 +16340,7 @@ export default function ClubMemberOrganisationApp() {
                     currentClub={currentClub} onClubLogoUpdated={updateCurrentClubLogo} onClubColorsUpdated={updateCurrentClubColors} clubFeatures={clubFeatures} onClubFeaturesChanged={loadClubFeatures} />
                   </LockedFeature>
                 )}
-                {!subView && tab === "profile" && <ProfileView sprache={sprache} onSpracheWaehlen={spracheWaehlen} ziel={profilZiel} onZielErreicht={() => setProfilZiel("")} user={currentUser} members={clubMembers} setMembers={setMembers} currentClub={currentClub} dutyPlan={dutyPlan} punkteZiel={punkteZiel} punktePraemie={punktePraemie} werbeplaetze={werbeplaetze} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick} onLogout={logout} clubFeatures={clubFeatures} onClubFeaturesChanged={loadClubFeatures} entitlement={entitlement} goSubscribe={goSubscribe} dashboardTileOrder={dashboardTileOrder} setDashboardTileOrder={setDashboardTileOrder} />}
+                {!subView && tab === "profile" && <ProfileView sprache={sprache} onSpracheWaehlen={spracheWaehlen} ziel={profilZiel} onZielErreicht={() => setProfilZiel("")} mitgliedZiel={mitgliedZiel} onMitgliedZielErreicht={() => setMitgliedZiel(null)} user={currentUser} members={clubMembers} setMembers={setMembers} currentClub={currentClub} dutyPlan={dutyPlan} punkteZiel={punkteZiel} punktePraemie={punktePraemie} werbeplaetze={werbeplaetze} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick} onLogout={logout} clubFeatures={clubFeatures} onClubFeaturesChanged={loadClubFeatures} entitlement={entitlement} goSubscribe={goSubscribe} dashboardTileOrder={dashboardTileOrder} setDashboardTileOrder={setDashboardTileOrder} />}
               </Fehlergrenze>
             </ZumAktualisierenZiehen>
 

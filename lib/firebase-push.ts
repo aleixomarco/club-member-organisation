@@ -1,7 +1,7 @@
 import { initializeApp, getApps } from "firebase/app";
 import { getMessaging, getToken, isSupported } from "firebase/messaging";
 import { supabase } from "@/lib/supabase";
-import { Capacitor } from "@capacitor/core";
+import { Capacitor, type PluginListenerHandle } from "@capacitor/core";
 import { FirebaseMessaging } from "@capacitor-firebase/messaging";
 
 /* Zwei Wege zum selben Ziel - und bis zum 04.09.2026 gab es nur den falschen.
@@ -211,6 +211,76 @@ export async function enablePushNotifications(membershipId: string): Promise<Ena
   }
 }
 
+/* Eine angetippte Mitteilung - wohin sie fuehren soll.
+ *
+ * Die Felder kommen aus push-versenden (FCM data) und sind dort immer
+ * Zeichenketten; ein fehlender Wert ist "". Aeltere Pushes - verschickt, bevor
+ * push-versenden das Ziel mitschickte - haben nur notification_id; dann laedt
+ * die App die Zeile nach und liest das Ziel von dort. */
+export type MeldungsTipp = { notification_id: string; club_id: string; ziel_art: string; ziel_id: string };
+
+const TIPP_EREIGNIS = "cmo-meldung-angetippt";
+
+function tippAusDaten(daten: unknown): MeldungsTipp | null {
+  if (!daten || typeof daten !== "object") return null;
+  const d = daten as Record<string, unknown>;
+  const text = (x: unknown) => (typeof x === "string" ? x : "");
+  const tipp = { notification_id: text(d.notification_id), club_id: text(d.club_id), ziel_art: text(d.ziel_art), ziel_id: text(d.ziel_id) };
+  return tipp.notification_id || tipp.ziel_art ? tipp : null;
+}
+
+/* Meldet jeden Tipp auf eine Mitteilung - in der App wie im Browser.
+ *
+ * NATIV: "notificationActionPerformed" aus @capacitor-firebase/messaging.
+ * Das Plugin haelt das Ereignis fest, bis jemand zuhoert (iOS
+ * retainUntilConsumed, Android notifyListeners(..., true)). Ein Tipp, der die
+ * App erst STARTET, geht deshalb nicht verloren, auch wenn dieser Zuhoerer
+ * erst nach dem ersten Bild angemeldet wird. Die App merkt sich den Tipp und
+ * springt, sobald jemand angemeldet und der Verein geladen ist.
+ *
+ * BROWSER: Der Service Worker schickt die Kennung als Nachricht, wenn die App
+ * schon offen war (sonst oeffnet er sie mit ?meldung=...). Dazu kommt das
+ * Fensterereignis aus listenForForegroundMessages.
+ *
+ * Gibt eine Funktion zum Abmelden zurueck - fuer das Aufraeumen im Effekt. */
+export function meldungsTippsAbonnieren(beiTipp: (tipp: MeldungsTipp) => void): () => void {
+  if (typeof window === "undefined") return () => {};
+
+  if (imGeraet()) {
+    let griff: PluginListenerHandle | null = null;
+    let beendet = false;
+    FirebaseMessaging.addListener("notificationActionPerformed", (ereignis) => {
+      const tipp = tippAusDaten(ereignis?.notification?.data);
+      if (tipp) beiTipp(tipp);
+    }).then((g) => { if (beendet) g.remove(); else griff = g; }).catch(() => {});
+    return () => { beendet = true; griff?.remove(); };
+  }
+
+  const ausFenster = (ereignis: Event) => {
+    const tipp = tippAusDaten((ereignis as CustomEvent).detail);
+    if (tipp) beiTipp(tipp);
+  };
+  window.addEventListener(TIPP_EREIGNIS, ausFenster);
+
+  const container = "serviceWorker" in navigator ? navigator.serviceWorker : null;
+  const ausWorker = (ereignis: MessageEvent) => {
+    const d = ereignis.data;
+    if (!d || typeof d !== "object" || d.typ !== TIPP_EREIGNIS) return;
+    const tipp = tippAusDaten(d);
+    if (tipp) beiTipp(tipp);
+  };
+  if (container) {
+    container.addEventListener("message", ausWorker);
+    /* Mit addEventListener (statt onmessage) stellt der Browser Nachrichten
+       erst nach startMessages() zu - sonst bliebe ein Tipp in der Warteschlange. */
+    try { container.startMessages(); } catch { /* aeltere Browser: dort ohnehin automatisch */ }
+  }
+  return () => {
+    window.removeEventListener(TIPP_EREIGNIS, ausFenster);
+    container?.removeEventListener("message", ausWorker);
+  };
+}
+
 export function listenForForegroundMessages() {
   if (typeof window === "undefined") return;
 
@@ -231,7 +301,16 @@ export function listenForForegroundMessages() {
         const title = payload.notification?.title || "CMO";
         const body = payload.notification?.body || "";
         if (Notification.permission === "granted") {
-          new Notification(title, { body });
+          /* Auch die Mitteilung, die die offene Seite selbst zeigt, fuehrt
+             beim Antippen an ihr Ziel. Sie geht als Fensterereignis an
+             meldungsTippsAbonnieren - derselbe Weg wie ein Tipp aus dem
+             Service Worker, damit es nur EINE Stelle gibt, die springt. */
+          const mitteilung = new Notification(title, { body });
+          mitteilung.onclick = () => {
+            window.focus();
+            mitteilung.close();
+            window.dispatchEvent(new CustomEvent(TIPP_EREIGNIS, { detail: payload.data || {} }));
+          };
         }
       });
     });
