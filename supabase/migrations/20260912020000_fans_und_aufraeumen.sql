@@ -352,7 +352,16 @@ revoke all on function public.aufnahme_leitung_melden() from public, anon, authe
 -- benutzt. anon steht mit dabei: Supabase vergibt EXECUTE auf neue
 -- Funktionen im Schema public standardmaessig auch an anon, das damalige
 -- "revoke ... from public" hat das nicht erfasst. service_role behaelt sie.
-revoke execute on function public.set_membership_role(uuid, public.club_role, boolean) from public, anon, authenticated;
+-- set_membership_role gibt es in PROD gar nicht: 20260802063000 wurde am 29.08.
+-- per "migration repair" nur als eingespielt vermerkt, die Funktion nie
+-- angelegt. Ein unbedingtes REVOKE braeche die ganze Migration ab (42883) -
+-- deshalb nur, wenn es sie gibt.
+do $$
+begin
+  if to_regprocedure('public.set_membership_role(uuid, public.club_role, boolean)') is not null then
+    execute 'revoke execute on function public.set_membership_role(uuid, public.club_role, boolean) from public, anon, authenticated';
+  end if;
+end $$;
 
 -- ---------------------------------------------------------------- Nachweis
 -- Nur lesend. Erwartet: die ersten fuenf je 1, fan_texte = 21,
@@ -379,9 +388,9 @@ select
       and t.tgfoid = 'public.notify_event_audience()'::regprocedure) as termin_ausloeser,
   (select count(*) from public.meldungstexte
     where schluessel like 'beitritt.aufgenommenFan.%') as fan_texte,
-  has_function_privilege('authenticated',
-    'public.set_membership_role(uuid, public.club_role, boolean)', 'EXECUTE') as set_membership_role_authenticated,
-  has_function_privilege('anon',
-    'public.set_membership_role(uuid, public.club_role, boolean)', 'EXECUTE') as set_membership_role_anon,
+  (case when to_regprocedure('public.set_membership_role(uuid, public.club_role, boolean)') is null then false else has_function_privilege('authenticated',
+    'public.set_membership_role(uuid, public.club_role, boolean)', 'EXECUTE') end) as set_membership_role_authenticated,
+  (case when to_regprocedure('public.set_membership_role(uuid, public.club_role, boolean)') is null then false else has_function_privilege('anon',
+    'public.set_membership_role(uuid, public.club_role, boolean)', 'EXECUTE') end) as set_membership_role_anon,
   (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public' and p.proname = 'anzeige_zaehlen') as anzeige_zaehlen_bleibt;
