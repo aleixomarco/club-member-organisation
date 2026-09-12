@@ -68,6 +68,14 @@ export async function GET(_request: Request, context: { params: Promise<{ token:
   const { data: membership, error: mitgliedFehler } = await lies("Mitgliedschaft konnte nicht gelesen werden", () => admin.from("club_memberships").select("id").eq("profile_id", subscription.profile_id).eq("club_id", subscription.club_id).eq("status", "active").maybeSingle());
   if (mitgliedFehler) return NextResponse.json({ error: "Kalender konnte nicht geladen werden" }, { status: 500 });
   if (!membership) return NextResponse.json({ error: "Mitgliedschaft nicht aktiv" }, { status: 403 });
+  /* Fans sehen keine Trainings (Entscheidung vom 12.09.2026) - auch nicht im
+     Geraetekalender. "Nur Fan" heisst: 'fan' ist die einzige Rolle dieser
+     Mitgliedschaft in DIESEM Verein. Ein Lesefehler endet wie bei der
+     Mitgliedschaft in einer 500 und nicht in einem Kalender voller Trainings,
+     die dieser Mensch in der App gar nicht sieht. */
+  const { data: rollen, error: rollenFehler } = await lies("Rollen konnten nicht gelesen werden", () => admin.from("membership_roles").select("role").eq("membership_id", membership.id));
+  if (rollenFehler) return NextResponse.json({ error: "Kalender konnte nicht geladen werden" }, { status: 500 });
+  const nurFan = (rollen || []).length > 0 && (rollen || []).every((eintrag) => eintrag.role === "fan");
   const { data: familyLinks } = await lies("Familienverbindungen konnten nicht gelesen werden", () => admin.from("family_links")
     .select("first_membership_id,second_membership_id,first_to_second,second_to_first")
     .eq("club_id", subscription.club_id)
@@ -104,11 +112,18 @@ export async function GET(_request: Request, context: { params: Promise<{ token:
   const chosenTypes: string[] = Array.isArray(subscription.event_types) && subscription.event_types.length
     ? subscription.event_types.filter((entry: string) => ALL_TYPES.includes(entry))
     : ALL_TYPES;
+  /* Ein Fan bekommt keine Trainings, auch wenn sein Abo sie noch fuehrt -
+     etwa weil es aus der Zeit stammt, bevor er Fan wurde. */
+  const lieferbareArten = nurFan ? chosenTypes.filter((entry) => entry !== "training") : chosenTypes;
 
   /* Die Abfrage wird fuer jeden Versuch neu gebaut - ein zweites await auf
      dasselbe Objekt waere kein zweiter Versuch. */
   const termine = () => {
-    const query = admin.from("events").select("id,title,description,starts_at,ends_at,location,status,type,team_id").eq("club_id", subscription.club_id).in("type", chosenTypes).gte("starts_at", new Date(Date.now() - 86400000).toISOString()).order("starts_at");
+    const basis = admin.from("events").select("id,title,description,starts_at,ends_at,location,status,type,team_id").eq("club_id", subscription.club_id).gte("starts_at", new Date(Date.now() - 86400000).toISOString()).order("starts_at");
+    /* Bleibt keine Art uebrig (ein Fan, der nur Trainings abonniert hatte),
+       wird der Kalender leer - ohne Abfrage mit leerer in-Liste, die PostgREST
+       als "in.()" bekaeme. */
+    const query = lieferbareArten.length ? basis.in("type", lieferbareArten) : basis.limit(0);
     return teamIds.length ? query.or(`team_id.is.null,team_id.in.(${teamIds.join(",")})`) : query.is("team_id", null);
   };
   const { data: events, error } = await lies("Termine konnten nicht gelesen werden", termine);
@@ -116,9 +131,11 @@ export async function GET(_request: Request, context: { params: Promise<{ token:
   const refreshInterval = { daily: "P1D", weekly: "P1W", monthly: "P1M", never: "P10Y" }[subscription.sync_interval] || "P1D";
   /* Der Name landet sichtbar im Gerätekalender — er soll verraten, was drinsteckt. */
   const typeLabels: Record<string, string> = { training: "Training", spiel: "Spiele", event: "Events" };
-  const artenName = chosenTypes.length === ALL_TYPES.length
+  /* Der Name folgt dem, was wirklich drinsteht - bei einem Fan also ohne
+     "Training". Bleibt gar nichts, heisst der Kalender schlicht "Termine". */
+  const artenName = lieferbareArten.length === ALL_TYPES.length || !lieferbareArten.length
     ? "Termine"
-    : chosenTypes.map((entry) => typeLabels[entry]).join(" & ");
+    : lieferbareArten.map((entry) => typeLabels[entry]).join(" & ");
   /* Bei ausgewaehlten Mannschaften deren Namen in den Kalendernamen. Wer zwei
      Abos im Geraet hat, muss sie auseinanderhalten koennen. */
   let mannschaftsName = "";

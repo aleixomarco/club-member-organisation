@@ -5126,7 +5126,8 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
       if (!token) {
         const { data: neu, error } = await supabase.rpc("configure_calendar_subscription", {
           target_club: currentUser.clubId, requested_interval: "daily",
-          requested_types: ["training", "spiel", "event"], requested_teams: [],
+          /* Fans ohne Trainings - der Feed liesse sie ohnehin weg. */
+          requested_types: istNurFan(currentUser) ? ["spiel", "event"] : ["training", "spiel", "event"], requested_teams: [],
         });
         if (error) { window.alert(t("kal.verbindungFehler")); return; }
         token = neu?.[0]?.token || "";
@@ -5189,7 +5190,8 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
       <SponsorSlot slotKey="events_header" bookings={werbeplaetze} onImpression={onSponsorImpression} onClick={onSponsorClick} visible={featureEnabled("sponsor_events_header")} />
       <div className="flex items-center gap-2 mb-3">
         <div className="flex gap-2 overflow-x-auto pb-1 flex-1 min-w-0" style={{ scrollbarWidth: "none" }}>
-          {[["alle", t("ev.alle2")], ["training", t("ev.training")], ["spiel", t("ev.spiele2")], ["event", t("ev.events2")]].map(([k, l]) => (
+          {/* Fans sehen keine Trainings - also auch keinen Filter dafuer. */}
+          {[["alle", t("ev.alle2")], ...(istNurFan(currentUser) ? [] : [["training", t("ev.training")]]), ["spiel", t("ev.spiele2")], ["event", t("ev.events2")]].map(([k, l]) => (
             <button key={k} onClick={() => setFilter(k)} className="px-3 py-1.5 rounded-full text-xs flex-shrink-0"
               style={{ fontFamily: "Inter", fontWeight: 700, background: filter === k ? C.ink : C.paperDim, color: filter === k ? C.white : C.textDim }}>{l}</button>
           ))}
@@ -5878,6 +5880,56 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
     return () => { weg = true; };
   }, [user.authProfileId, user.clubId]);
 
+  /* Die sichtbaren Nachrichten und die beiden Abstimmungs-Effekte stehen VOR
+     dem fruehen return fuer "kein Kanal sichtbar". Frueher standen sie
+     dahinter: Ohne Kanal liefen dann zwei Hooks weniger, und sobald der erste
+     Kanal auftauchte, brach React mit "Rendered more hooks than during the
+     previous render" ab. Ohne Kanal gibt es jetzt schlicht nichts zu laden -
+     die Effekte laufen trotzdem, in derselben Reihenfolge. */
+  const visibleMessages = active
+    ? active.messages.filter((m) => m.authorId === user.authProfileId || !blocked.includes(m.authorId))
+    : [];
+
+  /* Die Abstimmungen dieses Kanals nachladen, sobald eine auftaucht, die wir
+     noch nicht kennen. */
+  const pollIds = visibleMessages.map((m) => m.pollId).filter((id) => isDbId(id));
+  const pollSchluessel = pollIds.join(",");
+  /* Die Kennungen fuer den Echtzeit-Rueckruf weiter unten. Gesetzt nach dem
+     Rendern, nicht waehrend: Eine Ref im Rendern zu beschreiben meldet
+     react-hooks/refs zu Recht - das fiel erst auf, seit die Hooks hier
+     wieder in fester Reihenfolge stehen. Der Rueckruf feuert ohnehin erst
+     spaeter, auf eine Stimme hin. */
+  useEffect(() => { pollIdsRef.current = pollIds; });
+  useEffect(() => {
+    pollIds.forEach((id) => { if (!pollStand[id]) ergebnisLaden(id); });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pollSchluessel]);
+
+  /* Echtzeit. Eine Abstimmung, bei der man die Stimmen der anderen erst nach
+     einem Neustart sieht, ist keine Abstimmung, sondern ein Formular.
+     Ein einziges Abonnement fuer den ganzen Kanal - nicht eines je Karte:
+     Jede Karte einzeln anzumelden waere bei zwanzig Abstimmungen im Verlauf
+     zwanzig Verbindungen fuer dieselbe Information. */
+  const aktiverKanal = active?.id;
+  useEffect(() => {
+    if (!supabase || !isDbId(aktiverKanal)) return undefined;
+    const betroffen = (id) => id && pollIdsRef.current.includes(id);
+    const kanal = supabase
+      .channel(`abstimmungen-${aktiverKanal}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "poll_votes" }, (ereignis) => {
+        const id = ereignis.new?.poll_id || ereignis.old?.poll_id;
+        if (betroffen(id)) ergebnisLaden(id);
+      })
+      /* Auch das Beenden und das Verschieben des Endzeitpunkts sind
+         Aenderungen, die alle sehen muessen. */
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "polls" }, (ereignis) => {
+        const id = ereignis.new?.id;
+        if (betroffen(id)) ergebnisLaden(id);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(kanal); };
+  }, [aktiverKanal, ergebnisLaden]);
+
   /* Kein einziger Kanal sichtbar - moeglich, seit die Sichtbarkeit an der
      Mannschaft haengt: ein Mitglied ohne Mannschaft, ein Elternteil ohne
      Familienverknuepfung, ein frisch freigegebenes Konto. Und seit ein Verein
@@ -5951,41 +6003,6 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
     setSendeFehler("");
     setChannels((cs) => cs.map((c) => (c.id !== active.id ? c : { ...c, messages: c.messages.filter((x) => x.id !== m.id) })));
   };
-  const visibleMessages = active.messages.filter((m) => m.authorId === user.authProfileId || !blocked.includes(m.authorId));
-
-  /* Die Abstimmungen dieses Kanals nachladen, sobald eine auftaucht, die wir
-     noch nicht kennen. */
-  const pollIds = visibleMessages.map((m) => m.pollId).filter((id) => isDbId(id));
-  pollIdsRef.current = pollIds;
-  const pollSchluessel = pollIds.join(",");
-  useEffect(() => {
-    pollIds.forEach((id) => { if (!pollStand[id]) ergebnisLaden(id); });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pollSchluessel]);
-
-  /* Echtzeit. Eine Abstimmung, bei der man die Stimmen der anderen erst nach
-     einem Neustart sieht, ist keine Abstimmung, sondern ein Formular.
-     Ein einziges Abonnement fuer den ganzen Kanal - nicht eines je Karte:
-     Jede Karte einzeln anzumelden waere bei zwanzig Abstimmungen im Verlauf
-     zwanzig Verbindungen fuer dieselbe Information. */
-  useEffect(() => {
-    if (!supabase || !isDbId(active.id)) return undefined;
-    const betroffen = (id) => id && pollIdsRef.current.includes(id);
-    const kanal = supabase
-      .channel(`abstimmungen-${active.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "poll_votes" }, (ereignis) => {
-        const id = ereignis.new?.poll_id || ereignis.old?.poll_id;
-        if (betroffen(id)) ergebnisLaden(id);
-      })
-      /* Auch das Beenden und das Verschieben des Endzeitpunkts sind
-         Aenderungen, die alle sehen muessen. */
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "polls" }, (ereignis) => {
-        const id = ereignis.new?.id;
-        if (betroffen(id)) ergebnisLaden(id);
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(kanal); };
-  }, [active.id, ergebnisLaden]);
 
   /* Abstimmen. Erst die Vorhersage anzeigen, dann schreiben, bei einem Fehler
      zurueck auf den alten Stand - dieselbe Reihenfolge wie bei den
@@ -6821,7 +6838,8 @@ function TeamMeldungenAbfrage({ currentUser, clubId }) {
               </button>
               {wahl[team.id].aktiv && (
                 <div className="grid grid-cols-3 gap-1.5 mt-2.5">
-                  {[["spiele", t("tmb.spiele")], ["trainings", t("tmb.trainings")], ["ergebnisse", t("tmb.ergebnisse")]].map(([feld, label]) => (
+                  {[["spiele", t("tmb.spiele")], ["trainings", t("tmb.trainings")], ["ergebnisse", t("tmb.ergebnisse")]]
+                    .filter(([feld]) => feld !== "trainings" || !istNurFan(currentUser)).map(([feld, label]) => (
                     <button key={feld} type="button" onClick={() => stellen(team.id, feld, !wahl[team.id][feld])}
                       className="py-1.5 rounded-lg text-[10px] font-bold"
                       style={{ background: wahl[team.id][feld] ? C.erfolgFlaeche : C.paperDim, color: wahl[team.id][feld] ? C.erfolg : C.textDim }}>
@@ -6962,7 +6980,9 @@ function MannschaftsMeldungen({ teamId, currentUser, imTeam }) {
       <div className="space-y-1.5">
         <MeldungsSchalter label={t("tmb.aktiv")}      wert={zeile.aktiv}      an onChange={(v) => setzen("aktiv", v)}/>
         <MeldungsSchalter label={t("tmb.spiele")}     wert={zeile.spiele}     an={zeile.aktiv} onChange={(v) => setzen("spiele", v)}/>
-        <MeldungsSchalter label={t("tmb.trainings")}  wert={zeile.trainings}  an={zeile.aktiv} onChange={(v) => setzen("trainings", v)}/>
+        {/* Trainings meldet die Datenbank einem Fan nicht (20260912020000) -
+            ein Schalter dafuer waere ohne Wirkung. */}
+        {!istNurFan(currentUser) && <MeldungsSchalter label={t("tmb.trainings")}  wert={zeile.trainings}  an={zeile.aktiv} onChange={(v) => setzen("trainings", v)}/>}
         <MeldungsSchalter label={t("tmb.ergebnisse")} wert={zeile.ergebnisse} an={zeile.aktiv} onChange={(v) => setzen("ergebnisse", v)}/>
       </div>
       {fehler && <div role="status" className="text-[10px] mt-2" style={{ color: C.fehler }}>{fehler}</div>}
@@ -9484,7 +9504,7 @@ function NotificationSettings({ user, setMembers, saveRef }) {
         Geraet ueberhaupt fuer Push anmelden. Kein Nutzer konnte Push je
         einschalten. Seit lib/firebase-push.ts einen nativen Weg hat
         (@capacitor-firebase/messaging), gehoert der Schalter genau hierhin. */}
-    {databaseMembership && <div className="rounded-2xl p-4 mb-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1" style={{color:C.ink}}>{t("push.aufGeraet")}</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>Aktiviere Push, um Benachrichtigungen auch dann zu bekommen, wenn die App geschlossen ist. Du kannst weiter unten einzeln festlegen, worüber.</div><button onClick={pushStatus==="active"?deactivatePush:activatePush} disabled={pushStatus==="working"} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{background:pushStatus==="active"?C.fehlerFlaeche:C.ink,color:pushStatus==="active"?C.red:C.white}}>{pushStatus==="working"?t("allg.wirdBearbeitet"):pushStatus==="active"?t("push.deaktivieren"):t("push.aktivieren")}</button></div>}<ToggleCard title="Benachrichtigungen auf diesem Gerät" desc="Master-Schalter für alle App-Benachrichtigungen" value={master} onChange={setMaster}/><div className="mt-4 rounded-2xl p-4space-y-3" style={{background:C.glass,border:`1px solid ${C.line}`}}>{NOTIFICATION_OPTIONS.map(([key,label])=><label key={key} className="flex items-center justify-between gap-3"><span className="text-xs font-bold">{t(`benach.${key}`)}</span><select disabled={!master} value={prefs[key]?"ja":"nein"} onChange={(e)=>setPrefs({...prefs,[key]:e.target.value==="ja"})} className="px-3 py-2 rounded-xl text-xs" style={{background:C.paperDim,opacity:master?1:.45}}><option value="ja">Ja</option><option value="nein">{t("allg.nein")}</option></select></label>)}</div></div>;
+    {databaseMembership && <div className="rounded-2xl p-4 mb-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1" style={{color:C.ink}}>{t("push.aufGeraet")}</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>Aktiviere Push, um Benachrichtigungen auch dann zu bekommen, wenn die App geschlossen ist. Du kannst weiter unten einzeln festlegen, worüber.</div><button onClick={pushStatus==="active"?deactivatePush:activatePush} disabled={pushStatus==="working"} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{background:pushStatus==="active"?C.fehlerFlaeche:C.ink,color:pushStatus==="active"?C.red:C.white}}>{pushStatus==="working"?t("allg.wirdBearbeitet"):pushStatus==="active"?t("push.deaktivieren"):t("push.aktivieren")}</button></div>}<ToggleCard title="Benachrichtigungen auf diesem Gerät" desc="Master-Schalter für alle App-Benachrichtigungen" value={master} onChange={setMaster}/><div className="mt-4 rounded-2xl p-4space-y-3" style={{background:C.glass,border:`1px solid ${C.line}`}}>{NOTIFICATION_OPTIONS.filter(([key])=>!(istNurFan(user)&&key.startsWith("training_"))).map(([key,label])=><label key={key} className="flex items-center justify-between gap-3"><span className="text-xs font-bold">{t(`benach.${key}`)}</span><select disabled={!master} value={prefs[key]?"ja":"nein"} onChange={(e)=>setPrefs({...prefs,[key]:e.target.value==="ja"})} className="px-3 py-2 rounded-xl text-xs" style={{background:C.paperDim,opacity:master?1:.45}}><option value="ja">Ja</option><option value="nein">{t("allg.nein")}</option></select></label>)}</div></div>;
 }
 
 function PasswordSettings({ user, onLogout, saveRef }) {
@@ -9525,6 +9545,10 @@ const CALENDAR_EVENT_TYPES = [
 
 function CalendarSyncSettings({ user, saveRef }) {
   const t = useT();
+  /* Fans sehen keine Trainings, also steht "Trainings" hier auch nicht zur
+     Wahl. Ein aelteres Abo, das sie noch fuehrt, wird beim Speichern
+     bereinigt; der Feed liefert sie ohnehin nicht aus. */
+  const nurFan = istNurFan(user);
   const [interval, setInterval] = useState(user.calendarSyncInterval || "never");
   const [types, setTypes] = useState(["training", "spiel", "event"]);
   /* Leere Auswahl heisst "meine Mannschaften" - genau das bisherige Verhalten.
@@ -9558,6 +9582,7 @@ function CalendarSyncSettings({ user, saveRef }) {
     setTeams((current) => current.includes(id) ? current.filter((entry) => entry !== id) : [...current, id]);
   };
 
+  const gewaehlteArten = nurFan ? types.filter((key) => key !== "training") : types;
   const toggleType = (key) => {
     setMessage("");
     setTypes((current) => current.includes(key) ? current.filter((entry) => entry !== key) : [...current, key]);
@@ -9565,12 +9590,12 @@ function CalendarSyncSettings({ user, saveRef }) {
 
   const sync = async () => {
     if (!supabase) { setMessage(t("kal.echtesKontoNoetig")); return; }
-    if (!types.length) { setMessage(t("ev.mindestensEineTerminart")); return; }
+    if (!gewaehlteArten.length) { setMessage(t("ev.mindestensEineTerminart")); return; }
     setSaving(true);
     const { data, error } = await supabase.rpc("configure_calendar_subscription", {
       target_club: user.clubId,
       requested_interval: interval,
-      requested_types: types,
+      requested_types: gewaehlteArten,
       requested_teams: teams,
     });
     setSaving(false);
@@ -9582,7 +9607,7 @@ function CalendarSyncSettings({ user, saveRef }) {
   useEffect(() => { saveRef.current = sync; });
 
   const url = token && `${window.location.origin}/api/calendar/feed/${token}`;
-  const selectedLabel = CALENDAR_EVENT_TYPES.filter((entry) => types.includes(entry.key)).map((entry) => entry.label).join(", ");
+  const selectedLabel = CALENDAR_EVENT_TYPES.filter((entry) => gewaehlteArten.includes(entry.key)).map((entry) => entry.label).join(", ");
 
   return <div>
     <div className="rounded-2xl p-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
@@ -9590,7 +9615,7 @@ function CalendarSyncSettings({ user, saveRef }) {
       <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Wähle aus, was in deinem privaten Gerätekalender erscheinen soll. Übertragen wird nur, was du ohnehin sehen darfst.</div>
 
       <div className="space-y-2 mb-3">
-        {CALENDAR_EVENT_TYPES.map((entry) => {
+        {CALENDAR_EVENT_TYPES.filter((entry) => !nurFan || entry.key !== "training").map((entry) => {
           const active = types.includes(entry.key);
           return (
             <button key={entry.key} onClick={() => toggleType(entry.key)} aria-pressed={active} className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left" style={{ background: active ? C.erfolgFlaeche : C.paperDim, border: `1px solid ${active ? C.secondary : "transparent"}` }}>
@@ -9605,7 +9630,7 @@ function CalendarSyncSettings({ user, saveRef }) {
           );
         })}
       </div>
-      {!types.length && <div className="text-[11px] rounded-xl px-3 py-2 mb-3" style={{ background: C.sekundaerWeich, color: C.textDim }}>{t("kal.mindestensEine")}</div>}
+      {!gewaehlteArten.length && <div className="text-[11px] rounded-xl px-3 py-2 mb-3" style={{ background: C.sekundaerWeich, color: C.textDim }}>{t("kal.mindestensEine")}</div>}
 
       {alleTeams.length > 0 && <>
         <div className="text-[10px] font-bold uppercase tracking-widest mb-1.5" style={{ color: C.textDim }}>{t("tm.mannschaften")}</div>
@@ -12214,8 +12239,13 @@ function RolesPanel({ members, setMembers, currentUser = null, alleMitglieder = 
                   zusatz={draftZusatz} onZusatz={zusatzSetzen}
                   gesperrteRollen={darfLeitung ? [] : ["vereinsadmin"]}
                   stufeGesperrt={!darfLeitung && m.roles.some((r) => ["vereinsadmin", "sysadmin"].includes(r))} />
-                {m.roles.includes("trainer")&&draftStufe!=="fan"&&<div className="mt-2.5 pt-2.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] mb-2 font-bold" style={{color:C.textDim}}>TRAINER FÜR · MEHRERE MANNSCHAFTEN MÖGLICH</div><div className="flex flex-wrap gap-1.5">{waehlbareMannschaften.length===0&&<span className="text-[11px]" style={{color:C.textDim}}>{t("tm.keineAngelegt")}</span>}{waehlbareMannschaften.map((team)=>{const active=(m.trainerTeams||[]).includes(team.name);return <button type="button" key={team.name} onClick={()=>toggleTrainerTeam(m.id,team.name)} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?ROLE_META.trainer.color:C.paperDim,color:active?C.white:C.textDim}}>{active?"✓ ":""}{team.name}</button>})}</div></div>}
-                {m.roles.includes("teammanager")&&draftStufe!=="fan"&&<div className="mt-2.5 pt-2.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] mb-2 font-bold" style={{color:C.textDim}}>{t("rol.teammanagerHinweis")}</div><div className="flex flex-wrap gap-1.5">{waehlbareMannschaften.length===0&&<span className="text-[11px]" style={{color:C.textDim}}>{t("tm.keineAngelegt")}</span>}{waehlbareMannschaften.map((team)=>{const active=(m.managedTeams||[]).includes(team.name);return <button type="button" key={team.name} onClick={()=>toggleManagedTeam(m.id,team.name)} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?ROLE_META.teammanager.color:C.paperDim,color:active?C.white:C.textDim}}>{active?"\u2713 ":""}{team.name}</button>})}</div></div>}
+                {/* Welche Mannschaften jemand trainiert oder betreut, darf nur die
+                    Vereinsadministration setzen (set_trainer_teams, team_members).
+                    Ein Organisator sah die Knoepfe trotzdem, und jeder Klick
+                    scheiterte. Statt toter Knoepfe steht fuer ihn ein Satz da. */}
+                {m.roles.includes("trainer")&&draftStufe!=="fan"&&darfLeitung&&<div className="mt-2.5 pt-2.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] mb-2 font-bold" style={{color:C.textDim}}>TRAINER FÜR · MEHRERE MANNSCHAFTEN MÖGLICH</div><div className="flex flex-wrap gap-1.5">{waehlbareMannschaften.length===0&&<span className="text-[11px]" style={{color:C.textDim}}>{t("tm.keineAngelegt")}</span>}{waehlbareMannschaften.map((team)=>{const active=(m.trainerTeams||[]).includes(team.name);return <button type="button" key={team.name} onClick={()=>toggleTrainerTeam(m.id,team.name)} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?ROLE_META.trainer.color:C.paperDim,color:active?C.white:C.textDim}}>{active?"✓ ":""}{team.name}</button>})}</div></div>}
+                {!darfLeitung&&draftStufe!=="fan"&&(m.roles.includes("trainer")||m.roles.includes("teammanager"))&&<div className="mt-2.5 pt-2.5 text-[11px]" style={{borderTop:`1px solid ${C.line}`,color:C.textDim}}>{t("rol.mannschaftenNurLeitung")}</div>}
+                {m.roles.includes("teammanager")&&draftStufe!=="fan"&&darfLeitung&&<div className="mt-2.5 pt-2.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] mb-2 font-bold" style={{color:C.textDim}}>{t("rol.teammanagerHinweis")}</div><div className="flex flex-wrap gap-1.5">{waehlbareMannschaften.length===0&&<span className="text-[11px]" style={{color:C.textDim}}>{t("tm.keineAngelegt")}</span>}{waehlbareMannschaften.map((team)=>{const active=(m.managedTeams||[]).includes(team.name);return <button type="button" key={team.name} onClick={()=>toggleManagedTeam(m.id,team.name)} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?ROLE_META.teammanager.color:C.paperDim,color:active?C.white:C.textDim}}>{active?"\u2713 ":""}{team.name}</button>})}</div></div>}
                 <div className="flex gap-2 mt-3 pt-3" style={{ borderTop: `1px solid ${C.line}` }}>
                   <button type="button" onClick={closeMember} disabled={saving} className="flex-1 py-2 rounded-lg text-xs" style={{ background: C.paperDim, color: C.ink, fontFamily: "Inter", fontWeight: 700 }}>{t("allg.abbrechen")}</button>
                   <button type="button" onClick={() => saveMemberRoles(m.id)} disabled={saving} className="flex-1 py-2 rounded-lg text-xs" style={{ background: C.ink, color: "#fff", fontFamily: "Inter", fontWeight: 700, opacity: saving ? 0.6 : 1 }}>{saving ? t("allg.speichertKurz") : t("allg.speichern")}</button>
@@ -12835,6 +12865,19 @@ function ClaimManagedPlayerPanel({ members, setMembers, currentUser }) {
   };
 
   if (!managedCandidates.length) return null;
+
+  /* claim_managed_membership erlaubt nur vereinsadmin und sysadmin. Ein
+     Organisator sah hier bisher Auswahl und Knopf - und jeder Versuch
+     scheiterte. Er bekommt stattdessen den Hinweis, wer es kann. */
+  const darfZusammenfuehren = !!currentUser && currentUser.roles.some((r) => ["vereinsadmin", "sysadmin"].includes(r));
+  if (!darfZusammenfuehren) {
+    return (
+      <div className="rounded-2xl p-3.5 mt-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
+        <div className="text-sm mb-1" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{t("sys.profileZusammen")}</div>
+        <div className="text-[11px]" style={{ color: C.textDim }}>{t("sys.zusammenfuehrenNurLeitung")}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-2xl p-3.5 mt-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
@@ -14367,6 +14410,19 @@ export default function ClubMemberOrganisationApp() {
     loadEvents();
     return () => { abgebrochen = true; };
   }, [currentUser?.id, currentUser?.clubId, datenStand]);
+  /* Fans sehen keine Trainings (Entscheidung vom 12.09.2026) - nirgends:
+     nicht in der Terminliste, nicht im Monatskalender, nicht in den Filtern
+     und Zaehlern, nicht auf der Startseite. Gefiltert wird EINMAL hier, bevor
+     die Termine an die Ansichten gehen, statt in jeder Ansicht einzeln - eine
+     Ansicht, die spaeter dazukommt, kann es so nicht vergessen.
+     Der Zustand selbst behaelt alle Termine: setEvents arbeitet ueberall mit
+     Funktionsaktualisierungen auf dem vollen Stand. Leitungen sind nie "nur
+     Fan" und sehen weiter alles. Im Demo-Betrieb gilt dasselbe (Renate Voss). */
+  const nurFanAnsicht = istNurFan(currentUser);
+  const sichtbareTermine = React.useMemo(
+    () => (nurFanAnsicht ? events.filter((e) => e.type !== "training") : events),
+    [events, nurFanAnsicht],
+  );
   const currentClub = clubs.find((c) => c.id === selectedClubId) || clubs.find((c) => c.id === currentUser?.clubId);
   const clubMembers = members.filter((m) => m.clubId === selectedClubId);
   const featureEnabled = (key) => clubFeatures[key] !== false;
@@ -14432,7 +14488,11 @@ export default function ClubMemberOrganisationApp() {
          jemand die Rolle inzwischen verloren, bleibt die Meldung eine Notiz
          statt einer Tuer, hinter der nichts ist. */
       case "beitritt": case "mitglied": return darfVereinVerwalten(currentUser);
-      case "termin": case "umfrage": case "chat": case "news": case "strafe": case "mannschaft":
+      /* Ein Training oeffnet fuer einen Fan nichts - er sieht es nirgends.
+         Meldungen aus der Zeit davor bleiben so eine Notiz. */
+      case "termin":
+        return !nurFanAnsicht || !events.some((ev) => ev.id === e.ziel_id && ev.type === "training");
+      case "umfrage": case "chat": case "news": case "strafe": case "mannschaft":
       case "familie": case "sicherheit": case "verein": case "geburtstag":
         return true;
       /* Eine Art, die diese App noch nicht kennt - etwa weil die Datenbank
@@ -15985,7 +16045,9 @@ export default function ClubMemberOrganisationApp() {
      nach, sobald die echten Daten da sind. */
   /* Zur Wahl stehen alle Mannschaften mit Terminen - auch vergangenen, damit
      die Auswahl nicht verschwindet, nur weil gerade nichts ansteht. */
-  const startseiteMannschaften = [...new Set((events || []).map((e) => e.team).filter(Boolean))];
+  /* Aus den sichtbaren Terminen: Eine Mannschaft, die nur Trainings hat,
+     gaebe fuer einen Fan eine leere Auswahl. */
+  const startseiteMannschaften = [...new Set((sichtbareTermine || []).map((e) => e.team).filter(Boolean))];
   const eigeneMannschaften = currentUser
     ? [...new Set([...memberPlayerTeams(currentUser), ...(currentUser.teams || []), currentUser.managedTeam].filter(Boolean))]
     : [];
@@ -16306,12 +16368,12 @@ export default function ClubMemberOrganisationApp() {
                 {subView === "season" && featureEnabled("season_award") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Athlet/in der Saison"><SeasonVoteView currentUser={currentUser} members={clubMembers} seasonVotes={seasonVotes} setSeasonVotes={setSeasonVotes} onVote={saisonStimmeAbgeben} onUnvote={saisonStimmeZuruecknehmen} /></LockedFeature>}
                 {subView === "tipp" && featureEnabled("tippspiel") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Tippspiel"><TippView members={clubMembers} currentUser={currentUser} events={events} tippPredictions={tippPredictions} setTippPredictions={setTippPredictions} tippResults={tippResults} onTippSpeichern={tippSpeichern} onZurueck={() => setSubView(null)} /></LockedFeature>}
                 {subView === "postfach" && <PostfachView eintraege={postfach} laedt={postfachLaedt} onGelesen={postfachGelesen} onAlleLoeschen={postfachAlleLoeschen} onLoeschen={postfachLoeschen} onOeffnen={meldungAntippen} kannOeffnen={meldungOeffenbar}/>}
-                {subView === "duty" && featureEnabled("duty_roster") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Helferplanung"><DutyView members={clubMembers} currentUser={currentUser} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={dienstSetzen} /></LockedFeature>}
+                {subView === "duty" && featureEnabled("duty_roster") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Helferplanung"><DutyView members={clubMembers} currentUser={currentUser} events={sichtbareTermine} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={dienstSetzen} /></LockedFeature>}
                 {subView === "tasks" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Aufgaben"><TasksView currentUser={currentUser} members={clubMembers} /></LockedFeature>}
                 {subView === "vehicles" && featureEnabled("vehicle_booking") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Vereinsfahrzeuge"><VehiclesView currentUser={currentUser} currentClub={currentClub} /></LockedFeature>}
 
                 {!subView && tab === "home" && (
-                  <Dashboard user={currentUser} onFavoritMannschaft={setzeFavoritMannschaft} members={clubMembers} events={events} channels={channels} news={vereinsNews} dutyPlan={dutyPlan} seasonVotes={seasonVotes} tippPredictions={tippPredictions} tippResults={tippResults} polls={polls} setPolls={setPolls} onVote={stimmeAbgeben} onUnvote={stimmeZuruecknehmen}
+                  <Dashboard user={currentUser} onFavoritMannschaft={setzeFavoritMannschaft} members={clubMembers} events={sichtbareTermine} channels={channels} news={vereinsNews} dutyPlan={dutyPlan} seasonVotes={seasonVotes} tippPredictions={tippPredictions} tippResults={tippResults} polls={polls} setPolls={setPolls} onVote={stimmeAbgeben} onUnvote={stimmeZuruecknehmen}
                     umfrageFokus={umfrageFokus} onUmfrageFokusErledigt={() => setUmfrageFokus(null)}
                     newsFokus={newsFokus} onNewsFokusErledigt={newsFokusErledigt}
                     werbeplaetze={werbeplaetze} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick}
@@ -16320,7 +16382,7 @@ export default function ClubMemberOrganisationApp() {
                     mannschaften={startseiteAuswahl} gewaehlteMannschaft={startseiteWahl} onMannschaftWechsel={setStartseiteTeam} />
                 )}
                 {!subView && tab === "events" && (
-                  <EventsView onNeuLaden={datenNeuLaden} currentUser={currentUser} members={clubMembers} events={events} setEvents={setEvents} carpools={carpools} setCarpools={setCarpools}
+                  <EventsView onNeuLaden={datenNeuLaden} currentUser={currentUser} members={clubMembers} events={sichtbareTermine} setEvents={setEvents} carpools={carpools} setCarpools={setCarpools}
                     dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={dienstSetzen} entitlement={entitlement} goSubscribe={goSubscribe}
                     werbeplaetze={werbeplaetze} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick}
                     focusRequest={eventFocusRequest} onFocusApplied={()=>setEventFocusRequest(null)}

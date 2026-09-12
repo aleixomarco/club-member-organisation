@@ -20,6 +20,9 @@ type Verein = {
      sieht man an keiner der Zahlen darueber. */
   hidden: boolean;
   letzte_aktivitaet: string | null; aktive_30: number; termine_30: number; nachrichten_30: number;
+  /* Wartungsmodus (club_settings.maintenance_mode). null heisst: nicht
+     bekannt, weil die Abfrage dazu gescheitert ist - nicht "aus". */
+  wartung: boolean | null;
 };
 
 type Kennzahlen = {
@@ -434,7 +437,7 @@ export default function BetreiberKonsole() {
               <tr style={{ textAlign: "left", color: "#8A7F85", fontSize: 11, textTransform: "uppercase", letterSpacing: ".06em" }}>
                 <th style={zelle}>Verein</th><th style={zelle}>Tarif</th><th style={zelle}>Zugänge</th>
                 <th style={zelle}>Leben</th>
-                <th style={zelle}>Sponsoren</th><th style={zelle}>Läuft bis</th><th style={zelle}>Guthaben</th><th style={zelle}>Ansprechpartner</th><th style={zelle} />
+                <th style={zelle}>Sponsoren</th><th style={zelle}>Läuft bis</th><th style={zelle}>Ansprechpartner</th><th style={zelle} />
               </tr>
             </thead>
             <tbody>
@@ -450,6 +453,11 @@ export default function BetreiberKonsole() {
                       <div style={{ color: "#8A7F85", fontSize: 12 }}>
                         {v.city || "—"}{v.offene_aufnahmen > 0 && <> · <b style={{ color: "#8A5A00" }}>{v.offene_aufnahmen} Aufnahme(n) offen</b></>}
                       </div>
+                      {/* Steht direkt am Namen: Ein vergessener Wartungsmodus
+                          faellt sonst erst auf, wenn ein Verein anruft. */}
+                      {v.wartung && (
+                        <span style={{ ...abzeichen, background: "rgba(255,240,214,0.9)", color: "#8A5A00", display: "inline-block", marginTop: 4 }}>Wartungsmodus an</span>
+                      )}
                     </td>
                     <td style={zelle}>{TARIF_NAMEN[v.tarif] || v.tarif}</td>
                     <td style={{ ...zelle, color: voll ? "#B3261E" : undefined, fontWeight: voll ? 700 : 400 }}>
@@ -468,26 +476,30 @@ export default function BetreiberKonsole() {
                     </td>
                     <td style={zelle}>{v.sponsoring_freigeschaltet ? `ja (${v.eigene_sponsoren})` : "—"}</td>
                     <td style={zelle}>{datum(v.laeuft_bis)}</td>
-                    {/* Offenes Empfehlungsguthaben. Es stand bisher in keiner
-                        Uebersicht - die App sagt dem Werber aber zu, es werde
-                        "automatisch beruecksichtigt". Wer die Rechnung
-                        schreibt, muss es sehen. */}
-                    <td style={zelle}>
-                      {v.referral_credit_months > 0 ? (
-                        <button style={{ ...knopfLeise, marginRight: 0, color: "#8A5A00" }} disabled={laeuft}
-                          onClick={async () => {
-                            if (!window.confirm(`${v.referral_credit_months} Gutschriftsmonate für „${v.name}" jetzt an die Laufzeit anhängen?`)) return;
-                            const e = await aktion({ art: "guthaben", verein: v.id });
-                            if (e) setMeldung(`${e.ergebnis?.eingeloest ?? 0} Monate angehängt, ${e.ergebnis?.rest ?? 0} übrig.`);
-                          }}>
-                          {v.referral_credit_months} Mon. einlösen
-                        </button>
-                      ) : "—"}
-                    </td>
+                    {/* Die Spalte "Guthaben" ist entfallen (Entscheidung vom
+                        12.09.2026). Das offene Empfehlungsguthaben steht
+                        weiter im Excel-Export ("Guthaben (Monate)"), und die
+                        Aktion "guthaben" bleibt in der Route bestehen. */}
                     <td style={{ ...zelle, color: "#8A7F85", fontSize: 12 }}>{v.ansprechpartner || "—"}</td>
                     <td style={{ ...zelle, whiteSpace: "nowrap" }}>
                       <button style={knopfLeise} disabled={laeuft} onClick={() => setOffen(v)}>Freischalten …</button>
                       <button style={knopfLeise} disabled={laeuft} onClick={() => setNachricht(v)}>Nachricht …</button>
+                      {/* Wartungsmodus je Verein. Solange der Stand unbekannt
+                          ist (null - club_settings war nicht lesbar), gibt es
+                          keinen Knopf: Ein Umschalter, der nicht weiss, wovon
+                          er umschaltet, schaltet im Zweifel falsch herum. */}
+                      {typeof v.wartung === "boolean" && (
+                        <button style={{ ...knopfLeise, color: v.wartung ? "#1E6B3A" : "#8A5A00" }} disabled={laeuft}
+                          title={v.wartung ? "Wartungsmodus beenden" : "Wartungsmodus einschalten"}
+                          onClick={async () => {
+                            const an = !v.wartung;
+                            if (!window.confirm(an
+                              ? `Wartungsmodus für „${v.name}“ einschalten?\n\nAlle Mitglieder sehen in der App einen Hinweisstreifen, dass sich Inhalte kurzfristig ändern können. Sonst ändert sich nichts.`
+                              : `Wartungsmodus für „${v.name}“ beenden?\n\nDer Hinweisstreifen verschwindet beim nächsten Laden der App.`)) return;
+                            const ok = await aktion({ art: "wartung", verein: v.id, an });
+                            if (ok) setMeldung(an ? `${v.name}: Wartungsmodus ist an.` : `${v.name}: Wartungsmodus ist aus.`);
+                          }}>{v.wartung ? "Wartung beenden" : "Wartung …"}</button>
+                      )}
                       {v.tarif !== "none" && (
                         <button style={{ ...knopfLeise, color: "#B3261E" }} disabled={laeuft}
                           onClick={async () => {

@@ -24,7 +24,7 @@ export async function GET() {
     return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
   }
 
-  const [vereine, anfragen, anzeigen, sponsoren, kennzahlen, kontenStand] = await Promise.all([
+  const [vereine, anfragen, anzeigen, sponsoren, kennzahlen, kontenStand, wartung] = await Promise.all([
     admin.from("betreiber_uebersicht").select("*").order("name"),
     admin.from("offene_freischaltungen").select("*"),
     /* Die eigenen Werbeplaetze: club_id null heisst "gilt in jedem Verein".
@@ -58,6 +58,11 @@ export async function GET() {
        der Registrierung zaehlt jedes Konto. Ohne diese Zahl merkte der
        Betreiber die Sperre erst an Beschwerden. */
     admin.rpc("betreiber_konten_stand"),
+    /* Welche Vereine stehen im Wartungsmodus? betreiber_uebersicht fuehrt
+       das nicht - eine eigene kleine Abfrage statt einer geaenderten Sicht.
+       Nur die eingeschalteten: Vereine ohne Zeile in club_settings stehen
+       nicht im Wartungsmodus, die Vorgabe der Spalte ist false. */
+    admin.from("club_settings").select("club_id").eq("maintenance_mode", true),
   ]);
 
   /* Was die Uebersicht AUSMACHT, muss da sein: Vereine, Anfragen, die eigenen
@@ -79,6 +84,10 @@ export async function GET() {
   if (kennzahlen.error) console.error("Kennzahlen konnten nicht geladen werden", kennzahlen.error);
   if (sponsoren.error) console.error("Sponsorenliste konnte nicht geladen werden", sponsoren.error);
   if (kontenStand.error) console.error("Kontenstand konnte nicht geladen werden", kontenStand.error);
+  /* Auch der Wartungsmodus ist Beiwerk: Fehlt er, steht die Uebersicht
+     trotzdem - nur ohne Wartungsknopf (wartung: null heisst "unbekannt"). */
+  if (wartung.error) console.error("Wartungsmodus konnte nicht geladen werden", wartung.error);
+  const imWartungsmodus = new Set((wartung.data || []).map((z: { club_id: string }) => z.club_id));
 
   /* Der Vereinsname zu einer club_id - nachgeschlagen statt eingebettet.
      betreiber_uebersicht fuehrt jeden Verein, die Zuordnung ist also
@@ -88,7 +97,10 @@ export async function GET() {
   );
 
   return NextResponse.json({
-    vereine: vereine.data || [],
+    vereine: (vereine.data || []).map((v: Record<string, unknown>) => ({
+      ...v,
+      wartung: wartung.error ? null : imWartungsmodus.has(v.id as string),
+    })),
     anfragen: anfragen.data || [],
     anzeigen: anzeigen.data || [],
     sponsoren: (sponsoren.data || []).map((a: Record<string, unknown>) => ({

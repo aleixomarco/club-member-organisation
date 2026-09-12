@@ -208,6 +208,30 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, ergebnis: data?.[0] || null });
   }
 
+  /* Wartungsmodus eines Vereins.
+     Der Schalter stand frueher im Reiter "System" der App. Den gibt es
+     bewusst nicht mehr: Ob ein Verein im Wartungsmodus steht, entscheidet der
+     Betreiber, nicht der Verein. Die App liest club_settings.maintenance_mode
+     weiter je Verein und zeigt dann ihren Hinweisstreifen.
+     upsert statt update: Nicht jeder Verein hat schon eine Zeile in
+     club_settings. Ein update liefe dort ins Leere und meldete trotzdem
+     Erfolg; beim Einfuegen bekommen die uebrigen Spalten ihre Vorgaben, bei
+     einer vorhandenen Zeile bleiben sie, wie sie sind. */
+  if (daten.art === "wartung") {
+    if (!istUuid(daten.verein)) return NextResponse.json({ error: "Kein Verein gewählt." }, { status: 400 });
+    if (typeof daten.an !== "boolean") return NextResponse.json({ error: "Unklar, ob an- oder ausschalten." }, { status: 400 });
+    const { error } = await admin.from("club_settings").upsert(
+      { club_id: daten.verein, maintenance_mode: daten.an, updated_at: new Date().toISOString() },
+      { onConflict: "club_id" },
+    );
+    if (error) {
+      console.error("Wartungsmodus konnte nicht gesetzt werden", error);
+      return NextResponse.json({ error: "Der Wartungsmodus konnte nicht gesetzt werden." }, { status: 500 });
+    }
+    await protokollieren(daten.an ? "wartung:an" : "wartung:aus", daten.verein, { an: daten.an });
+    return NextResponse.json({ ok: true, an: daten.an });
+  }
+
   /* Ein Schritt im Rechnungsablauf.
      Welcher Schritt von wo aus moeglich ist, entscheidet die Datenbank
      (anfrage_weiter) - nicht diese Route und schon gar nicht der Browser. */
