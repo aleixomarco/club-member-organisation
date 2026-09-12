@@ -9,7 +9,7 @@
      "Beim ersten Start wählst du deine Sprache, sieben stehen zur Wahl.",
      "Dann meldest du dich an oder legst ein Konto mit E-Mail und Passwort an.",
      "Danach tippst du den Verein an, in den du willst.",
-     "Bist du in keinem Verein, suchst du ihn und fragst den Beitritt an – als Mitglied, Athlet/in oder Fan."
+     "Bist du in keinem Verein, suchst du ihn und fragst den Beitritt an – als Mitglied oder als Fan. Weitere Rollen wie Athlet/in vergibt die Vereinsleitung bei der Aufnahme."
     ],
     "hinweis": "Die Vereinsleitung gibt den Beitritt erst frei, bis dahin steht dort „Aufnahme offen“. Über „Verein wechseln“ oben rechts kommst du zurück zur Auswahl.",
     "bildschirm": "Anmeldung / Meine Vereine"
@@ -71,7 +71,7 @@
     "punkte": [
      "Ob du zu einem Dienst eingeteilt bist, zeigen dir die Kachel auf der Startseite und „Für dich eingeteilt“ im Reiter Support.",
      "In der Liste stehen alle Termine mit offenen Stationen, etwa Theke, Kasse oder Zeitnahme.",
-     "Ein Tipp auf eine Station trägt dich ein, ein zweiter trägt dich aus.",
+     "Tippe einen Termin an, um seine Stationen aufzuklappen. „Übernehmen“ trägt dich ein, ein zweiter Tipp trägt dich aus; ein weiterer Tipp auf den Termin klappt ihn wieder zu.",
      "Bei einem Heimspiel übernimmst du Stationen auch direkt im Termin.",
      "Die Kachel „Helferplanung“ auf der Startseite führt ebenfalls hierher."
     ],
@@ -137,7 +137,7 @@
     "punkte": [
      "Beim Tippspiel wählst du oben die Runde deiner Mannschaft und trittst ihr bei.",
      "Du trägst zu jedem Spiel ein Ergebnis ein und tippst auf Abgeben, bis zum Anpfiff nimmst du den Tipp zurück.",
-     "Die Tabelle zeigt deinen Platz in dieser Runde.",
+     "Die Tabelle zeigt deinen Platz in dieser Runde – gezählt wird nur, wer mittippt. Denselben Platz zeigt die Kachel auf der Startseite.",
      "Bei „Athlet/in der Saison“ tippst du auf einen Namen, ein zweiter Tipp nimmt die Stimme zurück.",
      "Das Ergebnis der Wahl siehst du erst nach dem Stichtag."
     ],
@@ -171,7 +171,7 @@
     "bildschirm": "Profil / Benachrichtigungen"
    }
   ],
-  "einleitung": "Mitglied ist jeder im Verein, vom Fan bis zur Athletin. Du siehst Termine, sagst zu oder ab, hilfst bei Aufgaben und Diensten mit, schreibst im Chat und pflegst dein Profil.",
+  "einleitung": "Jede Mitgliedschaft ist entweder Mitglied oder Fan. Als Mitglied siehst du Termine, sagst zu oder ab, hilfst bei Aufgaben und Diensten mit, schreibst im Chat und pflegst dein Profil; weitere Rollen wie Athlet/in vergibt die Vereinsleitung. Als Fan folgst du dem Verein, ohne weitere Rollen.",
   "rolle": "Mitglied / Athlet/in"
  },
  {
@@ -338,7 +338,8 @@
     "titel": "Mitglieder aufnehmen und verwalten",
     "wo": "Reiter „Verwaltung“ > „Mitgliedsanträge“",
     "punkte": [
-     "Oben stehen die offenen Anträge mit Name, E-Mail, gewünschter Rolle und Wunschmannschaft.",
+     "Oben stehen die offenen Anträge mit Name, E-Mail und der Angabe der Person: Mitglied oder Fan.",
+     "Hat sich jemand vertan, stellst du Mitglied oder Fan direkt im Antrag um. Bei Mitglied wählst du darunter weitere Rollen aus, etwa Athlet/in oder Trainer/in; ein Fan bekommt keine weiteren Rollen.",
      "Mit „Freigeben“ nimmst du die Person auf; „Ablehnen“ heißt nur „diesmal nicht“, sie darf sich sofort wieder bewerben.",
      "Wird jemand aufgenommen, bekommen Vereinsadmin und Organisation die Benachrichtigung „Neues Mitglied“; die übrigen Mitglieder bekommen keine.",
      "Unter „Mitgliedschaften verwalten“ beendest du eine Mitgliedschaft („Beenden“), holst sie zurück („Reaktivieren“) oder sperrst jemanden dauerhaft („Sperren“); nur die Sperre hält eine neue Anfrage auf.",
@@ -352,14 +353,14 @@
     "titel": "Rollen vergeben",
     "wo": "Reiter „Verwaltung“ > „Rollen“ > Mitglied antippen",
     "punkte": [
-     "Tippe ein Mitglied an und tippe die Rollen an, die es bekommen oder abgeben soll.",
-     "Zur Wahl stehen: Vereins-Administrator, Organisator/in, Trainer/in, Kapitän/in, Teammanager/in, Redakteur, Sponsorenmanager, Athlet/in und Fan.",
-     "„Mitglied“ hat jeder und lässt sich nicht abwählen; eine Rolle bleibt immer bestehen.",
+     "Tippe ein Mitglied an. Oben wählst du die Stufe: Mitglied oder Fan.",
+     "Bei Mitglied stehen darunter die weiteren Rollen zur Wahl: Vereins-Administrator, Organisator/in, Trainer/in, Kapitän/in, Teammanager/in, Redakteur, Sponsorenmanager und Athlet/in.",
+     "Ein Fan hat keine weiteren Rollen und gehört keiner Mannschaft an. Stellst du jemanden auf Fan, fragt die App nach und nimmt danach alle weiteren Rollen und Mannschaften weg; den letzten Vereins-Administrator kannst du nicht zum Fan machen.",
      "Bei Trainer/in und Teammanager/in wählst du die Mannschaften dazu; nimmst du die Rolle weg, fällt die Mannschaft mit weg.",
      "Ganz unten führst du ein Profil ohne eigenes Konto mit dem echten Konto zusammen, sobald die Person sich registriert hat."
     ],
     "bildschirm": "Verwaltung > Rollen",
-    "hinweis": "Je Mannschaft gibt es nur einen Teammanager. Gibst du die Mannschaft weiter, verliert der bisherige genau diese Mannschaft, nicht die Rolle."
+    "hinweis": "Je Mannschaft gibt es nur einen Teammanager. Gibst du die Mannschaft weiter, verliert der bisherige genau diese Mannschaft, nicht die Rolle. Vereins-Administrator vergibt nur, wer selbst Vereins-Administrator ist."
    },
    {
     "titel": "Logo und Farben einstellen",
@@ -494,9 +495,9 @@
     "titel": "Mitglieder und offene Punkte",
     "wo": "Reiter \"Profil\" > \"Verein & Mitgliedschaft\"; Reiter \"Support\" > offene Punkte",
     "punkte": [
-     "Unter \"Beitrittsanfragen\" nimmst du neue Mitglieder an oder lehnst sie ab; neue Anfragen und neue Mitglieder meldet dir die Glocke.",
+     "Unter \"Beitrittsanfragen\" nimmst du neue Mitglieder an oder lehnst sie ab; neue Anfragen und neue Mitglieder meldet dir die Glocke. Dabei entscheidest du, ob jemand als Mitglied oder als Fan aufgenommen wird.",
      "Unter \"Benutzerverwaltung\" pflegst du Name, E-Mail, Geburtsdatum, Eintrittsjahr und Mannschaften eines Mitglieds.",
-     "\"Mitgliederübersicht\" zeigt dir alle Mitglieder zum Nachlesen.",
+     "\"Mitgliederübersicht\" zeigt dir alle Mitglieder zum Nachlesen; ein Tipp auf ein Mitglied zeigt seine Strafen (nur bei Athlet/innen) und Aufgaben, bei Fans keins von beidem.",
      "Oben im Reiter \"Support\" stehen die offenen Punkte: wartende Anträge, fehlende Spielergebnisse, fällige Aufgaben, unbesetzte Helferstationen und Fahrzeuganfragen. Ein Tipp bringt dich hin."
     ],
     "bildschirm": "Profil > Verein & Mitgliedschaft",

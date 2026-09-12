@@ -25,6 +25,31 @@ const klick = (t, warten = 2100) => js(`
   treffer.click(); await w(${warten}); return "ok";
 `);
 
+/* "▾" klappt den ersten zugeklappten Eintrag auf (Helferdienste sind seit dem
+   11.09. je Termin zugeklappt). "⊙A+B" oeffnet die erste Listenzeile, die ALLE
+   Begriffe enthaelt - etwa ein Mitglied in "Rollen" ("⊙Athlet/in+Mitglied";
+   nur "Athlet/in" traf den Reiter "Athlet/in der Saison") -, und rollt zur
+   Stufenwahl. */
+const aufklappen = () => js(`
+  const w = (ms) => new Promise(r => setTimeout(r, ms));
+  const b = document.querySelector('button[aria-expanded="false"]');
+  if (!b) return "fehlt";
+  b.click(); await w(900);
+  b.scrollIntoView({ block: "start" });
+  document.querySelectorAll("*").forEach(e => { if (e.scrollTop) e.scrollTop = Math.max(0, e.scrollTop - 90); });
+  await w(500); return "ok";
+`);
+const zeileOeffnen = (t) => js(`
+  const w = (ms) => new Promise(r => setTimeout(r, ms));
+  const teile = ${JSON.stringify(t)}.split("+");
+  const zeile = [...document.querySelectorAll("button, [role=button]")].find(e => { const x = (e.textContent||"").trim(); return teile.every((b) => x.includes(b)) && x.length > teile.join("").length + 5; });
+  if (!zeile) return "fehlt";
+  zeile.click(); await w(1200);
+  const stufe = document.querySelector("[role=radiogroup]");
+  if (stufe) stufe.scrollIntoView({ block: "center" });
+  await w(600); return "ok";
+`);
+
 /* Jede Aufnahme beginnt frisch. Beim Durchklicken verschwindet die untere
    Leiste in Unteransichten - ohne neue Anmeldung landet die naechste Aufnahme
    auf dem Bildschirm der vorigen. */
@@ -43,7 +68,7 @@ const PLAN = [
      Sergio ist im Demo-Helferplan eingeteilt - sein Support-Reiter zeigt
      deshalb oben "Für dich eingeteilt". */
   ["36-support",               "sergio@cmo.app",   ["Support"], []],
-  ["20-helferplanung",         "sergio@cmo.app",   ["Support"], ["Helferdienste"]],
+  ["20-helferplanung",         "sergio@cmo.app",   ["Support"], ["Helferdienste", "▾"]],
   ["21-aufgaben",              "rodrigo@cmo.app",  ["Support"], []],
   ["22-fahrzeuge",             "rodrigo@cmo.app",  [], ["Vereinsfahrzeuge"]],
   ["23-tippspiel",             "rodrigo@cmo.app",  [], ["Tippspiel"]],
@@ -61,7 +86,7 @@ const PLAN = [
   ["11-trainerbereich",        "jose@cmo.app",     ["Profil"], ["Trainer"]],
   ["27-termin-anlegen",        "jose@cmo.app",     ["Termine"], ["Eintragen"]],
   ["40-training-absagen",      "jose@cmo.app",     ["Termine"], ["Training Herren 1", "↓~absagen"]],
-  ["28-rollen",                "jose@cmo.app",     ["Verwaltung"], ["Rollen"]],
+  ["28-rollen",                "jose@cmo.app",     ["Verwaltung"], ["Rollen", "⊙Athlet/in+Mitglied"]],
   ["29-funktionen",            "jose@cmo.app",     ["Verwaltung"], ["Funktionen"]],
   ["30-vereinsprofil",         "jose@cmo.app",     ["Verwaltung"], ["Vereinsprofil"]],
   ["31-mitgliedsantraege",     "jose@cmo.app",     ["Verwaltung"], ["Mitgliedsanträge"]],
@@ -78,7 +103,10 @@ for (const [name, konto, reiter, pfad] of PLAN) {
   for (const t of reiter) await tippen(t, 1900);
   let gerollt = false;
   for (const p of pfad) {
-    const r = p.startsWith("↓") ? (gerollt = true, await rollen(p.slice(1))) : await klick(p);
+    const r = p.startsWith("↓") ? (gerollt = true, await rollen(p.slice(1)))
+      : p === "▾" ? (gerollt = true, await aufklappen())
+      : p.startsWith("⊙") ? (gerollt = true, await zeileOeffnen(p.slice(1)))
+      : await klick(p);
     if (r !== "ok") { console.log(`  ! ${name}: "${p}" nicht gefunden`); fehler++; }
   }
   if (!gerollt) await hochScrollen();
