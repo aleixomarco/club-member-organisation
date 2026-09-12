@@ -15701,6 +15701,11 @@ export default function ClubMemberOrganisationApp() {
     if (!profilId) return;
     /* Der Wechsel laeuft schon - auf das Laden warten. */
     if (sprungWechselZiel.current === zielVerein) return;
+    /* Laedt die App diesen Verein ohnehin gerade - beim Kaltstart oeffnet sie
+       die einzige Mitgliedschaft von selbst -, kein zweites Laden daneben
+       starten. Dessen enterApp setzte den Reiter nach dem Sprung wieder auf
+       die Startseite, und das Ziel war verloren. */
+    if (vereinLaedt || (!currentUser && selectedClubId === zielVerein)) return;
 
     /* 3. In den Verein der Meldung wechseln. */
     const mitgliedschaft = meineMitgliedschaften.find((m) => m.club_id === zielVerein && m.status === "active");
@@ -15719,12 +15724,19 @@ export default function ClubMemberOrganisationApp() {
       meldungGelesen(sprung.notification_id);
       return;
     }
+    const vorherigerVerein = currentUser?.clubId || "";
     sprungWechselZiel.current = zielVerein;
     vereinOeffnen(mitgliedschaft).then((ergebnis) => {
-      /* Scheitert das Laden, nicht endlos weiter versuchen. */
-      if (ergebnis?.error || ergebnis?.code) { sprungWechselZiel.current = ""; setOffenerSprung(null); }
+      /* Scheitert das Laden, nicht endlos weiter versuchen - und zurueck in
+         den Verein, der offen war. vereinOeffnen hat selectedClubId schon
+         umgestellt; ohne diese Zeile zeigte die App die Daten und Rollen von
+         Verein A unter Kopf und Farben von Verein B. */
+      if (ergebnis?.error || ergebnis?.code) {
+        sprungWechselZiel.current = ""; setOffenerSprung(null);
+        if (vorherigerVerein) setSelectedClubId(vorherigerVerein);
+      }
     });
-  }, [offenerSprung, currentUser, meineMitgliedschaften, offeneSitzung]);
+  }, [offenerSprung, currentUser, meineMitgliedschaften, offeneSitzung, vereinLaedt, selectedClubId]);
 
   const leavePendingAccount = async () => {
     await geraetAbmelden();
