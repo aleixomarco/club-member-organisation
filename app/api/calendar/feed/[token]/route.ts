@@ -56,7 +56,11 @@ export async function GET(_request: Request, context: { params: Promise<{ token:
        Mit 500 halten manche Kalenderprogramme das Abo fuer dauerhaft defekt
        und fragen seltener oder gar nicht mehr nach; 503 mit Retry-After sagt
        genau das Richtige. */
-    if (leseFehler.code === "PGRST303") {
+    /* Auch ein kurzer Aussetzer bei Supabase ("Gateway Timeout", Netzfehler)
+       ist ein "gleich wieder" - wie in lies() fuer alle weiteren Abfragen.
+       Hier, bei der ersten Abfrage, fehlte das: am 12.09. kam dafuer 500. */
+    const aussetzer = /timeout|gateway|fetch failed|network/i.test(String(leseFehler.message || ""));
+    if (leseFehler.code === "PGRST303" || aussetzer) {
       return NextResponse.json({ error: "Kalender gerade nicht verfügbar" },
         { status: 503, headers: { "Retry-After": "60" } });
     }
