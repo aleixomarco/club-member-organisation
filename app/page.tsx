@@ -12068,7 +12068,9 @@ function MatchResultsPanel({ results, onSave, onDelete, events, currentClub, zei
 
       <div className={`rounded-2xl p-4 mb-4 ${zeigeRunden ? "mt-4" : ""}`} style={{ background: C.erfolgFlaeche, border: `1px solid ${C.erfolgRand}` }}>
         <div className="text-sm font-bold mb-1" style={{ color: C.ink }}>{t("tipp.ergebnisse")}</div>
-        <div className="text-xs" style={{ color: C.textDim }}>{t("erg.eintragHinweis")}</div>
+        {/* Der Satz zur Auswertung nur, wenn der Verein das Tippspiel nutzt -
+            sonst wird nach dem Eintragen nichts ausgewertet. */}
+        <div className="text-xs" style={{ color: C.textDim }}>{t("erg.eintragHinweis")}{mitPunkten ? ` ${t("erg.eintragHinweisTipp")}` : ""}</div>
       </div>
       {mannschaften.length > 1 && (
         <label className="block mb-3">
