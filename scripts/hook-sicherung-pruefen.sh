@@ -23,7 +23,13 @@ ordner=$(printf '%s' "$eingabe" | jq -r '.cwd // ""')
 # wurde. Er gilt aber nur fuer die CMO-Datenbank: Ein "db push" in einem
 # anderen Projekt hat mit dieser Sicherung nichts zu tun.
 cmo_repo="$HOME/Projekte/club-member-organisation"
-case "$befehl|$ordner" in
+# Auch ein zweiter Arbeitsordner (git worktree) kann mit der CMO-Datenbank
+# verknuepft sein - dann erkennt ihn nur die Projekt-Ref in supabase/.temp.
+# Gelesen wird im Ordner nach einem "cd", sonst im aktuellen Ordner.
+ziel_ordner="$ordner"
+if [[ "$befehl" =~ cd[[:space:]]+([^[:space:]\;\&]+) ]]; then ziel_ordner="${BASH_REMATCH[1]}"; fi
+ref=$(cat "$ziel_ordner/supabase/.temp/project-ref" 2>/dev/null || true)
+case "$befehl|$ordner|$ref" in
   *club-member-organisation*|*kymokcqebfruhlvcyqnw*|"$cmo_repo"*) ;;
   *) exit 0 ;;
 esac
