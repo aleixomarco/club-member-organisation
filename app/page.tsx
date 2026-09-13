@@ -22,6 +22,7 @@ import { legal } from "./legal-shell";
 import { CLUB_TIER_INFO } from "@/lib/preise";
 import { standardMannschaft, auswahlReihenfolge, hoechsteMannschaft, nachRangSortiert } from "@/lib/mannschaftsrang";
 import { memberPlayerTeams, memberTrainerTeams, memberCaptainTeams, memberManagedTeams, memberAllTeams, memberInTeam, hoechstesTeam } from "@/lib/mannschaften";
+import { spielOrt, tippPunkte, ergebnisFehlerSchluessel } from "@/lib/ergebnis";
 
 /* ------------------------------------------------------------------ */
 /* Tokens                                                              */
@@ -1617,22 +1618,24 @@ function seasonResults(seasonVotes, kandidaten = []) {
    Bewusst wird nur der Titel des Termins uebernommen und nicht versucht, aus
    ihm einen Gegner zu lesen: Die Titel sind frei geschrieben ("Heimspiel gegen
    SG Lindental", "Gastspiel bei SV Buchenfelde", "GEGEN Herringen", "Turnier"),
-   jede Zerlegung waere geraten. Getippt wird deshalb "wir : sie" - das ist
-   eindeutig, unabhaengig davon, ob heim oder auswaerts gespielt wird. */
+   jede Zerlegung waere geraten. Der Gegner kommt deshalb nur aus der eigenen
+   Spalte events.opponent - bei den meisten Spielen ist sie leer.
+
+   Gespeichert werden Tipps und Ergebnisse als wir : Gegner
+   (event_results.heim = UNSERE Tore, predictions.home_score ebenso), egal ob
+   heim oder auswaerts gespielt wird. Gezeigt und eingegeben wird seit dem
+   13.09.2026 Heim : Gast. Umgerechnet wird ausschliesslich in lib/ergebnis.mjs
+   - dafuer tragen die Begegnungen den Ort (ort: 'heim' | 'auswaerts' | null)
+   und den Gegner mit. heim bleibt nur fuer die Unterzeile "Heimspiel" /
+   "Auswaertsspiel" in der Ergebnisverwaltung. */
 const tippBegegnungen = (events) => (events || [])
   .filter((e) => e.type === "spiel" && e.date && !e.cancelled)
   .sort((a, b) => new Date(a.date) - new Date(b.date))
-  .map((e) => ({ id: e.id, titel: e.title, team: e.team, heim: e.home !== false, date: e.date }));
+  .map((e) => ({ id: e.id, titel: e.title, team: e.team, heim: e.home !== false, ort: spielOrt(e), gegner: e.opponent || "", date: e.date }));
 
+/* Beide Seiten in gespeicherter Form wir : Gegner - nie umgerechnet. */
 function predictionPoints(prediction, result) {
-  if (!prediction || !result || prediction.home === "" || prediction.away === "") return 0;
-  const predictedHome = Number(prediction.home);
-  const predictedAway = Number(prediction.away);
-  const actualHome = Number(result.home);
-  const actualAway = Number(result.away);
-  if (predictedHome === actualHome && predictedAway === actualAway) return 3;
-  const tendency = (home, away) => home === away ? 0 : home > away ? 1 : -1;
-  return tendency(predictedHome, predictedAway) === tendency(actualHome, actualAway) ? 1 : 0;
+  return tippPunkte(prediction, result);
 }
 
 function totalTippPoints(userId, predictions, results, begegnungen = []) {
@@ -10307,27 +10310,37 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
   };
 
   const [entwuerfe, setEntwuerfe] = useState({});
+  /* Fehler je Spiel, direkt unter der Karte - nicht als Leiste oben, wo man
+     nicht mehr weiss, welcher Tipp gemeint war. */
+  const [tippFehler, setTippFehler] = useState({});
   const entwurfVon = (matchId) => entwuerfe[matchId] ?? mine[matchId] ?? { home: "", away: "" };
   const setPred = (matchId, side, val) =>
     setEntwuerfe((e) => ({ ...e, [matchId]: { ...entwurfVon(matchId), [side]: val } }));
 
-  const tippAbgeben = (matchId) => {
+  /* Erst speichern, dann anzeigen. Geht es schief, bleibt der Entwurf stehen
+     und der gespeicherte Tipp unveraendert - vorher stand der Tipp schon als
+     abgegeben da, auch wenn die Datenbank ihn abgelehnt hatte. */
+  const tippAbgeben = async (matchId) => {
     const d = entwurfVon(matchId);
     if (d.home === "" || d.away === "") return;
+    setTippFehler((f) => ({ ...f, [matchId]: "" }));
+    const { error } = (await onTippSpeichern?.(matchId, d.home, d.away)) || {};
+    if (error) { setTippFehler((f) => ({ ...f, [matchId]: t("tipp.nichtGespeichert") })); return; }
     setTippPredictions((tp) => ({ ...tp, [currentUser.id]: { ...(tp[currentUser.id] || {}), [matchId]: d } }));
-    onTippSpeichern?.(matchId, d.home, d.away);
     setEntwuerfe((e) => { const n = { ...e }; delete n[matchId]; return n; });
   };
 
   /* Zuruecknehmen bis zum Anpfiff. Danach nicht mehr - sonst koennte man den
      Tipp abgeben, das Spiel schauen und ihn bei schlechtem Verlauf loeschen. */
-  const tippLoeschen = (matchId) => {
+  const tippLoeschen = async (matchId) => {
+    setTippFehler((f) => ({ ...f, [matchId]: "" }));
+    const { error } = (await onTippSpeichern?.(matchId, "", "")) || {};
+    if (error) { setTippFehler((f) => ({ ...f, [matchId]: t("tipp.nichtGespeichert") })); return; }
     setTippPredictions((tp) => {
       const meine = { ...(tp[currentUser.id] || {}) };
       delete meine[matchId];
       return { ...tp, [currentUser.id]: meine };
     });
-    onTippSpeichern?.(matchId, "", "");
     setEntwuerfe((e) => { const n = { ...e }; delete n[matchId]; return n; });
   };
   /* Die frueher hier gerechnete Rangliste ist entfallen. Sie lief ueber ALLE
@@ -10490,6 +10503,11 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
                     {t("allg.loeschen")}
                   </button>
                 )}
+              </div>
+            )}
+            {tippFehler[match.id] && (
+              <div role="status" className="mt-2 text-[11px] rounded-xl px-3 py-2" style={{ background: C.fehlerFlaeche, color: C.fehler, fontFamily: "Inter" }}>
+                {tippFehler[match.id]}
               </div>
             )}
             <Erstellt von={result?.erstelltVon} am={result?.erstelltAm} />
@@ -11926,16 +11944,26 @@ function MatchResultsPanel({ results, onSave, onDelete, events, currentClub }) {
   const begegnungen = alleBegegnungen.filter((m) => m.team === mannschaft);
   const [drafts, setDrafts] = useState({});
   const [savedId, setSavedId] = useState(null);
+  const [fehler, setFehler] = useState({});
   const update = (matchId, side, value) => setDrafts((current) => ({
     ...current,
     [matchId]: { home: current[matchId]?.home ?? "", away: current[matchId]?.away ?? "", [side]: value },
   }));
-  const save = (match) => {
+  /* "Punkte berechnet" erst, wenn die Datenbank das Ergebnis angenommen hat. */
+  const save = async (match) => {
     const draft = drafts[match.id] || results[match.id];
     if (!draft || draft.home === "" || draft.away === "") return;
-    onSave(match.id, { home: Number(draft.home), away: Number(draft.away), enteredAt: new Date().toISOString() });
+    setFehler((f) => ({ ...f, [match.id]: "" }));
+    const { fehler: meldung } = (await onSave(match.id, { home: Number(draft.home), away: Number(draft.away) })) || {};
+    if (meldung) { setFehler((f) => ({ ...f, [match.id]: meldung })); return; }
     setSavedId(match.id);
     setTimeout(() => setSavedId(null), 1800);
+  };
+  const entfernen = async (match) => {
+    setFehler((f) => ({ ...f, [match.id]: "" }));
+    const { fehler: meldung } = (await onDelete?.(match.id)) || {};
+    if (meldung) { setFehler((f) => ({ ...f, [match.id]: meldung })); return; }
+    setDrafts((c) => { const n = { ...c }; delete n[match.id]; return n; });
   };
   return (
     <div>
@@ -11999,11 +12027,16 @@ function MatchResultsPanel({ results, onSave, onDelete, events, currentClub }) {
                   eine andere Zahl hinschreiben. Die Tippspiel-Punkte zaehlten
                   dann weiter fuer ein Spiel, das so nie ausging. */}
               {results[match.id] && (
-                <button onClick={() => { if (window.confirm(`Ergebnis für "${match.titel}" entfernen? Die dafür vergebenen Tippspiel-Punkte verfallen.`)) { onDelete?.(match.id); setDrafts((c) => { const n = { ...c }; delete n[match.id]; return n; }); } }}
+                <button onClick={() => { if (window.confirm(`Ergebnis für "${match.titel}" entfernen? Die dafür vergebenen Tippspiel-Punkte verfallen.`)) entfernen(match); }}
                   className="w-full py-2 rounded-lg text-xs font-bold mt-2"
                   style={{ background: C.fehlerFlaeche, color: C.fehler }}>
                   Ergebnis entfernen
                 </button>
+              )}
+              {fehler[match.id] && (
+                <div role="status" className="text-[11px] rounded-xl px-3 py-2 mt-2" style={{ background: C.fehlerFlaeche, color: C.fehler }}>
+                  {fehler[match.id]}
+                </div>
               )}
             </div>
           );
@@ -14348,7 +14381,7 @@ export default function ClubMemberOrganisationApp() {
     let abgebrochen = false;
     const loadEvents = async () => {
       const { data, error } = await supabase.from("events")
-        .select("id,type,status,title,description,starts_at,location,home_away,series_id,helper_slots,created_by,created_at,teams(name,zusagen_aktiv,zusagen_spiele_aktiv)")
+        .select("id,type,status,title,description,starts_at,location,home_away,opponent,series_id,helper_slots,created_by,created_at,teams(name,zusagen_aktiv,zusagen_spiele_aktiv)")
         .eq("club_id", currentUser.clubId)
         /* Zwei Jahre zurueck, nach vorn unbegrenzt.
            Vorher kam die gesamte Geschichte mit - bei einem Verein mit fuenf
@@ -14391,6 +14424,8 @@ export default function ClubMemberOrganisationApp() {
           desc: row.description || "",
           carpool: false,
           home: row.home_away === "heim" ? true : row.home_away === "auswaerts" ? false : undefined,
+          /* Bei den meisten Spielen leer - dann steht dort "Gegner". */
+          opponent: row.opponent || "",
           cancelled: row.status === "cancelled",
           seriesId: row.series_id || null,
           helperSlots: (row.helper_slots || []).length ? row.helper_slots : undefined,
@@ -14701,7 +14736,10 @@ export default function ClubMemberOrganisationApp() {
 
     /* Tipps: In der Datenbank haengen sie am Profil, in der Oberflaeche an der
        Mitgliedschaft. Fremde Tipps liefert die Regel erst, wenn das Ergebnis
-       feststeht - vorher koennte man sonst abschreiben. */
+       feststeht - vorher koennte man sonst abschreiben.
+       home/away bedeuten in tippPredictions und tippResults immer wir/Gegner,
+       nie Heim/Gast - Heim : Gast entsteht erst in der Anzeige
+       (lib/ergebnis.mjs). */
     const tippBlock = {};
     for (const t of tipps.data || []) {
       const mid = profilZuMitglied[t.profile_id];
@@ -14797,31 +14835,54 @@ export default function ClubMemberOrganisationApp() {
    * zurueckgenommen - eine Anzeige, die etwas behauptet, was nicht in der
    * Datenbank steht, waere schlimmer als eine kurze Zuckung.
    * ------------------------------------------------------------------ */
-  const meineMitgliedsId = currentUserId;
   const meinProfil = () => currentUser?.authProfileId || offeneSitzung?.profileId || null;
 
-  const tippSpeichern = async (eventId, heim, auswaerts) => {
-    if (!supabase || !meinProfil() || typeof eventId !== "string") return;
+  /* Ausnahme von der Regel oben: Tipps und Ergebnisse. Hier wartet die
+     Oberflaeche auf die Datenbank und zeigt erst danach etwas an. An einem
+     Ergebnis haengen die Punkte aller Tipper - ein Endstand, der kurz dasteht
+     und dann wieder verschwindet, haette schon Punkte verteilt und eine
+     Meldung verschickt. Die Funktionen geben deshalb { error } zurueck, statt
+     selbst eine Meldung zu setzen; die Ansicht zeigt den Fehler dort, wo
+     getippt oder eingetragen wurde.
+
+     Gespeichert wird wir : Gegner (siehe lib/ergebnis.mjs) - die Ansicht
+     bindet ihre Felder direkt an diese Schluessel, hier wird nichts gedreht. */
+  const tippSpeichern = async (eventId, wir, gegner) => {
+    if (!supabase || !meinProfil() || typeof eventId !== "string") return {};
     const zahl = (w) => (w === "" || w === null || w === undefined ? null : Number(w));
-    if (zahl(heim) === null || zahl(auswaerts) === null) {
-      await supabase.from("predictions").delete().eq("event_id", eventId).eq("profile_id", meinProfil());
-      return;
+    if (zahl(wir) === null || zahl(gegner) === null) {
+      const { data, error } = await supabase.from("predictions").delete()
+        .eq("event_id", eventId).eq("profile_id", meinProfil()).select("event_id");
+      if (error) return { error };
+      /* Eine Regel lehnt ein Loeschen nicht mit einem Fehler ab - sie findet
+         schlicht keine Zeile. Steht der Tipp danach noch da, war es nicht
+         erlaubt (etwa nach dem Anpfiff). */
+      if (!(data || []).length) {
+        const { data: noch } = await supabase.from("predictions").select("event_id")
+          .eq("event_id", eventId).eq("profile_id", meinProfil()).maybeSingle();
+        if (noch) return { error: { code: "42501" } };
+      }
+      return {};
     }
     const { error } = await supabase.from("predictions").upsert({
       event_id: eventId, profile_id: meinProfil(),
-      home_score: zahl(heim), away_score: zahl(auswaerts),
+      home_score: zahl(wir), away_score: zahl(gegner),
     }, { onConflict: "event_id,profile_id" });
-    if (error) setSchreibFehler(t("tipp.nichtGespeichert"));
+    return { error };
   };
 
-  const ergebnisSpeichern = async (eventId, ergebnis) => {
-    if (!supabase || !selectedClubId || typeof eventId !== "string") return;
-    const { error } = await supabase.from("event_results").upsert({
+  /* erfasst_von schickt die App nicht mehr mit: Seit 20260914100000 setzt es
+     ein Ausloeser in der Datenbank auf das eintragende Konto - auch wenn eine
+     aeltere App-Fassung einen anderen Wert schickt. Zurueck kommt die Zeile,
+     wie sie gespeichert wurde. */
+  const ergebnisSpeichern = async (eventId, wg) => {
+    if (!supabase || !selectedClubId || typeof eventId !== "string") return { demo: true };
+    const { data, error } = await supabase.from("event_results").upsert({
       club_id: selectedClubId, event_id: eventId,
-      heim: Number(ergebnis.home), auswaerts: Number(ergebnis.away),
-      erfasst_von: isDbId(meineMitgliedsId) ? meineMitgliedsId : null,
-    }, { onConflict: "club_id,event_id" });
-    if (error) setSchreibFehler(t("tipp.ergebnisFehler"));
+      heim: Number(wg.home), auswaerts: Number(wg.away),
+    }, { onConflict: "club_id,event_id" })
+      .select("event_id,heim,auswaerts,erfasst_von,created_at").single();
+    return { error, zeile: data };
   };
 
   /* Ein eingetragenes Ergebnis wieder entfernen.
@@ -14830,10 +14891,19 @@ export default function ClubMemberOrganisationApp() {
      lassen, die nie gefallen ist. Die Tippspiel-Punkte haengen daran, also
      zaehlten sie falsch weiter. */
   const ergebnisLoeschen = async (eventId) => {
-    if (!supabase || !selectedClubId || typeof eventId !== "string") return;
-    const { error } = await supabase.from("event_results").delete()
-      .eq("club_id", selectedClubId).eq("event_id", eventId);
-    if (error) setSchreibFehler(t("tipp.ergebnisEntfernenFehler"));
+    if (!supabase || !selectedClubId || typeof eventId !== "string") return {};
+    const { data, error } = await supabase.from("event_results").delete()
+      .eq("club_id", selectedClubId).eq("event_id", eventId).select("event_id");
+    if (error) return { error };
+    /* Keine Zeile entfernt: Entweder war sie schon weg (dann ist das Ziel
+       erreicht) oder die Regel hat nicht erlaubt, sie zu sehen und zu
+       loeschen - dann steht sie noch da. */
+    if (!(data || []).length) {
+      const { data: noch } = await supabase.from("event_results").select("event_id")
+        .eq("club_id", selectedClubId).eq("event_id", eventId).maybeSingle();
+      if (noch) return { error: { code: "42501" } };
+    }
+    return {};
   };
 
   const stimmeAbgeben = async (pollId, optionId) => {
@@ -16099,23 +16169,44 @@ export default function ClubMemberOrganisationApp() {
     setEvents(EVENTS); setDutyPlan(INITIAL_DUTY_PLAN); setChannels(INITIAL_CHANNELS);
     return {};
   };
-  const saveTippResult = (matchId, result) => {
-    ergebnisSpeichern(matchId, result);
+  /* Der Grund aus der Datenbank, sonst der allgemeine Text. Die allgemeinen
+     Texte werden bewusst hier uebersetzt und nicht als Vorgabe in
+     lib/ergebnis.mjs gereicht - so zaehlt scripts/pruefe-uebersetzung.mjs
+     sie weiter als benutzt. */
+  const ergebnisFehlerText = (err, allgemein) => {
+    const schluessel = ergebnisFehlerSchluessel(err, "");
+    return schluessel ? t(schluessel) : allgemein;
+  };
+  /* Erst die Datenbank, dann die Anzeige. Liefert {} oder { fehler: Text }.
+     wg in gespeicherter Form wir : Gegner. Angezeigt wird danach die Zeile,
+     wie die Datenbank sie zurueckgibt - samt dem Konto, das der Ausloeser
+     als Erfasser eingetragen hat. */
+  const saveTippResult = async (matchId, wg) => {
+    const r = await ergebnisSpeichern(matchId, wg);
+    if (r.error) return { fehler: ergebnisFehlerText(r.error, t("tipp.ergebnisFehler")) };
+    const neu = r.zeile
+      ? { home: String(r.zeile.heim), away: String(r.zeile.auswaerts), erstelltVon: r.zeile.erfasst_von || null, erstelltAm: r.zeile.created_at || null }
+      : { home: String(wg.home), away: String(wg.away), erstelltVon: null, erstelltAm: new Date().toISOString() };
     setTippResults((currentResults) => {
-      const nextResults = { ...currentResults, [matchId]: result };
+      const nextResults = { ...currentResults, [matchId]: neu };
       setMembers((currentMembers) => currentMembers.map((member) => ({
         ...member,
         tippPoints: totalTippPoints(member.id, tippPredictions, nextResults, tippBegegnungen(events)),
       })));
       return nextResults;
     });
-    if (supabase && currentUser?.clubId) supabase.rpc("notify_club", { target_club: currentUser.clubId, p_notif_type: "tipp", p_title: "Tippspiel-Ergebnis eingetragen", p_body: "Ein Spielergebnis wurde eingetragen. Schau nach, wie viele Punkte du gemacht hast!" });
+    /* Die Meldung ans Tippspiel nur, wenn der Verein das Tippspiel ueberhaupt
+       nutzt - sonst bekaeme jedes Mitglied eine Nachricht zu einem Spiel, auf
+       das niemand tippen konnte. */
+    if (supabase && currentUser?.clubId && featureEnabled("tippspiel")) supabase.rpc("notify_club", { target_club: currentUser.clubId, p_notif_type: "tipp", p_title: "Tippspiel-Ergebnis eingetragen", p_body: "Ein Spielergebnis wurde eingetragen. Schau nach, wie viele Punkte du gemacht hast!" });
+    return {};
   };
 
   /* Beim Entfernen muessen die Tippspiel-Punkte mit. Sonst behalten alle die
      Punkte fuer ein Spiel, dessen Ergebnis es nicht mehr gibt. */
-  const deleteTippResult = (matchId) => {
-    ergebnisLoeschen(matchId);
+  const deleteTippResult = async (matchId) => {
+    const r = await ergebnisLoeschen(matchId);
+    if (r.error) return { fehler: ergebnisFehlerText(r.error, t("tipp.ergebnisEntfernenFehler")) };
     setTippResults((currentResults) => {
       const nextResults = { ...currentResults };
       delete nextResults[matchId];
