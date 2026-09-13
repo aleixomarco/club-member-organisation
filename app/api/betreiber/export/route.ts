@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { SITZUNGS_COOKIE, sitzungGueltig } from "@/lib/betreiber";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { mappeBauen, dateiname, type Blatt } from "@/lib/betreiber-export";
+import { spielOrt, zuHeimGast } from "@/lib/ergebnis";
 
 export const dynamic = "force-dynamic";
 /* Die Mappe wird im Speicher gebaut; bei vielen Vereinen dauert das laenger
@@ -65,10 +66,13 @@ export async function GET() {
   const erzeugtAm = new Date();
 
   try {
-    const [vereine, teams, termine, abos, plaene, anfragen, anzeigen, statistik, kennzahlen] = await Promise.all([
+    const [vereine, teams, termine, ergebnisse, abos, plaene, anfragen, anzeigen, statistik, kennzahlen] = await Promise.all([
       admin.from("betreiber_uebersicht").select("*").order("name"),
       admin.from("teams").select("id,club_id,name,category,active,is_adult,zusagen_aktiv,zusagen_spiele_aktiv,strafen_aktiv,created_at"),
-      admin.from("events").select("id,club_id,team_id,type,status,title,starts_at,ends_at,location,home_away,opponent,home_score,away_score,series_id,created_at"),
+      /* Die alten Torspalten an events schreibt niemand - die Endstaende
+         stehen in event_results. */
+      admin.from("events").select("id,club_id,team_id,type,status,title,starts_at,ends_at,location,home_away,opponent,series_id,created_at"),
+      admin.from("event_results").select("event_id,heim,auswaerts"),
       admin.from("club_subscriptions").select("club_id,plan_id,provider,status,current_period_start,current_period_end,cancel_at_period_end,last_payment_at"),
       admin.from("subscription_plans").select("id,code,name,interval,price_cents,currency"),
       admin.from("club_access_requests").select("club_name,contact_name,contact_email,contact_phone,expected_accounts,status,quelle,rechnungsnummer,betrag,zahlweise,created_at,freigeschaltet_am,ablehnungsgrund"),
@@ -85,7 +89,7 @@ export async function GET() {
       admin.rpc("betreiber_kennzahlen"),
     ]);
 
-    const ersterFehler = [vereine, teams, termine, abos, plaene, anfragen, anzeigen, statistik]
+    const ersterFehler = [vereine, teams, termine, ergebnisse, abos, plaene, anfragen, anzeigen, statistik]
       .find((a) => a.error);
     if (ersterFehler?.error) {
       console.error("Export konnte nicht geladen werden", ersterFehler.error);
@@ -100,6 +104,21 @@ export async function GET() {
        Auswertung. */
     const anzeigenName = new Map(((anzeigen.data || []) as Zeile[]).map((a) => [a.id as string, String(a.titel ?? "")]));
     const anzeigenPlatz = new Map(((anzeigen.data || []) as Zeile[]).map((a) => [a.id as string, String(a.platz ?? "")]));
+    /* Endstaende je Termin. event_results speichert wir : Gegner (heim =
+       UNSERE Tore, auswaerts = die des Gegners); das Blatt zeigt Heim : Gast.
+       Umgerechnet wird mit demselben Helfer wie in der App, damit es nur EINE
+       Umrechnung gibt. */
+    const ergebnisJeTermin = new Map(((ergebnisse.data || []) as Zeile[]).map((r) => [r.event_id as string, r]));
+    const toreHeimGast = (e: Zeile) => {
+      /* Abgesagte Spiele bleiben leer - an einem haengt auf PROD ein
+         verwaistes Ergebnis. Ohne Heim/Auswaerts ist offen, welche Zahl
+         vorn steht; dann ebenfalls leer statt geraten. */
+      const r = e.status !== "cancelled" ? ergebnisJeTermin.get(e.id as string) : undefined;
+      const ort = spielOrt({ home_away: typeof e.home_away === "string" ? e.home_away : null });
+      if (!r || !ort) return { tore_heim: null, tore_gast: null };
+      const hg = zuHeimGast({ home: r.heim as number | null, away: r.auswaerts as number | null }, ort);
+      return { tore_heim: hg.heim ?? null, tore_gast: hg.gast ?? null };
+    };
 
     /* Einblendungen und Oeffnungen je Anzeige, aus denselben Tageszeilen, die
        auch im Blatt "Anzeigen je Tag" stehen.
@@ -260,8 +279,8 @@ export async function GET() {
           { titel: "Status", feld: "status" },
           { titel: "Heim/Auswärts", feld: "home_away" },
           { titel: "Gegner", feld: "opponent" },
-          { titel: "Tore Heim", feld: "home_score", art: "zahl" },
-          { titel: "Tore Auswärts", feld: "away_score", art: "zahl" },
+          { titel: "Tore Heim", feld: "tore_heim", art: "zahl" },
+          { titel: "Tore Gast", feld: "tore_gast", art: "zahl" },
           { titel: "Teil einer Reihe", feld: "reihe", art: "ja_nein" },
         ],
         zeilen: ((termine.data || []) as Zeile[]).map((e): Zeile => ({
@@ -269,6 +288,7 @@ export async function GET() {
           verein: vereinsName.get(e.club_id as string) ?? "",
           mannschaft: e.team_id ? (teamName.get(e.team_id as string) ?? "") : "",
           reihe: !!e.series_id,
+          ...toreHeimGast(e),
         })).sort((a, b) => String(b.starts_at ?? "").localeCompare(String(a.starts_at ?? ""))),
       },
       {

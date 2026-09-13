@@ -665,20 +665,31 @@ const DEFAULT_CLUB_FEATURES = Object.fromEntries(CLUB_FEATURES.map((f) => [f.key
    vier festen Zeichenketten in allen sieben Sprachen deutsch. */
 const DASHBOARD_TILE_LABELS = {
   season_award: (sport, t) => t("sub.season"),
+  ergebnisse: (sport, t) => t("sub.ergebnisse"),
   tippspiel: (sport, t) => t("sub.tipp"),
   duty_roster: (sport, t) => t("sub.duty"),
   tasks: (sport, t) => t("auf.titel"),
   vehicle_booking: (sport, t) => sportText(t, sport, "vehicleTabLabel"),
 };
-const DEFAULT_DASHBOARD_TILE_ORDER = ["season_award", "tippspiel", "duty_roster", "tasks", "vehicle_booking"];
+const DEFAULT_DASHBOARD_TILE_ORDER = ["season_award", "ergebnisse", "tippspiel", "duty_roster", "tasks", "vehicle_booking"];
 const dashboardTileLabel = (key, sport, t) => {
   const l = DASHBOARD_TILE_LABELS[key];
   return typeof l === "function" ? l(sport, t) : key;
 };
+/* Eine fehlende Kachel - etwa eine neue wie "ergebnisse" in einer frueher
+   gespeicherten Reihenfolge - kommt vor die naechste Kachel der
+   Voreinstellung, die schon in der Reihenfolge steht, statt ans Ende. So
+   steht sie auch bei allen, die ihre Reihenfolge schon einmal gespeichert
+   haben, dort, wo sie gedacht ist (vor dem Tippspiel) - ohne Datenmigration. */
 const resolveDashboardTileOrder = (order) => {
   const clean = Array.isArray(order) ? order.filter((key) => DEFAULT_DASHBOARD_TILE_ORDER.includes(key)) : [];
-  const missing = DEFAULT_DASHBOARD_TILE_ORDER.filter((key) => !clean.includes(key));
-  return [...clean, ...missing];
+  const reihenfolge = [...clean];
+  DEFAULT_DASHBOARD_TILE_ORDER.forEach((key, index) => {
+    if (reihenfolge.includes(key)) return;
+    const naechste = DEFAULT_DASHBOARD_TILE_ORDER.slice(index + 1).find((k) => reihenfolge.includes(k));
+    reihenfolge.splice(naechste ? reihenfolge.indexOf(naechste) : reihenfolge.length, 0, key);
+  });
+  return reihenfolge;
 };
 const STATION_CAP = 2;
 const COUNTRY_CODES = "AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS XK YE YT ZA ZM ZW".split(" ");
@@ -3842,7 +3853,7 @@ function NextTrainingCard({ training, team, auswahlVorhanden = false }) {
     </div>
   );
 }
-function Dashboard({ user, members, events, channels, news, dutyPlan, seasonVotes, tippPredictions, tippResults, polls, setPolls, onVote, onUnvote, umfrageFokus, onUmfrageFokusErledigt, newsFokus, onNewsFokusErledigt, onFavoritMannschaft, werbeplaetze, onSponsorImpression, onSponsorClick, goEvents, goSeason, goTipp, goDuty, goNews, goTasks, goVehicles, currentClub, featureEnabled, dashboardTileOrder, entitlement, goSubscribe, mannschaften = [], gewaehlteMannschaft = "", onMannschaftWechsel }) {
+function Dashboard({ user, members, events, channels, news, dutyPlan, seasonVotes, tippPredictions, tippResults, polls, setPolls, onVote, onUnvote, umfrageFokus, onUmfrageFokusErledigt, newsFokus, onNewsFokusErledigt, onFavoritMannschaft, werbeplaetze, onSponsorImpression, onSponsorClick, goEvents, goSeason, goErgebnisse, goTipp, goDuty, goNews, goTasks, goVehicles, currentClub, featureEnabled, dashboardTileOrder, entitlement, goSubscribe, mannschaften = [], gewaehlteMannschaft = "", onMannschaftWechsel }) {
   const t = useT();
   const sport = currentClub?.sport || "rollhockey";
 
@@ -4001,6 +4012,19 @@ function Dashboard({ user, members, events, channels, news, dutyPlan, seasonVote
   const tippSubtitle = !tippStandJetzt ? ""
     : tippStandJetzt.dabei === false ? t("tipp.nochNichtDabei")
     : mitWerten(t("tipp.platzVonN"), { platz: tippStandJetzt.platz, gesamt: tippStandJetzt.gesamt }) + (tippStandJetzt.team ? ` · ${tippStandJetzt.team}` : "");
+  /* Der letzte Endstand fuer die Ergebniskachel - Heim : Gast wie in der
+     Ansicht. Zuerst der der gewaehlten Mannschaft; hat sie noch keinen, der
+     neueste im Verein. Ohne jedes Ergebnis bleibt die Zeile leer. */
+  const letztesErgebnis = (() => {
+    const je = ergebnisseJeMannschaft(events, tippResults, { jetzt: new Date(), favorit: gewaehlteMannschaft })
+      .map((g) => ({ team: g.team, sp: g.spiele.find((sp) => sp.ergebnis) }))
+      .filter((x) => x.sp);
+    return je.find((x) => gewaehlteMannschaft && x.team === gewaehlteMannschaft)
+      || je.sort((a, b) => new Date(b.sp.ev.date).getTime() - new Date(a.sp.ev.date).getTime())[0]
+      || null;
+  })();
+  const ergebnisSubtitle = !letztesErgebnis ? ""
+    : mitWerten(t("erg.zuletzt"), { team: letztesErgebnis.team || t("auf.ganzerVerein"), stand: stand(letztesErgebnis.sp.ergebnis, spielOrt(letztesErgebnis.sp.ev)) });
   /* Der Anteil in Prozent, sobald der Hinweis faellig ist - sonst null. Vorher
      stand hier ein blosses true und im Text eine feste 70. Angezeigt wurde damit
      immer "Schon 70%", auch wenn sich laengst neunzig Prozent eingetragen
@@ -4131,6 +4155,11 @@ function Dashboard({ user, members, events, channels, news, dutyPlan, seasonVote
             switch (tileKey) {
               case "season_award":
                 return featureEnabled("season_award") && <FeatureRow key={tileKey} icon={Trophy} title="Athlet/in der Saison" subtitle={seasonSubtitle} onClick={goSeason} accent={C.secondary} locked={featureLocked} />;
+              /* Kein Funktionsschalter und keine Fan-Sperre: Endstaende gibt es
+                 in jedem Verein, und Fans sehen alle Mannschaften. Nur das Abo
+                 schliesst die Ansicht ab (LockedFeature). */
+              case "ergebnisse":
+                return <FeatureRow key={tileKey} icon={Trophy} title={t("sub.ergebnisse")} subtitle={ergebnisSubtitle} onClick={goErgebnisse} accent={C.secondary} locked={featureLocked} />;
               case "tippspiel":
                 return featureEnabled("tippspiel") && <FeatureRow key={tileKey} icon={Target} title="Tippspiel" subtitle={tippSubtitle} onClick={goTipp} accent={C.red} locked={featureLocked} />;
               case "duty_roster":
@@ -4553,7 +4582,7 @@ function CarpoolSection({ ev, currentUser }) {
 
 /* initialOpen: Im Kalender-Overlay ist bereits klar, welcher Termin gemeint ist —
    dort wird die Karte aufgeklappt gezeigt, statt noch einmal tippen zu lassen. */
-function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser, dutyPlan, setDutyPlan, onDienstSetzen, canCancelTraining, onCancelTraining, onDeleteTraining, currentClub, featureEnabled, onNeuLaden, initialOpen = false }) {
+function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser, dutyPlan, setDutyPlan, onDienstSetzen, canCancelTraining, onCancelTraining, onDeleteTraining, currentClub, featureEnabled, onNeuLaden, ergebnis = null, darfErgebnis = false, onErgebnisOeffnen, initialOpen = false }) {
   const t = useT();
   const [open, setOpen] = useState(initialOpen);
   const [absageOffen, setAbsageOffen] = useState(false);
@@ -4602,6 +4631,38 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
           {ev.cancelled&&<div className="rounded-xl p-3 mb-3 text-xs font-bold" style={{background:C.fehlerFlaeche,color:C.fehler,border: `1px solid ${C.fehlerRand}`}}>Dieses {meta.label} wurde{ev.team?` für ${ev.team}`:""} abgesagt.</div>}
           <p className="text-sm mb-3" style={{ color: C.textDim, fontFamily: "Inter" }}>{ev.desc}</p>
           {!ev.cancelled && ev.zusagenAktiv !== false && <TerminZusage ev={ev} currentUser={currentUser} />}
+          {/* Der Endstand am Spiel selbst, Heim : Gast wie in der
+              Ergebnisansicht. Der Teams-Reiter fuehrt nur Erwachsenen-
+              mannschaften - fuer die Trainer der Jugend ist diese Karte der Weg
+              zum Eintragen. Der Knopf oeffnet die Ergebnisansicht beim Spiel
+              mit offener Eingabe; darfErgebnis folgt denselben Regeln wie die
+              Datenbank. */}
+          {ev.type === "spiel" && !ev.cancelled && new Date(ev.date) <= new Date() && (() => {
+            const ort = spielOrt(ev);
+            const s = seitenFuer(ort, { wir: ev.team || t("ev.wir"), gegner: ev.opponent || t("feld.gegner") });
+            return (
+              <div className="rounded-xl p-3 mb-3" style={{ background: C.paperDim }}>
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <div className="text-[9px] font-bold uppercase tracking-wide" style={{ color: C.textDim, fontFamily: "Inter" }}>
+                    {s.ortBekannt ? t("erg.heimGast") : `${t("ev.wir")} : ${t("feld.gegner")}`}
+                  </div>
+                  <AusgangChip ergebnis={ergebnis} />
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 min-w-0 text-right text-xs truncate" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{s.links.name}</div>
+                  <div className="flex-shrink-0 px-2.5 py-0.5 rounded-lg text-base" style={{ background: C.white, color: ergebnis ? C.ink : C.textDim, fontFamily: "JetBrains Mono", fontWeight: 700 }}>
+                    {ergebnis ? stand(ergebnis, ort) : "–:–"}
+                  </div>
+                  <div className="flex-1 min-w-0 text-xs truncate" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{s.rechts.name}</div>
+                </div>
+                {darfErgebnis && onErgebnisOeffnen && (
+                  <button onClick={() => onErgebnisOeffnen(ev.id)} className="w-full mt-2.5 py-2 rounded-lg text-xs font-bold" style={{ background: C.ink, color: C.white }}>
+                    {ergebnis ? t("erg.korrigieren") : t("erg.eintragen")}
+                  </button>
+                )}
+              </div>
+            );
+          })()}
           {/* Absagen in zwei Schritten: erst der Grund, dann die Absage.
               Vorher verschwand ein Training mit einem Klick und ohne
               Erklaerung - die Mannschaft las "wurde abgesagt" und fragte im
@@ -4769,7 +4830,7 @@ const leererTerminentwurf = (team = "") => ({
   rangeStart: "", rangeEnd: "", helferStationen: "", isHome: true,
 });
 
-function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpools, setCarpools, dutyPlan, setDutyPlan, onDienstSetzen, werbeplaetze, onSponsorImpression, onSponsorClick, focusRequest, onFocusApplied, currentClub, featureEnabled, entitlement, goSubscribe }) {
+function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpools, setCarpools, dutyPlan, setDutyPlan, onDienstSetzen, werbeplaetze, onSponsorImpression, onSponsorClick, focusRequest, onFocusApplied, currentClub, featureEnabled, entitlement, goSubscribe, tippResults = {}, onErgebnisOeffnen }) {
   const t = useT();
   const [filter, setFilter] = useState("alle");
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -5240,6 +5301,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
           currentClub={currentClub} featureEnabled={featureEnabled} onNeuLaden={onNeuLaden}
           dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={onDienstSetzen}
           canCancelTraining={canCancelFor(ev)} onCancelTraining={cancelTraining} onDeleteTraining={deleteTraining}
+          ergebnis={tippResults?.[ev.id] || null} darfErgebnis={darfErgebnisEintragen(currentUser, ev, { streng: !!supabase })} onErgebnisOeffnen={onErgebnisOeffnen}
         />
       ))}
       {filtered.length===0&&<div className="rounded-2xl p-6 text-center text-xs" style={{background:C.paperDim,color:C.textDim}}>Für diese Mannschaft sind aktuell keine {filter === "training" ? t("ev.trainingstermine") : t("ev.spiele2")} hinterlegt.</div>}
@@ -5260,6 +5322,8 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
               currentClub={currentClub} featureEnabled={featureEnabled} onNeuLaden={onNeuLaden}
               dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={onDienstSetzen}
               canCancelTraining={canCancelFor(openEvent)} onCancelTraining={(...args) => { cancelTraining(...args); setSelectedEvent(null); }} onDeleteTraining={(...args) => { deleteTraining(...args); setSelectedEvent(null); }}
+              ergebnis={tippResults?.[openEvent.id] || null} darfErgebnis={darfErgebnisEintragen(currentUser, openEvent, { streng: !!supabase })}
+              onErgebnisOeffnen={onErgebnisOeffnen ? (id) => { setSelectedEvent(null); onErgebnisOeffnen(id); } : undefined}
             />
           </div>
         </div>
@@ -12200,6 +12264,19 @@ function ErgebnisEingabe({ spiel, ergebnis, onSpeichern, onEntfernen, mitPunkten
    angesprungen und, wenn man darf, die Eingabe geoeffnet. */
 const ERGEBNISSE_KURZ = 5;
 
+/* Sieg, Remis oder Niederlage aus UNSERER Sicht - unabhaengig davon, auf
+   welcher Seite wir stehen. Ohne Ergebnis "Wartet auf Ergebnis".
+   Gemeinsam fuer Ergebnisansicht und Terminkarte. */
+function AusgangChip({ ergebnis }) {
+  const t = useT();
+  if (!ergebnis) return <Pill bg={C.paperDim} fg={C.textDim}>{t("tipp.wartet")}</Pill>;
+  const aus = ausgang(ergebnis);
+  if (aus === "sieg") return <Pill bg={C.erfolg}>{t("erg.sieg")}</Pill>;
+  if (aus === "remis") return <Pill bg={C.textDim}>{t("erg.remis")}</Pill>;
+  if (aus === "niederlage") return <Pill bg={C.fehler}>{t("erg.niederlage")}</Pill>;
+  return null;
+}
+
 function ErgebnisseView({ events, results, currentUser, favorit, fokusId, onFokusErledigt, onSpeichern, onEntfernen, mitPunkten = true }) {
   const t = useT();
   const gruppen = ergebnisseJeMannschaft(events, results, { jetzt: new Date(), favorit });
@@ -12226,7 +12303,8 @@ function ErgebnisseView({ events, results, currentUser, favorit, fokusId, onFoku
   useEffect(() => {
     if (!fokusId) return;
     zeilen.current[fokusId]?.scrollIntoView({ behavior: "smooth", block: "center" });
-    onFokusErledigt?.();
+    /* null ausdruecklich: Der Aufrufer darf seinen Setter direkt reichen. */
+    onFokusErledigt?.(null);
   }, [fokusId, onFokusErledigt]);
 
   if (gruppen.length === 0) {
@@ -12254,20 +12332,12 @@ function ErgebnisseView({ events, results, currentUser, favorit, fokusId, onFoku
                 const ort = spielOrt(ev);
                 const s = seitenFuer(ort, { wir: ev.team || t("ev.wir"), gegner: ev.opponent || t("feld.gegner") });
                 const erlaubt = darf(ev);
-                /* Sieg/Niederlage aus UNSERER Sicht - unabhaengig davon, auf
-                   welcher Seite wir stehen. */
-                const aus = ausgang(ergebnis);
-                const chip = !ergebnis ? <Pill bg={C.paperDim} fg={C.textDim}>{t("tipp.wartet")}</Pill>
-                  : aus === "sieg" ? <Pill bg={C.erfolg}>{t("erg.sieg")}</Pill>
-                  : aus === "remis" ? <Pill bg={C.textDim}>{t("erg.remis")}</Pill>
-                  : aus === "niederlage" ? <Pill bg={C.fehler}>{t("erg.niederlage")}</Pill>
-                  : null;
                 return (
                   <div key={ev.id} ref={(el) => { zeilen.current[ev.id] = el; }} className="rounded-2xl p-3.5"
                     style={{ background: C.glass, border: `1px solid ${offen === ev.id ? C.ink : C.line}` }}>
                     <div className="flex items-center justify-between gap-2 mb-2">
                       <div className="text-[11px] min-w-0 truncate" style={{ color: C.textDim, fontFamily: "Inter" }}>{formatDate(ev.date)} · {ev.title}</div>
-                      <span className="flex-shrink-0">{chip}</span>
+                      <span className="flex-shrink-0"><AusgangChip ergebnis={ergebnis} /></span>
                     </div>
                     <div className="flex items-center gap-3">
                       <div className="flex-1 min-w-0 text-right text-sm truncate" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{s.links.name}</div>
@@ -13094,7 +13164,10 @@ function ClubFeatureSettingsPanel({ currentClub, clubFeatures, onFeaturesChanged
           const feature = featureByKey[key];
           const abschaltbar = !!feature;
           const an = abschaltbar ? clubFeatures[key] !== false : true;
-          const beschreibung = abschaltbar ? feature.settingsDesc(sport, t) : t("auf.beschreibung");
+          /* Ergebnisse und Aufgaben haben keinen Schalter, aber je eine eigene
+             Beschreibung. */
+          const beschreibung = abschaltbar ? feature.settingsDesc(sport, t)
+            : key === "ergebnisse" ? t("erg.beschreibung") : t("auf.beschreibung");
           return (
             <div key={key} className="rounded-2xl px-3.5 py-3" style={{ background: C.glass, border: `1px solid ${C.edge}`, boxShadow: "0 10px 26px rgba(60,30,45,0.06)", opacity: an ? 1 : 0.66 }}>
               <div className="flex items-center gap-3">
@@ -13545,7 +13618,7 @@ function baseTabs(t, isAdminUser, canEditNews, canEditSponsors, canManageDutyUse
   if (isAdminUser || canEditSponsors || canManageDutyUser) tabs.splice(tabs.findIndex((tab) => tab.id === "profile"), 0, { id: "admin", label: canEditSponsors && !isAdminUser ? t("nav.sponsors") : t("nav.admin"), icon: ShieldCheck });
   return tabs;
 }
-const subviewTitel = (t) => ({ season: t("sub.season"), tipp: t("sub.tipp"), duty: t("sub.duty"), postfach: t("sub.postfach") });
+const subviewTitel = (t) => ({ season: t("sub.season"), ergebnisse: t("sub.ergebnisse"), tipp: t("sub.tipp"), duty: t("sub.duty"), postfach: t("sub.postfach") });
 
 /* Das Postfach.
  *
@@ -14772,6 +14845,13 @@ export default function ClubMemberOrganisationApp() {
     setNewsFokus(null);
     if (fehlt) setOffeneNews(fehlt);
   }, []);
+  /* Welches Spiel die Ergebnisansicht anspringen soll - aus der Terminkarte,
+     der Meldung "Ergebnis fehlt" oder einem Push. ErgebnisseView fuehrt die
+     Rueckmeldung in der Abhaengigkeitsliste ihres Effekts, sie muss also
+     stabil sein. Der Setter selbst ist es - ein useCallback darum herum
+     braeuchte es nicht, und der React Compiler meldet ihn als nicht
+     erhaltbar. */
+  const [ergebnisFokus, setErgebnisFokus] = useState(null);
 
   /* Kann diese Meldung hier etwas oeffnen?
      Eine Zeile, die sich antippen laesst und dann nichts tut, sieht kaputt
@@ -14827,6 +14907,16 @@ export default function ClubMemberOrganisationApp() {
        Fans haben den Reiter nicht - meldungOeffenbar laesst sie gar nicht
        erst hierher. */
     if (e.ziel_art === "protokollaufgabe") { goSupport("aufgaben"); return true; }
+    /* Ergebnismeldungen und die Erinnerung "Ergebnis fehlt" tragen kind
+       'results' und zielen auf den Termin. Sie oeffnen die Ergebnisansicht
+       beim Spiel - wer eintragen darf, hat die Eingabe gleich offen. Ohne Abo
+       stuende dort nur das Schloss; dann bleibt es beim Sprung zum Termin. */
+    if (e.kind === "results" && zielId && events.some((ev) => ev.id === zielId && ev.type === "spiel")
+        && !(entitlement && !entitlement.loading && entitlement.tier === "none")) {
+      setErgebnisFokus(zielId);
+      setSubView("ergebnisse");
+      return true;
+    }
     if (e.ziel_art === "termin") {
       setSubView(null);
       if (zielId) setEventFocusRequest({ team: "alle", eventId: zielId, requestedAt: Date.now() });
@@ -16059,7 +16149,7 @@ export default function ClubMemberOrganisationApp() {
       if (!kennung) return;
       adresse.searchParams.delete("meldung");
       window.history.replaceState(window.history.state, "", `${adresse.pathname}${adresse.search}${adresse.hash}`);
-      if (isDbId(kennung)) setOffenerSprung({ notification_id: kennung, club_id: "", ziel_art: "", ziel_id: "", geladen: false, aufgefrischt: false });
+      if (isDbId(kennung)) setOffenerSprung({ notification_id: kennung, club_id: "", kind: "", ziel_art: "", ziel_id: "", geladen: false, aufgefrischt: false });
     } catch { /* Ohne lesbare Adresse gibt es nichts zu springen. */ }
   }, []);
   useEffect(() => {
@@ -16074,12 +16164,14 @@ export default function ClubMemberOrganisationApp() {
       if (!supabase || !isDbId(sprung.notification_id)) { setOffenerSprung(null); return; }
       if (!profilId) return;
       setOffenerSprung({ ...sprung, geladen: "laeuft" });
-      supabase.from("user_notifications").select("id,club_id,ziel_art,ziel_id")
+      supabase.from("user_notifications").select("id,club_id,kind,ziel_art,ziel_id")
         .eq("id", sprung.notification_id).maybeSingle()
         .then(({ data, error }) => setOffenerSprung((jetzt) => {
           if (!gleicherTipp(jetzt)) return jetzt;
           if (error || !data) return null;
-          return { ...jetzt, club_id: data.club_id || "", ziel_art: data.ziel_art || "", ziel_id: data.ziel_id || "", geladen: true };
+          /* kind gehoert dazu: Eine Ergebnismeldung zielt auf 'termin' wie
+             jede Terminmeldung, oeffnet aber die Ergebnisansicht. */
+          return { ...jetzt, club_id: data.club_id || "", kind: data.kind || "", ziel_art: data.ziel_art || "", ziel_id: data.ziel_id || "", geladen: true };
         }));
       return;
     }
@@ -16728,6 +16820,11 @@ export default function ClubMemberOrganisationApp() {
                   Schluessel die Grenze zuruecksetzt. */}
               <Fehlergrenze key={`grenze-${tab}-${subView || ""}`}>
                 {subView === "season" && featureEnabled("season_award") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Athlet/in der Saison"><SeasonVoteView currentUser={currentUser} members={clubMembers} seasonVotes={seasonVotes} setSeasonVotes={setSeasonVotes} onVote={saisonStimmeAbgeben} onUnvote={saisonStimmeZuruecknehmen} /></LockedFeature>}
+                {/* Ergebnisse haengen am Abo wie die anderen Kacheln, nicht am
+                    Tippspiel-Schalter. Alle Termine statt der sichtbaren:
+                    Fans sehen jede Mannschaft (Trainings laesst die Ansicht
+                    ohnehin weg). */}
+                {subView === "ergebnisse" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("sub.ergebnisse")}><ErgebnisseView events={events} results={tippResults} currentUser={currentUser} favorit={startseiteWahl} fokusId={ergebnisFokus} onFokusErledigt={setErgebnisFokus} onSpeichern={saveTippResult} onEntfernen={deleteTippResult} mitPunkten={featureEnabled("tippspiel")} /></LockedFeature>}
                 {subView === "tipp" && featureEnabled("tippspiel") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Tippspiel"><TippView members={clubMembers} currentUser={currentUser} events={events} tippPredictions={tippPredictions} setTippPredictions={setTippPredictions} tippResults={tippResults} onTippSpeichern={tippSpeichern} onZurueck={() => setSubView(null)} /></LockedFeature>}
                 {subView === "postfach" && <PostfachView eintraege={postfach} laedt={postfachLaedt} onGelesen={postfachGelesen} onAlleLoeschen={postfachAlleLoeschen} onLoeschen={postfachLoeschen} onOeffnen={meldungAntippen} kannOeffnen={meldungOeffenbar}/>}
                 {subView === "duty" && featureEnabled("duty_roster") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Helferplanung"><DutyView members={clubMembers} currentUser={currentUser} events={sichtbareTermine} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={dienstSetzen} /></LockedFeature>}
@@ -16739,7 +16836,7 @@ export default function ClubMemberOrganisationApp() {
                     umfrageFokus={umfrageFokus} onUmfrageFokusErledigt={() => setUmfrageFokus(null)}
                     newsFokus={newsFokus} onNewsFokusErledigt={newsFokusErledigt}
                     werbeplaetze={werbeplaetze} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick}
-                    goEvents={goToMyNextMatch} goSeason={() => setSubView("season")} goTipp={() => setSubView("tipp")} goDuty={() => goSupport("helfer")} goTasks={() => goSupport("aufgaben")} goVehicles={() => setSubView("vehicles")} goNews={currentUserCanEditNews ? goNews : null}
+                    goEvents={goToMyNextMatch} goSeason={() => setSubView("season")} goErgebnisse={() => setSubView("ergebnisse")} goTipp={() => setSubView("tipp")} goDuty={() => goSupport("helfer")} goTasks={() => goSupport("aufgaben")} goVehicles={() => setSubView("vehicles")} goNews={currentUserCanEditNews ? goNews : null}
                     currentClub={currentClub} featureEnabled={featureEnabled} dashboardTileOrder={dashboardTileOrder} entitlement={entitlement} goSubscribe={goSubscribe}
                     mannschaften={startseiteAuswahl} gewaehlteMannschaft={startseiteWahl} onMannschaftWechsel={setStartseiteTeam} />
                 )}
@@ -16748,6 +16845,7 @@ export default function ClubMemberOrganisationApp() {
                     dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={dienstSetzen} entitlement={entitlement} goSubscribe={goSubscribe}
                     werbeplaetze={werbeplaetze} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick}
                     focusRequest={eventFocusRequest} onFocusApplied={()=>setEventFocusRequest(null)}
+                    tippResults={tippResults} onErgebnisOeffnen={(id) => { setErgebnisFokus(id); setSubView("ergebnisse"); }}
                     currentClub={currentClub} featureEnabled={featureEnabled} />
                 )}
                 {!subView && tab === "teams" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Teams-Verwaltung"><TeamsView currentUser={currentUser} members={clubMembers} setMembers={setMembers} currentClub={currentClub} teamWunsch={teamWunsch} onTeamWunschErledigt={() => setTeamWunsch(null)} /></LockedFeature>}

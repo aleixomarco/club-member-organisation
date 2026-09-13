@@ -216,8 +216,11 @@ export async function enablePushNotifications(membershipId: string): Promise<Ena
  * Die Felder kommen aus push-versenden (FCM data) und sind dort immer
  * Zeichenketten; ein fehlender Wert ist "". Aeltere Pushes - verschickt, bevor
  * push-versenden das Ziel mitschickte - haben nur notification_id; dann laedt
- * die App die Zeile nach und liest das Ziel von dort. */
-export type MeldungsTipp = { notification_id: string; club_id: string; ziel_art: string; ziel_id: string };
+ * die App die Zeile nach und liest das Ziel von dort.
+ * kind (die Art der Meldung) wird mitgereicht, weil zwei Arten dieselbe
+ * ziel_art teilen koennen: Eine Ergebnismeldung ('results') zielt auf
+ * 'termin' wie jede Terminmeldung, oeffnet aber die Ergebnisansicht. */
+export type MeldungsTipp = { notification_id: string; club_id: string; kind: string; ziel_art: string; ziel_id: string };
 
 const TIPP_EREIGNIS = "cmo-meldung-angetippt";
 
@@ -225,7 +228,7 @@ function tippAusDaten(daten: unknown): MeldungsTipp | null {
   if (!daten || typeof daten !== "object") return null;
   const d = daten as Record<string, unknown>;
   const text = (x: unknown) => (typeof x === "string" ? x : "");
-  const tipp = { notification_id: text(d.notification_id), club_id: text(d.club_id), ziel_art: text(d.ziel_art), ziel_id: text(d.ziel_id) };
+  const tipp = { notification_id: text(d.notification_id), club_id: text(d.club_id), kind: text(d.kind), ziel_art: text(d.ziel_art), ziel_id: text(d.ziel_id) };
   return tipp.notification_id || tipp.ziel_art ? tipp : null;
 }
 
