@@ -90,9 +90,12 @@ returns text language sql stable security definer set search_path = '' as $$
     when e.status = 'cancelled'            then 'erg.fehler.abgesagt'
     when e.starts_at > now()               then 'erg.fehler.zukunft'
     when e.home_away is null               then 'erg.fehler.ortFehlt'
+    /* 0 bis 999 (U7, 13.09.2026): Punktsportarten wie Basketball brauchen
+       drei Stellen. Dieselbe Grenze wie toreGueltig in lib/ergebnis.mjs und
+       die CHECKs aus 20260914110600. */
     when p_wir is null or p_gegner is null
-      or p_wir not between 0 and 99
-      or p_gegner not between 0 and 99     then 'erg.fehler.bereich'
+      or p_wir not between 0 and 999
+      or p_gegner not between 0 and 999    then 'erg.fehler.bereich'
   end
   from (select 1) as eins
   left join public.events e on e.id = p_event;

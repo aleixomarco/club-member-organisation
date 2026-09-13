@@ -146,9 +146,9 @@ test("tippPunkte auf gespeicherten Werten eines Auswaertsspiels bleibt unveraend
   assert.equal(tippPunkte(tipp, { home: "2", away: "0" }), 1);
 });
 
-test("toreGueltig: ganze Zahlen 0 bis 99", () => {
-  for (const v of [0, 7, 99, "0", "12", "99", " 3 "]) assert.equal(toreGueltig(v), true, String(v));
-  for (const v of [-1, 100, 1.5, "", "-1", "100", "1.5", "abc", null, undefined, NaN]) {
+test("toreGueltig: ganze Zahlen 0 bis 999", () => {
+  for (const v of [0, 7, 99, 100, 999, "0", "12", "99", "100", "999", " 3 "]) assert.equal(toreGueltig(v), true, String(v));
+  for (const v of [-1, 1000, 1.5, "", "-1", "1000", "0999", "1.5", "abc", null, undefined, NaN]) {
     assert.equal(toreGueltig(v), false, String(v));
   }
   assert.equal(ergebnisGueltig({ home: "1", away: "0" }), true);

@@ -1072,7 +1072,9 @@ function registrierFehlerText(error, t) {
 }
 
 const isDbId = (id) => /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(id));
-const CLUB_ADMIN_ROLES = ["vereinsadmin", "sysadmin", "vorstand", "geschaeftsfuehrung"];
+/* Die Vereinsleitung - und nur sie nimmt notify_many von angemeldeten Nutzern
+   noch an (20260914110300). Dieselbe Menge wie darfVereinVerwalten. */
+const CLUB_ADMIN_ROLES = ["vereinsadmin", "sysadmin", "organisator"];
 const notifyClubAdmins = async (clubId, notifType, title, body, excludeMembershipId = null) => {
   if (!supabase || !isDbId(clubId)) return;
   const { data } = await supabase.from("club_memberships")
@@ -1143,7 +1145,9 @@ const istNurFan = (m) =>
   !!m && Array.isArray(m.roles) && m.roles.includes("fan")
   && m.roles.every((r) => ZUSCHAUER_ROLLEN.includes(r));
 
-/* Mannschaftszugehoerigkeit: siehe lib/mannschaften.mjs */const canWriteNews = (m) => isAdmin(m) || (!!m && m.roles.includes("redakteur"));
+/* Mannschaftszugehoerigkeit: siehe lib/mannschaften.mjs */
+/* News schreiben: dazu die Organisation (U1, 20260914110300). */
+const canWriteNews = (m) => isAdmin(m) || (!!m && (m.roles.includes("redakteur") || m.roles.includes("organisator")));
 /* Die eigene Sponsorenverwaltung des Vereins.
  *
  * Sie war lange ausgeblendet, weil es dafuer kein Angebot gab. Seit dem
@@ -1608,13 +1612,18 @@ const saisonKandidaten = (members) => (members || [])
   .sort((a, b) => a.name.localeCompare(b.name, "de"));
 
 /* Gezaehlt werden ausschliesslich echte Stimmen - der frueher aufaddierte
-   Grundstock ist ersatzlos entfallen. */
-function seasonResults(seasonVotes, kandidaten = []) {
+   Grundstock ist ersatzlos entfallen.
+   Der Stand kommt aus saisonwahl_stand (U5, 20260914110100) als
+   { gesamt, je: { Kandidat: Stimmen } }. Fremde Stimmen liest die App nicht
+   mehr: Waehrend der Wahl bekommen Mitglieder nur die Gesamtzahl, die Leitung
+   den Stand je Kandidat; nach der Frist sehen ihn alle. */
+function seasonResults(stand, kandidaten = []) {
+  const je = stand?.je || {};
   const counts = kandidaten.reduce((acc, c) => {
-    acc[c.id] = Object.values(seasonVotes).filter((v) => v === c.id).length;
+    acc[c.id] = je[c.id] || 0;
     return acc;
   }, {});
-  const total = Object.values(counts).reduce((a, b) => a + b, 0);
+  const total = Number.isFinite(stand?.gesamt) ? stand.gesamt : Object.values(counts).reduce((a, b) => a + b, 0);
   const sorted = [...kandidaten].sort((a, b) => counts[b.id] - counts[a.id]);
   return { counts, total, sorted };
 }
@@ -1863,11 +1872,12 @@ function useClubEntitlement(user) {
          laeuft auch sync_club_role_entitlement nicht mehr auf einen Fehler. */
       if (fehler) { setState({ loading: false, tier: "pro" }); return; }
       setState({ loading: false, tier: tier || "none" });
-      // Kein aktives Vereinsabo (mehr) -> Rollen jenseits "mitglied" zurücksetzen.
-      // Bei erneutem Abo werden sie NICHT automatisch wiederhergestellt (siehe SQL-Funktion).
-      if ((tier || "none") === "none" && isDbId(user?.clubId)) {
-        supabase.rpc("sync_club_role_entitlement", { target_club: user.clubId });
-      }
+      /* Hier stand der Aufruf von sync_club_role_entitlement. Er lief nie (ohne
+         await schickt postgrest-js nicht ab), und mit await haette er bei
+         jedem abgelaufenen Abo alle Trainer-, Kapitaens- und Organisationsrollen
+         geloescht. Die Funktion ist seit 20260914110000 nur noch fuer
+         service_role; was mit Rollen bei abgelaufenem Abo geschieht, entscheidet
+         der Betreiber (L4). */
     })();
     return () => { cancelled = true; };
   }, [user?.id, user?.clubId]);
@@ -3853,7 +3863,7 @@ function NextTrainingCard({ training, team, auswahlVorhanden = false }) {
     </div>
   );
 }
-function Dashboard({ user, members, events, channels, news, dutyPlan, seasonVotes, tippPredictions, tippResults, polls, setPolls, onVote, onUnvote, umfrageFokus, onUmfrageFokusErledigt, newsFokus, onNewsFokusErledigt, onFavoritMannschaft, werbeplaetze, onSponsorImpression, onSponsorClick, goEvents, goSeason, goErgebnisse, goTipp, goDuty, goNews, goTasks, goVehicles, currentClub, featureEnabled, dashboardTileOrder, entitlement, goSubscribe, mannschaften = [], gewaehlteMannschaft = "", onMannschaftWechsel }) {
+function Dashboard({ user, members, events, channels, news, dutyPlan, seasonStand, tippPredictions, tippResults, polls, setPolls, onVote, onUnvote, umfrageFokus, onUmfrageFokusErledigt, newsFokus, onNewsFokusErledigt, onFavoritMannschaft, werbeplaetze, onSponsorImpression, onSponsorClick, goEvents, goSeason, goErgebnisse, goTipp, goDuty, goNews, goTasks, goVehicles, currentClub, featureEnabled, dashboardTileOrder, entitlement, goSubscribe, mannschaften = [], gewaehlteMannschaft = "", onMannschaftWechsel }) {
   const t = useT();
   const sport = currentClub?.sport || "rollhockey";
 
@@ -3953,7 +3963,7 @@ function Dashboard({ user, members, events, channels, news, dutyPlan, seasonVote
      aber undefined landete in der Zeichenkette - auf der Kachel stand woertlich
      "🏆 undefined", sobald die Frist verstrichen war. Die beiden anderen
      Ansichten fangen den leeren Fall ab, diese hier war uebersehen. */
-  const seasonSieger = seasonResults(seasonVotes, saisonKandidaten(members)).sorted[0];
+  const seasonSieger = seasonResults(seasonStand, saisonKandidaten(members)).sorted[0];
   const seasonSubtitle = !seasonClosed
     ? `Bis ${new Date(SEASON_VOTE_DEADLINE).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })} abstimmen`
     : seasonSieger ? `🏆 ${seasonSieger.name}` : t("sais.keineKandidaten");
@@ -4479,6 +4489,18 @@ function CarpoolSection({ ev, currentUser }) {
     setLoading(false);
   }, [ev.id]);
   useEffect(() => { load(); }, [load]);
+  /* Freie Plaetze aendern sich, waehrend die App im Hintergrund liegt. Beim
+     Zurueckkehren frisch laden - sonst tippt man auf einen Platz, den es nicht
+     mehr gibt; die Datenbank lehnt dann mit "voll" ab (M5, 20260914110400). */
+  useEffect(() => {
+    const neuLaden = () => { if (document.visibilityState === "visible") load(); };
+    window.addEventListener("focus", neuLaden);
+    document.addEventListener("visibilitychange", neuLaden);
+    return () => {
+      window.removeEventListener("focus", neuLaden);
+      document.removeEventListener("visibilitychange", neuLaden);
+    };
+  }, [load]);
   const createCarpool = async () => {
     const seatCount = Number(seats);
     if (!Number.isFinite(seatCount) || seatCount < 1) { setMessage(t("fzg.freiePlaetzeUngueltig")); return; }
@@ -5020,6 +5042,11 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
         end_time: eventDraft.endTime,
         range_start: eventDraft.rangeStart,
         range_end: eventDraft.rangeEnd,
+        /* Die Uhrzeiten sind Ortszeit des Geraets. Ohne Zone rechnete die
+           Datenbank sie als UTC - Serientermine standen im Sommer 2 h, im
+           Winter 1 h zu spaet (B3, 20260914110100). Ohne Angabe nimmt die
+           Datenbank Europe/Berlin. */
+        p_tz: Intl.DateTimeFormat().resolvedOptions().timeZone || null,
       });
       if (error) return;
       /* Kein lokaler Nachbau der Reihe mehr. Er verdoppelte die Logik, die
@@ -6033,9 +6060,12 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
      und uebrig blieb allein isAdmin. Trainer, Kapitaene und Teammanager standen
      also in write_roles, durften in der Oberflaeche aber nicht schreiben -
      obwohl die Datenbank es ihnen erlaubt haette. */
-  const canPost = isAdmin(user)
-    || (active.id === "news" && user.roles.includes("redakteur"))
-    || (active.writeRoles ? active.writeRoles.some((r) => user.roles.includes(r)) : !active.adminOnly);
+  /* Ein Kanal ohne Mannschaft ist vereinsweit - die Vereins-News. Dort
+     schreiben nur vereinsadmin, organisator und sysadmin (Nachrichtenregel,
+     write_roles seit 20260914110300). Mannschaftskanaele wie bisher. */
+  const canPost = !active.team
+    ? darfVereinVerwalten(user)
+    : isAdmin(user) || (active.writeRoles ? active.writeRoles.some((r) => user.roles.includes(r)) : !active.adminOnly);
 
   const blockAuthor = async (autorId) => {
     if (!autorId || autorId === user.authProfileId || blocked.includes(autorId)) return;
@@ -6140,31 +6170,17 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
         : { ...c, messages: [...c.messages, { ...zeileZuNachricht(zeile, t), me: true }].slice(-200) })));
     }
     ergebnisLaden(data.poll_id);
-    benachrichtigen(`${user.name}: ${entwurf.frage}`);
+    /* Die Meldung kommt aus der Datenbank: chat_abstimmung_anlegen schreibt
+       eine Nachricht, und deren Ausloeser chatnachricht_melden meldet sie. */
     return {};
   };
 
-  /* Wer eine Nachricht in diesem Kanal bekommen soll. Stand vorher nur in
-     send(); die Abstimmung braucht dieselbe Liste, und zweimal dieselbe
-     Bedingung waere zweimal dieselbe Gelegenheit, sie auseinanderlaufen zu
-     lassen. */
-  const benachrichtigen = (rumpf) => {
-    if (!supabase || !Array.isArray(members)) return;
-    const empfaenger = members
-      .filter((m) => m.id !== user.id && !m.accountPending && sichtbarFuer(m, active))
-      .map((m) => m.id)
-      .filter((id) => isDbId(id));
-    if (empfaenger.length === 0) return;
-    /* Mit Ziel, damit die Meldung in der Glocke antippbar ist und in DIESEN
-       Kanal fuehrt. Ohne das stand dort "Neue Nachricht", und ein Tipp darauf
-       tat nichts - bei einer Abstimmung ausgerechnet das, was man sofort
-       oeffnen will. */
-    supabase.rpc("notify_many_ziel", {
-      target_memberships: empfaenger, p_notif_type: "chat",
-      p_title: `Neue Nachricht · ${active.name || "Chat"}`, p_body: rumpf,
-      p_ziel_art: "chat", p_ziel_id: active.id,
-    });
-  };
+  /* Hier stand benachrichtigen(): Die App schickte jede Nachricht und jede
+     Abstimmung selbst per notify_many_ziel an alle, die den Kanal sehen -
+     zusaetzlich zum Ausloeser chatnachricht_melden. Jede Nachricht kam so
+     doppelt an, einmal an der Stummschaltung der Mannschaft vorbei. Seit
+     20260914110300 meldet nur noch der Ausloeser (mit Eltern aus bestaetigten
+     Familienverknuepfungen), und notify_many_ziel ist fuer die App gesperrt. */
 
   const send = async () => {
     if (!text.trim() || !canPost || sendetRef.current) return;
@@ -6210,9 +6226,7 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
         ? { ...c, messages: [...c.messages, { who: user.name, init: initialsOf(user.name), color: user.color, text: inhalt, time: "jetzt", me: true }].slice(active.id === "news" ? -10 : -200) }
         : c));
     }
-    /* Spiegelbild der Sichtbarkeit: Benachrichtigt wird, wer den Kanal auch
-       sehen darf - siehe benachrichtigen(). */
-    benachrichtigen(`${user.name}: ${inhalt}`);
+    /* Benachrichtigt der Ausloeser chatnachricht_melden - siehe oben. */
     freigeben();
   };
 
@@ -6608,6 +6622,71 @@ const verwandtschaftLabel = (t, wort, grad) => (
     : t(`fam.grad.${grad || "sonstige"}`)
 );
 
+/* Offene Familienanfragen (B2, 20260914110200).
+   Eine Verknuepfung gilt erst, wenn die andere Seite zustimmt - bei einem
+   Kinderprofil ohne Konto die Vereinsleitung. Bis dahin gibt sie keinen
+   Zugriff (Mannschaftschat, Abstimmungen, Meldungen, Kalender). Hier stehen
+   die offenen Anfragen einer Mitgliedschaft: eingehende zum Annehmen oder
+   Ablehnen, ausgehende zum Zurueckziehen. Mit leitung nur die eingehenden
+   eines Kinderprofils - ueber die entscheidet die Vereinsleitung. */
+function FamilienAnfragen({ membershipId, clubId, leitung = false, setMembers, stand = 0 }) {
+  const t = useT();
+  const mitglieder = React.useContext(MitgliederKontext);
+  const [anfragen, setAnfragen] = useState([]);
+  const [arbeitet, setArbeitet] = useState("");
+  const [meldung, setMeldung] = useState("");
+  const laden = useCallback(async () => {
+    if (!supabase || !isDbId(membershipId) || !isDbId(clubId)) return;
+    const { data, error } = await supabase.from("family_links")
+      .select("id,first_membership_id,second_membership_id,first_to_second,second_to_first,first_label,second_label,angefragt_von")
+      .eq("club_id", clubId).eq("bestaetigt", false)
+      .or(`first_membership_id.eq.${membershipId},second_membership_id.eq.${membershipId}`);
+    setAnfragen(error ? [] : (data || []));
+  }, [membershipId, clubId]);
+  useEffect(() => { laden(); }, [laden, stand]);
+  const selbst = (mitglieder || []).find((m) => m.id === membershipId);
+  const sichtbar = anfragen
+    .map((link) => {
+      const andere = link.first_membership_id === membershipId ? link.second_membership_id : link.first_membership_id;
+      return { link, eingehend: link.angefragt_von !== membershipId, name: (mitglieder || []).find((m) => m.id === andere)?.name || "—" };
+    })
+    .filter((eintrag) => !leitung || (eintrag.eingehend && selbst?.verwaltetesProfil));
+  if (sichtbar.length === 0) return null;
+  const entscheiden = async (eintrag, annehmen) => {
+    setArbeitet(eintrag.link.id); setMeldung("");
+    const { error } = await supabase.rpc(annehmen ? "family_link_bestaetigen" : "family_link_ablehnen", { target_link: eintrag.link.id });
+    setArbeitet("");
+    if (error) { setMeldung(t("fam.anfrageFehler")); return; }
+    if (annehmen) {
+      const l = eintrag.link;
+      setMembers?.((ms) => linkFamilyRecords(ms, l.first_membership_id, l.second_membership_id, l.first_to_second, l.id, l.first_label || null, l.second_label || null));
+    }
+    await laden();
+  };
+  const zurueckziehen = async (eintrag) => {
+    setArbeitet(eintrag.link.id); setMeldung("");
+    const { error } = await supabase.rpc("delete_family_link", { target_link: eintrag.link.id, acting_membership: membershipId });
+    setArbeitet("");
+    if (error) { setMeldung(t("fam.anfrageFehler")); return; }
+    await laden();
+  };
+  return <div className="mt-3 pt-3 space-y-1.5" style={{ borderTop: `1px solid ${C.line}` }}>
+    <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>{t("fam.offeneAnfragen")}</div>
+    {meldung && <div className="text-[11px] font-semibold" style={{ color: C.red }}>{meldung}</div>}
+    {sichtbar.map((eintrag) => <div key={eintrag.link.id} className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: C.paperDim }}>
+      <div className="flex-1 min-w-0 text-xs" style={{ color: C.ink }}>
+        {eintrag.eingehend
+          ? mitWerten(t(leitung ? "fam.anfrageAnKind" : "fam.anfrageVon"), { name: eintrag.name })
+          : mitWerten(t("fam.wartetAuf"), { name: eintrag.name })}
+      </div>
+      {eintrag.eingehend ? <>
+        <button disabled={arbeitet === eintrag.link.id} onClick={() => entscheiden(eintrag, true)} className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold" style={{ background: C.erfolgFlaeche, color: C.erfolg }}>{t("allg.annehmen")}</button>
+        <button disabled={arbeitet === eintrag.link.id} onClick={() => entscheiden(eintrag, false)} className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{t("allg.ablehnen")}</button>
+      </> : <button disabled={arbeitet === eintrag.link.id} onClick={() => zurueckziehen(eintrag)} className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold" style={{ background: C.glass, color: C.textDim }}>{t("fam.zurueckziehen")}</button>}
+    </div>)}
+  </div>;
+}
+
 function FamilyLinkManager({ user, members, setMembers, adminMode = false }) {
   const t = useT();
   const [open, setOpen] = useState(false);
@@ -6620,6 +6699,8 @@ function FamilyLinkManager({ user, members, setMembers, adminMode = false }) {
   const [grad, setGrad] = useState("vater");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [hinweis, setHinweis] = useState("");
+  const [anfragenStand, setAnfragenStand] = useState(0);
   const databaseMembership = !!supabase && isDbId(user.id);
   const gewaehlt = VERWANDTSCHAFT.find((v) => v.id === grad) || VERWANDTSCHAFT[0];
   const userIsParent = gewaehlt.grad === "eltern";
@@ -6633,12 +6714,13 @@ function FamilyLinkManager({ user, members, setMembers, adminMode = false }) {
      als Athlet gefuehrt wird, war in der anderen Richtung ebenso unsichtbar.
      Wer zu wem gehoert, sagt der gewaehlte Grad - die Rolle muss das nicht
      noch einmal bestaetigen. */
-  const results = members.filter((m) => m.id !== user.id && !linkedIds.includes(m.id) && !m.accountPending && m.name.toLowerCase().includes(query.toLowerCase())).slice(0, 6);
+  /* Kinderprofile ohne Konto sind waehlbar (L2) - die Verknuepfung bestaetigt
+     dann die Vereinsleitung. Wartende Bewerber bleiben aussen vor. */
+  const results = members.filter((m) => m.id !== user.id && !linkedIds.includes(m.id) && (m.verwaltetesProfil || !m.accountPending) && m.mitgliedsStatus !== "pending" && m.name.toLowerCase().includes(query.toLowerCase())).slice(0, 6);
   const connect = async (targetId) => {
-    setSaving(true); setMessage("");
-    let linkId = null;
+    setSaving(true); setMessage(""); setHinweis("");
     if (databaseMembership) {
-      const { data, error } = await supabase.rpc("create_family_link", {
+      const { error } = await supabase.rpc("create_family_link", {
         target_club: user.clubId,
         acting_membership: user.id,
         related_membership: targetId,
@@ -6646,9 +6728,14 @@ function FamilyLinkManager({ user, members, setMembers, adminMode = false }) {
         acting_label: gewaehlt.id,
       });
       if (error) { setMessage(t("fam.verknuepfungFehler")); setSaving(false); return; }
-      linkId = data;
+      /* Die Verknuepfung gilt erst, wenn die andere Seite zustimmt (B2) - bis
+         dahin steht sie unter den offenen Anfragen, nicht im Stammbaum. */
+      setHinweis(t("fam.anfrageGesendet"));
+      setAnfragenStand((n) => n + 1);
+      setQuery(""); setOpen(false); setSaving(false);
+      return;
     }
-    setMembers((ms) => linkFamilyRecords(ms, user.id, targetId, gewaehlt.grad, linkId, gewaehlt.id, null));
+    setMembers((ms) => linkFamilyRecords(ms, user.id, targetId, gewaehlt.grad, null, gewaehlt.id, null));
     setQuery(""); setOpen(false); setSaving(false);
   };
   const createDependent = async () => {
@@ -6686,6 +6773,8 @@ function FamilyLinkManager({ user, members, setMembers, adminMode = false }) {
   return <div className="rounded-2xl p-4 mb-5" style={{background:C.glass,border:`1px solid ${C.line}`}}>
     <div className="flex items-center justify-between"><div><div className="text-sm font-bold" style={{color:C.ink}}>{t("fam.verknuepfung")}</div><div className="text-[11px]" style={{color:C.textDim}}>{adminMode ? `Sysadmin bearbeitet das Profil von ${user.name}.` : t("fam.selbstVerwalten")} Verknüpfungen gelten automatisch für beide Profile.</div></div><button disabled={saving} onClick={()=>setOpen(!open)} className="px-3 py-1.5 rounded-full text-xs font-bold" style={{background:C.paperDim,color:C.ink}}>{open?t("allg.schliessen"):t("fam.verknuepfenKnopf")}</button></div>
     {message&&<div className="mt-2 text-[11px] font-semibold" style={{color:C.red}}>{meldungstext(message)}</div>}
+    {hinweis&&<div className="mt-2 text-[11px]" style={{color:C.textDim}}>{hinweis}</div>}
+    {databaseMembership&&<FamilienAnfragen membershipId={user.id} clubId={user.clubId} setMembers={setMembers} stand={anfragenStand} />}
     {familyConnections.length>0&&<div className="mt-3 pt-3 space-y-1.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] font-bold mb-1" style={{color:C.textDim}}>BESTEHENDE VERKNÜPFUNGEN</div>{familyConnections.map((member)=><div key={member.id} className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{background:C.paperDim}}><div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold" style={{background:member.color,color:C.white}}>{initialsOf(member.name)}</div><div className="flex-1 min-w-0"><div className="text-xs font-bold truncate" style={{color:C.ink}}>{member.name}</div><div className="text-[10px]" style={{color:C.textDim}}>{(()=>{const v=(user.familyLinks||[]).find((l)=>l.memberId===member.id);return v?verwandtschaftLabel(t,v.wort,v.relation):t("fam.familie");})()}</div></div><button onClick={()=>removeConnection(member)} className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold" style={{background:C.fehlerFlaeche,color:C.fehler}}>{t("allg.loeschen")}</button></div>)}</div>}
     {open&&<div className="mt-3 pt-3" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[11px] font-bold mb-1">{t("fam.rolle")}</div><div className="flex flex-wrap gap-1.5 mb-2">{VERWANDTSCHAFT.map((v)=><button type="button" key={v.id} onClick={()=>{setGrad(v.id);setQuery("");}} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:grad===v.id?C.red:C.paperDim,color:grad===v.id?C.white:C.textDim}}>{t(`fam.grad.${v.id}`)}</button>)}</div><input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder={userIsParent?t("ph.vorhandenenAthletSuchen"):t("ph.vorhandenesElternteilSuchen")} className="w-full px-3.5 py-3 rounded-xl text-sm outline-none mb-2" style={{background:C.paperDim}}/>{query&&<div className="space-y-1">{results.map(m=><button key={m.id} onClick={()=>connect(m.id)} className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-lg text-sm" style={{background:C.paperDim,color:C.ink}}><span className="truncate text-left">{m.name} · {m.team}</span><span style={{color:C.red}}>{t("fam.verbinden")}</span></button>)}{results.length===0&&<div className="text-[11px] py-2" style={{color:C.textDim}}>{t("fam.keinProfil")}</div>}</div>}{userIsParent&&<div className="mt-3 pt-3" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[11px] font-bold mb-2">{t("fam.kindAnlegen")}</div><div className="flex gap-2"><input value={newName} onChange={(e)=>setNewName(e.target.value)} placeholder={t("feld.vollerName")} className="flex-1 px-3 py-2 rounded-lg text-xs outline-none" style={{background:C.paperDim}}/><button onClick={createDependent} disabled={!newName.trim()} className="px-3 rounded-lg text-xs font-bold" style={{background:newName.trim()?C.red:C.line,color:"#fff"}}>{t("allg.anlegen")}</button></div><div className="text-[10px] mt-2" style={{color:C.textDim}}>Das Kind kann sein vorläufiges Profil später beim Erstellen des eigenen Kontos übernehmen.</div></div>}</div>}
   </div>;
@@ -7091,7 +7180,14 @@ function TeamsView({ currentUser, members, setMembers, currentClub, teamWunsch =
   const [archivingTeam, setArchivingTeam] = useState(false);
   const databaseMembership = !!supabase && isDbId(currentUser.id);
   const canCreate = currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role));
-  const canAssignPlayers = currentUser.roles.some((role) => ["vereinsadmin", "sysadmin", "trainer", "teammanager"].includes(role));
+  const canAssignPlayers = currentUser.roles.some((role) => ["vereinsadmin", "sysadmin", "organisator", "trainer", "teammanager"].includes(role));
+  /* Welche Mannschaften das Blatt zum Zuordnen anbietet: die Leitung alle,
+     Trainer und Teammanager nur die eigenen - genau das laesst
+     set_managed_player_teams seit 20260914110100 zu. Zuordnungen in anderen
+     Mannschaften bleiben dort unberuehrt. */
+  const zuordenbar = (team) => darfVereinVerwalten(currentUser)
+    || (currentUser.trainerTeams || []).includes(team.name)
+    || (currentUser.managedTeams || []).includes(team.name);
   /* Eine geoeffnete Mannschaft ist eine Ebene. Der Pfeil oben links fuehrt
      deshalb erst zurueck in die Mannschaftsliste und erst von dort zur
      Startseite - und nicht in einem Sprung nach Hause. */
@@ -7320,7 +7416,7 @@ function TeamsView({ currentUser, members, setMembers, currentClub, teamWunsch =
                      Zuweisung kaputt. Sie ist es nicht - es fehlt die Rolle. */
                   <div className="text-[11px] rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{t("tm.keineAthletenImVerein")}</div>
                 )}{players.map((player) => <button key={player.id} onClick={() => openPlayer(player)} className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-left" style={{ background: C.glass }}><div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold" style={{ background: player.color, color: C.white }}>{initialsOf(player.name)}</div><div className="flex-1"><div className="text-xs font-bold" style={{ color: C.ink }}>{player.name}</div><div className="text-[9px]" style={{ color: C.textDim }}>{memberPlayerTeams(player).join(" · ") || t("tm.nochOhneMannschaft")}</div></div><ChevronRight size={13} style={{ color: C.textDim }}/></button>)}</div></div>}{rosterFor(selectedTeam).length ? <div className="space-y-2">{rosterFor(selectedTeam).map((player) => <button key={player.id} onClick={() => openPlayer(player)} className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: player.color, color: C.white }}>{initialsOf(player.name)}</div><div className="flex-1"><div className="text-xs font-bold" style={{ color: C.ink }}>{player.name}</div><div className="text-[10px]" style={{ color: C.textDim }}>{memberPlayerTeams(player).join(" · ")}</div></div><ChevronRight size={14} style={{ color: C.textDim }}/></button>)}</div> : <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>{t("tm.keineAthletenZugeordnet")}</div>}</div> : loading ? <div className="text-xs py-4" style={{ color: C.textDim }}>{t("tm.laden")}</div> : <><SectionTitle eyebrow="Persönlich" title="Meine Teams"/><div className="space-y-2 mb-6">{ownTeams.length ? ownTeams.map((team) => <TeamCard key={team.id} team={team}/>) : <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>Du bist noch keiner Mannschaft als Athlet/in zugeordnet. Athlet/innen können im Profil bis zu drei Teams auswählen.</div>}</div><SectionTitle eyebrow="Vereinsübersicht" title="Alle Mannschaften"/><div className="space-y-2">{teams.map((team) => <TeamCard key={team.id} team={team}/>)}{teams.length === 0 && <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>{t("tm.keine")}</div>}</div></>}
-    {selectedPlayer && <ProfileUnderlay title={selectedPlayer.name} eyebrow={selectedTeam?.name || t("tm.mannschaft")} onClose={() => setSelectedPlayerId("")}><div className="flex items-center gap-3.5 mb-5"><div className="w-14 h-14 rounded-full flex items-center justify-center text-base font-bold flex-shrink-0" style={{ background: selectedPlayer.color, color: C.white }}>{initialsOf(selectedPlayer.name)}</div><div className="min-w-0"><div className="text-sm font-bold" style={{ color: C.ink }}>{t("rol.athletLabel")}</div><div className="text-xs" style={{ color: C.textDim }}>{mitWerten(t("pf.dabeiSeitJahr"), { jahr: selectedPlayer.since })}</div></div></div><div className="flex items-center justify-between mb-2"><div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.textDim }}>{t("tm.mannschaften")}</div>{canAssignPlayers && <span className="text-[10px] font-bold" style={{ color: playerTeamIds.length === 3 ? C.red : C.textDim }}>{playerTeamIds.length}/3</span>}{canAssignPlayers && <button type="button" onClick={() => setTeamsOpen((v) => !v)} className="p-1"><ChevronRight size={14} style={{ color: C.textDim, transform: teamsOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .15s" }}/></button>}</div>{canAssignPlayers ? (teamsOpen && <div className="space-y-2">{teams.map((team) => { const active = playerTeamIds.includes(team.id); return <button key={team.id} onClick={() => togglePlayerTeam(team.id)} className="w-full flex items-center justify-between rounded-xl px-3 py-2.5 text-left" style={{ background: active ? C.erfolgFlaeche : C.paperDim, border: active ? `1px solid ${C.secondary}` : "1px solid transparent" }}><div><div className="text-xs font-bold" style={{ color: C.ink }}>{team.name}</div><div className="text-[9px]" style={{ color: C.textDim }}>{team.category || t("tm.mannschaft")}</div></div><span className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: active ? C.secondary : C.white, color: C.white }}>{active && <Check size={13}/>}</span></button>; })}<button onClick={savePlayerTeams} disabled={savingPlayer || JSON.stringify([...playerTeamIds].sort()) === JSON.stringify([...savedPlayerTeamIds].sort())} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: JSON.stringify([...playerTeamIds].sort()) !== JSON.stringify([...savedPlayerTeamIds].sort()) ? C.ink : C.paperDim, color: JSON.stringify([...playerTeamIds].sort()) !== JSON.stringify([...savedPlayerTeamIds].sort()) ? C.white : C.textDim, opacity: savingPlayer ? .6 : 1 }}>{savingPlayer ? t("allg.wirdGespeichert") : t("tm.zuordnungSpeichern")}</button>{playerMessage && <div role="status" className="text-[11px]" style={{ color: playerMessage.includes("gespeichert") ? C.erfolg : C.fehler }}>{playerMessage}</div>}</div>) : <div className="flex flex-wrap gap-2">{memberPlayerTeams(selectedPlayer).length ? memberPlayerTeams(selectedPlayer).map((team) => <span key={team} className="px-3 py-1.5 rounded-full text-xs font-bold" style={{ background: C.erfolgFlaeche, color: C.erfolg }}>{team}</span>) : <span className="text-xs" style={{ color: C.textDim }}>{t("tm.keineZuordnungKurz")}</span>}</div>}{canManagePenalties && (<div className="mt-4 pt-4" style={{ borderTop: `1px solid ${C.line}` }}><button type="button" onClick={() => setPenaltyOpen((v) => !v)} className="w-full flex items-center justify-between mb-2"><div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.textDim }}>{t("straf.verwaltung")}</div><ChevronRight size={14} style={{ color: C.textDim, transform: penaltyOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .15s" }}/></button>{penaltyOpen && (<><div className="flex gap-2 mb-3"><select value={assignRuleId} onChange={(e) => setAssignRuleId(e.target.value)} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}><option value="">{t("straf.waehlen")}</option>{penaltyRules.map((r) => <option key={r.id} value={r.id}>{r.title} ({r.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €)</option>)}</select><button onClick={assignPenaltyToPlayer} disabled={assigningPenalty || !assignRuleId} className="px-4 rounded-xl text-xs font-bold" style={{ background: assignRuleId ? C.ink : C.line, color: C.white }}>{assigningPenalty ? "…" : t("straf.zuweisen")}</button></div>{penaltyMessage && <div role="status" className="text-[11px] mb-2" style={{ color: penaltyMessage.includes("zugewiesen") ? C.erfolg : C.fehler }}>{penaltyMessage}</div>}<div className="text-[10px] uppercase tracking-widest font-bold mb-1.5" style={{ color: C.textDim }}>{t("straf.bisherige")}</div><div className="space-y-1.5">{playerPenalties.map((p) => <div key={p.id} className="flex items-center justify-between px-3 py-2 rounded-xl" style={{ background: C.paperDim }}><span className="text-xs font-bold" style={{ color: C.ink }}>{p.title}</span><span className="text-xs font-bold" style={{ color: C.red, fontFamily: "JetBrains Mono" }}>{p.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span><button type="button" onClick={() => togglePlayerPenaltyPaid(p)} className="px-2 py-1 rounded-lg text-[9px] font-bold flex-shrink-0" style={{ background: p.paidAt ? C.erfolgFlaeche : C.white, color: p.paidAt ? C.secondary : C.textDim }}>{p.paidAt ? t("bei.bezahlt") : t("bei.offen2")}</button><button type="button" onClick={() => removePlayerPenalty(p)} aria-label={t("aria.strafeEntfernen")} className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.glass, color: C.red }}><X size={12}/></button></div>)}{playerPenalties.length === 0 && <div className="text-[11px]" style={{ color: C.textDim }}>{t("straf.keine")}</div>}</div></>)}</div>)}</ProfileUnderlay>}
+    {selectedPlayer && <ProfileUnderlay title={selectedPlayer.name} eyebrow={selectedTeam?.name || t("tm.mannschaft")} onClose={() => setSelectedPlayerId("")}><div className="flex items-center gap-3.5 mb-5"><div className="w-14 h-14 rounded-full flex items-center justify-center text-base font-bold flex-shrink-0" style={{ background: selectedPlayer.color, color: C.white }}>{initialsOf(selectedPlayer.name)}</div><div className="min-w-0"><div className="text-sm font-bold" style={{ color: C.ink }}>{t("rol.athletLabel")}</div><div className="text-xs" style={{ color: C.textDim }}>{mitWerten(t("pf.dabeiSeitJahr"), { jahr: selectedPlayer.since })}</div></div></div><div className="flex items-center justify-between mb-2"><div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.textDim }}>{t("tm.mannschaften")}</div>{canAssignPlayers && <span className="text-[10px] font-bold" style={{ color: playerTeamIds.length === 3 ? C.red : C.textDim }}>{playerTeamIds.length}/3</span>}{canAssignPlayers && <button type="button" onClick={() => setTeamsOpen((v) => !v)} className="p-1"><ChevronRight size={14} style={{ color: C.textDim, transform: teamsOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .15s" }}/></button>}</div>{canAssignPlayers ? (teamsOpen && <div className="space-y-2">{teams.filter(zuordenbar).map((team) => { const active = playerTeamIds.includes(team.id); return <button key={team.id} onClick={() => togglePlayerTeam(team.id)} className="w-full flex items-center justify-between rounded-xl px-3 py-2.5 text-left" style={{ background: active ? C.erfolgFlaeche : C.paperDim, border: active ? `1px solid ${C.secondary}` : "1px solid transparent" }}><div><div className="text-xs font-bold" style={{ color: C.ink }}>{team.name}</div><div className="text-[9px]" style={{ color: C.textDim }}>{team.category || t("tm.mannschaft")}</div></div><span className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: active ? C.secondary : C.white, color: C.white }}>{active && <Check size={13}/>}</span></button>; })}<button onClick={savePlayerTeams} disabled={savingPlayer || JSON.stringify([...playerTeamIds].sort()) === JSON.stringify([...savedPlayerTeamIds].sort())} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: JSON.stringify([...playerTeamIds].sort()) !== JSON.stringify([...savedPlayerTeamIds].sort()) ? C.ink : C.paperDim, color: JSON.stringify([...playerTeamIds].sort()) !== JSON.stringify([...savedPlayerTeamIds].sort()) ? C.white : C.textDim, opacity: savingPlayer ? .6 : 1 }}>{savingPlayer ? t("allg.wirdGespeichert") : t("tm.zuordnungSpeichern")}</button>{playerMessage && <div role="status" className="text-[11px]" style={{ color: playerMessage.includes("gespeichert") ? C.erfolg : C.fehler }}>{playerMessage}</div>}</div>) : <div className="flex flex-wrap gap-2">{memberPlayerTeams(selectedPlayer).length ? memberPlayerTeams(selectedPlayer).map((team) => <span key={team} className="px-3 py-1.5 rounded-full text-xs font-bold" style={{ background: C.erfolgFlaeche, color: C.erfolg }}>{team}</span>) : <span className="text-xs" style={{ color: C.textDim }}>{t("tm.keineZuordnungKurz")}</span>}</div>}{canManagePenalties && (<div className="mt-4 pt-4" style={{ borderTop: `1px solid ${C.line}` }}><button type="button" onClick={() => setPenaltyOpen((v) => !v)} className="w-full flex items-center justify-between mb-2"><div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.textDim }}>{t("straf.verwaltung")}</div><ChevronRight size={14} style={{ color: C.textDim, transform: penaltyOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .15s" }}/></button>{penaltyOpen && (<><div className="flex gap-2 mb-3"><select value={assignRuleId} onChange={(e) => setAssignRuleId(e.target.value)} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}><option value="">{t("straf.waehlen")}</option>{penaltyRules.map((r) => <option key={r.id} value={r.id}>{r.title} ({r.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €)</option>)}</select><button onClick={assignPenaltyToPlayer} disabled={assigningPenalty || !assignRuleId} className="px-4 rounded-xl text-xs font-bold" style={{ background: assignRuleId ? C.ink : C.line, color: C.white }}>{assigningPenalty ? "…" : t("straf.zuweisen")}</button></div>{penaltyMessage && <div role="status" className="text-[11px] mb-2" style={{ color: penaltyMessage.includes("zugewiesen") ? C.erfolg : C.fehler }}>{penaltyMessage}</div>}<div className="text-[10px] uppercase tracking-widest font-bold mb-1.5" style={{ color: C.textDim }}>{t("straf.bisherige")}</div><div className="space-y-1.5">{playerPenalties.map((p) => <div key={p.id} className="flex items-center justify-between px-3 py-2 rounded-xl" style={{ background: C.paperDim }}><span className="text-xs font-bold" style={{ color: C.ink }}>{p.title}</span><span className="text-xs font-bold" style={{ color: C.red, fontFamily: "JetBrains Mono" }}>{p.amount.toLocaleString("de-DE", { minimumFractionDigits: 2 })} €</span><button type="button" onClick={() => togglePlayerPenaltyPaid(p)} className="px-2 py-1 rounded-lg text-[9px] font-bold flex-shrink-0" style={{ background: p.paidAt ? C.erfolgFlaeche : C.white, color: p.paidAt ? C.secondary : C.textDim }}>{p.paidAt ? t("bei.bezahlt") : t("bei.offen2")}</button><button type="button" onClick={() => removePlayerPenalty(p)} aria-label={t("aria.strafeEntfernen")} className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.glass, color: C.red }}><X size={12}/></button></div>)}{playerPenalties.length === 0 && <div className="text-[11px]" style={{ color: C.textDim }}>{t("straf.keine")}</div>}</div></>)}</div>)}</ProfileUnderlay>}
   </div>;
 }
 
@@ -8284,9 +8380,17 @@ function VehiclesView({ currentUser, currentClub }) {
     if (!newVehicle.label.trim() || !newVehicle.plate.trim() || !Number(newVehicle.seats)) { setMessage(t("allg.alleFelderAusfuellen")); return; }
     setSavingVehicle(true); setMessage("");
     const payload = { label: newVehicle.label.trim(), license_plate: newVehicle.plate.trim(), seats: Number(newVehicle.seats) };
-    const { error } = editingVehicleId
-      ? await supabase.from("club_vehicles").update(payload).eq("id", editingVehicleId)
-      : await supabase.from("club_vehicles").insert({ ...payload, club_id: currentUser.clubId, created_by: currentUser.id });
+    /* Beim Aendern mit Zeilenpruefung: Ohne UPDATE-Regel (bis 20260914110400)
+       aenderte die Datenbank 0 Zeilen ohne Fehler, und das Formular schloss
+       sich, als sei gespeichert (rollen-08). 0 Zeilen heisst jetzt Fehler, und
+       das Formular bleibt offen. */
+    let error = null;
+    if (editingVehicleId) {
+      const { data: geaendert, error: fehler } = await supabase.from("club_vehicles").update(payload).eq("id", editingVehicleId).select("id");
+      error = fehler || (geaendert?.length ? null : { message: "0 rows" });
+    } else {
+      ({ error } = await supabase.from("club_vehicles").insert({ ...payload, club_id: currentUser.clubId, created_by: currentUser.id }));
+    }
     if (error) { setMessage(editingVehicleId ? t("fzg.aendernFehler") : t("fzg.anlegenFehler")); setSavingVehicle(false); return; }
     setNewVehicle({ label: "", plate: "", seats: "" }); setEditingVehicleId(null); setShowAddVehicle(false); setSavingVehicle(false);
     await loadVehicles();
@@ -8350,9 +8454,18 @@ function VehiclesView({ currentUser, currentClub }) {
       private_label: bookingForm.isPrivate ? bookingForm.privateLabel.trim() : null,
       starts_at: startsAt, ends_at: endsAt,
     };
-    const { error } = editingBookingId
-      ? await supabase.from("vehicle_bookings").update(payload).eq("id", editingBookingId)
-      : await supabase.from("vehicle_bookings").insert({ ...payload, club_id: currentUser.clubId, membership_id: currentUser.id });
+    /* Aendern mit Zeilenpruefung, wie beim Fahrzeug. Der Status kommt zurueck:
+       Wer nicht entscheiden darf und eine bestaetigte Buchung verschiebt, hat
+       danach wieder eine Anfrage (M4, 20260914110400). */
+    let error = null;
+    let neuerStatus = null;
+    if (editingBookingId) {
+      const { data: geaendert, error: fehler } = await supabase.from("vehicle_bookings").update(payload).eq("id", editingBookingId).select("id,status");
+      error = fehler || (geaendert?.length ? null : { message: "0 rows" });
+      neuerStatus = geaendert?.[0]?.status || null;
+    } else {
+      ({ error } = await supabase.from("vehicle_bookings").insert({ ...payload, club_id: currentUser.clubId, membership_id: currentUser.id }));
+    }
     if (error) {
       setMessage(error.message?.includes("exclude") || error.code === "23P01" ? t("fzg.zeitraumBelegt") : editingBookingId ? t("fzg.buchungAendernFehler") : t("fzg.buchungAnlegenFehler"));
       setSavingBooking(false); return;
@@ -8361,6 +8474,7 @@ function VehiclesView({ currentUser, currentClub }) {
       notifyClubAdmins(currentUser.clubId, "vehicle", t("fzg.neueBuchung"), `${currentUser.name} hat ${selectedVehicle.label} gebucht (${bookingForm.startDate} – ${bookingForm.endDate}).`, currentUser.id);
     }
     setSelectedVehicle(null); setEditingBookingId(null); setSavingBooking(false);
+    if (neuerStatus === "angefragt") setMessage(t("fzg.aenderungBrauchtFreigabe"));
     await loadBookings();
   };
   /* Ueber eine Anfrage entscheiden. Die Datenbank prueft das Recht noch einmal
@@ -8371,7 +8485,9 @@ function VehiclesView({ currentUser, currentClub }) {
     if (error) { setMessage(t("allg.entscheidungNichtGespeichert")); return; }
     setMessage(annehmen ? t("fzg.buchungBestaetigt")
                         : t("mit.anfrageAbgelehnt"));
-    await loadVehicles();
+    /* Die Buchungen neu laden, nicht die Fahrzeuge - sonst standen Haken und
+       Kreuz an der entschiedenen Anfrage weiter da (M3). */
+    await loadBookings();
   };
   const darfEntscheiden = canManageDuty(currentUser);
 
@@ -8395,7 +8511,10 @@ function VehiclesView({ currentUser, currentClub }) {
     if (!day) return [];
     const dayStart = new Date(day.getFullYear(), day.getMonth(), day.getDate());
     const dayEnd = new Date(dayStart.getTime() + 86400000);
-    return bookings.filter((b) => b.startsAt < dayEnd && b.endsAt > dayStart);
+    /* Abgelehnte Anfragen belegen nichts - weder in der Datenbank
+       (20260914110400) noch im Kalender. In der Liste darunter bleiben sie
+       sichtbar, damit der Anfragende die Ablehnung sieht. */
+    return bookings.filter((b) => b.status !== "abgelehnt" && b.startsAt < dayEnd && b.endsAt > dayStart);
   };
   const canCancel = (booking) => booking.membershipId === currentUser.id || canManageFleet;
   if (!databaseMembership) return <div className="px-4 pt-4 pb-24"><div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{t("fzg.nurEchterVerein")}</div></div>;
@@ -8498,7 +8617,7 @@ function VehiclesView({ currentUser, currentClub }) {
             )}
             {b.status !== "angefragt" && canCancel(b) && (
               <div className="flex items-center gap-1.5 flex-shrink-0">
-                <button onClick={() => openEditBooking(b)} className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold" style={{ background: C.paperDim, color: C.textDim }}>{t("allg.bearbeiten")}</button>
+                {b.status !== "abgelehnt" && <button onClick={() => openEditBooking(b)} className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold" style={{ background: C.paperDim, color: C.textDim }}>{t("allg.bearbeiten")}</button>}
                 <button onClick={() => cancelBooking(b)} aria-label={t("aria.buchungStornieren")} className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: C.paperDim, color: C.red }}><X size={14}/></button>
               </div>
             )}
@@ -8513,6 +8632,9 @@ function VehiclesView({ currentUser, currentClub }) {
               <div className="text-lg font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{selectedVehicle.label} {editingBookingId ? "bearbeiten" : "buchen"}</div>
               <button onClick={() => { setSelectedVehicle(null); setEditingBookingId(null); }} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><X size={15}/></button>
             </div>
+            {editingBookingId && !darfEntscheiden && bookings.find((b) => b.id === editingBookingId)?.status === "bestaetigt" && (
+              <div className="text-[11px] rounded-xl p-3 mb-3" style={{ background: C.paperDim, color: C.textDim }}>{t("fzg.aenderungBrauchtFreigabe")}</div>
+            )}
             <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>VON</div>
             <div className="flex gap-2 mb-3">
               <input type="date" value={bookingForm.startDate} onChange={(e) => setBookingForm({ ...bookingForm, startDate: e.target.value })} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/>
@@ -8652,10 +8774,12 @@ function DutyTasksSection({ ev, currentUser, sport, onNeuLaden, dutyPlan, member
        die Aufgabenliste, nicht den Termin. */
     onNeuLaden?.();
   };
-  const assignTask = async (taskId, membershipId) => { const { error } = await supabase.from("duty_tasks").update({ assignee_membership_id: membershipId || null }).eq("id", taskId); if (!error) await loadTasks(); };
-  const setDueDate = async (taskId, date) => { const { error } = await supabase.from("duty_tasks").update({ due_date: date || null }).eq("id", taskId); if (!error) await loadTasks(); };
-  const toggleDone = async (task) => { const { error } = await supabase.from("duty_tasks").update({ done: !task.done }).eq("id", task.id); if (!error) await loadTasks(); };
-  const deleteTask = async (taskId) => { if (!window.confirm("Diese Station wirklich löschen?")) return; const { error } = await supabase.from("duty_tasks").delete().eq("id", taskId); if (!error) await loadTasks(); };
+  /* Fehler werden jetzt gezeigt (C2). Vorher blieb die Ansicht einfach
+     stehen, als sei gespeichert. */
+  const assignTask = async (taskId, membershipId) => { setMessage(""); const { error } = await supabase.from("duty_tasks").update({ assignee_membership_id: membershipId || null }).eq("id", taskId); if (error) { setMessage(t("allg.speichernFehler")); return; } await loadTasks(); };
+  const setDueDate = async (taskId, date) => { setMessage(""); const { error } = await supabase.from("duty_tasks").update({ due_date: date || null }).eq("id", taskId); if (error) { setMessage(t("allg.speichernFehler")); return; } await loadTasks(); };
+  const toggleDone = async (task) => { setMessage(""); const { error } = await supabase.from("duty_tasks").update({ done: !task.done }).eq("id", task.id); if (error) { setMessage(t("allg.speichernFehler")); return; } await loadTasks(); };
+  const deleteTask = async (taskId) => { if (!window.confirm("Diese Station wirklich löschen?")) return; setMessage(""); const { error } = await supabase.from("duty_tasks").delete().eq("id", taskId); if (error) { setMessage(t("allg.loeschenFehler")); return; } await loadTasks(); };
   const claimTask = async (taskId) => {
     setMessage("");
     const { error } = await supabase.rpc("claim_duty_task", { target_task: taskId });
@@ -9143,10 +9267,16 @@ function BoardMemberOverview({ members, currentUser, vorauswahl = null, onVoraus
     const load = async () => {
       setLoading(true); setMessage("");
       if (!supabase || !currentUser?.clubId) { setLiveMembers(null); setLoading(false); return; }
-      const { data, error } = await supabase.from("club_memberships")
-        .select("id,display_name,email,member_since,status,membership_roles(role),team_members(function,teams(name))")
-        .eq("club_id", currentUser.clubId).eq("status", "active");
+      /* E-Mail ueber kontaktdaten_im_verein (rollen-03): die Leitung sieht
+         alle, alle anderen nur die eigene - die Spalte selbst ist gesperrt. */
+      const [{ data, error }, { data: kontaktData }] = await Promise.all([
+        supabase.from("club_memberships")
+          .select("id,display_name,member_since,status,membership_roles(role),team_members(function,teams(name))")
+          .eq("club_id", currentUser.clubId).eq("status", "active"),
+        supabase.rpc("kontaktdaten_im_verein", { target_club: currentUser.clubId }),
+      ]);
       if (error) { setMessage(t("mit.listeFehler")); setLoading(false); return; }
+      const kontakt = new Map((kontaktData || []).map((k) => [k.membership_id, k]));
       /* team ist das eine Feld, wenn nur EINE Mannschaft gemeint sein kann.
          Vorher stand dort playerTeamNames[0] - also die Zeile, die Supabase
          zufaellig zuerst zurueckgab. Wer in Herren 1 und Herren 2 spielt,
@@ -9158,7 +9288,7 @@ function BoardMemberOverview({ members, currentUser, vorauswahl = null, onVoraus
         const funktionsTeams = (funktion) => [...new Set(assignments.filter((entry) => entry.function === funktion).map((entry) => entry.teams?.name).filter(Boolean))];
         const playerTeamNames = funktionsTeams("spieler");
         return {
-          id: record.id, name: record.display_name, email: record.email || "",
+          id: record.id, name: record.display_name, email: kontakt.get(record.id)?.email || "",
           trainerTeams: funktionsTeams("trainer"), captainTeams: funktionsTeams("kapitaen"),
           managedTeams: funktionsTeams("teammanager"), managedTeam: funktionsTeams("teammanager")[0] || null,
           team: hoechsteMannschaft(playerTeamNames) || hoechsteMannschaft(teamNames) || t("rol.mitgliedLabel"), teams: teamNames, playerTeams: playerTeamNames,
@@ -9208,10 +9338,10 @@ function BoardMemberOverview({ members, currentUser, vorauswahl = null, onVoraus
       </div>)}
       {filtered.length === 0 && <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{t("mit.keine")}</div>}
     </div>
-    {selectedMember && <MemberDetailPanel member={selectedMember} onClose={() => setSelectedMember(null)} />}
+    {selectedMember && <MemberDetailPanel member={selectedMember} onClose={() => setSelectedMember(null)} leitung={darfVereinVerwalten(currentUser)} clubId={currentUser?.clubId || null} />}
   </div>;
 }
-function MemberDetailPanel({ member, onClose }) {
+function MemberDetailPanel({ member, onClose, leitung = false, clubId = null }) {
   const t = useT();
   const [loading, setLoading] = useState(true);
   const [penalties, setPenalties] = useState([]);
@@ -9271,6 +9401,9 @@ function MemberDetailPanel({ member, onClose }) {
           <button onClick={onClose} aria-label={t("allg.schliessen")} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><X size={15}/></button>
         </div>
         {message && <div className="text-[11px] mb-3" style={{ color: C.red }}>{meldungstext(message)}</div>}
+        {/* Anfragen an ein Kinderprofil ohne Konto bestaetigt die Leitung
+            (B2) - die Meldung dazu fuehrt genau hierher. */}
+        {leitung && clubId && <FamilienAnfragen membershipId={member.id} clubId={clubId} leitung />}
         {loading ? <div className="text-xs py-4" style={{ color: C.textDim }}>{t("allg.laedt")}</div> : <>
           {istFan && <div className="text-[11px] rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{t("mit.fanOhneDetails")}</div>}
           {istSpieler && <>
@@ -10155,12 +10288,12 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
 /* ------------------------------------------------------------------ */
 /* Athlet/in der Saison — Wahl                                            */
 /* ------------------------------------------------------------------ */
-function SeasonVoteView({ currentUser, members, seasonVotes, setSeasonVotes, onVote, onUnvote }) {
+function SeasonVoteView({ currentUser, members, seasonVotes, seasonStand, setSeasonVotes, onVote, onUnvote }) {
   const t = useT();
   const closed = new Date() > new Date(SEASON_VOTE_DEADLINE);
   const { d, h, m } = useCountdown(SEASON_VOTE_DEADLINE);
   const myVote = seasonVotes[currentUser.id];
-  const { counts, total, sorted } = seasonResults(seasonVotes, saisonKandidaten(members));
+  const { counts, total, sorted } = seasonResults(seasonStand, saisonKandidaten(members));
   const [fehler, setFehler] = useState("");
   /* Die Stimme geht in die Datenbank. Vorher lag sie im Zustandsblock, den nur
      Administratoren speichern - die Wahl zaehlte also nur die Stimmen der
@@ -10574,12 +10707,12 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
             ) : (
             <div className="flex items-center justify-center gap-3">
               <Seitenname rolle={s.links.rolle} name={s.links.name} />
-              <input type="number" inputMode="numeric" min="0" max="99" disabled={locked || speichert}
+              <input type="number" inputMode="numeric" min="0" max="999"disabled={locked || speichert}
                 aria-label={s.ortBekannt ? mitWerten(t("aria.toreHeimTippen"), { team: s.links.name }) : t("aria.unsereToreTippen")}
                 value={feld[s.links.schluessel]} onChange={(e) => setPred(match.id, s.links.schluessel, e.target.value)}
                 className="w-12 text-center py-1.5 rounded-lg text-sm outline-none" style={{ background: C.paperDim, fontFamily: "JetBrains Mono", fontWeight: 700 }} />
               <span style={{ color: C.textDim }}>:</span>
-              <input type="number" inputMode="numeric" min="0" max="99" disabled={locked || speichert}
+              <input type="number" inputMode="numeric" min="0" max="999"disabled={locked || speichert}
                 aria-label={s.ortBekannt ? mitWerten(t("aria.toreGastTippen"), { team: s.rechts.name }) : t("aria.gegnerToreTippen")}
                 value={feld[s.rechts.schluessel]} onChange={(e) => setPred(match.id, s.rechts.schluessel, e.target.value)}
                 className="w-12 text-center py-1.5 rounded-lg text-sm outline-none" style={{ background: C.paperDim, fontFamily: "JetBrains Mono", fontWeight: 700 }} />
@@ -10866,23 +10999,24 @@ function SupportView({ currentUser, members, events, dutyPlan, setDutyPlan, onDi
 function AdminDutyPanel({ members, events, dutyPlan, setDutyPlan, onSetzen }) {
   const helperEvents = (events || []).filter((e) => e.helperSlots && e.helperSlots.length);
   const formalMembers = members.filter((m) => isFormalMember(m));
+  /* Schreiben AUSSERHALB des Zustands-Updaters (C2): Ein Updater kann doppelt
+     laufen und darf keine Seiteneffekte haben - und das Ergebnis des
+     Entfernens wurde nie ausgewertet. Wie in HelperSlots: vorherige Liste
+     merken, anzeigen, schreiben, bei einem Fehler zuruecknehmen. */
   const add = (eventId, station, memberId) => {
     if (!memberId) return;
-    setDutyPlan((dp) => {
-      const plan = dp[eventId] || {};
-      const list = plan[station] || [];
-      if (list.includes(memberId) || list.length >= STATION_CAP) return dp;
-      Promise.resolve(onSetzen?.(eventId, station, memberId, true)).then((r) => {
-        if (r?.error) setDutyPlan((jetzt) => ({ ...jetzt, [eventId]: { ...(jetzt[eventId] || {}), [station]: list } }));
-      });
-      return { ...dp, [eventId]: { ...plan, [station]: [...list, memberId] } };
+    const vorher = dutyPlan[eventId]?.[station] || [];
+    if (vorher.includes(memberId) || vorher.length >= STATION_CAP) return;
+    setDutyPlan((dp) => ({ ...dp, [eventId]: { ...(dp[eventId] || {}), [station]: [...vorher, memberId] } }));
+    Promise.resolve(onSetzen?.(eventId, station, memberId, true)).then((r) => {
+      if (r?.error) setDutyPlan((jetzt) => ({ ...jetzt, [eventId]: { ...(jetzt[eventId] || {}), [station]: vorher } }));
     });
   };
   const remove = (eventId, station, memberId) => {
-    setDutyPlan((dp) => {
-      const plan = dp[eventId] || {};
-      onSetzen?.(eventId, station, memberId, false);
-      return { ...dp, [eventId]: { ...plan, [station]: (plan[station] || []).filter((id) => id !== memberId) } };
+    const vorher = dutyPlan[eventId]?.[station] || [];
+    setDutyPlan((dp) => ({ ...dp, [eventId]: { ...(dp[eventId] || {}), [station]: vorher.filter((id) => id !== memberId) } }));
+    Promise.resolve(onSetzen?.(eventId, station, memberId, false)).then((r) => {
+      if (r?.error) setDutyPlan((jetzt) => ({ ...jetzt, [eventId]: { ...(jetzt[eventId] || {}), [station]: vorher } }));
     });
   };
   return (
@@ -11091,7 +11225,7 @@ function ProtocolCard({ protocol, members, onToggleTask, onLoeschen }) {
     </div>
   );
 }
-function ProtokollePanel({ members, protocols, setProtocols, clubId, onSpeichern, onAufgabe, onLoeschen }) {
+function ProtokollePanel({ members, protocols, setProtocols, onSpeichern, onAufgabe, onLoeschen }) {
   const t = useT();
   const [title, setTitle] = useState("");
   const [date, setDate] = useState(alsDatum(new Date()));
@@ -11139,7 +11273,8 @@ function ProtokollePanel({ members, protocols, setProtocols, clubId, onSpeichern
       id: ergebnis?.id || "p" + Date.now(),
       tasks: ergebnis?.tasks?.length ? ergebnis.tasks : entwurf.tasks,
     }, ...ps]);
-    if (supabase && clubId) supabase.rpc("notify_club", { target_club: clubId, p_notif_type: "protocols", p_title: t("prot.neuesProtokoll"), p_body: title.trim() });
+    /* Die Meldung schickt der Ausloeser protocols_melden (20260914110300) - an
+       die eingetragenen Teilnehmer, nicht an den ganzen Verein. */
     setTitle(""); setAttendees([]); setRawText(""); setDraftTasks([]); setOeffentlich(false);
   };
 
@@ -11319,7 +11454,7 @@ function TodoBoard({ currentClub, goPanel, goFahrzeuge, goAufgaben, goHelfer }) 
   );
 }
 
-function OverviewPanel({ members, events, protocols, dutyPlan, seasonVotes, goPanel, goHelfer }) {
+function OverviewPanel({ members, events, protocols, dutyPlan, seasonStand, goPanel, goHelfer }) {
   const t = useT();
   const openTasks = protocols.flatMap((p) => p.tasks.filter((t) => !t.done)).length;
 
@@ -11329,7 +11464,7 @@ function OverviewPanel({ members, events, protocols, dutyPlan, seasonVotes, goPa
     const plan = dutyPlan[ev.id] || {};
     ev.helperSlots.forEach((s) => { totalSlots += STATION_CAP; openSlots += STATION_CAP - (plan[s]?.length || 0); });
   });
-  const { total: seasonTotal } = seasonResults(seasonVotes, saisonKandidaten(members));
+  const { total: seasonTotal } = seasonResults(seasonStand, saisonKandidaten(members));
   /* Zeigte bislang den ersten Eintrag des Demo-Feldes - in einem echten Verein
      also einen Termin, den es dort nie gab. Jetzt der naechste echte. */
   const nextEvent = [...(events || [])]
@@ -12043,7 +12178,7 @@ function PollManagerPanel({ polls, setPolls, clubId, onAnlegen, onUmschalten }) 
        Umfrage, eine davon unuebersetzt. */
     setTitle(""); setOptions(["",""]);
   };
-  return <div className="space-y-4"><div className="rounded-2xl p-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">{t("umf.neu")}</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>{t("umf.mindestens")}</div><input value={title} onChange={(e)=>setTitle(e.target.value)} placeholder={t("ph.frageTitel")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim}}/>{options.map((o,i)=><input key={i} value={o} onChange={(e)=>setOptions((all)=>all.map((x,idx)=>idx===i?e.target.value:x))} placeholder={`Antwort ${i+1}`} className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2" style={{background:C.paperDim}}/>)}<div className="flex gap-2"><button onClick={()=>setOptions((o)=>[...o,""])} className="px-3 py-2 rounded-lg text-xs font-bold" style={{background:C.paperDim,color:C.ink}}>＋ Antwort</button><button onClick={create} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{background: C.red, color: C.aufPrimaer}}>{t("allg.veroeffentlichen")}</button></div>{fehler&&<div role="status" className="text-[11px] rounded-xl px-3 py-2 mt-2" style={{background:C.fehlerFlaeche,color:C.fehler}}>{fehler}</div>}</div><div className="space-y-2">{polls.map((poll)=><div key={poll.id} className="rounded-xl p-3 flex items-center gap-3" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="flex-1"><div className="text-xs font-bold">{poll.title}</div><div className="text-[10px] mt-1" style={{color:C.textDim}}>{poll.options.length} Antworten · {poll.options.reduce((n,o)=>n+o.votes,0)} Stimmen</div></div><button onClick={()=>{onUmschalten?.(poll.id,!poll.active);setPolls((ps)=>ps.map((p)=>p.id===poll.id?{...p,active:!p.active}:p));}} className="px-2.5 py-1.5 rounded-full text-[10px] font-bold" style={{background:poll.active?C.erfolgFlaeche:C.paperDim,color:poll.active?C.secondary:C.textDim}}>{poll.active?t("status.aktiv"):t("status.inaktiv")}</button></div>)}</div></div>;
+  return <div className="space-y-4"><div className="rounded-2xl p-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">{t("umf.neu")}</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>{t("umf.mindestens")}</div><input value={title} onChange={(e)=>setTitle(e.target.value)} placeholder={t("ph.frageTitel")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim}}/>{options.map((o,i)=><input key={i} value={o} onChange={(e)=>setOptions((all)=>all.map((x,idx)=>idx===i?e.target.value:x))} placeholder={`Antwort ${i+1}`} className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2" style={{background:C.paperDim}}/>)}<div className="flex gap-2"><button onClick={()=>setOptions((o)=>[...o,""])} className="px-3 py-2 rounded-lg text-xs font-bold" style={{background:C.paperDim,color:C.ink}}>＋ Antwort</button><button onClick={create} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{background: C.red, color: C.aufPrimaer}}>{t("allg.veroeffentlichen")}</button></div>{fehler&&<div role="status" className="text-[11px] rounded-xl px-3 py-2 mt-2" style={{background:C.fehlerFlaeche,color:C.fehler}}>{fehler}</div>}</div><div className="space-y-2">{polls.map((poll)=><div key={poll.id} className="rounded-xl p-3 flex items-center gap-3" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="flex-1"><div className="text-xs font-bold">{poll.title}</div><div className="text-[10px] mt-1" style={{color:C.textDim}}>{poll.options.length} Antworten · {poll.options.reduce((n,o)=>n+o.votes,0)} Stimmen</div></div><button onClick={async()=>{const vorher=poll.active;setPolls((ps)=>ps.map((p)=>p.id===poll.id?{...p,active:!vorher}:p));const ergebnis=await onUmschalten?.(poll.id,!vorher);if(ergebnis?.error){setPolls((ps)=>ps.map((p)=>p.id===poll.id?{...p,active:vorher}:p));setFehler(ergebnis.error);}else setFehler("");}} className="px-2.5 py-1.5 rounded-full text-[10px] font-bold" style={{background:poll.active?C.erfolgFlaeche:C.paperDim,color:poll.active?C.secondary:C.textDim}}>{poll.active?t("status.aktiv"):t("status.inaktiv")}</button></div>)}</div></div>;
 }
 
 function MatchResultsPanel({ results, onSave, onDelete, events, currentClub, zeigeRunden = false, mitPunkten = true }) {
@@ -12239,12 +12374,12 @@ function ErgebnisEingabe({ spiel, ergebnis, onSpeichern, onEntfernen, mitPunkten
     <div>
       <div className="flex items-center gap-2 mb-3">
         <Seitenname rolle={s.links.rolle} name={s.links.name} />
-        <input type="number" inputMode="numeric" min="0" max="99" disabled={!ort || speichert}
+        <input type="number" inputMode="numeric" min="0" max="999"disabled={!ort || speichert}
           aria-label={s.ortBekannt ? mitWerten(t("aria.toreHeim"), { team: s.links.name }) : t("label.unsereTore")}
           value={entwurf[s.links.schluessel] ?? ""} onChange={(e) => setzen(s.links.schluessel, e.target.value)}
           className="w-12 text-center py-2 rounded-lg outline-none" style={feldStil} />
         <span style={{ color: C.textDim }}>:</span>
-        <input type="number" inputMode="numeric" min="0" max="99" disabled={!ort || speichert}
+        <input type="number" inputMode="numeric" min="0" max="999"disabled={!ort || speichert}
           aria-label={s.ortBekannt ? mitWerten(t("aria.toreGast"), { team: s.rechts.name }) : t("label.gegnerTore")}
           value={entwurf[s.rechts.schluessel] ?? ""} onChange={(e) => setzen(s.rechts.schluessel, e.target.value)}
           className="w-12 text-center py-2 rounded-lg outline-none" style={feldStil} />
@@ -12778,10 +12913,16 @@ function MembershipApprovalsPanel({ club, members, setMembers, currentUser = nul
   const loadActiveMembers = async () => {
     setLoadingActive(true);
     if (!supabase) { setActiveMembers([]); setLoadingActive(false); return; }
-    const { data, error } = await supabase.from("club_memberships")
-      .select("id,display_name,email,status")
-      .eq("club_id", club.id).in("status", ["active", "inactive", "blocked"]).order("display_name");
-    if (!error) setActiveMembers(data || []);
+    /* E-Mail nur ueber kontaktdaten_im_verein (rollen-03): Die Spalte ist fuer
+       authenticated nicht lesbar, die Leitung bekommt sie dort. */
+    const [{ data, error }, { data: kontaktData }] = await Promise.all([
+      supabase.from("club_memberships")
+        .select("id,display_name,status")
+        .eq("club_id", club.id).in("status", ["active", "inactive", "blocked"]).order("display_name"),
+      supabase.rpc("kontaktdaten_im_verein", { target_club: club.id }),
+    ]);
+    const kontakt = new Map((kontaktData || []).map((k) => [k.membership_id, k]));
+    if (!error) setActiveMembers((data || []).map((m) => ({ ...m, email: kontakt.get(m.id)?.email || "" })));
     setLoadingActive(false);
   };
   /* Nur fuer die Mitgliederpflege darunter - die gibt es in der Profilkachel
@@ -12809,7 +12950,7 @@ function MembershipApprovalsPanel({ club, members, setMembers, currentUser = nul
     if (!window.confirm(`${member.display_name} für den Verein sperren?\n\nDie Person verliert den Zugang und kann keine neue Beitrittsanfrage stellen, bis du sie wieder entsperrst. Sie erscheint so lange in der Sperrliste.`)) return;
     setWorkingId(member.id); setMessage("");
     const { error } = await supabase.from("club_memberships").update({ status: "blocked" }).eq("id", member.id).eq("club_id", club.id);
-    if (error) { setMessage(t("mit.sperreNichtGesetzt")); setWorkingId(null); return; }
+    if (error) { setMessage(rollenFehlerText(error, t, t("mit.sperreNichtGesetzt"))); setWorkingId(null); return; }
     setActiveMembers((items) => items.map((item) => item.id === member.id ? { ...item, status: "blocked" } : item));
     setMembers((items) => items.map((item) => item.id === member.id ? { ...item, status: "blocked", accountPending: false } : item));
     setMessage(`${member.display_name} ist jetzt gesperrt.`);
@@ -12836,7 +12977,7 @@ function MembershipApprovalsPanel({ club, members, setMembers, currentUser = nul
     if (nextStatus === "inactive" && !window.confirm(`Mitgliedschaft von ${member.display_name} wirklich beenden? Das Mitglied kann sich danach nicht mehr anmelden, bleibt aber in der Historie erhalten.`)) return;
     setWorkingId(member.id); setMessage("");
     const { error } = await supabase.from("club_memberships").update({ status: nextStatus }).eq("id", member.id).eq("club_id", club.id);
-    if (error) { setMessage(t("allg.statusAendernFehler")); setWorkingId(null); return; }
+    if (error) { setMessage(rollenFehlerText(error, t, t("allg.statusAendernFehler"))); setWorkingId(null); return; }
     setActiveMembers((items) => items.map((item) => item.id === member.id ? { ...item, status: nextStatus } : item));
     setMembers((items) => items.map((item) => item.id === member.id ? { ...item, status: nextStatus, accountPending: false } : item));
     setMessage(nextStatus === "inactive" ? (OK_ZEICHEN + t("mit.wurdeBeendet")) : (OK_ZEICHEN + t("mit.wurdeReaktiviert")));
@@ -12866,9 +13007,9 @@ function MembershipApprovalsPanel({ club, members, setMembers, currentUser = nul
       /* Ein Fremdschluessel kann die Loeschung weiterhin sperren, wenn spaeter
          eine neue Tabelle ohne cascade hinzukommt. Dann soll dastehen, was los
          ist, statt nur "ging nicht". */
-      setMessage(/foreign key|violates|constraint/i.test(error.message || "")
+      setMessage(rollenFehlerText(error, t, /foreign key|violates|constraint/i.test(error.message || "")
         ? t("mit.personNichtEntfernbar")
-        : t("mit.personEntfernenFehler"));
+        : t("mit.personEntfernenFehler")));
       setWorkingId(null); return;
     }
     setActiveMembers((items) => items.filter((item) => item.id !== member.id));
@@ -12887,11 +13028,19 @@ function MembershipApprovalsPanel({ club, members, setMembers, currentUser = nul
       })));
       setLoading(false); return;
     }
-    const { data, error } = await supabase.from("club_memberships")
-      .select("id,display_name,email,member_since,requested_team,created_at,rejection_count,membership_roles(role)")
-      .eq("club_id", club.id).eq("status", "pending").order("created_at", { ascending: true });
+    /* E-Mail und Zahl der Ablehnungen kommen aus kontaktdaten_im_verein
+       (rollen-03) - die Spalten selbst sind fuer authenticated gesperrt. */
+    const [{ data, error }, { data: kontaktData }] = await Promise.all([
+      supabase.from("club_memberships")
+        .select("id,display_name,member_since,requested_team,created_at,membership_roles(role)")
+        .eq("club_id", club.id).eq("status", "pending").order("created_at", { ascending: true }),
+      supabase.rpc("kontaktdaten_im_verein", { target_club: club.id }),
+    ]);
+    const kontakt = new Map((kontaktData || []).map((k) => [k.membership_id, k]));
     if (error) setMessage(t("mit.antraegeLadenFehler"));
-    setRequests(data || []); setLoading(false);
+    setRequests((data || []).map((r) => ({
+      ...r, email: kontakt.get(r.id)?.email || "", rejection_count: kontakt.get(r.id)?.rejection_count ?? 0,
+    }))); setLoading(false);
   };
 
   useEffect(() => { loadRequests(); }, [club?.id]);
@@ -13002,7 +13151,11 @@ function MembershipApprovalsPanel({ club, members, setMembers, currentUser = nul
             {/* Gesperrte bekommen nur den Weg zurueck. Fuer alle anderen steht
                 neben dem Beenden das Sperren - der einzige Weg, jemanden
                 dauerhaft draussen zu halten. */}
-            {member.status === "blocked"
+            {/* Die eigene Zeile bekommt keine Knoepfe (U4): Wer sich selbst
+                beendet, sperrt oder entfernt, sperrt womoeglich den ganzen
+                Verein aus. Die Datenbank verweigert das beim letzten
+                Vereinsadmin ohnehin (20260914110100). */}
+            {member.id === currentUser?.id ? null : member.status === "blocked"
               ? <button disabled={workingId === member.id} onClick={() => unblockMember(member)} className="px-3 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: C.erfolgFlaeche, color: C.erfolg, opacity: workingId === member.id ? .6 : 1 }}>{t("allg.entsperren")}</button>
               : <>
                   <button disabled={workingId === member.id} onClick={() => toggleMemberActive(member)} className="px-3 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: member.status === "active" ? C.fehlerFlaeche : C.erfolgFlaeche, color: member.status === "active" ? C.fehler : C.erfolg, opacity: workingId === member.id ? .6 : 1 }}>{member.status === "active" ? t("mit.beenden") : t("mit.reaktivieren")}</button>
@@ -13012,7 +13165,7 @@ function MembershipApprovalsPanel({ club, members, setMembers, currentUser = nul
                 t("mit.beenden") legt die Mitgliedschaft still und laesst sie in der
                 Historie - das ist der Regelfall. t("allg.entfernen") loescht sie
                 endgueltig und steht deshalb unauffaelliger daneben. */}
-            <button disabled={workingId === member.id} onClick={() => removeMember(member)} title="Endgültig aus dem Verein entfernen" className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: C.paperDim, color: C.textDim, opacity: workingId === member.id ? .6 : 1 }}>{t("allg.entfernen")}</button>
+            {member.id !== currentUser?.id && <button disabled={workingId === member.id} onClick={() => removeMember(member)} title="Endgültig aus dem Verein entfernen" className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: C.paperDim, color: C.textDim, opacity: workingId === member.id ? .6 : 1 }}>{t("allg.entfernen")}</button>}
           </div>
         ))}
         {nichtGesperrte.length === 0 && <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{t("mit.keineVorhanden")}</div>}
@@ -13301,7 +13454,7 @@ function ClaimManagedPlayerPanel({ members, setMembers, currentUser }) {
 function AdminView({
   bereichWunsch, onBereichUebernommen,
   goHelferEinteilen,
-  members, setMembers, events, dutyPlan, setDutyPlan, seasonVotes, currentUser,
+  members, setMembers, events, dutyPlan, setDutyPlan, seasonVotes, seasonStand, currentUser,
   channels, setChannels, maintenanceMode, setMaintenanceMode, onResetDemo,
   protocols, setProtocols,
   welcomeAutomation, setWelcomeAutomation,
@@ -13405,7 +13558,7 @@ function AdminView({
         ))}
       </div>
 
-      {panel === "overview" && <OverviewPanel members={members} events={events} protocols={protocols} dutyPlan={dutyPlan} seasonVotes={seasonVotes} goPanel={panelWaehlen} goHelfer={goHelferEinteilen} />}
+      {panel === "overview" && <OverviewPanel members={members} events={events} protocols={protocols} dutyPlan={dutyPlan} seasonVotes={seasonVotes} seasonStand={seasonStand} goPanel={panelWaehlen} goHelfer={goHelferEinteilen} />}
       {panel === "memberships" && darfVereinVerwalten(currentUser) && <MembershipApprovalsPanel club={currentClub} members={members} setMembers={setMembers} currentUser={currentUser} nurAnfragen={!currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))} />}
       {/* Ohne geladenen Verein kein Logo- und Farbenbereich: ClubColorPanel las
           club.primaryColor ohne Pruefung, und der ganze Bereich stuerzte ab, wenn
@@ -13433,7 +13586,7 @@ function AdminView({
       {panel === "families" && isSysAdmin(currentUser) && <AdminFamilyPanel members={members} setMembers={setMembers} />}
 
       {panel === "season" && (() => {
-        const { counts, total, sorted } = seasonResults(seasonVotes, saisonKandidaten(members));
+        const { counts, total, sorted } = seasonResults(seasonStand, saisonKandidaten(members));
         return (
           <div>
             <div className="text-xs mb-3" style={{ color: C.textDim, fontFamily: "Inter" }}>Nur für den Vorstand sichtbar — {total} Stimmen bisher.</div>
@@ -14206,6 +14359,22 @@ export default function ClubMemberOrganisationApp() {
       if (data?.user) await supabase.rpc("sprache_setzen", { neue_sprache: code });
     }
   }, []);
+  /* Nach jeder Anmeldung Geraet und Konto auf dieselbe Sprache bringen
+     (konto-3). Hat das Geraet eine Wahl, gilt sie auch fuer das Konto - Push
+     und Glocke richten sich nach profiles.language. Hat es keine, uebernimmt
+     es die des Kontos. Fehler bleiben still: Die Anmeldung ist wichtiger. */
+  const spracheAbgleichen = useCallback(async (profilId) => {
+    if (!supabase || !profilId) return;
+    const imGeraet = gespeicherteSprache();
+    const { data: profil } = await supabase.from("profiles").select("language").eq("id", profilId).maybeSingle();
+    const imKonto = profil?.language || null;
+    if (imGeraet) {
+      if (imKonto !== imGeraet) await supabase.rpc("sprache_setzen", { neue_sprache: imGeraet });
+    } else if (imKonto && SPRACHEN.some((s) => s.code === imKonto)) {
+      setSprache(imKonto);
+      spracheMerken(imKonto);
+    }
+  }, []);
   useEffect(() => { setImGeraet(Capacitor.isNativePlatform()); }, []);
 
   /* Tastatur offen? Nur fuer die Anzeige - die Groesse der Webansicht regelt
@@ -14327,8 +14496,12 @@ export default function ClubMemberOrganisationApp() {
     if (!supabase || !isDbId(selectedClubId)) return;
     let abgebrochen = false;
     (async () => {
+      /* Ohne email und membership_number: Diese Spalten sind fuer authenticated
+         nicht lesbar (rollen-03, 20260914110100) - eine Abfrage darauf
+         scheiterte ganz. "pending" liefert die Datenbank nur noch der Leitung;
+         die bekannte E-Mail aus dem Anmelden bleibt stehen. */
       const { data, error } = await supabase.from("club_memberships")
-        .select("id,profile_id,club_id,display_name,email,member_since,membership_number,status,team_filter,is_managed_profile,membership_roles(role),team_members(function,teams(name))")
+        .select("id,profile_id,club_id,display_name,member_since,status,team_filter,is_managed_profile,membership_roles(role),team_members(function,teams(name))")
         .eq("club_id", selectedClubId).in("status", ["active", "pending"]);
       if (abgebrochen || error || !data) return;
       setMembers((bisher) => {
@@ -14344,7 +14517,7 @@ export default function ClubMemberOrganisationApp() {
           return {
             ...(alt || {}),
             id: row.id, authProfileId: row.profile_id, clubId: row.club_id,
-            name: row.display_name, email: row.email || alt?.email || "",
+            name: row.display_name, email: alt?.email || "",
             status: row.status, roles: rollen.length ? rollen : (alt?.roles || ["mitglied"]),
             /* Dieselbe Ableitung wie beim Anmelden (loadSupabaseMembership).
                Sie fehlte hier - und weil die Abfrage ausdruecklich auch
@@ -14360,6 +14533,7 @@ export default function ClubMemberOrganisationApp() {
                Die Zeile steht bewusst NACH dem Streuen von alt, damit sie den
                alten Wert ueberschreibt statt ihn zu erben. */
             accountPending: !!row.is_managed_profile || row.status === "pending",
+            mitgliedsStatus: row.status, verwaltetesProfil: !!row.is_managed_profile,
             /* Ohne Farbe zeichnet der Avatarkreis mit background:undefined -
                weisse Initialen auf durchsichtigem Grund. */
             color: alt?.color || AVATAR_FARBEN[index % 5],
@@ -14606,6 +14780,8 @@ export default function ClubMemberOrganisationApp() {
      siehe RedaktionView. */
   const [vereinsNews, setVereinsNews] = useState(supabase ? [] : DEMO_NEWS);
   const [seasonVotes, setSeasonVotes] = useState({});
+  /* Stand der Saisonwahl aus saisonwahl_stand - siehe seasonResults. */
+  const [seasonStand, setSeasonStand] = useState({ gesamt: 0, je: {} });
   const [tippPredictions, setTippPredictions] = useState({});
   const [tippResults, setTippResults] = useState({});
   const [dutyPlan, setDutyPlan] = useState(supabase ? {} : INITIAL_DUTY_PLAN);
@@ -14754,9 +14930,14 @@ export default function ClubMemberOrganisationApp() {
        noch laeuft. */
     let abgebrochen = false;
     const loadEvents = async () => {
-      const { data, error } = await supabase.from("events")
+      let abfrage = supabase.from("events")
         .select("id,type,status,title,description,starts_at,location,home_away,opponent,series_id,helper_slots,created_by,created_at,teams(name,zusagen_aktiv,zusagen_spiele_aktiv)")
-        .eq("club_id", currentUser.clubId)
+        .eq("club_id", currentUser.clubId);
+      /* Fans bekommen Trainings gar nicht erst geliefert. Die Datenbank
+         filtert seit 20260914110100 ebenso (rollen-04); die Ansicht darunter
+         filtert weiter, falls Rollen sich im Betrieb aendern. */
+      if (istNurFan(currentUser)) abfrage = abfrage.neq("type", "training");
+      const { data, error } = await abfrage
         /* Zwei Jahre zurueck, nach vorn unbegrenzt.
            Vorher kam die gesamte Geschichte mit - bei einem Verein mit fuenf
            Jahren Spielplan sind das ein paar tausend Zeilen, und zwar bei
@@ -14945,6 +15126,14 @@ export default function ClubMemberOrganisationApp() {
        sind die Termine hier noch leer, und der Sprung landete im Terminplan.
        Die Meldungen zielen laut Migrationen immer auf ein Spiel; die Ansicht
        wartet mit dem Fokus, bis es geladen ist. */
+    /* Tippspiel-Ergebnis (U8): Die Meldung traegt seit 20260914100100 den
+       Termin als Ziel. Mit eingeschaltetem Tippspiel und Abo oeffnet sie das
+       Tippspiel, sonst den Termin (weiter unten). */
+    if (e.kind === "tipp" && featureEnabled("tippspiel")
+        && !(entitlement && !entitlement.loading && entitlement.tier === "none")) {
+      setSubView("tipp");
+      return true;
+    }
     if (e.kind === "results" && zielId
         && !(entitlement && !entitlement.loading && entitlement.tier === "none")) {
       setErgebnisFokus(zielId);
@@ -15101,6 +15290,23 @@ export default function ClubMemberOrganisationApp() {
    * sobald jemand die App schloss. Die Tabellen dafuer gibt es seit dem
    * Ursprungsschema; die App hat sie nie angefasst.
    * ------------------------------------------------------------------ */
+  /* Stand der Saisonwahl (U5): Einzelne Stimmen liest jeder nur noch fuer
+     sich. Die Leitung bekommt den Stand je Kandidat jederzeit, alle anderen
+     waehrend der Wahl nur die Gesamtzahl und je Kandidat erst nach der Frist
+     - das entscheidet die Datenbank, nicht diese Funktion. */
+  const saisonStandLaden = async (clubId) => {
+    if (!supabase || !isDbId(clubId)) return;
+    const { data, error } = await supabase.rpc("saisonwahl_stand", { target_club: clubId, p_season: SAISON_KENNUNG });
+    if (error) return;
+    const je = {};
+    let gesamt = 0;
+    for (const zeile of data || []) {
+      gesamt += zeile.stimmen || 0;
+      if (zeile.candidate_membership_id) je[zeile.candidate_membership_id] = zeile.stimmen || 0;
+    }
+    setSeasonStand({ gesamt, je });
+  };
+
   const ladeVereinsdaten = async (clubId, profileId, roster) => {
     if (!supabase || !clubId) return;
     const profilZuMitglied = Object.fromEntries((roster || []).filter((m) => m.authProfileId).map((m) => [m.authProfileId, m.id]));
@@ -15165,9 +15371,11 @@ export default function ClubMemberOrganisationApp() {
       };
     }));
 
+    /* Die Regel liefert seit 20260914110100 nur noch die eigene Stimme. */
     setSeasonVotes(Object.fromEntries((wahl.data || [])
       .map((v) => [profilZuMitglied[v.voter_profile_id], v.candidate_membership_id])
       .filter(([waehler]) => !!waehler)));
+    saisonStandLaden(clubId);
 
     const dienstBlock = {};
     for (const d of dienste.data || []) ((dienstBlock[d.event_id] ||= {})[d.station] ||= []).push(d.membership_id);
@@ -15346,10 +15554,18 @@ export default function ClubMemberOrganisationApp() {
     return { id: umfrage.id };
   };
 
+  /* Mit Zeilenpruefung: Eine Regel, die das Aendern verweigert, meldet keinen
+     Fehler, sondern aendert 0 Zeilen - der Schalter stand dann auf "aktiv",
+     die Umfrage nicht (rollen-05). Das Ergebnis geht an das Panel zurueck,
+     damit es den Schalter zuruecknimmt. */
   const umfrageUmschalten = async (pollId, aktiv) => {
-    if (!supabase || typeof pollId !== "string") return;
-    const { error } = await supabase.from("polls").update({ active: aktiv }).eq("id", pollId);
-    if (error) setSchreibFehler(t("umf.umschaltenFehler"));
+    if (!supabase || typeof pollId !== "string") return { error: t("allg.nichtMoeglich") };
+    const { data, error } = await supabase.from("polls").update({ active: aktiv }).eq("id", pollId).select("id");
+    if (error || !data?.length) {
+      setSchreibFehler(t("umf.umschaltenFehler"));
+      return { error: t("umf.umschaltenFehler") };
+    }
+    return {};
   };
 
   const saisonStimmeAbgeben = async (kandidatMitgliedsId) => {
@@ -15358,7 +15574,9 @@ export default function ClubMemberOrganisationApp() {
       club_id: selectedClubId, season: SAISON_KENNUNG,
       voter_profile_id: meinProfil(), candidate_membership_id: kandidatMitgliedsId,
     }, { onConflict: "club_id,season,voter_profile_id" });
-    return error ? { error: t("umf.stimmeFehler") } : {};
+    if (error) return { error: t("umf.stimmeFehler") };
+    saisonStandLaden(selectedClubId);
+    return {};
   };
 
   /* Die Stimme wieder aufgeben.
@@ -15370,7 +15588,9 @@ export default function ClubMemberOrganisationApp() {
     if (!supabase || !selectedClubId || !meinProfil()) return { error: t("allg.nichtMoeglich") };
     const { error } = await supabase.from("season_votes").delete()
       .eq("club_id", selectedClubId).eq("season", SAISON_KENNUNG).eq("voter_profile_id", meinProfil());
-    return error ? { error: t("umf.stimmeEntfernenFehler") } : {};
+    if (error) return { error: t("umf.stimmeEntfernenFehler") };
+    saisonStandLaden(selectedClubId);
+    return {};
   };
 
   const dienstSetzen = async (eventId, station, mitgliedsId, eintragen) => {
@@ -15630,19 +15850,30 @@ export default function ClubMemberOrganisationApp() {
        lesen - eine Meldung, aus der niemand schliessen kann, dass er schlicht
        noch keinem Verein angehoert. */
     if (!clubId) return { error: t("konto.keineMitgliedschaft"), code: "membership_missing" };
+    /* email und membership_number sind fuer authenticated nicht mehr lesbar
+       (rollen-03, 20260914110100) - eine Abfrage darauf scheitert ganz. Sie
+       kommen aus kontaktdaten_im_verein: fuer die Leitung alle, sonst die
+       eigene Zeile. */
     const { data, error } = await supabase.from("club_memberships")
-      .select("id,club_id,display_name,email,member_since,membership_number,status,team_filter,is_managed_profile,membership_roles(role),team_members(function,teams(name)),profiles!club_memberships_profile_id_fkey(birthdate,academic_title,first_name,last_name,contact_emails,contact_phones,gender,nationality,street,postal_code,city,country_code,notification_master,notification_preferences,auto_logout_days,calendar_sync_interval,show_birthday)")
+      .select("id,club_id,display_name,member_since,status,team_filter,is_managed_profile,membership_roles(role),team_members(function,teams(name)),profiles!club_memberships_profile_id_fkey(birthdate,academic_title,first_name,last_name,contact_emails,contact_phones,gender,nationality,street,postal_code,city,country_code,notification_master,notification_preferences,auto_logout_days,calendar_sync_interval,show_birthday)")
       .eq("profile_id", profileId).eq("club_id", clubId).maybeSingle();
     if (error) return { error: t("verein.profilLadenFehler") };
     if (!data) return { error: t("mit.keineMitgliedschaft"), code: "membership_missing" };
     if (data.status === "pending") return { error: t("reg.wartetFreigabe"), code: "membership_pending" };
     if (data.status !== "active") return { error: t("verein.profilInaktiv") };
-    const { data: rosterData, error: rosterError } = await supabase.from("club_memberships")
-      .select("id,profile_id,club_id,display_name,email,member_since,membership_number,status,team_filter,is_managed_profile,membership_roles(role),team_members(function,teams(name)),profiles!club_memberships_profile_id_fkey(birthdate,academic_title,first_name,last_name,contact_emails,contact_phones,gender,nationality,street,postal_code,city,country_code,notification_master,notification_preferences,auto_logout_days,calendar_sync_interval,show_birthday)")
-      .eq("club_id", clubId).in("status", ["active", "pending"]);
+    /* Wartende Bewerber gehen nur die Leitung an (Betreiberentscheidung
+       13.09.2026); die Datenbank liefert sie anderen ohnehin nicht mehr. */
+    const leitung = (data.membership_roles || []).some((r) => ["vereinsadmin", "organisator", "sysadmin"].includes(r.role));
+    const [{ data: rosterData, error: rosterError }, { data: kontaktData }] = await Promise.all([
+      supabase.from("club_memberships")
+        .select("id,profile_id,club_id,display_name,member_since,status,team_filter,is_managed_profile,membership_roles(role),team_members(function,teams(name)),profiles!club_memberships_profile_id_fkey(birthdate,academic_title,first_name,last_name,contact_emails,contact_phones,gender,nationality,street,postal_code,city,country_code,notification_master,notification_preferences,auto_logout_days,calendar_sync_interval,show_birthday)")
+        .eq("club_id", clubId).in("status", leitung ? ["active", "pending"] : ["active"]),
+      supabase.rpc("kontaktdaten_im_verein", { target_club: clubId }),
+    ]);
     if (rosterError) return { error: t("mit.listeFehler") };
+    const kontakt = new Map((kontaktData || []).map((k) => [k.membership_id, k]));
     const { data: familyData, error: familyError } = await supabase.from("family_links")
-      .select("id,first_membership_id,second_membership_id,first_to_second,second_to_first,first_label,second_label")
+      .select("id,first_membership_id,second_membership_id,first_to_second,second_to_first,first_label,second_label,bestaetigt")
       .eq("club_id", clubId);
     if (familyError) return { error: t("fam.verknuepfungenLadenFehler") };
     const roster = (rosterData || []).map((record, index) => {
@@ -15651,7 +15882,7 @@ export default function ClubMemberOrganisationApp() {
       const playerTeamNames = [...new Set(assignments.filter((entry) => entry.function === "spieler").map((entry) => entry.teams?.name).filter(Boolean))];
       return {
         id: record.id, authProfileId: record.profile_id, clubId: record.club_id, teamFilter: record.team_filter || "alle",
-        name: record.display_name, email: record.email || "", password: "",
+        name: record.display_name, email: kontakt.get(record.id)?.email || "", password: "",
         team: hoechsteMannschaft(playerTeamNames) || hoechsteMannschaft(teamNames) || t("rol.mitgliedLabel"), teams: teamNames, playerTeams: playerTeamNames, number: null,
         trainerTeams: [...new Set(assignments.filter((entry) => entry.function === "trainer").map((entry) => entry.teams?.name).filter(Boolean))],
         /* Kapitaen und Teammanager kann jemand in MEHREREN Mannschaften sein.
@@ -15664,7 +15895,7 @@ export default function ClubMemberOrganisationApp() {
         roles: (record.membership_roles || []).map((entry) => entry.role),
         color: AVATAR_FARBEN[index % 5],
         points: 0, tippPoints: 0, badges: [], birthdate: record.profiles?.birthdate || "",
-        membershipNumber: record.membership_number || "", academicTitle: record.profiles?.academic_title || "",
+        membershipNumber: kontakt.get(record.id)?.membership_number || "", academicTitle: record.profiles?.academic_title || "",
         firstName: record.profiles?.first_name || "", lastName: record.profiles?.last_name || "",
         contactEmails: record.profiles?.contact_emails || [], contactPhones: record.profiles?.contact_phones || [],
         gender: record.profiles?.gender || "keine_angabe", nationality: record.profiles?.nationality || "",
@@ -15673,10 +15904,15 @@ export default function ClubMemberOrganisationApp() {
         showBirthday: record.profiles?.show_birthday ?? true,
         autoLogoutDays: record.profiles?.auto_logout_days || null, calendarSyncInterval: record.profiles?.calendar_sync_interval || "never",
         accountPending: !!record.is_managed_profile || record.status === "pending",
+        /* Fuer die Familiensuche: Kinderprofile ohne Konto sind waehlbar,
+           wartende Bewerber nicht (L2). */
+        mitgliedsStatus: record.status, verwaltetesProfil: !!record.is_managed_profile,
         familyLinks: [], familyId: null, familyRole: null,
       };
     });
-    const hydratedRoster = hydrateFamilyLinks(roster, familyData || []);
+    /* Nur bestaetigte Verknuepfungen geben Zugriff (B2, 20260914110200) -
+       offene Anfragen zeigt FamilienAnfragen gesondert. */
+    const hydratedRoster = hydrateFamilyLinks(roster, (familyData || []).filter((link) => link.bestaetigt !== false));
     const member = hydratedRoster.find((item) => item.id === data.id);
     if (!member) return { error: t("verein.profilLadenFehler") };
     const { data: newsData, error: newsError } = await supabase.from("news_posts")
@@ -15690,7 +15926,9 @@ export default function ClubMemberOrganisationApp() {
         signedUrl = signedImage?.signedUrl;
       }
       return {
-        id: post.id, who: post.author_name || t("verein.vereinLabel"), init: initialsOf(post.author_name || t("verein.vereinLabel")), color: C.ink,
+        /* Ohne Verfasser mit dem Namen 'Verein' (Willkommensbeitrag, geloeschtes
+           Konto - 20260914110500): in der Sprache der App anzeigen. */
+        id: post.id, who: (!post.author_id && post.author_name === "Verein") ? t("verein.vereinLabel") : (post.author_name || t("verein.vereinLabel")), init: initialsOf(post.author_name || t("verein.vereinLabel")), color: C.ink,
         title: post.title, text: post.body, imageUrl: signedUrl, imagePath: post.image_path,
         time: new Date(post.created_at).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "2-digit" }),
         erstelltVon: post.author_id || null, erstelltAm: post.created_at || null,
@@ -15912,6 +16150,7 @@ export default function ClubMemberOrganisationApp() {
        gar nichts herauskommt, greifen die Sonderfaelle weiter unten (Verein aus
        der Registrierung, noch nicht bestaetigte Aufnahme). */
     await geraetAnmelden(data.user.id);
+    await spracheAbgleichen(data.user.id);
 
     if (!selectedClubId) {
       const ergebnis = await nachDerAnmeldung(data.user.id);
@@ -16328,6 +16567,10 @@ export default function ClubMemberOrganisationApp() {
         password: draft.password,
         options: { ...(draft.captchaToken ? { captchaToken: draft.captchaToken } : {}), data: {
           full_name: draft.name,
+          /* Die beim ersten Start gewaehlte Sprache - handle_new_user traegt
+             sie in profiles.language ein, damit Push und Glocke von Anfang an
+             in dieser Sprache kommen (konto-3, 20260914110500). */
+          language: gespeicherteSprache() || null,
           /* Getrennt mitgeben, damit handle_new_user() sie direkt in
              profiles.first_name/last_name schreibt. Ohne das musste der
              Vorname aus dem vollen Namen geraten werden. */
@@ -16562,7 +16805,7 @@ export default function ClubMemberOrganisationApp() {
      stimmt: im Demo-Betrieb ohne Datenbank. */
   const resetDemoData = () => {
     if (supabase) return { error: t("sys.nichtsZurueckzusetzen") };
-    setCarpools({}); setSeasonVotes({}); setTippPredictions({}); setTippResults({});
+    setCarpools({}); setSeasonVotes({}); setSeasonStand({ gesamt: 0, je: {} }); setTippPredictions({}); setTippResults({});
     setEvents(EVENTS); setDutyPlan(INITIAL_DUTY_PLAN); setChannels(INITIAL_CHANNELS);
     return {};
   };
@@ -16855,7 +17098,7 @@ export default function ClubMemberOrganisationApp() {
                   naechste Reiterwechsel fuehrt aus dem Fehler heraus, weil der
                   Schluessel die Grenze zuruecksetzt. */}
               <Fehlergrenze key={`grenze-${tab}-${subView || ""}`}>
-                {subView === "season" && featureEnabled("season_award") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Athlet/in der Saison"><SeasonVoteView currentUser={currentUser} members={clubMembers} seasonVotes={seasonVotes} setSeasonVotes={setSeasonVotes} onVote={saisonStimmeAbgeben} onUnvote={saisonStimmeZuruecknehmen} /></LockedFeature>}
+                {subView === "season" && featureEnabled("season_award") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Athlet/in der Saison"><SeasonVoteView currentUser={currentUser} members={clubMembers} seasonVotes={seasonVotes} seasonStand={seasonStand} setSeasonVotes={setSeasonVotes} onVote={saisonStimmeAbgeben} onUnvote={saisonStimmeZuruecknehmen} /></LockedFeature>}
                 {/* Ergebnisse haengen am Abo wie die anderen Kacheln, nicht am
                     Tippspiel-Schalter. Alle Termine statt der sichtbaren:
                     Fans sehen jede Mannschaft (Trainings laesst die Ansicht
@@ -16868,7 +17111,7 @@ export default function ClubMemberOrganisationApp() {
                 {subView === "vehicles" && featureEnabled("vehicle_booking") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Vereinsfahrzeuge"><VehiclesView currentUser={currentUser} currentClub={currentClub} /></LockedFeature>}
 
                 {!subView && tab === "home" && (
-                  <Dashboard user={currentUser} onFavoritMannschaft={setzeFavoritMannschaft} members={clubMembers} events={sichtbareTermine} channels={channels} news={vereinsNews} dutyPlan={dutyPlan} seasonVotes={seasonVotes} tippPredictions={tippPredictions} tippResults={tippResults} polls={polls} setPolls={setPolls} onVote={stimmeAbgeben} onUnvote={stimmeZuruecknehmen}
+                  <Dashboard user={currentUser} onFavoritMannschaft={setzeFavoritMannschaft} members={clubMembers} events={sichtbareTermine} channels={channels} news={vereinsNews} dutyPlan={dutyPlan} seasonVotes={seasonVotes} seasonStand={seasonStand} tippPredictions={tippPredictions} tippResults={tippResults} polls={polls} setPolls={setPolls} onVote={stimmeAbgeben} onUnvote={stimmeZuruecknehmen}
                     umfrageFokus={umfrageFokus} onUmfrageFokusErledigt={() => setUmfrageFokus(null)}
                     newsFokus={newsFokus} onNewsFokusErledigt={newsFokusErledigt}
                     werbeplaetze={werbeplaetze} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick}
@@ -16897,7 +17140,7 @@ export default function ClubMemberOrganisationApp() {
                 {!subView && tab === "admin" && (currentUserIsAdmin || currentUserCanEditSponsors || canManageDuty(currentUser)) && (
                   <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Verwaltung">
                   <AdminView bereichWunsch={verwaltungsBereich} onBereichUebernommen={() => setVerwaltungsBereich(null)}
-                    goHelferEinteilen={() => goSupport("einteilen")} members={clubMembers} setMembers={setMembers} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} seasonVotes={seasonVotes}
+                    goHelferEinteilen={() => goSupport("einteilen")} members={clubMembers} setMembers={setMembers} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} seasonVotes={seasonVotes} seasonStand={seasonStand}
                     currentUser={currentUser} channels={channels} setChannels={setChannels} maintenanceMode={maintenanceMode} setMaintenanceMode={setMaintenanceMode} onResetDemo={resetDemoData}
                     protocols={protocols} setProtocols={setProtocols}
                     welcomeAutomation={welcomeAutomation} setWelcomeAutomation={setWelcomeAutomation}

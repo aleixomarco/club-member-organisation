@@ -74,11 +74,15 @@ begin
      where pr.event_id = new.event_id and m.status = 'active'
   loop
     v_sprache := public.sprache_der_mitgliedschaft(v_tipper.id);
+    /* Mit Sprungziel (U8): warteschlange_in_glocke uebernimmt ziel_art und
+       ziel_id aus p_data. Die App oeffnet damit das Tippspiel, ohne Abo den
+       Termin. */
     perform public.notify_uebersetzt(v_tipper.id, 'tipp',
       'tipp.titel', 'tipp.text',
       jsonb_build_object(
         'titel', coalesce(v_event.title, public.meldungstext('allg.begegnung', v_sprache)),
-        'heim', v_werte -> 'heim', 'auswaerts', v_werte -> 'auswaerts'));
+        'heim', v_werte -> 'heim', 'auswaerts', v_werte -> 'auswaerts'),
+      jsonb_build_object('ziel_art', 'termin', 'ziel_id', new.event_id));
   end loop;
 
   if v_mannschaft is null or (v_werte ->> 'ort') is null then return new; end if;

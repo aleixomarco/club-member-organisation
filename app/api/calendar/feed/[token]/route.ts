@@ -92,6 +92,9 @@ export async function GET(_request: Request, context: { params: Promise<{ token:
   const { data: familyLinks } = await lies("Familienverbindungen konnten nicht gelesen werden", () => admin.from("family_links")
     .select("first_membership_id,second_membership_id,first_to_second,second_to_first")
     .eq("club_id", subscription.club_id)
+    /* Nur bestaetigte Verknuepfungen bringen Termine eines Kindes in den
+       Kalender (B2, 20260914110200). Eine offene Anfrage gibt keinen Zugriff. */
+    .eq("bestaetigt", true)
     .or(`first_membership_id.eq.${membership.id},second_membership_id.eq.${membership.id}`));
   const relatedChildren = (familyLinks || []).flatMap((link) => {
     if (link.first_membership_id === membership.id && link.first_to_second === "eltern") return [link.second_membership_id];

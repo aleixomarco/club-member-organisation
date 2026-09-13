@@ -147,15 +147,20 @@ export async function DELETE(request: Request) {
       const { data: leitung } = await admin.from("club_memberships")
         .select("id,membership_roles(role)").in("club_id", ziele).eq("status", "active");
       const empfaenger = (leitung || [])
-        .filter((m) => (m.membership_roles || []).some((r: { role: string }) => ["vereinsadmin", "sysadmin"].includes(r.role)))
+        .filter((m) => (m.membership_roles || []).some((r: { role: string }) => ["vereinsadmin", "sysadmin", "organisator"].includes(r.role)))
         .map((m) => m.id);
-      if (empfaenger.length) {
-        await admin.rpc("notify_many", {
-          target_memberships: empfaenger, p_notif_type: "membership",
-          p_title: "Konto gelöscht",
-          p_body: `${eigenerName || "Ein Mitglied"} hat das eigene Konto dauerhaft gelöscht.`,
-        });
-      }
+      /* In der Sprache jedes Empfaengers (konto-3). Vorher ging ein deutscher
+         Freitext ueber notify_many hinaus - wer die App auf Tuerkisch nutzt,
+         las "Konto geloescht". Die Texte stehen in meldungstexte
+         (20260914110500); notify_uebersetzt ist nur fuer service_role. */
+      await Promise.all(empfaenger.map((ziel) => admin.rpc("notify_uebersetzt", {
+        target_membership: ziel,
+        p_notif_type: "membership",
+        p_titel_schluessel: "konto.geloescht.titel",
+        p_text_schluessel: eigenerName ? "konto.geloescht.text" : "konto.geloescht.textOhneName",
+        p_werte: eigenerName ? { wer: eigenerName } : {},
+        p_data: {},
+      })));
     }
   } catch {
     // Benachrichtigung ist nicht kritisch für die Löschung selbst.
