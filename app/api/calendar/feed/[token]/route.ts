@@ -34,6 +34,15 @@ function icsDate(value: string) {
 
 export async function GET(_request: Request, context: { params: Promise<{ token: string }> }) {
   const { token } = await context.params;
+  /* Der Token ist in der Datenbank eine UUID. Alles andere - ein abgeschnittener
+     Link, ein Bot, der Adressen durchprobiert - liess Postgres mit 22P02
+     ("invalid input syntax for type uuid") scheitern, und das endete als 500
+     mit Fehlerzeile im Protokoll. Fuer den Aufrufer ist es aber schlicht eine
+     unbekannte Kalenderverbindung: dieselbe 404 wie ein gueltiger, aber
+     unbekannter Token, und ohne Datenbankabfrage. */
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(token)) {
+    return NextResponse.json({ error: "Kalenderverbindung nicht gefunden" }, { status: 404 });
+  }
   let admin: ReturnType<typeof getSupabaseAdmin>;
   try {
     admin = getSupabaseAdmin();
