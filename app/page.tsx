@@ -22,7 +22,7 @@ import { legal } from "./legal-shell";
 import { CLUB_TIER_INFO } from "@/lib/preise";
 import { standardMannschaft, auswahlReihenfolge, hoechsteMannschaft, nachRangSortiert } from "@/lib/mannschaftsrang";
 import { memberPlayerTeams, memberTrainerTeams, memberCaptainTeams, memberManagedTeams, memberAllTeams, memberInTeam, hoechstesTeam } from "@/lib/mannschaften";
-import { spielOrt, tippPunkte, ergebnisFehlerSchluessel } from "@/lib/ergebnis";
+import { spielOrt, seitenFuer, stand, ausgang, ergebnisGueltig, darfErgebnisEintragen, ergebnisseJeMannschaft, tippPunkte, ergebnisFehlerSchluessel } from "@/lib/ergebnis";
 
 /* ------------------------------------------------------------------ */
 /* Tokens                                                              */
@@ -1626,12 +1626,12 @@ function seasonResults(seasonVotes, kandidaten = []) {
    heim oder auswaerts gespielt wird. Gezeigt und eingegeben wird seit dem
    13.09.2026 Heim : Gast. Umgerechnet wird ausschliesslich in lib/ergebnis.mjs
    - dafuer tragen die Begegnungen den Ort (ort: 'heim' | 'auswaerts' | null)
-   und den Gegner mit. heim bleibt nur fuer die Unterzeile "Heimspiel" /
-   "Auswaertsspiel" in der Ergebnisverwaltung. */
+   und den Gegner mit. Das fruehere heim (true auch ohne Angabe am Termin)
+   ist entfallen - ein Termin ohne Ort ist kein Heimspiel. */
 const tippBegegnungen = (events) => (events || [])
   .filter((e) => e.type === "spiel" && e.date && !e.cancelled)
   .sort((a, b) => new Date(a.date) - new Date(b.date))
-  .map((e) => ({ id: e.id, titel: e.title, team: e.team, heim: e.home !== false, ort: spielOrt(e), gegner: e.opponent || "", date: e.date }));
+  .map((e) => ({ id: e.id, titel: e.title, team: e.team, ort: spielOrt(e), gegner: e.opponent || "", date: e.date }));
 
 /* Beide Seiten in gespeicherter Form wir : Gegner - nie umgerechnet. */
 function predictionPoints(prediction, result) {
@@ -10313,6 +10313,14 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
   /* Fehler je Spiel, direkt unter der Karte - nicht als Leiste oben, wo man
      nicht mehr weiss, welcher Tipp gemeint war. */
   const [tippFehler, setTippFehler] = useState({});
+  /* Welches Spiel gerade speichert - solange sind seine Knoepfe gesperrt.
+     Vorher liess sich waehrenddessen ein zweites Mal druecken. */
+  const [tippSpeichert, setTippSpeichert] = useState({});
+  /* Der Tipp, dessen Loeschen gerade gefragt wird (Spiel-ID), sonst null. */
+  const [loeschFrage, setLoeschFrage] = useState(null);
+  /* Entwuerfe stehen in gespeicherter Form wir : Gegner. Die Felder binden
+     ueber seitenFuer(ort).links/rechts.schluessel direkt an home/away -
+     angezeigt wird Heim : Gast, umgerechnet wird dabei nichts. */
   const entwurfVon = (matchId) => entwuerfe[matchId] ?? mine[matchId] ?? { home: "", away: "" };
   const setPred = (matchId, side, val) =>
     setEntwuerfe((e) => ({ ...e, [matchId]: { ...entwurfVon(matchId), [side]: val } }));
@@ -10324,7 +10332,9 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
     const d = entwurfVon(matchId);
     if (d.home === "" || d.away === "") return;
     setTippFehler((f) => ({ ...f, [matchId]: "" }));
+    setTippSpeichert((s) => ({ ...s, [matchId]: true }));
     const { error } = (await onTippSpeichern?.(matchId, d.home, d.away)) || {};
+    setTippSpeichert((s) => ({ ...s, [matchId]: false }));
     if (error) { setTippFehler((f) => ({ ...f, [matchId]: t("tipp.nichtGespeichert") })); return; }
     setTippPredictions((tp) => ({ ...tp, [currentUser.id]: { ...(tp[currentUser.id] || {}), [matchId]: d } }));
     setEntwuerfe((e) => { const n = { ...e }; delete n[matchId]; return n; });
@@ -10334,7 +10344,9 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
      Tipp abgeben, das Spiel schauen und ihn bei schlechtem Verlauf loeschen. */
   const tippLoeschen = async (matchId) => {
     setTippFehler((f) => ({ ...f, [matchId]: "" }));
+    setTippSpeichert((s) => ({ ...s, [matchId]: true }));
     const { error } = (await onTippSpeichern?.(matchId, "", "")) || {};
+    setTippSpeichert((s) => ({ ...s, [matchId]: false }));
     if (error) { setTippFehler((f) => ({ ...f, [matchId]: t("tipp.nichtGespeichert") })); return; }
     setTippPredictions((tp) => {
       const meine = { ...(tp[currentUser.id] || {}) };
@@ -10459,11 +10471,19 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
         const entwurfVollstaendig = feld.home !== "" && feld.away !== "";
         const hatAenderung = String(feld.home) !== String(pred.home) || String(feld.away) !== String(pred.away);
         const earned = predictionPoints(pred, result);
+        /* Links Heim, rechts Gast - wie auf jeder Anzeigetafel. Bei einem
+           Auswaertsspiel steht der Gegner also links, und das linke Feld
+           schreibt in away (seine Tore). Tipp und Ergebnis bleiben dabei in
+           gespeicherter Form; predictionPoints oben rechnet nicht um. */
+        const ort = match.ort;
+        const s = seitenFuer(ort, { wir: match.team || t("ev.wir"), gegner: match.gegner || t("feld.gegner") });
+        const speichert = !!tippSpeichert[match.id];
+        const kannAbgeben = entwurfVollstaendig && hatAenderung && !speichert;
         return (
           <div key={match.id} className="rounded-2xl p-4 mb-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
             <div className="flex items-center justify-between mb-3">
               <div><div className="text-sm font-bold" style={{ color: C.ink, fontFamily: "Inter" }}>{match.titel}</div><div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{formatDate(match.date)} · {formatTime(match.date)}{match.team ? ` · ${match.team}` : ""}</div></div>
-              {result ? <Pill bg={C.secondary}>Endstand {result.home}:{result.away} · +{earned} P</Pill> : locked ? <Pill bg={C.textDim}>{t("tipp.wartet")}</Pill> : null}
+              {result ? <Pill bg={C.secondary}>{mitWerten(t("tipp.endstand"), { stand: stand(result, ort), punkte: earned })}</Pill> : locked ? <Pill bg={C.textDim}>{t("tipp.wartet")}</Pill> : null}
             </div>
             {/* Wer nur zuschaut, sieht die Begegnung - aber keine Felder.
                 Ein deaktiviertes Eingabefeld waere die schlechtere Loesung: Es
@@ -10471,33 +10491,42 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
                 warum nicht. */}
             {!aktuelleRunde.ich_dabei ? (
               <div className="flex items-center justify-center gap-3">
-                <span className="text-sm flex-1 text-right" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{t("ev.wir")}</span>
+                <Seitenname rolle={s.links.rolle} name={s.links.name} />
                 <span className="px-3 py-1.5 rounded-lg text-sm" style={{ background: C.paperDim, color: C.textDim, fontFamily: "JetBrains Mono", fontWeight: 700 }}>
-                  {result ? `${result.home}:${result.away}` : "–:–"}
+                  {result ? stand(result, ort) : "–:–"}
                 </span>
-                <span className="text-sm flex-1" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{t("feld.gegner")}</span>
+                <Seitenname rolle={s.rechts.rolle} name={s.rechts.name} rechts />
               </div>
             ) : (
             <div className="flex items-center justify-center gap-3">
-              <span className="text-sm flex-1 text-right" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{t("ev.wir")}</span>
-              <input type="number" min="0" disabled={locked} aria-label={t("aria.unsereToreTippen")} value={feld.home} onChange={(e) => setPred(match.id, "home", e.target.value)}
+              <Seitenname rolle={s.links.rolle} name={s.links.name} />
+              <input type="number" inputMode="numeric" min="0" max="99" disabled={locked || speichert}
+                aria-label={s.ortBekannt ? mitWerten(t("aria.toreHeimTippen"), { team: s.links.name }) : t("aria.unsereToreTippen")}
+                value={feld[s.links.schluessel]} onChange={(e) => setPred(match.id, s.links.schluessel, e.target.value)}
                 className="w-12 text-center py-1.5 rounded-lg text-sm outline-none" style={{ background: C.paperDim, fontFamily: "JetBrains Mono", fontWeight: 700 }} />
               <span style={{ color: C.textDim }}>:</span>
-              <input type="number" min="0" disabled={locked} aria-label={t("aria.gegnerToreTippen")} value={feld.away} onChange={(e) => setPred(match.id, "away", e.target.value)}
+              <input type="number" inputMode="numeric" min="0" max="99" disabled={locked || speichert}
+                aria-label={s.ortBekannt ? mitWerten(t("aria.toreGastTippen"), { team: s.rechts.name }) : t("aria.gegnerToreTippen")}
+                value={feld[s.rechts.schluessel]} onChange={(e) => setPred(match.id, s.rechts.schluessel, e.target.value)}
                 className="w-12 text-center py-1.5 rounded-lg text-sm outline-none" style={{ background: C.paperDim, fontFamily: "JetBrains Mono", fontWeight: 700 }} />
-              <span className="text-sm flex-1" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{t("feld.gegner")}</span>
+              <Seitenname rolle={s.rechts.rolle} name={s.rechts.name} rechts />
             </div>
+            )}
+            {/* Ohne Ort am Termin waere "Heim" geraten - dann bleibt es bei
+                Wir : Gegner, und hier steht, warum. */}
+            {!s.ortBekannt && (
+              <div className="mt-2 text-[11px] text-center" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("erg.ortUnbekannt")}</div>
             )}
             {aktuelleRunde.ich_dabei && !locked && (
               <div className="mt-3 flex gap-2">
-                <button onClick={() => tippAbgeben(match.id)} disabled={!entwurfVollstaendig || !hatAenderung}
+                <button onClick={() => tippAbgeben(match.id)} disabled={!kannAbgeben}
                   className="flex-1 py-2 rounded-lg text-xs font-bold"
-                  style={{ background: entwurfVollstaendig && hatAenderung ? C.ink : C.paperDim,
-                           color: entwurfVollstaendig && hatAenderung ? C.white : C.textDim }}>
-                  {abgegeben ? t("tipp.tippAendern") : t("tipp.abgeben")}
+                  style={{ background: kannAbgeben ? C.ink : C.paperDim,
+                           color: kannAbgeben ? C.white : C.textDim }}>
+                  {speichert ? t("allg.wirdGespeichert") : abgegeben ? t("tipp.tippAendern") : t("tipp.abgeben")}
                 </button>
                 {abgegeben && (
-                  <button onClick={() => { if (window.confirm(`Deinen Tipp ${pred.home}:${pred.away} für "${match.titel}" löschen?`)) tippLoeschen(match.id); }}
+                  <button onClick={() => setLoeschFrage(match.id)} disabled={speichert}
                     className="px-3 py-2 rounded-lg text-xs font-bold"
                     style={{ background: C.fehlerFlaeche, color: C.fehler }}>
                     {t("allg.loeschen")}
@@ -10513,7 +10542,7 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
             <Erstellt von={result?.erstelltVon} am={result?.erstelltAm} />
             {aktuelleRunde.ich_dabei && abgegeben && !hatAenderung && !locked && (
               <div className="mt-2 text-[11px]" style={{ color: C.erfolg, fontFamily: "Inter", fontWeight: 600 }}>
-                {mitWerten(t("tipp.abgegebenHinweis"), { tipp: `${pred.home}:${pred.away}` })}
+                {mitWerten(t("tipp.abgegebenHinweis"), { tipp: stand(pred, ort) })}
               </div>
             )}
           </div>
@@ -10521,6 +10550,19 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
       })}
 
       </>)}
+
+      {/* Tipp loeschen: dieselbe Ja/Nein-Frage wie beim Verlassen der Runde,
+          nicht mehr window.confirm mit festem deutschem Text. */}
+      {loeschFrage && (() => {
+        const match = begegnungen.find((m) => m.id === loeschFrage);
+        const pred = mine[loeschFrage];
+        if (!match || !pred) return null;
+        return (
+          <JaNeinFrage frage={mitWerten(t("tipp.loeschenFrage"), { tipp: stand(pred, match.ort), titel: match.titel })}
+            onJa={() => { setLoeschFrage(null); tippLoeschen(match.id); }}
+            onNein={() => setLoeschFrage(null)} />
+        );
+      })()}
 
       {/* Eigener Dialog statt window.confirm.
        *
@@ -11930,9 +11972,16 @@ function PollManagerPanel({ polls, setPolls, clubId, onAnlegen, onUmschalten }) 
   return <div className="space-y-4"><div className="rounded-2xl p-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">{t("umf.neu")}</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>{t("umf.mindestens")}</div><input value={title} onChange={(e)=>setTitle(e.target.value)} placeholder={t("ph.frageTitel")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim}}/>{options.map((o,i)=><input key={i} value={o} onChange={(e)=>setOptions((all)=>all.map((x,idx)=>idx===i?e.target.value:x))} placeholder={`Antwort ${i+1}`} className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2" style={{background:C.paperDim}}/>)}<div className="flex gap-2"><button onClick={()=>setOptions((o)=>[...o,""])} className="px-3 py-2 rounded-lg text-xs font-bold" style={{background:C.paperDim,color:C.ink}}>＋ Antwort</button><button onClick={create} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{background: C.red, color: C.aufPrimaer}}>{t("allg.veroeffentlichen")}</button></div>{fehler&&<div role="status" className="text-[11px] rounded-xl px-3 py-2 mt-2" style={{background:C.fehlerFlaeche,color:C.fehler}}>{fehler}</div>}</div><div className="space-y-2">{polls.map((poll)=><div key={poll.id} className="rounded-xl p-3 flex items-center gap-3" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="flex-1"><div className="text-xs font-bold">{poll.title}</div><div className="text-[10px] mt-1" style={{color:C.textDim}}>{poll.options.length} Antworten · {poll.options.reduce((n,o)=>n+o.votes,0)} Stimmen</div></div><button onClick={()=>{onUmschalten?.(poll.id,!poll.active);setPolls((ps)=>ps.map((p)=>p.id===poll.id?{...p,active:!p.active}:p));}} className="px-2.5 py-1.5 rounded-full text-[10px] font-bold" style={{background:poll.active?C.erfolgFlaeche:C.paperDim,color:poll.active?C.secondary:C.textDim}}>{poll.active?t("status.aktiv"):t("status.inaktiv")}</button></div>)}</div></div>;
 }
 
-function MatchResultsPanel({ results, onSave, onDelete, events, currentClub }) {
+function MatchResultsPanel({ results, onSave, onDelete, events, currentClub, zeigeRunden = false, mitPunkten = true }) {
   const t = useT();
-  const alleBegegnungen = tippBegegnungen(events);
+  /* Nur Spiele, die schon begonnen haben - das neueste zuerst.
+     tippBegegnungen kennt keinen Datumsfilter, und seit der Migration
+     20260914100000 lehnt die Datenbank ein Ergebnis fuer ein Spiel in der
+     Zukunft ohnehin ab. Vorher stand die ganze Saison aufsteigend da: Das
+     Spiel vom Wochenende, um das es eigentlich ging, stand ganz unten, hinter
+     allen, die noch gar nicht gespielt waren. */
+  const jetzt = new Date();
+  const alleBegegnungen = tippBegegnungen(events).filter((m) => new Date(m.date) <= jetzt).reverse();
   /* Nach Mannschaft gliedern. Vorher standen alle Spiele des Vereins in einer
      einzigen Liste - bei fuenf Mannschaften und einer vollen Saison sind das
      hundert Karten hintereinander, und wer das Ergebnis der U15 eintragen
@@ -11942,39 +11991,20 @@ function MatchResultsPanel({ results, onSave, onDelete, events, currentClub }) {
   const [gewaehlt, setGewaehlt] = useState("");
   const mannschaft = gewaehlt || mannschaften[0] || "";
   const begegnungen = alleBegegnungen.filter((m) => m.team === mannschaft);
-  const [drafts, setDrafts] = useState({});
-  const [savedId, setSavedId] = useState(null);
-  const [fehler, setFehler] = useState({});
-  const update = (matchId, side, value) => setDrafts((current) => ({
-    ...current,
-    [matchId]: { home: current[matchId]?.home ?? "", away: current[matchId]?.away ?? "", [side]: value },
-  }));
-  /* "Punkte berechnet" erst, wenn die Datenbank das Ergebnis angenommen hat. */
-  const save = async (match) => {
-    const draft = drafts[match.id] || results[match.id];
-    if (!draft || draft.home === "" || draft.away === "") return;
-    setFehler((f) => ({ ...f, [match.id]: "" }));
-    const { fehler: meldung } = (await onSave(match.id, { home: Number(draft.home), away: Number(draft.away) })) || {};
-    if (meldung) { setFehler((f) => ({ ...f, [match.id]: meldung })); return; }
-    setSavedId(match.id);
-    setTimeout(() => setSavedId(null), 1800);
-  };
-  const entfernen = async (match) => {
-    setFehler((f) => ({ ...f, [match.id]: "" }));
-    const { fehler: meldung } = (await onDelete?.(match.id)) || {};
-    if (meldung) { setFehler((f) => ({ ...f, [match.id]: meldung })); return; }
-    setDrafts((c) => { const n = { ...c }; delete n[match.id]; return n; });
-  };
   return (
     <div>
       {/* Zuerst die Freigabe, dann die Ergebnisse - in dieser Reihenfolge
           arbeitet man auch: erst entscheiden, welche Mannschaft ein Tippspiel
-          bekommt, dann Woche fuer Woche die Endstaende eintragen. */}
-      <TippRundenPanel currentClub={currentClub} />
+          bekommt, dann Woche fuer Woche die Endstaende eintragen.
+          Die Freigabe bleibt bei Vereinsadmin und Sysadmin (tipprunde_setzen
+          prueft nur diese beiden) und erscheint nur, wenn der Verein das
+          Tippspiel nutzt. Ergebnisse eintragen darf seit dem 13.09.2026 auch
+          die Organisation - sie sieht diesen Bereich deshalb ohne Freigabe. */}
+      {zeigeRunden && <TippRundenPanel currentClub={currentClub} />}
 
-      <div className="rounded-2xl p-4 mb-4 mt-4" style={{ background: C.erfolgFlaeche, border: `1px solid ${C.erfolgRand}` }}>
+      <div className={`rounded-2xl p-4 mb-4 ${zeigeRunden ? "mt-4" : ""}`} style={{ background: C.erfolgFlaeche, border: `1px solid ${C.erfolgRand}` }}>
         <div className="text-sm font-bold mb-1" style={{ color: C.ink }}>{t("tipp.ergebnisse")}</div>
-        <div className="text-xs" style={{ color: C.textDim }}>Endstand nach dem Spiel eintragen. Das System wertet danach alle Tipps aus: exakt 3 Punkte, richtige Tendenz 1 Punkt.</div>
+        <div className="text-xs" style={{ color: C.textDim }}>{t("erg.eintragHinweis")}</div>
       </div>
       {mannschaften.length > 1 && (
         <label className="block mb-3">
@@ -11994,54 +12024,289 @@ function MatchResultsPanel({ results, onSave, onDelete, events, currentClub }) {
         </div>
       )}
       <div className="space-y-3">
-        {begegnungen.map((match) => {
-          const values = drafts[match.id] || results[match.id] || { home: "", away: "" };
-          return (
-            <div key={match.id} className="rounded-2xl p-4" style={{ background: C.glass, border: `1px solid ${results[match.id] ? C.erfolgRand : C.line}` }}>
-              <div className="flex items-center justify-between mb-3">
-                <div><div className="text-xs font-bold" style={{ color: C.ink }}>{match.titel}</div><span className="text-[11px]" style={{ color: C.textDim }}>{formatDate(match.date)} · {formatTime(match.date)} · {match.heim ? t("ev.heimspiel") : t("ev.auswaertsspiel")}</span></div>
-                {results[match.id] && <Pill bg={C.secondary}>ausgewertet</Pill>}
-              </div>
-              {/* Links stehen IMMER unsere Tore, rechts die des Gegners - unabhaengig
-                  davon, ob heim oder auswaerts gespielt wurde. So wird es eingetragen,
-                  und so bedeuten es auch die Spalten heim/auswaerts in event_results
-                  (deren Namen etwas anderes vermuten lassen; siehe den Kommentar an
-                  der Tabelle).
-                  Vorher stand hier {match.home} und {match.away}. Diese Eigenschaften
-                  gibt es auf dem Objekt gar nicht - tippBegegnungen liefert
-                  { id, titel, team, heim, date }. Beide Beschriftungen waren deshalb
-                  leer, und die Vorlesehilfe sagte "Tore undefined". Wer ein Ergebnis
-                  eintrug, sah zwei nackte Zahlenfelder und musste raten. */}
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-xs font-bold flex-1 text-right" style={{ color: C.ink }}>{t("ev.wir")}</span>
-                <input aria-label={t("label.unsereTore")} type="number" min="0" value={values.home} onChange={(event) => update(match.id, "home", event.target.value)} className="w-12 text-center py-2 rounded-lg outline-none" style={{ background: C.paperDim, fontFamily: "JetBrains Mono", fontWeight: 700 }} />
-                <span style={{ color: C.textDim }}>:</span>
-                <input aria-label={t("label.gegnerTore")} type="number" min="0" value={values.away} onChange={(event) => update(match.id, "away", event.target.value)} className="w-12 text-center py-2 rounded-lg outline-none" style={{ background: C.paperDim, fontFamily: "JetBrains Mono", fontWeight: 700 }} />
-                <span className="text-xs font-bold flex-1" style={{ color: C.textDim }}>{t("feld.gegner")}</span>
-              </div>
-              <button onClick={() => save(match)} className="w-full py-2 rounded-lg text-xs font-bold" style={{ background: savedId === match.id ? C.secondary : C.ink, color: C.white }}>
-                {savedId === match.id ? t("tipp.punkteBerechnet") : results[match.id] ? t("tipp.ergebnisKorrigieren") : t("tipp.ergebnisSpeichern")}
-              </button>
-              {/* Entfernen statt nur ueberschreiben: Ein Ergebnis am falschen
-                  Termin liess sich bisher nicht zuruecknehmen - man konnte nur
-                  eine andere Zahl hinschreiben. Die Tippspiel-Punkte zaehlten
-                  dann weiter fuer ein Spiel, das so nie ausging. */}
-              {results[match.id] && (
-                <button onClick={() => { if (window.confirm(`Ergebnis für "${match.titel}" entfernen? Die dafür vergebenen Tippspiel-Punkte verfallen.`)) entfernen(match); }}
-                  className="w-full py-2 rounded-lg text-xs font-bold mt-2"
-                  style={{ background: C.fehlerFlaeche, color: C.fehler }}>
-                  Ergebnis entfernen
-                </button>
-              )}
-              {fehler[match.id] && (
-                <div role="status" className="text-[11px] rounded-xl px-3 py-2 mt-2" style={{ background: C.fehlerFlaeche, color: C.fehler }}>
-                  {fehler[match.id]}
-                </div>
-              )}
+        {begegnungen.map((match) => (
+          <div key={match.id} className="rounded-2xl p-4" style={{ background: C.glass, border: `1px solid ${results[match.id] ? C.erfolgRand : C.line}` }}>
+            <div className="flex items-center justify-between mb-3">
+              {/* Heimspiel/Auswaertsspiel nur, wenn es am Termin steht. Vorher
+                  galt ein Termin ohne Angabe als Heimspiel. */}
+              <div><div className="text-xs font-bold" style={{ color: C.ink }}>{match.titel}</div><span className="text-[11px]" style={{ color: C.textDim }}>{formatDate(match.date)} · {formatTime(match.date)}{match.ort === "heim" ? ` · ${t("ev.heimspiel")}` : match.ort === "auswaerts" ? ` · ${t("ev.auswaertsspiel")}` : ""}</span></div>
+              {results[match.id] && <Pill bg={C.secondary}>{t("erg.ausgewertet")}</Pill>}
             </div>
-          );
-        })}
+            {/* Dieselbe Eingabe wie in der Ergebnisansicht: links Heim, rechts
+                Gast. Vorher standen hier "Wir" und "Gegner" - wer ein
+                Auswaertsspiel vom Spielbericht abschrieb (dort Heim : Gast),
+                trug es verdreht ein, und alle Tipps wurden falsch gewertet. */}
+            <ErgebnisEingabe key={match.id} spiel={match} ergebnis={results[match.id]} mitPunkten={mitPunkten}
+              onSpeichern={(wg) => onSave(match.id, wg)} onEntfernen={() => onDelete?.(match.id)} />
+          </div>
+        ))}
       </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Spielergebnisse: Eingabe und Ansicht                                 */
+/* ------------------------------------------------------------------ */
+/* Eine Seite einer Begegnung: klein die Rolle (Heim/Gast - ohne Ort am
+   Termin Wir/Gegner), darunter der Name. Die linke Seite steht
+   rechtsbuendig, die rechte linksbuendig - beide zur Mitte, zum Stand hin.
+   Heisst der Name wie die Rolle ("Gegner", wenn kein Gegner eingetragen ist),
+   bleibt die kleine Zeile unsichtbar, haelt aber die Hoehe - sonst stuende
+   eine Seite hoeher als die andere. */
+function Seitenname({ rolle, name, rechts = false }) {
+  const t = useT();
+  const beschriftung = { heim: t("ev.heim"), gast: t("erg.gast"), wir: t("ev.wir"), gegner: t("feld.gegner") }[rolle] || "";
+  const doppelt = !beschriftung || beschriftung === name;
+  return (
+    <div className={`flex-1 min-w-0 ${rechts ? "text-left" : "text-right"}`} style={{ fontFamily: "Inter" }}>
+      <div className="text-[10px] font-bold uppercase tracking-wide" style={{ color: C.textDim, visibility: doppelt ? "hidden" : "visible" }}>{beschriftung || "–"}</div>
+      <div className="text-sm truncate" style={{ fontWeight: 700, color: C.ink }}>{name}</div>
+    </div>
+  );
+}
+
+/* Ja/Nein-Frage im eigenen Dialog statt window.confirm - dessen Knoepfe
+   heissen auf iOS "OK" und "Abbrechen" und lassen sich nicht beschriften
+   (siehe den Dialog zum Verlassen der Tipprunde in TippView).
+   fixed statt absolute: Die Frage kommt aus langen Listen. absolute haette
+   sie in die Mitte des ganzen Inhalts gesetzt - weit weg von der Stelle, an
+   der man gerade steht. */
+function JaNeinFrage({ titel = "", frage, onJa, onNein }) {
+  const t = useT();
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(20,21,26,.72)" }} onClick={onNein}>
+      <div role="dialog" aria-modal="true" className="w-full max-w-sm rounded-3xl p-5"
+        style={{ background: C.blatt, boxShadow: "0 -14px 38px rgba(20,21,26,.30)", border: `1px solid ${C.edge}` }}
+        onClick={(e) => e.stopPropagation()}>
+        {titel && <div className="text-base font-bold mb-2" style={{ color: C.ink, fontFamily: "Oswald" }}>{titel}</div>}
+        <div className="text-xs mb-4" style={{ color: C.textDim, lineHeight: 1.6 }}>{frage}</div>
+        <div className="flex gap-2">
+          <button onClick={onJa} className="flex-1 py-2.5 rounded-xl text-xs font-bold"
+            style={{ background: C.fehler, color: C.white }}>
+            {t("allg.ja")}
+          </button>
+          <button onClick={onNein} className="flex-1 py-2.5 rounded-xl text-xs font-bold"
+            style={{ background: C.glass, color: C.ink, border: `1px solid ${C.line}` }}>
+            {t("allg.nein")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* Einen Endstand eintragen, korrigieren oder entfernen - dieselbe Eingabe in
+   der Verwaltung (MatchResultsPanel) und in der Ergebnisansicht.
+   spiel ist ein Termin aus dem Lader oder eine Begegnung aus
+   tippBegegnungen; spielOrt liest beide. Der Entwurf steht in gespeicherter
+   Form wir : Gegner, die Felder binden ueber seitenFuer an home/away - wie
+   im Tippspiel. Angezeigt wird Heim : Gast, umgerechnet wird nichts.
+   onSpeichern(wg) und onEntfernen() liefern {} oder { fehler: Text } - erst
+   dann aendert sich hier etwas.
+   mitPunkten = false, wenn der Verein das Tippspiel nicht nutzt: Dann heisst
+   der Knopf nur "Speichern", und niemand liest "Punkte wurden berechnet". */
+function ErgebnisEingabe({ spiel, ergebnis, onSpeichern, onEntfernen, mitPunkten = true }) {
+  const t = useT();
+  const ort = spielOrt(spiel);
+  const titel = spiel?.titel || spiel?.title || "";
+  const s = seitenFuer(ort, { wir: spiel?.team || t("ev.wir"), gegner: spiel?.gegner || spiel?.opponent || t("feld.gegner") });
+  const [entwurf, setEntwurf] = useState(ergebnis ? { home: ergebnis.home, away: ergebnis.away } : { home: "", away: "" });
+  const [speichert, setSpeichert] = useState(false);
+  const [gespeichert, setGespeichert] = useState(false);
+  const [fehler, setFehler] = useState("");
+  const [frage, setFrage] = useState(false);
+  const setzen = (schluessel, wert) => { setEntwurf((e) => ({ ...e, [schluessel]: wert })); setGespeichert(false); };
+  /* Ohne Ort am Termin nimmt die Datenbank kein Ergebnis an
+     (erg.fehler.ortFehlt) - dann gar nicht erst anbieten. */
+  const kannSpeichern = !!ort && ergebnisGueltig(entwurf) && !speichert;
+
+  const speichern = async () => {
+    if (!kannSpeichern) return;
+    setFehler("");
+    setSpeichert(true);
+    const { fehler: meldung } = (await onSpeichern?.({ home: Number(entwurf.home), away: Number(entwurf.away) })) || {};
+    setSpeichert(false);
+    if (meldung) { setFehler(meldung); return; }
+    setGespeichert(true);
+    setTimeout(() => setGespeichert(false), 1800);
+  };
+  /* Entfernen statt nur ueberschreiben: Ein Ergebnis am falschen Termin
+     liess sich frueher nicht zuruecknehmen - man konnte nur eine andere Zahl
+     hinschreiben, und die Tippspiel-Punkte zaehlten weiter fuer ein Spiel,
+     das so nie ausging. */
+  const entfernen = async () => {
+    setFrage(false);
+    setFehler("");
+    setSpeichert(true);
+    const { fehler: meldung } = (await onEntfernen?.()) || {};
+    setSpeichert(false);
+    if (meldung) { setFehler(meldung); return; }
+    setEntwurf({ home: "", away: "" });
+  };
+
+  const feldStil = { background: C.paperDim, fontFamily: "JetBrains Mono", fontWeight: 700, opacity: ort ? 1 : 0.5 };
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-3">
+        <Seitenname rolle={s.links.rolle} name={s.links.name} />
+        <input type="number" inputMode="numeric" min="0" max="99" disabled={!ort || speichert}
+          aria-label={s.ortBekannt ? mitWerten(t("aria.toreHeim"), { team: s.links.name }) : t("label.unsereTore")}
+          value={entwurf[s.links.schluessel] ?? ""} onChange={(e) => setzen(s.links.schluessel, e.target.value)}
+          className="w-12 text-center py-2 rounded-lg outline-none" style={feldStil} />
+        <span style={{ color: C.textDim }}>:</span>
+        <input type="number" inputMode="numeric" min="0" max="99" disabled={!ort || speichert}
+          aria-label={s.ortBekannt ? mitWerten(t("aria.toreGast"), { team: s.rechts.name }) : t("label.gegnerTore")}
+          value={entwurf[s.rechts.schluessel] ?? ""} onChange={(e) => setzen(s.rechts.schluessel, e.target.value)}
+          className="w-12 text-center py-2 rounded-lg outline-none" style={feldStil} />
+        <Seitenname rolle={s.rechts.rolle} name={s.rechts.name} rechts />
+      </div>
+      {!ort && <div className="text-[11px] mb-2 text-center" style={{ color: C.textDim }}>{t("erg.ortUnbekannt")}</div>}
+      <button onClick={speichern} disabled={!kannSpeichern} className="w-full py-2 rounded-lg text-xs font-bold"
+        style={{ background: gespeichert ? C.secondary : kannSpeichern ? C.ink : C.paperDim,
+                 color: gespeichert ? C.aufSekundaer : kannSpeichern ? C.white : C.textDim }}>
+        {speichert ? t("allg.wirdGespeichert")
+          : gespeichert ? (mitPunkten ? t("tipp.punkteBerechnet") : t("erg.gespeichert"))
+          : !mitPunkten ? t("allg.speichern")
+          : ergebnis ? t("tipp.ergebnisKorrigieren") : t("tipp.ergebnisSpeichern")}
+      </button>
+      {ergebnis && onEntfernen && (
+        <button onClick={() => setFrage(true)} disabled={speichert}
+          className="w-full py-2 rounded-lg text-xs font-bold mt-2"
+          style={{ background: C.fehlerFlaeche, color: C.fehler }}>
+          {t("erg.entfernen")}
+        </button>
+      )}
+      {fehler && (
+        <div role="status" className="text-[11px] rounded-xl px-3 py-2 mt-2" style={{ background: C.fehlerFlaeche, color: C.fehler }}>
+          {fehler}
+        </div>
+      )}
+      {frage && <JaNeinFrage frage={mitWerten(t("erg.entfernenFrage"), { titel })} onJa={entfernen} onNein={() => setFrage(false)} />}
+    </div>
+  );
+}
+
+/* Ergebnisse aller Mannschaften - Endstaende immer Heim : Gast.
+   Je Mannschaft ein Abschnitt mit den letzten fuenf Spielen, auf Wunsch
+   alle; die Lieblingsmannschaft steht vorn (ergebnisseJeMannschaft).
+   Fans sehen jede Mannschaft - der Aufrufer reicht alle Termine, nicht nur
+   die sichtbaren. Begonnene Spiele ohne Ergebnis stehen mit "Wartet auf
+   Ergebnis" da, abgesagte und kuenftige gar nicht.
+   Wer fuer ein Spiel eintragen darf (darfErgebnisEintragen - dieselben
+   Regeln wie in der Datenbank), bekommt darunter den Knopf.
+   fokusId kommt von aussen (Meldung "Ergebnis fehlt"): Die Zeile wird
+   angesprungen und, wenn man darf, die Eingabe geoeffnet. */
+const ERGEBNISSE_KURZ = 5;
+
+function ErgebnisseView({ events, results, currentUser, favorit, fokusId, onFokusErledigt, onSpeichern, onEntfernen, mitPunkten = true }) {
+  const t = useT();
+  const gruppen = ergebnisseJeMannschaft(events, results, { jetzt: new Date(), favorit });
+  const [ausgeklappt, setAusgeklappt] = useState({});
+  const [offen, setOffen] = useState(null);
+  const zeilen = useRef({});
+  /* Ohne Datenbank (Demo) stehen die Mannschaftsrollen oft nur am Mitglied
+     - dann gelten die Rueckfaelle aus mannschaften.mjs. */
+  const darf = (ev) => darfErgebnisEintragen(currentUser, ev, { streng: !!supabase });
+
+  /* Den Fokus im selben Rendern uebernehmen (aufklappen, Eingabe oeffnen) -
+     nicht per setState in einem Effekt, das rendert zweimal. Der Effekt
+     darunter scrollt nur noch hin und verbraucht den Wunsch. */
+  const [fokusGesehen, setFokusGesehen] = useState(null);
+  if (fokusId !== fokusGesehen) {
+    setFokusGesehen(fokusId);
+    for (const gruppe of fokusId ? gruppen : []) {
+      const index = gruppe.spiele.findIndex((sp) => sp.ev.id === fokusId);
+      if (index < 0) continue;
+      if (index >= ERGEBNISSE_KURZ) setAusgeklappt((a) => ({ ...a, [gruppe.team || ""]: true }));
+      if (darf(gruppe.spiele[index].ev)) setOffen(fokusId);
+    }
+  }
+  useEffect(() => {
+    if (!fokusId) return;
+    zeilen.current[fokusId]?.scrollIntoView({ behavior: "smooth", block: "center" });
+    onFokusErledigt?.();
+  }, [fokusId, onFokusErledigt]);
+
+  if (gruppen.length === 0) {
+    return (
+      <div className="px-4 pt-4 pb-10">
+        <div className="rounded-2xl p-5 text-center text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>
+          <Trophy size={26} style={{ color: C.textDim, margin: "0 auto 10px" }} />
+          {t("erg.keineErgebnisse")}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="px-4 pt-4 pb-10">
+      {gruppen.map((gruppe) => {
+        const schluessel = gruppe.team || "";
+        const alle = !!ausgeklappt[schluessel];
+        const sichtbar = alle ? gruppe.spiele : gruppe.spiele.slice(0, ERGEBNISSE_KURZ);
+        return (
+          <div key={schluessel || "verein"} className="mb-6">
+            <SectionTitle title={gruppe.team || t("auf.ganzerVerein")} />
+            <div className="space-y-2">
+              {sichtbar.map(({ ev, ergebnis }) => {
+                const ort = spielOrt(ev);
+                const s = seitenFuer(ort, { wir: ev.team || t("ev.wir"), gegner: ev.opponent || t("feld.gegner") });
+                const erlaubt = darf(ev);
+                /* Sieg/Niederlage aus UNSERER Sicht - unabhaengig davon, auf
+                   welcher Seite wir stehen. */
+                const aus = ausgang(ergebnis);
+                const chip = !ergebnis ? <Pill bg={C.paperDim} fg={C.textDim}>{t("tipp.wartet")}</Pill>
+                  : aus === "sieg" ? <Pill bg={C.erfolg}>{t("erg.sieg")}</Pill>
+                  : aus === "remis" ? <Pill bg={C.textDim}>{t("erg.remis")}</Pill>
+                  : aus === "niederlage" ? <Pill bg={C.fehler}>{t("erg.niederlage")}</Pill>
+                  : null;
+                return (
+                  <div key={ev.id} ref={(el) => { zeilen.current[ev.id] = el; }} className="rounded-2xl p-3.5"
+                    style={{ background: C.glass, border: `1px solid ${offen === ev.id ? C.ink : C.line}` }}>
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <div className="text-[11px] min-w-0 truncate" style={{ color: C.textDim, fontFamily: "Inter" }}>{formatDate(ev.date)} · {ev.title}</div>
+                      <span className="flex-shrink-0">{chip}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 min-w-0 text-right text-sm truncate" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{s.links.name}</div>
+                      <div className="flex-shrink-0 text-center">
+                        <div className="px-3 py-1 rounded-lg text-lg" style={{ background: C.paperDim, color: ergebnis ? C.ink : C.textDim, fontFamily: "JetBrains Mono", fontWeight: 700 }}>
+                          {ergebnis ? stand(ergebnis, ort) : "–:–"}
+                        </div>
+                        <div className="text-[9px] font-bold uppercase tracking-wide mt-1" style={{ color: C.textDim, fontFamily: "Inter" }}>
+                          {s.ortBekannt ? t("erg.heimGast") : `${t("ev.wir")} : ${t("feld.gegner")}`}
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-0 text-sm truncate" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{s.rechts.name}</div>
+                    </div>
+                    {ergebnis && <Erstellt von={ergebnis.erstelltVon} am={ergebnis.erstelltAm} />}
+                    {erlaubt && (
+                      <button onClick={() => setOffen((o) => (o === ev.id ? null : ev.id))} aria-expanded={offen === ev.id}
+                        className="w-full mt-2 py-2 rounded-lg text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>
+                        {ergebnis ? t("erg.korrigieren") : t("erg.eintragen")}
+                      </button>
+                    )}
+                    {erlaubt && offen === ev.id && (
+                      <div className="mt-3">
+                        <ErgebnisEingabe spiel={ev} ergebnis={ergebnis} mitPunkten={mitPunkten}
+                          onSpeichern={(wg) => onSpeichern?.(ev.id, wg)} onEntfernen={() => onEntfernen?.(ev.id)} />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            {gruppe.spiele.length > ERGEBNISSE_KURZ && (
+              <button onClick={() => setAusgeklappt((a) => ({ ...a, [schluessel]: !alle }))}
+                className="w-full mt-2 py-2 text-xs font-bold" style={{ color: C.textDim, fontFamily: "Inter" }}>
+                {alle ? t("erg.wenigerAnzeigen") : mitWerten(t("erg.alleAnzeigen"), { anzahl: gruppe.spiele.length })}
+              </button>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -12992,7 +13257,11 @@ function AdminView({
   if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.splice(1, 0, ["memberships", t("mit.antraege")]);
   if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.splice(1, 0, ["clubprofile", t("verein.profil")]);
   if (canManageClubFeatures) panels.splice(1, 0, ["functions", t("sys.funktionen")]);
-  if (currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))) panels.splice(1, 0, ["results", t("sys.spielergebnisse")]);
+  /* Ergebnisse eintragen darf seit dem 13.09.2026 auch die Organisation
+     (Betreiberentscheidung, Punkt 3) - vereinsweit, wie in
+     darf_ergebnis_eintragen_fuer. Trainer, Kapitaene und Teammanager kommen
+     nicht hierher; sie tragen in der Ergebnisansicht und am Termin ein. */
+  if (darfVereinVerwalten(currentUser)) panels.splice(1, 0, ["results", t("sys.spielergebnisse")]);
   /* Kein Reiter "System" mehr - auch nicht fuer Sys-Admins. Wartungsmodus,
      Kontoliste mit internen Kennungen und Demo-Ruecksetzen gehoeren dem
      Betreiber, nicht einem Verein (Entscheidung des Betreibers, 12.09.2026). */
@@ -13055,7 +13324,9 @@ function AdminView({
       {panel === "sponsoring" && <SponsoringPanel bookings={werbeplaetze} currentClub={currentClub} clubFeatures={clubFeatures} onFeaturesChanged={onClubFeaturesChanged} onChanged={onWerbeplaetzeGeaendert} />}
       {panel === "polls" && <PollManagerPanel polls={polls} setPolls={setPolls} clubId={currentUser.clubId} onAnlegen={onUmfrageAnlegen} onUmschalten={onUmfrageUmschalten} />}
       {panel === "roles" && <><RolesPanel members={members} setMembers={setMembers} currentUser={currentUser} /><ClaimManagedPlayerPanel members={members} setMembers={setMembers} currentUser={currentUser} /></>}
-      {panel === "results" && currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role)) && <MatchResultsPanel results={tippResults} onSave={onSaveTippResult} onDelete={onDeleteTippResult} events={events} currentClub={currentClub} />}
+      {panel === "results" && darfVereinVerwalten(currentUser) && <MatchResultsPanel results={tippResults} onSave={onSaveTippResult} onDelete={onDeleteTippResult} events={events} currentClub={currentClub}
+        zeigeRunden={currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role)) && clubFeatures?.tippspiel !== false}
+        mitPunkten={clubFeatures?.tippspiel !== false} />}
       {panel === "families" && isSysAdmin(currentUser) && <AdminFamilyPanel members={members} setMembers={setMembers} />}
 
       {panel === "season" && (() => {
