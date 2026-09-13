@@ -4023,8 +4023,15 @@ function Dashboard({ user, members, events, channels, news, dutyPlan, seasonVote
       || je.sort((a, b) => new Date(b.sp.ev.date).getTime() - new Date(a.sp.ev.date).getTime())[0]
       || null;
   })();
-  const ergebnisSubtitle = !letztesErgebnis ? ""
-    : mitWerten(t("erg.zuletzt"), { team: letztesErgebnis.team || t("auf.ganzerVerein"), stand: stand(letztesErgebnis.sp.ergebnis, spielOrt(letztesErgebnis.sp.ev)) });
+  /* Mit beiden Namen, wie ueberall in der Ansicht: Stuende nur unsere
+     Mannschaft vor "1:3", laese sich ein gewonnenes Auswaertsspiel als
+     Niederlage. */
+  const ergebnisSubtitle = !letztesErgebnis ? "" : (() => {
+    const { ev, ergebnis } = letztesErgebnis.sp;
+    const ort = spielOrt(ev);
+    const s = seitenFuer(ort, { wir: ev.team || t("ev.wir"), gegner: ev.opponent || t("feld.gegner") });
+    return mitWerten(t("erg.zuletztStand"), { stand: `${s.links.name} ${stand(ergebnis, ort)} ${s.rechts.name}` });
+  })();
   /* Der Anteil in Prozent, sobald der Hinweis faellig ist - sonst null. Vorher
      stand hier ein blosses true und im Text eine feste 70. Angezeigt wurde damit
      immer "Schon 70%", auch wenn sich laengst neunzig Prozent eingetragen
@@ -4616,7 +4623,7 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
               </span>
             </div>
             <div>
-              <div className="flex flex-wrap gap-1 mb-1"><Pill bg={meta.color}>{meta.label}{ev.team ? ` · ${ev.team}` : ""}{ev.type === "spiel" ? ` · ${ev.home ? t("ev.heim") : t("ev.auswaerts")}` : ""}</Pill>{ev.cancelled&&<Pill bg={C.red}>ABGESAGT</Pill>}</div>
+              <div className="flex flex-wrap gap-1 mb-1"><Pill bg={meta.color}>{meta.label}{ev.team ? ` · ${ev.team}` : ""}{ev.type === "spiel" && spielOrt(ev) ? ` · ${spielOrt(ev) === "heim" ? t("ev.heim") : t("ev.auswaerts")}` : ""}</Pill>{ev.cancelled&&<Pill bg={C.red}>ABGESAGT</Pill>}</div>
               <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{ev.title}</div>
               <div className="flex items-center gap-1 text-xs mt-1" style={{ color: C.textDim, fontFamily: "Inter" }}>
                 <Clock size={11} /> {formatTime(ev.date)} <span className="mx-0.5">·</span> <MapPin size={11} /> {ev.location}
@@ -12178,7 +12185,19 @@ function ErgebnisEingabe({ spiel, ergebnis, onSpeichern, onEntfernen, mitPunkten
   const ort = spielOrt(spiel);
   const titel = spiel?.titel || spiel?.title || "";
   const s = seitenFuer(ort, { wir: spiel?.team || t("ev.wir"), gegner: spiel?.gegner || spiel?.opponent || t("feld.gegner") });
-  const [entwurf, setEntwurf] = useState(ergebnis ? { home: ergebnis.home, away: ergebnis.away } : { home: "", away: "" });
+  /* Der Entwurf folgt dem gespeicherten Ergebnis, solange niemand getippt
+     hat: Kommt das Ergebnis erst nach dem Oeffnen an (Laden, Neuladen) oder
+     korrigiert jemand anderes, stuenden sonst leere oder alte Zahlen im
+     Feld - und "Speichern" schriebe die alten ueber die neuen. Was schon
+     getippt ist, bleibt stehen. Verglichen wird als Text, wie im Feld. */
+  const alsText = (erg) => ({ home: erg ? String(erg.home ?? "") : "", away: erg ? String(erg.away ?? "") : "" });
+  const [entwurf, setEntwurf] = useState(() => alsText(ergebnis));
+  const [vorher, setVorher] = useState(() => alsText(ergebnis));
+  const jetzt = alsText(ergebnis);
+  if (jetzt.home !== vorher.home || jetzt.away !== vorher.away) {
+    setVorher(jetzt);
+    if (String(entwurf.home ?? "") === vorher.home && String(entwurf.away ?? "") === vorher.away) setEntwurf(jetzt);
+  }
   const [speichert, setSpeichert] = useState(false);
   const [gespeichert, setGespeichert] = useState(false);
   const [fehler, setFehler] = useState("");
@@ -12291,23 +12310,29 @@ function ErgebnisseView({ events, results, currentUser, favorit, fokusId, onFoku
 
   /* Den Fokus im selben Rendern uebernehmen (aufklappen, Eingabe oeffnen) -
      nicht per setState in einem Effekt, das rendert zweimal. Der Effekt
-     darunter scrollt nur noch hin und verbraucht den Wunsch. */
+     darunter scrollt nur noch hin und verbraucht den Wunsch.
+     Erst, wenn das Spiel wirklich in der Liste steht: Beim Kaltstart aus
+     einer Push-Meldung sind die Termine noch nicht geladen. Bis dahin bleibt
+     der Wunsch offen und greift, sobald sie da sind. */
   const [fokusGesehen, setFokusGesehen] = useState(null);
-  if (fokusId !== fokusGesehen) {
-    setFokusGesehen(fokusId);
-    for (const gruppe of fokusId ? gruppen : []) {
+  if (!fokusId && fokusGesehen) setFokusGesehen(null);
+  if (fokusId && fokusId !== fokusGesehen) {
+    for (const gruppe of gruppen) {
       const index = gruppe.spiele.findIndex((sp) => sp.ev.id === fokusId);
       if (index < 0) continue;
+      setFokusGesehen(fokusId);
       if (index >= ERGEBNISSE_KURZ) setAusgeklappt((a) => ({ ...a, [gruppe.team || ""]: true }));
       if (darf(gruppe.spiele[index].ev)) setOffen(fokusId);
     }
   }
   useEffect(() => {
-    if (!fokusId) return;
-    zeilen.current[fokusId]?.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (!fokusId || fokusGesehen !== fokusId) return;
+    const zeile = zeilen.current[fokusId];
+    if (!zeile) return;
+    zeile.scrollIntoView({ behavior: "smooth", block: "center" });
     /* null ausdruecklich: Der Aufrufer darf seinen Setter direkt reichen. */
     onFokusErledigt?.(null);
-  }, [fokusId, onFokusErledigt]);
+  }, [fokusId, fokusGesehen, onFokusErledigt, gruppen.length]);
 
   if (gruppen.length === 0) {
     return (
@@ -14912,8 +14937,12 @@ export default function ClubMemberOrganisationApp() {
     /* Ergebnismeldungen und die Erinnerung "Ergebnis fehlt" tragen kind
        'results' und zielen auf den Termin. Sie oeffnen die Ergebnisansicht
        beim Spiel - wer eintragen darf, hat die Eingabe gleich offen. Ohne Abo
-       stuende dort nur das Schloss; dann bleibt es beim Sprung zum Termin. */
-    if (e.kind === "results" && zielId && events.some((ev) => ev.id === zielId && ev.type === "spiel")
+       stuende dort nur das Schloss; dann bleibt es beim Sprung zum Termin.
+       Bewusst ohne Blick in events: Beim Kaltstart aus einer Push-Meldung
+       sind die Termine hier noch leer, und der Sprung landete im Terminplan.
+       Die Meldungen zielen laut Migrationen immer auf ein Spiel; die Ansicht
+       wartet mit dem Fokus, bis es geladen ist. */
+    if (e.kind === "results" && zielId
         && !(entitlement && !entitlement.loading && entitlement.tier === "none")) {
       setErgebnisFokus(zielId);
       setSubView("ergebnisse");
@@ -16560,10 +16589,12 @@ export default function ClubMemberOrganisationApp() {
       })));
       return nextResults;
     });
-    /* Die Meldung ans Tippspiel nur, wenn der Verein das Tippspiel ueberhaupt
-       nutzt - sonst bekaeme jedes Mitglied eine Nachricht zu einem Spiel, auf
-       das niemand tippen konnte. */
-    if (supabase && currentUser?.clubId && featureEnabled("tippspiel")) supabase.rpc("notify_club", { target_club: currentUser.clubId, p_notif_type: "tipp", p_title: "Tippspiel-Ergebnis eingetragen", p_body: "Ein Spielergebnis wurde eingetragen. Schau nach, wie viele Punkte du gemacht hast!" });
+    /* Keine eigene Meldung von hier. Hier stand ein notify_club an den ganzen
+       Verein ("Tippspiel-Ergebnis eingetragen") - ohne await und ohne then().
+       Der PostgREST-Aufruf schickt erst in then() ab, die Meldung ging also nie
+       hinaus. Die Tipper benachrichtigt der Ausloeser ergebnis_melden
+       (20260914100100) in ihrer Sprache und mit dem Endstand; ein echter
+       Aufruf hier schickte allen eine zweite, nur deutsche Nachricht. */
     return {};
   };
 

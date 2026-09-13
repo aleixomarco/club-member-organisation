@@ -15,6 +15,9 @@
 -- Rueckwaertsvertraeglich mit der laufenden App: Admins behalten ihre Rechte.
 -- Neu abgelehnt wird nur, was ohnehin falsch war: Spiele in der Zukunft,
 -- abgesagte Spiele, Nicht-Spiele, Spiele ohne Spielort, fremde Vereine.
+-- Bis zum Merge bietet die alte App noch kuenftige Spiele an: Deren Eingabe
+-- scheitert jetzt, die Zahl steht bis zum Neuladen trotzdem da. Deshalb den
+-- Merge gleich nach den Proben (Freigabeplan, Schritt 6).
 
 -- ------------------------------------------------------------------ Recht
 -- Mit ausdruecklichem Profil: lesend pruefbar und von der Erinnerung
@@ -113,6 +116,24 @@ begin
       message = 'Ein Ergebnis bleibt an seinem Spiel.',
       errcode = 'check_violation',
       hint    = 'erg.fehler.verschoben';
+  end if;
+
+  -- Der Fremdschluessel erfasst_von -> club_memberships (on delete set null,
+  -- 20260901130000:35) leert die Spalte, wenn ein Mitglied entfernt, ein Konto
+  -- geloescht (app/api/account/delete) oder ein Verein aufgeloest wird
+  -- (konto_loeschung_abschliessen). Das ist kein neues Ergebnis: weder pruefen
+  -- noch umschreiben. Sonst scheiterte das Loeschen am Ergebnis eines inzwischen
+  -- abgesagten Spiels (auf PROD gibt es eines), und beim Entfernen durch einen
+  -- Admin stuende danach dessen Mitgliedschaft als Erfasser da.
+  -- pg_trigger_depth() > 1: nur wenn ein anderer Ausloeser - hier die
+  -- Fremdschluesselaktion - die Zeile aendert. Ein direktes UPDATE aus der App
+  -- kommt so nicht an der Pruefung vorbei.
+  if tg_op = 'UPDATE'
+     and pg_trigger_depth() > 1
+     and old.erfasst_von is not null and new.erfasst_von is null
+     and new.heim is not distinct from old.heim
+     and new.auswaerts is not distinct from old.auswaerts then
+    return new;
   end if;
 
   v_grund := public.ergebnis_pruefgrund(new.club_id, new.event_id, new.heim, new.auswaerts);
