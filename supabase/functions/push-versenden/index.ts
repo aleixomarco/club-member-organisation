@@ -58,6 +58,11 @@ function base64Url(daten: Uint8Array | string): string {
   return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
+/* Ein Tausch, der gerade laeuft. Kommen mehrere Aufrufe gleichzeitig in
+   dieselbe Instanz, klopft nur der erste bei Google an; die anderen warten
+   auf dasselbe Ergebnis. Danach - gelungen oder nicht - wird er geleert. */
+let tokenAnfrage: Promise<string> | null = null;
+
 async function zugangstoken(konto: Dienstkonto): Promise<string> {
   const jetzt = Math.floor(Date.now() / 1000);
   /* 60 Sekunden Sicherheitsabstand: Ein Token, das waehrend des Sendens
@@ -65,7 +70,15 @@ async function zugangstoken(konto: Dienstkonto): Promise<string> {
   if (tokenZwischenspeicher && tokenZwischenspeicher.laeuftAbUm > jetzt + 60) {
     return tokenZwischenspeicher.token;
   }
+  if (!tokenAnfrage) {
+    tokenAnfrage = tokenEintauschen(konto, jetzt).finally(() => {
+      tokenAnfrage = null;
+    });
+  }
+  return tokenAnfrage;
+}
 
+async function tokenEintauschen(konto: Dienstkonto, jetzt: number): Promise<string> {
   const kopf = base64Url(JSON.stringify({ alg: "RS256", typ: "JWT" }));
   const rumpf = base64Url(JSON.stringify({
     iss: konto.client_email,
@@ -89,6 +102,12 @@ async function zugangstoken(konto: Dienstkonto): Promise<string> {
   ));
   const jwt = `${kopf}.${rumpf}.${base64Url(signatur)}`;
 
+  /* 20 Sekunden Frist. Seit alle gleichzeitigen Aufrufe einer Instanz auf
+     DENSELBEN Tausch warten, wuerde ein haengender Google-Aufruf sonst alle
+     festhalten, bis die Instanz nach 150 s stirbt. Normal dauert er unter
+     einer Sekunde; die Frist bleibt bewusst unter den 30 s, die der Ausloeser
+     wartet, damit ein Ausfall als lesbarer Fehler in net._http_response
+     landet statt als stummes timed_out. */
   const antwort = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -96,6 +115,7 @@ async function zugangstoken(konto: Dienstkonto): Promise<string> {
       grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
       assertion: jwt,
     }),
+    signal: AbortSignal.timeout(20000),
   });
   if (!antwort.ok) {
     throw new Error(`Zugangstoken abgelehnt (${antwort.status}): ${await antwort.text()}`);
@@ -164,10 +184,23 @@ async function supabaseAbfrage(pfad: string, methode = "GET", rumpf?: unknown) {
    Datenbank; ihm den Dienstschluessel mitzugeben hiesse, ihn irgendwo zu
    hinterlegen - in einer Migration, also im Git. Das Geheimnis dagegen
    entsteht in der Datenbank und verlaesst sie nur auf diesem einen Weg. */
-let geheimnisZwischenspeicher: string | null = null;
+/* Gehalten wird das Versprechen, nicht nur der Wert: Kommen mehrere Aufrufe
+   gleichzeitig in dieselbe Instanz, holt nur der erste das Geheimnis, die
+   anderen warten auf ihn. Scheitert der Abruf, wird der Speicher geleert,
+   damit der naechste Aufruf es neu versucht. */
+let geheimnisZwischenspeicher: Promise<string> | null = null;
 
-async function erwartetesGeheimnis(): Promise<string> {
-  if (geheimnisZwischenspeicher) return geheimnisZwischenspeicher;
+function erwartetesGeheimnis(): Promise<string> {
+  if (!geheimnisZwischenspeicher) {
+    geheimnisZwischenspeicher = geheimnisHolen().catch((fehler) => {
+      geheimnisZwischenspeicher = null;
+      throw fehler;
+    });
+  }
+  return geheimnisZwischenspeicher;
+}
+
+async function geheimnisHolen(): Promise<string> {
   const url = Deno.env.get("SUPABASE_URL");
   const schluessel = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!url || !schluessel) throw new Error("Supabase-Zugang fehlt in der Umgebung.");
@@ -180,7 +213,10 @@ async function erwartetesGeheimnis(): Promise<string> {
      kam mit "Nicht bereit" zurueck, die andere ging durch.
      Ein kalter Start plus ein Schluckauf bei der Datenbank reicht dafuer.
      Zwei Versuche mit einer kurzen Pause dazwischen fangen das ab; hilft auch
-     der zweite nicht, liegt wirklich etwas im Argen. */
+     der zweite nicht, liegt wirklich etwas im Argen.
+     Jeder Versuch hat eine eigene Frist von 5 Sekunden. Ohne sie kehrte ein
+     haengender erster Versuch nie zurueck, warf also auch keinen Fehler - und
+     der zweite Versuch kam nie an die Reihe. */
   let antwort: Response | null = null;
   for (let versuch = 0; versuch < 2; versuch++) {
     if (versuch > 0) await new Promise((fertig) => setTimeout(fertig, 250));
@@ -193,6 +229,7 @@ async function erwartetesGeheimnis(): Promise<string> {
           "Content-Type": "application/json",
         },
         body: "{}",
+        signal: AbortSignal.timeout(5000),
       });
       if (antwort.ok) break;
     } catch (fehler) {
@@ -205,11 +242,27 @@ async function erwartetesGeheimnis(): Promise<string> {
   }
   const wert = await antwort.json();
   if (typeof wert !== "string" || wert.length < 32) throw new Error("Geheimnis fehlt oder ist zu kurz.");
-  geheimnisZwischenspeicher = wert;
   return wert;
 }
 
+/* Wann diese Instanz geladen wurde, und ob sie schon einen Aufruf hatte. */
+const instanzGeladen = Date.now();
+let ersterAufruf = true;
+
 Deno.serve(async (anfrage) => {
+  /* Dauer und Kaltstart reisen in jeder Antwort mit. Sie landen in
+     net._http_response - dem einzigen Ort, an dem wir den Versand von aussen
+     sehen. Beim naechsten langsamen Schwung steht dort, ob es der kalte Start
+     war oder etwas anderes.
+     "kalt" heisst: erster Aufruf dieser Instanz. "instanz_ms" ist ihr Alter
+     beim Eintreffen - daran erkennt man auch die Aufrufe, die im selben
+     Moment kamen und auf den Start des ersten mitgewartet haben. */
+  const beginn = Date.now();
+  const kalt = ersterAufruf;
+  ersterAufruf = false;
+  const instanz_ms = beginn - instanzGeladen;
+  const messung = () => ({ dauer_ms: Date.now() - beginn, kalt, instanz_ms });
+
   /* Die Funktion laeuft OHNE JWT-Pruefung, damit der Ausloeser in der Datenbank
      sie ohne Nutzer-Sitzung erreicht. Dieser Vergleich ist deshalb das einzige
      Tor: Ohne das Geheimnis passiert nichts. Sonst koennte jeder, der die
@@ -231,8 +284,31 @@ Deno.serve(async (anfrage) => {
     const nutzlast = await anfrage.json();
     const zeile = nutzlast?.record;
     if (!zeile?.profile_id) {
-      return Response.json({ uebersprungen: "keine Zeile im Aufruf" });
+      return Response.json({ uebersprungen: "keine Zeile im Aufruf", ...messung() });
     }
+
+    /* Was nicht von den Geraeten abhaengt, laeuft sofort los: der Tausch bei
+       Google und die Zahl fuer das App-Symbol. Beides kam vorher je als eigene
+       Runde NACH den beiden Abfragen; bei einem kalten Start summierte sich
+       das. Das leere catch verhindert nur, dass ein frueher Rueckweg (keine
+       Mitgliedschaft) eine unbehandelte Ablehnung hinterlaesst - ausgewertet
+       wird der Fehler weiter unten, dort wo auf den Versuch gewartet wird. */
+    const tokenVersuch = (async () => {
+      const konto = dienstkontoLesen();
+      return { konto, token: await zugangstoken(konto) };
+    })();
+    tokenVersuch.catch(() => {});
+    const offenVersuch = (async () => {
+      try {
+        const wartend = await supabaseAbfrage(
+          `user_notifications?select=id&profile_id=eq.${zeile.profile_id}&read_at=is.null&limit=99`,
+        );
+        if (Array.isArray(wartend) && wartend.length > 0) return wartend.length;
+      } catch (fehler) {
+        console.error("Zahl der offenen Meldungen nicht ermittelbar", fehler);
+      }
+      return 1;
+    })();
 
     /* Vom Profil zu den Geraeten: user_notifications kennt das Profil,
        push_subscriptions haengt aber an der Mitgliedschaft. Der Umweg ist
@@ -243,7 +319,7 @@ Deno.serve(async (anfrage) => {
       (zeile.club_id ? `&club_id=eq.${zeile.club_id}` : "") +
       `&status=eq.active`,
     );
-    if (!mitgliedschaften.length) return Response.json({ uebersprungen: "keine aktive Mitgliedschaft" });
+    if (!mitgliedschaften.length) return Response.json({ uebersprungen: "keine aktive Mitgliedschaft", ...messung() });
 
     const ids = mitgliedschaften.map((m: { id: string }) => m.id).join(",");
     const geraete = await supabaseAbfrage(
@@ -258,20 +334,19 @@ Deno.serve(async (anfrage) => {
          ueberhaupt taugt - und der Fehler faende sich erst, wenn die ersten
          echten Mitteilungen ausbleiben. So steht die Antwort schon jetzt in der
          Rueckgabe, ohne dass jemand etwas verschicken muss.
-         Sobald Geraete da sind, laeuft dieser Zweig nicht mehr. */
+         Der Zweig laeuft fuer JEDEN Empfaenger ohne Geraet, nicht nur bis zur
+         Auslieferung - der Tausch ist ohnehin schon unterwegs (tokenVersuch). */
       let schluessel: string;
       try {
-        const konto = dienstkontoLesen();
-        await zugangstoken(konto);
+        const { konto } = await tokenVersuch;
         schluessel = `in Ordnung (Projekt ${konto.project_id}, Konto ${konto.client_email})`;
       } catch (fehler) {
         schluessel = `UNBRAUCHBAR: ${String(fehler)}`;
       }
-      return Response.json({ uebersprungen: "kein angemeldetes Geraet", schluessel });
+      return Response.json({ uebersprungen: "kein angemeldetes Geraet", schluessel, ...messung() });
     }
 
-    const konto = dienstkontoLesen();
-    const token = await zugangstoken(konto);
+    const { konto, token } = await tokenVersuch;
 
     /* Die Zahl auf dem App-Symbol.
      *
@@ -292,15 +367,7 @@ Deno.serve(async (anfrage) => {
      * Bei 99 wird abgeschnitten: Mehr sagt kein Symbol aus, und die Abfrage
      * bleibt klein. Faellt sie aus, bleibt es bei der alten 1 - lieber eine
      * ungenaue Zahl als gar keine Mitteilung. */
-    let offen = 1;
-    try {
-      const wartend = await supabaseAbfrage(
-        `user_notifications?select=id&profile_id=eq.${zeile.profile_id}&read_at=is.null&limit=99`,
-      );
-      if (Array.isArray(wartend) && wartend.length > 0) offen = wartend.length;
-    } catch (fehler) {
-      console.error("Zahl der offenen Meldungen nicht ermittelbar", fehler);
-    }
+    const offen = await offenVersuch;
 
     let zugestellt = 0;
     const totgeglaubt: string[] = [];
@@ -366,9 +433,9 @@ Deno.serve(async (anfrage) => {
         .catch((e) => console.error("Aufraeumen fehlgeschlagen", e));
     }
 
-    return Response.json({ zugestellt, aufgeraeumt: totgeglaubt.length, geraete: eindeutig.length, ...(abgelehnt.length ? { abgelehnt } : {}) });
+    return Response.json({ zugestellt, aufgeraeumt: totgeglaubt.length, geraete: eindeutig.length, ...(abgelehnt.length ? { abgelehnt } : {}), ...messung() });
   } catch (fehler) {
     console.error("Versand fehlgeschlagen", fehler);
-    return Response.json({ fehler: String(fehler) }, { status: 500 });
+    return Response.json({ fehler: String(fehler), ...messung() }, { status: 500 });
   }
 });
