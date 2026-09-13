@@ -68,3 +68,6 @@ ios/App/CapApp-SPM/symlinks/
 
 # Rohdaten von GeoNames - nur Zwischenlager fuer scripts/plz-bauen.mjs
 .plz-cache/
+
+# Claude Code: persoenliche Einstellungen (Hooks), nicht teilen
+.claude/settings.local.json

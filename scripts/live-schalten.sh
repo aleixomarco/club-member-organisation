@@ -36,6 +36,9 @@ echo
 echo "== Schritt 1 von 2: Migrationen =="
 supabase db push --dry-run
 frage "Diese Migrationen einspielen?"
+# Supabase Free hat keine Sicherungen. Scheitert die eigene, wird NICHT
+# eingespielt (set -e bricht hier ab).
+scripts/sicherung-vor-migration.sh
 supabase db push
 
 echo
