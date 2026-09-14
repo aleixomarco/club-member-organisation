@@ -15,7 +15,8 @@ export default function DeleteAccountPage() { return <LegalShell title="Konto l�
   <p>Solltest du dich nicht mehr anmelden können (z. B. weil du keinen Zugriff mehr auf deine E-Mail-Adresse hast), schreibe uns an {legal.email}. Wir prüfen deine Identität und löschen dein Konto manuell.</p>
 
   <h2>Welche Daten gelöscht werden</h2>
-  <p>Bei der Kontolöschung entfernen wir dauerhaft: deinen Zugang und dein Passwort, Stammdaten (Name, Kontaktdaten, Geburtsdatum, Adresse), Vereins- und Mannschaftszuordnungen, Familienverknüpfungen, von dir verfasste Nachrichten, News-Beiträge und Umfrageantworten, sowie deine Push-Benachrichtigungs-Registrierung.</p>
+  <p>Bei der Kontolöschung entfernen wir dauerhaft: deinen Zugang und dein Passwort, Stammdaten (Name, Kontaktdaten, Geburtsdatum, Adresse), Vereins- und Mannschaftszuordnungen, Familienverknüpfungen, von dir verfasste Nachrichten und Umfrageantworten, sowie deine Push-Benachrichtigungs-Registrierung.</p>
+  <p>News-Beiträge, die du für deinen Verein geschrieben hast, bleiben beim Verein. Dein Name wird dort entfernt; als Verfasser steht dann „Verein“.</p>
 
   <h2>Welche Daten wir aus rechtlichen Gründen weiter aufbewahren</h2>
   <p>Zahlungs- und Rechnungsdaten zu Abonnements müssen wir aufgrund handels- und steuerrechtlicher Aufbewahrungspflichten (u. a. § 147 AO, § 257 HGB) für bis zu zehn Jahre weiter vorhalten. Diese Daten werden ausschließlich für die gesetzlich erforderlichen Zwecke verarbeitet und anschließend gelöscht. Details findest du in unserer <a href="/datenschutz">Datenschutzerklärung</a>.</p>
