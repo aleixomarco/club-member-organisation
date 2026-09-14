@@ -145,7 +145,7 @@ for (let i = 0; i < zeilen.length; i++) {
   }
 }
 
-/* Erweiterte Suche (U11, 13.09.2026) - vorerst NUR ALS BERICHT.
+/* Erweiterte Suche (U11, 13.09.2026) - seit 14.09.2026 VERBINDLICH.
  *
  * Die App-Pruefung fand rund 200 deutsche Texte, an denen die Suche oben
  * vorbeikommt: JSX-Text laenger als 80 Zeichen, Anzeige-Attribute wie
@@ -263,7 +263,7 @@ const uebersetzt = (quelle.match(/\bt\("[a-z]+\.[A-Za-z0-9_.]+"\)/g) || []).leng
 console.log(`  ${uebersetzt} uebersetzte Aufrufe`);
 console.log(`  ${funde.size} verdaechtige Texte (${AUSNAHMEN.size} bekannte Ausnahmen ausgenommen)`);
 
-console.log(`  ${bericht.size} weitere Stellen nur als Bericht (U11: lange Texte, Attribute, Template-Strings, confirm/alert)`);
+console.log(`  ${bericht.size} weitere Stellen (U11: lange Texte, Attribute, Template-Strings, confirm/alert)`);
 if (bericht.size > 0 && zeigeListe) {
   for (const [text, info] of [...bericht].sort()) {
     console.log(`  (Bericht) ${info.art.padEnd(18)} Zeile ${info.zeilen.join(", ")}: ${text.slice(0, 120)}`);
@@ -278,4 +278,7 @@ if (funde.size > 0 && zeigeListe) {
   console.log("  (mit 'liste' als Argument einzeln anzeigen)");
 }
 
-process.exit(funde.size === 0 && luecken.length === 0 && undurchgereicht.length === 0 && zuFrueh.length === 0 ? 0 : 1);
+/* Seit dem 14.09.2026 auch fuer die erweiterte Suche verbindlich: Die rund
+   160 Stellen sind uebersetzt, neue deutsche Texte sollen nicht wieder
+   unbemerkt hineinkommen. */
+process.exit(funde.size === 0 && bericht.size === 0 && luecken.length === 0 && undurchgereicht.length === 0 && zuFrueh.length === 0 ? 0 : 1);

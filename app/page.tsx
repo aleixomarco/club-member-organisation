@@ -2437,7 +2437,7 @@ function ClubSelectScreen({ clubs, onSelect, goNewClub, goBack, onAbmelden, onKo
         ) : geladen === false ? (
           <div className="rounded-xl px-3 py-3" style={{ background: C.fehlerFlaeche, border: `1px solid ${C.fehlerRand}` }}>
             <div className="text-xs mb-2" style={{ color: C.fehler, fontFamily: "Inter", fontWeight: 700 }}>{t("verein.ladenFehler")}</div>
-            <div className="text-[11px] mb-2.5" style={{ color: C.textDim, fontFamily: "Inter" }}>Das liegt meist am Internet. Dein Verein ist nicht verschwunden — lege ihn bitte nicht neu an.</div>
+            <div className="text-[11px] mb-2.5" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("verein.ladenInternetHinweis")}</div>
             {onErneutVersuchen && <button onClick={onErneutVersuchen} className="w-full py-2 rounded-lg text-xs font-bold" style={{ background: C.ink, color: "#fff", fontFamily: "Inter" }}>{t("allg.erneut")}</button>}
           </div>
         ) : filtered.length === 0 ? (
@@ -2507,7 +2507,7 @@ function ClubColorPicker({ primary, secondary, onChange }) {
       {/* Der Hinweis sagt jetzt, was die App TUT, statt vor etwas zu warnen,
           das sie nicht mehr zulaesst: Schrift und Symbole auf der Vereinsfarbe
           schalten bei einer hellen Farbe selbst auf Dunkel um. */}
-      {hexIsLight(primary) && <div className="text-[10px] mt-1.5 px-0.5" style={{ color: C.textDim }}>Deine Primärfarbe ist hell — Schrift und Symbole darauf werden automatisch dunkel dargestellt.</div>}
+      {hexIsLight(primary) && <div className="text-[10px] mt-1.5 px-0.5" style={{ color: C.textDim }}>{t("verein.primaerfarbeHell")}</div>}
     </div>
   );
 }
@@ -4164,7 +4164,7 @@ function Dashboard({ user, members, events, channels, news, dutyPlan, seasonStan
           mit den Abschnitten allein getauscht, stuende er ploetzlich unter den
           Aktionen. */}
       <DashboardSection accent={C.red} background={C.primaerWeich}>
-        <SectionTitle eyebrow="Vereins-News" title="Neueste Nachrichten" right={goNews ? <button onClick={goNews} className="text-xs font-bold" style={{ color: C.red, fontFamily: "Inter" }}>{t("allg.alleAnsehen")}</button> : null} />
+        <SectionTitle eyebrow={t("news.vereinsNews")} title={t("news.neuesteNachrichten")} right={goNews ? <button onClick={goNews} className="text-xs font-bold" style={{ color: C.red, fontFamily: "Inter" }}>{t("allg.alleAnsehen")}</button> : null} />
         <div className="rounded-2xl px-3" style={{ background: "rgba(255,255,255,0.82)", border: `1px solid ${C.white}` }}>
         {newsMsgs.length === 0 ? (
           <div className="text-xs py-3" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("news.keine")}</div>
@@ -4187,20 +4187,20 @@ function Dashboard({ user, members, events, channels, news, dutyPlan, seasonStan
           {resolveDashboardTileOrder(dashboardTileOrder).map((tileKey) => {
             switch (tileKey) {
               case "season_award":
-                return featureEnabled("season_award") && <FeatureRow key={tileKey} icon={Trophy} title="Athlet/in der Saison" subtitle={seasonSubtitle} onClick={goSeason} accent={C.secondary} locked={featureLocked} />;
+                return featureEnabled("season_award") && <FeatureRow key={tileKey} icon={Trophy} title={t("sub.season")} subtitle={seasonSubtitle} onClick={goSeason} accent={C.secondary} locked={featureLocked} />;
               /* Kein Funktionsschalter und keine Fan-Sperre: Endstaende gibt es
                  in jedem Verein, und Fans sehen alle Mannschaften. Nur das Abo
                  schliesst die Ansicht ab (LockedFeature). */
               case "ergebnisse":
                 return <FeatureRow key={tileKey} icon={Trophy} title={t("sub.ergebnisse")} subtitle={ergebnisSubtitle} onClick={goErgebnisse} accent={C.secondary} locked={featureLocked} />;
               case "tippspiel":
-                return featureEnabled("tippspiel") && <FeatureRow key={tileKey} icon={Target} title="Tippspiel" subtitle={tippSubtitle} onClick={goTipp} accent={C.red} locked={featureLocked} />;
+                return featureEnabled("tippspiel") && <FeatureRow key={tileKey} icon={Target} title={t("sub.tipp")} subtitle={tippSubtitle} onClick={goTipp} accent={C.red} locked={featureLocked} />;
               case "duty_roster":
-                return !istNurFan(user) && featureEnabled("duty_roster") && <FeatureRow key={tileKey} icon={ClipboardList} title="Helferplanung" subtitle={dutySubtitle} onClick={goDuty} accent={C.secondary} locked={featureLocked} />;
+                return !istNurFan(user) && featureEnabled("duty_roster") && <FeatureRow key={tileKey} icon={ClipboardList} title={t("sub.duty")} subtitle={dutySubtitle} onClick={goDuty} accent={C.secondary} locked={featureLocked} />;
               case "tasks":
-                return !istNurFan(user) && <FeatureRow key={tileKey} icon={ClipboardList} title="Aufgaben" subtitle="Für den Verein mithelfen" onClick={goTasks} accent={C.red} locked={featureLocked} />;
+                return !istNurFan(user) && <FeatureRow key={tileKey} icon={ClipboardList} title={t("auf.titel")} subtitle={t("auf.fuerVereinMithelfen")} onClick={goTasks} accent={C.red} locked={featureLocked} />;
               case "vehicle_booking":
-                return featureEnabled("vehicle_booking") && <FeatureRow key={tileKey} icon={Car} title={sportText(t, sport, "vehicleTabLabel")} subtitle="Kalender & Buchung" onClick={goVehicles} accent={C.secondary} locked={featureLocked} />;
+                return featureEnabled("vehicle_booking") && <FeatureRow key={tileKey} icon={Car} title={sportText(t, sport, "vehicleTabLabel")} subtitle={t("fzg.kalenderBuchung")} onClick={goVehicles} accent={C.secondary} locked={featureLocked} />;
               default:
                 return null;
             }
@@ -4212,7 +4212,7 @@ function Dashboard({ user, members, events, channels, news, dutyPlan, seasonStan
           Ueberschrift auch dann da, wenn der Verein keine einzige angelegt hat. */}
       {polls.some((p) => p.active) && (
         <DashboardSection accent={C.secondary} background={C.sekundaerWeich}>
-          <SectionTitle eyebrow="Mitmachen" title="Deine Stimme zählt" />
+          <SectionTitle eyebrow={t("home.mitmachen")} title={t("umf.deineStimmeZaehlt")} />
           <div className="space-y-3">{polls.filter((p)=>p.active).map((poll)=>(
             <div key={poll.id} id={`umfrage-${poll.id}`} style={{ scrollMarginTop: 90, scrollMarginBottom: 120 }}>
               <PollWidget poll={poll} userId={user.id} setPolls={setPolls} onVote={onVote} onUnvote={onUnvote}/>
@@ -4398,7 +4398,7 @@ function HelperSlots({ ev, members, currentUser, dutyPlan, setDutyPlan, eligible
                           if (r?.error) setDutyPlan((jetzt) => ({ ...jetzt, [ev.id]: { ...(jetzt[ev.id] || {}), [station]: vorher } }));
                         });
                       }}
-                        aria-label={`${person?.name || t("help.eintragLabel")} von ${station} entfernen`}
+                        aria-label={mitWerten(t("help.eintragEntfernen"), { name: person?.name || t("help.eintragLabel"), station })}
                         className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
                         style={{ background: C.paperDim, color: C.ink, fontWeight: 600 }}>
                         {person?.name || t("allg.unbekannt")} <X size={9} style={{ color: C.fehler }} />
@@ -5404,7 +5404,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
 
   return (
     <div className="px-4 pt-4 pb-24">
-      <div className="flex items-start justify-between gap-3"><SectionTitle title="Termine" />{(canCreateSportEvent||canCreateClubEvent)&&<button onClick={openCreate} className="px-3 py-1.5 rounded-full text-xs flex-shrink-0" style={{background: C.red, color: C.aufPrimaer,fontWeight:700}}>＋ Eintragen</button>}</div>
+      <div className="flex items-start justify-between gap-3"><SectionTitle title={t("ev.termineTitel")} />{(canCreateSportEvent||canCreateClubEvent)&&<button onClick={openCreate} className="px-3 py-1.5 rounded-full text-xs flex-shrink-0" style={{background: C.red, color: C.aufPrimaer,fontWeight:700}}>＋ Eintragen</button>}</div>
       {showCreate&&<form ref={terminFormRef} onSubmit={createSportEvent} className="rounded-2xl p-4 mb-4 space-y-2.5" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold">{editingEventId?t("ev.bearbeiten"):t("ev.eintragen")}</div><div className="text-[10px]" style={{color:C.textDim}}>{editingEventId?t("ev.bearbeitenHinweis"):eventDraft.type==="event"?t("ev.vereinseventSichtbar"):isSysAdmin(currentUser)?t("tm.sysadminAlle"):darfVereinsweitPlanen?t("tm.alleMannschaftenWaehlbar"):currentUser.roles.includes("trainer")?t("tm.nurEigeneWaehlen"):t("tm.nurEigeneMannschaft")}</div><div className="text-[10px] font-bold" style={{color:C.red}}>* Pflichtfeld</div>{!editingEventId&&<div className="grid grid-cols-2 gap-2"><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.art")}</span><select value={eventDraft.type} onChange={(e)=>setEventDraft({...eventDraft,type:e.target.value,team:e.target.value==="event"?"":eventDraft.team})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}>{canCreateSportEvent&&<option value="training">{t("ev.training")}</option>}{canCreateSportEvent&&<option value="spiel">{t("ev.spiel")}</option>}{canCreateClubEvent&&<option value="event">{t("ev.vereinsevent")}</option>}</select></label>{eventDraft.type!=="event"&&<label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("tm.mannschaft")}</span><select value={eventDraft.team} onChange={(e)=>setEventDraft({...eventDraft,team:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}>{allowedEventTeams.map((team)=><option key={team} value={team}>{team}</option>)}</select></label>}</div>}<label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.titel")}</span><input value={eventDraft.title} onChange={(e)=>setEventDraft({...eventDraft,title:e.target.value})} placeholder={eventDraft.type==="training"?t("ph.titelTraining"):eventDraft.type==="event"?t("ph.titelEvent"):t("ph.titelSpiel")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></label>{eventDraft.type === "spiel" && <label className="flex items-center gap-2 px-0.5"><input type="checkbox" checked={eventDraft.isHome} onChange={(e)=>setEventDraft({...eventDraft,isHome:e.target.checked})}/><span className="text-xs font-bold" style={{color:C.ink}}>{t("ev.heimspiel")}</span></label>}{eventDraft.type === "training" && !editingEventId && <label className="flex items-center gap-2 px-0.5"><input type="checkbox" checked={eventDraft.recurring} onChange={(e)=>setEventDraft({...eventDraft,recurring:e.target.checked})}/><span className="text-xs font-bold" style={{color:C.ink}}>{t("ev.wiederholend")}</span></label>}{!eventDraft.recurring ? <div className="space-y-2">
         <label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.datumPflicht")}</span><input type="date" value={eventDraft.day} onChange={(e)=>setEventDraft({...eventDraft,day:e.target.value})} className="erg-datetime w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim,color:C.ink}}/></label>
         <div className="grid grid-cols-2 gap-2">
@@ -5430,7 +5430,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
             ueblichen Vorgaben an (taeglich, alle Terminarten, eigene
             Mannschaften) und oeffnet sie dann. */}
         <button onClick={kalenderVerbinden} disabled={kalenderLaedt}
-          aria-label={t("aria.kalenderVerbinden")} title="Mit Telefonkalender verbinden"
+          aria-label={t("aria.kalenderVerbinden")} title={t("ev.telefonkalenderVerbinden")}
           className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ml-1"
           style={{ background: C.glass, border: `1px solid ${C.line}`, opacity: kalenderLaedt ? .5 : 1 }}>
           <RefreshCw size={14} style={{ color: C.textDim }} />
@@ -5441,7 +5441,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
         <select aria-label={t("feld.mannschaftFiltern")} value={teamFilter} onChange={(e)=>setTeamFilter(e.target.value)} className="flex-1 min-w-0 bg-transparent text-[11px] font-bold outline-none" style={{color:C.ink}}>
           <option value="alle">{t("ev.alleTeams")}</option>{filterTeams.map((team)=><option key={team} value={team}>{team}</option>)}
         </select>
-        <button aria-label={t("aria.standardansicht")} title="Als Standard speichern" onClick={saveDefaultTeam} disabled={savedTeam===teamFilter} className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{background:savedTeam===teamFilter?C.erfolgFlaeche:C.paperDim,color:savedTeam===teamFilter?C.secondary:C.textDim}}><Star size={13} fill={savedTeam===teamFilter?C.secondary:"none"}/></button>
+        <button aria-label={t("aria.standardansicht")} title={t("ev.alsStandardSpeichern")} onClick={saveDefaultTeam} disabled={savedTeam===teamFilter} className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{background:savedTeam===teamFilter?C.erfolgFlaeche:C.paperDim,color:savedTeam===teamFilter?C.secondary:C.textDim}}><Star size={13} fill={savedTeam===teamFilter?C.secondary:"none"}/></button>
       </div>}
       {/* Der Hinweis steht am Listenanfang. Geloescht wird aber meist weiter
           unten, und dann stand die Meldung ausserhalb des Sichtfelds: Man
@@ -5491,7 +5491,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
           </div>
         </div>
       )}
-      {deleteRequest && <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => { setDeleteRequest(null); setTerminFehler(""); }}><div role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()} className="w-full max-w-sm rounded-2xl p-5" style={{ background: C.glass }}>{deleteRequest.seriesId ? <><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>{t("ev.reiheFrage")}</div><div className="text-xs mb-4" style={{ color: C.textDim }}>Dieses Training wiederholt sich. Du kannst nur diesen einen Termin entfernen und die Reihe bestehen lassen — oder die ganze Reihe löschen. Die ganze Reihe schließt bereits vergangene Termine mit ein.</div><button onClick={performSingleDelete} className="w-full py-2.5 rounded-xl text-xs font-bold mb-2" style={{ background: C.ink, color: C.white }}>{t("ev.nurDiesen")}</button><button onClick={performSeriesDelete} className="w-full py-2.5 rounded-xl text-xs font-bold mb-2" style={{ background: C.fehlerFlaeche, color: C.fehler, border: `1px solid ${C.fehlerRand}` }}>{t("ev.ganzeReihe")}</button><button onClick={() => { setDeleteRequest(null); setTerminFehler(""); }} className="w-full py-2 text-xs font-bold" style={{ color: C.textDim }}>{t("allg.abbrechen")}</button></> : <><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>{t("ev.wirklichLoeschen")}</div><div className="text-xs" style={{ color: C.textDim }}>{t("allg.unwiderruflich")}</div><div className="flex gap-2 mt-4"><button onClick={() => { setDeleteRequest(null); setTerminFehler(""); }} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>{t("allg.abbrechen")}</button><button onClick={performSingleDelete} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.red, color: C.aufPrimaer }}>{t("allg.loeschen")}</button></div></>}</div></div>}
+      {deleteRequest && <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => { setDeleteRequest(null); setTerminFehler(""); }}><div role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()} className="w-full max-w-sm rounded-2xl p-5" style={{ background: C.glass }}>{deleteRequest.seriesId ? <><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>{t("ev.reiheFrage")}</div><div className="text-xs mb-4" style={{ color: C.textDim }}>{t("ev.reiheLoeschenHinweis")}</div><button onClick={performSingleDelete} className="w-full py-2.5 rounded-xl text-xs font-bold mb-2" style={{ background: C.ink, color: C.white }}>{t("ev.nurDiesen")}</button><button onClick={performSeriesDelete} className="w-full py-2.5 rounded-xl text-xs font-bold mb-2" style={{ background: C.fehlerFlaeche, color: C.fehler, border: `1px solid ${C.fehlerRand}` }}>{t("ev.ganzeReihe")}</button><button onClick={() => { setDeleteRequest(null); setTerminFehler(""); }} className="w-full py-2 text-xs font-bold" style={{ color: C.textDim }}>{t("allg.abbrechen")}</button></> : <><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>{t("ev.wirklichLoeschen")}</div><div className="text-xs" style={{ color: C.textDim }}>{t("allg.unwiderruflich")}</div><div className="flex gap-2 mt-4"><button onClick={() => { setDeleteRequest(null); setTerminFehler(""); }} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>{t("allg.abbrechen")}</button><button onClick={performSingleDelete} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.red, color: C.aufPrimaer }}>{t("allg.loeschen")}</button></div></>}</div></div>}
     </div>
   );
 }
@@ -6556,7 +6556,7 @@ function RedaktionView({ user, news, setNews }) {
   };
 
   const deleteNews = async (item) => {
-    if (!window.confirm(`News „${item.title || t("news.vereinsNews")}“ wirklich löschen?`)) return;
+    if (!window.confirm(mitWerten(t("news.wirklichLoeschen"), { titel: item.title || t("news.vereinsNews") }))) return;
     setMessage("");
     if (supabase && isDbId(item.id)) {
       const { data: imagePath, error } = await supabase.rpc("delete_news_post", { target_post: item.id });
@@ -6633,7 +6633,7 @@ function RedaktionView({ user, news, setNews }) {
 
   return (
     <div className="px-4 pt-4 pb-24">
-      <SectionTitle title="Redaktion" eyebrow="Vereins-News" right={
+      <SectionTitle title={t("nav.news")} eyebrow={t("news.vereinsNews")} right={
         !showForm && <button onClick={() => setShowForm(true)} className="text-xs font-bold px-3 py-1.5 rounded-full" style={{ background: C.ink, color: "#fff", fontFamily: "Inter" }}>+ Neue News</button>
       } />
 
@@ -6657,7 +6657,7 @@ function RedaktionView({ user, news, setNews }) {
       )}
       {message&&<div className="mb-3 rounded-xl px-3 py-2 text-[11px] font-semibold" style={{background:C.fehlerFlaeche,color:C.fehler}}>{meldungstext(message)}</div>}
 
-      <SectionTitle eyebrow="Veröffentlicht" title="Alle News" />
+      <SectionTitle eyebrow={t("news.veroeffentlicht")} title={t("news.alleNews")} />
       <div className="space-y-2">
         {items.length === 0 ? (
           <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("news.keineVeroeffentlicht")}</div>
@@ -6892,7 +6892,7 @@ function FamilyLinkManager({ user, members, setMembers, adminMode = false }) {
     setNewName(""); setOpen(false); setSaving(false);
   };
   const removeConnection = async (target) => {
-    if (!window.confirm(`Familienverknüpfung zu ${target.name} wirklich löschen? Die Verbindung wird in beiden Profilen entfernt.`)) return;
+    if (!window.confirm(mitWerten(t("fam.verknuepfungLoeschenFrage"), { name: target.name }))) return;
     setSaving(true); setMessage("");
     const link = (user.familyLinks || []).find((item) => item.memberId === target.id);
     if (databaseMembership && link?.linkId) {
@@ -6908,14 +6908,15 @@ function FamilyLinkManager({ user, members, setMembers, adminMode = false }) {
     {hinweis&&<div className="mt-2 text-[11px]" style={{color:C.textDim}}>{hinweis}</div>}
     {databaseMembership&&<FamilienAnfragen membershipId={user.id} clubId={user.clubId} setMembers={setMembers} stand={anfragenStand} />}
     {familyConnections.length>0&&<div className="mt-3 pt-3 space-y-1.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] font-bold mb-1" style={{color:C.textDim}}>BESTEHENDE VERKNÜPFUNGEN</div>{familyConnections.map((member)=><div key={member.id} className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{background:C.paperDim}}><div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold" style={{background:member.color,color:C.white}}>{initialsOf(member.name)}</div><div className="flex-1 min-w-0"><div className="text-xs font-bold truncate" style={{color:C.ink}}>{member.name}</div><div className="text-[10px]" style={{color:C.textDim}}>{(()=>{const v=(user.familyLinks||[]).find((l)=>l.memberId===member.id);return v?verwandtschaftLabel(t,v.wort,v.relation):t("fam.familie");})()}</div></div><button onClick={()=>removeConnection(member)} className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold" style={{background:C.fehlerFlaeche,color:C.fehler}}>{t("allg.loeschen")}</button></div>)}</div>}
-    {open&&<div className="mt-3 pt-3" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[11px] font-bold mb-1">{t("fam.rolle")}</div><div className="flex flex-wrap gap-1.5 mb-2">{VERWANDTSCHAFT.map((v)=><button type="button" key={v.id} onClick={()=>{setGrad(v.id);setQuery("");}} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:grad===v.id?C.red:C.paperDim,color:grad===v.id?C.white:C.textDim}}>{t(`fam.grad.${v.id}`)}</button>)}</div><input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder={userIsParent?t("ph.vorhandenenAthletSuchen"):t("ph.vorhandenesElternteilSuchen")} className="w-full px-3.5 py-3 rounded-xl text-sm outline-none mb-2" style={{background:C.paperDim}}/>{query&&<div className="space-y-1">{results.map(m=><button key={m.id} onClick={()=>connect(m.id)} className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-lg text-sm" style={{background:C.paperDim,color:C.ink}}><span className="truncate text-left">{m.name} · {m.team}</span><span style={{color:C.red}}>{t("fam.verbinden")}</span></button>)}{results.length===0&&<div className="text-[11px] py-2" style={{color:C.textDim}}>{t("fam.keinProfil")}</div>}</div>}{userIsParent&&<div className="mt-3 pt-3" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[11px] font-bold mb-2">{t("fam.kindAnlegen")}</div><div className="flex gap-2"><input value={newName} onChange={(e)=>setNewName(e.target.value)} placeholder={t("feld.vollerName")} className="flex-1 px-3 py-2 rounded-lg text-xs outline-none" style={{background:C.paperDim}}/><button onClick={createDependent} disabled={!newName.trim()} className="px-3 rounded-lg text-xs font-bold" style={{background:newName.trim()?C.red:C.line,color:"#fff"}}>{t("allg.anlegen")}</button></div><div className="text-[10px] mt-2" style={{color:C.textDim}}>Das Kind kann sein vorläufiges Profil später beim Erstellen des eigenen Kontos übernehmen.</div></div>}</div>}
+    {open&&<div className="mt-3 pt-3" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[11px] font-bold mb-1">{t("fam.rolle")}</div><div className="flex flex-wrap gap-1.5 mb-2">{VERWANDTSCHAFT.map((v)=><button type="button" key={v.id} onClick={()=>{setGrad(v.id);setQuery("");}} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:grad===v.id?C.red:C.paperDim,color:grad===v.id?C.white:C.textDim}}>{t(`fam.grad.${v.id}`)}</button>)}</div><input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder={userIsParent?t("ph.vorhandenenAthletSuchen"):t("ph.vorhandenesElternteilSuchen")} className="w-full px-3.5 py-3 rounded-xl text-sm outline-none mb-2" style={{background:C.paperDim}}/>{query&&<div className="space-y-1">{results.map(m=><button key={m.id} onClick={()=>connect(m.id)} className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-lg text-sm" style={{background:C.paperDim,color:C.ink}}><span className="truncate text-left">{m.name} · {m.team}</span><span style={{color:C.red}}>{t("fam.verbinden")}</span></button>)}{results.length===0&&<div className="text-[11px] py-2" style={{color:C.textDim}}>{t("fam.keinProfil")}</div>}</div>}{userIsParent&&<div className="mt-3 pt-3" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[11px] font-bold mb-2">{t("fam.kindAnlegen")}</div><div className="flex gap-2"><input value={newName} onChange={(e)=>setNewName(e.target.value)} placeholder={t("feld.vollerName")} className="flex-1 px-3 py-2 rounded-lg text-xs outline-none" style={{background:C.paperDim}}/><button onClick={createDependent} disabled={!newName.trim()} className="px-3 rounded-lg text-xs font-bold" style={{background:newName.trim()?C.red:C.line,color:"#fff"}}>{t("allg.anlegen")}</button></div><div className="text-[10px] mt-2" style={{color:C.textDim}}>{t("fam.kindProfilUebernehmen")}</div></div>}</div>}
   </div>;
 }
 
 function AdminFamilyPanel({ members, setMembers }) {
+  const t = useT();
   const [selectedId, setSelectedId] = useState("");
   const selected = members.find((member) => member.id === selectedId);
-  return <div className="space-y-3"><div className="text-xs" style={{color:C.textDim}}>Nur der Sysadmin kann Familienprofile anderer Mitglieder ergänzen. Vorstand und weitere Verwaltungsrollen haben keinen Zugriff.</div><NutzerWahl personen={members} wert={selectedId} onWaehlen={setSelectedId} leerLabel="Mitglied auswählen …" />{selected&&<><FamilyTree user={selected} members={members}/><FamilyLinkManager user={selected} members={members} setMembers={setMembers} adminMode /></>}</div>;
+  return <div className="space-y-3"><div className="text-xs" style={{color:C.textDim}}>{t("fam.nurSysadminHinweis")}</div><NutzerWahl personen={members} wert={selectedId} onWaehlen={setSelectedId} leerLabel="Mitglied auswählen …" />{selected&&<><FamilyTree user={selected} members={members}/><FamilyLinkManager user={selected} members={members} setMembers={setMembers} adminMode /></>}</div>;
 }
 
 /* ------------------------------------------------------------------ */
@@ -7018,11 +7019,11 @@ function TrainerTeamSettings({ user, members, setMembers }) {
 
   return <div className="rounded-2xl p-4 mb-5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
     <div className="flex items-center gap-2 mb-1 text-sm font-bold" style={{ color: C.ink }}><Trophy size={15} style={{ color: C.secondary }}/> Trainer-Einstellungen</div>
-    <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Deine Trainer-Mannschaften werden vom Vereinsadmin oder Sys-Admin zugewiesen. Für diese Teams kannst du anschließend einen Athlet/in als Kapitän bestimmen.</div>
+    <div className="text-[11px] mb-3" style={{ color: C.textDim }}>{t("tm.trainerZuweisungHinweis")}</div>
     {loading ? <div className="text-xs py-3" style={{ color: C.textDim }}>{t("tm.laden")}</div> : <>
       <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>ZUGEWIESENE TRAINER-MANNSCHAFTEN</div>
       <div className="space-y-1.5 mb-4">{teams.map((team) => <div key={team.id} className="w-full flex items-center justify-between px-3 py-2 rounded-xl" style={{ background: C.primaerWeich, border: "1px solid C.red" }}><span className="text-xs font-bold" style={{ color: C.ink }}>{team.name}</span><Check size={14} style={{ color: C.red }}/></div>)}</div>
-      {teams.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Dir wurde noch keine Mannschaft als Trainer/in zugewiesen. Bitte wende dich an den Vereinsadmin.</div> : <>
+      {teams.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{t("tm.keineTrainerMannschaft")}</div> : <>
       <div className="pt-3 mb-3" style={{ borderTop: `1px solid ${C.line}` }}><div className="text-xs font-bold" style={{ color: C.ink }}>{t("tm.kapitaenZuweisen")}</div><div className="text-[10px]" style={{ color: C.textDim }}>{t("rol.kapitaenHinweis")}</div></div>
       <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>MANNSCHAFT</div>
       <select value={selectedTeamId} onChange={(event) => setSelectedTeamId(event.target.value)} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-3" style={{ background: C.paperDim, color: C.ink }}>{teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select>
@@ -7521,7 +7522,7 @@ function TeamsView({ currentUser, members, setMembers, currentClub, teamWunsch =
   };
   const archiveTeam = async () => {
     if (!selectedTeam) return;
-    if (!window.confirm(`Mannschaft „${selectedTeam.name}“ wirklich archivieren? Sie verschwindet aus allen Auswahllisten, die Historie (Termine, Aufgaben, Strafen) bleibt erhalten.`)) return;
+    if (!window.confirm(mitWerten(t("tm.archivierenFrage"), { name: selectedTeam.name }))) return;
     setArchivingTeam(true); setMessage("");
     if (databaseMembership) {
       const { error } = await supabase.rpc("archive_club_team", { target_club: currentUser.clubId, target_team: selectedTeam.id });
@@ -7536,18 +7537,18 @@ function TeamsView({ currentUser, members, setMembers, currentClub, teamWunsch =
   };
 
   return <div className="px-4 pt-4 pb-24">
-    <SectionTitle eyebrow="Verein" title="Teams" right={canCreate ? <button onClick={() => setShowCreate((value) => !value)} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showCreate ? t("allg.schliessen") : "+ Team"}</button> : null}/>
+    <SectionTitle eyebrow={t("verein.vereinLabel")} title={t("nav.teams")} right={canCreate ? <button onClick={() => setShowCreate((value) => !value)} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showCreate ? t("allg.schliessen") : "+ Team"}</button> : null}/>
     <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>Alle Mannschaften von {currentClub?.shortName}. Öffne ein Team, um den Athletenkader anzusehen.</div>
     {showCreate && <form onSubmit={createTeam} className="rounded-2xl p-4 mb-5" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>{t("tm.neuAnlegen")}</div><div className="text-[11px] mb-3" style={{ color: C.textDim }}>{t("rol.danachProfil")}</div><input value={name} onChange={(event) => setName(event.target.value)} maxLength={80} placeholder={t("ph.mannschaftsnameBsp")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}/><input value={category} onChange={(event) => setCategory(event.target.value)} maxLength={80} placeholder={t("ph.kategorieBeispiel")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}/><button type="button" onClick={() => setIsAdultTeam((v) => !v)} className="w-full flex items-center justify-between rounded-xl px-3 py-2.5 mb-2" style={{ background: isAdultTeam ? C.fehlerFlaeche : C.paperDim, border: isAdultTeam ? `1px solid ${C.red}` : "1px solid transparent" }}><div className="text-left"><div className="text-xs font-bold" style={{ color: C.ink }}>{t("tm.erwachsene")}</div><div className="text-[10px]" style={{ color: C.textDim }}>{t("rol.nurDannStrafen")}</div></div><span className="w-10 h-6 rounded-full flex items-center px-0.5" style={{ background: isAdultTeam ? C.red : C.line, justifyContent: isAdultTeam ? "flex-end" : "flex-start" }}><span className="w-5 h-5 rounded-full" style={{ background: C.glass }}/></span></button><button disabled={saving || !name.trim()} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: name.trim() ? C.red : C.line, color: C.white }}>{saving ? t("allg.wirdAngelegt") : t("tm.anlegen")}</button></form>}
     {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: (istErfolg(message)||istErfolg(message)||istErfolg(message)) ? C.erfolgFlaeche : C.fehlerFlaeche, color: (istErfolg(message)||istErfolg(message)||istErfolg(message)) ? C.erfolg : C.fehler }}>{meldungstext(message)}</div>}
-    {selectedTeam ? <div><button onClick={() => { setSelectedTeamId(""); setShowPlayerPicker(false); setEditingTeam(false); }} className="flex items-center gap-1 text-xs font-bold mb-3" style={{ color: C.fehler }}><ArrowLeft size={14}/> Alle Teams</button><div className="rounded-2xl p-4 mb-4" style={{ background: C.ink, color: C.white }}><div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: C.textDim }}>{selectedTeam.category || t("tm.mannschaft")}</div><div className="text-xl font-bold" style={{ fontFamily: "Oswald" }}>{selectedTeam.name}</div><div className="text-xs mt-1" style={{ color: C.textDim }}>{rosterFor(selectedTeam).length} verknüpfte Athlet/innen</div></div><div className="-mt-2 mb-4"><Erstellt von={selectedTeam.created_by} am={selectedTeam.created_at} rahmenlos /></div><MannschaftsFunktionen team={selectedTeam} members={members} /><MannschaftsMeldungen teamId={selectedTeam.id} currentUser={currentUser} imTeam={ownTeams.some((team) => team.id === selectedTeam.id)} />{canCreate && !editingTeam && <div className="flex gap-2 mb-4"><button onClick={() => openEditTeam(selectedTeam)} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>{t("allg.bearbeiten")}</button><button onClick={archiveTeam} disabled={archivingTeam} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{archivingTeam ? "…" : t("tm.archivieren")}</button></div>}{canCreate && editingTeam && <div className="rounded-2xl p-3.5 mb-4" style={{ background: C.paperDim }}><input value={editName} onChange={(e) => setEditName(e.target.value)} maxLength={80} placeholder={t("ph.mannschaftsname")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.glass }}/><input value={editCategory} onChange={(e) => setEditCategory(e.target.value)} maxLength={80} placeholder={t("ph.kategorie")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.glass }}/><div className="flex gap-2"><button onClick={saveTeamEdit} disabled={savingTeamEdit} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{savingTeamEdit ? "…" : t("allg.speichern")}</button><button onClick={() => setEditingTeam(false)} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>{t("allg.abbrechen")}</button></div></div>}<SectionTitle eyebrow="Kader" title="Athlet/innen" right={canAssignPlayers ? <button onClick={() => setShowPlayerPicker((value) => !value)} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showPlayerPicker ? t("allg.schliessen") : "+ Zuweisen"}</button> : null}/>{showPlayerPicker && <div className="rounded-2xl p-3 mb-4" style={{ background: C.paperDim }}><div className="text-[11px] mb-2" style={{ color: C.textDim }}>{t("tm.athletWaehlenHinweis")}</div>{!showNewPlayer ? <button type="button" onClick={() => setShowNewPlayer(true)} className="w-full flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 mb-2 text-[11px] font-bold" style={{ background: C.glass, color: C.fehler, border: `1px dashed ${C.red}` }}><Plus size={13}/> Spieler ohne Account anlegen</button> : <div className="rounded-xl p-2.5 mb-2" style={{ background: C.glass }}><div className="text-[10px] mb-1.5" style={{ color: C.textDim }}>Für Athlet/innen ohne eigenes Handy/Konto (z. B. Kindermannschaften). Vorname und Nachname reichen — die Verknüpfung mit einem Elternteil erfolgt separat in den Familienprofilen.</div><input value={newPlayerName} onChange={(e) => setNewPlayerName(e.target.value)} placeholder={t("feld.vollerName")} className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2" style={{ background: C.paperDim }}/><div className="flex gap-2"><button type="button" onClick={() => { setShowNewPlayer(false); setNewPlayerName(""); }} className="flex-1 py-2 rounded-lg text-[11px] font-bold" style={{ background: C.paperDim, color: C.ink }}>{t("allg.abbrechen")}</button><button type="button" disabled={creatingPlayer || !newPlayerName.trim()} onClick={createPlayerWithoutAccount} className="flex-1 py-2 rounded-lg text-[11px] font-bold" style={{ background: newPlayerName.trim() ? C.ink : C.line, color: C.white }}>{creatingPlayer ? "…" : t("allg.anlegen")}</button></div></div>}<div className="space-y-1.5 max-h-56 overflow-y-auto">{players.length === 0 && (
+    {selectedTeam ? <div><button onClick={() => { setSelectedTeamId(""); setShowPlayerPicker(false); setEditingTeam(false); }} className="flex items-center gap-1 text-xs font-bold mb-3" style={{ color: C.fehler }}><ArrowLeft size={14}/> Alle Teams</button><div className="rounded-2xl p-4 mb-4" style={{ background: C.ink, color: C.white }}><div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: C.textDim }}>{selectedTeam.category || t("tm.mannschaft")}</div><div className="text-xl font-bold" style={{ fontFamily: "Oswald" }}>{selectedTeam.name}</div><div className="text-xs mt-1" style={{ color: C.textDim }}>{rosterFor(selectedTeam).length} verknüpfte Athlet/innen</div></div><div className="-mt-2 mb-4"><Erstellt von={selectedTeam.created_by} am={selectedTeam.created_at} rahmenlos /></div><MannschaftsFunktionen team={selectedTeam} members={members} /><MannschaftsMeldungen teamId={selectedTeam.id} currentUser={currentUser} imTeam={ownTeams.some((team) => team.id === selectedTeam.id)} />{canCreate && !editingTeam && <div className="flex gap-2 mb-4"><button onClick={() => openEditTeam(selectedTeam)} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>{t("allg.bearbeiten")}</button><button onClick={archiveTeam} disabled={archivingTeam} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{archivingTeam ? "…" : t("tm.archivieren")}</button></div>}{canCreate && editingTeam && <div className="rounded-2xl p-3.5 mb-4" style={{ background: C.paperDim }}><input value={editName} onChange={(e) => setEditName(e.target.value)} maxLength={80} placeholder={t("ph.mannschaftsname")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.glass }}/><input value={editCategory} onChange={(e) => setEditCategory(e.target.value)} maxLength={80} placeholder={t("ph.kategorie")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.glass }}/><div className="flex gap-2"><button onClick={saveTeamEdit} disabled={savingTeamEdit} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{savingTeamEdit ? "…" : t("allg.speichern")}</button><button onClick={() => setEditingTeam(false)} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>{t("allg.abbrechen")}</button></div></div>}<SectionTitle eyebrow={t("tm.kader")} title={t("tm.athletinnen")} right={canAssignPlayers ? <button onClick={() => setShowPlayerPicker((value) => !value)} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showPlayerPicker ? t("allg.schliessen") : "+ Zuweisen"}</button> : null}/>{showPlayerPicker && <div className="rounded-2xl p-3 mb-4" style={{ background: C.paperDim }}><div className="text-[11px] mb-2" style={{ color: C.textDim }}>{t("tm.athletWaehlenHinweis")}</div>{!showNewPlayer ? <button type="button" onClick={() => setShowNewPlayer(true)} className="w-full flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 mb-2 text-[11px] font-bold" style={{ background: C.glass, color: C.fehler, border: `1px dashed ${C.red}` }}><Plus size={13}/> Spieler ohne Account anlegen</button> : <div className="rounded-xl p-2.5 mb-2" style={{ background: C.glass }}><div className="text-[10px] mb-1.5" style={{ color: C.textDim }}>{t("tm.ohneKontoHinweis")}</div><input value={newPlayerName} onChange={(e) => setNewPlayerName(e.target.value)} placeholder={t("feld.vollerName")} className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2" style={{ background: C.paperDim }}/><div className="flex gap-2"><button type="button" onClick={() => { setShowNewPlayer(false); setNewPlayerName(""); }} className="flex-1 py-2 rounded-lg text-[11px] font-bold" style={{ background: C.paperDim, color: C.ink }}>{t("allg.abbrechen")}</button><button type="button" disabled={creatingPlayer || !newPlayerName.trim()} onClick={createPlayerWithoutAccount} className="flex-1 py-2 rounded-lg text-[11px] font-bold" style={{ background: newPlayerName.trim() ? C.ink : C.line, color: C.white }}>{creatingPlayer ? "…" : t("allg.anlegen")}</button></div></div>}<div className="space-y-1.5 max-h-56 overflow-y-auto">{players.length === 0 && (
                   /* Ohne diesen Hinweis oeffnet sich beim Antippen von
                      "Zuweisen" ein leerer Kasten - ohne ein Wort dazu, warum.
                      Die Liste bietet nur Mitglieder mit der Rolle "Athlet/in"
                      an; hat sie im Verein niemand, sieht es aus, als sei die
                      Zuweisung kaputt. Sie ist es nicht - es fehlt die Rolle. */
                   <div className="text-[11px] rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{t("tm.keineAthletenImVerein")}</div>
-                )}{players.map((player) => <button key={player.id} onClick={() => openPlayer(player)} className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-left" style={{ background: C.glass }}><div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold" style={{ background: player.color, color: C.white }}>{initialsOf(player.name)}</div><div className="flex-1"><div className="text-xs font-bold" style={{ color: C.ink }}>{player.name}</div><div className="text-[9px]" style={{ color: C.textDim }}>{memberPlayerTeams(player).join(" · ") || t("tm.nochOhneMannschaft")}</div></div><ChevronRight size={13} style={{ color: C.textDim }}/></button>)}</div></div>}{rosterFor(selectedTeam).length ? <div className="space-y-2">{rosterFor(selectedTeam).map((player) => <button key={player.id} onClick={() => openPlayer(player)} className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: player.color, color: C.white }}>{initialsOf(player.name)}</div><div className="flex-1"><div className="text-xs font-bold" style={{ color: C.ink }}>{player.name}</div><div className="text-[10px]" style={{ color: C.textDim }}>{memberPlayerTeams(player).join(" · ")}</div></div><ChevronRight size={14} style={{ color: C.textDim }}/></button>)}</div> : <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>{t("tm.keineAthletenZugeordnet")}</div>}</div> : loading ? <div className="text-xs py-4" style={{ color: C.textDim }}>{t("tm.laden")}</div> : <><SectionTitle eyebrow="Persönlich" title="Meine Teams"/><div className="space-y-2 mb-6">{ownTeams.length ? ownTeams.map((team) => <TeamCard key={team.id} team={team}/>) : <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>Du bist noch keiner Mannschaft als Athlet/in zugeordnet. Athlet/innen können im Profil bis zu drei Teams auswählen.</div>}</div><SectionTitle eyebrow="Vereinsübersicht" title="Alle Mannschaften"/><div className="space-y-2">{teams.map((team) => <TeamCard key={team.id} team={team}/>)}{teams.length === 0 && <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>{t("tm.keine")}</div>}</div></>}
+                )}{players.map((player) => <button key={player.id} onClick={() => openPlayer(player)} className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-left" style={{ background: C.glass }}><div className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold" style={{ background: player.color, color: C.white }}>{initialsOf(player.name)}</div><div className="flex-1"><div className="text-xs font-bold" style={{ color: C.ink }}>{player.name}</div><div className="text-[9px]" style={{ color: C.textDim }}>{memberPlayerTeams(player).join(" · ") || t("tm.nochOhneMannschaft")}</div></div><ChevronRight size={13} style={{ color: C.textDim }}/></button>)}</div></div>}{rosterFor(selectedTeam).length ? <div className="space-y-2">{rosterFor(selectedTeam).map((player) => <button key={player.id} onClick={() => openPlayer(player)} className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="w-9 h-9 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: player.color, color: C.white }}>{initialsOf(player.name)}</div><div className="flex-1"><div className="text-xs font-bold" style={{ color: C.ink }}>{player.name}</div><div className="text-[10px]" style={{ color: C.textDim }}>{memberPlayerTeams(player).join(" · ")}</div></div><ChevronRight size={14} style={{ color: C.textDim }}/></button>)}</div> : <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>{t("tm.keineAthletenZugeordnet")}</div>}</div> : loading ? <div className="text-xs py-4" style={{ color: C.textDim }}>{t("tm.laden")}</div> : <><SectionTitle eyebrow={t("allg.persoenlich")} title={t("tm.meineTeams")}/><div className="space-y-2 mb-6">{ownTeams.length ? ownTeams.map((team) => <TeamCard key={team.id} team={team}/>) : <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>{t("tm.keinTeamAlsAthlet")}</div>}</div><SectionTitle eyebrow={t("tm.vereinsuebersicht")} title={t("ev.alleTeams")}/><div className="space-y-2">{teams.map((team) => <TeamCard key={team.id} team={team}/>)}{teams.length === 0 && <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim }}>{t("tm.keine")}</div>}</div></>}
     {selectedPlayer && <ProfileUnderlay title={selectedPlayer.name} eyebrow={selectedTeam?.name || t("tm.mannschaft")} onClose={() => setSelectedPlayerId("")}><div className="flex items-center gap-3.5 mb-5"><div className="w-14 h-14 rounded-full flex items-center justify-center text-base font-bold flex-shrink-0" style={{ background: selectedPlayer.color, color: C.white }}>{initialsOf(selectedPlayer.name)}</div><div className="min-w-0"><div className="text-sm font-bold" style={{ color: C.ink }}>{t("rol.athletLabel")}</div><div className="text-xs" style={{ color: C.textDim }}>{mitWerten(t("pf.dabeiSeitJahr"), { jahr: selectedPlayer.since })}</div></div></div><div className="flex items-center justify-between mb-2"><div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.textDim }}>{t("tm.mannschaften")}</div>{canAssignPlayers && <span className="text-[10px] font-bold" style={{ color: playerTeamIds.length === 3 ? C.red : C.textDim }}>{playerTeamIds.length}/3</span>}{canAssignPlayers && <button type="button" onClick={() => setTeamsOpen((v) => !v)} className="p-1"><ChevronRight size={14} style={{ color: C.textDim, transform: teamsOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .15s" }}/></button>}</div>{canAssignPlayers ? (teamsOpen && <div className="space-y-2">{teams.filter(zuordenbar).map((team) => { const active = playerTeamIds.includes(team.id); return <button key={team.id} onClick={() => togglePlayerTeam(team.id)} className="w-full flex items-center justify-between rounded-xl px-3 py-2.5 text-left" style={{ background: active ? C.erfolgFlaeche : C.paperDim, border: active ? `1px solid ${C.secondary}` : "1px solid transparent" }}><div><div className="text-xs font-bold" style={{ color: C.ink }}>{team.name}</div><div className="text-[9px]" style={{ color: C.textDim }}>{team.category || t("tm.mannschaft")}</div></div><span className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: active ? C.secondary : C.white, color: C.white }}>{active && <Check size={13}/>}</span></button>; })}<button onClick={savePlayerTeams} disabled={savingPlayer || JSON.stringify([...playerTeamIds].sort()) === JSON.stringify([...savedPlayerTeamIds].sort())} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: JSON.stringify([...playerTeamIds].sort()) !== JSON.stringify([...savedPlayerTeamIds].sort()) ? C.ink : C.paperDim, color: JSON.stringify([...playerTeamIds].sort()) !== JSON.stringify([...savedPlayerTeamIds].sort()) ? C.white : C.textDim, opacity: savingPlayer ? .6 : 1 }}>{savingPlayer ? t("allg.wirdGespeichert") : t("tm.zuordnungSpeichern")}</button>{playerMessage && <div role="status" className="text-[11px]" style={{ color: playerMessage.includes("gespeichert") ? C.erfolg : C.fehler }}>{playerMessage}</div>}</div>) : <div className="flex flex-wrap gap-2">{memberPlayerTeams(selectedPlayer).length ? memberPlayerTeams(selectedPlayer).map((team) => <span key={team} className="px-3 py-1.5 rounded-full text-xs font-bold" style={{ background: C.erfolgFlaeche, color: C.erfolg }}>{team}</span>) : <span className="text-xs" style={{ color: C.textDim }}>{t("tm.keineZuordnungKurz")}</span>}</div>}{canManagePenalties && (<div className="mt-4 pt-4" style={{ borderTop: `1px solid ${C.line}` }}><button type="button" onClick={() => setPenaltyOpen((v) => !v)} className="w-full flex items-center justify-between mb-2"><div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.textDim }}>{t("straf.verwaltung")}</div><ChevronRight size={14} style={{ color: C.textDim, transform: penaltyOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .15s" }}/></button>{penaltyOpen && (<><div className="flex gap-2 mb-3"><select value={assignRuleId} onChange={(e) => setAssignRuleId(e.target.value)} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}><option value="">{t("straf.waehlen")}</option>{penaltyRules.map((r) => <option key={r.id} value={r.id}>{r.title} ({r.amount.toLocaleString(datumsLocale(), { minimumFractionDigits: 2 })} €)</option>)}</select><button onClick={assignPenaltyToPlayer} disabled={assigningPenalty || !assignRuleId} className="px-4 rounded-xl text-xs font-bold" style={{ background: assignRuleId ? C.ink : C.line, color: C.white }}>{assigningPenalty ? "…" : t("straf.zuweisen")}</button></div>{penaltyMessage && <div role="status" className="text-[11px] mb-2" style={{ color: penaltyMessage.includes("zugewiesen") ? C.erfolg : C.fehler }}>{penaltyMessage}</div>}<div className="text-[10px] uppercase tracking-widest font-bold mb-1.5" style={{ color: C.textDim }}>{t("straf.bisherige")}</div><div className="space-y-1.5">{playerPenalties.map((p) => <div key={p.id} className="flex items-center justify-between px-3 py-2 rounded-xl" style={{ background: C.paperDim }}><span className="text-xs font-bold" style={{ color: C.ink }}>{p.title}</span><span className="text-xs font-bold" style={{ color: C.red, fontFamily: "JetBrains Mono" }}>{p.amount.toLocaleString(datumsLocale(), { minimumFractionDigits: 2 })} €</span><button type="button" onClick={() => togglePlayerPenaltyPaid(p)} className="px-2 py-1 rounded-lg text-[9px] font-bold flex-shrink-0" style={{ background: p.paidAt ? C.erfolgFlaeche : C.white, color: p.paidAt ? C.secondary : C.textDim }}>{p.paidAt ? t("bei.bezahlt") : t("bei.offen2")}</button><button type="button" onClick={() => removePlayerPenalty(p)} aria-label={t("aria.strafeEntfernen")} className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.glass, color: C.red }}><X size={12}/></button></div>)}{playerPenalties.length === 0 && <div className="text-[11px]" style={{ color: C.textDim }}>{t("straf.keine")}</div>}</div></>)}</div>)}</ProfileUnderlay>}
   </div>;
 }
@@ -7758,7 +7759,7 @@ function TeamPenaltyCatalog({ user }) {
     setMessage("");
   };
   const removeRule = async (rule) => {
-    if (!window.confirm(`Regel „${rule.title}“ wirklich löschen?`)) return;
+    if (!window.confirm(mitWerten(t("straf.regelLoeschenFrage"), { titel: rule.title }))) return;
     if (!canManageSelectedTeam) return;
     setSaving(true); setMessage("");
     if (databaseMembership) {
@@ -7802,7 +7803,7 @@ function TeamPenaltyCatalog({ user }) {
     setAssignPlayerId(""); setAssignRuleId(""); setMessage((OK_ZEICHEN + t("straf.wurdeZugewiesen"))); setAssigning(false);
   };
   const removeAssignment = async (assignment) => {
-    if (!window.confirm(`Strafe „${assignment.ruleTitle}“ bei ${assignment.playerName} wirklich entfernen?`)) return;
+    if (!window.confirm(mitWerten(t("straf.zuweisungEntfernenFrage"), { titel: assignment.ruleTitle, name: assignment.playerName }))) return;
     if (databaseMembership) {
       const { error } = await supabase.from("team_penalty_assignments").delete().eq("id", assignment.id);
       if (error) { setMessage(t("allg.entfernenFehler")); return; }
@@ -7825,7 +7826,7 @@ function TeamPenaltyCatalog({ user }) {
   };
   const runSeasonReset = async () => {
     if (!seasonLabel.trim()) { setMessage(t("sais.bezeichnungFehlt")); return; }
-    if (!window.confirm(`Alle bezahlten Strafen des Vereins werden unter „${seasonLabel.trim()}“ archiviert und aus der aktiven Ansicht entfernt. Fortfahren?`)) return;
+    if (!window.confirm(mitWerten(t("straf.saisonAbschliessenFrage"), { saison: seasonLabel.trim() }))) return;
     setResettingSeason(true); setMessage("");
     const { data, error } = await supabase.rpc("run_season_reset", { target_club: user.clubId, season_label: seasonLabel.trim() });
     if (error) { setMessage(t("sais.resetFehler")); setResettingSeason(false); return; }
@@ -7852,7 +7853,7 @@ function TeamPenaltyCatalog({ user }) {
         <span>{t("sys.demoOhneSpeicher")}</span>
       </div>
     )}
-    {loading ? <div className="text-xs py-3" style={{ color: C.textDim }}>{t("tm.laden")}</div> : teams.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Der Strafenkatalog ist nur für Erwachsenenmannschaften verfügbar. Dir ist aktuell keine Erwachsenenmannschaft als Athlet/in, Kapitän/in, Trainer/in oder Teammanager/in zugeordnet.</div> : <>
+    {loading ? <div className="text-xs py-3" style={{ color: C.textDim }}>{t("tm.laden")}</div> : teams.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{t("straf.nurErwachsenenmannschaften")}</div> : <>
       <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>MANNSCHAFT</div>
       <select value={selectedTeamId} onChange={(event) => { setSelectedTeamId(event.target.value); setMessage(""); setShowHistory(false); }} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-3" style={{ background: C.paperDim, color: C.ink }}>{teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select>
       {canManageSelectedTeam && (
@@ -7944,7 +7945,7 @@ function TeamPenaltyCatalog({ user }) {
       {canManageSeasons && (
         <div className="pt-4 mt-4" style={{ borderTop: `1px solid ${C.line}` }}>
           <div className="text-[10px] font-bold mb-2" style={{ color: C.textDim }}>SAISON ABSCHLIESSEN (VEREINSWEIT)</div>
-          <div className="text-[11px] mb-2" style={{ color: C.textDim }}>Archiviert alle bereits als bezahlt markierten Strafen des gesamten Vereins unter der angegebenen Saisonbezeichnung. Offene Strafen bleiben aktiv.</div>
+          <div className="text-[11px] mb-2" style={{ color: C.textDim }}>{t("straf.saisonAbschliessenHinweis")}</div>
           <div className="flex gap-2">
             <input value={seasonLabel} onChange={(e) => setSeasonLabel(e.target.value)} placeholder={t("ph.saisonBeispiel")} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}/>
             <button type="button" onClick={runSeasonReset} disabled={resettingSeason || !seasonLabel.trim()} className="px-4 rounded-xl text-xs font-bold" style={{ background: seasonLabel.trim() ? C.red : C.line, color: C.white }}>{resettingSeason ? "…" : t("allg.abschliessen")}</button>
@@ -8319,7 +8320,7 @@ function TasksView({ currentUser, members }) {
   };
   const removeTask = async (task) => {
     if (!supabase) { setClubTasks((l) => l.filter((x) => x.id !== task.id)); setTeamTasks((l) => l.filter((x) => x.id !== task.id)); return; }
-    if (!window.confirm(`Aufgabe „${task.title}“ wirklich löschen?`)) return;
+    if (!window.confirm(mitWerten(t("auf.loeschenFrage"), { titel: task.title }))) return;
     const { error } = await supabase.from("club_tasks").delete().eq("id", task.id);
     if (error) { setMessage(t("allg.loeschenFehler")); return; }
     await loadAll();
@@ -8381,8 +8382,8 @@ function TasksView({ currentUser, members }) {
     : bereiche.length === 1 ? bereiche[0].key : null;
   return (
     <div className="px-4 pt-4 pb-24">
-      <SectionTitle eyebrow="Verein" title="Aufgaben" right={canCreateClubTask ? <button onClick={() => { if (showCreateClub) { setEditingTaskId(null); resetForm(); } else setGewaehlterBereich("verein"); setShowCreateClub((v) => !v); }} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showCreateClub ? t("allg.schliessen") : "+ Aufgabe"}</button> : null}/>
-      <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>Vereins- und Mannschaftsaufgaben, für die sich Mitglieder freiwillig eintragen können.</div>
+      <SectionTitle eyebrow={t("verein.vereinLabel")} title={t("auf.titel")} right={canCreateClubTask ? <button onClick={() => { if (showCreateClub) { setEditingTaskId(null); resetForm(); } else setGewaehlterBereich("verein"); setShowCreateClub((v) => !v); }} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showCreateClub ? t("allg.schliessen") : "+ Aufgabe"}</button> : null}/>
+      <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>{t("auf.untertitel")}</div>
       {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: (istErfolg(message)||istErfolg(message)) ? C.erfolgFlaeche : C.fehlerFlaeche, color: (istErfolg(message)||istErfolg(message)) ? C.erfolg : C.fehler }}>{meldungstext(message)}</div>}
       {loading ? <div className="text-xs py-4" style={{ color: C.textDim }}>{t("auf.laden")}</div> : <>
         {/* Zuerst, was persoenlich zugewiesen wurde - danach das, wofuer man
@@ -8432,7 +8433,7 @@ function TasksView({ currentUser, members }) {
           {!aktiverBereich && <div className="text-[11px] mb-5" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("auf.bereichWaehlen")}</div>}
         </>}
         {aktiverBereich === "verein" && <>
-        <SectionTitle eyebrow="Vereinsweit" title="Vereinsaufgaben"/>
+        <SectionTitle eyebrow={t("auf.vereinsweit")} title={t("auf.vereinsaufgaben")}/>
         {showCreateClub && <TaskCreateForm teams={myTeams} members={members} form={form} setForm={setForm} editing={!!editingTaskId} busy={aufgabeSpeichert} zeigeVerantwortliche={!editingTaskId || istAufgabenLeitung} onSubmit={() => createTask(null)} onCancel={() => { setShowCreateClub(false); resetForm(); setEditingTaskId(null); }}/>}
         {/* Bearbeiten an Vereinsaufgaben: Ersteller oder Leitung. Vorher reichte
             jede Rolle ausser Spieler, Mitglied und Fan - die Regel wies das
@@ -8444,7 +8445,7 @@ function TasksView({ currentUser, members }) {
           const canManage = manageableTeamIds.includes(team.id);
           return (
             <div key={team.id} className="mb-5">
-              <SectionTitle eyebrow="Mannschaft" title={`Aufgaben · ${team.name}`} right={canManage ? <button onClick={() => { if (showCreateTeamId === team.id) { setEditingTaskId(null); resetForm(); } setShowCreateTeamId((v) => v === team.id ? "" : team.id); }} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showCreateTeamId === team.id ? t("allg.schliessen") : "+ Aufgabe"}</button> : null}/>
+              <SectionTitle eyebrow={t("tm.mannschaft")} title={`Aufgaben · ${team.name}`} right={canManage ? <button onClick={() => { if (showCreateTeamId === team.id) { setEditingTaskId(null); resetForm(); } setShowCreateTeamId((v) => v === team.id ? "" : team.id); }} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showCreateTeamId === team.id ? t("allg.schliessen") : "+ Aufgabe"}</button> : null}/>
               {showCreateTeamId === team.id && <TaskCreateForm teams={myTeams} members={members} form={form} setForm={setForm} editing={!!editingTaskId} busy={aufgabeSpeichert} zeigeVerantwortliche={!editingTaskId || istAufgabenLeitung} onSubmit={() => createTask(team.id)} onCancel={() => { setShowCreateTeamId(""); resetForm(); setEditingTaskId(null); }}/>}
               {tasks.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Aktuell keine Aufgaben für {team.name}.</div> : tasks.map((t) => <TaskCard key={t.id} task={t} canManage={canManage} onEdit={openEditTask}/>)}
             </div>
@@ -8595,7 +8596,7 @@ function VehiclesView({ currentUser, currentClub }) {
     setMessage("");
   };
   const removeVehicle = async (vehicle) => {
-    if (!window.confirm(`Fahrzeug „${vehicle.label}“ wirklich löschen? Bestehende Buchungen werden ebenfalls entfernt.`)) return;
+    if (!window.confirm(mitWerten(t("fzg.loeschenFrage"), { name: vehicle.label }))) return;
     const { error } = await supabase.from("club_vehicles").delete().eq("id", vehicle.id);
     if (error) { setMessage(t("allg.loeschenFehler")); return; }
     await loadVehicles(); await loadBookings();
@@ -8725,7 +8726,7 @@ function VehiclesView({ currentUser, currentClub }) {
   if (!databaseMembership) return <div className="px-4 pt-4 pb-24"><div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{t("fzg.nurEchterVerein")}</div></div>;
   return (
     <div className="px-4 pt-4 pb-24">
-      <SectionTitle eyebrow="Verein" title={t(cfg.vehicleTabLabel)} right={canManageFleet ? <button onClick={() => { if (showAddVehicle) { setEditingVehicleId(null); setNewVehicle({ label: "", plate: "", seats: "" }); } setShowAddVehicle((v) => !v); }} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showAddVehicle ? t("allg.schliessen") : "+ Fahrzeug"}</button> : null}/>
+      <SectionTitle eyebrow={t("verein.vereinLabel")} title={t(cfg.vehicleTabLabel)} right={canManageFleet ? <button onClick={() => { if (showAddVehicle) { setEditingVehicleId(null); setNewVehicle({ label: "", plate: "", seats: "" }); } setShowAddVehicle((v) => !v); }} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showAddVehicle ? t("allg.schliessen") : "+ Fahrzeug"}</button> : null}/>
       <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>{t(cfg.vehicleIntro)} {t("fzg.jederKannAnfragen")}</div>
       {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{meldungstext(message)}</div>}
       {showAddVehicle && (
@@ -8782,7 +8783,7 @@ function VehiclesView({ currentUser, currentClub }) {
           </div>
         </div>
       )}
-      <SectionTitle eyebrow="Übersicht" title="Buchungen diesen Monat"/>
+      <SectionTitle eyebrow={t("allg.uebersicht")} title={t("fzg.buchungenDiesenMonat")}/>
       <div className="space-y-2">
         {bookings.map((b) => (
           <div key={b.id} className="flex items-center gap-3 rounded-xl px-3 py-2.5"
@@ -8972,7 +8973,7 @@ function DutyTasksSection({ ev, currentUser, sport, onNeuLaden, dutyPlan, member
     if (error) { setMessage(t("help.vorlageNichtAngewendet")); return; }
     if (!uebernommen) { setMessage(t("help.satzOhneStationen")); return; }
     setSelectedTemplate("");
-    setMessage(OK_ZEICHEN + (uebernommen === 1 ? t("help.stationUebernommen") : `${uebernommen} Stationen wurden übernommen.`));
+    setMessage(OK_ZEICHEN + (uebernommen === 1 ? t("help.stationUebernommen") : mitWerten(t("help.stationenUebernommen"), { anzahl: uebernommen })));
     await loadTasks();
     /* Die Stationen stehen jetzt am Termin selbst (events.helper_slots). Ohne
        diesen Aufruf zeigt die Karte weiter die alte Liste - loadTasks holt nur
@@ -8984,7 +8985,7 @@ function DutyTasksSection({ ev, currentUser, sport, onNeuLaden, dutyPlan, member
   const assignTask = async (taskId, membershipId) => { setMessage(""); const { error } = await supabase.from("duty_tasks").update({ assignee_membership_id: membershipId || null }).eq("id", taskId); if (error) { setMessage(t("allg.speichernFehler")); return; } await loadTasks(); };
   const setDueDate = async (taskId, date) => { setMessage(""); const { error } = await supabase.from("duty_tasks").update({ due_date: date || null }).eq("id", taskId); if (error) { setMessage(t("allg.speichernFehler")); return; } await loadTasks(); };
   const toggleDone = async (task) => { setMessage(""); const { error } = await supabase.from("duty_tasks").update({ done: !task.done }).eq("id", task.id); if (error) { setMessage(t("allg.speichernFehler")); return; } await loadTasks(); };
-  const deleteTask = async (taskId) => { if (!window.confirm("Diese Station wirklich löschen?")) return; setMessage(""); const { error } = await supabase.from("duty_tasks").delete().eq("id", taskId); if (error) { setMessage(t("allg.loeschenFehler")); return; } await loadTasks(); };
+  const deleteTask = async (taskId) => { if (!window.confirm(t("help.stationLoeschenFrage"))) return; setMessage(""); const { error } = await supabase.from("duty_tasks").delete().eq("id", taskId); if (error) { setMessage(t("allg.loeschenFehler")); return; } await loadTasks(); };
   const claimTask = async (taskId) => {
     setMessage("");
     const { error } = await supabase.rpc("claim_duty_task", { target_task: taskId });
@@ -9001,7 +9002,7 @@ function DutyTasksSection({ ev, currentUser, sport, onNeuLaden, dutyPlan, member
   const stationEntfernen = async (station) => {
     const eingetragen = (dutyPlan?.[ev.id]?.[station] || []).length;
     const frage = eingetragen
-      ? `"${station}" entfernen? ${eingetragen === 1 ? t("allg.einePersonIst") : `${eingetragen} Personen sind`} dafür eingetragen — ${eingetragen === 1 ? "ihr Dienst" : "ihre Dienste"} entfällt damit.`
+      ? mitWerten(t("help.stationEntfernenMitEintragungen"), { station: station, anzahl: eingetragen })
       : `"${station}" entfernen?`;
     if (!window.confirm(frage)) return;
     setMessage("");
@@ -9303,10 +9304,10 @@ function SubscriptionPanel({ user }) {
   return <div>
     {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{meldungstext(message)}</div>}
 
-    <SectionTitle eyebrow="Mein Zugang" title="Für dich kostenlos" />
+    <SectionTitle eyebrow={t("zug.meinZugang")} title={t("zug.fuerDichKostenlos")} />
     <div className="rounded-2xl p-4 mb-3" style={{ background: C.erfolgFlaeche, border: `1px solid ${C.erfolgRand}` }}>
       <div className="text-sm font-bold mb-1" style={{ color: C.ink }}>{t("zug.keinAbo")}</div>
-      <div className="text-[11px]" style={{ color: C.textDim }}>Dein Zugang wird vom Verein bezahlt. Welche Funktionen du nutzen kannst, hängt allein von deinen Rollen im Verein ab.</div>
+      <div className="text-[11px]" style={{ color: C.textDim }}>{t("zug.zugangVomVerein")}</div>
     </div>
 
     {clubStatus && (
@@ -9317,7 +9318,7 @@ function SubscriptionPanel({ user }) {
         {accountUsage && <div className="text-[11px]" style={{ color: accountUsage.used >= accountUsage.allowed ? C.red : C.textDim }}>
           {accountUsage.used} von {accountUsage.allowed} Zugängen belegt{accountUsage.used >= accountUsage.allowed ? t("zug.vollzugangHinweis") : ""}
         </div>}
-        {!vollzugang && <div className="text-[11px] mt-1.5" style={{ color: C.textDim }}>Trainings- und Spielpläne sind dauerhaft kostenlos. Mannschaften, Chat, Vereins-News, Helferplanung, Fahrzeugbuchung und das Kalender-Abo kommen mit dem Vollzugang dazu.</div>}
+        {!vollzugang && <div className="text-[11px] mt-1.5" style={{ color: C.textDim }}>{t("zug.kostenlosVsVollzugang")}</div>}
       </div>
     )}
 
@@ -9326,7 +9327,7 @@ function SubscriptionPanel({ user }) {
         stehen blieb. */}
     {!vollzugang && databaseClub && anfrage !== undefined && (
       <>
-        <SectionTitle eyebrow="Vollzugang" title="Für den ganzen Verein freischalten" />
+        <SectionTitle eyebrow={t("zug.vollzugangTitel")} title={t("zug.ganzenVereinFreischalten")} />
 
         {anfrage ? (
           <div className="rounded-2xl p-4 mb-5" style={{ background: C.sekundaerWeich, border: `1px solid ${C.edge}` }}>
@@ -9336,7 +9337,7 @@ function SubscriptionPanel({ user }) {
             <div className="text-[11px]" style={{ color: C.textDim }}>
               {anfrage.status === "berechnet"
                 ? t("zug.rechnungGeschickt")
-                : `Eingegangen am ${new Date(anfrage.created_at).toLocaleDateString(datumsLocale())} durch ${anfrage.contact_name}. Wir melden uns mit einem Angebot.`}
+                : mitWerten(t("zug.anfrageEingegangen"), { datum: new Date(anfrage.created_at).toLocaleDateString(datumsLocale()), name: anfrage.contact_name })}
             </div>
             {anfrage.status === "offen" && darfAnfragen && (
               <button onClick={zurueckziehen} className="text-[11px] font-bold mt-2.5 underline" style={{ color: C.textDim }}>{t("zug.zurueckziehen")}</button>
@@ -9345,7 +9346,7 @@ function SubscriptionPanel({ user }) {
         ) : darfAnfragen ? (
           formularOffen ? (
             <form onSubmit={absenden} className="rounded-2xl p-4 mb-5 space-y-2.5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
-              <div className="text-[11px] mb-1" style={{ color: C.textDim }}>Wir melden uns mit einem Angebot für euren Verein und stellen eine Rechnung. Nach dem Zahlungseingang ist der Verein freigeschaltet.</div>
+              <div className="text-[11px] mb-1" style={{ color: C.textDim }}>{t("zug.angebotUndRechnung")}</div>
               <input value={form.contact_name} onChange={(e) => setForm({ ...form, contact_name: e.target.value })} placeholder={t("ph.ansprechpartner")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }} />
               <input type="email" value={form.contact_email} onChange={(e) => setForm({ ...form, contact_email: e.target.value })} placeholder={t("ph.rechnungsmail")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }} />
               <input type="tel" value={form.contact_phone} onChange={(e) => setForm({ ...form, contact_phone: e.target.value })} placeholder={t("ph.telefonOptional")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }} />
@@ -9357,7 +9358,7 @@ function SubscriptionPanel({ user }) {
                 <span className="w-4 h-4 rounded flex-shrink-0 flex items-center justify-center mt-0.5" style={{ background: form.sponsoring ? C.ink : "transparent", border: `1.5px solid ${form.sponsoring ? C.ink : C.line}` }}>{form.sponsoring && <Check size={11} style={{ color: C.white }} />}</span>
                 <span className="flex-1">
                   <span className="text-xs block" style={{ color: C.ink, fontWeight: 600 }}>{t("sp.eigene")}</span>
-                  <span className="text-[10px] block mt-0.5" style={{ color: C.textDim }}>Die Werbeplätze in der App mit euren eigenen Sponsoren belegen, inklusive zeitlich begrenzter Aktionen.</span>
+                  <span className="text-[10px] block mt-0.5" style={{ color: C.textDim }}>{t("zug.eigeneSponsorenHinweis")}</span>
                 </span>
               </button>
               <textarea value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} rows={2} placeholder={t("ph.anmerkung")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none" style={{ background: C.paperDim }} />
@@ -9368,7 +9369,7 @@ function SubscriptionPanel({ user }) {
             </form>
           ) : (
             <div className="rounded-2xl p-4 mb-5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
-              <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Der Vollzugang wird dem Verein in Rechnung gestellt, nicht dir persönlich. Sag uns Bescheid, dann melden wir uns mit einem Angebot.</div>
+              <div className="text-[11px] mb-3" style={{ color: C.textDim }}>{t("zug.rechnungAnVerein")}</div>
               <button onClick={() => setFormularOffen(true)} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{t("zug.vollzugang")}</button>
             </div>
           )
@@ -9431,7 +9432,7 @@ function HowToVideoLibrary({ user, vorhanden = null }) {
   const videos = howToVideosFor(user).filter((video) => !vorhanden || vorhanden.includes(video.file));
   return (
     <div className="space-y-2">
-      <div className="text-[11px] mb-1" style={{ color: C.textDim }}>Kurze Videos, passend zu dem, was du in deinem Verein tun kannst — nur Aktionen, die deine Rolle auch wirklich ausführen darf.</div>
+      <div className="text-[11px] mb-1" style={{ color: C.textDim }}>{t("vid.passendZurRolle")}</div>
       {videos.map((video) => {
         const open = openId === video.id;
         return (
@@ -9728,7 +9729,7 @@ function SysAdminUserManager({ members, setMembers, currentUser = null }) {
   };
 
   return <div>
-    <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Als Sys-Admin kannst du die Vereinseinstellungen aller Nutzer bearbeiten. Login-E-Mail, Passwort und private Zahlungsdaten bleiben geschützt.</div>
+    <div className="text-[11px] mb-3" style={{ color: C.textDim }}>{t("sys.einstellungenAllerNutzer")}</div>
     {/* Suchfeld statt Auswahlliste.
         Das native <select> zeigte hinter jedem Namen alle Rollen - bei sieben
         Rollen wurde daraus ein dreizeiliger Eintrag, und die Liste war weder
@@ -9942,12 +9943,12 @@ function PasswordSettings({ user, onLogout, saveRef }) {
   const [captchaToken,setCaptchaToken]=useState(null); const [captchaRunde,setCaptchaRunde]=useState(0); const mitCaptcha=captchaAktiv();
   const captchaMeldet=(token)=>{setCaptchaToken(token);if(token!==null)setMessage((alt)=>(t("captcha.bitteWarten")===alt?"":alt));};
   const save=async()=>{if(!supabase){setMessage(t("sich.passwortNurEchtesKonto"));return;}if(form.next.length<8||form.next!==form.repeat){setMessage(t("sich.neuesPasswortRegeln"));return;}if(mitCaptcha&&captchaToken===null){setMessage(t("captcha.bitteWarten"));return;}const {error:loginError}=await supabase.auth.signInWithPassword({email:user.email,password:form.old,options:captchaToken?{captchaToken}:undefined});if(mitCaptcha)setCaptchaRunde((r)=>r+1);if(loginError){/* Nur der Fall t("login.passwortFalsch") darf so heissen. Ein Netzfehler oder eine Bremse wegen zu vieler Versuche haben nichts mit dem alten Passwort zu tun; hier ist die Verwechslung besonders aergerlich, weil man dann das eine Passwort sucht, das man sicher kennt. Eine Preisgabe ist das nicht: Wer hier steht, ist bereits angemeldet und kennt seine eigene Adresse. */const falschesPasswort=loginError.code==="invalid_credentials"||/invalid login credentials/i.test(String(loginError.message||""));/* Hier darf die Sperre beim Namen genannt werden: Wer bis hierher kommt, ist angemeldet und kennt seine eigene Adresse - es gibt nichts zu verraten. */const gesperrt=loginError.code==="user_banned"||/user is banned/i.test(String(loginError.message||""));setMessage(gesperrt?t("login.kontoGesperrt"):falschesPasswort?t("sich.altesPasswortFalsch"):anmeldeFehlerText(loginError, t));return;}const {error}=await supabase.auth.updateUser({password:form.next});if(error){const zuSchwach=error.code==="weak_password"||/password/i.test(String(error.message||""))&&/short|weak|least/i.test(String(error.message||""));setMessage(zuSchwach?t("sich.passwortSchwach"):t("sich.passwortAendernFehler")+anmeldeFehlerText(error, t));return;}if(form.logoutAll){await supabase.auth.signOut({scope:"global"});await onLogout();return;}setForm({old:"",next:"",repeat:"",logoutAll:false});setMessage((OK_ZEICHEN + t("sich.passwortGeaendert")));}; useEffect(() => { saveRef.current = save; });
-  return <div className="rounded-2xl p-4 space-y-3" style={{background:C.glass,border:`1px solid ${C.line}`}}><input type="password" value={form.old} onChange={(e)=>setForm({...form,old:e.target.value})} placeholder={t("ph.altesPasswort")} className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><input type="password" value={form.next} onChange={(e)=>setForm({...form,next:e.target.value})} placeholder={t("ph.neuesPasswort")} className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><input type="password" value={form.repeat} onChange={(e)=>setForm({...form,repeat:e.target.value})} placeholder={t("ph.neuesPasswortWdh")} className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><ToggleCard title="Von allen Geräten ausloggen" desc="Nach der Änderung werden alle bestehenden Sitzungen beendet." value={form.logoutAll} onChange={(v)=>setForm((old)=>({...old,logoutAll:typeof v==="function"?v(old.logoutAll):v}))}/>{mitCaptcha&&<CaptchaFeld onToken={captchaMeldet} runde={captchaRunde}/>}{message&&<div className="text-[11px]" style={{color:istErfolg(message)?C.erfolg:C.fehler}}>{meldungstext(message)}</div>}</div>;
+  return <div className="rounded-2xl p-4 space-y-3" style={{background:C.glass,border:`1px solid ${C.line}`}}><input type="password" value={form.old} onChange={(e)=>setForm({...form,old:e.target.value})} placeholder={t("ph.altesPasswort")} className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><input type="password" value={form.next} onChange={(e)=>setForm({...form,next:e.target.value})} placeholder={t("ph.neuesPasswort")} className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><input type="password" value={form.repeat} onChange={(e)=>setForm({...form,repeat:e.target.value})} placeholder={t("ph.neuesPasswortWdh")} className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><ToggleCard title={t("sich.vonAllenGeraetenAusloggen")} desc={t("sich.alleSitzungenBeenden")} value={form.logoutAll} onChange={(v)=>setForm((old)=>({...old,logoutAll:typeof v==="function"?v(old.logoutAll):v}))}/>{mitCaptcha&&<CaptchaFeld onToken={captchaMeldet} runde={captchaRunde}/>}{message&&<div className="text-[11px]" style={{color:istErfolg(message)?C.erfolg:C.fehler}}>{meldungstext(message)}</div>}</div>;
 }
 
 function SecuritySettings({user,setMembers,saveRef}) { const t = useT(); const [days,setDays]=useState(user.autoLogoutDays??"");const [message,setMessage]=useState("");const save=async()=>{const value=days===""?null:Number(days);if(supabase&&user.authProfileId){const {error}=await supabase.from("profiles").update({auto_logout_days:value}).eq("id",user.authProfileId);if(error){setMessage("Einstellung konnte nicht gespeichert werden.");return;}}setMembers((items)=>items.map((item)=>item.id===user.id?{...item,autoLogoutDays:value}:item));localStorage.setItem(`cmo-last-activity-${user.authProfileId||user.id}`,String(Date.now()));setMessage("Sicherheitseinstellung gespeichert.");};useEffect(() => { saveRef.current = save; });return <div className="rounded-2xl p-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">{t("sich.autoLogout")}</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>{t("sich.autoLogoutHinweis")}</div><select value={days} onChange={(e)=>setDays(e.target.value)} className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}><option value="">{t("kal.nieKurz")}</option><option value="30">{t("sich.tage30")}</option><option value="60">{t("sich.tage60")}</option><option value="90">{t("sich.tage90")}</option></select>{message&&<div className="text-[11px] mt-3" style={{color:C.secondary}}>{meldungstext(message)}</div>}</div>; }
 
-function ReferralSettings({user,club}) { const t = useT(); const [code,setCode]=useState("");const [used,setUsed]=useState(false);const [loading,setLoading]=useState(false);useEffect(()=>{if(!supabase||!club?.id||!user.authProfileId)return;supabase.from("club_referral_codes").select("code,redeemed_at").eq("club_id",club.id).eq("profile_id",user.authProfileId).maybeSingle().then(({data})=>{setCode(data?.code||"");setUsed(Boolean(data?.redeemed_at));});},[club?.id,user.authProfileId]);const create=async()=>{setLoading(true);const {data,error}=await supabase.rpc("ensure_club_referral_code",{target_club:club.id});if(!error)setCode(data);setLoading(false);};if(used&&!user.roles.includes("sysadmin"))return <div className="rounded-2xl p-4 text-xs" style={{background:C.paperDim,color:C.textDim}}>Dein persönlicher Empfehlungscode wurde bereits einmal verwendet. Die drei kostenlosen Vereinsmonate werden automatisch berücksichtigt.</div>;return <div className="rounded-2xl p-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">{t("zug.werben")}</div><div className="text-[11px] mb-4" style={{color:C.textDim}}>Wirbst du einmalig einen neuen Verein, erhält dein aktueller Verein drei kostenlose Monate. Der neue Verein gibt deinen persönlichen Code bei seiner Registrierung ein.</div>{code?<><div className="rounded-xl px-3 py-3 text-center font-bold tracking-wider" style={{background:C.paperDim}}>{code}</div><button onClick={()=>navigator.clipboard?.writeText(code)} className="w-full mt-2 py-2 text-xs font-bold" style={{color:C.red}}>{t("zug.codeKopieren")}</button></>:<button disabled={loading} onClick={create} className="w-full py-3 rounded-xl text-xs font-bold" style={{background:C.ink,color:C.white}}>{loading?"Wird erstellt …":"Persönlichen Code erstellen"}</button>}</div>; }
+function ReferralSettings({user,club}) { const t = useT(); const [code,setCode]=useState("");const [used,setUsed]=useState(false);const [loading,setLoading]=useState(false);useEffect(()=>{if(!supabase||!club?.id||!user.authProfileId)return;supabase.from("club_referral_codes").select("code,redeemed_at").eq("club_id",club.id).eq("profile_id",user.authProfileId).maybeSingle().then(({data})=>{setCode(data?.code||"");setUsed(Boolean(data?.redeemed_at));});},[club?.id,user.authProfileId]);const create=async()=>{setLoading(true);const {data,error}=await supabase.rpc("ensure_club_referral_code",{target_club:club.id});if(!error)setCode(data);setLoading(false);};if(used&&!user.roles.includes("sysadmin"))return <div className="rounded-2xl p-4 text-xs" style={{background:C.paperDim,color:C.textDim}}>{t("zug.codeBereitsVerwendet")}</div>;return <div className="rounded-2xl p-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">{t("zug.werben")}</div><div className="text-[11px] mb-4" style={{color:C.textDim}}>{t("zug.werbenHinweis")}</div>{code?<><div className="rounded-xl px-3 py-3 text-center font-bold tracking-wider" style={{background:C.paperDim}}>{code}</div><button onClick={()=>navigator.clipboard?.writeText(code)} className="w-full mt-2 py-2 text-xs font-bold" style={{color:C.red}}>{t("zug.codeKopieren")}</button></>:<button disabled={loading} onClick={create} className="w-full py-3 rounded-xl text-xs font-bold" style={{background:C.ink,color:C.white}}>{loading?"Wird erstellt …":"Persönlichen Code erstellen"}</button>}</div>; }
 
 /* Die Store-Links koennen erst nach der Veroeffentlichung existieren. Vorher
    wurden beide Zeilen trotzdem angezeigt - als Kacheln mit Pfeilsymbol, die beim
@@ -9956,9 +9957,9 @@ function ReferralSettings({user,club}) { const t = useT(); const [code,setCode]=
    garantiert auf zwei tote Bedienelemente.
    Jetzt erscheint nur, was auch wirklich irgendwohin fuehrt; fehlen beide,
    steht dort nur der erklaerende Satz. */
-function FeedbackSettings() { const t = useT(); const apple=process.env.NEXT_PUBLIC_APP_STORE_REVIEW_URL;const google=process.env.NEXT_PUBLIC_PLAY_STORE_REVIEW_URL;const stores=[[apple,t("pf.appleBewerten")],[google,t("pf.googleBewerten")]].filter(([url])=>!!url);return <div><div className="text-[11px] mb-4" style={{color:C.textDim}}>{stores.length?t("sys.bewertenStore"):t("sys.dankeBewertung")}</div>{stores.length>0&&<div className="space-y-2">{stores.map(([url,label])=><a key={label} href={url} target="_blank" rel="noreferrer" className="flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-bold" style={{background:C.glass,border:`1px solid ${C.line}`,color:C.ink}}>{label}<ExternalLink size={14}/></a>)}</div>}{stores.length===0&&<div className="text-[11px] rounded-2xl p-4" style={{background:C.paperDim,color:C.textDim}}>Die Bewertungslinks werden freigeschaltet, sobald die App im jeweiligen Store verfügbar ist.</div>}</div>; }
+function FeedbackSettings() { const t = useT(); const apple=process.env.NEXT_PUBLIC_APP_STORE_REVIEW_URL;const google=process.env.NEXT_PUBLIC_PLAY_STORE_REVIEW_URL;const stores=[[apple,t("pf.appleBewerten")],[google,t("pf.googleBewerten")]].filter(([url])=>!!url);return <div><div className="text-[11px] mb-4" style={{color:C.textDim}}>{stores.length?t("sys.bewertenStore"):t("sys.dankeBewertung")}</div>{stores.length>0&&<div className="space-y-2">{stores.map(([url,label])=><a key={label} href={url} target="_blank" rel="noreferrer" className="flex items-center justify-between px-4 py-3 rounded-2xl text-xs font-bold" style={{background:C.glass,border:`1px solid ${C.line}`,color:C.ink}}>{label}<ExternalLink size={14}/></a>)}</div>}{stores.length===0&&<div className="text-[11px] rounded-2xl p-4" style={{background:C.paperDim,color:C.textDim}}>{t("sys.bewertungslinksBald")}</div>}</div>; }
 
-function BugReportSettings({user}) { const t = useT(); const [busy,setBusy]=useState(false);const report=async()=>{setBusy(true);let number=`CMO-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`;if(supabase&&user.authProfileId){const {data}=await supabase.rpc("create_support_ticket",{target_club:user.clubId});if(data)number=data;}const subject=encodeURIComponent(`Fehlermeldung - CMO App #${number}`);const body=encodeURIComponent(`Hallo CMO-Team,\n\nfolgender Fehler ist aufgetreten:\n\n\nApp-Ticket: ${number}\nNutzer: ${user.name}\n`);window.location.href=`mailto:info@idbranding.de?subject=${subject}&body=${body}`;setBusy(false);};return <div className="rounded-2xl p-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-[11px] mb-4" style={{color:C.textDim}}>Wir erzeugen eine eindeutige Bearbeitungsnummer und öffnen anschließend die E-Mail-App deines Geräts.</div><button onClick={report} disabled={busy} className="w-full py-3 rounded-xl text-xs font-bold" style={{background: C.red, color: C.aufPrimaer}}>{busy?t("sys.nummerWirdErstellt"):t("pf.fehlerMelden")}</button></div>; }
+function BugReportSettings({user}) { const t = useT(); const [busy,setBusy]=useState(false);const report=async()=>{setBusy(true);let number=`CMO-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`;if(supabase&&user.authProfileId){const {data}=await supabase.rpc("create_support_ticket",{target_club:user.clubId});if(data)number=data;}const subject=encodeURIComponent(`Fehlermeldung - CMO App #${number}`);const body=encodeURIComponent(`Hallo CMO-Team,\n\nfolgender Fehler ist aufgetreten:\n\n\nApp-Ticket: ${number}\nNutzer: ${user.name}\n`);window.location.href=`mailto:info@idbranding.de?subject=${subject}&body=${body}`;setBusy(false);};return <div className="rounded-2xl p-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-[11px] mb-4" style={{color:C.textDim}}>{t("sys.bearbeitungsnummerHinweis")}</div><button onClick={report} disabled={busy} className="w-full py-3 rounded-xl text-xs font-bold" style={{background: C.red, color: C.aufPrimaer}}>{busy?t("sys.nummerWirdErstellt"):t("pf.fehlerMelden")}</button></div>; }
 
 /* Kalender-Abo. Vor dem Abonnieren wird ausgewählt, welche Terminarten in den
    privaten Gerätekalender übertragen werden — jede Person plant anders, und ein
@@ -10041,7 +10042,7 @@ function CalendarSyncSettings({ user, saveRef }) {
   return <div>
     <div className="rounded-2xl p-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
       <div className="text-sm font-bold mb-1" style={{ color: C.ink }}>{t("kal.abonnieren")}</div>
-      <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Wähle aus, was in deinem privaten Gerätekalender erscheinen soll. Übertragen wird nur, was du ohnehin sehen darfst.</div>
+      <div className="text-[11px] mb-3" style={{ color: C.textDim }}>{t("kal.syncHinweis")}</div>
 
       <div className="space-y-2 mb-3">
         {CALENDAR_EVENT_TYPES.filter((entry) => !nurFan || entry.key !== "training").map((entry) => {
@@ -10197,7 +10198,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
   };
   return (
     <div className="px-4 pt-4 pb-24">
-      <SectionTitle title="Profil" />
+      <SectionTitle title={t("nav.profile")} />
       <div className="rounded-2xl p-5 mb-5 flex items-center gap-4" style={{ background: `linear-gradient(150deg, ${C.ink}, ${C.asphalt})` }}>
         <div className="w-16 h-16 rounded-full flex items-center justify-center text-xl flex-shrink-0" style={{ background: user.color, color: "#fff", fontFamily: "Oswald", fontWeight: 700 }}>{initialsOf(user.name)}</div>
         <div>
@@ -10224,8 +10225,8 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
       {darfVereinVerwalten(user) && <>
       <SectionTitle eyebrow={t("pf.vereinVerwalten")} title={t("pf.vereinseinstellungen")} />
       <div className="space-y-2 mb-6">
-        {isAdmin(user) && <ProfileSettingsCard icon={Settings} title="Vereinseinstellungen" description="Funktionen wie Fahrzeugbuchung, Tippspiel & Athlet/in der Saison ein- oder ausblenden" color={C.red} onClick={() => setProfileFolder("clubsettings")}/>}
-        <ProfileSettingsCard icon={Trophy} title={t("pf.vereinMitglied")} description="Athleten-, Trainer- und Vereinsrollen" color={C.red} onClick={() => setProfileFolder("club")}/>
+        {isAdmin(user) && <ProfileSettingsCard icon={Settings} title={t("pf.vereinseinstellungen")} description={t("pf.vereinseinstellungenHinweis")} color={C.red} onClick={() => setProfileFolder("clubsettings")}/>}
+        <ProfileSettingsCard icon={Trophy} title={t("pf.vereinMitglied")} description={t("pf.vereinMitgliedHinweis")} color={C.red} onClick={() => setProfileFolder("club")}/>
         <ProfileSettingsCard icon={Euro} title={t("pf.zugangNur")} description={t("pf.zugangText")} color={C.red} onClick={() => setProfileFolder("billing")}/>
       </div>
       </>}
@@ -10250,7 +10251,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
           seinen eigenen Kontoeinstellungen. */}
       <SectionTitle eyebrow={t("pf.einstellungen2")} title={t("pf.einstellungen")} />
       <div className="space-y-2 mb-6">
-        <ProfileSettingsCard icon={User} title={t("pf.persoenlich")} description="Stammdaten, Kontakte, Familie" color={C.secondary} onClick={() => setProfileFolder("personal")}/>
+        <ProfileSettingsCard icon={User} title={t("pf.persoenlich")} description={t("pf.persoenlichHinweis")} color={C.secondary} onClick={() => setProfileFolder("personal")}/>
         {/* Der Strafenkatalog gehoert auch den Athletinnen und Athleten: Sie
             muessen nachsehen koennen, was eine Strafe kostet und was sie
             selbst offen haben. Beim Abriegeln von "Verein & Mitgliedschaft"
@@ -10263,7 +10264,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
         {!user.roles.includes("trainer") && !darfVereinVerwalten(user)
           && ["spieler", "teammanager", "kapitaen"].some((r) => user.roles.includes(r))
           && <ProfileSettingsCard icon={ClipboardList} title={t("straf.katalog")} description={t("straf.katalogHinweis")} color={C.secondary} onClick={() => setProfileUnderlay("penalties")}/>}
-        <ProfileSettingsCard icon={KeyRound} title={t("pf.konto")} description="Passwort, Sicherheit, Rechtliches, Account" color={AVATAR_FARBEN[2]} onClick={() => setProfileFolder("security")}/>
+        <ProfileSettingsCard icon={KeyRound} title={t("pf.konto")} description={t("pf.kontoHinweis")} color={AVATAR_FARBEN[2]} onClick={() => setProfileFolder("security")}/>
         {/* Die Sprache wird beim ersten Oeffnen gewaehlt - danach muss sie
             auch aenderbar sein. Ohne diese Karte waere die Wahl endgueltig,
             und wer sich vertippt hat, muesste die App loeschen. */}
@@ -10271,7 +10272,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
             und ein Konto anlegt, landet direkt bei der Beitrittsanfrage fuer
             genau diesen Verein - statt in einer Vereinssuche, in der er den
             Namen tippen muesste, den ihm gerade jemand geschickt hat. */}
-        <ProfileSettingsCard icon={UserPlus} title={t("pf.einladen")} description="Link zum Verein teilen" color={C.secondary} onClick={async () => {
+        <ProfileSettingsCard icon={UserPlus} title={t("pf.einladen")} description={t("pf.einladenHinweis")} color={C.secondary} onClick={async () => {
           /* Ueber /willkommen statt direkt in die App: Wer eingeladen wird, hat
              die App in aller Regel noch nicht. Der alte Link oeffnete sofort die
              Weboberflaeche - die funktioniert zwar, aber der Freund soll sie
@@ -10279,7 +10280,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
              mit "Im Browser oeffnen" weiterhin direkt zur Beitrittsanfrage;
              die Vereinskennung geht dabei mit. */
           const link = `${window.location.origin}/willkommen?verein=${currentClub?.id || ""}`;
-          const text = `Komm zu ${currentClub?.name || "unserem Verein"} in die Vereins-App:`;
+          const text = mitWerten(t("pf.einladenText"), { verein: currentClub?.name || t("pf.einladenUnserVerein") });
           try {
             if (navigator.share) { await navigator.share({ title: currentClub?.name || "Vereins-App", text, url: link }); return; }
             await navigator.clipboard.writeText(`${text} ${link}`);
@@ -10292,9 +10293,9 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
         }}/>
         <ProfileSettingsCard icon={Globe} title={t("profil.sprache")} description={SPRACHEN.find((x) => x.code === sprache)?.name || "Deutsch"} color={C.secondary} onClick={() => setProfileFolder("sprache")}/>
         <ProfileSettingsCard icon={Home} title={t("pf.startseite.titel")} description={t("pf.startseite.beschreibung")} color={C.secondary} onClick={() => setProfileUnderlay("startseite")}/>
-        <ProfileSettingsCard icon={Bell} title={t("pf.benachrichtigungen")} description="Push-Einstellungen und Kalendersync" color={C.secondary} onClick={() => setProfileFolder("notify")}/>
-        <ProfileSettingsCard icon={Star} title={t("pf.support")} description="Bewertung abgeben, Fehler melden" color={C.textDim} onClick={() => setProfileFolder("support")}/>
-        {vorhandeneVideos.length > 0 && <ProfileSettingsCard icon={PlayCircle} title="App kennenlernen" description="Kurzvideos zu den Funktionen, die du nutzen kannst" color={C.secondary} onClick={() => setProfileFolder("howto")}/>}
+        <ProfileSettingsCard icon={Bell} title={t("pf.benachrichtigungen")} description={t("pf.benachrichtigungenHinweis")} color={C.secondary} onClick={() => setProfileFolder("notify")}/>
+        <ProfileSettingsCard icon={Star} title={t("pf.support")} description={t("pf.supportHinweis")} color={C.textDim} onClick={() => setProfileFolder("support")}/>
+        {vorhandeneVideos.length > 0 && <ProfileSettingsCard icon={PlayCircle} title={t("pf.appKennenlernen")} description={t("pf.appKennenlernenHinweis")} color={C.secondary} onClick={() => setProfileFolder("howto")}/>}
         {/* Direkter Weg zur Kontolöschung. Vorher lag sie drei Overlay-Ebenen tief
             und keine der Zwischenkacheln trug das Wort „löschen" — ein Prüfer, der
             unserer eigenen Anleitung („Profil → Verwalten → Konto löschen") folgt,
@@ -10302,7 +10303,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
         <ProfileSettingsCard icon={Trash2} title={t("konto.dlg.titel")} description={t("konto.karte.beschreibung")} color={C.red} onClick={() => setProfileUnderlay("account-delete")}/>
       </div>
 
-      {profileFolder === "sprache" && <ProfileUnderlay title="Sprache" eyebrow="Einstellungen" onClose={() => setProfileFolder("")}>
+      {profileFolder === "sprache" && <ProfileUnderlay title={t("profil.sprache")} eyebrow={t("pf.einstellungen")} onClose={() => setProfileFolder("")}>
         <div className="text-xs mb-3" style={{ color: C.textDim, fontFamily: "Inter" }}>
           Die Sprache gilt für dein Konto — auch auf anderen Geräten.
         </div>
@@ -10323,62 +10324,62 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
         </div>
       </ProfileUnderlay>}
 
-      {profileFolder === "clubsettings" && isAdmin(user) && <ProfileUnderlay title="Vereinseinstellungen" eyebrow="Verein verwalten" onClose={() => setProfileFolder("")}>
+      {profileFolder === "clubsettings" && isAdmin(user) && <ProfileUnderlay title={t("pf.vereinseinstellungen")} eyebrow={t("pf.vereinVerwalten")} onClose={() => setProfileFolder("")}>
         <ClubRoleOverviewPanel members={members} />
         <ClubFeatureSettingsPanel currentClub={currentClub} clubFeatures={clubFeatures} onFeaturesChanged={onClubFeaturesChanged} dashboardTileOrder={dashboardTileOrder} setDashboardTileOrder={setDashboardTileOrder} />
       </ProfileUnderlay>}
 
-      {profileFolder === "personal" && <ProfileUnderlay title="Persönliche Daten" eyebrow="Einstellungen" onClose={() => setProfileFolder("")}>
+      {profileFolder === "personal" && <ProfileUnderlay title={t("pf.persoenlich")} eyebrow={t("pf.einstellungen")} onClose={() => setProfileFolder("")}>
         <div className="space-y-2">
-          <ProfileSettingsCard icon={User} title={t("pf.persoenlich")} description="Stammdaten, Kontakte, Adresse und Mitgliederausweis" color={C.secondary} onClick={() => setProfileUnderlay("personal")}/>
-          <ProfileSettingsCard icon={Users} title="Familie" description="Familienprofile ansehen und Verknüpfungen verwalten" color={C.secondary} onClick={() => setProfileUnderlay("family")}/>
+          <ProfileSettingsCard icon={User} title={t("pf.persoenlich")} description={t("pf.persoenlicheDatenHinweis")} color={C.secondary} onClick={() => setProfileUnderlay("personal")}/>
+          <ProfileSettingsCard icon={Users} title={t("fam.familie")} description={t("pf.familieHinweis")} color={C.secondary} onClick={() => setProfileUnderlay("family")}/>
         </div>
       </ProfileUnderlay>}
 
-      {profileFolder === "security" && <ProfileUnderlay title="Konto & Sicherheit" eyebrow="Einstellungen" onClose={() => setProfileFolder("")}>
+      {profileFolder === "security" && <ProfileUnderlay title={t("pf.konto")} eyebrow={t("pf.einstellungen")} onClose={() => setProfileFolder("")}>
         <div className="space-y-2">
-          <ProfileSettingsCard icon={KeyRound} title="Passwort ändern" description="Passwort aktualisieren und Geräte abmelden" color={AVATAR_FARBEN[2]} onClick={() => setProfileUnderlay("password")}/>
-          <ProfileSettingsCard icon={Settings} title="Sicherheit" description="Automatischen Logout einstellen" color={C.textDim} onClick={() => setProfileUnderlay("security")}/>
-          <ProfileSettingsCard icon={ShieldCheck} title="Kontoeinstellungen" description="Sicherheit, Rechtliches und Accountverwaltung" color={C.textDim} onClick={() => setProfileUnderlay("account")}/>
+          <ProfileSettingsCard icon={KeyRound} title={t("pf.passwortAendern")} description={t("pf.passwortAktualisieren")} color={AVATAR_FARBEN[2]} onClick={() => setProfileUnderlay("password")}/>
+          <ProfileSettingsCard icon={Settings} title={t("pf.sicherheit")} description={t("pf.autoLogoutEinstellen")} color={C.textDim} onClick={() => setProfileUnderlay("security")}/>
+          <ProfileSettingsCard icon={ShieldCheck} title={t("konto.dlg.eyebrow")} description={t("pf.kontoeinstellungenBeschreibung")} color={C.textDim} onClick={() => setProfileUnderlay("account")}/>
         </div>
       </ProfileUnderlay>}
 
       {/* Auch der Unterbau selbst, nicht nur die Kachel: Der Ordner laesst
           sich sonst ueber setProfileFolder weiter oeffnen, und wer die Kachel
           nicht sieht, soll auch den Inhalt nicht sehen. */}
-      {profileFolder === "club" && darfVereinVerwalten(user) && <ProfileUnderlay title="Verein & Mitgliedschaft" eyebrow="Einstellungen" onClose={() => setProfileFolder("")}>
+      {profileFolder === "club" && darfVereinVerwalten(user) && <ProfileUnderlay title={t("pf.vereinMitglied")} eyebrow={t("pf.einstellungen")} onClose={() => setProfileFolder("")}>
         <div className="space-y-2">
-          {darfVereinVerwalten(user) && <ProfileSettingsCard icon={UserPlus} title="Benutzerverwaltung" description="Alle Vereinsnutzer auswählen und deren Einstellungen verwalten" color={AVATAR_FARBEN[2]} onClick={() => setProfileUnderlay("users")}/>}
+          {darfVereinVerwalten(user) && <ProfileSettingsCard icon={UserPlus} title={t("pf.benutzerverwaltung")} description={t("pf.benutzerverwaltungBeschreibung")} color={AVATAR_FARBEN[2]} onClick={() => setProfileUnderlay("users")}/>}
           {/* Hing an der Rolle "vorstand". Die ist seit 20260905180000
               abgeschafft - die Kachel war damit fuer niemanden mehr sichtbar.
               Sie gehoert zur Vereinsverwaltung und bekommt deren Rollen. */}
-          {darfVereinVerwalten(user) && <ProfileSettingsCard icon={Eye} title="Mitgliederübersicht" description="Alle Vereinsmitglieder ansehen (nur lesen)" color={C.textDim} onClick={() => setProfileUnderlay("board-overview")}/>}
-          {darfVereinVerwalten(user) && <ProfileSettingsCard icon={UserPlus} title="Beitrittsanfragen" description="Neue Mitglieder annehmen oder ablehnen" color={C.secondary} onClick={() => setProfileUnderlay("join-requests")}/>}
+          {darfVereinVerwalten(user) && <ProfileSettingsCard icon={Eye} title={t("pf.mitgliederuebersicht")} description={t("pf.mitgliederuebersichtBeschreibung")} color={C.textDim} onClick={() => setProfileUnderlay("board-overview")}/>}
+          {darfVereinVerwalten(user) && <ProfileSettingsCard icon={UserPlus} title={t("benach.join_requests")} description={t("pf.beitrittsanfragenBeschreibung")} color={C.secondary} onClick={() => setProfileUnderlay("join-requests")}/>}
         </div>
       </ProfileUnderlay>}
 
-      {profileFolder === "notify" && <ProfileUnderlay title="Benachrichtigungen & Kalender" eyebrow="Einstellungen" onClose={() => setProfileFolder("")}>
+      {profileFolder === "notify" && <ProfileUnderlay title={t("pf.benachrichtigungen")} eyebrow={t("pf.einstellungen")} onClose={() => setProfileFolder("")}>
         <div className="space-y-2">
-          <ProfileSettingsCard icon={Bell} title="Benachrichtigungen" description="Festlegen, worüber du informiert werden möchtest" color={C.secondary} onClick={() => setProfileUnderlay("notifications")}/>
-          <ProfileSettingsCard icon={Smartphone} title="Kalender synchronisieren" description="Spiele und Trainings mit dem Gerätekalender verbinden" color={AVATAR_FARBEN[2]} onClick={() => setProfileUnderlay("calendar")}/>
+          <ProfileSettingsCard icon={Bell} title={t("sub.postfach")} description={t("pf.benachrichtigungenBeschreibung")} color={C.secondary} onClick={() => setProfileUnderlay("notifications")}/>
+          <ProfileSettingsCard icon={Smartphone} title={t("pf.kalenderSync")} description={t("pf.kalenderSyncBeschreibung")} color={AVATAR_FARBEN[2]} onClick={() => setProfileUnderlay("calendar")}/>
         </div>
       </ProfileUnderlay>}
 
-      {profileFolder === "billing" && <ProfileUnderlay title={t("pf.zugangNur")} eyebrow="Einstellungen" onClose={() => setProfileFolder("")}>
+      {profileFolder === "billing" && <ProfileUnderlay title={t("pf.zugangNur")} eyebrow={t("pf.einstellungen")} onClose={() => setProfileFolder("")}>
         <div className="space-y-2">
-          <ProfileSettingsCard icon={Euro} title="Zugang des Vereins" description="Was freigeschaltet ist und wie viele Zugänge belegt sind" onClick={() => setProfileUnderlay("subscription")}/>
-          {EMPFEHLUNGEN_SICHTBAR && (!referralAlreadyUsed || user.roles.includes("sysadmin")) && <ProfileSettingsCard icon={Building2} title="Vereine werben Vereine" description="Einen Verein werben und drei Gratismonate erhalten" color={C.red} onClick={() => setProfileUnderlay("referral")}/>}
+          <ProfileSettingsCard icon={Euro} title={t("pf.zugangNur")} description={t("pf.zugangText")} onClick={() => setProfileUnderlay("subscription")}/>
+          {EMPFEHLUNGEN_SICHTBAR && (!referralAlreadyUsed || user.roles.includes("sysadmin")) && <ProfileSettingsCard icon={Building2} title={t("zug.werben")} description={t("pf.vereinWerbenText")} color={C.red} onClick={() => setProfileUnderlay("referral")}/>}
         </div>
       </ProfileUnderlay>}
 
-      {profileFolder === "support" && <ProfileUnderlay title="Support & Feedback" eyebrow="Einstellungen" onClose={() => setProfileFolder("")}>
+      {profileFolder === "support" && <ProfileUnderlay title={t("pf.support")} eyebrow={t("pf.einstellungen")} onClose={() => setProfileFolder("")}>
         <div className="space-y-2">
-          <ProfileSettingsCard icon={Star} title="App bewerten" description="CMO im App Store oder Google Play bewerten" color={C.secondary} onClick={() => setProfileUnderlay("feedback")}/>
-          <ProfileSettingsCard icon={Bug} title="Fehler melden" description="Eindeutiges Ticket erstellen und E-Mail-App öffnen" color={C.red} onClick={() => setProfileUnderlay("bug")}/>
+          <ProfileSettingsCard icon={Star} title={t("pf.appBewerten")} description={t("pf.appBewertenText")} color={C.secondary} onClick={() => setProfileUnderlay("feedback")}/>
+          <ProfileSettingsCard icon={Bug} title={t("pf.fehlerMeldenKurz")} description={t("pf.fehlerMeldenText")} color={C.red} onClick={() => setProfileUnderlay("bug")}/>
         </div>
       </ProfileUnderlay>}
 
-      {profileFolder === "howto" && <ProfileUnderlay title="App kennenlernen" eyebrow="Einstellungen" onClose={() => setProfileFolder("")}>
+      {profileFolder === "howto" && <ProfileUnderlay title={t("pf.appKennenlernen")} eyebrow={t("pf.einstellungen")} onClose={() => setProfileFolder("")}>
         <HowToVideoLibrary user={user} vorhanden={vorhandeneVideos}/>
       </ProfileUnderlay>}
 
@@ -10441,29 +10442,29 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
       </button>
 
       {profileUnderlay === "startseite" && <ProfileUnderlay title={t("pf.startseite.titel")} onClose={() => setProfileUnderlay("")}><StartseiteAnordnen dashboardTileOrder={dashboardTileOrder} setDashboardTileOrder={setDashboardTileOrder} clubFeatures={clubFeatures} sport={currentClub?.sport} /></ProfileUnderlay>}
-      {profileUnderlay === "subscription" && <ProfileUnderlay title="Zugang des Vereins" onClose={() => setProfileUnderlay("")}><SubscriptionPanel user={user}/></ProfileUnderlay>}
-      {profileUnderlay === "personal" && <ProfileUnderlay title="Persönliche Daten" onClose={() => setProfileUnderlay("")} onSave={()=>sectionSaveRef.current?.()}><ProfileDataSettings user={user} setMembers={setMembers} saveRef={sectionSaveRef}/></ProfileUnderlay>}
-      {profileUnderlay === "notifications" && <ProfileUnderlay title="Benachrichtigungen" onClose={() => setProfileUnderlay("")} onSave={()=>sectionSaveRef.current?.()}><NotificationSettings user={user} setMembers={setMembers} saveRef={sectionSaveRef}/></ProfileUnderlay>}
-      {profileUnderlay === "password" && <ProfileUnderlay title="Passwort ändern" onClose={() => setProfileUnderlay("")} onSave={()=>sectionSaveRef.current?.()}><PasswordSettings user={user} onLogout={onLogout} saveRef={sectionSaveRef}/></ProfileUnderlay>}
-      {profileUnderlay === "security" && <ProfileUnderlay title="Sicherheit" onClose={() => setProfileUnderlay("")} onSave={()=>sectionSaveRef.current?.()}><SecuritySettings user={user} setMembers={setMembers} saveRef={sectionSaveRef}/></ProfileUnderlay>}
-      {EMPFEHLUNGEN_SICHTBAR && profileUnderlay === "referral" && <ProfileUnderlay title="Vereine werben Vereine" onClose={() => setProfileUnderlay("")}><ReferralSettings user={user} club={currentClub}/></ProfileUnderlay>}
+      {profileUnderlay === "subscription" && <ProfileUnderlay title={t("pf.zugangNur")} onClose={() => setProfileUnderlay("")}><SubscriptionPanel user={user}/></ProfileUnderlay>}
+      {profileUnderlay === "personal" && <ProfileUnderlay title={t("pf.persoenlich")} onClose={() => setProfileUnderlay("")} onSave={()=>sectionSaveRef.current?.()}><ProfileDataSettings user={user} setMembers={setMembers} saveRef={sectionSaveRef}/></ProfileUnderlay>}
+      {profileUnderlay === "notifications" && <ProfileUnderlay title={t("sub.postfach")} onClose={() => setProfileUnderlay("")} onSave={()=>sectionSaveRef.current?.()}><NotificationSettings user={user} setMembers={setMembers} saveRef={sectionSaveRef}/></ProfileUnderlay>}
+      {profileUnderlay === "password" && <ProfileUnderlay title={t("pf.passwortAendern")} onClose={() => setProfileUnderlay("")} onSave={()=>sectionSaveRef.current?.()}><PasswordSettings user={user} onLogout={onLogout} saveRef={sectionSaveRef}/></ProfileUnderlay>}
+      {profileUnderlay === "security" && <ProfileUnderlay title={t("pf.sicherheit")} onClose={() => setProfileUnderlay("")} onSave={()=>sectionSaveRef.current?.()}><SecuritySettings user={user} setMembers={setMembers} saveRef={sectionSaveRef}/></ProfileUnderlay>}
+      {EMPFEHLUNGEN_SICHTBAR && profileUnderlay === "referral" && <ProfileUnderlay title={t("zug.werben")} onClose={() => setProfileUnderlay("")}><ReferralSettings user={user} club={currentClub}/></ProfileUnderlay>}
       {/* Ohne Premium gibt es hier nichts zu speichern — der Knopf entfällt, sonst
           stünde er wirkungslos über der Sperrmeldung. */}
-      {profileUnderlay === "calendar" && <ProfileUnderlay title="Kalender synchronisieren" onClose={() => setProfileUnderlay("")} onSave={entitlement.tier !== "none" ? ()=>sectionSaveRef.current?.() : undefined}><LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Kalender-Abo"><CalendarSyncSettings user={user} saveRef={sectionSaveRef}/></LockedFeature></ProfileUnderlay>}
-      {profileUnderlay === "feedback" && <ProfileUnderlay title="App bewerten" onClose={() => setProfileUnderlay("")}><FeedbackSettings/></ProfileUnderlay>}
-      {profileUnderlay === "bug" && <ProfileUnderlay title="Fehler melden" onClose={() => setProfileUnderlay("")}><BugReportSettings user={user}/></ProfileUnderlay>}
-      {profileUnderlay === "trainer" && (user.roles.includes("trainer") || darfVereinVerwalten(user)) && <ProfileUnderlay title={t("pf.trainerRollen")} eyebrow="Mannschaftsverwaltung" onClose={() => setProfileUnderlay("")}><TrainerTeamSettings user={user} members={members} setMembers={setMembers}/></ProfileUnderlay>}
+      {profileUnderlay === "calendar" && <ProfileUnderlay title={t("pf.kalenderSync")} onClose={() => setProfileUnderlay("")} onSave={entitlement.tier !== "none" ? ()=>sectionSaveRef.current?.() : undefined}><LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("pf.kalenderAbo")}><CalendarSyncSettings user={user} saveRef={sectionSaveRef}/></LockedFeature></ProfileUnderlay>}
+      {profileUnderlay === "feedback" && <ProfileUnderlay title={t("pf.appBewerten")} onClose={() => setProfileUnderlay("")}><FeedbackSettings/></ProfileUnderlay>}
+      {profileUnderlay === "bug" && <ProfileUnderlay title={t("pf.fehlerMeldenKurz")} onClose={() => setProfileUnderlay("")}><BugReportSettings user={user}/></ProfileUnderlay>}
+      {profileUnderlay === "trainer" && (user.roles.includes("trainer") || darfVereinVerwalten(user)) && <ProfileUnderlay title={t("pf.trainerRollen")} eyebrow={t("tm.mannschaftsverwaltung")} onClose={() => setProfileUnderlay("")}><TrainerTeamSettings user={user} members={members} setMembers={setMembers}/></ProfileUnderlay>}
       {profileUnderlay === "penalties" && (user.roles.includes("trainer") || darfVereinVerwalten(user)
-        || ["spieler", "teammanager", "kapitaen"].some((r) => user.roles.includes(r))) && <ProfileUnderlay title={t("pf.mannschaftseinstellungen")} eyebrow="Mannschaftsverwaltung" onClose={() => setProfileUnderlay("")}><TeamPenaltyCatalog user={user}/></ProfileUnderlay>}
-      {profileUnderlay === "family" && <ProfileUnderlay title="Familie & Verknüpfungen" onClose={() => setProfileUnderlay("")}><SectionTitle eyebrow="Familie" title="Stammbaum"/><div className="mb-2"><FamilyTree user={user} members={members}/></div><FamilyLinkManager user={user} members={members} setMembers={setMembers}/></ProfileUnderlay>}
-      {profileUnderlay === "users" && darfVereinVerwalten(user) && <ProfileUnderlay title="Benutzerverwaltung" eyebrow="Sys-Administration" onClose={() => setProfileUnderlay("")}><SysAdminUserManager members={members} setMembers={setMembers} currentUser={user}/></ProfileUnderlay>}
-      {profileUnderlay === "board-overview" && darfVereinVerwalten(user) && <ProfileUnderlay title="Mitgliederübersicht" eyebrow="Vorstand" onClose={() => setProfileUnderlay("")}><BoardMemberOverview members={members} currentUser={user} vorauswahl={mitgliedZiel} onVorauswahlErledigt={onMitgliedZielErreicht}/></ProfileUnderlay>}
-      {profileUnderlay === "join-requests" && darfVereinVerwalten(user) && <ProfileUnderlay title="Beitrittsanfragen" eyebrow="Verwalten" onClose={() => setProfileUnderlay("")}><MembershipApprovalsPanel club={{ id: user.clubId }} members={members} setMembers={setMembers} currentUser={user} nurAnfragen /></ProfileUnderlay>}
-      {profileUnderlay === "account" && <ProfileUnderlay title="Kontoeinstellungen" onClose={() => setProfileUnderlay("")}>
-        <div className="rounded-2xl p-4 mb-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="flex items-center gap-2 text-sm font-bold mb-1" style={{ color: C.ink }}><ShieldCheck size={16} style={{ color: C.sekundaerAufHell }}/> Sicherheit</div><div className="text-[11px]" style={{ color: C.textDim }}>Dein Konto ist über Supabase geschützt. Passwortänderungen und Wiederherstellung erfolgen über deine hinterlegte E-Mail-Adresse.</div></div>
+        || ["spieler", "teammanager", "kapitaen"].some((r) => user.roles.includes(r))) && <ProfileUnderlay title={t("pf.mannschaftseinstellungen")} eyebrow={t("tm.mannschaftsverwaltung")} onClose={() => setProfileUnderlay("")}><TeamPenaltyCatalog user={user}/></ProfileUnderlay>}
+      {profileUnderlay === "family" && <ProfileUnderlay title={t("fam.familieVerknuepfungen")} onClose={() => setProfileUnderlay("")}><SectionTitle eyebrow={t("fam.familie")} title={t("fam.stammbaum")}/><div className="mb-2"><FamilyTree user={user} members={members}/></div><FamilyLinkManager user={user} members={members} setMembers={setMembers}/></ProfileUnderlay>}
+      {profileUnderlay === "users" && darfVereinVerwalten(user) && <ProfileUnderlay title={t("pf.benutzerverwaltung")} eyebrow={t("sys.sysAdministration")} onClose={() => setProfileUnderlay("")}><SysAdminUserManager members={members} setMembers={setMembers} currentUser={user}/></ProfileUnderlay>}
+      {profileUnderlay === "board-overview" && darfVereinVerwalten(user) && <ProfileUnderlay title={t("pf.mitgliederuebersicht")} eyebrow={t("rol.vorstand")} onClose={() => setProfileUnderlay("")}><BoardMemberOverview members={members} currentUser={user} vorauswahl={mitgliedZiel} onVorauswahlErledigt={onMitgliedZielErreicht}/></ProfileUnderlay>}
+      {profileUnderlay === "join-requests" && darfVereinVerwalten(user) && <ProfileUnderlay title={t("benach.join_requests")} eyebrow={t("allg.verwalten")} onClose={() => setProfileUnderlay("")}><MembershipApprovalsPanel club={{ id: user.clubId }} members={members} setMembers={setMembers} currentUser={user} nurAnfragen /></ProfileUnderlay>}
+      {profileUnderlay === "account" && <ProfileUnderlay title={t("konto.dlg.eyebrow")} onClose={() => setProfileUnderlay("")}>
+        <div className="rounded-2xl p-4 mb-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="flex items-center gap-2 text-sm font-bold mb-1" style={{ color: C.ink }}><ShieldCheck size={16} style={{ color: C.sekundaerAufHell }}/> Sicherheit</div><div className="text-[11px]" style={{ color: C.textDim }}>{t("pf.kontoSupabaseHinweis")}</div></div>
         <div className="space-y-2 mb-6"><a href="/datenschutz" className="w-full flex items-center justify-between rounded-2xl px-3.5 py-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}><span className="text-xs font-bold" style={{ color: C.ink }}>{t("recht.datenschutz")}</span><ChevronRight size={14} style={{ color: C.textDim }}/></a><a href="/nutzungsbedingungen" className="w-full flex items-center justify-between rounded-2xl px-3.5 py-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}><span className="text-xs font-bold" style={{ color: C.ink }}>{t("recht.nutzung")}</span><ChevronRight size={14} style={{ color: C.textDim }}/></a></div>
-        <SectionTitle eyebrow="Weitere Optionen" title="Accountverwaltung"/>
-        <ProfileSettingsCard icon={User} title="Account verwalten" description="Persönliche Kontodaten und weitere Kontoaktionen" color={C.textDim} onClick={() => setProfileUnderlay("account-delete")}/>
+        <SectionTitle eyebrow={t("allg.weitereOptionen")} title={t("pf.accountverwaltung")}/>
+        <ProfileSettingsCard icon={User} title={t("pf.accountVerwalten")} description={t("pf.accountVerwaltenHinweis")} color={C.textDim} onClick={() => setProfileUnderlay("account-delete")}/>
       </ProfileUnderlay>}
       {/* Schließt zurück ins Profil statt in die Kontoeinstellungen: Die Ansicht ist
           jetzt auch direkt aus der Einstellungsliste erreichbar, und ein Zurück in
@@ -11055,7 +11056,7 @@ function DutyView({ members, currentUser, events, dutyPlan, setDutyPlan, onDiens
 
   return (
     <div className="px-4 pt-4 pb-24">
-      <div className="text-xs mb-4" style={{ color: C.textDim, fontFamily: "Inter" }}>Von der Theke beim Heimspiel bis zum Kuchenbuffet auf dem Sommerfest — hier findest du alle offenen Helferstellen. Trag dich direkt ein!</div>
+      <div className="text-xs mb-4" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("sup.helferstellenIntro")}</div>
 
 
       {helperEvents.length === 0 && (
@@ -11609,7 +11610,7 @@ function AutomationsPanel({ welcomeAutomation, setWelcomeAutomation, onEinstellu
 
   return (
     <div className="space-y-6">
-      <ToggleCard title="Willkommens-Automatik" desc="Neue Mitglieder erhalten automatisch eine Begrüßung im Kanal „Vereins-News“." value={welcomeAutomation} onChange={async()=>{/* ToggleCard reicht eine Updater-Funktion herein - die landete vorher als Wert in der Datenbank. Jetzt der neue Wahrheitswert, und bei einem Fehler zurueck (U14). */const neu=!welcomeAutomation;setWelcomeAutomation(neu);const ergebnis=await onEinstellung?.("welcome_automation",neu);if(ergebnis?.error)setWelcomeAutomation(!neu);}} />
+      <ToggleCard title={t("sys.willkommensAutomatik")} desc={t("sys.willkommensAutomatikHinweis")} value={welcomeAutomation} onChange={async()=>{/* ToggleCard reicht eine Updater-Funktion herein - die landete vorher als Wert in der Datenbank. Jetzt der neue Wahrheitswert, und bei einem Fehler zurueck (U14). */const neu=!welcomeAutomation;setWelcomeAutomation(neu);const ergebnis=await onEinstellung?.("welcome_automation",neu);if(ergebnis?.error)setWelcomeAutomation(!neu);}} />
     </div>
   );
 }
@@ -11705,11 +11706,11 @@ function OverviewPanel({ members, events, protocols, dutyPlan, seasonStand, goPa
 
   return (
     <div className="grid grid-cols-2 gap-3">
-      <StatCard icon={Users} label="Mitglieder" value={mitgliederZahl} sub="alle formale Mitglieder" accent={C.ink} />
-      <StatCard icon={ClipboardList} label="Offene Aufgaben" value={openTasks} sub="aus Protokollen" accent={C.red} onClick={() => goPanel("protokolle")} />
-      {dutyOn && <StatCard icon={AlertCircle} label="Helfer-Lücken" value={openSlots} sub={`von ${totalSlots} Plätzen offen`} accent={C.secondary} onClick={() => goHelfer?.()} />}
-      {seasonOn && <StatCard icon={Trophy} label="Saison-Stimmen" value={seasonTotal} sub="Athlet/in der Saison" accent={C.secondary} onClick={() => goPanel("season")} />}
-      <StatCard icon={CalendarDays} label="Nächstes Event" value={nextEvent ? formatDate(nextEvent.date) : "—"} sub={nextEvent ? nextEvent.title : t("ev.keinTerminGeplant")} accent={C.red} />
+      <StatCard icon={Users} label={t("verein.statMitglieder")} value={mitgliederZahl} sub="alle formale Mitglieder" accent={C.ink} />
+      <StatCard icon={ClipboardList} label={t("verein.statOffeneAufgaben")} value={openTasks} sub="aus Protokollen" accent={C.red} onClick={() => goPanel("protokolle")} />
+      {dutyOn && <StatCard icon={AlertCircle} label={t("verein.statHelferLuecken")} value={openSlots} sub={mitWerten(t("verein.statPlaetzeOffen"), { gesamt: totalSlots })} accent={C.secondary} onClick={() => goHelfer?.()} />}
+      {seasonOn && <StatCard icon={Trophy} label={t("verein.statSaisonStimmen")} value={seasonTotal} sub="Athlet/in der Saison" accent={C.secondary} onClick={() => goPanel("season")} />}
+      <StatCard icon={CalendarDays} label={t("verein.statNaechstesEvent")} value={nextEvent ? formatDate(nextEvent.date) : "—"} sub={nextEvent ? nextEvent.title : t("ev.keinTerminGeplant")} accent={C.red} />
     </div>
   );
 }
@@ -12296,7 +12297,7 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
               <div className="rounded-xl p-2.5 mb-2" style={{ background: C.paperDim, border: `1px solid ${C.line}` }}>
                 <div className="text-xs" style={{ fontWeight: 700, color: C.ink }}>{meiner.titel}</div>
                 {meiner.aktion_titel && <div className="text-[11px] mt-0.5" style={{ color: laeuftAktion ? C.red : C.textDim, fontWeight: 600 }}>
-                  {meiner.aktion_titel} · {laeuftAktion ? `läuft bis ${new Date(meiner.aktion_bis).toLocaleDateString(datumsLocale())}` : "beendet"}
+                  {meiner.aktion_titel} · {laeuftAktion ? mitWerten(t("sp.laeuftBis"), { datum: new Date(meiner.aktion_bis).toLocaleDateString(datumsLocale()) }) : "beendet"}
                 </div>}
                 {abgelaufen && <div className="text-[11px] mt-0.5" style={{ color: C.textDim }}>{t("sp.laufzeitBeendet")}</div>}
                 <div className="text-[10px] mt-1.5" style={{ color: C.textDim, fontFamily: "JetBrains Mono" }}>{meiner.impressionen ?? 0} {t("kpi.einblendungen")} · {meiner.klicks ?? 0} {t("kpi.klicks")}</div>
@@ -12360,7 +12361,7 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
                   <label className="flex-1"><span className="text-[10px] block mb-1" style={{ color: C.textDim }}>{t("allg.bis")}</span>
                     <input type="datetime-local" value={entwurf.laeuft_bis} onChange={(e) => setzen("laeuft_bis", e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} /></label>
                 </div>
-                <div className="text-[10px]" style={{ color: C.textDim }}>In diesem Zeitraum wird der Sponsor angezeigt — und, falls eine Aktion hinterlegt ist, auch ihr Knopf.</div>
+                <div className="text-[10px]" style={{ color: C.textDim }}>{t("sp.zeitraumHinweis")}</div>
 
                 <div className="flex gap-2 pt-1">
                   <button onClick={() => { setOffen(""); setEntwurf(null); setFehler(""); }} className="flex-1 px-3 py-2.5 rounded-xl text-xs" style={{ background: C.paperDim, color: C.ink, fontWeight: 600, border: `1px solid ${C.line}` }}>{t("allg.abbrechen")}</button>
@@ -13192,15 +13193,15 @@ function MembershipApprovalsPanel({ club, members, setMembers, currentUser = nul
      Person sich neu bewerben. Das ist Absicht: Entfernen heisst weg, nicht
      verbannt. */
   const blockMember = async (member) => {
-    if (!window.confirm(`${member.display_name} für den Verein sperren?\n\nDie Person verliert den Zugang und kann keine neue Beitrittsanfrage stellen, bis du sie wieder entsperrst. Sie erscheint so lange in der Sperrliste.`)) return;
+    if (!window.confirm(mitWerten(t("mit.sperrenFrage"), { name: member.display_name }))) return;
     setWorkingId(member.id); setMessage("");
     const { error } = await supabase.from("club_memberships").update({ status: "blocked" }).eq("id", member.id).eq("club_id", club.id);
     if (error) { setMessage(rollenFehlerText(error, t, t("mit.sperreNichtGesetzt"))); setWorkingId(null); return; }
     setActiveMembers((items) => items.map((item) => item.id === member.id ? { ...item, status: "blocked" } : item));
     setMembers((items) => items.map((item) => item.id === member.id ? { ...item, status: "blocked", accountPending: false } : item));
-    setMessage(`${member.display_name} ist jetzt gesperrt.`);
+    setMessage(mitWerten(t("mit.istJetztGesperrt"), { name: member.display_name }));
     setWorkingId(null);
-    notifyClubAdmins(club.id, "membership", t("mit.gesperrt"), `${member.display_name} wurde für den Verein gesperrt.`, member.id);
+    notifyClubAdmins(club.id, "membership", t("mit.gesperrt"), mitWerten(t("mit.wurdeGesperrt"), { name: member.display_name }), member.id);
   };
 
   const unblockMember = async (member) => {
@@ -13213,13 +13214,13 @@ function MembershipApprovalsPanel({ club, members, setMembers, currentUser = nul
     if (error) { setMessage(t("mit.entsperrenFehler")); setWorkingId(null); return; }
     setActiveMembers((items) => items.map((item) => item.id === member.id ? { ...item, status: "inactive" } : item));
     setMembers((items) => items.map((item) => item.id === member.id ? { ...item, status: "inactive" } : item));
-    setMessage(`${member.display_name} ist entsperrt und kann sich wieder bewerben.`);
+    setMessage(mitWerten(t("mit.entsperrtBewerben"), { name: member.display_name }));
     setWorkingId(null);
   };
 
   const toggleMemberActive = async (member) => {
     const nextStatus = member.status === "active" ? "inactive" : "active";
-    if (nextStatus === "inactive" && !window.confirm(`Mitgliedschaft von ${member.display_name} wirklich beenden? Das Mitglied kann sich danach nicht mehr anmelden, bleibt aber in der Historie erhalten.`)) return;
+    if (nextStatus === "inactive" && !window.confirm(mitWerten(t("mit.mitgliedschaftBeendenFrage"), { name: member.display_name }))) return;
     setWorkingId(member.id); setMessage("");
     const { error } = await supabase.from("club_memberships").update({ status: nextStatus }).eq("id", member.id).eq("club_id", club.id);
     if (error) { setMessage(rollenFehlerText(error, t, t("allg.statusAendernFehler"))); setWorkingId(null); return; }
@@ -13228,7 +13229,7 @@ function MembershipApprovalsPanel({ club, members, setMembers, currentUser = nul
     setMessage(nextStatus === "inactive" ? (OK_ZEICHEN + t("mit.wurdeBeendet")) : (OK_ZEICHEN + t("mit.wurdeReaktiviert")));
     setWorkingId(null);
     if (nextStatus === "inactive") {
-      notifyClubAdmins(club.id, "membership", t("mit.mitgliedschaftBeendet"), `${member.display_name} ist nicht mehr aktives Mitglied.`, member.id);
+      notifyClubAdmins(club.id, "membership", t("mit.mitgliedschaftBeendet"), mitWerten(t("mit.nichtMehrAktivesMitglied"), { name: member.display_name }), member.id);
     }
   };
 
@@ -13245,7 +13246,7 @@ function MembershipApprovalsPanel({ club, members, setMembers, currentUser = nul
      erneut um Aufnahme bewerben; loeschen kann das Konto nur die Person selbst
      (Profil > Konto loeschen). */
   const removeMember = async (member) => {
-    if (!window.confirm(`${member.display_name} endgültig aus dem Verein entfernen?\n\nRollen, Mannschaftszuordnung, Helfereinteilungen und Beiträge gehen dabei verloren. Das Benutzerkonto selbst bleibt bestehen.\n\nSoll die Person nur nicht mehr teilnehmen, ist „Beenden“ der schonendere Weg.`)) return;
+    if (!window.confirm(mitWerten(t("mit.endgueltigEntfernenFrage"), { name: member.display_name }))) return;
     setWorkingId(member.id); setMessage("");
     const { error } = await supabase.from("club_memberships").delete().eq("id", member.id).eq("club_id", club.id);
     if (error) {
@@ -13404,13 +13405,13 @@ function MembershipApprovalsPanel({ club, members, setMembers, currentUser = nul
               ? <button disabled={workingId === member.id} onClick={() => unblockMember(member)} className="px-3 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: C.erfolgFlaeche, color: C.erfolg, opacity: workingId === member.id ? .6 : 1 }}>{t("allg.entsperren")}</button>
               : <>
                   <button disabled={workingId === member.id} onClick={() => toggleMemberActive(member)} className="px-3 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: member.status === "active" ? C.fehlerFlaeche : C.erfolgFlaeche, color: member.status === "active" ? C.fehler : C.erfolg, opacity: workingId === member.id ? .6 : 1 }}>{member.status === "active" ? t("mit.beenden") : t("mit.reaktivieren")}</button>
-                  <button disabled={workingId === member.id} onClick={() => blockMember(member)} title="Sperren — kann sich nicht mehr bewerben" className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: C.fehlerFlaeche, color: C.fehler, opacity: workingId === member.id ? .6 : 1 }}>{t("mit.sperren")}</button>
+                  <button disabled={workingId === member.id} onClick={() => blockMember(member)} title={t("mit.sperrenKannSichNichtBewerben")} className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: C.fehlerFlaeche, color: C.fehler, opacity: workingId === member.id ? .6 : 1 }}>{t("mit.sperren")}</button>
                 </>}
             {/* Zwei getrennte Wege, bewusst unterschiedlich gewichtet:
                 t("mit.beenden") legt die Mitgliedschaft still und laesst sie in der
                 Historie - das ist der Regelfall. t("allg.entfernen") loescht sie
                 endgueltig und steht deshalb unauffaelliger daneben. */}
-            {member.id !== currentUser?.id && <button disabled={workingId === member.id} onClick={() => removeMember(member)} title="Endgültig aus dem Verein entfernen" className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: C.paperDim, color: C.textDim, opacity: workingId === member.id ? .6 : 1 }}>{t("allg.entfernen")}</button>}
+            {member.id !== currentUser?.id && <button disabled={workingId === member.id} onClick={() => removeMember(member)} title={t("mit.endgueltigAusVereinEntfernen")} className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: C.paperDim, color: C.textDim, opacity: workingId === member.id ? .6 : 1 }}>{t("allg.entfernen")}</button>}
           </div>
         ))}
         {nichtGesperrte.length === 0 && <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{t("mit.keineVorhanden")}</div>}
@@ -13441,7 +13442,7 @@ function MembershipApprovalsPanel({ club, members, setMembers, currentUser = nul
                 <div className="text-[10px] truncate" style={{ color: C.textDim }}>{member.email || t("pf.keineEmail")}</div>
               </div>
               <button disabled={workingId === member.id} onClick={() => unblockMember(member)} className="px-3 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: C.erfolgFlaeche, color: C.erfolg, opacity: workingId === member.id ? .6 : 1 }}>{t("allg.entsperren")}</button>
-              <button disabled={workingId === member.id} onClick={() => removeMember(member)} title="Endgültig aus dem Verein entfernen" className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: C.paperDim, color: C.textDim, opacity: workingId === member.id ? .6 : 1 }}>{t("allg.entfernen")}</button>
+              <button disabled={workingId === member.id} onClick={() => removeMember(member)} title={t("mit.endgueltigAusVereinEntfernen")} className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: C.paperDim, color: C.textDim, opacity: workingId === member.id ? .6 : 1 }}>{t("allg.entfernen")}</button>
             </div>
           ))}
         </div>
@@ -13564,8 +13565,8 @@ function ClubRoleOverviewPanel({ members }) {
   const [selectedMember, setSelectedMember] = useState(null);
   return (
     <div className="mb-6">
-      <SectionTitle eyebrow="Überblick" title="Rollen im Verein" />
-      <div className="text-xs mb-3 -mt-2" style={{ color: C.textDim }}>Nur-Lese-Übersicht, wer welche Rolle in diesem Verein hat. Auf ein Mitglied tippen öffnet das Profil.</div>
+      <SectionTitle eyebrow={t("auf.bereicheEyebrow")} title={t("mit.rollenImVerein")} />
+      <div className="text-xs mb-3 -mt-2" style={{ color: C.textDim }}>{t("mit.rollenUebersichtHinweis")}</div>
       <div className="space-y-2">
         {ROLE_OVERVIEW_KEYS.map((roleKey) => {
           const holders = members.filter((m) => m.roles.includes(roleKey)).sort((a, b) => a.name.localeCompare(b.name, "de"));
@@ -13723,7 +13724,7 @@ function ClaimManagedPlayerPanel({ members, setMembers, currentUser }) {
   return (
     <div className="rounded-2xl p-3.5 mt-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
       <div className="text-sm mb-1" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{t("sys.profileZusammen")}</div>
-      <div className="text-[11px] mb-3" style={{ color: C.textDim }}>Wenn ein ohne Konto angelegter Spieler (z. B. aus einer Kindermannschaft) später sein eigenes Konto registriert, hier das Platzhalter-Profil mit dem neuen echten Konto verknüpfen.</div>
+      <div className="text-[11px] mb-3" style={{ color: C.textDim }}>{t("sys.platzhalterVerknuepfenHinweis")}</div>
       {message && <div className="rounded-xl px-3 py-2 text-[11px] font-semibold mb-2" style={{ background: !istErfolg(message) ? C.fehlerFlaeche : C.erfolgFlaeche, color: !istErfolg(message) ? C.fehler : C.erfolg }}>{meldungstext(message)}</div>}
       <select value={managedId} onChange={(e) => { setManagedId(e.target.value); setRealId(""); setMessage(""); }} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}>
         <option value="">{t("sys.platzhalter")}</option>
@@ -14296,7 +14297,7 @@ function AufgabeOverlay({ taskId, currentUser, onClose }) {
   };
 
   const loeschen = async () => {
-    if (!window.confirm(`Aufgabe „${aufgabe.title}“ wirklich löschen?`)) return;
+    if (!window.confirm(mitWerten(t("auf.aufgabeWirklichLoeschen"), { titel: aufgabe.title }))) return;
     setArbeitet(true); setFehler("");
     const { error } = await supabase.from("club_tasks").delete().eq("id", taskId);
     setArbeitet(false);
@@ -14465,7 +14466,7 @@ function PostfachView({ eintraege, laedt, onGelesen, onLoeschen, onAlleLoeschen,
           Daumenkrampf statt Uebersicht. Mit Rueckfrage, weil es nicht
           rueckgaengig zu machen ist. */}
       {eintraege.length > 0 && (
-        <button onClick={() => { if (window.confirm(`Alle ${eintraege.length} Benachrichtigungen löschen? Das lässt sich nicht rückgängig machen.`)) onAlleLoeschen?.(); }}
+        <button onClick={() => { if (window.confirm(mitWerten(t("benach.alleLoeschenFrage"), { anzahl: eintraege.length }))) onAlleLoeschen?.(); }}
           className="w-full py-2.5 rounded-xl text-xs font-bold mb-3"
           style={{ background: C.fehlerFlaeche, color: C.fehler, border: `1px solid ${C.fehler}` }}>
           Alle Nachrichten löschen
@@ -14554,7 +14555,7 @@ function NurAlsAppHinweis() {
         <div className="space-y-2 mb-8">
           {appStore && <a href={appStore} className="block py-3 rounded-2xl text-sm font-bold" style={{ background: C.ink, color: C.white }}>{t("store.apple")}</a>}
           {playStore && <a href={playStore} className="block py-3 rounded-2xl text-sm font-bold" style={{ background: C.glass, border: `1px solid ${C.edge}`, color: C.ink }}>{t("store.google")}</a>}
-          {!appStore && !playStore && <div className="text-[11px] rounded-2xl px-4 py-3" style={{ background: C.paperDim, color: C.textDim }}>Die App wird gerade veröffentlicht. Die Store-Links erscheinen hier, sobald sie verfügbar sind.</div>}
+          {!appStore && !playStore && <div className="text-[11px] rounded-2xl px-4 py-3" style={{ background: C.paperDim, color: C.textDim }}>{t("allg.appWirdVeroeffentlicht")}</div>}
         </div>
         <div className="flex items-center justify-center gap-4 text-[11px]" style={{ color: C.textDim }}>
           <a href="/nutzungsbedingungen" className="underline">{t("recht.nutzung")}</a>
@@ -17479,17 +17480,17 @@ export default function ClubMemberOrganisationApp() {
                   naechste Reiterwechsel fuehrt aus dem Fehler heraus, weil der
                   Schluessel die Grenze zuruecksetzt. */}
               <Fehlergrenze key={`grenze-${tab}-${subView || ""}`}>
-                {subView === "season" && featureEnabled("season_award") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Athlet/in der Saison"><SeasonVoteView currentUser={currentUser} members={clubMembers} seasonVotes={seasonVotes} seasonStand={seasonStand} setSeasonVotes={setSeasonVotes} onVote={saisonStimmeAbgeben} onUnvote={saisonStimmeZuruecknehmen} /></LockedFeature>}
+                {subView === "season" && featureEnabled("season_award") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("sub.season")}><SeasonVoteView currentUser={currentUser} members={clubMembers} seasonVotes={seasonVotes} seasonStand={seasonStand} setSeasonVotes={setSeasonVotes} onVote={saisonStimmeAbgeben} onUnvote={saisonStimmeZuruecknehmen} /></LockedFeature>}
                 {/* Ergebnisse haengen am Abo wie die anderen Kacheln, nicht am
                     Tippspiel-Schalter. Alle Termine statt der sichtbaren:
                     Fans sehen jede Mannschaft (Trainings laesst die Ansicht
                     ohnehin weg). */}
                 {subView === "ergebnisse" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("sub.ergebnisse")}><ErgebnisseView events={events} results={tippResults} currentUser={currentUser} favorit={startseiteWahl} fokusId={ergebnisFokus} onFokusErledigt={setErgebnisFokus} onSpeichern={saveTippResult} onEntfernen={deleteTippResult} mitPunkten={featureEnabled("tippspiel")} /></LockedFeature>}
-                {subView === "tipp" && featureEnabled("tippspiel") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Tippspiel"><TippView members={clubMembers} currentUser={currentUser} events={events} tippPredictions={tippPredictions} setTippPredictions={setTippPredictions} tippResults={tippResults} onTippSpeichern={tippSpeichern} onZurueck={() => setSubView(null)} /></LockedFeature>}
+                {subView === "tipp" && featureEnabled("tippspiel") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("sub.tipp")}><TippView members={clubMembers} currentUser={currentUser} events={events} tippPredictions={tippPredictions} setTippPredictions={setTippPredictions} tippResults={tippResults} onTippSpeichern={tippSpeichern} onZurueck={() => setSubView(null)} /></LockedFeature>}
                 {subView === "postfach" && <PostfachView eintraege={postfach} laedt={postfachLaedt} onGelesen={postfachGelesen} onAlleLoeschen={postfachAlleLoeschen} onLoeschen={postfachLoeschen} onOeffnen={meldungAntippen} kannOeffnen={meldungOeffenbar}/>}
-                {subView === "duty" && featureEnabled("duty_roster") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Helferplanung"><DutyView members={clubMembers} currentUser={currentUser} events={sichtbareTermine} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={dienstSetzen} /></LockedFeature>}
-                {subView === "tasks" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Aufgaben"><TasksView currentUser={currentUser} members={clubMembers} /></LockedFeature>}
-                {subView === "vehicles" && featureEnabled("vehicle_booking") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Vereinsfahrzeuge"><VehiclesView currentUser={currentUser} currentClub={currentClub} /></LockedFeature>}
+                {subView === "duty" && featureEnabled("duty_roster") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("sub.duty")}><DutyView members={clubMembers} currentUser={currentUser} events={sichtbareTermine} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={dienstSetzen} /></LockedFeature>}
+                {subView === "tasks" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("auf.titel")}><TasksView currentUser={currentUser} members={clubMembers} /></LockedFeature>}
+                {subView === "vehicles" && featureEnabled("vehicle_booking") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("sport.vehi.vereinsfahrzeuge")}><VehiclesView currentUser={currentUser} currentClub={currentClub} /></LockedFeature>}
 
                 {!subView && tab === "home" && (
                   <Dashboard user={currentUser} onFavoritMannschaft={setzeFavoritMannschaft} members={clubMembers} events={sichtbareTermine} channels={channels} news={vereinsNews} dutyPlan={dutyPlan} seasonVotes={seasonVotes} seasonStand={seasonStand} tippPredictions={tippPredictions} tippResults={tippResults} polls={polls} setPolls={setPolls} onVote={stimmeAbgeben} onUnvote={stimmeZuruecknehmen}
@@ -17508,9 +17509,9 @@ export default function ClubMemberOrganisationApp() {
                     tippResults={tippResults} tippPredictions={tippPredictions} onErgebnisOeffnen={(id) => { setErgebnisFokus(id); setSubView("ergebnisse"); }}
                     currentClub={currentClub} featureEnabled={featureEnabled} />
                 )}
-                {!subView && tab === "teams" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Teams-Verwaltung"><TeamsView currentUser={currentUser} members={clubMembers} setMembers={setMembers} currentClub={currentClub} teamWunsch={teamWunsch} onTeamWunschErledigt={() => setTeamWunsch(null)} /></LockedFeature>}
+                {!subView && tab === "teams" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("tm.teamsVerwaltung")}><TeamsView currentUser={currentUser} members={clubMembers} setMembers={setMembers} currentClub={currentClub} teamWunsch={teamWunsch} onTeamWunschErledigt={() => setTeamWunsch(null)} /></LockedFeature>}
                 {!subView && tab === "chat" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Chat"><ChatView user={currentUser} channels={channels} setChannels={setChannels} activeId={chatChannelId} setActiveId={setChatChannelId} members={clubMembers} /></LockedFeature>}
-                {!subView && tab === "redaktion" && currentUserCanEditNews && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Redaktion"><RedaktionView user={currentUser} news={vereinsNews} setNews={setVereinsNews} /></LockedFeature>}
+                {!subView && tab === "redaktion" && currentUserCanEditNews && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("nav.news")}><RedaktionView user={currentUser} news={vereinsNews} setNews={setVereinsNews} /></LockedFeature>}
                 {/* canManageDuty gehoert mit in die Bedingung: Der Reiter
                     "Verwaltung" wird oben genau danach eingeblendet
                     (isAdminUser || canEditSponsors || canManageDutyUser).
@@ -17519,7 +17520,7 @@ export default function ClubMemberOrganisationApp() {
                     Seite. */}
                 {!subView && tab === "support" && !!currentUser && !istNurFan(currentUser) && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("nav.support")}><SupportView currentUser={currentUser} members={clubMembers} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={dienstSetzen} dutyOn={featureEnabled("duty_roster")} bereichWunsch={supportBereich} onBereichUebernommen={() => setSupportBereich(null)} currentClub={currentClub} goVerwaltung={goVerwaltung} goFahrzeuge={() => setSubView("vehicles")} goTermin={(id) => { setSubView(null); setEventFocusRequest({ team: "alle", eventId: id, requestedAt: Date.now() }); setTab("events"); }} /></LockedFeature>}
                 {!subView && tab === "admin" && (currentUserIsAdmin || currentUserCanEditSponsors || canManageDuty(currentUser)) && (
-                  <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Verwaltung">
+                  <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("sys.verwaltung")}>
                   <AdminView bereichWunsch={verwaltungsBereich} onBereichUebernommen={() => setVerwaltungsBereich(null)}
                     goHelferEinteilen={() => goSupport("einteilen")} members={clubMembers} setMembers={setMembers} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} seasonVotes={seasonVotes} seasonStand={seasonStand}
                     currentUser={currentUser} channels={channels} setChannels={setChannels} maintenanceMode={maintenanceMode} setMaintenanceMode={setMaintenanceMode} onResetDemo={resetDemoData}
