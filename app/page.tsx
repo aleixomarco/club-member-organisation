@@ -14697,6 +14697,29 @@ export default function ClubMemberOrganisationApp() {
     if (tab !== "home") { setTab("home"); }
   };
   const kannHoeher = zurueckTiefe > 0 || !!subView || tab !== "home";
+  /* Die Zurueck-Taste unter Android (U6).
+     Bisher gab es keinen Handler: Die Taste beendete die App aus jeder Ebene
+     heraus, statt eine Ebene hoeher zu gehen. Jetzt gilt dieselbe Ordnung wie
+     beim Pfeil in der Kopfzeile - und auf der Startseite wird die App nur in
+     den Hintergrund gelegt, nicht beendet. Der Ref haelt die aktuelle
+     Funktion, damit der Listener nur einmal angemeldet wird. Wirkt erst mit
+     dem naechsten Android-Build aus dem Store (@capacitor/app ist dort schon
+     Abhaengigkeit). */
+  const zurueckAktuell = useRef({ eineEbeneHoch, kannHoeher });
+  zurueckAktuell.current = { eineEbeneHoch, kannHoeher };
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "android") return;
+    let griff = null;
+    let beendet = false;
+    import("@capacitor/app")
+      .then(({ App }) => App.addListener("backButton", () => {
+        const { eineEbeneHoch: hoch, kannHoeher: kann } = zurueckAktuell.current;
+        if (kann) hoch(); else App.minimizeApp().catch(() => {});
+      }))
+      .then((g) => { if (beendet) g.remove(); else griff = g; })
+      .catch(() => {});
+    return () => { beendet = true; griff?.remove(); };
+  }, []);
   /* Neulade-Signal.
      Die Lader unten hingen allein an Nutzer und Verein - sie liefen also nur
      beim Anmelden oder beim Vereinswechsel. Wer die App offen liess, sah
