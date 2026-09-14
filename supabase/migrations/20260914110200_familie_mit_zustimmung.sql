@@ -260,6 +260,9 @@ returns boolean language sql stable security definer set search_path = '' as $$
      where f.id = target_link
        and not f.bestaetigt
        and o.club_id = f.club_id
+       /* Wer die Anfrage angelegt hat, bestaetigt sie nie selbst - sonst
+          machte sich ein Sysadmin ohne Zustimmung zum Elternteil (Durchsicht). */
+       and f.created_by is distinct from auth.uid()
        and ((o.profile_id = auth.uid() and o.status = 'active')
             or (o.profile_id is null and coalesce(o.is_managed_profile, false)
                 and public.has_club_role(f.club_id, array['vereinsadmin','sysadmin','organisator']::public.club_role[]))));

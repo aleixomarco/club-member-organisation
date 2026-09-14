@@ -220,7 +220,10 @@ create policy "authorized members update tasks" on public.club_tasks
     or public.has_club_role(club_id, array['vereinsadmin','sysadmin','organisator']::public.club_role[])
     or (team_id is not null and public.can_manage_team(team_id)))
   with check (
-    ((created_by in (select m.id from public.club_memberships m where m.profile_id = (select auth.uid())))
+    /* Der Ersteller nur mit einer Mitgliedschaft IM Verein der Aufgabe -
+       sonst verschob er sie per UPDATE in einen fremden Verein (Durchsicht). */
+    ((created_by in (select m.id from public.club_memberships m where m.profile_id = (select auth.uid())
+                       and m.club_id = club_tasks.club_id and m.status = 'active'))
      or public.has_club_role(club_id, array['vereinsadmin','sysadmin','organisator']::public.club_role[])
      or (team_id is not null and public.can_manage_team(team_id)))
     and (team_id is null

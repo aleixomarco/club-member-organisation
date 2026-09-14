@@ -38,7 +38,9 @@ drop policy if exists "members read club memberships" on public.club_memberships
 create policy "members read club memberships" on public.club_memberships
   for select to authenticated
   using (
-    (public.is_club_member(club_id) and status = 'active')
+    /* Ausgetretene bleiben sichtbar (Strafen, Aufgaben, Mitfahrten zeigen
+       sonst '-'); verborgen sind wartende, abgelehnte und gesperrte. */
+    (public.is_club_member(club_id) and status in ('active', 'inactive'))
     or profile_id = (select auth.uid())
     or public.has_club_role(club_id, array['vereinsadmin','sysadmin','organisator']::public.club_role[]));
 
@@ -49,11 +51,9 @@ create policy "members read club memberships" on public.club_memberships
 -- UPDATE und DELETE bleiben unberuehrt; die Regeln entscheiden dort weiter.
 -- Lesende SECURITY-INVOKER-Sichten auf diese Spalten gibt es nicht
 -- (team_penalty_totals liest nur display_name).
-revoke select on public.club_memberships from anon, authenticated;
-grant select (id, club_id, profile_id, display_name, member_since, status,
-              is_managed_profile, created_by, created_at, updated_at,
-              requested_role, requested_team, team_filter)
-  on public.club_memberships to authenticated;
+-- TEIL B (Spaltensperre) steht in 20260914110800_nach_dem_deploy.sql: Die
+-- live laufende App liest email und membership_number noch - eingespielt wird
+-- das erst, wenn die neue App live ist (Durchsicht 14.09.2026).
 
 -- Die geschuetzten Felder: fuer die Leitung alle Mitgliedschaften des Vereins,
 -- fuer alle anderen nur die eigene.
@@ -123,11 +123,8 @@ create policy "club members read duty tasks" on public.duty_tasks
 --         "members change season vote" UPDATE to authenticated
 --           using (voter_profile_id = auth.uid())
 --           with check ((voter_profile_id = auth.uid()) and is_club_member(club_id))
-drop policy if exists "members read season votes" on public.season_votes;
-drop policy if exists "members read own season vote" on public.season_votes;
-create policy "members read own season vote" on public.season_votes
-  for select to authenticated
-  using (voter_profile_id = (select auth.uid()));
+-- Die Leseregel "nur die eigene Stimme" steht in 20260914110800_nach_dem_deploy.sql:
+-- Die live laufende App zaehlt die Stimmen noch selbst.
 
 drop policy if exists "members cast season vote" on public.season_votes;
 create policy "members cast season vote" on public.season_votes
@@ -414,6 +411,12 @@ begin
     public.can_manage_team(target_team)
     or public.has_club_role(target_club, array['sysadmin','vereinsadmin','organisator']::public.club_role[])
   ) then raise exception 'Not authorized to create events for this team' using errcode = '42501'; end if;
+  /* Die Mannschaft muss zum Verein gehoeren (Durchsicht 14.09.): Sonst legte
+     ein Trainer von Mannschaft X aus Verein A bis zu 366 Termine im Kalender
+     von Verein B an. */
+  if target_team is not null and not exists (
+    select 1 from public.teams t where t.id = target_team and t.club_id = target_club
+  ) then raise exception 'Team not in club' using errcode = '42501'; end if;
 
   return query
     insert into public.events (club_id, team_id, type, status, title, description, starts_at, ends_at, location, created_by, series_id)
@@ -481,7 +484,12 @@ begin
          cancel_reason = trim(grund)
    where series_id = target_series
      and status <> 'cancelled'
-     and starts_at >= now();
+     and starts_at >= now()
+     /* Je Zeile pruefen, nicht nur an einer beliebigen: Sonst sagte, wer eine
+        fremde series_id in seinen Verein einschleuste, die ganze Reihe des
+        anderen Vereins ab (Durchsicht 14.09.). */
+     and (public.has_club_role(club_id, array['sysadmin','vereinsadmin','organisator']::public.club_role[])
+          or (team_id is not null and public.can_manage_team(team_id)));
 
   get diagnostics v_anzahl = row_count;
   return v_anzahl;

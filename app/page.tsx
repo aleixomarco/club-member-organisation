@@ -5166,7 +5166,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
       ...leererTerminentwurf(ev.team || ""), type: ev.type, title: ev.title || "",
       day: alsDatum(beginn), startTime: `${zweistellig(beginn.getHours())}:${zweistellig(beginn.getMinutes())}`,
       endTime: `${zweistellig(ende.getHours())}:${zweistellig(ende.getMinutes())}`,
-      location: ev.location || "", desc: ev.desc || "", isHome: ev.home !== false,
+      location: ev.location || "", desc: ev.desc || "", isHome: typeof ev.home === "boolean" ? ev.home : undefined,
     });
     setEditingEventId(ev.id);
     setEventFehler("");
@@ -5194,7 +5194,9 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
     const neu = {
       title: eventDraft.title.trim(), description: eventDraft.desc.trim() || null,
       starts_at: beginn.toISOString(), ends_at: ende.toISOString(), location: eventDraft.location.trim(),
-      ...(vorlage.type === "spiel" ? { home_away: eventDraft.isHome ? "heim" : "auswaerts" } : {}),
+      /* Nur schreiben, wenn der Ort feststeht: Ein Spiel ohne Ort wurde sonst bei
+         jeder Aenderung zum Heimspiel (Durchsicht 14.09.). */
+      ...(vorlage.type === "spiel" && typeof eventDraft.isHome === "boolean" ? { home_away: eventDraft.isHome ? "heim" : "auswaerts" } : {}),
     };
     const alt = {
       title: vorlage.title || "", description: vorlage.desc || null,
@@ -8435,7 +8437,7 @@ function TasksView({ currentUser, members }) {
         {/* Bearbeiten an Vereinsaufgaben: Ersteller oder Leitung. Vorher reichte
             jede Rolle ausser Spieler, Mitglied und Fan - die Regel wies das
             Aendern dann ab (M8). */}
-        {clubTasks.length === 0 ? <div className="text-xs rounded-xl p-3 mb-5" style={{ background: C.paperDim, color: C.textDim }}>{t("auf.keine")}</div> : <div className="mb-5">{clubTasks.map((t) => <TaskCard key={t.id} task={t} canManage={istAufgabenLeitung} onEdit={openEditTask}/>)}</div>}
+        {clubTasks.length === 0 ? <div className="text-xs rounded-xl p-3 mb-5" style={{ background: C.paperDim, color: C.textDim }}>{t("auf.keine")}</div> : <div className="mb-5">{clubTasks.map((t) => <TaskCard key={t.id} task={t} canManage={istAufgabenLeitung || t.createdBy === currentUser.id} onEdit={openEditTask}/>)}</div>}
         </>}
         {myTeams.filter((team) => team.id === aktiverBereich).map((team) => {
           const tasks = teamTasks.filter((t) => t.teamId === team.id);
@@ -8677,7 +8679,7 @@ function VehiclesView({ currentUser, currentClub }) {
         currentUser.id);
     }
     setSelectedVehicle(null); setEditingBookingId(null); setSavingBooking(false);
-    if (neuerStatus === "angefragt") setMessage(t("fzg.aenderungBrauchtFreigabe"));
+    if (editingBookingId && neuerStatus === "angefragt") setMessage(t("fzg.aenderungBrauchtFreigabe"));
     await loadBookings();
   };
   /* Ueber eine Anfrage entscheiden. Die Datenbank prueft das Recht noch einmal
@@ -9398,6 +9400,9 @@ function SubscriptionPanel({ user }) {
    dafuer gibt es jetzt scripts/pruefe-typen.mjs. */
 function ProfileUnderlay({ title, eyebrow, onClose, onSave, saving = false, saveDisabled = false, children }) {
   const t = useT();
+  /* Zurueck (Kopfzeile und Android-Taste) schliesst zuerst diese Seite -
+     vorher sprang die Android-Taste auf die Startseite (Durchsicht 14.09.). */
+  useZurueck(onClose, true);
   const rubrik = eyebrow ?? t("pf.einstellungen2");
   return <div className="erg-underlay absolute inset-0 z-40 flex flex-col">
     <div className="erg-underlay-bar flex items-center gap-3 px-4 py-3 flex-shrink-0" style={{ borderBottom: `1px solid ${C.line}` }}>
@@ -9928,7 +9933,7 @@ function NotificationSettings({ user, setMembers, saveRef }) {
         Geraet ueberhaupt fuer Push anmelden. Kein Nutzer konnte Push je
         einschalten. Seit lib/firebase-push.ts einen nativen Weg hat
         (@capacitor-firebase/messaging), gehoert der Schalter genau hierhin. */}
-    {databaseMembership && <div className="rounded-2xl p-4 mb-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1" style={{color:C.ink}}>{t("push.aufGeraet")}</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>{t("push.hinweisGeschlossen")}</div><button onClick={pushStatus==="active"?deactivatePush:activatePush} disabled={pushStatus==="working"} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{background:pushStatus==="active"?C.fehlerFlaeche:C.ink,color:pushStatus==="active"?C.red:C.white}}>{pushStatus==="working"?t("allg.wirdBearbeitet"):pushStatus==="active"?t("push.deaktivieren"):t("push.aktivieren")}</button></div>}<ToggleCard title={t("benach.master.titel")} desc={t("benach.master.beschreibung")} value={master} onChange={(v)=>aendern(v, prefs)}/><div className="mt-4 rounded-2xl p-4space-y-3" style={{background:C.glass,border:`1px solid ${C.line}`}}>{NOTIFICATION_OPTIONS.filter(([key])=>!(istNurFan(user)&&key.startsWith("training_"))).map(([key,label])=><label key={key} className="flex items-center justify-between gap-3"><span className="text-xs font-bold">{t(`benach.${key}`)}</span><select disabled={!master} value={prefs[key]?"ja":"nein"} onChange={(e)=>aendern(master,{...prefs,[key]:e.target.value==="ja"})} className="px-3 py-2 rounded-xl text-xs" style={{background:C.paperDim,opacity:master?1:.45}}><option value="ja">{t("allg.ja")}</option><option value="nein">{t("allg.nein")}</option></select></label>)}</div></div>;
+    {databaseMembership && <div className="rounded-2xl p-4 mb-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1" style={{color:C.ink}}>{t("push.aufGeraet")}</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>{t("push.hinweisGeschlossen")}</div><button onClick={pushStatus==="active"?deactivatePush:activatePush} disabled={pushStatus==="working"} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{background:pushStatus==="active"?C.fehlerFlaeche:C.ink,color:pushStatus==="active"?C.red:C.white}}>{pushStatus==="working"?t("allg.wirdBearbeitet"):pushStatus==="active"?t("push.deaktivieren"):t("push.aktivieren")}</button></div>}<ToggleCard title={t("benach.master.titel")} desc={t("benach.master.beschreibung")} value={master} onChange={()=>aendern(!master, prefs)}/><div className="mt-4 rounded-2xl p-4space-y-3" style={{background:C.glass,border:`1px solid ${C.line}`}}>{NOTIFICATION_OPTIONS.filter(([key])=>!(istNurFan(user)&&key.startsWith("training_"))).map(([key,label])=><label key={key} className="flex items-center justify-between gap-3"><span className="text-xs font-bold">{t(`benach.${key}`)}</span><select disabled={!master} value={prefs[key]?"ja":"nein"} onChange={(e)=>aendern(master,{...prefs,[key]:e.target.value==="ja"})} className="px-3 py-2 rounded-xl text-xs" style={{background:C.paperDim,opacity:master?1:.45}}><option value="ja">{t("allg.ja")}</option><option value="nein">{t("allg.nein")}</option></select></label>)}</div></div>;
 }
 
 function PasswordSettings({ user, onLogout, saveRef }) {
@@ -14123,6 +14128,7 @@ const subviewTitel = (t, sport) => ({ season: t("sub.season"), ergebnisse: t("su
  * geloescht, steht genau das da - kein leeres Blatt. */
 function NewsOverlay({ newsId, news, onClose }) {
   const t = useT();
+  useZurueck(onClose, true);
   const ausListe = (news || []).find((m) => m.id === newsId) || null;
   const ausListeDa = !!ausListe;
   const [nachgeladen, setNachgeladen] = useState(null);
@@ -14208,6 +14214,7 @@ function NewsOverlay({ newsId, news, onClose }) {
  * Datenbank weist ihn ab - ein Knopf, der immer scheitert. Hier nicht. */
 function AufgabeOverlay({ taskId, currentUser, onClose }) {
   const t = useT();
+  useZurueck(onClose, true);
   const [aufgabe, setAufgabe] = useState(null);
   const [laedt, setLaedt] = useState(true);
   const [fehler, setFehler] = useState("");
@@ -15115,9 +15122,13 @@ export default function ClubMemberOrganisationApp() {
      anderen mitgeaendert. Sie steht jetzt am Profil. Der Setzer schreibt gleich
      mit, damit keine Aufrufstelle daran denken muss. */
   const [dashboardTileOrder, setDashboardTileOrderIntern] = useState(DEFAULT_DASHBOARD_TILE_ORDER);
-  const setDashboardTileOrder = (wert) => {
-    if (Array.isArray(wert)) kachelreihenfolgeSpeichern(wert);
+  const setDashboardTileOrder = async (wert) => {
+    if (!Array.isArray(wert)) { setDashboardTileOrderIntern(wert); return; }
+    /* Sofort zeigen, bei Fehler zuruecknehmen - sonst stand die neue
+       Reihenfolge da und war beim naechsten Anmelden wieder weg. */
+    const vorher = dashboardTileOrder;
     setDashboardTileOrderIntern(wert);
+    if (!(await kachelreihenfolgeSpeichern(wert))) setDashboardTileOrderIntern(vorher);
   };
   const [polls, setPolls] = useState(supabase ? [] : INITIAL_POLLS);
   /* Welche Vereinsdaten sich beim Anmelden nicht laden liessen. Null heisst:
@@ -16120,9 +16131,10 @@ export default function ClubMemberOrganisationApp() {
   };
 
   const kachelreihenfolgeSpeichern = async (reihenfolge) => {
-    if (!supabase || !meinProfil()) return;
-    const { error } = await supabase.from("profiles").update({ dashboard_tile_order: reihenfolge }).eq("id", meinProfil());
-    if (error) setSchreibFehler(t("allg.reihenfolgeFehler"));
+    if (!supabase || !meinProfil()) return true;
+    const { data, error } = await supabase.from("profiles").update({ dashboard_tile_order: reihenfolge }).eq("id", meinProfil()).select("id");
+    if (error || !data?.length) { setSchreibFehler(t("allg.reihenfolgeFehler")); return false; }
+    return true;
   };
 
   /* Wer schon angemeldet ist, soll sich nicht erneut anmelden muessen, nur weil
