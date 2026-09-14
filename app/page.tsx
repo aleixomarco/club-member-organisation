@@ -10265,6 +10265,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
           }
         }}/>
         <ProfileSettingsCard icon={Globe} title={t("profil.sprache")} description={SPRACHEN.find((x) => x.code === sprache)?.name || "Deutsch"} color={C.secondary} onClick={() => setProfileFolder("sprache")}/>
+        <ProfileSettingsCard icon={Home} title={t("pf.startseite.titel")} description={t("pf.startseite.beschreibung")} color={C.secondary} onClick={() => setProfileUnderlay("startseite")}/>
         <ProfileSettingsCard icon={Bell} title={t("pf.benachrichtigungen")} description="Push-Einstellungen und Kalendersync" color={C.secondary} onClick={() => setProfileFolder("notify")}/>
         <ProfileSettingsCard icon={Star} title={t("pf.support")} description="Bewertung abgeben, Fehler melden" color={C.textDim} onClick={() => setProfileFolder("support")}/>
         {vorhandeneVideos.length > 0 && <ProfileSettingsCard icon={PlayCircle} title="App kennenlernen" description="Kurzvideos zu den Funktionen, die du nutzen kannst" color={C.secondary} onClick={() => setProfileFolder("howto")}/>}
@@ -10413,6 +10414,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
         <LogOut size={15} /> {t("allg.abmelden")}
       </button>
 
+      {profileUnderlay === "startseite" && <ProfileUnderlay title={t("pf.startseite.titel")} onClose={() => setProfileUnderlay("")}><StartseiteAnordnen dashboardTileOrder={dashboardTileOrder} setDashboardTileOrder={setDashboardTileOrder} clubFeatures={clubFeatures} sport={currentClub?.sport} /></ProfileUnderlay>}
       {profileUnderlay === "subscription" && <ProfileUnderlay title="Zugang des Vereins" onClose={() => setProfileUnderlay("")}><SubscriptionPanel user={user}/></ProfileUnderlay>}
       {profileUnderlay === "personal" && <ProfileUnderlay title="Persönliche Daten" onClose={() => setProfileUnderlay("")} onSave={()=>sectionSaveRef.current?.()}><ProfileDataSettings user={user} setMembers={setMembers} saveRef={sectionSaveRef}/></ProfileUnderlay>}
       {profileUnderlay === "notifications" && <ProfileUnderlay title="Benachrichtigungen" onClose={() => setProfileUnderlay("")} onSave={()=>sectionSaveRef.current?.()}><NotificationSettings user={user} setMembers={setMembers} saveRef={sectionSaveRef}/></ProfileUnderlay>}
@@ -13432,6 +13434,7 @@ function ClubFeatureOnboarding({ club, onDone }) {
   const cfg = sportConfig(sport);
   const feature = CLUB_FEATURES[step];
   const answersRef = useRef({});
+  const [zusammenfassung, setZusammenfassung] = useState(false);
   const finish = async (finalAnswers) => {
     setSaving(true); setFehler("");
     if (supabase && club?.id) {
@@ -13454,7 +13457,9 @@ function ClubFeatureOnboarding({ club, onDone }) {
   const answer = (value) => {
     answersRef.current = { ...answersRef.current, [feature.key]: value };
     if (step + 1 < CLUB_FEATURES.length) { setStep(step + 1); return; }
-    finish(answersRef.current);
+    /* Nicht sofort speichern: erst die Auswahl zeigen (C12). Ein Fehltipp
+       schaltete sonst eine Funktion ohne Hinweis ab. */
+    setZusammenfassung(true);
   };
   return (
     <div className="flex flex-col h-full items-center justify-center p-5" style={{ background: C.paper }}>
@@ -13462,18 +13467,66 @@ function ClubFeatureOnboarding({ club, onDone }) {
         <div className="text-[10px] uppercase tracking-widest font-bold mb-1" style={{ color: C.red, fontFamily: "Inter" }}>{t("sys.vereinEinrichten")} · {t(cfg.label)}</div>
         <div className="text-xl mb-1" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>{t("verein.funktionenFrage")}</div>
         {fehler && <div role="alert" className="text-[11px] rounded-xl px-3 py-2 mb-3" style={{ background: C.fehlerFlaeche, color: C.fehler, fontFamily: "Inter" }}>{fehler}</div>}
-        <div className="text-xs mb-6" style={{ color: C.textDim, fontFamily: "Inter" }}>Frage {step + 1} von {CLUB_FEATURES.length} — lässt sich jederzeit in den Vereinseinstellungen unter „Funktionen“ ändern.</div>
-        <div className="rounded-2xl p-5 mb-5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
-          <div className="text-sm font-bold mb-2" style={{ color: C.ink, fontFamily: "Inter" }}>{feature.label(sport, t)}</div>
-          <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{feature.question(sport, t)}</div>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={() => answer(false)} disabled={saving} className="flex-1 py-3 rounded-xl text-sm font-bold" style={{ background: C.paperDim, color: C.textDim, opacity: saving ? .6 : 1 }}>{t("allg.nein")}</button>
-          <button onClick={() => answer(true)} disabled={saving} className="flex-1 py-3 rounded-xl text-sm font-bold" style={{ background: C.ink, color: C.white, opacity: saving ? .6 : 1 }}>{saving ? "…" : "Ja"}</button>
-        </div>
+        <div className="text-xs mb-6" style={{ color: C.textDim, fontFamily: "Inter" }}>{zusammenfassung ? t("verein.zusammenfassungHinweis") : mitWerten(t("verein.frageVon"), { nr: step + 1, gesamt: CLUB_FEATURES.length })}</div>
+        {zusammenfassung ? (
+          <>
+            <div className="rounded-2xl p-4 mb-5 space-y-2" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
+              {CLUB_FEATURES.map((f) => <div key={f.key} className="flex items-center justify-between gap-3 text-xs" style={{ fontFamily: "Inter" }}><span className="font-bold" style={{ color: C.ink }}>{f.label(sport, t)}</span><span style={{ color: answersRef.current[f.key] !== false ? C.erfolg : C.textDim }}>{answersRef.current[f.key] !== false ? t("allg.ja") : t("allg.nein")}</span></div>)}
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setZusammenfassung(false)} disabled={saving} className="flex-1 py-3 rounded-xl text-sm font-bold" style={{ background: C.paperDim, color: C.textDim, opacity: saving ? .6 : 1 }}>{t("verein.zurueck")}</button>
+              <button onClick={() => finish(answersRef.current)} disabled={saving} className="flex-1 py-3 rounded-xl text-sm font-bold" style={{ background: C.ink, color: C.white, opacity: saving ? .6 : 1 }}>{saving ? "…" : t("verein.uebernehmen")}</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="rounded-2xl p-5 mb-5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
+              <div className="text-sm font-bold mb-2" style={{ color: C.ink, fontFamily: "Inter" }}>{feature.label(sport, t)}</div>
+              <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{feature.question(sport, t)}</div>
+            </div>
+            <div className="flex gap-2">
+              {step > 0 && <button onClick={() => setStep(step - 1)} disabled={saving} className="px-4 py-3 rounded-xl text-sm font-bold" style={{ background: C.glass, color: C.textDim, border: `1px solid ${C.line}` }}>{t("verein.zurueck")}</button>}
+              <button onClick={() => answer(false)} disabled={saving} className="flex-1 py-3 rounded-xl text-sm font-bold" style={{ background: C.paperDim, color: C.textDim, opacity: saving ? .6 : 1 }}>{t("allg.nein")}</button>
+              <button onClick={() => answer(true)} disabled={saving} className="flex-1 py-3 rounded-xl text-sm font-bold" style={{ background: C.ink, color: C.white, opacity: saving ? .6 : 1 }}>{t("allg.ja")}</button>
+            </div>
+          </>
+        )}
         <div className="flex gap-1.5 justify-center mt-5">
           {CLUB_FEATURES.map((f, i) => <span key={f.key} className="h-1.5 rounded-full" style={{ width: i === step ? 20 : 8, background: i <= step ? C.red : C.line, transition: "width .2s" }}/>)}
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* Die Reihenfolge der Kacheln auf der Startseite - fuer jede und jeden
+   selbst (M10). Gespeichert wird wie bisher in profiles.dashboard_tile_order;
+   die Vereinsleitung schaltet nur Funktionen an und aus. */
+function StartseiteAnordnen({ dashboardTileOrder, setDashboardTileOrder, clubFeatures, sport }) {
+  const t = useT();
+  const order = resolveDashboardTileOrder(dashboardTileOrder);
+  const verschieben = (index, richtung) => {
+    const ziel = index + richtung;
+    if (ziel < 0 || ziel >= order.length || !setDashboardTileOrder) return;
+    const neu = [...order];
+    [neu[index], neu[ziel]] = [neu[ziel], neu[index]];
+    setDashboardTileOrder(neu);
+  };
+  return (
+    <div>
+      <div className="text-xs mb-4" style={{ color: C.textDim }}>{t("pf.startseite.hinweis")}</div>
+      <div className="space-y-2.5">
+        {order.map((key, index) => {
+          const an = clubFeatures?.[key] !== false;
+          return (
+            <div key={key} className="flex items-center gap-3 rounded-2xl px-3.5 py-3" style={{ background: C.glass, border: `1px solid ${C.edge}`, opacity: an ? 1 : 0.5 }}>
+              <span className="w-7 h-7 rounded-lg flex items-center justify-center text-[11px] flex-shrink-0" style={{ fontFamily: "JetBrains Mono", fontWeight: 700, background: C.paperDim, color: C.ink }}>{index + 1}</span>
+              <span className="flex-1 min-w-0 text-sm font-bold truncate" style={{ color: C.ink }}>{dashboardTileLabel(key, sport, t)}</span>
+              <button aria-label={t("aria.nachOben")} onClick={() => verschieben(index, -1)} disabled={index === 0} className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.paperDim, opacity: index === 0 ? .35 : 1 }}><ChevronUp size={15} style={{ color: C.ink }}/></button>
+              <button aria-label={t("aria.nachUnten")} onClick={() => verschieben(index, 1)} disabled={index === order.length - 1} className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.paperDim, opacity: index === order.length - 1 ? .35 : 1 }}><ChevronDown size={15} style={{ color: C.ink }}/></button>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -13526,7 +13579,7 @@ function ClubRoleOverviewPanel({ members }) {
   );
 }
 
-function ClubFeatureSettingsPanel({ currentClub, clubFeatures, onFeaturesChanged, dashboardTileOrder, setDashboardTileOrder }) {
+function ClubFeatureSettingsPanel({ currentClub, clubFeatures, onFeaturesChanged, dashboardTileOrder }) {
   const t = useT();
   const sport = currentClub?.sport || "rollhockey";
   const [saving, setSaving] = useState("");
@@ -13540,23 +13593,18 @@ function ClubFeatureSettingsPanel({ currentClub, clubFeatures, onFeaturesChanged
     onFeaturesChanged();
   };
   const order = resolveDashboardTileOrder(dashboardTileOrder);
-  const moveTile = (index, dir) => {
-    const target = index + dir;
-    if (target < 0 || target >= order.length || !setDashboardTileOrder) return;
-    const next = [...order];
-    [next[index], next[target]] = [next[target], next[index]];
-    setDashboardTileOrder(next);
-  };
-  /* Ein Eintrag je Dashboard-Kachel: an/aus und Position in einer Karte. Die Liste
-     folgt der Dashboard-Reihenfolge, damit die Nummer auch das ist, was der Nutzer
-     später sieht. t("auf.titel") hat bewusst keinen Schalter — die Funktion lässt sich
+  /* Ein Eintrag je Dashboard-Kachel: nur an/aus (M10). Die Reihenfolge ist
+     persoenlich (20260901170000_luecken_schliessen.sql) - jede und jeder legt
+     sie selbst unter Profil > Startseite anordnen fest (StartseiteAnordnen).
+     Vorher behauptete dieser Bereich eine Reihenfolge fuer alle und speicherte
+     doch nur die eigene. t("auf.titel") hat bewusst keinen Schalter — die Funktion lässt sich
      nicht abschalten, deshalb steht dort ein Hinweis statt eines toten Schalters. */
   const featureByKey = Object.fromEntries(CLUB_FEATURES.map((f) => [f.key, f]));
 
   return (
     <div>
-      <SectionTitle eyebrow={sportText(t, sport, "label")} title="Funktionen & Reihenfolge" />
-      <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>Lege je Funktion fest, ob ihr sie nutzt und an welcher Stelle sie unter „Aktionen &amp; Abstimmungen“ auf dem Dashboard erscheint. Abgeschaltete Funktionen sind für alle Mitglieder ausgeblendet.</div>
+      <SectionTitle eyebrow={sportText(t, sport, "label")} title={t("verein.funktionenTitel")} />
+      <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>{t("verein.funktionenText")}</div>
       {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{meldungstext(message)}</div>}
 
       <div className="space-y-2.5">
@@ -13574,18 +13622,14 @@ function ClubFeatureSettingsPanel({ currentClub, clubFeatures, onFeaturesChanged
                 <span className="w-7 h-7 rounded-lg flex items-center justify-center text-[11px] flex-shrink-0" style={{ fontFamily: "JetBrains Mono", fontWeight: 700, background: an ? `color-mix(in srgb, ${C.red} 14%, transparent)` : C.paperDim, color: an ? C.red : C.textDim }}>{index + 1}</span>
                 <span className="flex-1 min-w-0 text-sm font-bold truncate" style={{ color: C.ink }}>{dashboardTileLabel(key, sport, t)}</span>
                 {abschaltbar ? (
-                  <button onClick={() => saving !== key && toggle(key, !an)} aria-label={`${dashboardTileLabel(key, sport, t)} ${an ? "abschalten" : "einschalten"}`} className="w-10 h-6 rounded-full relative flex-shrink-0" style={{ background: an ? C.secondary : C.paperDim, opacity: saving === key ? 0.5 : 1 }}>
+                  <button onClick={() => saving !== key && toggle(key, !an)} aria-label={mitWerten(t(an ? "aria.funktionAus" : "aria.funktionAn"), { name: dashboardTileLabel(key, sport, t) })} className="w-10 h-6 rounded-full relative flex-shrink-0" style={{ background: an ? C.secondary : C.paperDim, opacity: saving === key ? 0.5 : 1 }}>
                     <span className="absolute top-0.5 w-5 h-5 rounded-full" style={{ background: "#fff", left: an ? 18 : 2, transition: "left .2s" }} />
                   </button>
                 ) : (
-                  <span className="text-[9px] font-bold px-2 py-1 rounded-full flex-shrink-0" style={{ background: C.paperDim, color: C.textDim }}>IMMER AKTIV</span>
+                  <span className="text-[9px] font-bold px-2 py-1 rounded-full flex-shrink-0" style={{ background: C.paperDim, color: C.textDim }}>{t("verein.immerAktiv")}</span>
                 )}
               </div>
-              <div className="flex items-end gap-2 mt-2">
-                <span className="flex-1 text-[11px] leading-snug" style={{ color: C.textDim }}>{beschreibung}</span>
-                <button aria-label={t("aria.nachOben")} onClick={() => moveTile(index, -1)} disabled={index === 0} className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.paperDim, opacity: index === 0 ? .35 : 1 }}><ChevronUp size={15} style={{ color: C.ink }}/></button>
-                <button aria-label={t("aria.nachUnten")} onClick={() => moveTile(index, 1)} disabled={index === order.length - 1} className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.paperDim, opacity: index === order.length - 1 ? .35 : 1 }}><ChevronDown size={15} style={{ color: C.ink }}/></button>
-              </div>
+              <div className="mt-2 text-[11px] leading-snug" style={{ color: C.textDim }}>{beschreibung}</div>
             </div>
           );
         })}
