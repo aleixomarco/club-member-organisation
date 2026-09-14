@@ -14955,7 +14955,10 @@ export default function ClubMemberOrganisationApp() {
         const team = Array.isArray(k.teams) ? k.teams[0] : k.teams;
         return {
           id: k.id,
-          name: k.name,
+          /* Mannschaftskanaele zeigen den AKTUELLEN Mannschaftsnamen (C8):
+             update_club_team benennt den Kanal nicht mit um, channels.name
+             bliebe nach einer Umbenennung beim alten Namen stehen. */
+          name: team?.name || k.name,
           emoji: k.emoji || "💬",
           team: team?.name || null,
           adminOnly: (k.write_roles || []).length > 0,
