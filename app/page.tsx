@@ -1738,9 +1738,9 @@ const alsDatum = (d) => {
    selben Schritt, in dem es neu zeichnen laesst, sie ist also schon aktuell.
    Scheitert das Lesen (etwa bei der Vorschau auf dem Server), bleibt es bei
    Deutsch. */
-const DATUMS_LOCALES = { de: datumsLocale(), en: "en-GB", es: "es-ES", pt: "pt-PT", it: "it-IT", tr: "tr-TR", fr: "fr-FR" };
+const DATUMS_LOCALES = { de: "de-DE", en: "en-GB", es: "es-ES", pt: "pt-PT", it: "it-IT", tr: "tr-TR", fr: "fr-FR" };
 function datumsLocale() {
-  try { return DATUMS_LOCALES[gespeicherteSprache() || "de"] || datumsLocale(); } catch { return datumsLocale(); }
+  try { return DATUMS_LOCALES[gespeicherteSprache() || "de"] || "de-DE"; } catch { return "de-DE"; }
 }
 function formatDate(iso) {
   return new Date(iso).toLocaleDateString(datumsLocale(), { weekday: "short", day: "2-digit", month: "2-digit" });
