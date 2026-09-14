@@ -176,6 +176,10 @@ const DEUTSCH = /[äöüßÄÖÜ]|\b(und|oder|der|die|das|nicht|kein|keine|ist|w
     for (const [, attr, text] of roh.matchAll(/\b(title|desc|description|eyebrow|subtitle|label|feature|alt)="([A-ZÄÖÜ][^"]{2,})"/g)) vormerken(text, i, `Attribut ${attr}`);
     for (const [, text] of roh.matchAll(/(?:window\.)?(?:confirm|alert)\(\s*[`"]([^`"]{3,})[`"]/g)) vormerken(text, i, "confirm/alert");
     if (!inKomponente(i)) continue;
+    /* Zweige einer Bedingung: loading ? "Wird erstellt …" : "…". Die Suche
+       oben ueberspringt Zeilen mit .eq( - in einzeiligen Komponenten wie
+       ReferralSettings stehen dort aber auch Knopftexte. */
+    for (const [, text] of roh.matchAll(/[?:]\s*"([^"\n]{3,80})"/g)) { if (DEUTSCH.test(text) && /\s/.test(text.trim())) vormerken(text, i, "Bedingung"); }
     for (const [, text] of roh.matchAll(/`([^`\n]*\$\{[^`\n]*)`/g)) {
       const ohneWerte = text.replace(/\$\{[^}]*\}/g, " ");
       if (/[A-Za-zÄÖÜäöüß]{3,}\s+[A-Za-zÄÖÜäöüß]{2,}/.test(ohneWerte) && DEUTSCH.test(ohneWerte) && !/className|style|https?:|\/api\/|select\(|\.eq\(/.test(roh)) vormerken(text, i, "Template");

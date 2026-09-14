@@ -9003,7 +9003,7 @@ function DutyTasksSection({ ev, currentUser, sport, onNeuLaden, dutyPlan, member
     const eingetragen = (dutyPlan?.[ev.id]?.[station] || []).length;
     const frage = eingetragen
       ? mitWerten(t("help.stationEntfernenMitEintragungen"), { station: station, anzahl: eingetragen })
-      : `"${station}" entfernen?`;
+      : mitWerten(t("help.stationEntfernenFrage"), { station: station });
     if (!window.confirm(frage)) return;
     setMessage("");
     const { data, error } = await supabase.rpc("remove_duty_station", { target_event: ev.id, station_name: station });
@@ -9948,7 +9948,7 @@ function PasswordSettings({ user, onLogout, saveRef }) {
 
 function SecuritySettings({user,setMembers,saveRef}) { const t = useT(); const [days,setDays]=useState(user.autoLogoutDays??"");const [message,setMessage]=useState("");const save=async()=>{const value=days===""?null:Number(days);if(supabase&&user.authProfileId){const {error}=await supabase.from("profiles").update({auto_logout_days:value}).eq("id",user.authProfileId);if(error){setMessage("Einstellung konnte nicht gespeichert werden.");return;}}setMembers((items)=>items.map((item)=>item.id===user.id?{...item,autoLogoutDays:value}:item));localStorage.setItem(`cmo-last-activity-${user.authProfileId||user.id}`,String(Date.now()));setMessage("Sicherheitseinstellung gespeichert.");};useEffect(() => { saveRef.current = save; });return <div className="rounded-2xl p-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">{t("sich.autoLogout")}</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>{t("sich.autoLogoutHinweis")}</div><select value={days} onChange={(e)=>setDays(e.target.value)} className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}><option value="">{t("kal.nieKurz")}</option><option value="30">{t("sich.tage30")}</option><option value="60">{t("sich.tage60")}</option><option value="90">{t("sich.tage90")}</option></select>{message&&<div className="text-[11px] mt-3" style={{color:C.secondary}}>{meldungstext(message)}</div>}</div>; }
 
-function ReferralSettings({user,club}) { const t = useT(); const [code,setCode]=useState("");const [used,setUsed]=useState(false);const [loading,setLoading]=useState(false);useEffect(()=>{if(!supabase||!club?.id||!user.authProfileId)return;supabase.from("club_referral_codes").select("code,redeemed_at").eq("club_id",club.id).eq("profile_id",user.authProfileId).maybeSingle().then(({data})=>{setCode(data?.code||"");setUsed(Boolean(data?.redeemed_at));});},[club?.id,user.authProfileId]);const create=async()=>{setLoading(true);const {data,error}=await supabase.rpc("ensure_club_referral_code",{target_club:club.id});if(!error)setCode(data);setLoading(false);};if(used&&!user.roles.includes("sysadmin"))return <div className="rounded-2xl p-4 text-xs" style={{background:C.paperDim,color:C.textDim}}>{t("zug.codeBereitsVerwendet")}</div>;return <div className="rounded-2xl p-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">{t("zug.werben")}</div><div className="text-[11px] mb-4" style={{color:C.textDim}}>{t("zug.werbenHinweis")}</div>{code?<><div className="rounded-xl px-3 py-3 text-center font-bold tracking-wider" style={{background:C.paperDim}}>{code}</div><button onClick={()=>navigator.clipboard?.writeText(code)} className="w-full mt-2 py-2 text-xs font-bold" style={{color:C.red}}>{t("zug.codeKopieren")}</button></>:<button disabled={loading} onClick={create} className="w-full py-3 rounded-xl text-xs font-bold" style={{background:C.ink,color:C.white}}>{loading?"Wird erstellt …":"Persönlichen Code erstellen"}</button>}</div>; }
+function ReferralSettings({user,club}) { const t = useT(); const [code,setCode]=useState("");const [used,setUsed]=useState(false);const [loading,setLoading]=useState(false);useEffect(()=>{if(!supabase||!club?.id||!user.authProfileId)return;supabase.from("club_referral_codes").select("code,redeemed_at").eq("club_id",club.id).eq("profile_id",user.authProfileId).maybeSingle().then(({data})=>{setCode(data?.code||"");setUsed(Boolean(data?.redeemed_at));});},[club?.id,user.authProfileId]);const create=async()=>{setLoading(true);const {data,error}=await supabase.rpc("ensure_club_referral_code",{target_club:club.id});if(!error)setCode(data);setLoading(false);};if(used&&!user.roles.includes("sysadmin"))return <div className="rounded-2xl p-4 text-xs" style={{background:C.paperDim,color:C.textDim}}>{t("zug.codeBereitsVerwendet")}</div>;return <div className="rounded-2xl p-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">{t("zug.werben")}</div><div className="text-[11px] mb-4" style={{color:C.textDim}}>{t("zug.werbenHinweis")}</div>{code?<><div className="rounded-xl px-3 py-3 text-center font-bold tracking-wider" style={{background:C.paperDim}}>{code}</div><button onClick={()=>navigator.clipboard?.writeText(code)} className="w-full mt-2 py-2 text-xs font-bold" style={{color:C.red}}>{t("zug.codeKopieren")}</button></>:<button disabled={loading} onClick={create} className="w-full py-3 rounded-xl text-xs font-bold" style={{background:C.ink,color:C.white}}>{loading?t("abst.wirdErstellt"):t("zug.codeErstellen")}</button>}</div>; }
 
 /* Die Store-Links koennen erst nach der Veroeffentlichung existieren. Vorher
    wurden beide Zeilen trotzdem angezeigt - als Kacheln mit Pfeilsymbol, die beim
@@ -11515,14 +11515,14 @@ function ProtokollePanel({ members, protocols, setProtocols, onSpeichern, onAufg
           <div className="rounded-2xl p-3 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>{t("prot.keineAufgaben")}</div>
         ) : (
           <div className="space-y-1.5">
-            {openTasks.map((t) => {
-              const person = members.find((m) => m.id === t.assignee);
+            {openTasks.map((aufgabe) => {
+              const person = members.find((m) => m.id === aufgabe.assignee);
               return (
-                <div key={t.id} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
-                  <button onClick={() => toggleTaskDone(t.protocolId, t.id)} className="w-5 h-5 rounded-full flex-shrink-0" style={{ border: `1.5px solid ${C.line}` }} />
+                <div key={aufgabe.id} className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
+                  <button onClick={() => toggleTaskDone(aufgabe.protocolId, aufgabe.id)} className="w-5 h-5 rounded-full flex-shrink-0" style={{ border: `1.5px solid ${C.line}` }} />
                   <div className="flex-1 min-w-0">
-                    <div className="text-xs" style={{ fontFamily: "Inter", fontWeight: 600, color: C.ink }}>{t.text}</div>
-                    <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{person ? person.name : "nicht zugewiesen"}{t.due ? ` · fällig ${t.due}` : ""} · {t.protocolTitle}</div>
+                    <div className="text-xs" style={{ fontFamily: "Inter", fontWeight: 600, color: C.ink }}>{aufgabe.text}</div>
+                    <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{person ? person.name : t("auf.niemandZugewiesen")}{aufgabe.due ? ` · ${t("feld.faellig")} ${aufgabe.due}` : ""} · {aufgabe.protocolTitle}</div>
                   </div>
                 </div>
               );
@@ -12297,7 +12297,7 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
               <div className="rounded-xl p-2.5 mb-2" style={{ background: C.paperDim, border: `1px solid ${C.line}` }}>
                 <div className="text-xs" style={{ fontWeight: 700, color: C.ink }}>{meiner.titel}</div>
                 {meiner.aktion_titel && <div className="text-[11px] mt-0.5" style={{ color: laeuftAktion ? C.red : C.textDim, fontWeight: 600 }}>
-                  {meiner.aktion_titel} · {laeuftAktion ? mitWerten(t("sp.laeuftBis"), { datum: new Date(meiner.aktion_bis).toLocaleDateString(datumsLocale()) }) : "beendet"}
+                  {meiner.aktion_titel} · {laeuftAktion ? mitWerten(t("sp.laeuftBis"), { datum: new Date(meiner.aktion_bis).toLocaleDateString(datumsLocale()) }) : t("sp.beendet")}
                 </div>}
                 {abgelaufen && <div className="text-[11px] mt-0.5" style={{ color: C.textDim }}>{t("sp.laufzeitBeendet")}</div>}
                 <div className="text-[10px] mt-1.5" style={{ color: C.textDim, fontFamily: "JetBrains Mono" }}>{meiner.impressionen ?? 0} {t("kpi.einblendungen")} · {meiner.klicks ?? 0} {t("kpi.klicks")}</div>
@@ -14297,7 +14297,7 @@ function AufgabeOverlay({ taskId, currentUser, onClose }) {
   };
 
   const loeschen = async () => {
-    if (!window.confirm(mitWerten(t("auf.aufgabeWirklichLoeschen"), { titel: aufgabe.title }))) return;
+    if (!window.confirm(mitWerten(t("auf.loeschenFrage"), { titel: aufgabe.title }))) return;
     setArbeitet(true); setFehler("");
     const { error } = await supabase.from("club_tasks").delete().eq("id", taskId);
     setArbeitet(false);
