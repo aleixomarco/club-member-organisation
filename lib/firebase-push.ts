@@ -320,6 +320,27 @@ export function listenForForegroundMessages() {
   });
 }
 
+/* Gelesene Meldungen auch aus der Mitteilungszentrale nehmen.
+ *
+ * Android zaehlt fuer die Zahl am Symbol die Mitteilungen in der Leiste - dort
+ * blieb sie also stehen, obwohl in der Glocke alles gelesen war. Unter iOS
+ * aendert das die Zahl nicht (die setzen das Badge-Plugin und der Versender),
+ * raeumt aber die Mitteilungszentrale auf.
+ * Ohne Kennung: alle. Mit Kennung: nur die zu dieser Meldung - der Versender
+ * schickt sie als data.notification_id mit. */
+export async function zugestellteEntfernen(notificationId?: string) {
+  if (!imGeraet()) return;
+  try {
+    if (!notificationId) {
+      await FirebaseMessaging.removeAllDeliveredNotifications();
+      return;
+    }
+    const { notifications } = await FirebaseMessaging.getDeliveredNotifications();
+    const passend = notifications.filter((n) => (n.data as Record<string, unknown> | undefined)?.notification_id === notificationId);
+    if (passend.length) await FirebaseMessaging.removeDeliveredNotifications({ notifications: passend });
+  } catch { /* Fassung ohne diese Funktionen - dann bleibt es, wie es war */ }
+}
+
 export async function disablePushNotifications(membershipId: string): Promise<{ success?: boolean; error?: string }> {
   if (typeof window === "undefined") return { error: "not_browser" };
 

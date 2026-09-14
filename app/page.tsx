@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { ANMELDUNG_MERKEN, isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { SPRACHEN, gespeicherteSprache, spracheMerken, uebersetze } from "@/lib/sprachen";
-import { enablePushNotifications, disablePushNotifications, listenForForegroundMessages, pushTokenAuffrischen, meldungsTippsAbonnieren } from "@/lib/firebase-push";
+import { enablePushNotifications, disablePushNotifications, listenForForegroundMessages, pushTokenAuffrischen, meldungsTippsAbonnieren, zugestellteEntfernen } from "@/lib/firebase-push";
 import { Capacitor } from "@capacitor/core";
 import { legal } from "./legal-shell";
 /* Preise werden in der App nicht mehr angezeigt - siehe SubscriptionPanel.
@@ -15181,6 +15181,9 @@ export default function ClubMemberOrganisationApp() {
         if (!error && typeof data === "number") zahl = data;
       }
       if (abgebrochen) return;
+      /* Alles gelesen: auch die Mitteilungszentrale leeren. Vor dem Badge-Plugin,
+         weil dessen Import in der Store-Fassung 1.2 scheitert. */
+      if (zahl === 0) zugestellteEntfernen();
       const { Badge } = await import("@capawesome/capacitor-badge");
       await (zahl > 0 ? Badge.set({ count: zahl }) : Badge.clear());
     })().catch(() => { /* Plugin fehlt in dieser Fassung - dann eben ohne Zahl */ });
@@ -16124,7 +16127,7 @@ export default function ClubMemberOrganisationApp() {
     const jetzt = new Date().toISOString();
     setPostfach((alle) => alle.map((e) => (e.id === id && !e.read_at ? { ...e, read_at: jetzt } : e)));
     const { error } = await supabase.from("user_notifications").update({ read_at: jetzt }).eq("id", id).is("read_at", null);
-    if (!error) ungelesenZaehlen();
+    if (!error) { ungelesenZaehlen(); zugestellteEntfernen(id); }
   };
   const meldungAntippen = (e) => {
     if (!meldungOeffnen(e)) return;

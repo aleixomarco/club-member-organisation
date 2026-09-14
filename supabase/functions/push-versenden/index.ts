@@ -245,6 +245,60 @@ async function geheimnisHolen(): Promise<string> {
   return wert;
 }
 
+/* Nur die Zahl fuer das App-Symbol - Aufruf aus push_zaehler_anstossen, nach
+   jedem Lesen und Loeschen.
+
+   Die Fassung 1.2 im App Store kann die Zahl nicht selbst zuruecksetzen (das
+   Badge-Plugin kam erst danach). Ohne diesen Weg blieb nach dem Lesen die
+   Zahl der letzten Mitteilung auf dem Symbol stehen.
+
+   Die Mitteilung hat keinen Titel, keinen Text und keinen Ton; iOS setzt nur
+   die Zahl. push-type "alert" verlangt Apple auch fuer reine Zahl-Mitteilungen,
+   Prioritaet 5 heisst: ohne Eile, schont den Akku.
+   Nur an iPhones - im Browser zeigte eine Mitteilung ohne Text den Hinweis
+   "im Hintergrund aktualisiert". Tote Token raeumt der normale Versand auf. */
+async function zahlNachziehen(profil: string) {
+  if (!/^[0-9a-f-]{36}$/i.test(profil)) return { uebersprungen: "kein Profil im Aufruf" };
+  const [wartend, mitgliedschaften] = await Promise.all([
+    supabaseAbfrage(`user_notifications?select=id&profile_id=eq.${profil}&read_at=is.null&limit=99`),
+    supabaseAbfrage(`club_memberships?select=id&profile_id=eq.${profil}&status=eq.active`),
+  ]);
+  const zahl = Array.isArray(wartend) ? wartend.length : 0;
+  if (!mitgliedschaften.length) return { uebersprungen: "keine aktive Mitgliedschaft", zahl };
+  const ids = mitgliedschaften.map((m: { id: string }) => m.id).join(",");
+  const geraete: { fcm_token: string }[] = await supabaseAbfrage(
+    `push_subscriptions?select=fcm_token&platform=eq.ios&membership_id=in.(${ids})`,
+  );
+  const token = [...new Set(geraete.map((g) => g.fcm_token))];
+  if (!token.length) return { uebersprungen: "kein iPhone", zahl };
+
+  const konto = dienstkontoLesen();
+  const zugang = await zugangstoken(konto);
+  let zugestellt = 0;
+  const abgelehnt: string[] = [];
+  for (const geraet of token) {
+    const antwort = await fetch(
+      `https://fcm.googleapis.com/v1/projects/${konto.project_id || FCM_PROJEKT}/messages:send`,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${zugang}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: {
+            token: geraet,
+            apns: {
+              headers: { "apns-push-type": "alert", "apns-priority": "5" },
+              payload: { aps: { badge: zahl } },
+            },
+          },
+        }),
+      },
+    );
+    if (antwort.ok) { zugestellt++; continue; }
+    abgelehnt.push(`${antwort.status}: ${(await antwort.text()).slice(0, 200)}`);
+  }
+  return { zahl, zugestellt, geraete: token.length, ...(abgelehnt.length ? { abgelehnt } : {}) };
+}
+
 /* Wann diese Instanz geladen wurde, und ob sie schon einen Aufruf hatte. */
 const instanzGeladen = Date.now();
 let ersterAufruf = true;
@@ -282,6 +336,9 @@ Deno.serve(async (anfrage) => {
 
   try {
     const nutzlast = await anfrage.json();
+    if (nutzlast?.type === "ZAEHLER") {
+      return Response.json({ ...(await zahlNachziehen(String(nutzlast.profile_id ?? ""))), ...messung() });
+    }
     const zeile = nutzlast?.record;
     if (!zeile?.profile_id) {
       return Response.json({ uebersprungen: "keine Zeile im Aufruf", ...messung() });
