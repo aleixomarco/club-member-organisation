@@ -119,7 +119,22 @@ export async function DELETE(request: Request) {
 
   // ------------------------------------------- 3. Vorgemerkte Vereine loeschen
   try {
-    await admin.rpc("konto_loeschung_abschliessen", { p_profile: user.id });
+    /* supabase-js wirft bei einem SQL-Fehler NICHT, sondern liefert { error }.
+       Ohne diese Abfrage blieb ein gescheiterter Abschluss voellig stumm
+       (konto-12); das catch faengt nur Netzwerkfehler. */
+    const { error: abschlussFehler } = await admin.rpc("konto_loeschung_abschliessen", { p_profile: user.id });
+    if (abschlussFehler) {
+      console.error(`Kontoloeschung: vorgemerkte Vereine blieben stehen fuer ${user.id}:`, abschlussFehler.message);
+      /* Fuer den Betreiber sichtbar machen, welcher Verein nachzuholen ist -
+         nur die Vereinskennung, keine personenbezogenen Angaben. */
+      const offen = ((lage?.vereine as { id: string }[]) || []).map((v) => v.id).filter(Boolean);
+      if (offen.length) {
+        const { error: protokollFehler } = await admin.from("betreiber_protokoll").insert(
+          offen.map((clubId) => ({ aktion: "konto_loeschung_offen", club_id: clubId, herkunft: "kontoloeschung" })),
+        );
+        if (protokollFehler) console.error("Betreiber-Protokoll konnte nicht geschrieben werden", protokollFehler.message);
+      }
+    }
   } catch (fehler) {
     /* Das Konto ist weg, der Verein noch da. Kein Grund, dem Nutzer einen
        Fehler zu zeigen - fuer ihn ist die Loeschung vollzogen. Die Vormerkung
