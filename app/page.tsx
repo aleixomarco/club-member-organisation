@@ -24,6 +24,11 @@ import { standardMannschaft, auswahlReihenfolge, hoechsteMannschaft, nachRangSor
 import { memberPlayerTeams, memberTrainerTeams, memberCaptainTeams, memberManagedTeams, memberAllTeams, memberInTeam, hoechstesTeam } from "@/lib/mannschaften";
 import { spielOrt, seitenFuer, stand, ausgang, ergebnisGueltig, darfErgebnisEintragen, ergebnisseJeMannschaft, tippPunkte, ergebnisFehlerSchluessel } from "@/lib/ergebnis";
 
+/* Name des nativen Plugins @capawesome/capacitor-badge, wie es sich bei
+   Capacitor anmeldet. Fehlt es in der installierten Fassung, liefert
+   Capacitor.isPluginAvailable(BADGE_PLUGIN) false. */
+const BADGE_PLUGIN = "Badge";
+
 /* ------------------------------------------------------------------ */
 /* Tokens                                                              */
 /* ------------------------------------------------------------------ */
@@ -15172,23 +15177,32 @@ export default function ClubMemberOrganisationApp() {
      setzt. Die Glocke zeigt weiter nur den offenen Verein. Vorher sprang das
      Symbol zwischen beiden Zahlen hin und her (C4). */
   useEffect(() => {
-    if (!Capacitor.isNativePlatform()) return;
+    /* Nur mit der Zahl vom Server. Beim Kaltstart steht "ungelesen" noch auf
+       0, bevor irgendetwas geladen ist - damit waeren Symbol und
+       Mitteilungszentrale geleert worden, obwohl Meldungen offen sind. */
+    if (!Capacitor.isNativePlatform() || !supabase || !currentUserId) return;
     let abgebrochen = false;
     (async () => {
-      let zahl = ungelesen;
-      if (supabase && currentUserId) {
-        const { data, error } = await supabase.rpc("ungelesene_benachrichtigungen", { target_club: null });
-        if (!error && typeof data === "number") zahl = data;
-      }
-      if (abgebrochen) return;
-      /* Alles gelesen: auch die Mitteilungszentrale leeren. Vor dem Badge-Plugin,
-         weil dessen Import in der Store-Fassung 1.2 scheitert. */
+      const { data, error } = await supabase.rpc("ungelesene_benachrichtigungen", { target_club: null });
+      if (abgebrochen || error || typeof data !== "number") return;
+      const zahl = data;
+      /* Alles gelesen: auch die Mitteilungszentrale leeren. */
       if (zahl === 0) zugestellteEntfernen();
+      /* Die Store-Fassung 1.2 hat das Badge-Plugin nicht. Dort setzt der
+         Server die Zahl per stiller Mitteilung (app_zaehler_abgleichen,
+         hoechstens einmal je Minute) - auch wenn sich nichts geaendert hat,
+         denn auf dem Symbol kann noch eine alte Zahl stehen. datenStand in
+         der Liste: Beim Zurueckkehren in die App wird neu geladen. */
+      if (!Capacitor.isPluginAvailable(BADGE_PLUGIN)) {
+        if (supabase && currentUserId) await supabase.rpc("app_zaehler_abgleichen");
+        return;
+      }
       const { Badge } = await import("@capawesome/capacitor-badge");
+      if (abgebrochen) return;
       await (zahl > 0 ? Badge.set({ count: zahl }) : Badge.clear());
     })().catch(() => { /* Plugin fehlt in dieser Fassung - dann eben ohne Zahl */ });
     return () => { abgebrochen = true; };
-  }, [ungelesen, badgeStand, currentUserId]);
+  }, [ungelesen, badgeStand, currentUserId, datenStand]);
 
 
   /* Als benannte Funktion, damit der Bildschirm sie ueber "Erneut versuchen"
@@ -15242,7 +15256,11 @@ export default function ClubMemberOrganisationApp() {
        der Versand ins Leere, und niemand merkte es, weil die Meldung in der
        Glocke ja trotzdem stand.
        Ohne Erlaubnis passiert hier nichts - es wird nicht gefragt. */
-    if (isDbId(currentUser.id)) pushTokenAuffrischen(currentUser.id);
+    /* Danach die Symbol-Zahl noch einmal anstossen: Erst mit dem gespeicherten
+       Token ist das Geraet als App markiert (nativ), und erst dann findet
+       app_zaehler_abgleichen ein Ziel. Sonst ginge der erste Abgleich nach dem
+       Oeffnen ins Leere. */
+    if (isDbId(currentUser.id)) pushTokenAuffrischen(currentUser.id).then(() => setBadgeStand((n) => n + 1));
 
     /* Beim ersten Oeffnen einmal fragen.
        Bisher musste jeder den Schalter im Profil selbst finden - und wer ihn

@@ -253,10 +253,16 @@ async function geheimnisHolen(): Promise<string> {
    Zahl der letzten Mitteilung auf dem Symbol stehen.
 
    Die Mitteilung hat keinen Titel, keinen Text und keinen Ton; iOS setzt nur
-   die Zahl. push-type "alert" verlangt Apple auch fuer reine Zahl-Mitteilungen,
-   Prioritaet 5 heisst: ohne Eile, schont den Akku.
-   Nur an iPhones - im Browser zeigte eine Mitteilung ohne Text den Hinweis
-   "im Hintergrund aktualisiert". Tote Token raeumt der normale Versand auf. */
+   die Zahl. push-type "alert" verlangt Apple auch fuer reine Zahl-Mitteilungen.
+   Prioritaet 10 wie beim normalen Versand - mit 5 koennte eine zurueck-
+   gehaltene alte Zahl eine neuere ueberholen. expiration 0: APNs stellt genau
+   einmal zu und speichert nichts. Sonst verdraengte die Zahl bei einem Geraet
+   ohne Netz die dort wartende echte Mitteilung (APNs haelt nur die letzte).
+   Geht sie verloren, gleicht die App beim naechsten Oeffnen nach.
+   Nur an Geraete mit nativ = true, also die App - eine Web-App auf dem iPhone
+   steht ebenfalls als 'ios' da, und Safari zeigte eine Mitteilung ohne Text
+   als leeren Hinweis oder entzoege die Push-Erlaubnis.
+   Tote Token raeumt der normale Versand auf. */
 async function zahlNachziehen(profil: string) {
   if (!/^[0-9a-f-]{36}$/i.test(profil)) return { uebersprungen: "kein Profil im Aufruf" };
   const [wartend, mitgliedschaften] = await Promise.all([
@@ -267,7 +273,7 @@ async function zahlNachziehen(profil: string) {
   if (!mitgliedschaften.length) return { uebersprungen: "keine aktive Mitgliedschaft", zahl };
   const ids = mitgliedschaften.map((m: { id: string }) => m.id).join(",");
   const geraete: { fcm_token: string }[] = await supabaseAbfrage(
-    `push_subscriptions?select=fcm_token&platform=eq.ios&membership_id=in.(${ids})`,
+    `push_subscriptions?select=fcm_token&platform=eq.ios&nativ=is.true&membership_id=in.(${ids})`,
   );
   const token = [...new Set(geraete.map((g) => g.fcm_token))];
   if (!token.length) return { uebersprungen: "kein iPhone", zahl };
@@ -286,7 +292,7 @@ async function zahlNachziehen(profil: string) {
           message: {
             token: geraet,
             apns: {
-              headers: { "apns-push-type": "alert", "apns-priority": "5" },
+              headers: { "apns-push-type": "alert", "apns-priority": "10", "apns-expiration": "0" },
               payload: { aps: { badge: zahl } },
             },
           },

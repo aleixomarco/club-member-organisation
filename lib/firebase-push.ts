@@ -63,7 +63,7 @@ async function tokenSpeichern(membershipId: string, token: string) {
   const { error } = await supabase
     .from("push_subscriptions")
     .upsert(
-      { membership_id: membershipId, fcm_token: token, platform: plattform, last_seen_at: new Date().toISOString() },
+      { membership_id: membershipId, fcm_token: token, platform: plattform, nativ: true, last_seen_at: new Date().toISOString() },
       { onConflict: "membership_id,fcm_token" }
     );
   if (!error) tokenMerken(membershipId, token);
