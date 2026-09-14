@@ -210,11 +210,14 @@ $$;
 --         "poll managers manage options" ALL to public, using = check =
 --   exists (polls p where p.id = poll_id and has_club_role(p.club_id, dieselbe Liste))
 -- Die Leseregel aus 20260907200000:158 bleibt unberuehrt.
+-- Betreiberentscheidung 14.09.2026: Der Sponsorenmanager legt keine Umfragen
+-- mehr an und verwaltet keine - eine neue Umfrage meldet sich bei allen
+-- Mitgliedern, und Nachrichten an alle gehen nur von der Leitung aus.
 drop policy if exists "poll managers manage polls" on public.polls;
 create policy "poll managers manage polls" on public.polls
   for all to authenticated
-  using (public.has_club_role(club_id, array['organisator','sponsorenmanager','vereinsadmin','sysadmin']::public.club_role[]))
-  with check (public.has_club_role(club_id, array['organisator','sponsorenmanager','vereinsadmin','sysadmin']::public.club_role[]));
+  using (public.has_club_role(club_id, array['organisator','vereinsadmin','sysadmin']::public.club_role[]))
+  with check (public.has_club_role(club_id, array['organisator','vereinsadmin','sysadmin']::public.club_role[]));
 
 drop policy if exists "poll managers manage options" on public.poll_options;
 create policy "poll managers manage options" on public.poll_options
@@ -222,11 +225,11 @@ create policy "poll managers manage options" on public.poll_options
   using (exists (
     select 1 from public.polls p
      where p.id = poll_options.poll_id
-       and public.has_club_role(p.club_id, array['organisator','sponsorenmanager','vereinsadmin','sysadmin']::public.club_role[])))
+       and public.has_club_role(p.club_id, array['organisator','vereinsadmin','sysadmin']::public.club_role[])))
   with check (exists (
     select 1 from public.polls p
      where p.id = poll_options.poll_id
-       and public.has_club_role(p.club_id, array['organisator','sponsorenmanager','vereinsadmin','sysadmin']::public.club_role[])));
+       and public.has_club_role(p.club_id, array['organisator','vereinsadmin','sysadmin']::public.club_role[])));
 
 -- ================================================================ U15
 -- Bisher: "admins manage feature toggles" ALL to public using = check =
