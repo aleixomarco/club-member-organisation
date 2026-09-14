@@ -145,6 +145,44 @@ for (let i = 0; i < zeilen.length; i++) {
   }
 }
 
+/* Erweiterte Suche (U11, 13.09.2026) - vorerst NUR ALS BERICHT.
+ *
+ * Die App-Pruefung fand rund 200 deutsche Texte, an denen die Suche oben
+ * vorbeikommt: JSX-Text laenger als 80 Zeichen, Anzeige-Attribute wie
+ * title="..." oder description="...", Template-Strings mit ${...} und die
+ * Texte in window.confirm/alert. Diese Faelle werden hier gezaehlt und
+ * gelistet, aendern aber den Rueckgabewert NICHT - sonst waere die Pruefung
+ * rot, bis alle 200 Stellen uebersetzt sind. Ist das geschafft, wandern sie
+ * nach oben in die Pflichtpruefung. */
+const bericht = new Map();
+const vormerken = (text, zeile, art) => {
+  const sauber = text.trim();
+  if (!sauber || AUSNAHMEN.has(sauber) || funde.has(sauber)) return;
+  if (!/[a-zäöüß]/.test(sauber)) return;
+  if (!bericht.has(sauber)) bericht.set(sauber, { zeilen: [], art });
+  bericht.get(sauber).zeilen.push(zeile + 1);
+};
+const DEUTSCH = /[äöüßÄÖÜ]|\b(und|oder|der|die|das|nicht|kein|keine|ist|wird|werden|mit|fuer|für|von|bitte|noch)\b/;
+{
+  let block = false;
+  for (let i = 0; i < zeilen.length; i++) {
+    const roh = zeilen[i], s = roh.trim();
+    const beginnt = roh.lastIndexOf("/" + "*"), endet = roh.lastIndexOf("*" + "/");
+    const war = block;
+    if (!block && beginnt >= 0 && endet < beginnt) block = true;
+    else if (block && endet >= 0) block = false;
+    if (war || block || s.startsWith("//") || s.startsWith("*")) continue;
+    for (const [, text] of roh.matchAll(/>([A-ZÄÖÜ][^<>{}\n]{81,})</g)) vormerken(text, i, "JSX-lang");
+    for (const [, attr, text] of roh.matchAll(/\b(title|desc|description|eyebrow|subtitle|label|feature|alt)="([A-ZÄÖÜ][^"]{2,})"/g)) vormerken(text, i, `Attribut ${attr}`);
+    for (const [, text] of roh.matchAll(/(?:window\.)?(?:confirm|alert)\(\s*[`"]([^`"]{3,})[`"]/g)) vormerken(text, i, "confirm/alert");
+    if (!inKomponente(i)) continue;
+    for (const [, text] of roh.matchAll(/`([^`\n]*\$\{[^`\n]*)`/g)) {
+      const ohneWerte = text.replace(/\$\{[^}]*\}/g, " ");
+      if (/[A-Za-zÄÖÜäöüß]{3,}\s+[A-Za-zÄÖÜäöüß]{2,}/.test(ohneWerte) && DEUTSCH.test(ohneWerte) && !/className|style|https?:|\/api\/|select\(|\.eq\(/.test(roh)) vormerken(text, i, "Template");
+    }
+  }
+}
+
 /* Zweite Frage, und die wichtigere:
  * Gibt es zu JEDEM benutzten Schluessel auch in JEDER Sprache einen Eintrag?
  *
@@ -224,6 +262,13 @@ zuFrueh.forEach((l) => console.log(`  ! ${l}`));
 const uebersetzt = (quelle.match(/\bt\("[a-z]+\.[A-Za-z0-9_.]+"\)/g) || []).length;
 console.log(`  ${uebersetzt} uebersetzte Aufrufe`);
 console.log(`  ${funde.size} verdaechtige Texte (${AUSNAHMEN.size} bekannte Ausnahmen ausgenommen)`);
+
+console.log(`  ${bericht.size} weitere Stellen nur als Bericht (U11: lange Texte, Attribute, Template-Strings, confirm/alert)`);
+if (bericht.size > 0 && zeigeListe) {
+  for (const [text, info] of [...bericht].sort()) {
+    console.log(`  (Bericht) ${info.art.padEnd(18)} Zeile ${info.zeilen.join(", ")}: ${text.slice(0, 120)}`);
+  }
+}
 
 if (funde.size > 0 && zeigeListe) {
   for (const [text, info] of [...funde].sort()) {
