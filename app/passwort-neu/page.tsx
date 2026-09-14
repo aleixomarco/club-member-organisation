@@ -42,15 +42,20 @@ export default function PasswordResetPage() {
       || !!abfrage.get("code");
 
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") { settled = true; setReady(true); }
+      /* setFailed(false): Kommt die Sitzung erst nach Ablauf der Wartezeit an
+         (langsames Netz), stand vorher dauerhaft "Link abgelaufen" da, obwohl
+         der Link gueltig war (konto-4). */
+      if (event === "PASSWORD_RECOVERY") { settled = true; setFailed(false); setReady(true); }
     });
     if (ausLink) {
       supabase.auth.getSession().then(({ data }) => {
-        if (data.session) { settled = true; setReady(true); }
+        if (data.session) { settled = true; setFailed(false); setReady(true); }
       });
     }
-    /* Ohne gültiges Token bleibt sonst ein Ladezustand stehen, der nie endet. */
-    const timer = setTimeout(() => { if (!settled) setFailed(true); }, 4000);
+    /* Ohne gültiges Token bleibt sonst ein Ladezustand stehen, der nie endet.
+       12 statt 4 Sekunden: Auf dem Telefon im Mobilnetz dauert der Tausch des
+       Tokens gegen eine Sitzung spuerbar laenger. */
+    const timer = setTimeout(() => { if (!settled) setFailed(true); }, 12000);
     return () => { sub.subscription.unsubscribe(); clearTimeout(timer); };
   }, []);
 

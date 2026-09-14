@@ -223,7 +223,7 @@ export async function GET() {
           { titel: "Name", feld: "name", breite: 26 },
           { titel: "E-Mail", feld: "email", breite: 30 },
           { titel: "Status", feld: "status" },
-          { titel: "Mitglied seit", feld: "mitglied_seit", art: "zahl" },
+          { titel: "Mitglied seit", feld: "mitglied_seit", art: "jahr" },
           { titel: "Mitgliedsnummer", feld: "mitgliedsnummer" },
           { titel: "Geburtsdatum", feld: "geburtsdatum", art: "datum" },
           { titel: "Alter", feld: "alter_jahre", art: "zahl" },

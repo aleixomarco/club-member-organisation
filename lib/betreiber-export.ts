@@ -23,7 +23,8 @@ export type Spalte = {
   titel: string;
   feld: string;
   breite?: number;
-  art?: "text" | "zahl" | "geld" | "prozent" | "datum" | "zeitpunkt" | "ja_nein" | "liste";
+  /* "jahr": eine Zahl ohne Tausenderpunkt - "2019" statt "2.019" (konto-8). */
+  art?: "text" | "zahl" | "jahr" | "geld" | "prozent" | "datum" | "zeitpunkt" | "ja_nein" | "liste";
 };
 
 export type Blatt = {
@@ -47,6 +48,7 @@ function wertFuer(art: Spalte["art"], roh: unknown): unknown {
   if (roh === null || roh === undefined) return null;
   switch (art) {
     case "zahl":
+    case "jahr":
     case "geld":
     case "prozent": {
       if (typeof roh === "number") return Number.isFinite(roh) ? roh : null;
@@ -75,6 +77,7 @@ function zahlenformat(art: Spalte["art"]): string | undefined {
   switch (art) {
     case "geld": return '#,##0.00 "€"';
     case "zahl": return "#,##0";
+    case "jahr": return "0";
     /* Eine Quote braucht die Nachkommastelle. Mit "#,##0" stuende in der
        Zelle 12,8 und auf dem Bildschirm 13 - eine Zahl, die niemand
        nachrechnen kann und die bei jeder zweiten Anzeige falsch wirkt. */
