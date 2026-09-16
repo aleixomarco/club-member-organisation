@@ -1758,6 +1758,10 @@ const typeMeta = {
   spiel: { label: "Spiel", color: C.red },
   event: { label: "Vereinsevent", color: C.secondary },
 };
+/* Die Terminart in der App-Sprache. typeMeta.label ist der deutsche Name und
+   stand bisher direkt in der Oberflaeche - im Kalender und an den Helferkarten
+   auch auf Englisch oder Tuerkisch. */
+const terminArt = (t, typ) => t(typ === "training" ? "ev.training" : typ === "spiel" ? "ev.spiel" : "ev.vereinsevent");
 
 /* ------------------------------------------------------------------ */
 /* Small building blocks                                               */
@@ -4860,10 +4864,10 @@ function EventMonthCalendar({ events, onSelect }) {
       <div className="flex items-center gap-3 flex-wrap mt-2 px-1">
         {["training","spiel","event"].map((key) => (
           <span key={key} className="flex items-center gap-1.5 text-[10px]" style={{ color: C.textDim }}>
-            <span className="w-2.5 h-2.5 rounded-full" style={{ background: typeMeta[key].color }} />{typeMeta[key].label}
+            <span className="w-2.5 h-2.5 rounded-full" style={{ background: typeMeta[key].color }} />{terminArt(t, key)}
           </span>
         ))}
-        <span className="text-[10px] ml-auto" style={{ color: C.textDim }}>{monthCount} in diesem Monat</span>
+        <span className="text-[10px] ml-auto" style={{ color: C.textDim }}>{mitWerten(t("kal.imMonat"), { anzahl: monthCount })}</span>
       </div>
     </div>
   );
@@ -5480,7 +5484,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
         <div className="fixed inset-0 z-50 flex items-end p-3" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setSelectedEvent(null)}>
           <div role="dialog" aria-modal="true" aria-label={openEvent.title} onClick={(e) => e.stopPropagation()} className="w-full rounded-3xl p-4 max-h-[85%] overflow-y-auto" style={{ background: C.glass }}>
             <div className="flex items-center justify-between mb-3">
-              <div className="text-sm font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{typeMeta[openEvent.type].label}</div>
+              <div className="text-sm font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{terminArt(t, openEvent.type)}</div>
               <button onClick={() => setSelectedEvent(null)} aria-label={t("allg.schliessen")} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><X size={15}/></button>
             </div>
             <EventCard ev={openEvent} initialOpen
@@ -11070,8 +11074,7 @@ function DutyView({ members, currentUser, events, dutyPlan, setDutyPlan, onDiens
            Datenbank tragen diese Eigenschaft nicht. Ein Pruefer sieht sonst
            eine Ansicht, die nichts tut. */
         <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>
-          Für die kommenden Termine sind noch keine Helferdienste eingeplant.
-          Sobald der Verein welche anlegt, erscheinen sie hier.
+          {t("sup.keineHelferdienste")}
         </div>
       )}
       {helperEvents.map((ev) => {
@@ -11092,7 +11095,7 @@ function DutyView({ members, currentUser, events, dutyPlan, setDutyPlan, onDiens
                   {binDabei && <span style={{ color: C.red, fontWeight: 700 }}> · {t("sup.duBistDabei")}</span>}
                 </div>
               </div>
-              <div className="flex-shrink-0"><Pill bg={ev.home ? C.red : typeMeta[ev.type].color}>{ev.home ? t("ev.heimspiel") : typeMeta[ev.type].label}</Pill></div>
+              <div className="flex-shrink-0"><Pill bg={ev.home ? C.red : typeMeta[ev.type].color}>{ev.home ? t("ev.heimspiel") : terminArt(t, ev.type)}</Pill></div>
               <ChevronDown size={16} style={{ color: C.textDim, flexShrink: 0, transform: aufgeklappt ? "rotate(180deg)" : "none", transition: "transform .15s" }} />
             </button>
             {aufgeklappt && (
@@ -11227,6 +11230,15 @@ function SupportView({ currentUser, members, events, dutyPlan, setDutyPlan, onDi
 }
 
 function AdminDutyPanel({ members, events, dutyPlan, setDutyPlan, onSetzen }) {
+  const t = useT();
+  /* Aufklappbar wie unter "Helferdienste" (DutyView): Zugeklappt stehen nur
+     Termin, Zeit und Belegung, so passen mehrere Termine auf eine Seite. */
+  const [offen, setOffen] = useState(() => new Set());
+  const umschalten = (id) => setOffen((alt) => {
+    const neu = new Set(alt);
+    if (neu.has(id)) neu.delete(id); else neu.add(id);
+    return neu;
+  });
   const helperEvents = (events || []).filter((e) => e.helperSlots && e.helperSlots.length);
   const formalMembers = members.filter((m) => isFormalMember(m));
   /* Schreiben AUSSERHALB des Zustands-Updaters (C2): Ein Updater kann doppelt
@@ -11251,19 +11263,33 @@ function AdminDutyPanel({ members, events, dutyPlan, setDutyPlan, onSetzen }) {
   };
   return (
     <div>
-      <div className="text-xs mb-4" style={{ color: C.textDim, fontFamily: "Inter" }}>{formalMembers.length} Vereinsmitglieder sind hinterlegt und einteilbar.</div>
+      <div className="text-xs mb-4" style={{ color: C.textDim, fontFamily: "Inter" }}>{mitWerten(t("sup.einteilbar"), { anzahl: formalMembers.length })}</div>
       {helperEvents.length === 0 && (
         <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>
-          Noch keine Termine mit Helferdiensten. Lege einen Termin an und weise ihm Dienste zu.
+          {t("sup.keineTermineEinteilen")}
         </div>
       )}
       {helperEvents.map((ev) => {
         const plan = dutyPlan[ev.id] || {};
         const pool = formalMembers;
+        const belegt = ev.helperSlots.reduce((n, st) => n + Math.min((plan[st] || []).length, STATION_CAP), 0);
+        const gesamt = ev.helperSlots.length * STATION_CAP;
+        const aufgeklappt = offen.has(ev.id);
         return (
-          <div key={ev.id} className="rounded-2xl mb-4 p-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
-            <div className="text-sm mb-3" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{ev.title} · {formatDate(ev.date)}</div>
-            <div className="space-y-3">
+          <div key={ev.id} className="rounded-2xl mb-3 overflow-hidden" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
+            <button type="button" onClick={() => umschalten(ev.id)} aria-expanded={aufgeklappt}
+              className="w-full text-left flex items-center gap-3 p-4">
+              <div className="flex-1 min-w-0">
+                <div className="text-sm truncate" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{ev.title}</div>
+                <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>
+                  {formatDate(ev.date)} · {formatTime(ev.date)} · {mitWerten(t("sup.plaetzeBelegt"), { belegt, gesamt })}
+                </div>
+              </div>
+              <div className="flex-shrink-0"><Pill bg={ev.home ? C.red : typeMeta[ev.type].color}>{ev.home ? t("ev.heimspiel") : terminArt(t, ev.type)}</Pill></div>
+              <ChevronDown size={16} style={{ color: C.textDim, flexShrink: 0, transform: aufgeklappt ? "rotate(180deg)" : "none", transition: "transform .15s" }} />
+            </button>
+            {aufgeklappt && (
+            <div className="px-4 pb-4 space-y-3">
               {ev.helperSlots.map((station) => {
                 const list = plan[station] || [];
                 return (
@@ -11282,7 +11308,7 @@ function AdminDutyPanel({ members, events, dutyPlan, setDutyPlan, onSetzen }) {
                     {list.length < STATION_CAP && (
                       <select onChange={(e) => { add(ev.id, station, e.target.value); e.target.value = ""; }} defaultValue=""
                         className="text-xs px-2 py-1.5 rounded-lg outline-none" style={{ background: C.paper, fontFamily: "Inter", border: `1px solid ${C.line}` }}>
-                        <option value="">+ Mitglied zuteilen</option>
+                        <option value="">{t("sup.mitgliedZuteilen")}</option>
                         {pool.filter((m) => !list.includes(m.id)).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
                       </select>
                     )}
@@ -11290,6 +11316,7 @@ function AdminDutyPanel({ members, events, dutyPlan, setDutyPlan, onSetzen }) {
                 );
               })}
             </div>
+            )}
           </div>
         );
       })}
