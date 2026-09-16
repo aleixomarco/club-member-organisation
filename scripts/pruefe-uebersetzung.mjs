@@ -180,6 +180,16 @@ const DEUTSCH = /[äöüßÄÖÜ]|\b(und|oder|der|die|das|nicht|kein|keine|ist|w
        oben ueberspringt Zeilen mit .eq( - in einzeiligen Komponenten wie
        ReferralSettings stehen dort aber auch Knopftexte. */
     for (const [, text] of roh.matchAll(/[?:]\s*"([^"\n]{3,80})"/g)) { if (DEUTSCH.test(text) && /\s/.test(text.trim())) vormerken(text, i, "Bedingung"); }
+    /* Drei Luecken, gefunden am 16.09.2026 in "Helfer einteilen":
+       - Text direkt hinter einem Wert: {anzahl} Vereinsmitglieder sind ...</div>
+       - Text, der mit einem Zeichen beginnt: <option>+ Mitglied zuteilen</option>
+       - Text ueber mehrere Zeilen, ohne Tag in derselben Zeile */
+    for (const [, text] of roh.matchAll(/\}\s+([A-Za-zÄÖÜäöüß][^<>{}\n]{2,120}?)\s*<\//g)) { if (DEUTSCH.test(text)) vormerken(text, i, "JSX-nach-Wert"); }
+    for (const [, text] of roh.matchAll(/>\s*([+–-]\s*[A-ZÄÖÜ][^<>{}\n]{2,80}?)\s*</g)) { if (DEUTSCH.test(text) || /[äöüß]/.test(text)) vormerken(text, i, "JSX-Zeichen"); }
+    if (/^[A-ZÄÖÜ][^<>{}()\[\];=`"'|&]*$/.test(s) && s.split(/\s+/).length >= 3 && DEUTSCH.test(s)) {
+      const davor = (zeilen[i - 1] || "").trim();
+      if (davor.endsWith(">") || /^[A-ZÄÖÜ][^<>{}()\[\];=`"'|&]*$/.test(davor)) vormerken(s, i, "JSX-mehrzeilig");
+    }
     for (const [, text] of roh.matchAll(/`([^`\n]*\$\{[^`\n]*)`/g)) {
       const ohneWerte = text.replace(/\$\{[^}]*\}/g, " ");
       if (/[A-Za-zÄÖÜäöüß]{3,}\s+[A-Za-zÄÖÜäöüß]{2,}/.test(ohneWerte) && DEUTSCH.test(ohneWerte) && !/className|style|https?:|\/api\/|select\(|\.eq\(/.test(roh)) vormerken(text, i, "Template");

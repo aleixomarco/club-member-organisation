@@ -2660,7 +2660,7 @@ function KontoLoeschenBlock({ onDelete }) {
         <div className="rounded-2xl p-4" style={{ background: C.fehlerFlaeche, border: `1px solid ${C.fehlerRand}` }}>
           <div className="text-xs font-bold mb-1.5" style={{ color: C.ink }}>{t("konto.loeschenFrage")}</div>
           <div className="text-[11px] leading-snug mb-3" style={{ color: C.textDim }}>
-            Dein Konto und alle personenbezogenen Daten werden unwiderruflich entfernt. Kosten entstehen dir dadurch keine: Ein persönliches Abonnement gibt es nicht.
+            {t("konto.loeschenKostenHinweis")}
           </div>
           <div className="flex gap-2">
             <button onClick={() => setConfirming(false)} disabled={busy} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>{t("allg.abbrechen")}</button>
@@ -3399,7 +3399,7 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
           <div className="flex items-start gap-2">
             <CheckCircle2 size={16} style={{ color: C.erfolg, flexShrink: 0, marginTop: 1 }} />
             <div className="text-xs leading-relaxed" style={{ color: C.ink, fontFamily: "Inter" }}>
-              Du erhältst eine E-Mail. Bitte bestätige sie, damit wir sicher gehen können, dass deine Daten korrekt sind.
+              {t("reg.mailBestaetigenDatenKorrekt")}
               <div className="mt-2">{t("reg.danach")}</div>
             </div>
           </div>
@@ -6180,9 +6180,7 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
           <MessageCircle size={22} style={{ color: C.textDim, margin: "0 auto 10px" }} />
           <div className="text-sm font-bold mb-1" style={{ color: C.ink, fontFamily: "Inter" }}>{t("chat.keiner")}</div>
           <div className="text-[11px] leading-snug" style={{ color: C.textDim, fontFamily: "Inter" }}>
-            Chats gehören zu Mannschaften. Sobald du einer Mannschaft zugeordnet bist —
-            oder dein Kind in einer steht — erscheint sie hier. Frag im Zweifel deinen
-            Trainer oder die Vereinsverwaltung.
+            {t("chat.keinerHinweis")}
           </div>
         </div>
       </div>
@@ -6912,7 +6910,7 @@ function FamilyLinkManager({ user, members, setMembers, adminMode = false }) {
     setSaving(false);
   };
   return <div className="rounded-2xl p-4 mb-5" style={{background:C.glass,border:`1px solid ${C.line}`}}>
-    <div className="flex items-center justify-between"><div><div className="text-sm font-bold" style={{color:C.ink}}>{t("fam.verknuepfung")}</div><div className="text-[11px]" style={{color:C.textDim}}>{adminMode ? `Sysadmin bearbeitet das Profil von ${user.name}.` : t("fam.selbstVerwalten")} Verknüpfungen gelten automatisch für beide Profile.</div></div><button disabled={saving} onClick={()=>setOpen(!open)} className="px-3 py-1.5 rounded-full text-xs font-bold" style={{background:C.paperDim,color:C.ink}}>{open?t("allg.schliessen"):t("fam.verknuepfenKnopf")}</button></div>
+    <div className="flex items-center justify-between"><div><div className="text-sm font-bold" style={{color:C.ink}}>{t("fam.verknuepfung")}</div><div className="text-[11px]" style={{color:C.textDim}}>{adminMode ? mitWerten(t("fam.sysadminBearbeitetProfil"), { name: user.name }) : t("fam.selbstVerwalten")} {t("fam.verknuepfungenBeideProfile")}</div></div><button disabled={saving} onClick={()=>setOpen(!open)} className="px-3 py-1.5 rounded-full text-xs font-bold" style={{background:C.paperDim,color:C.ink}}>{open?t("allg.schliessen"):t("fam.verknuepfenKnopf")}</button></div>
     {message&&<div className="mt-2 text-[11px] font-semibold" style={{color:C.red}}>{meldungstext(message)}</div>}
     {hinweis&&<div className="mt-2 text-[11px]" style={{color:C.textDim}}>{hinweis}</div>}
     {databaseMembership&&<FamilienAnfragen membershipId={user.id} clubId={user.clubId} setMembers={setMembers} stand={anfragenStand} />}
@@ -7550,7 +7548,7 @@ function TeamsView({ currentUser, members, setMembers, currentClub, teamWunsch =
     <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>Alle Mannschaften von {currentClub?.shortName}. Öffne ein Team, um den Athletenkader anzusehen.</div>
     {showCreate && <form onSubmit={createTeam} className="rounded-2xl p-4 mb-5" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>{t("tm.neuAnlegen")}</div><div className="text-[11px] mb-3" style={{ color: C.textDim }}>{t("rol.danachProfil")}</div><input value={name} onChange={(event) => setName(event.target.value)} maxLength={80} placeholder={t("ph.mannschaftsnameBsp")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}/><input value={category} onChange={(event) => setCategory(event.target.value)} maxLength={80} placeholder={t("ph.kategorieBeispiel")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}/><button type="button" onClick={() => setIsAdultTeam((v) => !v)} className="w-full flex items-center justify-between rounded-xl px-3 py-2.5 mb-2" style={{ background: isAdultTeam ? C.fehlerFlaeche : C.paperDim, border: isAdultTeam ? `1px solid ${C.red}` : "1px solid transparent" }}><div className="text-left"><div className="text-xs font-bold" style={{ color: C.ink }}>{t("tm.erwachsene")}</div><div className="text-[10px]" style={{ color: C.textDim }}>{t("rol.nurDannStrafen")}</div></div><span className="w-10 h-6 rounded-full flex items-center px-0.5" style={{ background: isAdultTeam ? C.red : C.line, justifyContent: isAdultTeam ? "flex-end" : "flex-start" }}><span className="w-5 h-5 rounded-full" style={{ background: C.glass }}/></span></button><button disabled={saving || !name.trim()} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: name.trim() ? C.red : C.line, color: C.white }}>{saving ? t("allg.wirdAngelegt") : t("tm.anlegen")}</button></form>}
     {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: (istErfolg(message)||istErfolg(message)||istErfolg(message)) ? C.erfolgFlaeche : C.fehlerFlaeche, color: (istErfolg(message)||istErfolg(message)||istErfolg(message)) ? C.erfolg : C.fehler }}>{meldungstext(message)}</div>}
-    {selectedTeam ? <div><button onClick={() => { setSelectedTeamId(""); setShowPlayerPicker(false); setEditingTeam(false); }} className="flex items-center gap-1 text-xs font-bold mb-3" style={{ color: C.fehler }}><ArrowLeft size={14}/> Alle Teams</button><div className="rounded-2xl p-4 mb-4" style={{ background: C.ink, color: C.white }}><div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: C.textDim }}>{selectedTeam.category || t("tm.mannschaft")}</div><div className="text-xl font-bold" style={{ fontFamily: "Oswald" }}>{selectedTeam.name}</div><div className="text-xs mt-1" style={{ color: C.textDim }}>{rosterFor(selectedTeam).length} verknüpfte Athlet/innen</div></div><div className="-mt-2 mb-4"><Erstellt von={selectedTeam.created_by} am={selectedTeam.created_at} rahmenlos /></div><MannschaftsFunktionen team={selectedTeam} members={members} /><MannschaftsMeldungen teamId={selectedTeam.id} currentUser={currentUser} imTeam={ownTeams.some((team) => team.id === selectedTeam.id)} />{canCreate && !editingTeam && <div className="flex gap-2 mb-4"><button onClick={() => openEditTeam(selectedTeam)} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>{t("allg.bearbeiten")}</button><button onClick={archiveTeam} disabled={archivingTeam} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{archivingTeam ? "…" : t("tm.archivieren")}</button></div>}{canCreate && editingTeam && <div className="rounded-2xl p-3.5 mb-4" style={{ background: C.paperDim }}><input value={editName} onChange={(e) => setEditName(e.target.value)} maxLength={80} placeholder={t("ph.mannschaftsname")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.glass }}/><input value={editCategory} onChange={(e) => setEditCategory(e.target.value)} maxLength={80} placeholder={t("ph.kategorie")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.glass }}/><div className="flex gap-2"><button onClick={saveTeamEdit} disabled={savingTeamEdit} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{savingTeamEdit ? "…" : t("allg.speichern")}</button><button onClick={() => setEditingTeam(false)} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>{t("allg.abbrechen")}</button></div></div>}<SectionTitle eyebrow={t("tm.kader")} title={t("tm.athletinnen")} right={canAssignPlayers ? <button onClick={() => setShowPlayerPicker((value) => !value)} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showPlayerPicker ? t("allg.schliessen") : "+ Zuweisen"}</button> : null}/>{showPlayerPicker && <div className="rounded-2xl p-3 mb-4" style={{ background: C.paperDim }}><div className="text-[11px] mb-2" style={{ color: C.textDim }}>{t("tm.athletWaehlenHinweis")}</div>{!showNewPlayer ? <button type="button" onClick={() => setShowNewPlayer(true)} className="w-full flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 mb-2 text-[11px] font-bold" style={{ background: C.glass, color: C.fehler, border: `1px dashed ${C.red}` }}><Plus size={13}/> Spieler ohne Account anlegen</button> : <div className="rounded-xl p-2.5 mb-2" style={{ background: C.glass }}><div className="text-[10px] mb-1.5" style={{ color: C.textDim }}>{t("tm.ohneKontoHinweis")}</div><input value={newPlayerName} onChange={(e) => setNewPlayerName(e.target.value)} placeholder={t("feld.vollerName")} className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2" style={{ background: C.paperDim }}/><div className="flex gap-2"><button type="button" onClick={() => { setShowNewPlayer(false); setNewPlayerName(""); }} className="flex-1 py-2 rounded-lg text-[11px] font-bold" style={{ background: C.paperDim, color: C.ink }}>{t("allg.abbrechen")}</button><button type="button" disabled={creatingPlayer || !newPlayerName.trim()} onClick={createPlayerWithoutAccount} className="flex-1 py-2 rounded-lg text-[11px] font-bold" style={{ background: newPlayerName.trim() ? C.ink : C.line, color: C.white }}>{creatingPlayer ? "…" : t("allg.anlegen")}</button></div></div>}<div className="space-y-1.5 max-h-56 overflow-y-auto">{players.length === 0 && (
+    {selectedTeam ? <div><button onClick={() => { setSelectedTeamId(""); setShowPlayerPicker(false); setEditingTeam(false); }} className="flex items-center gap-1 text-xs font-bold mb-3" style={{ color: C.fehler }}><ArrowLeft size={14}/> Alle Teams</button><div className="rounded-2xl p-4 mb-4" style={{ background: C.ink, color: C.white }}><div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: C.textDim }}>{selectedTeam.category || t("tm.mannschaft")}</div><div className="text-xl font-bold" style={{ fontFamily: "Oswald" }}>{selectedTeam.name}</div><div className="text-xs mt-1" style={{ color: C.textDim }}>{mitWerten(t("tm.anzahlVerknuepfteAthleten"), { anzahl: rosterFor(selectedTeam).length })}</div></div><div className="-mt-2 mb-4"><Erstellt von={selectedTeam.created_by} am={selectedTeam.created_at} rahmenlos /></div><MannschaftsFunktionen team={selectedTeam} members={members} /><MannschaftsMeldungen teamId={selectedTeam.id} currentUser={currentUser} imTeam={ownTeams.some((team) => team.id === selectedTeam.id)} />{canCreate && !editingTeam && <div className="flex gap-2 mb-4"><button onClick={() => openEditTeam(selectedTeam)} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>{t("allg.bearbeiten")}</button><button onClick={archiveTeam} disabled={archivingTeam} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{archivingTeam ? "…" : t("tm.archivieren")}</button></div>}{canCreate && editingTeam && <div className="rounded-2xl p-3.5 mb-4" style={{ background: C.paperDim }}><input value={editName} onChange={(e) => setEditName(e.target.value)} maxLength={80} placeholder={t("ph.mannschaftsname")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.glass }}/><input value={editCategory} onChange={(e) => setEditCategory(e.target.value)} maxLength={80} placeholder={t("ph.kategorie")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.glass }}/><div className="flex gap-2"><button onClick={saveTeamEdit} disabled={savingTeamEdit} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{savingTeamEdit ? "…" : t("allg.speichern")}</button><button onClick={() => setEditingTeam(false)} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>{t("allg.abbrechen")}</button></div></div>}<SectionTitle eyebrow={t("tm.kader")} title={t("tm.athletinnen")} right={canAssignPlayers ? <button onClick={() => setShowPlayerPicker((value) => !value)} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showPlayerPicker ? t("allg.schliessen") : "+ Zuweisen"}</button> : null}/>{showPlayerPicker && <div className="rounded-2xl p-3 mb-4" style={{ background: C.paperDim }}><div className="text-[11px] mb-2" style={{ color: C.textDim }}>{t("tm.athletWaehlenHinweis")}</div>{!showNewPlayer ? <button type="button" onClick={() => setShowNewPlayer(true)} className="w-full flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 mb-2 text-[11px] font-bold" style={{ background: C.glass, color: C.fehler, border: `1px dashed ${C.red}` }}><Plus size={13}/> Spieler ohne Account anlegen</button> : <div className="rounded-xl p-2.5 mb-2" style={{ background: C.glass }}><div className="text-[10px] mb-1.5" style={{ color: C.textDim }}>{t("tm.ohneKontoHinweis")}</div><input value={newPlayerName} onChange={(e) => setNewPlayerName(e.target.value)} placeholder={t("feld.vollerName")} className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2" style={{ background: C.paperDim }}/><div className="flex gap-2"><button type="button" onClick={() => { setShowNewPlayer(false); setNewPlayerName(""); }} className="flex-1 py-2 rounded-lg text-[11px] font-bold" style={{ background: C.paperDim, color: C.ink }}>{t("allg.abbrechen")}</button><button type="button" disabled={creatingPlayer || !newPlayerName.trim()} onClick={createPlayerWithoutAccount} className="flex-1 py-2 rounded-lg text-[11px] font-bold" style={{ background: newPlayerName.trim() ? C.ink : C.line, color: C.white }}>{creatingPlayer ? "…" : t("allg.anlegen")}</button></div></div>}<div className="space-y-1.5 max-h-56 overflow-y-auto">{players.length === 0 && (
                   /* Ohne diesen Hinweis oeffnet sich beim Antippen von
                      "Zuweisen" ein leerer Kasten - ohne ein Wort dazu, warum.
                      Die Liste bietet nur Mitglieder mit der Rolle "Athlet/in"
@@ -8756,7 +8754,7 @@ function VehiclesView({ currentUser, currentClub }) {
             <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: C.paperDim, color: C.red }}><Car size={18}/></div>
             <button onClick={() => { if (!hasPhone) { setMessage(t("fzg.telefonNoetig")); return; } openBooking(v); }} className="flex-1 text-left">
               <div className="text-sm font-bold" style={{ color: C.ink }}>{v.label}</div>
-              <div className="text-[11px]" style={{ color: C.textDim }}>{v.license_plate} · {v.seats} Plätze</div>
+              <div className="text-[11px]" style={{ color: C.textDim }}>{v.license_plate} · {mitWerten(t("fzg.anzahlPlaetze"), { anzahl: v.seats })}</div>
               <Erstellt von={v.created_by} am={v.created_at} rahmenlos />
             </button>
             <ChevronRight size={15} style={{ color: C.textDim }}/>
@@ -9384,7 +9382,7 @@ function SubscriptionPanel({ user }) {
           )
         ) : (
           <div className="rounded-2xl p-4 mb-5 text-[11px]" style={{ background: C.paperDim, color: C.textDim }}>
-            Den Vollzugang kann die Vereinsleitung anfragen — Vorstand, Geschäftsführung oder Vereinsadmin.
+            {t("zug.nurVereinsadminAnfragen")}
           </div>
         )}
       </>
@@ -9455,8 +9453,7 @@ function HowToVideoLibrary({ user, vorhanden = null }) {
               <div className="px-3.5 pb-3.5">
                 {fehlend.includes(video.id) ? (
                   <div className="rounded-xl px-3.5 py-4 text-[11px] leading-relaxed" style={{ background: C.paperDim, color: C.textDim }}>
-                    Dieses Video ist gerade nicht abrufbar. Die Beschreibung oben sagt dir trotzdem,
-                    wo die Funktion zu finden ist.
+                    {t("vid.nichtAbrufbar")}
                   </div>
                 ) : (
                   <video
@@ -10314,7 +10311,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
 
       {profileFolder === "sprache" && <ProfileUnderlay title={t("profil.sprache")} eyebrow={t("pf.einstellungen")} onClose={() => setProfileFolder("")}>
         <div className="text-xs mb-3" style={{ color: C.textDim, fontFamily: "Inter" }}>
-          Die Sprache gilt für dein Konto — auch auf anderen Geräten.
+          {t("pf.spracheFuerKonto")}
         </div>
         <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${C.line}` }}>
           {SPRACHEN.map((eintrag, i) => (
@@ -10327,9 +10324,6 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
               {eintrag.code === sprache && <Check size={15} style={{ color: C.erfolg }} />}
             </button>
           ))}
-        </div>
-        <div className="text-[11px] mt-3" style={{ color: C.textDim, fontFamily: "Inter" }}>
-          Übersetzt sind bisher Anmeldung und Registrierung. Die übrigen Bereiche folgen — bis dahin bleiben sie deutsch.
         </div>
       </ProfileUnderlay>}
 
@@ -10405,7 +10399,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
             ? (meinePunkte >= goal ? `${punktePraemie} — sprich den Vorstand an! 🎉` : `Noch ${goal - meinePunkte} Punkte bis: ${punktePraemie}`)
             : (meinePunkte >= goal ? t("auf.zielErreicht") : `Noch ${goal - meinePunkte} Punkte bis zum Ziel`)}
           <div className="text-[10px] mt-1.5" style={{ color: C.textDim }}>
-            Punkte gibt es fürs Mitmachen: Helferdienste, übernommene Aufgaben, Umfragen, Tipps und Vereinstreue.
+            {t("pf.punkteHinweis")}
           </div>
         </div>
       </div>
@@ -10571,7 +10565,7 @@ function SeasonVoteView({ currentUser, members, seasonVotes, seasonStand, setSea
         )}
       </div>
 
-      {!closed && <div className="text-xs mb-3" style={{ color: C.textDim, fontFamily: "Inter" }}>{total} Stimmen bisher abgegeben. Ergebnisse werden erst nach dem Stichtag veröffentlicht.</div>}
+      {!closed && <div className="text-xs mb-3" style={{ color: C.textDim, fontFamily: "Inter" }}>{mitWerten(t("sais.stimmenBisher"), { anzahl: total })}</div>}
 
       {closed && sorted[0] && (
         <div className="rounded-2xl p-4 mb-5 flex items-center gap-3" style={{ background: C.sekundaerWeich, border: `1px solid ${C.edge}` }}>
@@ -10585,7 +10579,7 @@ function SeasonVoteView({ currentUser, members, seasonVotes, seasonStand, setSea
 
       {sorted.length === 0 && (
         <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>
-          Für diese Wahl sind noch keine Kandidat/innen hinterlegt.
+          {t("sais.keineKandidatenWahl")}
         </div>
       )}
 
@@ -10658,7 +10652,7 @@ function TippRundenPanel({ currentClub }) {
     <div className="rounded-2xl p-4 mt-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
       <div className="text-sm font-bold mb-1" style={{ color: C.ink }}>{t("tipp.jeTeam")}</div>
       <div className="text-[11px] mb-3" style={{ color: C.textDim }}>
-        Jede freigegebene Mannschaft bekommt eine eigene Tipprunde mit eigener Tabelle. Die Runden lassen sich nicht mischen — wie bei den Chatkanälen.
+        {t("tipp.rundenJeTeamHinweis")}
       </div>
       {laedt ? <div className="text-xs" style={{ color: C.textDim }}>{t("tm.laden")}</div>
        : zeilen.length === 0 ? <div className="text-xs" style={{ color: C.textDim }}>{t("tm.keine")}</div>
@@ -11595,7 +11589,7 @@ function ProtokollePanel({ members, protocols, setProtocols, onSpeichern, onAufg
             <NutzerWahl personen={members.filter((m) => !istNurFan(m))} wert={newTaskAssignee} onWaehlen={setNewTaskAssignee} />
             <input type="date" value={newTaskDue} onChange={(e) => setNewTaskDue(e.target.value)} className="text-xs px-2 py-1.5 rounded-lg outline-none" style={{ background: C.paperDim, fontFamily: "Inter", border: `1px solid ${C.line}` }} />
           </div>
-          <button onClick={addDraftTask} disabled={!newTaskText.trim()} className="w-full py-2 rounded-lg text-xs" style={{ background: C.ink, color: "#fff", fontFamily: "Inter", fontWeight: 700, opacity: !newTaskText.trim() ? 0.5 : 1 }}>+ Aufgabe hinzufügen</button>
+          <button onClick={addDraftTask} disabled={!newTaskText.trim()} className="w-full py-2 rounded-lg text-xs" style={{ background: C.ink, color: "#fff", fontFamily: "Inter", fontWeight: 700, opacity: !newTaskText.trim() ? 0.5 : 1 }}>{t("prot.aufgabeHinzufuegen")}</button>
         </div>
 
         {draftTasks.length > 0 && (
@@ -11691,7 +11685,7 @@ function TodoBoard({ currentClub, goPanel, goFahrzeuge, goAufgaben, goHelfer }) 
       </div>
       {punkte.length === 0 ? (
         <div className="px-4 py-3 text-[11px]" style={{ background: C.white, color: C.textDim, fontFamily: "Inter" }}>
-          Keine Mitgliedsanträge, keine fehlenden Ergebnisse, keine fälligen Aufgaben.
+          {t("auf.nichtsOffenHinweis")}
         </div>
       ) : /* Fahrzeugbuchungen liegen in einer eigenen Ansicht, nicht in der Verwaltung - ohne die Weiche unten liefe der Klick ins Leere.
              Dasselbe gilt fuer Helferstationen: Das Einteilen ist aus der
@@ -12290,7 +12284,7 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
         <div className="rounded-2xl p-3.5" style={{ background: C.sekundaerWeich, border: `1px solid ${C.edge}` }}>
           <div className="text-xs font-bold mb-1" style={{ color: C.ink }}>{t("sp.nichtFrei")}</div>
           <div className="text-[11px] leading-relaxed" style={{ color: C.textDim }}>
-            Sie können hier alles vorbereiten — angezeigt wird es erst, wenn der Verein dafür freigeschaltet ist. Die Vereinsleitung kann den Zusatz zusammen mit dem Vollzugang anfragen.
+            {t("sp.nichtFreiHinweis")}
           </div>
         </div>
       )}
@@ -13464,7 +13458,7 @@ function MembershipApprovalsPanel({ club, members, setMembers, currentUser = nul
           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{gesperrte.length}</span>
         </div>
         <div className="text-[11px] mb-3" style={{ color: C.textDim }}>
-          Diese Personen haben keinen Zugang und können auch keine neue Beitrittsanfrage stellen. Beim Entsperren gilt die Mitgliedschaft wieder als beendet — über eine erneute Aufnahme entscheidet ihr neu.
+          {t("mit.sperrlisteHinweis")}
         </div>
         <div className="space-y-2">
           {gesperrte.map((member) => (
@@ -13915,7 +13909,7 @@ function AdminView({
             <div className="text-xs mb-3" style={{ color: C.textDim, fontFamily: "Inter" }}>Nur für den Vorstand sichtbar — {total} Stimmen bisher.</div>
             {sorted.length === 0 && (
               <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>
-                Für diese Wahl sind noch keine Kandidat/innen hinterlegt.
+                {t("sais.keineKandidatenWahl")}
               </div>
             )}
             <div className="space-y-2">
@@ -14501,7 +14495,7 @@ function PostfachView({ eintraege, laedt, onGelesen, onLoeschen, onAlleLoeschen,
         <button onClick={() => { if (window.confirm(mitWerten(t("benach.alleLoeschenFrage"), { anzahl: eintraege.length }))) onAlleLoeschen?.(); }}
           className="w-full py-2.5 rounded-xl text-xs font-bold mb-3"
           style={{ background: C.fehlerFlaeche, color: C.fehler, border: `1px solid ${C.fehler}` }}>
-          Alle Nachrichten löschen
+          {t("benach.alleLoeschen")}
         </button>
       )}
       {ungelesen > 0 && (
@@ -14515,8 +14509,7 @@ function PostfachView({ eintraege, laedt, onGelesen, onLoeschen, onAlleLoeschen,
           <Bell size={22} style={{ color: C.textDim, margin: "0 auto 10px" }} />
           <div className="text-sm font-bold mb-1" style={{ color: C.ink, fontFamily: "Inter" }}>{t("allg.nochNichts")}</div>
           <div className="text-[11px] leading-snug" style={{ color: C.textDim, fontFamily: "Inter" }}>
-            Hier landen neue Termine, News, Umfragen und alles, wofür du in den Einstellungen
-            Benachrichtigungen eingeschaltet hast.
+            {t("benach.leerHinweis")}
           </div>
         </div>
       ) : (
@@ -14561,8 +14554,7 @@ function KonfigurationFehlt() {
         <AppBrandMark size={56} />
         <div className="text-lg mt-5 mb-2" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>{t("sys.nichtBereit")}</div>
         <p className="text-sm leading-relaxed" style={{ color: C.textDim }}>
-          Die Verbindung zur Vereinsdatenbank fehlt. Es werden keine Daten angezeigt und keine
-          gespeichert. Bitte später noch einmal versuchen — wir sind informiert.
+          {t("sys.datenbankFehlt")}
         </p>
       </div>
     </div>
@@ -14581,8 +14573,7 @@ function NurAlsAppHinweis() {
         </div>
         <h1 className="text-xl mb-2" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>Club Member Organisation</h1>
         <p className="text-xs mb-7 leading-relaxed" style={{ color: C.textDim }}>
-          Die Vereins-App gibt es als App fürs Smartphone. Lade sie im Store,
-          melde dich dort an, und dein Verein ist sofort verfügbar.
+          {t("store.nurAlsApp")}
         </p>
         <div className="space-y-2 mb-8">
           {appStore && <a href={appStore} className="block py-3 rounded-2xl text-sm font-bold" style={{ background: C.ink, color: C.white }}>{t("store.apple")}</a>}
