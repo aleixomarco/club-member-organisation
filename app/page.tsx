@@ -1078,18 +1078,22 @@ function registrierFehlerText(error, t) {
 }
 
 const isDbId = (id) => /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(String(id));
-/* Die Vereinsleitung - und nur sie nimmt notify_many von angemeldeten Nutzern
-   noch an (20260914110300). Dieselbe Menge wie darfVereinVerwalten. */
-const CLUB_ADMIN_ROLES = ["vereinsadmin", "sysadmin", "organisator"];
-const notifyClubAdmins = async (clubId, notifType, title, body, excludeMembershipId = null) => {
+/* Eine Meldung an die Vereinsleitung (leitung_melden).
+   Die App schickt nur Schluessel und Werte, keinen fertigen Satz. Vorher
+   setzte sie Titel und Text mit t() zusammen und schickte sie per
+   notify_many - die Leitung las die Meldung dann in der Sprache dessen, der
+   gerade gebucht oder gesperrt hatte, und die Daten als rohes 2026-09-16.
+   Jetzt baut der Server den Text je Empfaenger in dessen Sprache
+   (meldungstexte, meldung_datum) und bestimmt die Empfaenger selbst: die
+   aktive Leitung ohne ausserMembershipId und ohne den Aufrufer.
+   Fehler bleiben still, wie bisher: Die Aktion selbst ist schon gespeichert,
+   die Meldung ist Beiwerk. */
+const notifyClubAdmins = async (clubId, art, schluessel, werte = {}, ausserMembershipId = null) => {
   if (!supabase || !isDbId(clubId)) return;
-  const { data } = await supabase.from("club_memberships")
-    .select("id,membership_roles(role)")
-    .eq("club_id", clubId).eq("status", "active");
-  const recipients = (data || [])
-    .filter((m) => m.id !== excludeMembershipId && (m.membership_roles || []).some((r) => CLUB_ADMIN_ROLES.includes(r.role)))
-    .map((m) => m.id);
-  if (recipients.length) await supabase.rpc("notify_many", { target_memberships: recipients, p_notif_type: notifType, p_title: title, p_body: body });
+  await supabase.rpc("leitung_melden", {
+    p_club: clubId, p_art: art, p_schluessel: schluessel, p_werte: werte || {},
+    p_ausser: ausserMembershipId && isDbId(ausserMembershipId) ? ausserMembershipId : null,
+  });
 };
 /* Der angezeigte Name einer Rolle.
    ROLE_META steht auf Modulebene und kann deshalb kein t() benutzen - dort
@@ -1525,6 +1529,26 @@ const DEMO_NEWS = [
   { who: "Jose Aleixo", time: "Gestern · 18:10", title: "Neue Trainingszeiten für die U11", text: "Ab Oktober trainiert die U11 dienstags und donnerstags um 17 Uhr in der Hemberghalle." },
   { who: "Jose Aleixo", time: "Heute · 09:30", title: "Heimspieltag am Samstag", text: "Ab 17 Uhr ist die Halle offen. Wer beim Aufbau hilft, trägt sich im Reiter Support ein." },
 ];
+
+/* Beitraege, die der Server selbst schreibt, tragen eine Vorlage statt
+   fertigem Text - bisher nur der Willkommensbeitrag (willkommens_news:
+   vorlage 'news.willkommen', werte {name}). Er steht fuer den ganzen Verein
+   da, also fuer Leser in sieben Sprachen. title, body und author_name
+   enthalten nur den deutschen Rueckfall fuer aeltere App-Staende.
+   Uebersetzt wird beim Anzeigen, nicht beim Laden: So stellt ein
+   Sprachwechsel auch diese Beitraege sofort um. Fehlt der Name, bleibt der
+   Platzhalter nicht woertlich stehen. t kommt als Parameter - das hier ist
+   keine Komponente. */
+const newsAnzeige = (eintrag, t) => {
+  if (eintrag?.vorlage !== "news.willkommen") return eintrag;
+  const werte = { name: "", ...(eintrag.werte || {}) };
+  return {
+    ...eintrag,
+    title: mitWerten(t("news.willkommen.titel"), werte),
+    text: mitWerten(t("news.willkommen.text"), werte),
+    who: t("news.willkommen.autor"),
+  };
+};
 
 /* Eine Zeile aus messages in die Form bringen, die ChatView erwartet.
    Der Name kommt ueber die Verknuepfung zu profiles; fehlt sie - etwa bei
@@ -2690,11 +2714,6 @@ function KontoLoeschenBlock({ onDelete }) {
             {vereineWarnung.length > 0 && (
               <div className="text-xs font-bold mb-2" style={{ color: C.ink }}>
                 {vereineWarnung.map((v) => v.name).filter(Boolean).join(", ")}
-              </div>
-            )}
-            {vereineWarnung.some((v) => v.abo) && (
-              <div className="text-[11px] mb-3 rounded-xl px-3 py-2" style={{ background: C.fehlerFlaeche, color: C.fehler }}>
-                {t("konto.vereinGehtMitAbo")}
               </div>
             )}
             <div className="flex gap-2 mt-3">
@@ -3983,7 +4002,7 @@ function Dashboard({ user, members, events, channels, news, dutyPlan, seasonStan
      Herren 2. Und wer gar keine Zuordnung hat, bei dem ist user.team
      t("rol.mitgliedLabel") - dann fand die Zeile nie etwas und die Kachel blieb immer aus. */
   const naechstesTraining = kommende.find((e) => e.type === "training" && e.team === gewaehlteMannschaft);
-  const newsMsgs = (news || []).slice(-2).reverse();
+  const newsMsgs = (news || []).slice(-2).reverse().map((m) => newsAnzeige(m, t));
 
   const seasonClosed = new Date() > new Date(SEASON_VOTE_DEADLINE);
   /* Ohne Kandidaten bleibt sorted leer. Das ?. verhindert zwar den Absturz,
@@ -6548,7 +6567,9 @@ function RedaktionView({ user, news, setNews }) {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [editingPost, setEditingPost] = useState(null);
-  const items = (news || []).map((m, idx) => ({ ...m, idx })).reverse();
+  /* Der Willkommensbeitrag steht hier - und beim Bearbeiten im Formular und
+     in der Loeschfrage - in der Sprache der App, nicht im deutschen Rueckfall. */
+  const items = (news || []).map((m, idx) => ({ ...newsAnzeige(m, t), idx })).reverse();
 
   const openEdit = (item) => {
     setEditingPost(item);
@@ -6594,6 +6615,15 @@ function RedaktionView({ user, news, setNews }) {
     let finalImageUrl = imageUrl || undefined;
     let imagePath = null;
     const databaseMembership = !!supabase && isDbId(user.id);
+    /* Willkommensbeitrag mit Vorlage: Das Formular zeigt die Uebersetzung aus
+       newsAnzeige. Bleiben Titel und Text so, wie angezeigt, gehen die
+       gespeicherten Rohtexte zurueck und die Vorlage bleibt - sonst loeste
+       schon ein neues Bild sie auf, und der Beitrag stuende fuer alle in der
+       Sprache des Redakteurs da. */
+    const rohBeitrag = editingPost ? (news || []).find((m) => m.id === editingPost.id && m.vorlage) : null;
+    const vorlageBleibt = !!rohBeitrag
+      && title.trim() === String(editingPost.title || "").trim()
+      && text.trim() === String(editingPost.text || "").trim();
     if (databaseMembership) {
       if (imageFile) {
         const extension = imageFile.type === "image/png" ? "png" : imageFile.type === "image/webp" ? "webp" : "jpg";
@@ -6607,8 +6637,8 @@ function RedaktionView({ user, news, setNews }) {
       if (editingPost && isDbId(editingPost.id)) {
         const { data: replacedImagePath, error } = await supabase.rpc("update_news_post", {
           target_post: editingPost.id,
-          new_title: title.trim(),
-          new_body: text.trim(),
+          new_title: vorlageBleibt ? rohBeitrag.title : title.trim(),
+          new_body: vorlageBleibt ? rohBeitrag.text : text.trim(),
           new_image_path: imagePath,
         });
         if (error) { if (imagePath) await supabase.storage.from("news-images").remove([imagePath]); setMessage(t("news.aendernFehler")); setSaving(false); return; }
@@ -6627,7 +6657,11 @@ function RedaktionView({ user, news, setNews }) {
     }
     if (editingPost) {
       setNews((alle) => alle.map((m) => (m.id === editingPost.id
-        ? { ...m, title: title.trim(), text: text.trim(), imageUrl: finalImageUrl, imagePath: imagePath || m.imagePath }
+        /* Bearbeitet ist er ein gewoehnlicher Beitrag: ohne Vorlage, sonst
+           stuende weiter der Vorlagentext statt der Aenderung da. */
+        ? (vorlageBleibt
+          ? { ...m, imageUrl: finalImageUrl, imagePath: imagePath || m.imagePath }
+          : { ...m, title: title.trim(), text: text.trim(), imageUrl: finalImageUrl, imagePath: imagePath || m.imagePath, vorlage: null, werte: null })
         : m)));
       cancelForm(); setSaving(false);
       return;
@@ -8684,8 +8718,10 @@ function VehiclesView({ currentUser, currentClub }) {
        an die Leitung. "X hat gebucht" nur, wenn die Buchung gleich bestaetigt
        ist - sonst kamen zwei Meldungen, eine davon falsch (rollen-11). */
     if (!editingBookingId && neuerStatus === "bestaetigt") {
-      notifyClubAdmins(currentUser.clubId, "vehicle", t("fzg.neueBuchung"),
-        mitWerten(t("fzg.gebuchtText"), { name: currentUser.name, fahrzeug: selectedVehicle.label, von: bookingForm.startDate, bis: bookingForm.endDate }),
+      /* von/bis bleiben der ISO-Tag aus dem Datumsfeld (YYYY-MM-DD). Wie das
+         Datum in der Meldung aussieht, entscheidet der Server je Empfaenger. */
+      notifyClubAdmins(currentUser.clubId, "vehicle", "fahrzeug.gebucht",
+        { wer: currentUser.name, fahrzeug: selectedVehicle.label, von: bookingForm.startDate, bis: bookingForm.endDate },
         currentUser.id);
     }
     setSelectedVehicle(null); setEditingBookingId(null); setSavingBooking(false);
@@ -10199,6 +10235,9 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
         return;
       }
       if (rumpf?.code === "verein_geht_mit") { setVereineWarnung(rumpf.vereine || []); return; }
+      /* 401: Die Sitzung ist abgelaufen. Geloescht ist dann nichts -
+         "unvollstaendig" waere falsch. */
+      if (rumpf?.code === "nicht_angemeldet") { setDeleteError(t("sich.erneutAnmelden")); return; }
       setDeleteError(rumpf?.code === "fremdschluessel" ? t("konto.loeschenBlockiert") : t("konto.loeschenUnvollstaendig"));
       return;
     }
@@ -10488,11 +10527,6 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
             {vereineWarnung.length > 0 && (
               <div className="text-xs font-bold mb-2" style={{ color: C.ink }}>
                 {vereineWarnung.map((v) => v.name).filter(Boolean).join(", ")}
-              </div>
-            )}
-            {vereineWarnung.some((v) => v.abo) && (
-              <div className="text-[11px] mb-3 rounded-xl px-3 py-2" style={{ background: C.fehlerFlaeche, color: C.fehler }}>
-                {t("konto.vereinGehtMitAbo")}
               </div>
             )}
             <div className="flex gap-2 mt-3">
@@ -13257,7 +13291,7 @@ function MembershipApprovalsPanel({ club, members, setMembers, currentUser = nul
     setMembers((items) => items.map((item) => item.id === member.id ? { ...item, status: "blocked", accountPending: false } : item));
     setMessage(mitWerten(t("mit.istJetztGesperrt"), { name: member.display_name }));
     setWorkingId(null);
-    notifyClubAdmins(club.id, "membership", t("mit.gesperrt"), mitWerten(t("mit.wurdeGesperrt"), { name: member.display_name }), member.id);
+    notifyClubAdmins(club.id, "membership", "mitglied.gesperrt", { wer: member.display_name }, member.id);
   };
 
   const unblockMember = async (member) => {
@@ -13285,7 +13319,7 @@ function MembershipApprovalsPanel({ club, members, setMembers, currentUser = nul
     setMessage(nextStatus === "inactive" ? (OK_ZEICHEN + t("mit.wurdeBeendet")) : (OK_ZEICHEN + t("mit.wurdeReaktiviert")));
     setWorkingId(null);
     if (nextStatus === "inactive") {
-      notifyClubAdmins(club.id, "membership", t("mit.mitgliedschaftBeendet"), mitWerten(t("mit.nichtMehrAktivesMitglied"), { name: member.display_name }), member.id);
+      notifyClubAdmins(club.id, "membership", "mitglied.beendet", { wer: member.display_name }, member.id);
     }
   };
 
@@ -13318,7 +13352,9 @@ function MembershipApprovalsPanel({ club, members, setMembers, currentUser = nul
     setMembers((items) => items.filter((item) => item.id !== member.id));
     setMessage(mitWerten(t("mit.ausVereinEntfernt"), { name: member.display_name }));
     setWorkingId(null);
-    notifyClubAdmins(club.id, "membership", t("mit.entfernt"), mitWerten(t("mit.ausVereinEntfernt"), { name: member.display_name }));
+    /* Der Name muss mit: Die Zeile ist schon geloescht, der Server findet ihn
+       nicht mehr. */
+    notifyClubAdmins(club.id, "membership", "mitglied.entfernt", { wer: member.display_name });
   };
 
   const loadRequests = async () => {
@@ -14197,7 +14233,7 @@ function NewsOverlay({ newsId, news, onClose }) {
     let abgebrochen = false;
     (async () => {
       const { data, error } = await supabase.from("news_posts")
-        .select("id,title,body,image_path,author_name,author_id,created_at").eq("id", newsId).maybeSingle();
+        .select("id,title,body,image_path,author_name,author_id,created_at,vorlage,werte").eq("id", newsId).maybeSingle();
       let bild = null;
       if (data?.image_path) {
         const { data: signiert } = await supabase.storage.from("news-images").createSignedUrl(data.image_path, 3600);
@@ -14206,7 +14242,7 @@ function NewsOverlay({ newsId, news, onClose }) {
       if (abgebrochen) return;
       setFehler(!!error);
       setNachgeladen(data ? {
-        id: data.id, title: data.title, text: data.body, imageUrl: bild,
+        id: data.id, title: data.title, text: data.body, imageUrl: bild, vorlage: data.vorlage || null, werte: data.werte || null,
         who: (!data.author_id && data.author_name === "Verein") ? t("verein.vereinLabel") : (data.author_name || t("verein.vereinLabel")),
         time: new Date(data.created_at).toLocaleDateString(datumsLocale(), { day: "2-digit", month: "2-digit", year: "2-digit" }),
       } : null);
@@ -14214,7 +14250,7 @@ function NewsOverlay({ newsId, news, onClose }) {
     })();
     return () => { abgebrochen = true; };
   }, [newsId, ausListeDa]);
-  const eintrag = ausListe || nachgeladen;
+  const eintrag = newsAnzeige(ausListe || nachgeladen, t);
 
   return (
     <div className="absolute inset-0 z-50 flex items-end" style={{ background: "rgba(20,21,26,.72)" }} onClick={onClose}>
@@ -14698,6 +14734,18 @@ export default function ClubMemberOrganisationApp() {
   const [sprache, setSprache] = useState(null);
   useEffect(() => { setSprache(gespeicherteSprache() || ""); }, []);
   const t = useCallback((schluessel) => uebersetze(sprache || "de", schluessel), [sprache]);
+  /* <html lang> folgt der App-Sprache. layout.tsx liefert fest "de" aus -
+     ohne diesen Abgleich liest ein Screenreader einen tuerkischen Text mit
+     deutscher Aussprache, und die Uebersetzungsfunktion des Browsers haelt
+     die Seite fuer deutsch. Ein Effekt statt drei Zuweisungen: Gesetzt wird
+     die Sprache beim Start (gespeicherteSprache), in spracheWaehlen und in
+     spracheAbgleichen - alle drei laufen ueber setSprache. Ohne Wahl ("")
+     gilt Deutsch, wie in t(). Steht bewusst HINTER useState(sprache), siehe
+     scripts/pruefe-hooks.mjs. */
+  useEffect(() => {
+    if (sprache === null || typeof document === "undefined") return;
+    document.documentElement.lang = sprache || "de";
+  }, [sprache]);
 
   /* Die Wahl merken - im Geraet sofort, am Konto sobald eines da ist. */
   const spracheWaehlen = useCallback(async (code) => {
@@ -16361,7 +16409,7 @@ export default function ClubMemberOrganisationApp() {
     const member = hydratedRoster.find((item) => item.id === data.id);
     if (!member) return { error: t("verein.profilLadenFehler") };
     const { data: newsData, error: newsError } = await supabase.from("news_posts")
-      .select("id,title,body,image_path,author_name,author_id,created_at")
+      .select("id,title,body,image_path,author_name,author_id,created_at,vorlage,werte")
       /* Die NEUESTEN 100, danach wieder aufsteigend wie bisher. Vorher kamen
          die aeltesten 100 - ab dem 101. Beitrag verschwand jeder neue (U12). */
       .eq("club_id", clubId).order("created_at", { ascending: false }).limit(100);
@@ -16380,7 +16428,7 @@ export default function ClubMemberOrganisationApp() {
         /* Ohne Verfasser mit dem Namen 'Verein' (Willkommensbeitrag, geloeschtes
            Konto - 20260914110500): in der Sprache der App anzeigen. */
         id: post.id, who: (!post.author_id && post.author_name === "Verein") ? t("verein.vereinLabel") : (post.author_name || t("verein.vereinLabel")), init: initialsOf(post.author_name || t("verein.vereinLabel")), color: C.ink,
-        title: post.title, text: post.body, imageUrl: signedUrl, imagePath: post.image_path,
+        title: post.title, text: post.body, vorlage: post.vorlage || null, werte: post.werte || null, imageUrl: signedUrl, imagePath: post.image_path,
         time: new Date(post.created_at).toLocaleDateString(datumsLocale(), { day: "2-digit", month: "2-digit", year: "2-digit" }),
         erstelltVon: post.author_id || null, erstelltAm: post.created_at || null,
       };
@@ -16995,6 +17043,7 @@ export default function ClubMemberOrganisationApp() {
       /* 409 traegt einen Code und Vereinsnamen im Rumpf - den braucht der
          Aufrufer, um die richtige der beiden Rueckfragen zu stellen. */
       const rumpf = await response.json().catch(() => null);
+      if (rumpf?.code === "nicht_angemeldet") return { error: t("login.sitzungAbgelaufen") };
       if (rumpf?.code === "fremdschluessel") return { error: t("konto.loeschenBlockiert") };
       if (rumpf?.code === "letzter_admin" || rumpf?.code === "verein_geht_mit") return rumpf;
       return { error: t("konto.loeschenFehler") };

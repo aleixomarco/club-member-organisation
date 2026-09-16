@@ -44,8 +44,8 @@
 <body>
   <main>
     <div class="mark">CMO</div>
-    <h1>Keine Verbindung</h1>
-    <p>Die App konnte den Server nicht erreichen. Prüfe deine Internetverbindung und versuche es dann erneut.</p>
+    <h1 id="titel">Keine Verbindung</h1>
+    <p id="text">Die App konnte den Server nicht erreichen. Prüfe deine Internetverbindung und versuche es dann erneut.</p>
     <button id="retry" type="button">Erneut versuchen</button>
     <p class="hint" id="hint"></p>
   </main>
@@ -56,9 +56,23 @@
   var retry = document.getElementById("retry");
   var hint = document.getElementById("hint");
 
+  /* Die Texte in den sieben Sprachen der App. lib/sprachen.ts laesst sich hier
+     ohne Bundler nicht einbinden - die Seite muss ohne Netz auskommen. Deutsch
+     steht zusaetzlich im HTML und bleibt, falls das Skript nicht laeuft. */
+  var TEXTE = {
+    de: { titel: "Keine Verbindung", text: "Die App konnte den Server nicht erreichen. Prüfe deine Internetverbindung und versuche es dann erneut.", erneut: "Erneut versuchen", laden: "Wird geladen …", wieder: "Verbindung wieder da — wird geladen …" },
+    en: { titel: "No connection", text: "The app couldn't reach the server. Check your internet connection and then try again.", erneut: "Try again", laden: "Loading …", wieder: "Connection restored — loading …" },
+    es: { titel: "Sin conexión", text: "La app no ha podido conectar con el servidor. Comprueba tu conexión a internet y vuelve a intentarlo.", erneut: "Intentar de nuevo", laden: "Cargando …", wieder: "Conexión restablecida — cargando …" },
+    pt: { titel: "Sem ligação", text: "A app não conseguiu ligar-se ao servidor. Verifica a tua ligação à internet e tenta de novo.", erneut: "Tentar de novo", laden: "A carregar …", wieder: "Ligação restabelecida — a carregar …" },
+    it: { titel: "Nessuna connessione", text: "L'app non è riuscita a raggiungere il server. Controlla la tua connessione a internet e riprova.", erneut: "Riprova", laden: "Caricamento …", wieder: "Connessione ripristinata — caricamento …" },
+    tr: { titel: "Bağlantı yok", text: "Uygulama sunucuya ulaşamadı. İnternet bağlantını kontrol et ve tekrar dene.", erneut: "Tekrar dene", laden: "Yükleniyor …", wieder: "Bağlantı geri geldi — yükleniyor …" },
+    fr: { titel: "Pas de connexion", text: "L'app n'a pas pu joindre le serveur. Vérifie ta connexion internet, puis réessaie.", erneut: "Réessayer", laden: "Chargement …", wieder: "Connexion rétablie — chargement …" }
+  };
+  var T = TEXTE.de;
+
   retry.addEventListener("click", function () {
     retry.disabled = true;
-    retry.textContent = "Wird geladen …";
+    retry.textContent = T.laden;
     hint.textContent = "";
     // Cache umgehen, sonst laedt iOS gelegentlich denselben Fehler erneut.
     window.location.replace(APP + "?wieder=" + Date.now());
@@ -66,9 +80,34 @@
 
   // Kommt das Netz von allein zurueck, muss niemand tippen.
   window.addEventListener("online", function () {
-    hint.textContent = "Verbindung wieder da — wird geladen …";
+    hint.textContent = T.wieder;
     window.location.replace(APP + "?wieder=" + Date.now());
   });
+
+  /* Sprache wie in der App: localStorage "cmo.sprache" (SPRACHE_SPEICHER in
+     lib/sprachen.ts), sonst Deutsch. Bewusst NACH den beiden Listenern - was
+     hier auch schiefgeht, Neuversuch und Nachladen stehen schon.
+
+     Grenze: localStorage gehoert zur Herkunft. Laedt Capacitor diese Seite
+     als errorPath aus dem Bundle, laeuft sie unter capacitor://localhost
+     (iOS) bzw. https://localhost (Android), die App aber unter APP - die dort
+     gemerkte Sprache ist hier dann nicht zu sehen, und es bleibt Deutsch.
+     navigator.language ist kein Ersatz: Die iOS-App ist nur fuer "en"
+     lokalisiert, WKWebView meldet dann womoeglich en-US statt der
+     Geraetesprache (ungeprueft). */
+  try {
+    var gespeichert = window.localStorage.getItem("cmo.sprache");
+    if (gespeichert && Object.prototype.hasOwnProperty.call(TEXTE, gespeichert)) T = TEXTE[gespeichert];
+    if (T !== TEXTE.de) {
+      document.documentElement.lang = gespeichert;
+      document.title = T.titel + " — Club Member Organisation";
+      document.getElementById("titel").textContent = T.titel;
+      document.getElementById("text").textContent = T.text;
+      retry.textContent = T.erneut;
+    }
+  } catch (e) {
+    // Gesperrte Website-Daten oder privater Modus: dann eben Deutsch.
+  }
 </script>
 </body>
 </html>

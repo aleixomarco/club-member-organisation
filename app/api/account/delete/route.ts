@@ -42,7 +42,7 @@ export async function DELETE(request: Request) {
   if (!token || !url || !key) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const authClient = createClient(url, key, { auth: { persistSession: false } });
   const { data: { user }, error } = await authClient.auth.getUser(token);
-  if (error || !user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (error || !user) return NextResponse.json({ error: "Unauthorized", code: "nicht_angemeldet" }, { status: 401 });
 
   let admin: ReturnType<typeof getSupabaseAdmin>;
   try {
@@ -109,11 +109,13 @@ export async function DELETE(request: Request) {
        Verein gehoert dem Konto, das es noch gibt. */
     const blockiert = /foreign key|violates|constraint/i.test(deletionError.message || "");
     console.error(`Kontoloeschung fehlgeschlagen fuer ${user.id}${blockiert ? " - ein Fremdschluessel blockiert sie" : ""}:`, deletionError.message);
+    /* Kein fertiger Satz im Rumpf: Die App formuliert anhand von code in ihren
+       sieben Sprachen selbst (fremdschluessel -> konto.loeschenBlockiert).
+       error bleibt ein technischer Hinweis fuer Protokoll und curl - vorher
+       stand hier der deutsche Satz, den die App nie angezeigt hat. */
     return NextResponse.json({
       code: blockiert ? "fremdschluessel" : "fehlgeschlagen",
-      error: blockiert
-        ? "Dein Konto konnte nicht gelöscht werden, weil noch Beiträge daran hängen. Wir haben den Fall protokolliert — melde dich bitte kurz beim Verein, dann erledigen wir es von Hand."
-        : "Deletion failed",
+      error: blockiert ? "Deletion blocked by a foreign key" : "Deletion failed",
     }, { status: 500 });
   }
 
