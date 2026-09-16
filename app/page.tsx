@@ -11300,11 +11300,14 @@ function AdminDutyPanel({ members, events, dutyPlan, setDutyPlan, onSetzen }) {
                       })}
                     </div>
                     {list.length < STATION_CAP && (
-                      <select onChange={(e) => { add(ev.id, station, e.target.value); e.target.value = ""; }} defaultValue=""
-                        className="text-xs px-2 py-1.5 rounded-lg outline-none" style={{ background: C.paper, fontFamily: "Inter", border: `1px solid ${C.line}` }}>
-                        <option value="">{t("sup.mitgliedZuteilen")}</option>
-                        {pool.filter((m) => !list.includes(m.id)).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-                      </select>
+                      /* Durchsuchbar wie bei Aufgaben und Helferdiensten (NutzerWahl):
+                         In einem <select> mit allen Mitgliedern kann man weder tippen
+                         noch springen. Die Auswahl bleibt danach leer fuer die naechste
+                         Person; add() ignoriert die leere Zeile der Liste. */
+                      <div className="flex max-w-sm">
+                        <NutzerWahl personen={pool.filter((m) => !list.includes(m.id))} wert=""
+                          onWaehlen={(id) => add(ev.id, station, id)} leerLabel={t("sup.mitgliedZuteilen")} klein />
+                      </div>
                     )}
                   </div>
                 );
