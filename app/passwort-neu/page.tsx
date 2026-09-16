@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { gespeicherteSprache, uebersetze } from "@/lib/sprachen";
 
 /* Zielseite des Links aus der Passwort-vergessen-E-Mail.
    Supabase hängt das Token als Fragment an die Adresse (#access_token=…) und
@@ -18,6 +19,13 @@ export default function PasswordResetPage() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [done, setDone] = useState(false);
+  /* Kein SprachKontext hier - die Seite steht ausserhalb der App. Die Wahl
+     liegt im Geraet (localStorage). Gelesen erst nach dem ersten Zeichnen:
+     Der Server kennt sie nicht, und Server und Client muessen zuerst
+     dasselbe zeichnen. Dasselbe Muster wie in ClubMemberOrganisationApp. */
+  const [sprache, setSprache] = useState("de");
+  useEffect(() => { setSprache(gespeicherteSprache() || "de"); }, []);
+  const t = (schluessel: string) => uebersetze(sprache, schluessel);
 
   useEffect(() => {
     if (!supabase) { setFailed(true); return; }
@@ -61,8 +69,8 @@ export default function PasswordResetPage() {
 
   const save = async () => {
     setMessage("");
-    if (next.length < 8) { setMessage("Das Passwort muss mindestens 8 Zeichen haben."); return; }
-    if (next !== repeat) { setMessage("Die beiden Eingaben stimmen nicht überein."); return; }
+    if (next.length < 8) { setMessage(t("reg.passwortMindestens8")); return; }
+    if (next !== repeat) { setMessage(t("login.resetEingabenUngleich")); return; }
     setBusy(true);
     const { error } = await supabase!.auth.updateUser({ password: next });
     setBusy(false);
@@ -79,17 +87,17 @@ export default function PasswordResetPage() {
       const status = Number(error.status || 0);
       const text = String(error.message || "").toLowerCase();
       if (error.name === "AuthSessionMissingError" || code === "bad_jwt" || status === 401 || status === 403) {
-        setMessage("Der Link ist abgelaufen oder wurde schon verwendet. Fordere auf dem Anmeldebildschirm über „Passwort vergessen?“ einen neuen an.");
+        setMessage(t("login.resetLinkAbgelaufen"));
       } else if (code === "weak_password" || (/password/i.test(String(error.message || "")) && /short|weak|least|pwned/i.test(text))) {
-        setMessage("Das neue Passwort ist zu schwach. Nimm ein längeres oder ungewöhnlicheres.");
+        setMessage(t("sich.passwortSchwach"));
       } else if (code === "same_password") {
-        setMessage("Das ist dein bisheriges Passwort. Wähle ein anderes.");
+        setMessage(t("login.resetGleichesPasswort"));
       } else if (status === 429 || code === "over_request_rate_limit" || text.includes("rate limit")) {
-        setMessage("Zu viele Versuche. Warte einen Moment und versuche es dann noch einmal.");
+        setMessage(t("sich.zuVieleVersuche"));
       } else if (status === 0 || text.includes("failed to fetch") || text.includes("network") || text.includes("load failed")) {
-        setMessage("Keine Verbindung. Prüfe dein Internet und versuche es noch einmal.");
+        setMessage(t("allg.keineVerbindung"));
       } else {
-        setMessage("Das Passwort konnte nicht geändert werden. Bitte versuche es in ein paar Minuten noch einmal.");
+        setMessage(t("login.resetAendernFehler"));
       }
       return;
     }
@@ -112,41 +120,39 @@ export default function PasswordResetPage() {
 
   return (
     <main style={box}>
-      <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>Neues Passwort</h1>
+      <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>{t("ph.neuesPasswort")}</h1>
 
       {done ? (
         <>
           <p style={{ fontSize: 14, color: "#2F9E58", marginBottom: 20 }}>
-            Dein Passwort wurde geändert. Du kannst dich jetzt damit anmelden.
+            {t("login.resetGeaendert")}
           </p>
-          <Link href="/" style={{ display: "block", textAlign: "center", padding: "12px 0", borderRadius: 14, background: "#2A2028", color: "#fff", fontWeight: 700, fontSize: 14, textDecoration: "none" }}>Zur Anmeldung</Link>
+          <Link href="/" style={{ display: "block", textAlign: "center", padding: "12px 0", borderRadius: 14, background: "#2A2028", color: "#fff", fontWeight: 700, fontSize: 14, textDecoration: "none" }}>{t("login.resetZurAnmeldung")}</Link>
         </>
       ) : failed ? (
         <>
           <p style={{ fontSize: 14, color: "#8A7F85", marginBottom: 20 }}>
-            Dieser Link ist abgelaufen oder wurde bereits verwendet. Fordere auf
-            dem Anmeldebildschirm über „Passwort vergessen?“ einen neuen an.
+            {t("login.resetLinkUngueltig")}
           </p>
-          <Link href="/" style={{ display: "block", textAlign: "center", padding: "12px 0", borderRadius: 14, background: "#2A2028", color: "#fff", fontWeight: 700, fontSize: 14, textDecoration: "none" }}>Zur Anmeldung</Link>
+          <Link href="/" style={{ display: "block", textAlign: "center", padding: "12px 0", borderRadius: 14, background: "#2A2028", color: "#fff", fontWeight: 700, fontSize: 14, textDecoration: "none" }}>{t("login.resetZurAnmeldung")}</Link>
         </>
       ) : !ready ? (
-        <p style={{ fontSize: 14, color: "#8A7F85" }}>Link wird geprüft …</p>
+        <p style={{ fontSize: 14, color: "#8A7F85" }}>{t("login.resetLinkPruefen")}</p>
       ) : (
         <>
           <p style={{ fontSize: 13, color: "#8A7F85", marginBottom: 18 }}>
-            Mindestens 8 Zeichen. Nach dem Speichern meldest du dich mit dem
-            neuen Passwort an.
+            {t("login.resetHinweis")}
           </p>
           <input type="password" value={next} onChange={(e) => setNext(e.target.value)}
-            placeholder="Neues Passwort" autoComplete="new-password" style={field} />
+            placeholder={t("ph.neuesPasswort")} autoComplete="new-password" style={field} />
           <input type="password" value={repeat} onChange={(e) => setRepeat(e.target.value)}
-            placeholder="Neues Passwort wiederholen" autoComplete="new-password" style={field} />
+            placeholder={t("ph.neuesPasswortWdh")} autoComplete="new-password" style={field} />
           {message && (
             <div role="status" style={{ fontSize: 12, color: "#C8102E", marginBottom: 12 }}>{message}</div>
           )}
           <button onClick={save} disabled={busy}
             style={{ width: "100%", padding: "12px 0", borderRadius: 14, background: "#2A2028", color: "#fff", fontWeight: 700, fontSize: 14, border: "none", opacity: busy ? 0.6 : 1 }}>
-            {busy ? "Wird gespeichert …" : "Passwort speichern"}
+            {busy ? t("allg.wirdGespeichert") : t("login.resetSpeichern")}
           </button>
         </>
       )}

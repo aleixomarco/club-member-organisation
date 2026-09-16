@@ -158,11 +158,16 @@ const bericht = new Map();
 const vormerken = (text, zeile, art) => {
   const sauber = text.trim();
   if (!sauber || AUSNAHMEN.has(sauber) || funde.has(sauber)) return;
-  if (!/[a-zäöüß]/.test(sauber)) return;
+  if (art !== "Versalien" && !/[a-zäöüß]/.test(sauber)) return;
   if (!bericht.has(sauber)) bericht.set(sauber, { zeilen: [], art });
   bericht.get(sauber).zeilen.push(zeile + 1);
 };
-const DEUTSCH = /[äöüßÄÖÜ]|\b(und|oder|der|die|das|nicht|kein|keine|ist|wird|werden|mit|fuer|für|von|bitte|noch)\b/;
+/* Erweitert am 16.09.2026: Kurze Texte wie `vor ${n} Min.` oder "Alle Teams"
+   enthielten keines der Fuellwoerter und fielen durch. */
+const DEUTSCH = /[äöüßÄÖÜ]|\b(und|oder|der|die|das|nicht|kein|keine|ist|wird|werden|mit|fuer|für|von|bitte|noch|vor|bis|seit|alle|jetzt|hier|dein|deine|dich|dir|euer|eure|Min|Std|Uhr|Punkte|Mitglied|Mitglieder|Mannschaft|Mannschaften|Verein|Termin|Termine)\b/;
+/* Beschriftungen in Versalien ("MEIN TEAM", "BESTEHENDE VERKNUEPFUNGEN") haben
+   keine Kleinbuchstaben und fielen deshalb durch jede Suche oben. */
+const VERSAL_DEUTSCH = /[ÄÖÜ]|\b(UND|ODER|DER|DIE|DAS|MEIN|MEINE|DEIN|DEINE|NICHT|KEIN|KEINE|ALLE|NEUE?|VEREIN|MANNSCHAFTEN?|TERMINE?|ABGESAGT|BESTEHENDE|STRAFE|ZUWEISEN|PUNKTE|MITMACHEN|VERWALTUNG|EINSTELLUNGEN|MITGLIEDER)\b/;
 {
   let block = false;
   for (let i = 0; i < zeilen.length; i++) {
@@ -190,9 +195,11 @@ const DEUTSCH = /[äöüßÄÖÜ]|\b(und|oder|der|die|das|nicht|kein|keine|ist|w
       const davor = (zeilen[i - 1] || "").trim();
       if (davor.endsWith(">") || /^[A-ZÄÖÜ][^<>{}()\[\];=`"'|&]*$/.test(davor)) vormerken(s, i, "JSX-mehrzeilig");
     }
+    for (const [, text] of roh.matchAll(/>\s*([A-ZÄÖÜ][A-ZÄÖÜ\- ]{2,60}[A-ZÄÖÜ])\s*</g)) { if (VERSAL_DEUTSCH.test(text)) vormerken(text, i, "Versalien"); }
+    for (const [, text] of roh.matchAll(/\b(?:eyebrow|title|label)="([A-ZÄÖÜ][A-ZÄÖÜ\- ]{2,60}[A-ZÄÖÜ])"/g)) { if (VERSAL_DEUTSCH.test(text)) vormerken(text, i, "Versalien"); }
     for (const [, text] of roh.matchAll(/`([^`\n]*\$\{[^`\n]*)`/g)) {
       const ohneWerte = text.replace(/\$\{[^}]*\}/g, " ");
-      if (/[A-Za-zÄÖÜäöüß]{3,}\s+[A-Za-zÄÖÜäöüß]{2,}/.test(ohneWerte) && DEUTSCH.test(ohneWerte) && !/className|style|https?:|\/api\/|select\(|\.eq\(/.test(roh)) vormerken(text, i, "Template");
+      if (/[A-Za-zÄÖÜäöüß]{2,}\s+[A-Za-zÄÖÜäöüß]{2,}/.test(ohneWerte) && DEUTSCH.test(ohneWerte) && !/className|style|https?:|\/api\/|select\(|\.eq\(/.test(roh)) vormerken(text, i, "Template");
     }
   }
 }

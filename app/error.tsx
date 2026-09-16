@@ -1,5 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { gespeicherteSprache, uebersetze } from "@/lib/sprachen";
+
 /* Die Auffanglinie fuer die ganze Seite.
  *
  * app/page.tsx ist EIN Bauteil mit rund 14.000 Zeilen. Ohne Fehlergrenze
@@ -23,6 +26,10 @@ export default function Fehlerseite({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  /* Sprache aus dem Geraet, nach dem ersten Zeichnen gelesen (wie in der App). */
+  const [sprache, setSprache] = useState("de");
+  useEffect(() => { setSprache(gespeicherteSprache() || "de"); }, []);
+  const t = (schluessel: string) => uebersetze(sprache, schluessel);
   return (
     <div style={{
       minHeight: "100dvh", display: "flex", alignItems: "center", justifyContent: "center",
@@ -36,27 +43,26 @@ export default function Fehlerseite({
           background: "#FBE9EC", color: "#C8102E", fontSize: 28, fontWeight: 700,
         }}>!</div>
         <h1 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 8px" }}>
-          Da ist etwas schiefgelaufen
+          {t("fehler.seiteTitel")}
         </h1>
         <p style={{ fontSize: 14, lineHeight: 1.5, color: "#6B6570", margin: "0 0 22px" }}>
-          Die Seite konnte nicht geladen werden. Deine Daten sind davon nicht
-          betroffen — es ist ein Anzeigefehler.
+          {t("fehler.seiteText")}
         </p>
         <button onClick={reset} style={{
           width: "100%", padding: "13px 16px", borderRadius: 14, border: "none",
           background: "#14151A", color: "#fff", fontSize: 14, fontWeight: 700,
           cursor: "pointer", marginBottom: 10,
-        }}>Erneut versuchen</button>
+        }}>{t("fehler.erneutVersuchen")}</button>
         <button onClick={() => window.location.reload()} style={{
           width: "100%", padding: "13px 16px", borderRadius: 14,
           border: "1px solid #E3DDE3", background: "transparent", color: "#6B6570",
           fontSize: 14, fontWeight: 700, cursor: "pointer",
-        }}>App neu laden</button>
+        }}>{t("fehler.appNeuLaden")}</button>
         {/* Die Kennung hilft beim Suchen im Protokoll - ohne sie muesste man
             raten, welcher Absturz gemeint ist. Sie steht klein und stumm da. */}
         {error?.digest && (
           <p style={{ fontSize: 11, color: "#9B94A0", marginTop: 18 }}>
-            Fehlerkennung: {error.digest}
+            {t("fehler.kennung").replace("{kennung}", () => error.digest || "")}
           </p>
         )}
       </div>

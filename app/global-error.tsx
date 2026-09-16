@@ -1,5 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { gespeicherteSprache, uebersetze } from "@/lib/sprachen";
+
 /* Die letzte Auffanglinie.
  *
  * app/error.tsx faengt Fehler INNERHALB der Seite. Wirft dagegen das Grundgeruest
@@ -17,8 +20,12 @@ export default function GlobalerFehler({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  /* Sprache aus dem Geraet, nach dem ersten Zeichnen gelesen (wie in der App). */
+  const [sprache, setSprache] = useState("de");
+  useEffect(() => { setSprache(gespeicherteSprache() || "de"); }, []);
+  const t = (schluessel: string) => uebersetze(sprache, schluessel);
   return (
-    <html lang="de">
+    <html lang={sprache}>
       <body style={{
         margin: 0, minHeight: "100dvh", display: "flex", alignItems: "center",
         justifyContent: "center", padding: 24, background: "#F7F4F6", color: "#14151A",
@@ -26,18 +33,18 @@ export default function GlobalerFehler({
       }}>
         <div style={{ width: "100%", maxWidth: 380, textAlign: "center" }}>
           <h1 style={{ fontSize: 20, fontWeight: 700, margin: "0 0 8px" }}>
-            Die App konnte nicht starten
+            {t("fehler.appStartTitel")}
           </h1>
           <p style={{ fontSize: 14, lineHeight: 1.5, color: "#6B6570", margin: "0 0 22px" }}>
-            Bitte versuche es erneut. Deine Daten sind davon nicht betroffen.
+            {t("fehler.appStartText")}
           </p>
           <button onClick={reset} style={{
             width: "100%", padding: "13px 16px", borderRadius: 14, border: "none",
             background: "#14151A", color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer",
-          }}>Erneut versuchen</button>
+          }}>{t("fehler.erneutVersuchen")}</button>
           {error?.digest && (
             <p style={{ fontSize: 11, color: "#9B94A0", marginTop: 18 }}>
-              Fehlerkennung: {error.digest}
+              {t("fehler.kennung").replace("{kennung}", () => error.digest || "")}
             </p>
           )}
         </div>

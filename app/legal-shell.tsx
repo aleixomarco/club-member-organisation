@@ -1,6 +1,7 @@
 import Link from "next/link";
+import { uebersetze } from "@/lib/sprachen";
 
-export function LegalShell({ title, children }: { title: string; children: React.ReactNode }) {
+export function LegalShell({ title, children, t = (schluessel: string) => uebersetze("de", schluessel) }: { title: string; children: React.ReactNode; t?: (schluessel: string) => string }) {
   /* Die sicheren Bereiche gehoeren hier hinein, weil contentInset in
      capacitor.config.ts auf "never" steht: Die Webansicht spannt sich ueber den
      ganzen Bildschirm, auch unter Dynamic Island und Home-Indikator. Mit den
@@ -8,11 +9,11 @@ export function LegalShell({ title, children }: { title: string; children: React
      und das ist auf diesen Seiten der einzige Rueckweg, denn im WebView gibt es
      keine Browserleiste. */
   return <main style={{ maxWidth: 760, margin: "0 auto", padding: "calc(env(safe-area-inset-top) + 28px) calc(env(safe-area-inset-right) + 22px) calc(env(safe-area-inset-bottom) + 80px) calc(env(safe-area-inset-left) + 22px)", fontFamily: "Arial, sans-serif", lineHeight: 1.65, color: "#14151A" }}>
-    <Link href="/" style={{ color: "#C8102E", fontWeight: 700, textDecoration: "none" }}>← Zur App</Link>
+    <Link href="/" style={{ color: "#C8102E", fontWeight: 700, textDecoration: "none" }}>← {t("recht.zurApp")}</Link>
     <h1 style={{ fontSize: 36, margin: "28px 0 22px" }}>{title}</h1>
     {children}
     <nav style={{ display: "flex", flexWrap: "wrap", gap: 16, marginTop: 42, paddingTop: 22, borderTop: "1px solid #ddd" }}>
-      <Link href="/datenschutz">Datenschutz</Link><Link href="/impressum">Impressum</Link><Link href="/nutzungsbedingungen">Nutzungsbedingungen</Link><Link href="/konto-loeschen">Konto löschen</Link>
+      <Link href="/datenschutz">{t("recht.datenschutz")}</Link><Link href="/impressum">{t("recht.impressum")}</Link><Link href="/nutzungsbedingungen">{t("recht.nutzung")}</Link><Link href="/konto-loeschen">{t("pf.kontoLoeschen")}</Link>
     </nav>
   </main>;
 }

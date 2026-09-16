@@ -641,19 +641,19 @@ const sportText = (t, sport, feld) => {
    Vereinsadmin-Reiter "Funktionen" änderbar. Default (kein Eintrag in club_feature_toggles) = an. */
 const CLUB_FEATURES = [
   { key: "duty_roster", label: (sport, t) => sportText(t, sport, "dutyTabLabel"),
-    question: (sport, t) => `Möchtet ihr „${sportText(t, sport, "dutyTabLabel")}" nutzen, um Helfer:innen für ${sportText(t, sport, "homeEventLabel")}e einzuteilen (${sportText(t, sport, "dutyStationExamples")})?`,
+    question: (sport, t) => mitWerten(t("verein.frageHelferdienst"), { begriff: sportText(t, sport, "dutyTabLabel"), termin: sportText(t, sport, "homeEventLabel"), beispiele: sportText(t, sport, "dutyStationExamples") }),
     settingsDesc: (sport, t) => t("help.saetzeAnlegen")
       .replace("{begriff}", sportText(t, sport, "dutyTabLabel"))
       .replace("{termin}", sportText(t, sport, "homeEventLabel")) },
   { key: "vehicle_booking", label: (sport, t) => sportText(t, sport, "vehicleTabLabel"),
-    question: (sport, t) => `Hat euer Verein ein Fahrzeug (${sportText(t, sport, "vehicleTabLabel")}), das über die App gebucht werden soll?`,
-    settingsDesc: () => "Kalender & Buchung für Vereinsfahrzeuge." },
-  { key: "tippspiel", label: () => "Tippspiel",
-    question: () => "Soll es ein Tippspiel geben, bei dem Mitglieder Spielergebnisse vorhersagen und Punkte sammeln?",
-    settingsDesc: () => "Mitglieder können Ergebnisse tippen und Punkte sammeln." },
-  { key: "season_award", label: () => "Athlet/in der Saison",
-    question: () => "Soll es eine Abstimmung „Athlet/in der Saison“ geben?",
-    settingsDesc: () => "Mitglieder stimmen ab, wer Athlet/in der Saison wird." },
+    question: (sport, t) => mitWerten(t("verein.frageFahrzeug"), { begriff: sportText(t, sport, "vehicleTabLabel") }),
+    settingsDesc: (sport, t) => t("verein.fahrzeugeBeschreibung") },
+  { key: "tippspiel", label: (sport, t) => t("sub.tipp"),
+    question: (sport, t) => t("verein.frageTippspiel"),
+    settingsDesc: (sport, t) => t("verein.tippspielBeschreibung") },
+  { key: "season_award", label: (sport, t) => t("sub.season"),
+    question: (sport, t) => t("verein.frageSaisonwahl"),
+    settingsDesc: (sport, t) => t("verein.saisonwahlBeschreibung") },
 ];
 const DEFAULT_CLUB_FEATURES = Object.fromEntries(CLUB_FEATURES.map((f) => [f.key, true]));
 
@@ -765,12 +765,13 @@ function initialsOf(name) {
  * App zum ersten Mal oeffnet, sieht nicht die Marke, sondern einen Buchstaben,
  * der nichts bedeutet. */
 function ClubLogo({ club, size = 36, rounded = 10 }) {
+  const t = useT();
   if (!club) return <AppBrandMark size={size} />;
   const base = club?.primaryColor || C.red;
   return <div className="flex items-center justify-center flex-shrink-0 overflow-hidden" style={{ width: size, height: size, borderRadius: Math.round(rounded * 1.6), background: `linear-gradient(155deg, color-mix(in srgb, ${base} 78%, #fff), ${base})`, boxShadow: `0 8px 20px color-mix(in srgb, ${base} 42%, transparent), inset 0 1px 0 rgba(255,255,255,0.4)` }}>
     {club?.logoUrl
-      ? <img src={club.logoUrl} alt={`Vereinslogo ${club.name}`} className="w-full h-full object-cover" />
-      : <span style={{ color: "#fff", fontFamily: "Oswald", fontWeight: 700, fontSize: Math.max(13, size * .38) }}>{club?.shortName?.[0] || "V"}</span>}
+      ? <img src={club.logoUrl} alt={mitWerten(t("verein.logoAlt"), { name: club.name })} className="w-full h-full object-cover" />
+      : <span style={{ color: "#fff", fontFamily: "Oswald", fontWeight: 700, fontSize: Math.max(13, size * .38) }}>{club?.shortName?.[0] || t("verein.logoInitiale")}</span>}
   </div>;
 }
 
@@ -1229,29 +1230,29 @@ const HOWTO_VIDEO_BUCKET = "howto-videos";
 const HOWTO_VIDEOS = [
   {
     id: "mitglied-dashboard",
-    title: "Dashboard & Profil kennenlernen",
-    description: "Termine, Aufgaben und dein persönliches Profil im Überblick.",
+    title: "Dashboard & Profil kennenlernen", titleKey: "vid.dashboardTitel",
+    description: "Termine, Aufgaben und dein persönliches Profil im Überblick.", descriptionKey: "vid.dashboardText",
     file: "howto-mitglied-dashboard.mp4",
     can: () => true,
   },
   {
     id: "vorstand-event",
-    title: "Einen Vereinstermin anlegen",
-    description: "Ein Vereins-Event eintragen, das für alle Mitglieder sichtbar ist.",
+    title: "Einen Vereinstermin anlegen", titleKey: "vid.vereinsterminTitel",
+    description: "Ein Vereins-Event eintragen, das für alle Mitglieder sichtbar ist.", descriptionKey: "vid.vereinsterminText",
     file: "howto-vorstand-event.mp4",
     can: (user) => isAdmin(user),
   },
   {
     id: "trainer-training",
-    title: "Ein Training oder Spiel ansetzen",
-    description: "Für deine Mannschaft ein neues Training mit Ort und Uhrzeit anlegen.",
+    title: "Ein Training oder Spiel ansetzen", titleKey: "vid.trainingTitel",
+    description: "Für deine Mannschaft ein neues Training mit Ort und Uhrzeit anlegen.", descriptionKey: "vid.trainingText",
     file: "howto-trainer-training.mp4",
     can: (user) => isSysAdmin(user) || user.roles.some((role) => ["trainer", "kapitaen", "teammanager"].includes(role)),
   },
   {
     id: "redakteur-news",
-    title: "Eine Vereins-News veröffentlichen",
-    description: "Eine News schreiben und sofort für alle Mitglieder freigeben.",
+    title: "Eine Vereins-News veröffentlichen", titleKey: "vid.newsTitel",
+    description: "Eine News schreiben und sofort für alle Mitglieder freigeben.", descriptionKey: "vid.newsText",
     file: "howto-redakteur-news.mp4",
     can: (user) => canWriteNews(user),
   },
@@ -1493,10 +1494,10 @@ const TRAINERS = [
 
 /* Sponsor-Slots: reservierte, buchbare Werbeflächen zwischen den Layout-Bereichen */
 const SPONSOR_SLOT_DEFS = [
-  { key: "dashboard_top", label: "Start – oben" },
-  { key: "dashboard_bottom", label: "Start – unter den News" },
-  { key: "events_header", label: "Termine – Kopfbereich" },
-  { key: "profile_bottom", label: "Profil unten" },
+  { key: "dashboard_top", label: "Start – oben", labelKey: "sp.platzStartOben" },
+  { key: "dashboard_bottom", label: "Start – unter den News", labelKey: "sp.platzStartUnterNews" },
+  { key: "events_header", label: "Termine – Kopfbereich", labelKey: "sp.platzTermineKopf" },
+  { key: "profile_bottom", label: "Profil unten", labelKey: "sp.platzProfilUnten" },
 ];
 /* Alle drei Listen waren mit Demo-Inhalten vorbelegt und dienen zugleich als
    Anfangszustand fuer JEDEN Verein. Ein frisch angelegter Verein bekam dadurch
@@ -1916,7 +1917,7 @@ function useClubEntitlement(user) {
    das Mitglied gar nicht sehen darf.
    Jetzt: feste Höhe innerhalb des Sichtfensters, kein Scrollen, im Hintergrund nur
    ein paar dekorative Platzhalter ohne echten Inhalt. */
-function LockedFeature({ entitlement, feature = "Diese Funktion", goSubscribe, children }) {
+function LockedFeature({ entitlement, feature = "", goSubscribe, children }) {
   const t = useT();
   /* Mit Text statt als leerer Kasten: Ein grauer Block ohne Beschriftung ist
      von einer haengenden Ansicht nicht zu unterscheiden. */
@@ -1938,7 +1939,7 @@ function LockedFeature({ entitlement, feature = "Diese Funktion", goSubscribe, c
       </div>
       <div className="relative flex flex-col items-center justify-center text-center px-7">
         <div className="w-14 h-14 rounded-full flex items-center justify-center mb-4" style={{ background: C.glass, border: `1px solid ${C.edge}`, boxShadow: "0 10px 26px rgba(60,30,45,0.10)" }}><Lock size={22} style={{ color: C.red }} /></div>
-        <div className="text-base font-bold mb-1.5" style={{ fontFamily: "Oswald", color: C.ink }}>{feature} braucht den Vollzugang</div>
+        <div className="text-base font-bold mb-1.5" style={{ fontFamily: "Oswald", color: C.ink }}>{mitWerten(t("zug.brauchtVollzugang"), { name: feature || t("zug.dieseFunktion") })}</div>
         {/* Hier stand eine Fallunterscheidung auf "requires" - eine Variable, die
             es nirgends gibt und die diesen Bildschirm mit einem ReferenceError
             abgeraeumt hat, sobald ein Verein ohne Abo eine gesperrte Funktion
@@ -2015,7 +2016,7 @@ function SponsorSlot({ slotKey, bookings, onImpression, onClick, visible = true 
           {anzeige.bild_url ? <img src={anzeige.bild_url} alt="" className="w-full h-full object-cover rounded-lg"/> : <Sparkles size={14} style={{ color: C.secondary }} />}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: C.textDim, fontFamily: "Inter" }}>{vomVerein ? "Sponsor" : t("sp.anzeige")}</div>
+          <div className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: C.textDim, fontFamily: "Inter" }}>{vomVerein ? t("sp.sponsor") : t("sp.anzeige")}</div>
           <div className="text-xs truncate" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{anzeige.titel}</div>
           {laeuft
             ? <div className="text-[10px] truncate mt-0.5" style={{ color: C.red, fontWeight: 700 }}>{anzeige.aktion_titel}</div>
@@ -2038,7 +2039,7 @@ function SponsorSlot({ slotKey, bookings, onImpression, onClick, visible = true 
               <div className="rounded-2xl p-3.5 mt-3" style={{ background: C.fehlerFlaeche, border: `1px solid ${C.edge}` }}>
                 <div className="text-sm font-bold mb-1" style={{ color: C.red }}>{anzeige.aktion_titel}</div>
                 {anzeige.aktion_text && <div className="text-[11px] leading-relaxed" style={{ color: C.ink }}>{anzeige.aktion_text}</div>}
-                {anzeige.aktion_bis && <div className="text-[10px] mt-2" style={{ color: C.textDim }}>Läuft noch bis {new Date(anzeige.aktion_bis).toLocaleDateString(datumsLocale())}</div>}
+                {anzeige.aktion_bis && <div className="text-[10px] mt-2" style={{ color: C.textDim }}>{mitWerten(t("sp.laeuftNochBis"), { datum: new Date(anzeige.aktion_bis).toLocaleDateString(datumsLocale()) })}</div>}
                 {anzeige.aktion_url && <a href={anzeige.aktion_url} target="_blank" rel="noopener noreferrer" onClick={() => onClick?.(slotKey, "aktion")} className="flex items-center justify-between rounded-xl px-3 py-2.5 text-xs font-bold mt-2.5" style={{ background: C.red, color: C.aufPrimaer }}>{t("sp.zurAktion")} <ExternalLink size={14}/></a>}
               </div>
             )}
@@ -2094,7 +2095,7 @@ function SprachwahlScreen({ onWaehlen }) {
                paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)" }}>
       <div className="flex flex-col items-center mb-8">
         <div className="mb-3"><AppBrandMark size={46} /></div>
-        <div className="text-sm tracking-widest" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>VEREINS-APP</div>
+        <div className="text-sm tracking-widest" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>{t("allg.vereinsApp")}</div>
       </div>
       <div className="text-xl mb-2" style={{ fontFamily: "Oswald", fontWeight: 600, color: C.ink }}>{t("sprache.titel")}</div>
       <div className="text-xs mb-5 leading-relaxed" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("sprache.hinweis")}</div>
@@ -2128,7 +2129,7 @@ function AuthShell({ children, footer, club }) {
     <div className="erg-auth flex flex-col h-full px-6 pt-8 pb-6 overflow-y-auto" style={{ background: C.paper }}>
       <div className="flex flex-col items-center mb-8">
         <div className="mb-3"><ClubLogo club={club} size={56} rounded={16} /></div>
-        <div className="text-sm tracking-widest" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>{club ? club.shortName : "VEREINS-APP"}</div>
+        <div className="text-sm tracking-widest" style={{ fontFamily: "Oswald", fontWeight: 700, color: C.ink }}>{club ? club.shortName : t("allg.vereinsApp")}</div>
         <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{club ? mitWerten(t("allg.appSeitJahr"), { jahr: club.foundedYear }) : t("allg.mitgliederApp")}</div>
       </div>
       {children}
@@ -2295,7 +2296,7 @@ function BeitrittsScreen({ club, vorschlagName, onBeitreten, goBack }) {
     <AuthShell club={club} footer={<div className="text-center text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}><button onClick={goBack} className="font-bold" style={{ color: C.red }}>{t("allg.zurueck")}</button></div>}>
       <div className="text-xl mb-1" style={{ fontFamily: "Oswald", fontWeight: 600, color: C.ink }}>{t("verein.beitrittAnfragen")}</div>
       <div className="text-xs mb-5" style={{ color: C.textDim, fontFamily: "Inter" }}>
-        Du bist bereits angemeldet. Für {club?.name || "diesen Verein"} braucht es nur noch deinen Namen — die Vereinsleitung gibt den Beitritt dann frei.
+        {mitWerten(t("verein.beitrittNurNameFuer"), { verein: club?.name || t("verein.diesenVerein") })}
       </div>
 
       <form onSubmit={senden}>
@@ -2491,7 +2492,7 @@ function ClubColorPicker({ primary, secondary, onChange }) {
   const isCustom = !CLUB_COLOR_PRESETS.some((p) => p.primary === primary && p.secondary === secondary);
   return (
     <div className="mb-3">
-      <div className="text-[10px] font-bold mb-1.5 px-0.5" style={{ color: C.textDim }}>VEREINSFARBEN</div>
+      <div className="text-[10px] font-bold mb-1.5 px-0.5" style={{ color: C.textDim }}>{t("verein.farbenTitel")}</div>
       <div className="grid grid-cols-2 gap-2 mb-2">
         {CLUB_COLOR_PRESETS.map((preset) => {
           const active = !isCustom && preset.primary === primary && preset.secondary === secondary;
@@ -2563,7 +2564,7 @@ function NewClubScreen({ onCreate, goBack }) {
         <Field icon={Users} placeholder={t("verein.namePlatzhalter")} value={form.name} onChange={set("name")} />
         <Field icon={ShieldCheck} placeholder={t("ph.kurzname")} value={form.shortName} onChange={set("shortName")} maxLength={6} />
         <div className="mb-3">
-          <div className="text-[10px] font-bold mb-1.5 px-0.5" style={{ color: C.textDim }}>SPORTART</div>
+          <div className="text-[10px] font-bold mb-1.5 px-0.5" style={{ color: C.textDim }}>{t("verein.sportartTitel")}</div>
           <select value={form.sport} onChange={set("sport")} className="w-full px-3.5 py-3 rounded-xl text-sm outline-none" style={{ background: C.paperDim, color: C.ink }}>
             {SPORTS.map((s) => <option key={s} value={s}>{sportText(t, s, "label")}</option>)}
           </select>
@@ -2732,7 +2733,7 @@ function PendingAccountScreen({ account, onLeave, onDelete }) {
               ? t("reg.kontoAngelegt2")
               : t("verein.keineMitgliedschaft")}
           </div>
-          <div className="text-[11px]" style={{ color: C.textDim }}>Angemeldet als {account.email}</div>
+          <div className="text-[11px]" style={{ color: C.textDim }}>{mitWerten(t("login.angemeldetAls"), { email: account.email })}</div>
         </div>
 
         <button onClick={onLeave} className="w-full py-3 rounded-xl text-sm font-bold mb-2.5" style={{ background: C.ink, color: C.white }}>{t("allg.abmelden")}</button>
@@ -3300,7 +3301,7 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
   /* Ohne Verein hat dieser Bildschirm keinen Sinn - und ohne diese Absicherung
      auch keinen Bestand: club.name im Untertitel warf einen TypeError, und weil
      es im Projekt keine ErrorBoundary gibt, blieb der ganze Bildschirm weiss. */
-  const vereinsName = club?.name || "deinem Verein";
+  const vereinsName = club?.name || t("reg.deinemVerein");
 
   const submit = async (e) => {
     e.preventDefault();
@@ -3406,10 +3407,10 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
         </div>
         <button onClick={goLogin} className="w-full py-3 rounded-xl text-sm font-bold"
           style={{ background: C.ink, color: C.white, fontFamily: "Inter" }}>
-          Jetzt anmelden
+          {t("reg.jetztAnmelden")}
         </button>
         <div className="text-[11px] mt-3 text-center" style={{ color: C.textDim, fontFamily: "Inter" }}>
-          Keine E-Mail erhalten? Sieh im Spam-Ordner nach — sie kommt meist innerhalb einer Minute.
+          {t("reg.keineMailErhalten")}
         </div>
       </AuthShell>
     );
@@ -3498,8 +3499,9 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
    Bewusst NICHT absolut positioniert - in Karten mit overflow:hidden waere die
    Liste sonst abgeschnitten. Sie schiebt den Inhalt darunter weg, was auf dem
    Telefon ohnehin natuerlicher wirkt. */
-function NutzerWahl({ personen, wert, onWaehlen, leerLabel = "nicht zugewiesen", klein, vorschlaege }) {
+function NutzerWahl({ personen, wert, onWaehlen, leerLabel: leerLabelVorgabe, klein, vorschlaege }) {
   const t = useT();
+  const leerLabel = leerLabelVorgabe ?? t("allg.nichtZugewiesen");
   const [offen, setOffen] = useState(false);
   const [suche, setSuche] = useState("");
   const gewaehlt = (personen || []).find((p) => p.id === wert);
@@ -3764,7 +3766,7 @@ function Scoreboard({ nextEvent, auswahlVorhanden = false }) {
       <div className="relative text-white text-xl mb-1.5" style={{ fontFamily: "Oswald", fontWeight: 700, letterSpacing: "-0.01em" }}>{nextEvent.title}</div>
       <div className="relative flex items-center gap-1.5 mb-5 text-xs" style={{ color: "rgba(255,255,255,0.8)", fontFamily: "Inter" }}><MapPin size={12} /> {nextEvent.location}</div>
       <div className="relative flex items-center gap-2">
-        {[["TAGE", d], ["STD", h], ["MIN", m]].map(([label, val], i) => (
+        {[[t("home.countdownTage"), d], [t("home.countdownStunden"), h], [t("home.countdownMinuten"), m]].map(([label, val], i) => (
           <React.Fragment key={label}>
             <div className="flex flex-col items-center rounded-2xl px-3.5 py-2.5 flex-1" style={{ background: "rgba(255,255,255,0.16)", border: "1px solid rgba(255,255,255,0.26)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)" }}>
               <div className="text-2xl font-bold" style={{ fontFamily: "JetBrains Mono", color: "#fff", lineHeight: 1 }}>{digit(val)}</div>
@@ -3835,7 +3837,7 @@ function PollWidget({ poll, userId, setPolls, onVote, onUnvote }) {
       {voted && onUnvote && (
         <button onClick={zuruecknehmen} className="w-full mt-2 py-1.5 rounded-lg text-[11px] font-bold"
           style={{ background: C.paperDim, color: C.textDim }}>
-          Auswahl zurücknehmen
+          {t("umf.auswahlZuruecknehmen")}
         </button>
       )}
       <Erstellt von={poll.erstelltVon} am={poll.erstelltAm} />
@@ -3860,7 +3862,7 @@ function NextTrainingCard({ training, team, auswahlVorhanden = false }) {
   if (!training) {
     return (
       <div className="rounded-3xl p-5 mb-6 relative overflow-hidden" style={{ background: `linear-gradient(160deg, var(--club-secondary-light) 0%, var(--club-secondary) 100%)` }}>
-        <div className="relative text-[10px] uppercase font-bold mb-2.5" style={{ color: "rgba(255,255,255,0.82)", fontFamily: "Inter", letterSpacing: "0.14em" }}>Nächstes Training{team ? ` · ${team}` : ""}</div>
+        <div className="relative text-[10px] uppercase font-bold mb-2.5" style={{ color: "rgba(255,255,255,0.82)", fontFamily: "Inter", letterSpacing: "0.14em" }}>{t("home.naechstesTraining")}{team ? ` · ${team}` : ""}</div>
         <div className="relative text-white text-sm" style={{ fontFamily: "Inter" }}>{t("tm.keinTraining")}</div>
       </div>
     );
@@ -3871,11 +3873,11 @@ function NextTrainingCard({ training, team, auswahlVorhanden = false }) {
       {/* Hier stand `info.youthClass?.name` - ein Feld, das es auf dem Objekt nie
           gab. Angezeigt wurde deshalb dauerhaft "Nächstes Training · " mit
           haengendem Trennzeichen. Gemeint war die Mannschaft. */}
-      <div className="relative text-[10px] uppercase font-bold mb-2.5" style={{ color: "rgba(255,255,255,0.82)", fontFamily: "Inter", letterSpacing: "0.14em" }}>Nächstes Training{team ? ` · ${team}` : ""}</div>
+      <div className="relative text-[10px] uppercase font-bold mb-2.5" style={{ color: "rgba(255,255,255,0.82)", fontFamily: "Inter", letterSpacing: "0.14em" }}>{t("home.naechstesTraining")}{team ? ` · ${team}` : ""}</div>
       <div className="relative text-white text-xl mb-1.5" style={{ fontFamily: "Oswald", fontWeight: 700, letterSpacing: "-0.01em" }}>{formatDate(training.date)} · {formatTime(training.date)}</div>
       <div className="relative flex items-center gap-1.5 text-xs mb-5" style={{ color: "rgba(255,255,255,0.8)", fontFamily: "Inter" }}><MapPin size={12} /> {training.location}</div>
       <div className="relative flex items-center gap-2">
-        {[["TAGE", d], ["STD", h], ["MIN", m]].map(([label, val], i) => (
+        {[[t("home.countdownTage"), d], [t("home.countdownStunden"), h], [t("home.countdownMinuten"), m]].map(([label, val], i) => (
           <React.Fragment key={label}>
             <div className="flex flex-col items-center rounded-2xl px-3.5 py-2.5 flex-1" style={{ background: "rgba(255,255,255,0.16)", border: "1px solid rgba(255,255,255,0.26)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)" }}>
               <div className="text-2xl font-bold" style={{ fontFamily: "JetBrains Mono", color: "#fff", lineHeight: 1 }}>{digit(val)}</div>
@@ -3990,7 +3992,7 @@ function Dashboard({ user, members, events, channels, news, dutyPlan, seasonStan
      Ansichten fangen den leeren Fall ab, diese hier war uebersehen. */
   const seasonSieger = seasonResults(seasonStand, saisonKandidaten(members)).sorted[0];
   const seasonSubtitle = !seasonClosed
-    ? `Bis ${new Date(SEASON_VOTE_DEADLINE).toLocaleDateString(datumsLocale(), { day: "2-digit", month: "2-digit" })} abstimmen`
+    ? mitWerten(t("sais.bisAbstimmen"), { datum: new Date(SEASON_VOTE_DEADLINE).toLocaleDateString(datumsLocale(), { day: "2-digit", month: "2-digit" }) })
     : seasonSieger ? `🏆 ${seasonSieger.name}` : t("sais.keineKandidaten");
 
   /* Dieselbe Rechnung wie in der Tippansicht.
@@ -4344,7 +4346,7 @@ function TerminZusage({ ev, currentUser, darfListeSehen = false }) {
           className="w-full py-2.5 rounded-xl text-xs font-bold mb-2"
           style={{ background: C.paperDim, color: C.ink, border: `1px solid ${C.line}` }}>
           {offen ? t("allg.schliessen") : t("ev.werDabei")}
-          {liste && !offen ? ` · ${zugesagt} von ${liste.length}` : ""}
+          {liste && !offen ? ` · ${mitWerten(t("ev.zugesagtVonN"), { zugesagt, gesamt: liste.length })}` : ""}
         </button>
       )}
 
@@ -4439,7 +4441,7 @@ function HelperSlots({ ev, members, currentUser, dutyPlan, setDutyPlan, eligible
         <div className="rounded-lg p-2 mt-1" style={{ background: C.paperDim }}>
           <div className="text-[10px] font-bold mb-1.5" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("helf.jemanden")}</div>
           <div className="flex gap-1.5 items-start flex-wrap">
-            <NutzerWahl personen={members.filter((m) => !istNurFan(m))} wert={eintragPerson} onWaehlen={setEintragPerson} leerLabel="Person wählen …" klein />
+            <NutzerWahl personen={members.filter((m) => !istNurFan(m))} wert={eintragPerson} onWaehlen={setEintragPerson} leerLabel={t("helf.personWaehlen")} klein />
             <select value={eintragStation} onChange={(e) => setEintragStation(e.target.value)}
               aria-label={t("aria.stationWaehlen")}
               className="flex-1 min-w-0 text-[11px] px-2 py-1.5 rounded-lg outline-none"
@@ -4469,7 +4471,7 @@ function HelperSlots({ ev, members, currentUser, dutyPlan, setDutyPlan, eligible
               disabled={!eintragPerson || !eintragStation}
               className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold flex-shrink-0"
               style={{ background: eintragPerson && eintragStation ? C.ink : C.line, color: eintragPerson && eintragStation ? C.white : C.textDim }}>
-              Eintragen
+              {t("allg.eintragenKnopf")}
             </button>
           </div>
         </div>
@@ -4568,7 +4570,7 @@ function CarpoolSection({ ev, currentUser }) {
   };
   return (
     <div className="mt-2 mb-1">
-      <div className="text-xs font-semibold mb-2 flex items-center gap-1.5" style={{ fontFamily: "Inter", color: C.ink }}><Car size={14}/> Fahrgemeinschaft</div>
+      <div className="text-xs font-semibold mb-2 flex items-center gap-1.5" style={{ fontFamily: "Inter", color: C.ink }}><Car size={14}/> {t("fahr.fahrgemeinschaft")}</div>
       {loading ? <div className="text-[11px]" style={{ color: C.textDim }}>{t("allg.laedt")}</div> : <>
         <div className="space-y-1.5 mb-2">
           {carpools.map((c) => {
@@ -4578,13 +4580,13 @@ function CarpoolSection({ ev, currentUser }) {
             return (
               <div key={c.id} className="rounded-xl px-3 py-2" style={{ background: C.paperDim }}>
                 <div className="flex items-center justify-between mb-1">
-                  <div className="text-xs font-bold" style={{ color: C.ink }}>{c.driverName} fährt{isDriver ? t("allg.duKlammer") : ""}</div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: free > 0 ? C.erfolgFlaeche : C.fehlerFlaeche, color: free > 0 ? C.erfolg : C.fehler }}>{free > 0 ? `${free} frei` : "voll"}</span>
+                  <div className="text-xs font-bold" style={{ color: C.ink }}>{mitWerten(t("fahr.faehrt"), { name: c.driverName })}{isDriver ? t("allg.duKlammer") : ""}</div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: free > 0 ? C.erfolgFlaeche : C.fehlerFlaeche, color: free > 0 ? C.erfolg : C.fehler }}>{free === 1 ? t("fahr.freiEins") : free > 0 ? mitWerten(t("fahr.freiMehr"), { anzahl: free }) : t("fahr.voll")}</span>
                 </div>
                 {c.departure && <div className="text-[10px] mb-1 flex items-start gap-1" style={{ color: C.ink }}><MapPin size={11} style={{ color: C.textDim, flexShrink: 0, marginTop: 1 }} /><span>{t("fahr.abfahrtOrt")}: {c.departure}</span></div>}
                 {c.departureAt && <div className="text-[10px] mb-1 flex items-center gap-1" style={{ color: C.ink }}><Clock size={11} style={{ color: C.textDim, flexShrink: 0 }} /><span>{new Date(c.departureAt).toLocaleString(datumsLocale(), { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</span></div>}
                 {c.note && <div className="text-[10px] mb-1" style={{ color: C.textDim }}>{c.note}</div>}
-                {c.passengers.length > 0 && <div className="text-[10px] mb-1.5" style={{ color: C.textDim }}>Mitfahrer: {c.passengers.map((p) => p.name).join(", ")}</div>}
+                {c.passengers.length > 0 && <div className="text-[10px] mb-1.5" style={{ color: C.textDim }}>{t("fahr.mitfahrer")}: {c.passengers.map((p) => p.name).join(", ")}</div>}
                 <div className="flex gap-2">
                   {!isDriver && !isPassenger && free > 0 && <button onClick={() => join(c.id)} className="flex-1 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: C.ink, color: C.white }}>{t("fahr.mitfahren")}</button>}
                   {!isDriver && isPassenger && <button onClick={() => leave(c.id)} className="flex-1 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: C.glass, color: C.red }}>{t("allg.austragen")}</button>}
@@ -4672,7 +4674,7 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
               </span>
             </div>
             <div>
-              <div className="flex flex-wrap gap-1 mb-1"><Pill bg={meta.color}>{meta.label}{ev.team ? ` · ${ev.team}` : ""}{ev.type === "spiel" && spielOrt(ev) ? ` · ${spielOrt(ev) === "heim" ? t("ev.heim") : t("ev.auswaerts")}` : ""}</Pill>{ev.cancelled&&<Pill bg={C.red}>ABGESAGT</Pill>}</div>
+              <div className="flex flex-wrap gap-1 mb-1"><Pill bg={meta.color}>{terminArt(t, ev.type)}{ev.team ? ` · ${ev.team}` : ""}{ev.type === "spiel" && spielOrt(ev) ? ` · ${spielOrt(ev) === "heim" ? t("ev.heim") : t("ev.auswaerts")}` : ""}</Pill>{ev.cancelled&&<Pill bg={C.red}>{t("ev.abgesagtBadge")}</Pill>}</div>
               <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{ev.title}</div>
               <div className="flex items-center gap-1 text-xs mt-1" style={{ color: C.textDim, fontFamily: "Inter" }}>
                 <Clock size={11} /> {formatTime(ev.date)} <span className="mx-0.5">·</span> <MapPin size={11} /> {ev.location}
@@ -4684,7 +4686,7 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
       </button>
       {open && (
         <div className="px-4 pb-4">
-          {ev.cancelled&&<div className="rounded-xl p-3 mb-3 text-xs font-bold" style={{background:C.fehlerFlaeche,color:C.fehler,border: `1px solid ${C.fehlerRand}`}}>Dieses {meta.label} wurde{ev.team?` für ${ev.team}`:""} abgesagt.</div>}
+          {ev.cancelled&&<div className="rounded-xl p-3 mb-3 text-xs font-bold" style={{background:C.fehlerFlaeche,color:C.fehler,border: `1px solid ${C.fehlerRand}`}}>{ev.team?mitWerten(t("ev.wurdeAbgesagtTeam"), { art: terminArt(t, ev.type), team: ev.team }):mitWerten(t("ev.wurdeAbgesagt"), { art: terminArt(t, ev.type) })}</div>}
           <p className="text-sm mb-3" style={{ color: C.textDim, fontFamily: "Inter" }}>{ev.desc}</p>
           {!ev.cancelled && ev.zusagenAktiv !== false && <TerminZusage ev={ev} currentUser={currentUser} darfListeSehen={darfListeSehen} />}
           {/* Der Endstand am Spiel selbst, Heim : Gast wie in der
@@ -4778,8 +4780,8 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
               </div>
               </>)}
             </div>
-          ) :           <button onClick={()=>setAbsageOffen(true)} className="w-full py-2.5 rounded-xl text-xs font-bold mb-3" style={{background:C.fehlerFlaeche,color:C.fehler,border: `1px solid ${C.fehlerRand}`}}>{meta.label}{ev.team?` für ${ev.team}`:""} absagen</button>)}{/* Ein Spiel mit Ergebnis oder Tipps laesst sich nur absagen: Das Loeschen
-              nahm ueber ON DELETE CASCADE das Ergebnis und jeden Tipp mit (C1). */}{canCancelTraining&&nurAbsagen&&<div className="text-[11px] mb-3 px-1" style={{color:C.textDim}}>{t("ev.gespieltNurAbsagen")}</div>}{canCancelTraining&&!nurAbsagen&&<button onClick={()=>onDeleteTraining(ev.id, ev.team, ev.seriesId)} className="w-full py-2.5 rounded-xl text-xs font-bold mb-3" style={{background:C.paperDim,color:C.fehler}}>{meta.label} endgültig löschen</button>}
+          ) :           <button onClick={()=>setAbsageOffen(true)} className="w-full py-2.5 rounded-xl text-xs font-bold mb-3" style={{background:C.fehlerFlaeche,color:C.fehler,border: `1px solid ${C.fehlerRand}`}}>{ev.team?mitWerten(t("ev.artAbsagenTeam"), { art: terminArt(t, ev.type), team: ev.team }):mitWerten(t("ev.artAbsagen"), { art: terminArt(t, ev.type) })}</button>)}{/* Ein Spiel mit Ergebnis oder Tipps laesst sich nur absagen: Das Loeschen
+              nahm ueber ON DELETE CASCADE das Ergebnis und jeden Tipp mit (C1). */}{canCancelTraining&&nurAbsagen&&<div className="text-[11px] mb-3 px-1" style={{color:C.textDim}}>{t("ev.gespieltNurAbsagen")}</div>}{canCancelTraining&&!nurAbsagen&&<button onClick={()=>onDeleteTraining(ev.id, ev.team, ev.seriesId)} className="w-full py-2.5 rounded-xl text-xs font-bold mb-3" style={{background:C.paperDim,color:C.fehler}}>{mitWerten(t("ev.artEndgueltigLoeschen"), { art: terminArt(t, ev.type) })}</button>}
 
           {ev.home !== true && (
             eventIsReal ? <CarpoolSection ev={ev} currentUser={currentUser} /> : ev.carpool && (
@@ -4841,7 +4843,7 @@ function EventMonthCalendar({ events, onSelect }) {
       </div>
       <div className="rounded-2xl p-2" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
         <div className="grid grid-cols-7 gap-1 mb-1">
-          {["Mo","Di","Mi","Do","Fr","Sa","So"].map((d) => <div key={d} className="text-center text-[9px] font-bold py-1" style={{ color: C.textDim }}>{d}</div>)}
+          {[t("kal.tagMo"), t("kal.tagDi"), t("kal.tagMi"), t("kal.tagDo"), t("kal.tagFr"), t("kal.tagSa"), t("kal.tagSo")].map((d, i) => <div key={i} className="text-center text-[9px] font-bold py-1" style={{ color: C.textDim }}>{d}</div>)}
         </div>
         <div className="grid grid-cols-7 gap-1">
           {cells.map((day, i) => {
@@ -4852,10 +4854,10 @@ function EventMonthCalendar({ events, onSelect }) {
                 {dayEvents.slice(0, 2).map((ev) => {
                   const meta = typeMeta[ev.type];
                   return (
-                    <button key={ev.id} onClick={() => onSelect(ev)} className="w-full text-left text-[8px] px-1 py-0.5 rounded mb-0.5 truncate" style={{ background: `color-mix(in srgb, ${meta.color} 18%, transparent)`, color: meta.color, textDecoration: ev.cancelled ? "line-through" : "none" }} title={`${meta.label}: ${ev.title}`}>{ev.title}</button>
+                    <button key={ev.id} onClick={() => onSelect(ev)} className="w-full text-left text-[8px] px-1 py-0.5 rounded mb-0.5 truncate" style={{ background: `color-mix(in srgb, ${meta.color} 18%, transparent)`, color: meta.color, textDecoration: ev.cancelled ? "line-through" : "none" }} title={`${terminArt(t, ev.type)}: ${ev.title}`}>{ev.title}</button>
                   );
                 })}
-                {dayEvents.length > 2 && <button onClick={() => onSelect(dayEvents[2])} className="text-[8px] w-full text-left" style={{ color: C.textDim }}>+{dayEvents.length - 2} mehr</button>}
+                {dayEvents.length > 2 && <button onClick={() => onSelect(dayEvents[2])} className="text-[8px] w-full text-left" style={{ color: C.textDim }}>{mitWerten(t("kal.plusMehr"), { anzahl: dayEvents.length - 2 })}</button>}
               </div>
             );
           })}
@@ -5413,14 +5415,14 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
 
   return (
     <div className="px-4 pt-4 pb-24">
-      <div className="flex items-start justify-between gap-3"><SectionTitle title={t("ev.termineTitel")} />{(canCreateSportEvent||canCreateClubEvent)&&<button onClick={openCreate} className="px-3 py-1.5 rounded-full text-xs flex-shrink-0" style={{background: C.red, color: C.aufPrimaer,fontWeight:700}}>＋ Eintragen</button>}</div>
-      {showCreate&&<form ref={terminFormRef} onSubmit={createSportEvent} className="rounded-2xl p-4 mb-4 space-y-2.5" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold">{editingEventId?t("ev.bearbeiten"):t("ev.eintragen")}</div><div className="text-[10px]" style={{color:C.textDim}}>{editingEventId?t("ev.bearbeitenHinweis"):eventDraft.type==="event"?t("ev.vereinseventSichtbar"):isSysAdmin(currentUser)?t("tm.sysadminAlle"):darfVereinsweitPlanen?t("tm.alleMannschaftenWaehlbar"):currentUser.roles.includes("trainer")?t("tm.nurEigeneWaehlen"):t("tm.nurEigeneMannschaft")}</div><div className="text-[10px] font-bold" style={{color:C.red}}>* Pflichtfeld</div>{!editingEventId&&<div className="grid grid-cols-2 gap-2"><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.art")}</span><select value={eventDraft.type} onChange={(e)=>setEventDraft({...eventDraft,type:e.target.value,team:e.target.value==="event"?"":eventDraft.team})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}>{canCreateSportEvent&&<option value="training">{t("ev.training")}</option>}{canCreateSportEvent&&<option value="spiel">{t("ev.spiel")}</option>}{canCreateClubEvent&&<option value="event">{t("ev.vereinsevent")}</option>}</select></label>{eventDraft.type!=="event"&&<label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("tm.mannschaft")}</span><select value={eventDraft.team} onChange={(e)=>setEventDraft({...eventDraft,team:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}>{allowedEventTeams.map((team)=><option key={team} value={team}>{team}</option>)}</select></label>}</div>}<label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.titel")}</span><input value={eventDraft.title} onChange={(e)=>setEventDraft({...eventDraft,title:e.target.value})} placeholder={eventDraft.type==="training"?t("ph.titelTraining"):eventDraft.type==="event"?t("ph.titelEvent"):t("ph.titelSpiel")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></label>{eventDraft.type === "spiel" && <label className="flex items-center gap-2 px-0.5"><input type="checkbox" checked={eventDraft.isHome} onChange={(e)=>setEventDraft({...eventDraft,isHome:e.target.checked})}/><span className="text-xs font-bold" style={{color:C.ink}}>{t("ev.heimspiel")}</span></label>}{eventDraft.type === "training" && !editingEventId && <label className="flex items-center gap-2 px-0.5"><input type="checkbox" checked={eventDraft.recurring} onChange={(e)=>setEventDraft({...eventDraft,recurring:e.target.checked})}/><span className="text-xs font-bold" style={{color:C.ink}}>{t("ev.wiederholend")}</span></label>}{!eventDraft.recurring ? <div className="space-y-2">
+      <div className="flex items-start justify-between gap-3"><SectionTitle title={t("ev.termineTitel")} />{(canCreateSportEvent||canCreateClubEvent)&&<button onClick={openCreate} className="px-3 py-1.5 rounded-full text-xs flex-shrink-0" style={{background: C.red, color: C.aufPrimaer,fontWeight:700}}>＋ {t("allg.eintragenKnopf")}</button>}</div>
+      {showCreate&&<form ref={terminFormRef} onSubmit={createSportEvent} className="rounded-2xl p-4 mb-4 space-y-2.5" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold">{editingEventId?t("ev.bearbeiten"):t("ev.eintragen")}</div><div className="text-[10px]" style={{color:C.textDim}}>{editingEventId?t("ev.bearbeitenHinweis"):eventDraft.type==="event"?t("ev.vereinseventSichtbar"):isSysAdmin(currentUser)?t("tm.sysadminAlle"):darfVereinsweitPlanen?t("tm.alleMannschaftenWaehlbar"):currentUser.roles.includes("trainer")?t("tm.nurEigeneWaehlen"):t("tm.nurEigeneMannschaft")}</div><div className="text-[10px] font-bold" style={{color:C.red}}>{t("feld.pflichtfeldHinweis")}</div>{!editingEventId&&<div className="grid grid-cols-2 gap-2"><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.art")}</span><select value={eventDraft.type} onChange={(e)=>setEventDraft({...eventDraft,type:e.target.value,team:e.target.value==="event"?"":eventDraft.team})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}>{canCreateSportEvent&&<option value="training">{t("ev.training")}</option>}{canCreateSportEvent&&<option value="spiel">{t("ev.spiel")}</option>}{canCreateClubEvent&&<option value="event">{t("ev.vereinsevent")}</option>}</select></label>{eventDraft.type!=="event"&&<label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("tm.mannschaft")}</span><select value={eventDraft.team} onChange={(e)=>setEventDraft({...eventDraft,team:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}>{allowedEventTeams.map((team)=><option key={team} value={team}>{team}</option>)}</select></label>}</div>}<label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.titel")}</span><input value={eventDraft.title} onChange={(e)=>setEventDraft({...eventDraft,title:e.target.value})} placeholder={eventDraft.type==="training"?t("ph.titelTraining"):eventDraft.type==="event"?t("ph.titelEvent"):t("ph.titelSpiel")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></label>{eventDraft.type === "spiel" && <label className="flex items-center gap-2 px-0.5"><input type="checkbox" checked={eventDraft.isHome} onChange={(e)=>setEventDraft({...eventDraft,isHome:e.target.checked})}/><span className="text-xs font-bold" style={{color:C.ink}}>{t("ev.heimspiel")}</span></label>}{eventDraft.type === "training" && !editingEventId && <label className="flex items-center gap-2 px-0.5"><input type="checkbox" checked={eventDraft.recurring} onChange={(e)=>setEventDraft({...eventDraft,recurring:e.target.checked})}/><span className="text-xs font-bold" style={{color:C.ink}}>{t("ev.wiederholend")}</span></label>}{!eventDraft.recurring ? <div className="space-y-2">
         <label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.datumPflicht")}</span><input type="date" value={eventDraft.day} onChange={(e)=>setEventDraft({...eventDraft,day:e.target.value})} className="erg-datetime w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim,color:C.ink}}/></label>
         <div className="grid grid-cols-2 gap-2">
           <label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.beginnPflicht")}</span><input type="time" value={eventDraft.startTime} onChange={(e)=>setEventDraft({...eventDraft,startTime:e.target.value})} className="erg-datetime w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim,color:C.ink}}/></label>
           <label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.endePflicht")}</span><input type="time" value={eventDraft.endTime} onChange={(e)=>setEventDraft({...eventDraft,endTime:e.target.value})} className="erg-datetime w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim,color:C.ink}}/></label>
         </div>
-      </div> : <div className="space-y-2"><div className="flex gap-1.5 flex-wrap">{[["1","Mo"],["2","Di"],["3","Mi"],["4","Do"],["5","Fr"],["6","Sa"],["7","So"]].map(([num,label])=>{const n=Number(num);const active=eventDraft.weekdays.includes(n);return <button type="button" key={num} onClick={()=>setEventDraft({...eventDraft,weekdays:active?eventDraft.weekdays.filter((w)=>w!==n):[...eventDraft.weekdays,n]})} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?C.red:C.paperDim,color:active?C.white:C.textDim}}>{label}</button>;})}</div><div className="grid grid-cols-2 gap-2"><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.beginnPflicht")}</span><input type="time" value={eventDraft.startTime} onChange={(e)=>setEventDraft({...eventDraft,startTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></label><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.endePflicht")}</span><input type="time" value={eventDraft.endTime} onChange={(e)=>setEventDraft({...eventDraft,endTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></label></div><div className="grid grid-cols-2 gap-2"><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.ersterTermin")}</span><input type="date" value={eventDraft.rangeStart} onChange={(e)=>setEventDraft({...eventDraft,rangeStart:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></label><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.letzterTermin")}</span><input type="date" value={eventDraft.rangeEnd} onChange={(e)=>setEventDraft({...eventDraft,rangeEnd:e.target.value})} className="erg-datetime px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim,color:C.ink}}/></label></div></div>}<label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.ort")}</span><input value={eventDraft.location} onChange={(e)=>setEventDraft({...eventDraft,location:e.target.value})} placeholder={t("ph.ortPflicht")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></label><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.beschreibungLabel")}</span><textarea value={eventDraft.desc} onChange={(e)=>setEventDraft({...eventDraft,desc:e.target.value})} placeholder={t("feld.beschreibung")} rows={2} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none" style={{background:C.paperDim}}/></label>{/* Helferstationen gibt es nur beim Einzeltermin: Die Reihe legt keine an, und beim Bearbeiten wuerden geaenderte Stationen bestehende Einteilungen verwaisen lassen. */}{!eventDraft.recurring && !editingEventId && <label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.helferstationen")}</span><input value={eventDraft.helferStationen} onChange={(e)=>setEventDraft({...eventDraft,helferStationen:e.target.value})} placeholder={`${t("ph.helferstationen")} — ${sportText(t, currentClub?.sport, "dutyStationExamples")}`} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></label>}{/* Die Meldung stand vorher IM Zweig fuer Einzeltermine. Bei einer Serie erschien sie deshalb nie, und das Speichern blieb wieder stumm - genau der Fehler, den sie beheben sollte. Jetzt steht sie vor der Knopfzeile und gilt fuer beide Zweige. */}{eventFehler && <div className="text-[10px] rounded-xl px-3 py-2" style={{background:C.fehlerFlaeche,color:C.fehler}}>{eventFehler}</div>}<div className="flex gap-2"><button type="submit" disabled={eventSpeichert} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{background:eventSpeichert?C.line:C.ink,color:C.white,opacity:eventSpeichert?.7:1}}>{eventSpeichert?t("allg.wirdGespeichert"):t("allg.speichern")}</button><button type="button" onClick={()=>{setShowCreate(false);setEventFehler("");if(editingEventId){setEditingEventId(null);resetEventDraft();}}} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{background:C.paperDim,color:C.textDim}}>{t("allg.abbrechen")}</button></div></form>}
+      </div> : <div className="space-y-2"><div className="flex gap-1.5 flex-wrap">{[["1",t("kal.tagMo")],["2",t("kal.tagDi")],["3",t("kal.tagMi")],["4",t("kal.tagDo")],["5",t("kal.tagFr")],["6",t("kal.tagSa")],["7",t("kal.tagSo")]].map(([num,label])=>{const n=Number(num);const active=eventDraft.weekdays.includes(n);return <button type="button" key={num} onClick={()=>setEventDraft({...eventDraft,weekdays:active?eventDraft.weekdays.filter((w)=>w!==n):[...eventDraft.weekdays,n]})} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?C.red:C.paperDim,color:active?C.white:C.textDim}}>{label}</button>;})}</div><div className="grid grid-cols-2 gap-2"><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.beginnPflicht")}</span><input type="time" value={eventDraft.startTime} onChange={(e)=>setEventDraft({...eventDraft,startTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></label><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.endePflicht")}</span><input type="time" value={eventDraft.endTime} onChange={(e)=>setEventDraft({...eventDraft,endTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></label></div><div className="grid grid-cols-2 gap-2"><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.ersterTermin")}</span><input type="date" value={eventDraft.rangeStart} onChange={(e)=>setEventDraft({...eventDraft,rangeStart:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></label><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.letzterTermin")}</span><input type="date" value={eventDraft.rangeEnd} onChange={(e)=>setEventDraft({...eventDraft,rangeEnd:e.target.value})} className="erg-datetime px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim,color:C.ink}}/></label></div></div>}<label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.ort")}</span><input value={eventDraft.location} onChange={(e)=>setEventDraft({...eventDraft,location:e.target.value})} placeholder={t("ph.ortPflicht")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></label><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.beschreibungLabel")}</span><textarea value={eventDraft.desc} onChange={(e)=>setEventDraft({...eventDraft,desc:e.target.value})} placeholder={t("feld.beschreibung")} rows={2} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none" style={{background:C.paperDim}}/></label>{/* Helferstationen gibt es nur beim Einzeltermin: Die Reihe legt keine an, und beim Bearbeiten wuerden geaenderte Stationen bestehende Einteilungen verwaisen lassen. */}{!eventDraft.recurring && !editingEventId && <label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.helferstationen")}</span><input value={eventDraft.helferStationen} onChange={(e)=>setEventDraft({...eventDraft,helferStationen:e.target.value})} placeholder={`${t("ph.helferstationen")} — ${sportText(t, currentClub?.sport, "dutyStationExamples")}`} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></label>}{/* Die Meldung stand vorher IM Zweig fuer Einzeltermine. Bei einer Serie erschien sie deshalb nie, und das Speichern blieb wieder stumm - genau der Fehler, den sie beheben sollte. Jetzt steht sie vor der Knopfzeile und gilt fuer beide Zweige. */}{eventFehler && <div className="text-[10px] rounded-xl px-3 py-2" style={{background:C.fehlerFlaeche,color:C.fehler}}>{eventFehler}</div>}<div className="flex gap-2"><button type="submit" disabled={eventSpeichert} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{background:eventSpeichert?C.line:C.ink,color:C.white,opacity:eventSpeichert?.7:1}}>{eventSpeichert?t("allg.wirdGespeichert"):t("allg.speichern")}</button><button type="button" onClick={()=>{setShowCreate(false);setEventFehler("");if(editingEventId){setEditingEventId(null);resetEventDraft();}}} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{background:C.paperDim,color:C.textDim}}>{t("allg.abbrechen")}</button></div></form>}
       <SponsorSlot slotKey="events_header" bookings={werbeplaetze} onImpression={onSponsorImpression} onClick={onSponsorClick} visible={featureEnabled("sponsor_events_header")} />
       <div className="flex items-center gap-2 mb-3">
         <div className="flex gap-2 overflow-x-auto pb-1 flex-1 min-w-0" style={{ scrollbarWidth: "none" }}>
@@ -5475,7 +5477,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
           ergebnis={tippResults?.[ev.id] || null} darfErgebnis={darfErgebnisEintragen(currentUser, ev, { streng: !!supabase })} onErgebnisOeffnen={onErgebnisOeffnen}
         />
       ))}
-      {filtered.length===0&&<div className="rounded-2xl p-6 text-center text-xs" style={{background:C.paperDim,color:C.textDim}}>Für diese Mannschaft sind aktuell keine {filter === "training" ? t("ev.trainingstermine") : t("ev.spiele2")} hinterlegt.</div>}
+      {filtered.length===0&&<div className="rounded-2xl p-6 text-center text-xs" style={{background:C.paperDim,color:C.textDim}}>{filter === "training" ? t("ev.keineTrainingsHinterlegt") : t("ev.keineSpieleHinterlegt")}</div>}
 
       {/* Termin aus dem Kalender. Bewusst dieselbe EventCard wie in der Liste —
           damit gelten hier zwangsläufig dieselben Lese- und Schreibrechte,
@@ -5720,7 +5722,7 @@ function AbstimmungDetails({ stand, onSchliessen }) {
                 <div className="flex flex-wrap gap-1">
                   {o.waehler.map((w) => (
                     <span key={w.id} className="text-[10px] px-2 py-0.5 rounded-full"
-                      style={{ background: C.paperDim, color: C.ink, fontFamily: "Inter" }}>{w.name}</span>
+                      style={{ background: C.paperDim, color: C.ink, fontFamily: "Inter" }}>{w.name === "Unbekannt" ? t("allg.unbekannt") : w.name}</span>
                   ))}
                 </div>
               )}
@@ -6362,7 +6364,7 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
     } else {
       /* Demo-Betrieb ohne Datenbank: fluechtig, wie bisher. */
       setChannels((cs) => cs.map((c) => c.id === active.id
-        ? { ...c, messages: [...c.messages, { who: user.name, init: initialsOf(user.name), color: user.color, text: inhalt, time: "jetzt", me: true }].slice(active.id === "news" ? -10 : -200) }
+        ? { ...c, messages: [...c.messages, { who: user.name, init: initialsOf(user.name), color: user.color, text: inhalt, time: t("chat.jetzt"), me: true }].slice(active.id === "news" ? -10 : -200) }
         : c));
     }
     /* Benachrichtigt der Ausloeser chatnachricht_melden - siehe oben. */
@@ -6391,7 +6393,7 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
        die Hoehe der Navigationshuelle; die 18px halten den sichtbaren Abstand
        dabei so, wie er vorher war. */
     <div className="pt-4 flex flex-col" style={{ height: "100%", paddingBottom: "calc(var(--erg-nav-h, 96px) + 18px)" }}>
-      <div className="px-4"><SectionTitle title="Chat" /></div>
+      <div className="px-4"><SectionTitle title={t("nav.chat")} /></div>
       <div className="flex gap-2 px-4 mb-3 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
         {visibleChannels.map((c) => (
           <button key={c.id} onClick={() => setActiveId(c.id)} className="px-3 py-1.5 rounded-full text-xs flex-shrink-0"
@@ -6465,7 +6467,7 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
                 </div>
                 <div className="flex items-center gap-2 mt-0.5">
                   <div className="text-[10px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{m.time}</div>
-                  {!mine && <a href={`mailto:${legal.email}?subject=${encodeURIComponent(t("chat.meldenBetreff") + (active.name || "Chat"))}&body=${encodeURIComponent(`Ich möchte folgende Nachricht melden:\n\nVerfasser: ${m.who}\nInhalt: ${m.text || ""}\n\nGrund:\n`)}`} className="text-[10px]" style={{ color: C.textDim, fontFamily: "Inter", textDecoration: "underline" }}>{t("chat.melden")}</a>}
+                  {!mine && <a href={`mailto:${legal.email}?subject=${encodeURIComponent(t("chat.meldenBetreff") + (active.name || t("nav.chat")))}&body=${encodeURIComponent(mitWerten(t("chat.meldenMailText"), { verfasser: m.who, inhalt: m.text || "" }))}`} className="text-[10px]" style={{ color: C.textDim, fontFamily: "Inter", textDecoration: "underline" }}>{t("chat.melden")}</a>}
                   {!mine && <button onClick={() => blockAuthor(m.authorId)} className="text-[10px]" style={{ color: C.textDim, fontFamily: "Inter", textDecoration: "underline" }}>{t("chat.blockieren")}</button>}
                   {(mine || darfModerieren) && <button onClick={() => nachrichtLoeschen(m)} className="text-[10px]" style={{ color: C.textDim, fontFamily: "Inter", textDecoration: "underline" }}>{t("allg.loeschen")}</button>}
                 </div>
@@ -6641,7 +6643,7 @@ function RedaktionView({ user, news, setNews }) {
   return (
     <div className="px-4 pt-4 pb-24">
       <SectionTitle title={t("nav.news")} eyebrow={t("news.vereinsNews")} right={
-        !showForm && <button onClick={() => setShowForm(true)} className="text-xs font-bold px-3 py-1.5 rounded-full" style={{ background: C.ink, color: "#fff", fontFamily: "Inter" }}>+ Neue News</button>
+        !showForm && <button onClick={() => setShowForm(true)} className="text-xs font-bold px-3 py-1.5 rounded-full" style={{ background: C.ink, color: "#fff", fontFamily: "Inter" }}>+ {t("news.neu")}</button>
       } />
 
       {showForm && (
@@ -6698,7 +6700,7 @@ function FamilyTree({ user, members }) {
   if (!user.familyId) {
     return (
       <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>
-        Für dich ist noch kein Familienprofil hinterlegt. Du kannst es selbst ergänzen; bei Bedarf unterstützt der Sysadmin.
+        {t("fam.keinFamilienprofil")}
       </div>
     );
   }
@@ -6914,7 +6916,7 @@ function FamilyLinkManager({ user, members, setMembers, adminMode = false }) {
     {message&&<div className="mt-2 text-[11px] font-semibold" style={{color:C.red}}>{meldungstext(message)}</div>}
     {hinweis&&<div className="mt-2 text-[11px]" style={{color:C.textDim}}>{hinweis}</div>}
     {databaseMembership&&<FamilienAnfragen membershipId={user.id} clubId={user.clubId} setMembers={setMembers} stand={anfragenStand} />}
-    {familyConnections.length>0&&<div className="mt-3 pt-3 space-y-1.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] font-bold mb-1" style={{color:C.textDim}}>BESTEHENDE VERKNÜPFUNGEN</div>{familyConnections.map((member)=><div key={member.id} className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{background:C.paperDim}}><div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold" style={{background:member.color,color:C.white}}>{initialsOf(member.name)}</div><div className="flex-1 min-w-0"><div className="text-xs font-bold truncate" style={{color:C.ink}}>{member.name}</div><div className="text-[10px]" style={{color:C.textDim}}>{(()=>{const v=(user.familyLinks||[]).find((l)=>l.memberId===member.id);return v?verwandtschaftLabel(t,v.wort,v.relation):t("fam.familie");})()}</div></div><button onClick={()=>removeConnection(member)} className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold" style={{background:C.fehlerFlaeche,color:C.fehler}}>{t("allg.loeschen")}</button></div>)}</div>}
+    {familyConnections.length>0&&<div className="mt-3 pt-3 space-y-1.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("fam.bestehendeVerknuepfungen")}</div>{familyConnections.map((member)=><div key={member.id} className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{background:C.paperDim}}><div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold" style={{background:member.color,color:C.white}}>{initialsOf(member.name)}</div><div className="flex-1 min-w-0"><div className="text-xs font-bold truncate" style={{color:C.ink}}>{member.name}</div><div className="text-[10px]" style={{color:C.textDim}}>{(()=>{const v=(user.familyLinks||[]).find((l)=>l.memberId===member.id);return v?verwandtschaftLabel(t,v.wort,v.relation):t("fam.familie");})()}</div></div><button onClick={()=>removeConnection(member)} className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold" style={{background:C.fehlerFlaeche,color:C.fehler}}>{t("allg.loeschen")}</button></div>)}</div>}
     {open&&<div className="mt-3 pt-3" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[11px] font-bold mb-1">{t("fam.rolle")}</div><div className="flex flex-wrap gap-1.5 mb-2">{VERWANDTSCHAFT.map((v)=><button type="button" key={v.id} onClick={()=>{setGrad(v.id);setQuery("");}} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:grad===v.id?C.red:C.paperDim,color:grad===v.id?C.white:C.textDim}}>{t(`fam.grad.${v.id}`)}</button>)}</div><input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder={userIsParent?t("ph.vorhandenenAthletSuchen"):t("ph.vorhandenesElternteilSuchen")} className="w-full px-3.5 py-3 rounded-xl text-sm outline-none mb-2" style={{background:C.paperDim}}/>{query&&<div className="space-y-1">{results.map(m=><button key={m.id} onClick={()=>connect(m.id)} className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-lg text-sm" style={{background:C.paperDim,color:C.ink}}><span className="truncate text-left">{m.name} · {m.team}</span><span style={{color:C.red}}>{t("fam.verbinden")}</span></button>)}{results.length===0&&<div className="text-[11px] py-2" style={{color:C.textDim}}>{t("fam.keinProfil")}</div>}</div>}{userIsParent&&<div className="mt-3 pt-3" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[11px] font-bold mb-2">{t("fam.kindAnlegen")}</div><div className="flex gap-2"><input value={newName} onChange={(e)=>setNewName(e.target.value)} placeholder={t("feld.vollerName")} className="flex-1 px-3 py-2 rounded-lg text-xs outline-none" style={{background:C.paperDim}}/><button onClick={createDependent} disabled={!newName.trim()} className="px-3 rounded-lg text-xs font-bold" style={{background:newName.trim()?C.red:C.line,color:"#fff"}}>{t("allg.anlegen")}</button></div><div className="text-[10px] mt-2" style={{color:C.textDim}}>{t("fam.kindProfilUebernehmen")}</div></div>}</div>}
   </div>;
 }
@@ -6923,7 +6925,7 @@ function AdminFamilyPanel({ members, setMembers }) {
   const t = useT();
   const [selectedId, setSelectedId] = useState("");
   const selected = members.find((member) => member.id === selectedId);
-  return <div className="space-y-3"><div className="text-xs" style={{color:C.textDim}}>{t("fam.nurSysadminHinweis")}</div><NutzerWahl personen={members} wert={selectedId} onWaehlen={setSelectedId} leerLabel="Mitglied auswählen …" />{selected&&<><FamilyTree user={selected} members={members}/><FamilyLinkManager user={selected} members={members} setMembers={setMembers} adminMode /></>}</div>;
+  return <div className="space-y-3"><div className="text-xs" style={{color:C.textDim}}>{t("fam.nurSysadminHinweis")}</div><NutzerWahl personen={members} wert={selectedId} onWaehlen={setSelectedId} leerLabel={t("fam.mitgliedWaehlen")} />{selected&&<><FamilyTree user={selected} members={members}/><FamilyLinkManager user={selected} members={members} setMembers={setMembers} adminMode /></>}</div>;
 }
 
 /* ------------------------------------------------------------------ */
@@ -7025,16 +7027,16 @@ function TrainerTeamSettings({ user, members, setMembers }) {
   };
 
   return <div className="rounded-2xl p-4 mb-5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
-    <div className="flex items-center gap-2 mb-1 text-sm font-bold" style={{ color: C.ink }}><Trophy size={15} style={{ color: C.secondary }}/> Trainer-Einstellungen</div>
+    <div className="flex items-center gap-2 mb-1 text-sm font-bold" style={{ color: C.ink }}><Trophy size={15} style={{ color: C.secondary }}/> {t("tm.trainerEinstellungen")}</div>
     <div className="text-[11px] mb-3" style={{ color: C.textDim }}>{t("tm.trainerZuweisungHinweis")}</div>
     {loading ? <div className="text-xs py-3" style={{ color: C.textDim }}>{t("tm.laden")}</div> : <>
-      <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>ZUGEWIESENE TRAINER-MANNSCHAFTEN</div>
+      <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>{t("tm.zugewieseneTrainerMannschaften")}</div>
       <div className="space-y-1.5 mb-4">{teams.map((team) => <div key={team.id} className="w-full flex items-center justify-between px-3 py-2 rounded-xl" style={{ background: C.primaerWeich, border: "1px solid C.red" }}><span className="text-xs font-bold" style={{ color: C.ink }}>{team.name}</span><Check size={14} style={{ color: C.red }}/></div>)}</div>
       {teams.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{t("tm.keineTrainerMannschaft")}</div> : <>
       <div className="pt-3 mb-3" style={{ borderTop: `1px solid ${C.line}` }}><div className="text-xs font-bold" style={{ color: C.ink }}>{t("tm.kapitaenZuweisen")}</div><div className="text-[10px]" style={{ color: C.textDim }}>{t("rol.kapitaenHinweis")}</div></div>
-      <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>MANNSCHAFT</div>
+      <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>{t("tm.mannschaftLabel")}</div>
       <select value={selectedTeamId} onChange={(event) => setSelectedTeamId(event.target.value)} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-3" style={{ background: C.paperDim, color: C.ink }}>{teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select>
-      <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>KAPITÄN</div>
+      <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>{t("tm.kapitaenLabel")}</div>
       <select value={captainId} onChange={(event) => { setCaptainId(event.target.value); setMessage(""); }} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-3" style={{ background: C.paperDim, color: C.ink }}><option value="">{t("tm.athletWaehlen")}</option>{players.map((player) => <option key={player.id} value={player.id}>{player.name}</option>)}</select>
       {players.length === 0 && <div className="text-[11px] -mt-1 mb-3" style={{ color: C.textDim }}>{t("tm.keineAktivenAthleten")}</div>}
       <button onClick={saveCaptain} disabled={!captainId || saving || captainId === savedCaptainId} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: captainId && captainId !== savedCaptainId ? C.ink : C.paperDim, color: captainId && captainId !== savedCaptainId ? C.white : C.textDim, opacity: saving ? .6 : 1 }}>{saving ? t("allg.wirdGespeichert") : captainId === savedCaptainId && captainId ? t("tm.kapitaenGespeichert") : t("tm.kapitaenSpeichern")}</button>
@@ -7540,15 +7542,15 @@ function TeamsView({ currentUser, members, setMembers, currentClub, teamWunsch =
   };
   const TeamCard = ({ team }) => {
     const roster = rosterFor(team); const own = ownNames.includes(team.name);
-    return <button onClick={() => setSelectedTeamId(team.id)} className="w-full flex items-center gap-3 rounded-2xl px-3.5 py-3 text-left" style={{ background: C.glass, border: own ? `1px solid ${C.secondary}` : `1px solid ${C.line}` }}><div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: own ? C.erfolgFlaeche : C.paperDim, color: own ? C.erfolg : C.fehler }}><Users size={18}/></div><div className="flex-1 min-w-0"><div className="text-sm font-bold truncate" style={{ color: C.ink }}>{team.name}</div><div className="text-[11px]" style={{ color: C.textDim }}>{team.category || t("tm.mannschaft")} · {roster.length} Athlet{roster.length === 1 ? "" : "/innen"}</div></div>{own && <span className="text-[9px] font-bold px-2 py-1 rounded-full" style={{ background: C.erfolgFlaeche, color: C.erfolg }}>MEIN TEAM</span>}<ChevronRight size={15} style={{ color: C.textDim }}/></button>;
+    return <button onClick={() => setSelectedTeamId(team.id)} className="w-full flex items-center gap-3 rounded-2xl px-3.5 py-3 text-left" style={{ background: C.glass, border: own ? `1px solid ${C.secondary}` : `1px solid ${C.line}` }}><div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: own ? C.erfolgFlaeche : C.paperDim, color: own ? C.erfolg : C.fehler }}><Users size={18}/></div><div className="flex-1 min-w-0"><div className="text-sm font-bold truncate" style={{ color: C.ink }}>{team.name}</div><div className="text-[11px]" style={{ color: C.textDim }}>{team.category || t("tm.mannschaft")} · {roster.length === 1 ? mitWerten(t("tm.anzahlAthletEins"), { anzahl: 1 }) : `${roster.length} ${t("tm.athletinnen")}`}</div></div>{own && <span className="text-[9px] font-bold px-2 py-1 rounded-full" style={{ background: C.erfolgFlaeche, color: C.erfolg }}>{t("tm.meinTeamBadge")}</span>}<ChevronRight size={15} style={{ color: C.textDim }}/></button>;
   };
 
   return <div className="px-4 pt-4 pb-24">
-    <SectionTitle eyebrow={t("verein.vereinLabel")} title={t("nav.teams")} right={canCreate ? <button onClick={() => setShowCreate((value) => !value)} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showCreate ? t("allg.schliessen") : "+ Team"}</button> : null}/>
-    <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>Alle Mannschaften von {currentClub?.shortName}. Öffne ein Team, um den Athletenkader anzusehen.</div>
+    <SectionTitle eyebrow={t("verein.vereinLabel")} title={t("nav.teams")} right={canCreate ? <button onClick={() => setShowCreate((value) => !value)} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showCreate ? t("allg.schliessen") : t("tm.plusTeam")}</button> : null}/>
+    <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>{mitWerten(t("tm.alleVonVerein"), { verein: currentClub?.shortName || "" })}</div>
     {showCreate && <form onSubmit={createTeam} className="rounded-2xl p-4 mb-5" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="text-sm font-bold mb-1" style={{ color: C.ink }}>{t("tm.neuAnlegen")}</div><div className="text-[11px] mb-3" style={{ color: C.textDim }}>{t("rol.danachProfil")}</div><input value={name} onChange={(event) => setName(event.target.value)} maxLength={80} placeholder={t("ph.mannschaftsnameBsp")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}/><input value={category} onChange={(event) => setCategory(event.target.value)} maxLength={80} placeholder={t("ph.kategorieBeispiel")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim }}/><button type="button" onClick={() => setIsAdultTeam((v) => !v)} className="w-full flex items-center justify-between rounded-xl px-3 py-2.5 mb-2" style={{ background: isAdultTeam ? C.fehlerFlaeche : C.paperDim, border: isAdultTeam ? `1px solid ${C.red}` : "1px solid transparent" }}><div className="text-left"><div className="text-xs font-bold" style={{ color: C.ink }}>{t("tm.erwachsene")}</div><div className="text-[10px]" style={{ color: C.textDim }}>{t("rol.nurDannStrafen")}</div></div><span className="w-10 h-6 rounded-full flex items-center px-0.5" style={{ background: isAdultTeam ? C.red : C.line, justifyContent: isAdultTeam ? "flex-end" : "flex-start" }}><span className="w-5 h-5 rounded-full" style={{ background: C.glass }}/></span></button><button disabled={saving || !name.trim()} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: name.trim() ? C.red : C.line, color: C.white }}>{saving ? t("allg.wirdAngelegt") : t("tm.anlegen")}</button></form>}
     {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: (istErfolg(message)||istErfolg(message)||istErfolg(message)) ? C.erfolgFlaeche : C.fehlerFlaeche, color: (istErfolg(message)||istErfolg(message)||istErfolg(message)) ? C.erfolg : C.fehler }}>{meldungstext(message)}</div>}
-    {selectedTeam ? <div><button onClick={() => { setSelectedTeamId(""); setShowPlayerPicker(false); setEditingTeam(false); }} className="flex items-center gap-1 text-xs font-bold mb-3" style={{ color: C.fehler }}><ArrowLeft size={14}/> Alle Teams</button><div className="rounded-2xl p-4 mb-4" style={{ background: C.ink, color: C.white }}><div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: C.textDim }}>{selectedTeam.category || t("tm.mannschaft")}</div><div className="text-xl font-bold" style={{ fontFamily: "Oswald" }}>{selectedTeam.name}</div><div className="text-xs mt-1" style={{ color: C.textDim }}>{mitWerten(t("tm.anzahlVerknuepfteAthleten"), { anzahl: rosterFor(selectedTeam).length })}</div></div><div className="-mt-2 mb-4"><Erstellt von={selectedTeam.created_by} am={selectedTeam.created_at} rahmenlos /></div><MannschaftsFunktionen team={selectedTeam} members={members} /><MannschaftsMeldungen teamId={selectedTeam.id} currentUser={currentUser} imTeam={ownTeams.some((team) => team.id === selectedTeam.id)} />{canCreate && !editingTeam && <div className="flex gap-2 mb-4"><button onClick={() => openEditTeam(selectedTeam)} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>{t("allg.bearbeiten")}</button><button onClick={archiveTeam} disabled={archivingTeam} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{archivingTeam ? "…" : t("tm.archivieren")}</button></div>}{canCreate && editingTeam && <div className="rounded-2xl p-3.5 mb-4" style={{ background: C.paperDim }}><input value={editName} onChange={(e) => setEditName(e.target.value)} maxLength={80} placeholder={t("ph.mannschaftsname")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.glass }}/><input value={editCategory} onChange={(e) => setEditCategory(e.target.value)} maxLength={80} placeholder={t("ph.kategorie")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.glass }}/><div className="flex gap-2"><button onClick={saveTeamEdit} disabled={savingTeamEdit} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{savingTeamEdit ? "…" : t("allg.speichern")}</button><button onClick={() => setEditingTeam(false)} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>{t("allg.abbrechen")}</button></div></div>}<SectionTitle eyebrow={t("tm.kader")} title={t("tm.athletinnen")} right={canAssignPlayers ? <button onClick={() => setShowPlayerPicker((value) => !value)} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showPlayerPicker ? t("allg.schliessen") : "+ Zuweisen"}</button> : null}/>{showPlayerPicker && <div className="rounded-2xl p-3 mb-4" style={{ background: C.paperDim }}><div className="text-[11px] mb-2" style={{ color: C.textDim }}>{t("tm.athletWaehlenHinweis")}</div>{!showNewPlayer ? <button type="button" onClick={() => setShowNewPlayer(true)} className="w-full flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 mb-2 text-[11px] font-bold" style={{ background: C.glass, color: C.fehler, border: `1px dashed ${C.red}` }}><Plus size={13}/> Spieler ohne Account anlegen</button> : <div className="rounded-xl p-2.5 mb-2" style={{ background: C.glass }}><div className="text-[10px] mb-1.5" style={{ color: C.textDim }}>{t("tm.ohneKontoHinweis")}</div><input value={newPlayerName} onChange={(e) => setNewPlayerName(e.target.value)} placeholder={t("feld.vollerName")} className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2" style={{ background: C.paperDim }}/><div className="flex gap-2"><button type="button" onClick={() => { setShowNewPlayer(false); setNewPlayerName(""); }} className="flex-1 py-2 rounded-lg text-[11px] font-bold" style={{ background: C.paperDim, color: C.ink }}>{t("allg.abbrechen")}</button><button type="button" disabled={creatingPlayer || !newPlayerName.trim()} onClick={createPlayerWithoutAccount} className="flex-1 py-2 rounded-lg text-[11px] font-bold" style={{ background: newPlayerName.trim() ? C.ink : C.line, color: C.white }}>{creatingPlayer ? "…" : t("allg.anlegen")}</button></div></div>}<div className="space-y-1.5 max-h-56 overflow-y-auto">{players.length === 0 && (
+    {selectedTeam ? <div><button onClick={() => { setSelectedTeamId(""); setShowPlayerPicker(false); setEditingTeam(false); }} className="flex items-center gap-1 text-xs font-bold mb-3" style={{ color: C.fehler }}><ArrowLeft size={14}/> {t("tm.alleTeams")}</button><div className="rounded-2xl p-4 mb-4" style={{ background: C.ink, color: C.white }}><div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: C.textDim }}>{selectedTeam.category || t("tm.mannschaft")}</div><div className="text-xl font-bold" style={{ fontFamily: "Oswald" }}>{selectedTeam.name}</div><div className="text-xs mt-1" style={{ color: C.textDim }}>{mitWerten(t("tm.anzahlVerknuepfteAthleten"), { anzahl: rosterFor(selectedTeam).length })}</div></div><div className="-mt-2 mb-4"><Erstellt von={selectedTeam.created_by} am={selectedTeam.created_at} rahmenlos /></div><MannschaftsFunktionen team={selectedTeam} members={members} /><MannschaftsMeldungen teamId={selectedTeam.id} currentUser={currentUser} imTeam={ownTeams.some((team) => team.id === selectedTeam.id)} />{canCreate && !editingTeam && <div className="flex gap-2 mb-4"><button onClick={() => openEditTeam(selectedTeam)} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>{t("allg.bearbeiten")}</button><button onClick={archiveTeam} disabled={archivingTeam} className="flex-1 py-2 rounded-xl text-xs font-bold" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{archivingTeam ? "…" : t("tm.archivieren")}</button></div>}{canCreate && editingTeam && <div className="rounded-2xl p-3.5 mb-4" style={{ background: C.paperDim }}><input value={editName} onChange={(e) => setEditName(e.target.value)} maxLength={80} placeholder={t("ph.mannschaftsname")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.glass }}/><input value={editCategory} onChange={(e) => setEditCategory(e.target.value)} maxLength={80} placeholder={t("ph.kategorie")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.glass }}/><div className="flex gap-2"><button onClick={saveTeamEdit} disabled={savingTeamEdit} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white }}>{savingTeamEdit ? "…" : t("allg.speichern")}</button><button onClick={() => setEditingTeam(false)} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>{t("allg.abbrechen")}</button></div></div>}<SectionTitle eyebrow={t("tm.kader")} title={t("tm.athletinnen")} right={canAssignPlayers ? <button onClick={() => setShowPlayerPicker((value) => !value)} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showPlayerPicker ? t("allg.schliessen") : t("tm.plusZuweisen")}</button> : null}/>{showPlayerPicker && <div className="rounded-2xl p-3 mb-4" style={{ background: C.paperDim }}><div className="text-[11px] mb-2" style={{ color: C.textDim }}>{t("tm.athletWaehlenHinweis")}</div>{!showNewPlayer ? <button type="button" onClick={() => setShowNewPlayer(true)} className="w-full flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 mb-2 text-[11px] font-bold" style={{ background: C.glass, color: C.fehler, border: `1px dashed ${C.red}` }}><Plus size={13}/> {t("tm.spielerOhneKontoAnlegen")}</button> : <div className="rounded-xl p-2.5 mb-2" style={{ background: C.glass }}><div className="text-[10px] mb-1.5" style={{ color: C.textDim }}>{t("tm.ohneKontoHinweis")}</div><input value={newPlayerName} onChange={(e) => setNewPlayerName(e.target.value)} placeholder={t("feld.vollerName")} className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2" style={{ background: C.paperDim }}/><div className="flex gap-2"><button type="button" onClick={() => { setShowNewPlayer(false); setNewPlayerName(""); }} className="flex-1 py-2 rounded-lg text-[11px] font-bold" style={{ background: C.paperDim, color: C.ink }}>{t("allg.abbrechen")}</button><button type="button" disabled={creatingPlayer || !newPlayerName.trim()} onClick={createPlayerWithoutAccount} className="flex-1 py-2 rounded-lg text-[11px] font-bold" style={{ background: newPlayerName.trim() ? C.ink : C.line, color: C.white }}>{creatingPlayer ? "…" : t("allg.anlegen")}</button></div></div>}<div className="space-y-1.5 max-h-56 overflow-y-auto">{players.length === 0 && (
                   /* Ohne diesen Hinweis oeffnet sich beim Antippen von
                      "Zuweisen" ein leerer Kasten - ohne ein Wort dazu, warum.
                      Die Liste bietet nur Mitglieder mit der Rolle "Athlet/in"
@@ -7839,14 +7841,14 @@ function TeamPenaltyCatalog({ user }) {
     if (error) { setMessage(t("sais.resetFehler")); setResettingSeason(false); return; }
     setAssignments((current) => current.filter((item) => !item.paidAt));
     setSeasonLabel("");
-    setMessage(`Saison-Reset abgeschlossen. ${data ?? 0} bezahlte Strafe(n) archiviert.`);
+    setMessage(OK_ZEICHEN + mitWerten(t("sais.resetFertig"), { anzahl: data ?? 0 }));
     setResettingSeason(false);
   };
   const filteredAssignments = filterRuleId ? assignments.filter((a) => a.ruleId === filterRuleId) : assignments;
   const totalsByPlayer = filteredAssignments.reduce((acc, a) => { acc[a.playerName] = (acc[a.playerName] || 0) + a.amount; return acc; }, {});
   const historyBySeasons = historyAssignments.reduce((acc, a) => { (acc[a.season] = acc[a.season] || []).push(a); return acc; }, {});
   return <div className="rounded-2xl p-4 mb-5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
-    <div className="flex items-center gap-2 mb-1 text-sm font-bold" style={{ color: C.ink }}><ClipboardList size={16} style={{ color: C.red }}/> Strafenkatalog</div>
+    <div className="flex items-center gap-2 mb-1 text-sm font-bold" style={{ color: C.ink }}><ClipboardList size={16} style={{ color: C.red }}/> {t("straf.katalog")}</div>
     <div className="text-[11px] mb-3" style={{ color: C.textDim }}>{t("straf.getrennt")}</div>
     {/* Steht fest da, nicht erst nach dem Antippen.
         Ohne Datenbank kippen die Schalter zwar, gespeichert wird nichts - und
@@ -7861,7 +7863,7 @@ function TeamPenaltyCatalog({ user }) {
       </div>
     )}
     {loading ? <div className="text-xs py-3" style={{ color: C.textDim }}>{t("tm.laden")}</div> : teams.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{t("straf.nurErwachsenenmannschaften")}</div> : <>
-      <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>MANNSCHAFT</div>
+      <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>{t("tm.mannschaftLabel")}</div>
       <select value={selectedTeamId} onChange={(event) => { setSelectedTeamId(event.target.value); setMessage(""); setShowHistory(false); }} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-3" style={{ background: C.paperDim, color: C.ink }}>{teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}</select>
       {canManageSelectedTeam && (
         <div className="rounded-xl p-3 mb-3" style={{ background: C.paperDim }}>
@@ -7887,13 +7889,13 @@ function TeamPenaltyCatalog({ user }) {
       )}
       {!strafenSichtbar && <div className="text-[11px] rounded-xl p-3 mb-3" style={{ background: C.paperDim, color: C.textDim }}>{t("straf.ausgeblendet")}</div>}
       <div className="space-y-2 mb-3" hidden={!strafenSichtbar}>
-        {rules.map((rule) => <div key={rule.id} className="flex items-center gap-2 px-3 py-2.5 rounded-xl" style={{ background: C.paperDim }}><div className="flex-1 min-w-0"><div className="text-xs font-bold truncate" style={{ color: C.ink }}>{rule.title}</div><Erstellt von={rule.created_by} am={rule.created_at} rahmenlos /></div><div className="text-xs font-bold whitespace-nowrap" style={{ color: C.red, fontFamily: "JetBrains Mono" }}>{rule.amount.toLocaleString(datumsLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</div>{canManageSelectedTeam && <><button type="button" disabled={saving} onClick={() => editRule(rule)} className="px-2 py-1.5 rounded-lg text-[10px] font-bold" style={{ background: C.glass, color: C.ink }}>{t("allg.aendern")}</button><button type="button" disabled={saving} onClick={() => removeRule(rule)} aria-label={`${rule.title} löschen`} className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: C.glass, color: C.red }}><X size={14}/></button></>}</div>)}
+        {rules.map((rule) => <div key={rule.id} className="flex items-center gap-2 px-3 py-2.5 rounded-xl" style={{ background: C.paperDim }}><div className="flex-1 min-w-0"><div className="text-xs font-bold truncate" style={{ color: C.ink }}>{rule.title}</div><Erstellt von={rule.created_by} am={rule.created_at} rahmenlos /></div><div className="text-xs font-bold whitespace-nowrap" style={{ color: C.red, fontFamily: "JetBrains Mono" }}>{rule.amount.toLocaleString(datumsLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</div>{canManageSelectedTeam && <><button type="button" disabled={saving} onClick={() => editRule(rule)} className="px-2 py-1.5 rounded-lg text-[10px] font-bold" style={{ background: C.glass, color: C.ink }}>{t("allg.aendern")}</button><button type="button" disabled={saving} onClick={() => removeRule(rule)} aria-label={mitWerten(t("straf.regelLoeschenAria"), { titel: rule.title })} className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: C.glass, color: C.red }}><X size={14}/></button></>}</div>)}
         {rules.length === 0 && <div className="text-[11px] rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{t("straf.keineRegelnTeam")}</div>}
       </div>
-      {canManageSelectedTeam && <form onSubmit={addRule} className="pt-3" style={{ borderTop: `1px solid ${C.line}` }}><div className="flex items-center justify-between mb-2"><div className="text-[10px] font-bold" style={{ color: C.textDim }}>{editingId ? "REGEL BEARBEITEN" : "NEUE REGEL"}</div>{editingId && <button type="button" onClick={() => { setEditingId(""); setTitle(""); setAmount(""); }} className="text-[10px] font-bold" style={{ color: C.red }}>{t("allg.abbrechen")}</button>}</div><input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={120} placeholder={t("ph.strafeTitel")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim, color: C.ink }}/><div className="flex gap-2"><div className="relative flex-1"><input value={amount} onChange={(event) => setAmount(event.target.value)} inputMode="decimal" placeholder={t("ph.kosten")} className="w-full px-3 pr-8 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}/><span className="absolute right-3 top-2.5 text-xs" style={{ color: C.textDim }}>€</span></div><button type="submit" disabled={saving || !title.trim() || !amount.trim()} className="px-4 rounded-xl text-xs font-bold" style={{ background: title.trim() && amount.trim() ? C.ink : C.line, color: C.white }}>{saving ? "…" : editingId ? t("allg.speichern") : t("allg.hinzufuegen")}</button></div></form>}
+      {canManageSelectedTeam && <form onSubmit={addRule} className="pt-3" style={{ borderTop: `1px solid ${C.line}` }}><div className="flex items-center justify-between mb-2"><div className="text-[10px] font-bold" style={{ color: C.textDim }}>{editingId ? t("straf.regelBearbeitenLabel") : t("straf.neueRegelLabel")}</div>{editingId && <button type="button" onClick={() => { setEditingId(""); setTitle(""); setAmount(""); }} className="text-[10px] font-bold" style={{ color: C.red }}>{t("allg.abbrechen")}</button>}</div><input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={120} placeholder={t("ph.strafeTitel")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{ background: C.paperDim, color: C.ink }}/><div className="flex gap-2"><div className="relative flex-1"><input value={amount} onChange={(event) => setAmount(event.target.value)} inputMode="decimal" placeholder={t("ph.kosten")} className="w-full px-3 pr-8 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}/><span className="absolute right-3 top-2.5 text-xs" style={{ color: C.textDim }}>€</span></div><button type="submit" disabled={saving || !title.trim() || !amount.trim()} className="px-4 rounded-xl text-xs font-bold" style={{ background: title.trim() && amount.trim() ? C.ink : C.line, color: C.white }}>{saving ? "…" : editingId ? t("allg.speichern") : t("allg.hinzufuegen")}</button></div></form>}
       {canManageSelectedTeam && (
         <div className="pt-4 mt-4" style={{ borderTop: `1px solid ${C.line}` }}>
-          <div className="text-[10px] font-bold mb-2" style={{ color: C.textDim }}>STRAFE ZUWEISEN</div>
+          <div className="text-[10px] font-bold mb-2" style={{ color: C.textDim }}>{t("straf.zuweisenLabel")}</div>
           <form onSubmit={assignPenalty} className="flex flex-col gap-2 mb-4">
             <select value={assignPlayerId} onChange={(e) => setAssignPlayerId(e.target.value)} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}>
               <option value="">{t("tm.athletWaehlen2")}</option>
@@ -7906,7 +7908,7 @@ function TeamPenaltyCatalog({ user }) {
             <button type="submit" disabled={assigning || !assignPlayerId || !assignRuleId} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: assignPlayerId && assignRuleId ? C.ink : C.line, color: C.white }}>{assigning ? "…" : t("straf.zuweisen")}</button>
           </form>
           <div className="flex items-center justify-between mb-2">
-            <div className="text-[10px] font-bold" style={{ color: C.textDim }}>VERGEBENE STRAFEN</div>
+            <div className="text-[10px] font-bold" style={{ color: C.textDim }}>{t("straf.vergebeneLabel")}</div>
             <select value={filterRuleId} onChange={(e) => setFilterRuleId(e.target.value)} className="px-2 py-1.5 rounded-lg text-[10px] outline-none" style={{ background: C.paperDim, color: C.ink }}>
               <option value="">{t("straf.alle")}</option>
               {rules.map((r) => <option key={r.id} value={r.id}>{r.title}</option>)}
@@ -7929,7 +7931,7 @@ function TeamPenaltyCatalog({ user }) {
                 </div>
                 <div className="text-xs font-bold whitespace-nowrap" style={{ color: C.red, fontFamily: "JetBrains Mono" }}>{a.amount.toLocaleString(datumsLocale(), { minimumFractionDigits: 2 })} €</div>
                 <button type="button" onClick={() => toggleAssignmentPaid(a)} className="px-2 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: a.paidAt ? C.erfolgFlaeche : C.white, color: a.paidAt ? C.secondary : C.textDim }}>{a.paidAt ? t("bei.bezahlt") : t("bei.offen2")}</button>
-                <button type="button" onClick={() => removeAssignment(a)} aria-label={`Strafe bei ${a.playerName} entfernen`} className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.glass, color: C.red }}><X size={14}/></button>
+                <button type="button" onClick={() => removeAssignment(a)} aria-label={mitWerten(t("straf.entfernenBeiAria"), { name: a.playerName })} className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.glass, color: C.red }}><X size={14}/></button>
               </div>
             ))}
             {filteredAssignments.length === 0 && <div className="text-[11px] rounded-xl p-3" style={{ background: C.glass, color: C.textDim }}>{t("straf.keine")}</div>}
@@ -7939,7 +7941,7 @@ function TeamPenaltyCatalog({ user }) {
             <div className="rounded-xl p-3 mb-2" style={{ background: C.paperDim }}>
               {historyLoading ? <div className="text-[11px]" style={{ color: C.textDim }}>{t("straf.historieLaedt")}</div> : Object.keys(historyBySeasons).length === 0 ? <div className="text-[11px]" style={{ color: C.textDim }}>{t("sais.keineAbgeschlossene")}</div> : Object.entries(historyBySeasons).map(([season, items]) => (
                 <div key={season} className="mb-3 last:mb-0">
-                  <div className="text-[10px] font-bold mb-1.5" style={{ color: C.ink }}>Saison {season} · {items.reduce((sum, i) => sum + i.amount, 0).toLocaleString(datumsLocale(), { minimumFractionDigits: 2 })} €</div>
+                  <div className="text-[10px] font-bold mb-1.5" style={{ color: C.ink }}>{mitWerten(t("sais.saisonName"), { saison: season })} · {items.reduce((sum, i) => sum + i.amount, 0).toLocaleString(datumsLocale(), { minimumFractionDigits: 2 })} €</div>
                   <div className="space-y-1">
                     {items.map((i) => <div key={i.id} className="flex items-center justify-between text-[11px] px-2 py-1.5 rounded-lg" style={{ background: C.glass }}><span style={{ color: C.ink }}>{i.playerName} · {i.ruleTitle}</span><span className="font-bold" style={{ color: C.red, fontFamily: "JetBrains Mono" }}>{i.amount.toLocaleString(datumsLocale(), { minimumFractionDigits: 2 })} €</span></div>)}
                   </div>
@@ -7951,7 +7953,7 @@ function TeamPenaltyCatalog({ user }) {
       )}
       {canManageSeasons && (
         <div className="pt-4 mt-4" style={{ borderTop: `1px solid ${C.line}` }}>
-          <div className="text-[10px] font-bold mb-2" style={{ color: C.textDim }}>SAISON ABSCHLIESSEN (VEREINSWEIT)</div>
+          <div className="text-[10px] font-bold mb-2" style={{ color: C.textDim }}>{t("straf.saisonAbschliessenLabel")}</div>
           <div className="text-[11px] mb-2" style={{ color: C.textDim }}>{t("straf.saisonAbschliessenHinweis")}</div>
           <div className="flex gap-2">
             <input value={seasonLabel} onChange={(e) => setSeasonLabel(e.target.value)} placeholder={t("ph.saisonBeispiel")} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}/>
@@ -8020,7 +8022,7 @@ function TaskCreateForm({ form, setForm, onSubmit, onCancel, editing = false, te
                 style={{ background: C.white, border: `1px solid ${C.line}`, color: C.ink, paddingRight: form[feld] ? 30 : 12 }} />
               {form[feld] && (
                 <button type="button" onClick={() => setForm({ ...form, [feld]: "" })}
-                  aria-label={`${beschriftung} leeren`}
+                  aria-label={mitWerten(t("auf.feldLeeren"), { feld: beschriftung })}
                   className="absolute top-1/2 right-2 w-5 h-5 rounded-full flex items-center justify-center"
                   style={{ transform: "translateY(-50%)", background: C.paperDim }}>
                   <X size={11} style={{ color: C.textDim }} />
@@ -8049,7 +8051,7 @@ function TaskCreateForm({ form, setForm, onSubmit, onCancel, editing = false, te
             {verantwortliche.map((id) => {
               const person = members.find((m) => m.id === id);
               return (
-                <button key={id} onClick={() => entfernen(id)} aria-label={`${person?.name || t("help.personLabel")} entfernen`}
+                <button key={id} onClick={() => entfernen(id)} aria-label={mitWerten(t("auf.personEntfernen"), { name: person?.name || t("help.personLabel") })}
                   className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px]"
                   style={{ background: C.paperDim, color: C.ink, fontWeight: 600 }}>
                   {person?.name || t("allg.unbekannt")} <X size={9} style={{ color: C.fehler }} />
@@ -8059,7 +8061,7 @@ function TaskCreateForm({ form, setForm, onSubmit, onCancel, editing = false, te
           </div>
         )}
         <NutzerWahl personen={members.filter((m) => !verantwortliche.includes(m.id))} wert=""
-          onWaehlen={hinzufuegen} leerLabel="Person hinzufügen …" klein />
+          onWaehlen={hinzufuegen} leerLabel={t("auf.personHinzufuegen")} klein />
       </div>}
 
       <div className="flex gap-2">
@@ -8353,7 +8355,7 @@ function TasksView({ currentUser, members }) {
           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap" style={{ background: erledigt ? C.erfolgFlaeche : free > 0 ? C.paperDim : C.fehlerFlaeche, color: erledigt ? C.erfolg : free > 0 ? C.textDim : C.fehler }}>{erledigt ? t("auf.erledigt") : free > 0 ? `${free}/${task.slots} ${t("help.frei")}` : `${taken}/${task.slots} ${t("help.voll")}`}</span>
         </div>
         {task.description && <div className="text-xs mb-1.5" style={{ color: C.textDim }}>{task.description}</div>}
-        <div className="text-[10px] mb-2" style={{ color: C.textDim }}>{task.teamName ? `${task.teamName} · ` : t("verein.mitPunktRaum")}{task.dueDate ? `Fällig bis ${new Date(task.dueDate).toLocaleDateString(datumsLocale())}` : t("auf.keinFaelligkeitsdatum")}</div>
+        <div className="text-[10px] mb-2" style={{ color: C.textDim }}>{task.teamName ? `${task.teamName} · ` : t("verein.mitPunktRaum")}{task.dueDate ? mitWerten(t("auf.faelligBis"), { datum: new Date(task.dueDate).toLocaleDateString(datumsLocale()) }) : t("auf.keinFaelligkeitsdatum")}</div>
         {verantwortliche.length > 0 && <div className="text-[10px] mb-2" style={{ color: C.textDim }}>{t("auf.verantwortlich")} {verantwortliche.map((v) => v.name).join(", ")}</div>}
         {task.signups.length > 0 && <div className="text-[10px] mb-2" style={{ color: C.textDim }}>{t("help.eingetragenLabel")}: {task.signups.map((s) => s.name).join(", ")}</div>}
         {erledigt && <div className="text-[10px] mb-2" style={{ color: C.erfolg }}>{t("auf.erledigtAm")} {new Date(task.erledigtAm).toLocaleDateString(datumsLocale())}</div>}
@@ -8389,7 +8391,7 @@ function TasksView({ currentUser, members }) {
     : bereiche.length === 1 ? bereiche[0].key : null;
   return (
     <div className="px-4 pt-4 pb-24">
-      <SectionTitle eyebrow={t("verein.vereinLabel")} title={t("auf.titel")} right={canCreateClubTask ? <button onClick={() => { if (showCreateClub) { setEditingTaskId(null); resetForm(); } else setGewaehlterBereich("verein"); setShowCreateClub((v) => !v); }} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showCreateClub ? t("allg.schliessen") : "+ Aufgabe"}</button> : null}/>
+      <SectionTitle eyebrow={t("verein.vereinLabel")} title={t("auf.titel")} right={canCreateClubTask ? <button onClick={() => { if (showCreateClub) { setEditingTaskId(null); resetForm(); } else setGewaehlterBereich("verein"); setShowCreateClub((v) => !v); }} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showCreateClub ? t("allg.schliessen") : t("auf.neueAufgabePlus")}</button> : null}/>
       <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>{t("auf.untertitel")}</div>
       {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: (istErfolg(message)||istErfolg(message)) ? C.erfolgFlaeche : C.fehlerFlaeche, color: (istErfolg(message)||istErfolg(message)) ? C.erfolg : C.fehler }}>{meldungstext(message)}</div>}
       {loading ? <div className="text-xs py-4" style={{ color: C.textDim }}>{t("auf.laden")}</div> : <>
@@ -8452,9 +8454,9 @@ function TasksView({ currentUser, members }) {
           const canManage = manageableTeamIds.includes(team.id);
           return (
             <div key={team.id} className="mb-5">
-              <SectionTitle eyebrow={t("tm.mannschaft")} title={`Aufgaben · ${team.name}`} right={canManage ? <button onClick={() => { if (showCreateTeamId === team.id) { setEditingTaskId(null); resetForm(); } setShowCreateTeamId((v) => v === team.id ? "" : team.id); }} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showCreateTeamId === team.id ? t("allg.schliessen") : "+ Aufgabe"}</button> : null}/>
+              <SectionTitle eyebrow={t("tm.mannschaft")} title={`${t("auf.titel")} · ${team.name}`} right={canManage ? <button onClick={() => { if (showCreateTeamId === team.id) { setEditingTaskId(null); resetForm(); } setShowCreateTeamId((v) => v === team.id ? "" : team.id); }} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showCreateTeamId === team.id ? t("allg.schliessen") : t("auf.neueAufgabePlus")}</button> : null}/>
               {showCreateTeamId === team.id && <TaskCreateForm teams={myTeams} members={members} form={form} setForm={setForm} editing={!!editingTaskId} busy={aufgabeSpeichert} zeigeVerantwortliche={!editingTaskId || istAufgabenLeitung} onSubmit={() => createTask(team.id)} onCancel={() => { setShowCreateTeamId(""); resetForm(); setEditingTaskId(null); }}/>}
-              {tasks.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>Aktuell keine Aufgaben für {team.name}.</div> : tasks.map((t) => <TaskCard key={t.id} task={t} canManage={canManage} onEdit={openEditTask}/>)}
+              {tasks.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{mitWerten(t("auf.keineFuerTeam"), { name: team.name })}</div> : tasks.map((t) => <TaskCard key={t.id} task={t} canManage={canManage} onEdit={openEditTask}/>)}
             </div>
           );
         })}
@@ -8733,7 +8735,7 @@ function VehiclesView({ currentUser, currentClub }) {
   if (!databaseMembership) return <div className="px-4 pt-4 pb-24"><div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{t("fzg.nurEchterVerein")}</div></div>;
   return (
     <div className="px-4 pt-4 pb-24">
-      <SectionTitle eyebrow={t("verein.vereinLabel")} title={t(cfg.vehicleTabLabel)} right={canManageFleet ? <button onClick={() => { if (showAddVehicle) { setEditingVehicleId(null); setNewVehicle({ label: "", plate: "", seats: "" }); } setShowAddVehicle((v) => !v); }} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showAddVehicle ? t("allg.schliessen") : "+ Fahrzeug"}</button> : null}/>
+      <SectionTitle eyebrow={t("verein.vereinLabel")} title={t(cfg.vehicleTabLabel)} right={canManageFleet ? <button onClick={() => { if (showAddVehicle) { setEditingVehicleId(null); setNewVehicle({ label: "", plate: "", seats: "" }); } setShowAddVehicle((v) => !v); }} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showAddVehicle ? t("allg.schliessen") : t("fzg.plusFahrzeug")}</button> : null}/>
       <div className="text-xs mb-4 -mt-2" style={{ color: C.textDim }}>{t(cfg.vehicleIntro)} {t("fzg.jederKannAnfragen")}</div>
       {message && <div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{ background: C.fehlerFlaeche, color: C.fehler }}>{meldungstext(message)}</div>}
       {showAddVehicle && (
@@ -8758,8 +8760,8 @@ function VehiclesView({ currentUser, currentClub }) {
               <Erstellt von={v.created_by} am={v.created_at} rahmenlos />
             </button>
             <ChevronRight size={15} style={{ color: C.textDim }}/>
-            {canManageFleet && <button onClick={() => openEditVehicle(v)} aria-label={`${v.label} bearbeiten`} className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: C.paperDim, color: C.textDim }}>{t("allg.bearbeiten")}</button>}
-            {canManageFleet && <button onClick={() => removeVehicle(v)} aria-label={`${v.label} löschen`} className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.paperDim, color: C.red }}><X size={14}/></button>}
+            {canManageFleet && <button onClick={() => openEditVehicle(v)} aria-label={mitWerten(t("fzg.nameBearbeiten"), { name: v.label })} className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold flex-shrink-0" style={{ background: C.paperDim, color: C.textDim }}>{t("allg.bearbeiten")}</button>}
+            {canManageFleet && <button onClick={() => removeVehicle(v)} aria-label={mitWerten(t("fzg.nameLoeschen"), { name: v.label })} className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.paperDim, color: C.red }}><X size={14}/></button>}
           </div>
         ))}
         {vehicles.length === 0 && !loading && <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{t("fz.keine")}</div>}
@@ -8772,7 +8774,7 @@ function VehiclesView({ currentUser, currentClub }) {
       {loading ? <div className="text-xs py-4 text-center" style={{ color: C.textDim }}>{t("fz.kalenderLaedt")}</div> : (
         <div className="rounded-2xl p-2 mb-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
           <div className="grid grid-cols-7 gap-1 mb-1">
-            {["Mo","Di","Mi","Do","Fr","Sa","So"].map((d) => <div key={d} className="text-center text-[9px] font-bold py-1" style={{ color: C.textDim }}>{d}</div>)}
+            {t("kal.wochentageKurz").split(",").map((d) => <div key={d} className="text-center text-[9px] font-bold py-1" style={{ color: C.textDim }}>{d}</div>)}
           </div>
           <div className="grid grid-cols-7 gap-1">
             {cells.map((day, i) => {
@@ -8783,7 +8785,7 @@ function VehiclesView({ currentUser, currentClub }) {
                   {dayBookings.slice(0, 2).map((b) => (
                     <div key={b.id} className="text-[8px] px-1 py-0.5 rounded mb-0.5 truncate" style={{ background: C.fehlerFlaeche, color: C.fehler }} title={`${b.vehicleLabel} · ${b.label} · ${b.bookedBy}`}>{b.vehicleLabel}: {b.label}</div>
                   ))}
-                  {dayBookings.length > 2 && <div className="text-[8px]" style={{ color: C.textDim }}>+{dayBookings.length - 2} mehr</div>}
+                  {dayBookings.length > 2 && <div className="text-[8px]" style={{ color: C.textDim }}>{mitWerten(t("kal.plusMehr"), { anzahl: dayBookings.length - 2 })}</div>}
                 </div>
               );
             })}
@@ -8822,11 +8824,11 @@ function VehiclesView({ currentUser, currentClub }) {
                   </button>
                 </div>
               ) : (
-                <span className="text-[10px] px-2 py-1 rounded-full flex-shrink-0" style={{ background: C.paperDim, color: C.textDim, fontWeight: 700 }}>angefragt</span>
+                <span className="text-[10px] px-2 py-1 rounded-full flex-shrink-0" style={{ background: C.paperDim, color: C.textDim, fontWeight: 700 }}>{t("fzg.statusAngefragt")}</span>
               )
             )}
             {b.status === "abgelehnt" && (
-              <span className="text-[10px] px-2 py-1 rounded-full flex-shrink-0" style={{ background: C.fehlerFlaeche, color: C.fehler, fontWeight: 700 }}>abgelehnt</span>
+              <span className="text-[10px] px-2 py-1 rounded-full flex-shrink-0" style={{ background: C.fehlerFlaeche, color: C.fehler, fontWeight: 700 }}>{t("fzg.statusAbgelehnt")}</span>
             )}
             {b.status !== "angefragt" && canCancel(b) && (
               <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -8842,18 +8844,18 @@ function VehiclesView({ currentUser, currentClub }) {
         <div className="fixed inset-0 z-50 flex items-end p-3" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => { setSelectedVehicle(null); setEditingBookingId(null); }}>
           <div role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()} className="w-full rounded-3xl p-5 max-h-[85%] overflow-y-auto" style={{ background: C.glass }}>
             <div className="flex items-center justify-between mb-4">
-              <div className="text-lg font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{selectedVehicle.label} {editingBookingId ? "bearbeiten" : "buchen"}</div>
+              <div className="text-lg font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{mitWerten(editingBookingId ? t("fzg.nameBearbeiten") : t("fzg.nameBuchen"), { name: selectedVehicle.label })}</div>
               <button onClick={() => { setSelectedVehicle(null); setEditingBookingId(null); }} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.paperDim }}><X size={15}/></button>
             </div>
             {editingBookingId && !darfEntscheiden && bookings.find((b) => b.id === editingBookingId)?.status === "bestaetigt" && (
               <div className="text-[11px] rounded-xl p-3 mb-3" style={{ background: C.paperDim, color: C.textDim }}>{t("fzg.aenderungBrauchtFreigabe")}</div>
             )}
-            <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>VON</div>
+            <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>{t("fzg.vonLabel")}</div>
             <div className="flex gap-2 mb-3">
               <input type="date" value={bookingForm.startDate} onChange={(e) => setBookingForm({ ...bookingForm, startDate: e.target.value })} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/>
               <select value={bookingForm.startHour} onChange={(e) => setBookingForm({ ...bookingForm, startHour: e.target.value })} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}>{HOURS.map((h) => <option key={h} value={h}>{String(h).padStart(2,"0")}:00</option>)}</select>
             </div>
-            <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>BIS</div>
+            <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>{t("fzg.bisLabel")}</div>
             <div className="flex gap-2 mb-3">
               <input type="date" value={bookingForm.endDate} onChange={(e) => setBookingForm({ ...bookingForm, endDate: e.target.value })} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/>
               <select value={bookingForm.endHour} onChange={(e) => setBookingForm({ ...bookingForm, endHour: e.target.value })} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}>{HOURS.map((h) => <option key={h} value={h}>{String(h).padStart(2,"0")}:00</option>)}</select>
@@ -8890,7 +8892,7 @@ function VehiclesView({ currentUser, currentClub }) {
             <div className="text-xs font-bold mb-1" style={{ color: C.ink }}>{viewingBooking.label}</div>
             <div className="text-[11px] mb-4" style={{ color: C.textDim }}>{viewingBooking.startsAt.toLocaleDateString(datumsLocale())} {String(viewingBooking.startsAt.getHours()).padStart(2,"0")}:00 – {viewingBooking.endsAt.toLocaleDateString(datumsLocale())} {String(viewingBooking.endsAt.getHours()).padStart(2,"0")}:00</div>
             <div className="rounded-2xl p-3.5" style={{ background: C.paperDim }}>
-              <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>GEBUCHT VON</div>
+              <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>{t("fzg.gebuchtVonLabel")}</div>
               <div className="text-sm font-bold mb-2.5" style={{ color: C.ink }}>{viewingBooking.bookedBy}</div>
               {loadingPhones ? (
                 <div className="text-xs" style={{ color: C.textDim }}>{t("tel.laedt")}</div>
@@ -9015,7 +9017,7 @@ function DutyTasksSection({ ev, currentUser, sport, onNeuLaden, dutyPlan, member
     setMessage("");
     const { data, error } = await supabase.rpc("remove_duty_station", { target_event: ev.id, station_name: station });
     if (error) { setMessage(t("help.stationEntfernenFehler")); return; }
-    setMessage(OK_ZEICHEN + (data ? `Station entfernt. ${data === 1 ? t("help.eintragungWurde") : `${data} Eintragungen wurden`} gelöscht.` : t("help.stationEntfernt")));
+    setMessage(OK_ZEICHEN + (data ? (data === 1 ? t("help.stationEntferntEineEintragung") : mitWerten(t("help.stationEntferntEintragungenMehr"), { anzahl: data })) : t("help.stationEntfernt")));
     await loadTasks();
     onNeuLaden?.();
   };
@@ -9023,13 +9025,13 @@ function DutyTasksSection({ ev, currentUser, sport, onNeuLaden, dutyPlan, member
   const alleEntfernen = async () => {
     const gesamt = Object.values(dutyPlan?.[ev.id] || {}).reduce((n, l) => n + (l?.length || 0), 0);
     const frage = gesamt
-      ? `Alle Stationen dieses Termins entfernen? ${gesamt === 1 ? t("help.eineEintragungVerloren") : `${gesamt} Eintragungen gehen`} dabei verloren.`
+      ? (gesamt === 1 ? t("help.alleStationenEntfernenEineEintragung") : mitWerten(t("help.alleStationenEntfernenEintragungenMehr"), { anzahl: gesamt }))
       : t("help.alleStationenEntfernen");
     if (!window.confirm(frage)) return;
     setMessage("");
     const { data, error } = await supabase.rpc("clear_duty_stations", { target_event: ev.id });
     if (error) { setMessage(t("help.stationenEntfernenFehler")); return; }
-    setMessage(data ? `Alle Stationen entfernt, dazu ${data === 1 ? t("help.eineEintragung") : `${data} Eintragungen`}.` : t("help.alleStationenEntfernt"));
+    setMessage(data ? OK_ZEICHEN + (data === 1 ? t("help.alleStationenEntferntEineEintragung") : mitWerten(t("help.alleStationenEntferntEintragungenMehr"), { anzahl: data })) : t("help.alleStationenEntfernt"));
     await loadTasks();
     onNeuLaden?.();
   };
@@ -9062,7 +9064,7 @@ function DutyTasksSection({ ev, currentUser, sport, onNeuLaden, dutyPlan, member
           <div className="flex flex-wrap gap-1.5">
             {ev.helperSlots.map((station) => (
               <button key={station} onClick={() => stationEntfernen(station)}
-                aria-label={`Station ${station} entfernen`}
+                aria-label={mitWerten(t("help.stationNameEntfernen"), { station })}
                 className="px-2.5 py-1 rounded-full text-[11px] flex items-center gap-1.5"
                 style={{ background: C.glass, border: `1px solid ${C.line}`, color: C.ink, fontFamily: "Inter", fontWeight: 600 }}>
                 {station} <X size={11} style={{ color: C.fehler }} />
@@ -9085,12 +9087,12 @@ function DutyTasksSection({ ev, currentUser, sport, onNeuLaden, dutyPlan, member
                 {canManage && <button onClick={() => deleteTask(task.id)} className="text-[10px] font-bold" style={{ color: C.red }}>{t("allg.loeschen")}</button>}
               </div>
               <div className="text-[10px] mb-1.5" style={{ color: C.textDim }}>
-                {task.assigneeName ? `Zugewiesen: ${task.assigneeName}` : t("auf.niemandZugewiesen")}
-                {task.dueDate ? ` · Frist ${new Date(task.dueDate).toLocaleDateString(datumsLocale())}` : ""}
+                {task.assigneeName ? mitWerten(t("auf.zugewiesenAn"), { name: task.assigneeName }) : t("auf.niemandZugewiesen")}
+                {task.dueDate ? ` · ${mitWerten(t("auf.fristDatum"), { datum: new Date(task.dueDate).toLocaleDateString(datumsLocale()) })}` : ""}
               </div>
               {canManage && (
                 <div className="flex gap-1.5 flex-wrap">
-                  <NutzerWahl personen={members.filter((m) => !istNurFan(m))} wert={task.assigneeId || ""} onWaehlen={(v) => assignTask(task.id, v)} leerLabel="niemand zugewiesen" klein />
+                  <NutzerWahl personen={members.filter((m) => !istNurFan(m))} wert={task.assigneeId || ""} onWaehlen={(v) => assignTask(task.id, v)} leerLabel={t("auf.niemandZugewiesenKurz")} klein />
                   <input type="date" value={task.dueDate || ""} onChange={(e) => setDueDate(task.id, e.target.value)} className="px-2 py-1.5 rounded-lg text-[11px] outline-none" style={{ background: C.glass, color: C.ink }}/>
                   <button onClick={() => toggleDone(task)} className="px-2 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: task.done ? C.erfolgFlaeche : C.white, color: task.done ? C.secondary : C.textDim }}>{task.done ? t("auf.erledigt") : t("auf.erledigtFrage")}</button>
                 </div>
@@ -9184,7 +9186,7 @@ function DutyTemplatesPanel({ currentUser, sport }) {
             <button className="w-full text-left p-3.5 flex items-center justify-between" aria-expanded={open} onClick={() => setExpandedId(open ? null : satz.id)}>
               <div>
                 <div className="text-sm font-bold" style={{ color: C.ink }}>{satz.name}</div>
-                <div className="text-[10px]" style={{ color: C.textDim }}>{satz.items.length} Station{satz.items.length === 1 ? "" : "en"}</div>
+                <div className="text-[10px]" style={{ color: C.textDim }}>{satz.items.length === 1 ? t("help.stationAnzahlEins") : mitWerten(t("help.stationAnzahlMehr"), { anzahl: satz.items.length })}</div>
               </div>
               <ChevronDown size={16} style={{ color: C.textDim, transform: open ? "rotate(180deg)" : "none", transition: "transform .2s" }} />
             </button>
@@ -9197,8 +9199,8 @@ function DutyTemplatesPanel({ currentUser, sport }) {
                   </div>
                 ))}
                 <div className="flex gap-2 mt-2">
-                  <input value={newItemTitles[satz.id] || ""} onChange={(e) => setNewItemTitles((all) => ({ ...all, [satz.id]: e.target.value }))} maxLength={60} placeholder={`Station, ${t(cfg.dutyStationExamples)}`} className="flex-1 px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}/>
-                  <button onClick={() => addItem(satz.id)} disabled={!(newItemTitles[satz.id] || "").trim()} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: (newItemTitles[satz.id] || "").trim() ? C.ink : C.line, color: C.white }}>+ Station</button>
+                  <input value={newItemTitles[satz.id] || ""} onChange={(e) => setNewItemTitles((all) => ({ ...all, [satz.id]: e.target.value }))} maxLength={60} placeholder={mitWerten(t("help.stationPlatzhalterBeispiele"), { beispiele: t(cfg.dutyStationExamples) })} className="flex-1 px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}/>
+                  <button onClick={() => addItem(satz.id)} disabled={!(newItemTitles[satz.id] || "").trim()} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: (newItemTitles[satz.id] || "").trim() ? C.ink : C.line, color: C.white }}>{t("help.plusStation")}</button>
                 </div>
                 <button onClick={() => deleteTemplate(satz.id)} className="w-full mt-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.paperDim, color: C.red }}>{t("helf.satzLoeschen")}</button>
                 <Erstellt von={satz.erstelltVon} am={satz.erstelltAm} />
@@ -9320,10 +9322,10 @@ function SubscriptionPanel({ user }) {
     {clubStatus && (
       <div className="rounded-2xl p-4 mb-5" style={{ background: vollzugang ? C.erfolgFlaeche : C.paperDim, border: `1px solid ${vollzugang ? C.erfolgRand : C.line}` }}>
         <div className="text-sm font-bold mb-1" style={{ color: C.ink }}>
-          {vollzugang ? `Vollzugang aktiv (${CLUB_TIER_INFO[clubStatus.tier]?.label || clubStatus.tier})` : t("zug.kostenloseStufe")}
+          {vollzugang ? mitWerten(t("zug.vollzugangAktiv"), { stufe: CLUB_TIER_INFO[clubStatus.tier]?.label || clubStatus.tier }) : t("zug.kostenloseStufe")}
         </div>
         {accountUsage && <div className="text-[11px]" style={{ color: accountUsage.used >= accountUsage.allowed ? C.red : C.textDim }}>
-          {accountUsage.used} von {accountUsage.allowed} Zugängen belegt{accountUsage.used >= accountUsage.allowed ? t("zug.vollzugangHinweis") : ""}
+          {mitWerten(t("zug.zugaengeBelegt"), { belegt: accountUsage.used, erlaubt: accountUsage.allowed })}{accountUsage.used >= accountUsage.allowed ? t("zug.vollzugangHinweis") : ""}
         </div>}
         {!vollzugang && <div className="text-[11px] mt-1.5" style={{ color: C.textDim }}>{t("zug.kostenlosVsVollzugang")}</div>}
       </div>
@@ -9446,7 +9448,7 @@ function HowToVideoLibrary({ user, vorhanden = null }) {
           <div key={video.id} className="rounded-2xl overflow-hidden" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
             <button onClick={() => setOpenId(open ? "" : video.id)} className="w-full flex items-center gap-3 px-3.5 py-3 text-left">
               <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: C.paperDim, color: C.red }}><PlayCircle size={18}/></div>
-              <div className="flex-1 min-w-0"><div className="text-sm font-bold" style={{ color: C.ink }}>{video.title}</div><div className="text-[10px] leading-snug" style={{ color: C.textDim }}>{video.description}</div></div>
+              <div className="flex-1 min-w-0"><div className="text-sm font-bold" style={{ color: C.ink }}>{t(video.titleKey)}</div><div className="text-[10px] leading-snug" style={{ color: C.textDim }}>{t(video.descriptionKey)}</div></div>
               <ChevronDown size={15} style={{ color: C.textDim, transform: open ? "rotate(180deg)" : "none", transition: "transform .2s" }}/>
             </button>
             {open && (
@@ -9630,15 +9632,15 @@ function MemberDetailPanel({ member, onClose, leitung = false, clubId = null }) 
           <div className="text-[10px] uppercase tracking-widest font-bold mb-2" style={{ color: C.textDim }}>{t("straf.titel")}</div>
           {unpaidPenalties.length === 0 && paidPenalties.length === 0 ? <div className="text-[11px] rounded-xl p-3 mb-4" style={{ background: C.paperDim, color: C.textDim }}>{t("straf.keineAktiven")}</div> : (
             <div className="space-y-1.5 mb-4">
-              {unpaidPenalties.map((p) => <div key={p.id} className="flex items-center justify-between px-3 py-2 rounded-xl" style={{ background: C.paperDim }}><span className="text-xs" style={{ color: C.ink }}>{p.title}{p.teamName ? ` · ${p.teamName}` : ""}</span><span className="text-xs font-bold" style={{ color: C.red, fontFamily: "JetBrains Mono" }}>{p.amount.toLocaleString(datumsLocale(), { minimumFractionDigits: 2 })} € · offen</span></div>)}
-              {paidPenalties.map((p) => <div key={p.id} className="flex items-center justify-between px-3 py-2 rounded-xl" style={{ background: C.paperDim }}><span className="text-xs" style={{ color: C.ink }}>{p.title}{p.teamName ? ` · ${p.teamName}` : ""}</span><span className="text-xs font-bold" style={{ color: C.sekundaerAufHell, fontFamily: "JetBrains Mono" }}>{p.amount.toLocaleString(datumsLocale(), { minimumFractionDigits: 2 })} € · bezahlt</span></div>)}
+              {unpaidPenalties.map((p) => <div key={p.id} className="flex items-center justify-between px-3 py-2 rounded-xl" style={{ background: C.paperDim }}><span className="text-xs" style={{ color: C.ink }}>{p.title}{p.teamName ? ` · ${p.teamName}` : ""}</span><span className="text-xs font-bold" style={{ color: C.red, fontFamily: "JetBrains Mono" }}>{p.amount.toLocaleString(datumsLocale(), { minimumFractionDigits: 2 })} € · {t("straf.offenKurz")}</span></div>)}
+              {paidPenalties.map((p) => <div key={p.id} className="flex items-center justify-between px-3 py-2 rounded-xl" style={{ background: C.paperDim }}><span className="text-xs" style={{ color: C.ink }}>{p.title}{p.teamName ? ` · ${p.teamName}` : ""}</span><span className="text-xs font-bold" style={{ color: C.sekundaerAufHell, fontFamily: "JetBrains Mono" }}>{p.amount.toLocaleString(datumsLocale(), { minimumFractionDigits: 2 })} € · {t("straf.bezahltKurz")}</span></div>)}
             </div>
           )}
           {historyPenalties.length > 0 && (
             <div className="mb-4">
               <div className="text-[10px] uppercase tracking-widest font-bold mb-1.5" style={{ color: C.textDim }}>{t("straf.historie")}</div>
               <div className="space-y-1">
-                {historyPenalties.map((p) => <div key={p.id} className="flex items-center justify-between px-3 py-1.5 rounded-lg text-[11px]" style={{ background: C.paperDim }}><span style={{ color: C.textDim }}>{p.title} · Saison {p.season}</span><span style={{ color: C.textDim, fontFamily: "JetBrains Mono" }}>{p.amount.toLocaleString(datumsLocale(), { minimumFractionDigits: 2 })} €</span></div>)}
+                {historyPenalties.map((p) => <div key={p.id} className="flex items-center justify-between px-3 py-1.5 rounded-lg text-[11px]" style={{ background: C.paperDim }}><span style={{ color: C.textDim }}>{p.title} · {mitWerten(t("sais.saisonName"), { saison: p.season })}</span><span style={{ color: C.textDim, fontFamily: "JetBrains Mono" }}>{p.amount.toLocaleString(datumsLocale(), { minimumFractionDigits: 2 })} €</span></div>)}
               </div>
             </div>
           )}
@@ -9647,7 +9649,7 @@ function MemberDetailPanel({ member, onClose, leitung = false, clubId = null }) 
           <div className="text-[10px] uppercase tracking-widest font-bold mb-2" style={{ color: C.textDim }}>{t("auf.titel")}</div>
           {tasks.length === 0 ? <div className="text-[11px] rounded-xl p-3 mb-4" style={{ background: C.paperDim, color: C.textDim }}>{t("auf.keineEingetragen")}</div> : (
             <div className="space-y-1.5 mb-4">
-              {tasks.map((aufgabe) => <div key={aufgabe.id} className="px-3 py-2 rounded-xl" style={{ background: C.paperDim }}><div className="text-xs font-bold" style={{ color: C.ink }}>{aufgabe.title}</div><div className="text-[10px]" style={{ color: C.textDim }}>{aufgabe.teamName ? `${aufgabe.teamName} · ` : t("verein.mitPunktRaum")}{aufgabe.dueDate ? `Fällig bis ${new Date(aufgabe.dueDate).toLocaleDateString(datumsLocale())}` : t("auf.keinFaelligkeitsdatum")}</div></div>)}
+              {tasks.map((aufgabe) => <div key={aufgabe.id} className="px-3 py-2 rounded-xl" style={{ background: C.paperDim }}><div className="text-xs font-bold" style={{ color: C.ink }}>{aufgabe.title}</div><div className="text-[10px]" style={{ color: C.textDim }}>{aufgabe.teamName ? `${aufgabe.teamName} · ` : t("verein.mitPunktRaum")}{aufgabe.dueDate ? mitWerten(t("auf.faelligBis"), { datum: new Date(aufgabe.dueDate).toLocaleDateString(datumsLocale()) }) : t("auf.keinFaelligkeitsdatum")}</div></div>)}
             </div>
           )}
           </>}
@@ -9849,7 +9851,7 @@ function ProfileDataSettings({ user, setMembers, saveRef }) {
   return <div>
     {message&&<div role="status" className="text-[11px] rounded-xl px-3 py-2 mb-4" style={{background:istErfolg(message)?C.erfolgFlaeche:C.fehlerFlaeche,color:istErfolg(message)?C.erfolg:C.fehler}}>{meldungstext(message)}</div>}
     {section(t("pf.persoenlich2"), <><input value={form.membershipNumber} onChange={(e)=>setForm({...form,membershipNumber:e.target.value})} placeholder={t("ph.ausweisnummer")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><input value={form.academicTitle} onChange={(e)=>setForm({...form,academicTitle:e.target.value})} placeholder={t("ph.akadTitel")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><div className="grid grid-cols-2 gap-2"><input value={form.firstName} onChange={(e)=>setForm({...form,firstName:e.target.value})} placeholder={t("reg.vorname")} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><input value={form.lastName} onChange={(e)=>setForm({...form,lastName:e.target.value})} placeholder={t("reg.nachname")} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/></div></>)}
-    {section(t("feld.kontaktdaten"), <><div className="text-[10px] font-bold" style={{color:C.textDim}}>{t("feld.anmeldeadresse")}</div><div className="flex items-center gap-2 px-3 py-2.5 rounded-xl" style={{background:C.paperDim,border:`1px solid ${C.line}`}}><Lock size={13} style={{color:C.textDim,flexShrink:0}}/><span className="text-xs truncate" style={{color:C.textDim}}>{user.email || "—"}</span></div><div className="text-[10px] leading-snug" style={{color:C.textDim}}>{t("feld.anmeldeadresseGesperrt")}</div><div className="text-[10px] font-bold pt-2" style={{color:C.textDim}}>{t("feld.weitereEmails")}</div>{form.emails.map((value,index)=><div key={`e-${index}`} className="flex gap-2"><input type="email" value={value} onChange={(e)=>updateList("emails",index,e.target.value)} placeholder={t("login.email")} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/>{index>0&&<button aria-label={t("aria.emailEntfernen")} onClick={()=>setForm({...form,emails:form.emails.filter((_,i)=>i!==index)})}><X size={15}/></button>}</div>)}<button onClick={()=>addList("emails")} className="flex items-center gap-1 text-[11px] font-bold" style={{color:C.red}}><Plus size={13}/> Weitere E-Mail</button><div className="text-[10px] font-bold pt-2" style={{color:C.textDim}}>{t("feld.telefonnummern")}</div>{form.phones.map((value,index)=><div key={`p-${index}`} className="flex gap-2"><input type="tel" value={value} onChange={(e)=>updateList("phones",index,e.target.value)} placeholder={t("ph.telefonnummer")} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/>{index>0&&<button aria-label={t("aria.telefonEntfernen")} onClick={()=>setForm({...form,phones:form.phones.filter((_,i)=>i!==index)})}><X size={15}/></button>}</div>)}<button onClick={()=>addList("phones")} className="flex items-center gap-1 text-[11px] font-bold" style={{color:C.red}}><Plus size={13}/> Weitere Telefonnummer</button></>)}
+    {section(t("feld.kontaktdaten"), <><div className="text-[10px] font-bold" style={{color:C.textDim}}>{t("feld.anmeldeadresse")}</div><div className="flex items-center gap-2 px-3 py-2.5 rounded-xl" style={{background:C.paperDim,border:`1px solid ${C.line}`}}><Lock size={13} style={{color:C.textDim,flexShrink:0}}/><span className="text-xs truncate" style={{color:C.textDim}}>{user.email || "—"}</span></div><div className="text-[10px] leading-snug" style={{color:C.textDim}}>{t("feld.anmeldeadresseGesperrt")}</div><div className="text-[10px] font-bold pt-2" style={{color:C.textDim}}>{t("feld.weitereEmails")}</div>{form.emails.map((value,index)=><div key={`e-${index}`} className="flex gap-2"><input type="email" value={value} onChange={(e)=>updateList("emails",index,e.target.value)} placeholder={t("login.email")} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/>{index>0&&<button aria-label={t("aria.emailEntfernen")} onClick={()=>setForm({...form,emails:form.emails.filter((_,i)=>i!==index)})}><X size={15}/></button>}</div>)}<button onClick={()=>addList("emails")} className="flex items-center gap-1 text-[11px] font-bold" style={{color:C.red}}><Plus size={13}/> {t("pf.weitereEmail")}</button><div className="text-[10px] font-bold pt-2" style={{color:C.textDim}}>{t("feld.telefonnummern")}</div>{form.phones.map((value,index)=><div key={`p-${index}`} className="flex gap-2"><input type="tel" value={value} onChange={(e)=>updateList("phones",index,e.target.value)} placeholder={t("ph.telefonnummer")} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/>{index>0&&<button aria-label={t("aria.telefonEntfernen")} onClick={()=>setForm({...form,phones:form.phones.filter((_,i)=>i!==index)})}><X size={15}/></button>}</div>)}<button onClick={()=>addList("phones")} className="flex items-center gap-1 text-[11px] font-bold" style={{color:C.red}}><Plus size={13}/> {t("pf.weitereTelefonnummer")}</button></>)}
     {section(t("pf.weitereAngaben"), <><input type="date" value={form.birthdate} onChange={(e)=>setForm({...form,birthdate:e.target.value})} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/><label className="flex items-center justify-between gap-3 px-0.5 py-1"><span className="text-xs" style={{color:C.ink}}>{t("feld.geburtstagZeigen")}</span><button type="button" role="switch" aria-checked={!!form.showBirthday} aria-label={t("feld.geburtstagZeigen")} onClick={()=>setForm({...form,showBirthday:!form.showBirthday})} className="w-10 h-6 rounded-full flex items-center px-0.5" style={{background:form.showBirthday?C.secondary:C.line,justifyContent:form.showBirthday?"flex-end":"flex-start"}}><span className="w-5 h-5 rounded-full" style={{background:C.glass}}/></button></label><select value={form.gender} onChange={(e)=>setForm({...form,gender:e.target.value})} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}><option value="weiblich">{t("gesch.w")}</option><option value="maennlich">{t("gesch.m")}</option><option value="divers">{t("gesch.d")}</option><option value="keine_angabe">{t("gesch.k")}</option></select><input value={form.nationality} onChange={(e)=>setForm({...form,nationality:e.target.value})} placeholder={t("ph.nationalitaet")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={inputStyle}/></>)}
     {/* Strasse bleibt ein freies Feld - dafuer gibt es kein Verzeichnis.
         Land, Postleitzahl und Ort teilen sich mit der Registrierung
@@ -9952,7 +9954,7 @@ function PasswordSettings({ user, onLogout, saveRef }) {
   return <div className="rounded-2xl p-4 space-y-3" style={{background:C.glass,border:`1px solid ${C.line}`}}><input type="password" value={form.old} onChange={(e)=>setForm({...form,old:e.target.value})} placeholder={t("ph.altesPasswort")} className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><input type="password" value={form.next} onChange={(e)=>setForm({...form,next:e.target.value})} placeholder={t("ph.neuesPasswort")} className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><input type="password" value={form.repeat} onChange={(e)=>setForm({...form,repeat:e.target.value})} placeholder={t("ph.neuesPasswortWdh")} className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/><ToggleCard title={t("sich.vonAllenGeraetenAusloggen")} desc={t("sich.alleSitzungenBeenden")} value={form.logoutAll} onChange={(v)=>setForm((old)=>({...old,logoutAll:typeof v==="function"?v(old.logoutAll):v}))}/>{mitCaptcha&&<CaptchaFeld onToken={captchaMeldet} runde={captchaRunde}/>}{message&&<div className="text-[11px]" style={{color:istErfolg(message)?C.erfolg:C.fehler}}>{meldungstext(message)}</div>}</div>;
 }
 
-function SecuritySettings({user,setMembers,saveRef}) { const t = useT(); const [days,setDays]=useState(user.autoLogoutDays??"");const [message,setMessage]=useState("");const save=async()=>{const value=days===""?null:Number(days);if(supabase&&user.authProfileId){const {error}=await supabase.from("profiles").update({auto_logout_days:value}).eq("id",user.authProfileId);if(error){setMessage("Einstellung konnte nicht gespeichert werden.");return;}}setMembers((items)=>items.map((item)=>item.id===user.id?{...item,autoLogoutDays:value}:item));localStorage.setItem(`cmo-last-activity-${user.authProfileId||user.id}`,String(Date.now()));setMessage("Sicherheitseinstellung gespeichert.");};useEffect(() => { saveRef.current = save; });return <div className="rounded-2xl p-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">{t("sich.autoLogout")}</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>{t("sich.autoLogoutHinweis")}</div><select value={days} onChange={(e)=>setDays(e.target.value)} className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}><option value="">{t("kal.nieKurz")}</option><option value="30">{t("sich.tage30")}</option><option value="60">{t("sich.tage60")}</option><option value="90">{t("sich.tage90")}</option></select>{message&&<div className="text-[11px] mt-3" style={{color:C.secondary}}>{meldungstext(message)}</div>}</div>; }
+function SecuritySettings({user,setMembers,saveRef}) { const t = useT(); const [days,setDays]=useState(user.autoLogoutDays??"");const [message,setMessage]=useState("");const save=async()=>{const value=days===""?null:Number(days);if(supabase&&user.authProfileId){const {error}=await supabase.from("profiles").update({auto_logout_days:value}).eq("id",user.authProfileId);if(error){setMessage(t("sys.einstellungFehler"));return;}}setMembers((items)=>items.map((item)=>item.id===user.id?{...item,autoLogoutDays:value}:item));localStorage.setItem(`cmo-last-activity-${user.authProfileId||user.id}`,String(Date.now()));setMessage(t("sich.einstellungGespeichert"));};useEffect(() => { saveRef.current = save; });return <div className="rounded-2xl p-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">{t("sich.autoLogout")}</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>{t("sich.autoLogoutHinweis")}</div><select value={days} onChange={(e)=>setDays(e.target.value)} className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}><option value="">{t("kal.nieKurz")}</option><option value="30">{t("sich.tage30")}</option><option value="60">{t("sich.tage60")}</option><option value="90">{t("sich.tage90")}</option></select>{message&&<div className="text-[11px] mt-3" style={{color:C.secondary}}>{meldungstext(message)}</div>}</div>; }
 
 function ReferralSettings({user,club}) { const t = useT(); const [code,setCode]=useState("");const [used,setUsed]=useState(false);const [loading,setLoading]=useState(false);useEffect(()=>{if(!supabase||!club?.id||!user.authProfileId)return;supabase.from("club_referral_codes").select("code,redeemed_at").eq("club_id",club.id).eq("profile_id",user.authProfileId).maybeSingle().then(({data})=>{setCode(data?.code||"");setUsed(Boolean(data?.redeemed_at));});},[club?.id,user.authProfileId]);const create=async()=>{setLoading(true);const {data,error}=await supabase.rpc("ensure_club_referral_code",{target_club:club.id});if(!error)setCode(data);setLoading(false);};if(used&&!user.roles.includes("sysadmin"))return <div className="rounded-2xl p-4 text-xs" style={{background:C.paperDim,color:C.textDim}}>{t("zug.codeBereitsVerwendet")}</div>;return <div className="rounded-2xl p-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">{t("zug.werben")}</div><div className="text-[11px] mb-4" style={{color:C.textDim}}>{t("zug.werbenHinweis")}</div>{code?<><div className="rounded-xl px-3 py-3 text-center font-bold tracking-wider" style={{background:C.paperDim}}>{code}</div><button onClick={()=>navigator.clipboard?.writeText(code)} className="w-full mt-2 py-2 text-xs font-bold" style={{color:C.red}}>{t("zug.codeKopieren")}</button></>:<button disabled={loading} onClick={create} className="w-full py-3 rounded-xl text-xs font-bold" style={{background:C.ink,color:C.white}}>{loading?t("abst.wirdErstellt"):t("zug.codeErstellen")}</button>}</div>; }
 
@@ -9974,9 +9976,9 @@ function BugReportSettings({user}) { const t = useT(); const [busy,setBusy]=useS
    Der Gerätekalender ruft dieselbe Adresse dauerhaft ab, eine Änderung wirkt
    deshalb beim nächsten Abruf ohne erneutes Einrichten im Gerät. */
 const CALENDAR_EVENT_TYPES = [
-  { key: "training", label: "Trainings", hint: "Deine Trainingseinheiten" },
-  { key: "spiel", label: "Spiele", hint: "Spiele deiner Mannschaften" },
-  { key: "event", label: "Events", hint: "Vereinstermine und Feiern" },
+  { key: "training", label: "Trainings", labelKey: "tmb.trainings", hint: "Deine Trainingseinheiten", hintKey: "kal.artTrainingHinweis" },
+  { key: "spiel", label: "Spiele", labelKey: "ev.spiele2", hint: "Spiele deiner Mannschaften", hintKey: "kal.artSpielHinweis" },
+  { key: "event", label: "Events", labelKey: "ev.events2", hint: "Vereinstermine und Feiern", hintKey: "kal.artEventHinweis" },
 ];
 
 function CalendarSyncSettings({ user, saveRef }) {
@@ -10043,7 +10045,7 @@ function CalendarSyncSettings({ user, saveRef }) {
   useEffect(() => { saveRef.current = sync; });
 
   const url = token && `${window.location.origin}/api/calendar/feed/${token}`;
-  const selectedLabel = CALENDAR_EVENT_TYPES.filter((entry) => gewaehlteArten.includes(entry.key)).map((entry) => entry.label).join(", ");
+  const selectedLabel = CALENDAR_EVENT_TYPES.filter((entry) => gewaehlteArten.includes(entry.key)).map((entry) => t(entry.labelKey)).join(", ");
 
   return <div>
     <div className="rounded-2xl p-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
@@ -10059,8 +10061,8 @@ function CalendarSyncSettings({ user, saveRef }) {
                 {active && <Check size={13} style={{ color: C.white }} />}
               </span>
               <span className="flex-1 min-w-0">
-                <span className="block text-xs font-bold" style={{ color: C.ink }}>{entry.label}</span>
-                <span className="block text-[10px]" style={{ color: C.textDim }}>{entry.hint}</span>
+                <span className="block text-xs font-bold" style={{ color: C.ink }}>{t(entry.labelKey)}</span>
+                <span className="block text-[10px]" style={{ color: C.textDim }}>{t(entry.hintKey)}</span>
               </span>
             </button>
           );
@@ -10103,7 +10105,7 @@ function CalendarSyncSettings({ user, saveRef }) {
 
       {url && <>
         <a href={url.replace(/^https?:/, "webcal:")} className="block w-full text-center mt-2 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.erfolgFlaeche, color: C.erfolg }}>{t("kal.verbinden")}</a>
-        <div className="text-[10px] mt-2 leading-snug" style={{ color: C.textDim }}>Abonniert: {selectedLabel || "nichts"}. Änderst du die Auswahl, übernimmt dein Gerätekalender sie beim nächsten Abruf — ohne erneutes Einrichten.</div>
+        <div className="text-[10px] mt-2 leading-snug" style={{ color: C.textDim }}>{mitWerten(t("kal.abonniertHinweis"), { auswahl: selectedLabel || t("kal.nichtsGewaehlt") })}</div>
       </>}
     </div>
     {message && <div role="status" className="text-[11px] mt-3" style={{ color: istErfolg(message) ? C.erfolg : C.fehler }}>{meldungstext(message)}</div>}
@@ -10197,7 +10199,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
         return;
       }
       if (rumpf?.code === "verein_geht_mit") { setVereineWarnung(rumpf.vereine || []); return; }
-      setDeleteError(rumpf?.error || t("konto.loeschenUnvollstaendig"));
+      setDeleteError(rumpf?.code === "fremdschluessel" ? t("konto.loeschenBlockiert") : t("konto.loeschenUnvollstaendig"));
       return;
     }
     await onLogout();
@@ -10213,7 +10215,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
               mehreren Mannschaften. Wer in Herren 1 und Herren 2 spielt, sah
               seine zweite Mannschaft nirgends. Hier gehoeren alle hin, nach
               Rang geordnet. */}
-          <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{nachRangSortiert(memberAllTeams(user)).join(" · ") || user.team}{user.number ? ` · Rückennummer ${user.number}` : ""}</div>
+          <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{nachRangSortiert(memberAllTeams(user)).join(" · ") || user.team}{user.number ? ` · ${t("feld.rueckennummer")} ${user.number}` : ""}</div>
           <div className="text-xs mt-0.5 mb-2" style={{ color: C.textDim, fontFamily: "Inter" }}>{mitWerten(t("pf.dabeiSeitJahr"), { jahr: user.since })} · {mitWerten(t("pf.jahreAlt"), { zahl: age(user.birthdate) })}</div>
           <div className="flex flex-wrap gap-1.5">
             {user.roles.filter((r) => ROLE_META[r]).map((r) => <Pill key={r} bg={ROLE_META[r].color}>{rollenLabel(t, r)}</Pill>)}
@@ -10388,7 +10390,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
 
       <div className="rounded-2xl p-4 mb-5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
         <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2 text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}><Sparkles size={15} style={{ color: C.secondary }} /> Vereinspunkte</div>
+          <div className="flex items-center gap-2 text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}><Sparkles size={15} style={{ color: C.secondary }} /> {t("pf.vereinspunkte")}</div>
           <span className="text-xs" style={{ color: C.textDim, fontFamily: "JetBrains Mono" }}>{meinePunkte} / {goal}</span>
         </div>
         <div className="h-2.5 rounded-full overflow-hidden" style={{ background: C.paperDim }}>
@@ -10396,8 +10398,8 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
         </div>
         <div className="text-xs mt-2" style={{ color: C.textDim, fontFamily: "Inter" }}>
           {punktePraemie
-            ? (meinePunkte >= goal ? `${punktePraemie} — sprich den Vorstand an! 🎉` : `Noch ${goal - meinePunkte} Punkte bis: ${punktePraemie}`)
-            : (meinePunkte >= goal ? t("auf.zielErreicht") : `Noch ${goal - meinePunkte} Punkte bis zum Ziel`)}
+            ? (meinePunkte >= goal ? mitWerten(t("pf.praemieErreicht"), { praemie: punktePraemie }) : mitWerten(goal - meinePunkte === 1 ? t("pf.nochPunkteBisPraemieEins") : t("pf.nochPunkteBisPraemieMehr"), { anzahl: goal - meinePunkte, praemie: punktePraemie }))
+            : (meinePunkte >= goal ? t("auf.zielErreicht") : mitWerten(goal - meinePunkte === 1 ? t("pf.nochPunkteBisZielEins") : t("pf.nochPunkteBisZielMehr"), { anzahl: goal - meinePunkte }))}
           <div className="text-[10px] mt-1.5" style={{ color: C.textDim }}>
             {t("pf.punkteHinweis")}
           </div>
@@ -10464,7 +10466,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
       {profileUnderlay === "board-overview" && darfVereinVerwalten(user) && <ProfileUnderlay title={t("pf.mitgliederuebersicht")} eyebrow={t("rol.vorstand")} onClose={() => setProfileUnderlay("")}><BoardMemberOverview members={members} currentUser={user} vorauswahl={mitgliedZiel} onVorauswahlErledigt={onMitgliedZielErreicht}/></ProfileUnderlay>}
       {profileUnderlay === "join-requests" && darfVereinVerwalten(user) && <ProfileUnderlay title={t("benach.join_requests")} eyebrow={t("allg.verwalten")} onClose={() => setProfileUnderlay("")}><MembershipApprovalsPanel club={{ id: user.clubId }} members={members} setMembers={setMembers} currentUser={user} nurAnfragen /></ProfileUnderlay>}
       {profileUnderlay === "account" && <ProfileUnderlay title={t("konto.dlg.eyebrow")} onClose={() => setProfileUnderlay("")}>
-        <div className="rounded-2xl p-4 mb-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="flex items-center gap-2 text-sm font-bold mb-1" style={{ color: C.ink }}><ShieldCheck size={16} style={{ color: C.sekundaerAufHell }}/> Sicherheit</div><div className="text-[11px]" style={{ color: C.textDim }}>{t("pf.kontoSupabaseHinweis")}</div></div>
+        <div className="rounded-2xl p-4 mb-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="flex items-center gap-2 text-sm font-bold mb-1" style={{ color: C.ink }}><ShieldCheck size={16} style={{ color: C.sekundaerAufHell }}/> {t("pf.sicherheit")}</div><div className="text-[11px]" style={{ color: C.textDim }}>{t("pf.kontoSupabaseHinweis")}</div></div>
         <div className="space-y-2 mb-6"><a href="/datenschutz" className="w-full flex items-center justify-between rounded-2xl px-3.5 py-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}><span className="text-xs font-bold" style={{ color: C.ink }}>{t("recht.datenschutz")}</span><ChevronRight size={14} style={{ color: C.textDim }}/></a><a href="/nutzungsbedingungen" className="w-full flex items-center justify-between rounded-2xl px-3.5 py-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}><span className="text-xs font-bold" style={{ color: C.ink }}>{t("recht.nutzung")}</span><ChevronRight size={14} style={{ color: C.textDim }}/></a></div>
         <SectionTitle eyebrow={t("allg.weitereOptionen")} title={t("pf.accountverwaltung")}/>
         <ProfileSettingsCard icon={User} title={t("pf.accountVerwalten")} description={t("pf.accountVerwaltenHinweis")} color={C.textDim} onClick={() => setProfileUnderlay("account-delete")}/>
@@ -10557,9 +10559,9 @@ function SeasonVoteView({ currentUser, members, seasonVotes, seasonStand, setSea
   return (
     <div className="px-4 pt-4 pb-10">
       <div className="rounded-2xl p-4 mb-5" style={{ background: `linear-gradient(160deg, ${C.ink}, ${C.asphalt})` }}>
-        <div className="flex items-center gap-2 mb-2"><Trophy size={16} style={{ color: C.secondary }} /><span className="text-white text-sm" style={{ fontFamily: "Inter", fontWeight: 700 }}>Athlet/in der Saison {SAISON_KENNUNG}</span></div>
+        <div className="flex items-center gap-2 mb-2"><Trophy size={16} style={{ color: C.secondary }} /><span className="text-white text-sm" style={{ fontFamily: "Inter", fontWeight: 700 }}>{t("sais.athletDerSaison")} {SAISON_KENNUNG}</span></div>
         {!closed ? (
-          <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>Abstimmung endet am 31.08.2026 · noch {d}T {h}Std {m}Min</div>
+          <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{mitWerten(t("sais.endetCountdown"), { datum: new Date(SEASON_VOTE_DEADLINE).toLocaleDateString(datumsLocale(), { day: "2-digit", month: "2-digit", year: "numeric" }), tage: d, stunden: h, minuten: m })}</div>
         ) : (
           <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("sais.beendet")}</div>
         )}
@@ -11360,7 +11362,7 @@ function TeilnehmerWahl({ alle, gewaehlt, onAendern }) {
             const person = (alle || []).find((m) => m.id === id);
             return (
               <button type="button" key={id} onClick={() => umschalten(id)}
-                aria-label={`${person?.name || id} entfernen`}
+                aria-label={mitWerten(t("aria.nameEntfernen"), { name: person?.name || id })}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs"
                 style={{ background: C.ink, color: C.white, fontWeight: 700 }}>
                 {person?.name || t("allg.unbekannt")} <X size={13} />
@@ -11433,7 +11435,7 @@ function ProtocolCard({ protocol, members, onToggleTask, onLoeschen }) {
         <div>
           <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{protocol.title}</div>
           <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>
-            {protocol.date} · {protocol.attendees.length} {t("prot.teilnehmer")} · {openCount} offen
+            {protocol.date} · {protocol.attendees.length} {t("prot.teilnehmer")} · {mitWerten(t("prot.anzahlOffen"), { anzahl: openCount })}
             {protocol.oeffentlich && <> · {t("prot.oeffentlich")}</>}
           </div>
         </div>
@@ -11539,7 +11541,7 @@ function ProtokollePanel({ members, protocols, setProtocols, onSpeichern, onAufg
   return (
     <div className="space-y-6">
       <div>
-        <div className="text-sm mb-2" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Offene Aufgaben ({openTasks.length})</div>
+        <div className="text-sm mb-2" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{t("verein.statOffeneAufgaben")} ({openTasks.length})</div>
         {openTasks.length === 0 ? (
           <div className="rounded-2xl p-3 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>{t("prot.keineAufgaben")}</div>
         ) : (
@@ -11584,7 +11586,7 @@ function ProtokollePanel({ members, protocols, setProtocols, onSpeichern, onAufg
       </div>
 
       <div>
-        <div className="text-sm mb-2" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>Aufgaben für dieses Protokoll ({draftTasks.length})</div>
+        <div className="text-sm mb-2" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{t("prot.aufgabenFuerProtokoll")} ({draftTasks.length})</div>
         <div className="rounded-2xl p-3 mb-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
           <input value={newTaskText} onChange={(e) => setNewTaskText(e.target.value)} placeholder={t("ph.neueAufgabe")}
             className="w-full px-3 py-2 rounded-lg text-sm outline-none mb-2" style={{ background: C.paperDim, fontFamily: "Inter", color: C.ink }} />
@@ -11660,6 +11662,31 @@ function AutomationsPanel({ welcomeAutomation, setWelcomeAutomation, onEinstellu
  * etwas zu tun, und die Liste waere sauber und falsch.
  *
  * Jede Zeile weiss, wohin sie fuehrt - die Datenbank liefert das Ziel mit. */
+/* offene_punkte_fuer_verein liefert titel und detail als fertigen deutschen
+   Text. Fest ist nur die Art (p.art) - daraus wird der Titel in der
+   App-Sprache. Unbekannte Arten oder ein fehlender Schluessel zeigen weiter
+   den Titel der Datenbank (uebersetze gibt dann den Schluessel zurueck). */
+const OFFENER_PUNKT_TITEL = {
+  mitgliedsantrag: "auf.punktMitgliedsantrag",
+  fahrzeuganfrage: "auf.punktFahrzeuganfrage",
+  spielergebnis: "auf.punktSpielergebnis",
+  helferstation: "auf.punktHelferstation",
+  aufgabe: "auf.punktAufgabe",
+};
+const offenerPunktTitel = (p, t) => {
+  const schluessel = OFFENER_PUNKT_TITEL[p.art];
+  const text = schluessel ? t(schluessel) : "";
+  return text && text !== schluessel ? text : p.titel;
+};
+/* Im Detail stecken zwei deutsche Bausteine derselben Funktion: der
+   Ersatzname fuer eine Fahrzeuganfrage ohne Mitglied und das Wort vor dem
+   Faelligkeitsdatum einer Aufgabe. Namen und Titel bleiben unveraendert. */
+const offenerPunktDetail = (p, t) => {
+  let text = String(p.detail || "");
+  if (p.art === "fahrzeuganfrage" && text.startsWith("Unbekannt · ")) text = t("allg.unbekannt") + text.slice("Unbekannt".length);
+  if (p.art === "aufgabe") text = text.replace(" · fällig ", ` · ${t("feld.faellig")} `);
+  return text;
+};
 function TodoBoard({ currentClub, goPanel, goFahrzeuge, goAufgaben, goHelfer }) {
   const t = useT();
   const [punkte, setPunkte] = useState(null);
@@ -11680,7 +11707,7 @@ function TodoBoard({ currentClub, goPanel, goFahrzeuge, goAufgaben, goHelfer }) 
     <div className="rounded-2xl overflow-hidden mb-4" style={{ border: `1px solid ${C.line}` }}>
       <div className="flex items-center justify-between px-4 py-2.5" style={{ background: C.ink }}>
         <span className="text-xs font-bold" style={{ color: C.white, fontFamily: "Inter" }}>
-          {punkte.length === 0 ? t("auf.nichtsOffen") : `${punkte.length} ${punkte.length === 1 ? "offener Punkt" : "offene Punkte"}`}
+          {punkte.length === 0 ? t("auf.nichtsOffen") : mitWerten(punkte.length === 1 ? t("auf.offenePunkteEins") : t("auf.offenePunkteMehr"), { anzahl: punkte.length })}
         </span>
         <button onClick={laden} aria-label={t("aria.neuLaden")} className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,.14)" }}>
           <RefreshCw size={11} style={{ color: C.white }} />
@@ -11701,8 +11728,8 @@ function TodoBoard({ currentClub, goPanel, goFahrzeuge, goAufgaben, goHelfer }) 
           <span className="w-1.5 h-1.5 rounded-full flex-shrink-0"
             style={{ background: p.art === "mitgliedsantrag" || p.art === "fahrzeuganfrage" ? C.red : C.secondary }} />
           <span className="flex-1 min-w-0">
-            <span className="block text-xs font-bold truncate" style={{ color: C.ink, fontFamily: "Inter" }}>{p.titel}</span>
-            <span className="block text-[11px] truncate" style={{ color: C.textDim, fontFamily: "Inter" }}>{p.detail}</span>
+            <span className="block text-xs font-bold truncate" style={{ color: C.ink, fontFamily: "Inter" }}>{offenerPunktTitel(p, t)}</span>
+            <span className="block text-[11px] truncate" style={{ color: C.textDim, fontFamily: "Inter" }}>{offenerPunktDetail(p, t)}</span>
           </span>
           <ChevronRight size={13} style={{ color: C.textDim, flexShrink: 0 }} />
         </button>
@@ -11735,10 +11762,10 @@ function OverviewPanel({ members, events, protocols, dutyPlan, seasonStand, goPa
 
   return (
     <div className="grid grid-cols-2 gap-3">
-      <StatCard icon={Users} label={t("verein.statMitglieder")} value={mitgliederZahl} sub="alle formale Mitglieder" accent={C.ink} />
-      <StatCard icon={ClipboardList} label={t("verein.statOffeneAufgaben")} value={openTasks} sub="aus Protokollen" accent={C.red} onClick={() => goPanel("protokolle")} />
+      <StatCard icon={Users} label={t("verein.statMitglieder")} value={mitgliederZahl} sub={t("verein.statFormaleMitglieder")} accent={C.ink} />
+      <StatCard icon={ClipboardList} label={t("verein.statOffeneAufgaben")} value={openTasks} sub={t("verein.statAusProtokollen")} accent={C.red} onClick={() => goPanel("protokolle")} />
       {dutyOn && <StatCard icon={AlertCircle} label={t("verein.statHelferLuecken")} value={openSlots} sub={mitWerten(t("verein.statPlaetzeOffen"), { gesamt: totalSlots })} accent={C.secondary} onClick={() => goHelfer?.()} />}
-      {seasonOn && <StatCard icon={Trophy} label={t("verein.statSaisonStimmen")} value={seasonTotal} sub="Athlet/in der Saison" accent={C.secondary} onClick={() => goPanel("season")} />}
+      {seasonOn && <StatCard icon={Trophy} label={t("verein.statSaisonStimmen")} value={seasonTotal} sub={t("sais.athletDerSaison")} accent={C.secondary} onClick={() => goPanel("season")} />}
       <StatCard icon={CalendarDays} label={t("verein.statNaechstesEvent")} value={nextEvent ? formatDate(nextEvent.date) : "—"} sub={nextEvent ? nextEvent.title : t("ev.keinTerminGeplant")} accent={C.red} />
     </div>
   );
@@ -12278,7 +12305,7 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
   return (
     <div className="space-y-3">
       <div className="text-xs leading-relaxed" style={{ color: C.textDim, fontFamily: "Inter" }}>
-        Vier Werbeplätze in der App. Wo Ihr Verein einen eigenen Sponsor einträgt, tritt die Werbung des Betreibers zurück. Eine Aktion — Rabatt, Gutschein, Sonderangebot — erscheint nur, solange sie läuft; danach bleibt der Sponsor stehen und der Aktionsknopf verschwindet von selbst.
+        {t("sp.einleitung")}
       </div>
 
       {/* Ohne Freischaltung laesst sich alles eintragen, aber nichts wird
@@ -12305,7 +12332,7 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
         return (
           <div key={slot.key} className="rounded-2xl p-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
             <div className="flex items-center justify-between mb-2">
-              <div className="text-xs" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{slot.label}</div>
+              <div className="text-xs" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{t(slot.labelKey)}</div>
               {sichtbar && <span className="text-[9px] uppercase tracking-widest font-bold px-2 py-0.5 rounded-full" style={{ background: sichtbar.herkunft === "verein" ? C.sekundaerWeich : C.paperDim, color: sichtbar.herkunft === "verein" ? C.secondary : C.textDim }}>{sichtbar.herkunft === "verein" ? t("sp.ihrSponsor") : t("sp.betreiber")}</span>}
             </div>
 
@@ -12351,7 +12378,7 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
                 <div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.textDim }}>{t("sp.derSponsor")}</div>
                 <input value={entwurf.titel} onChange={(e) => setzen("titel", e.target.value)} placeholder={t("ph.sponsorName")} maxLength={120} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} />
                 <textarea value={entwurf.text} onChange={(e) => setzen("text", e.target.value)} placeholder={t("ph.kurzerText")} rows={2} maxLength={400} className="w-full px-3 py-2 rounded-lg text-xs outline-none resize-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} />
-                <input type="url" inputMode="url" value={entwurf.ziel_url} onChange={(e) => setzen("ziel_url", e.target.value)} placeholder="https://website-des-sponsors.de" className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} />
+                <input type="url" inputMode="url" value={entwurf.ziel_url} onChange={(e) => setzen("ziel_url", e.target.value)} placeholder={t("ph.sponsorWebsite")} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} />
                 {/* Telefon und E-Mail sind nicht nur Zierde: Sie werden im
                     Inserat zu eigenen Knoepfen und im Bericht zu eigenen
                     Zeilen. "Vier Anrufe" ist die Zahl, mit der ein Sponsor
@@ -12363,14 +12390,14 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
                   <input type="file" accept="image/*" className="hidden" onChange={(e) => bildHochladen(e.target.files?.[0])} />
                 </label>
                 {entwurf.bild_pfad && <div className="relative">
-                  <img src={supabase?.storage.from("sponsor-bilder").getPublicUrl(entwurf.bild_pfad).data.publicUrl} alt="Vorschau" className="w-full h-24 object-cover rounded-lg" />
+                  <img src={supabase?.storage.from("sponsor-bilder").getPublicUrl(entwurf.bild_pfad).data.publicUrl} alt={t("allg.vorschau")} className="w-full h-24 object-cover rounded-lg" />
                   <button onClick={() => setzen("bild_pfad", "")} aria-label={t("aria.bildEntfernen")} className="absolute top-1 right-1 w-7 h-7 rounded-full flex items-center justify-center" style={{ background: "rgba(20,21,26,.8)", color: "white" }}><X size={13} /></button>
                 </div>}
 
                 <div className="text-[10px] uppercase tracking-widest font-bold pt-1" style={{ color: C.textDim }}>{t("sp.dieAktion")}</div>
                 <input value={entwurf.aktion_titel} onChange={(e) => setzen("aktion_titel", e.target.value)} placeholder={t("ph.rabattBeispiel")} maxLength={120} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} />
                 <textarea value={entwurf.aktion_text} onChange={(e) => setzen("aktion_text", e.target.value)} placeholder={t("ph.aktionDetail")} rows={3} maxLength={600} className="w-full px-3 py-2 rounded-lg text-xs outline-none resize-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} />
-                <input type="url" inputMode="url" value={entwurf.aktion_url} onChange={(e) => setzen("aktion_url", e.target.value)} placeholder="https://link-zur-aktion.de (optional)" className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} />
+                <input type="url" inputMode="url" value={entwurf.aktion_url} onChange={(e) => setzen("aktion_url", e.target.value)} placeholder={t("ph.aktionLink")} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} />
 
                 {/* Der eigene Aktionszeitraum ist entfallen.
                     Vorher gab es VIER Datumsfelder: Laufzeit von/bis fuer den
@@ -12410,7 +12437,7 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
         <SponsorKennzahlen
           anzeigeId={zahlenFuer.id}
           titel={zahlenFuer.titel}
-          platzLabel={SPONSOR_SLOT_DEFS.find((d) => d.key === zahlenFuer.platz)?.label || zahlenFuer.platz}
+          platzLabel={SPONSOR_SLOT_DEFS.some((d) => d.key === zahlenFuer.platz) ? t(SPONSOR_SLOT_DEFS.find((d) => d.key === zahlenFuer.platz).labelKey) : zahlenFuer.platz}
           vereinsName={currentClub?.name || ""}
           onClose={() => setZahlenFuer(null)}
         />
@@ -12453,7 +12480,7 @@ function PollManagerPanel({ polls, setPolls, clubId, onAnlegen, onUmschalten }) 
        Umfrage, eine davon unuebersetzt. */
     setTitle(""); setOptions(["",""]);
   };
-  return <div className="space-y-4"><div className="rounded-2xl p-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">{t("umf.neu")}</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>{t("umf.mindestens")}</div><input value={title} onChange={(e)=>setTitle(e.target.value)} placeholder={t("ph.frageTitel")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim}}/>{options.map((o,i)=><input key={i} value={o} onChange={(e)=>setOptions((all)=>all.map((x,idx)=>idx===i?e.target.value:x))} placeholder={`Antwort ${i+1}`} className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2" style={{background:C.paperDim}}/>)}<div className="flex gap-2"><button onClick={()=>setOptions((o)=>[...o,""])} className="px-3 py-2 rounded-lg text-xs font-bold" style={{background:C.paperDim,color:C.ink}}>＋ Antwort</button><button onClick={create} disabled={legtAn} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{background: C.red, color: C.aufPrimaer, opacity: legtAn ? .6 : 1}}>{legtAn ? t("allg.wirdAngelegt") : t("allg.veroeffentlichen")}</button></div>{fehler&&<div role="status" className="text-[11px] rounded-xl px-3 py-2 mt-2" style={{background:C.fehlerFlaeche,color:C.fehler}}>{fehler}</div>}</div><div className="space-y-2">{polls.map((poll)=><div key={poll.id} className="rounded-xl p-3 flex items-center gap-3" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="flex-1"><div className="text-xs font-bold">{poll.title}</div><div className="text-[10px] mt-1" style={{color:C.textDim}}>{poll.options.length} Antworten · {poll.options.reduce((n,o)=>n+o.votes,0)} Stimmen</div></div><button onClick={async()=>{const vorher=poll.active;setPolls((ps)=>ps.map((p)=>p.id===poll.id?{...p,active:!vorher}:p));const ergebnis=await onUmschalten?.(poll.id,!vorher);if(ergebnis?.error){setPolls((ps)=>ps.map((p)=>p.id===poll.id?{...p,active:vorher}:p));setFehler(ergebnis.error);}else setFehler("");}} className="px-2.5 py-1.5 rounded-full text-[10px] font-bold" style={{background:poll.active?C.erfolgFlaeche:C.paperDim,color:poll.active?C.secondary:C.textDim}}>{poll.active?t("status.aktiv"):t("status.inaktiv")}</button></div>)}</div></div>;
+  return <div className="space-y-4"><div className="rounded-2xl p-4" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="text-sm font-bold mb-1">{t("umf.neu")}</div><div className="text-[11px] mb-3" style={{color:C.textDim}}>{t("umf.mindestens")}</div><input value={title} onChange={(e)=>setTitle(e.target.value)} placeholder={t("ph.frageTitel")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none mb-2" style={{background:C.paperDim}}/>{options.map((o,i)=><input key={i} value={o} onChange={(e)=>setOptions((all)=>all.map((x,idx)=>idx===i?e.target.value:x))} placeholder={mitWerten(t("umf.antwortNr"), { nr: i+1 })} className="w-full px-3 py-2 rounded-lg text-xs outline-none mb-2" style={{background:C.paperDim}}/>)}<div className="flex gap-2"><button onClick={()=>setOptions((o)=>[...o,""])} className="px-3 py-2 rounded-lg text-xs font-bold" style={{background:C.paperDim,color:C.ink}}>＋ {t("abst.antwort")}</button><button onClick={create} disabled={legtAn} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{background: C.red, color: C.aufPrimaer, opacity: legtAn ? .6 : 1}}>{legtAn ? t("allg.wirdAngelegt") : t("allg.veroeffentlichen")}</button></div>{fehler&&<div role="status" className="text-[11px] rounded-xl px-3 py-2 mt-2" style={{background:C.fehlerFlaeche,color:C.fehler}}>{fehler}</div>}</div><div className="space-y-2">{polls.map((poll)=><div key={poll.id} className="rounded-xl p-3 flex items-center gap-3" style={{background:C.glass,border:`1px solid ${C.line}`}}><div className="flex-1"><div className="text-xs font-bold">{poll.title}</div><div className="text-[10px] mt-1" style={{color:C.textDim}}>{mitWerten(t("umf.antwortenAnzahlMehr"), { anzahl: poll.options.length })} · {poll.options.reduce((n,o)=>n+o.votes,0) === 1 ? t("abst.eineStimme") : mitWerten(t("umf.stimmenAnzahlMehr"), { anzahl: poll.options.reduce((n,o)=>n+o.votes,0) })}</div></div><button onClick={async()=>{const vorher=poll.active;setPolls((ps)=>ps.map((p)=>p.id===poll.id?{...p,active:!vorher}:p));const ergebnis=await onUmschalten?.(poll.id,!vorher);if(ergebnis?.error){setPolls((ps)=>ps.map((p)=>p.id===poll.id?{...p,active:vorher}:p));setFehler(ergebnis.error);}else setFehler("");}} className="px-2.5 py-1.5 rounded-full text-[10px] font-bold" style={{background:poll.active?C.erfolgFlaeche:C.paperDim,color:poll.active?C.secondary:C.textDim}}>{poll.active?t("status.aktiv"):t("status.inaktiv")}</button></div>)}</div></div>;
 }
 
 function MatchResultsPanel({ results, onSave, onDelete, events, currentClub, zeigeRunden = false, mitPunkten = true }) {
@@ -13051,7 +13078,7 @@ function RolesPanel({ members, setMembers, currentUser = null, alleMitglieder = 
                     Vereinsadministration setzen (set_trainer_teams, team_members).
                     Ein Organisator sah die Knoepfe trotzdem, und jeder Klick
                     scheiterte. Statt toter Knoepfe steht fuer ihn ein Satz da. */}
-                {m.roles.includes("trainer")&&draftStufe!=="fan"&&darfLeitung&&<div className="mt-2.5 pt-2.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] mb-2 font-bold" style={{color:C.textDim}}>TRAINER FÜR · MEHRERE MANNSCHAFTEN MÖGLICH</div><div className="flex flex-wrap gap-1.5">{waehlbareMannschaften.length===0&&<span className="text-[11px]" style={{color:C.textDim}}>{t("tm.keineAngelegt")}</span>}{waehlbareMannschaften.map((team)=>{const active=(m.trainerTeams||[]).includes(team.name);return <button type="button" key={team.name} onClick={()=>toggleTrainerTeam(m.id,team.name)} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?ROLE_META.trainer.color:C.paperDim,color:active?C.white:C.textDim}}>{active?"✓ ":""}{team.name}</button>})}</div></div>}
+                {m.roles.includes("trainer")&&draftStufe!=="fan"&&darfLeitung&&<div className="mt-2.5 pt-2.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] mb-2 font-bold" style={{color:C.textDim}}>{t("rol.trainerFuerHinweis")}</div><div className="flex flex-wrap gap-1.5">{waehlbareMannschaften.length===0&&<span className="text-[11px]" style={{color:C.textDim}}>{t("tm.keineAngelegt")}</span>}{waehlbareMannschaften.map((team)=>{const active=(m.trainerTeams||[]).includes(team.name);return <button type="button" key={team.name} onClick={()=>toggleTrainerTeam(m.id,team.name)} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?ROLE_META.trainer.color:C.paperDim,color:active?C.white:C.textDim}}>{active?"✓ ":""}{team.name}</button>})}</div></div>}
                 {!darfLeitung&&draftStufe!=="fan"&&(m.roles.includes("trainer")||m.roles.includes("teammanager"))&&<div className="mt-2.5 pt-2.5 text-[11px]" style={{borderTop:`1px solid ${C.line}`,color:C.textDim}}>{t("rol.mannschaftenNurLeitung")}</div>}
                 {m.roles.includes("teammanager")&&draftStufe!=="fan"&&darfLeitung&&<div className="mt-2.5 pt-2.5" style={{borderTop:`1px solid ${C.line}`}}><div className="text-[10px] mb-2 font-bold" style={{color:C.textDim}}>{t("rol.teammanagerHinweis")}</div><div className="flex flex-wrap gap-1.5">{waehlbareMannschaften.length===0&&<span className="text-[11px]" style={{color:C.textDim}}>{t("tm.keineAngelegt")}</span>}{waehlbareMannschaften.map((team)=>{const active=(m.managedTeams||[]).includes(team.name);return <button type="button" key={team.name} onClick={()=>toggleManagedTeam(m.id,team.name)} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?ROLE_META.teammanager.color:C.paperDim,color:active?C.white:C.textDim}}>{active?"\u2713 ":""}{team.name}</button>})}</div></div>}
                 <div className="flex gap-2 mt-3 pt-3" style={{ borderTop: `1px solid ${C.line}` }}>
@@ -13289,9 +13316,9 @@ function MembershipApprovalsPanel({ club, members, setMembers, currentUser = nul
     }
     setActiveMembers((items) => items.filter((item) => item.id !== member.id));
     setMembers((items) => items.filter((item) => item.id !== member.id));
-    setMessage(`${member.display_name} wurde aus dem Verein entfernt.`);
+    setMessage(mitWerten(t("mit.ausVereinEntfernt"), { name: member.display_name }));
     setWorkingId(null);
-    notifyClubAdmins(club.id, "membership", t("mit.entfernt"), `${member.display_name} wurde aus dem Verein entfernt.`);
+    notifyClubAdmins(club.id, "membership", t("mit.entfernt"), mitWerten(t("mit.ausVereinEntfernt"), { name: member.display_name }));
   };
 
   const loadRequests = async () => {
@@ -13761,7 +13788,7 @@ function ClaimManagedPlayerPanel({ members, setMembers, currentUser }) {
       </select>
       {managed && (
         <NutzerWahl personen={realCandidates} wert={realId} onWaehlen={setRealId}
-          leerLabel="Echtes Konto auswählen …" vorschlaege={suggestions.map((m) => m.id)} />
+          leerLabel={t("sys.echtesKontoWaehlen")} vorschlaege={suggestions.map((m) => m.id)} />
       )}
       <button type="button" disabled={!managedId || !realId || saving} onClick={merge} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: (managedId && realId) ? C.ink : C.line, color: C.white }}>{saving ? t("sys.wirdZusammengefuehrt") : t("mit.zusammenfuehren")}</button>
     </div>
@@ -13798,7 +13825,7 @@ function AdminView({
   const restrictedOnly = !isAdmin(currentUser)
     && (canSponsor || canDutyTemplates || currentUser.roles.includes("organisator"));
   const restrictedPanels = [
-    ...(canSponsor ? [["sponsoring", "Sponsoring"]] : []),
+    ...(canSponsor ? [["sponsoring", t("kpi.rubrik")]] : []),
     ...(canDutyTemplates ? [["duty-templates", t("help.saetzeTitel").replace("{begriff}", t(dutyCfg.dutyTabLabel))]] : []),
     /* Umfragen nur fuer den Organisator (Betreiberentscheidung 14.09.2026):
        Der Sponsorenmanager darf sie nicht mehr anlegen oder verwalten
@@ -13823,7 +13850,7 @@ function AdminView({
     panelWaehlen(bereichWunsch);
     onBereichUebernommen?.();
   }, [bereichWunsch, onBereichUebernommen]);
-  const panels = restrictedOnly ? restrictedPanels : [["overview", t("allg.uebersicht")], ["automation", t("sys.automatisierung")], ...(dutyFeatureOn ? [["duty-templates", t("help.saetzeTitel").replace("{begriff}", t(dutyCfg.dutyTabLabel))]] : []), ["protokolle", t("prot.protokolle")], ["polls", t("umf.umfragen")], ...(SPONSOREN_VERWALTUNG_SICHTBAR ? [["sponsoring", "Sponsoring"]] : []), ...(clubFeatures?.season_award !== false ? [["season", t("sais.athletDerSaison")]] : [])];
+  const panels = restrictedOnly ? restrictedPanels : [["overview", t("allg.uebersicht")], ["automation", t("sys.automatisierung")], ...(dutyFeatureOn ? [["duty-templates", t("help.saetzeTitel").replace("{begriff}", t(dutyCfg.dutyTabLabel))]] : []), ["protokolle", t("prot.protokolle")], ["polls", t("umf.umfragen")], ...(SPONSOREN_VERWALTUNG_SICHTBAR ? [["sponsoring", t("kpi.rubrik")]] : []), ...(clubFeatures?.season_award !== false ? [["season", t("sais.athletDerSaison")]] : [])];
   /* Sprungziele von aussen (offene Punkte, Uebersicht) nur auf Bereiche, die
      es fuer diese Person gibt. Ein unbekanntes Ziel liess sonst die Seite
      unter den Knoepfen leer - so geschehen, als das Helfer-Einteilen in den
@@ -13849,7 +13876,7 @@ function AdminView({
       {!restrictedOnly && <div className="rounded-2xl p-4 mb-5 flex items-center gap-3" style={{ background: C.ink }}>
         <ShieldCheck size={22} style={{ color: C.secondary }} />
         <div>
-          <div className="text-white text-sm" style={{ fontFamily: "Inter", fontWeight: 700 }}>{members.length} Mitglieder</div>
+          <div className="text-white text-sm" style={{ fontFamily: "Inter", fontWeight: 700 }}>{mitWerten(members.length === 1 ? t("sys.mitgliederAnzahlEins") : t("sys.mitgliederAnzahlMehr"), { anzahl: members.length })}</div>
           <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("sys.vereinsverwaltung")}</div>
         </div>
       </div>}
@@ -13909,7 +13936,7 @@ function AdminView({
         const { counts, total, sorted } = seasonResults(seasonStand, saisonKandidaten(members));
         return (
           <div>
-            <div className="text-xs mb-3" style={{ color: C.textDim, fontFamily: "Inter" }}>Nur für den Vorstand sichtbar — {total} Stimmen bisher.</div>
+            <div className="text-xs mb-3" style={{ color: C.textDim, fontFamily: "Inter" }}>{mitWerten(total === 1 ? t("sais.stimmenSichtbarEins") : t("sais.stimmenSichtbarMehr"), { anzahl: total })}</div>
             {sorted.length === 0 && (
               <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>
                 {t("sais.keineKandidatenWahl")}
@@ -14170,7 +14197,7 @@ function NewsOverlay({ newsId, news, onClose }) {
     let abgebrochen = false;
     (async () => {
       const { data, error } = await supabase.from("news_posts")
-        .select("id,title,body,image_path,author_name,created_at").eq("id", newsId).maybeSingle();
+        .select("id,title,body,image_path,author_name,author_id,created_at").eq("id", newsId).maybeSingle();
       let bild = null;
       if (data?.image_path) {
         const { data: signiert } = await supabase.storage.from("news-images").createSignedUrl(data.image_path, 3600);
@@ -14180,7 +14207,7 @@ function NewsOverlay({ newsId, news, onClose }) {
       setFehler(!!error);
       setNachgeladen(data ? {
         id: data.id, title: data.title, text: data.body, imageUrl: bild,
-        who: data.author_name || t("verein.vereinLabel"),
+        who: (!data.author_id && data.author_name === "Verein") ? t("verein.vereinLabel") : (data.author_name || t("verein.vereinLabel")),
         time: new Date(data.created_at).toLocaleDateString(datumsLocale(), { day: "2-digit", month: "2-digit", year: "2-digit" }),
       } : null);
       setLaedt(false);
@@ -14480,8 +14507,8 @@ function PostfachView({ eintraege, laedt, onGelesen, onLoeschen, onAlleLoeschen,
   const zeit = (wert) => {
     const d = new Date(wert);
     const minuten = Math.round((Date.now() - d.getTime()) / 60000);
-    if (minuten < 60) return `vor ${Math.max(1, minuten)} Min.`;
-    if (minuten < 1440) return `vor ${Math.round(minuten / 60)} Std.`;
+    if (minuten < 60) return mitWerten(t("benach.vorMinuten"), { anzahl: Math.max(1, minuten) });
+    if (minuten < 1440) return mitWerten(t("benach.vorStunden"), { anzahl: Math.round(minuten / 60) });
     return d.toLocaleDateString(datumsLocale(), { day: "2-digit", month: "2-digit", year: "2-digit" });
   };
   const ungelesen = eintraege.filter((e) => !e.read_at).length;
@@ -14504,7 +14531,7 @@ function PostfachView({ eintraege, laedt, onGelesen, onLoeschen, onAlleLoeschen,
       {ungelesen > 0 && (
         <button onClick={onGelesen} className="w-full py-2.5 rounded-xl text-xs font-bold mb-3"
           style={{ background: C.paperDim, color: C.ink }}>
-          Alle {ungelesen} als gelesen markieren
+          {ungelesen === 1 ? t("benach.alleGelesenEins") : mitWerten(t("benach.alleGelesenMehr"), { anzahl: ungelesen })}
         </button>
       )}
       {eintraege.length === 0 ? (
@@ -15080,7 +15107,7 @@ export default function ClubMemberOrganisationApp() {
           /* Mannschaftskanaele zeigen den AKTUELLEN Mannschaftsnamen (C8):
              update_club_team benennt den Kanal nicht mit um, channels.name
              bliebe nach einer Umbenennung beim alten Namen stehen. */
-          name: team?.name || k.name,
+          name: team?.name || (!k.team_id && k.name === "Vereins-News" ? t("news.vereinsNews") : k.name),
           emoji: k.emoji || "💬",
           team: team?.name || null,
           adminOnly: (k.write_roles || []).length > 0,
@@ -16968,7 +16995,8 @@ export default function ClubMemberOrganisationApp() {
       /* 409 traegt einen Code und Vereinsnamen im Rumpf - den braucht der
          Aufrufer, um die richtige der beiden Rueckfragen zu stellen. */
       const rumpf = await response.json().catch(() => null);
-      if (rumpf?.code) return rumpf;
+      if (rumpf?.code === "fremdschluessel") return { error: t("konto.loeschenBlockiert") };
+      if (rumpf?.code === "letzter_admin" || rumpf?.code === "verein_geht_mit") return rumpf;
       return { error: t("konto.loeschenFehler") };
     }
     await leavePendingAccount();
@@ -17469,7 +17497,7 @@ export default function ClubMemberOrganisationApp() {
                   {/* Die Glocke. Sie zeigt nur eine Zahl, wenn es etwas zu
                       sehen gibt - eine dauerhaft leere Glocke waere ein Knopf,
                       den niemand mehr ansieht. */}
-                  <button onClick={() => { setSubView("postfach"); postfachLaden(); }} aria-label={`Benachrichtigungen${ungelesen ? `, ${ungelesen} ungelesen` : ""}`}
+                  <button onClick={() => { setSubView("postfach"); postfachLaden(); }} aria-label={ungelesen ? mitWerten(t("aria.benachrichtigungenUngelesen"), { anzahl: ungelesen }) : t("sub.postfach")}
                     className="ml-auto w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 relative"
                     style={{ background: C.glass, border: `1px solid ${C.edge}` }}>
                     <Bell size={15} style={{ color: C.ink }} />
@@ -17493,12 +17521,12 @@ export default function ClubMemberOrganisationApp() {
               <button onClick={() => setSchreibFehler("")} role="status"
                 className="px-4 py-2 text-xs text-center flex-shrink-0 w-full"
                 style={{ background: C.fehlerFlaeche, color: C.fehler, fontFamily: "Inter", fontWeight: 600, borderBottom: C.fehlerRand }}>
-                {schreibFehler} <span style={{ opacity: .6 }}>(tippen zum Ausblenden)</span>
+                {schreibFehler} <span style={{ opacity: .6 }}>({t("allg.tippenZumAusblenden")})</span>
               </button>
             )}
             {datenFehler && (
               <div role="status" className="px-4 py-2 text-xs text-center flex-shrink-0" style={{ background: C.sekundaerWeich, color: C.ink, fontFamily: "Inter", fontWeight: 600, borderBottom: `1px solid ${C.edge}` }}>
-                Diese Bereiche konnten nicht geladen werden: {datenFehler.join(", ")}. Sie sind nicht verloren — bitte später noch einmal öffnen.
+                {mitWerten(datenFehler.length === 1 ? t("allg.bereichNichtGeladenEins") : t("allg.bereicheNichtGeladenMehr"), { bereiche: datenFehler.join(", ") })}
               </div>
             )}
             {/* Laeuft die App noch auf dem veroeffentlichten Code? Der
@@ -17513,7 +17541,7 @@ export default function ClubMemberOrganisationApp() {
             )}
             {maintenanceMode && (
               <div className="px-4 py-2 text-xs text-center flex-shrink-0" style={{ background: C.fehlerFlaeche, color: C.fehler, fontFamily: "Inter", fontWeight: 600, borderBottom: C.fehlerRand }}>
-                🔧 Wartungsmodus aktiv — einige Inhalte können sich kurzfristig ändern.
+                🔧 {t("sys.wartungsmodusHinweis")}
               </div>
             )}
 
@@ -17552,7 +17580,7 @@ export default function ClubMemberOrganisationApp() {
                     currentClub={currentClub} featureEnabled={featureEnabled} />
                 )}
                 {!subView && tab === "teams" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("tm.teamsVerwaltung")}><TeamsView currentUser={currentUser} members={clubMembers} setMembers={setMembers} currentClub={currentClub} teamWunsch={teamWunsch} onTeamWunschErledigt={() => setTeamWunsch(null)} /></LockedFeature>}
-                {!subView && tab === "chat" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature="Chat"><ChatView user={currentUser} channels={channels} setChannels={setChannels} activeId={chatChannelId} setActiveId={setChatChannelId} members={clubMembers} /></LockedFeature>}
+                {!subView && tab === "chat" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("nav.chat")}><ChatView user={currentUser} channels={channels} setChannels={setChannels} activeId={chatChannelId} setActiveId={setChatChannelId} members={clubMembers} /></LockedFeature>}
                 {!subView && tab === "redaktion" && currentUserCanEditNews && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("nav.news")}><RedaktionView user={currentUser} news={vereinsNews} setNews={setVereinsNews} /></LockedFeature>}
                 {/* canManageDuty gehoert mit in die Bedingung: Der Reiter
                     "Verwaltung" wird oben genau danach eingeblendet

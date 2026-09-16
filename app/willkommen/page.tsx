@@ -12,10 +12,24 @@
  * Client-Komponente. Ein Import von dort zöge sie komplett in diese Seite —
  * für eine Textseite mit drei Links wäre das ein Megabyte JavaScript. */
 
-export const metadata = {
-  title: "Club Member Organisation",
-  description: "Die Vereins-App für Termine, Mannschaften, Helferdienste und Vereinsnachrichten.",
-};
+import { headers } from "next/headers";
+import { spracheAusKopf, uebersetze } from "@/lib/sprachen";
+
+/* Sprache aus dem Browser (Accept-Language): Diese Seite wird auf dem
+   Server gezeichnet und sieht die in der App gemerkte Wahl nicht.
+   lib/sprachen.ts ist reine Daten ohne React - der Import zieht NICHT die
+   App aus app/page.tsx nach (siehe Kopf). */
+async function seitenSprache() {
+  return spracheAusKopf((await headers()).get("accept-language"));
+}
+
+export async function generateMetadata() {
+  const sprache = await seitenSprache();
+  return {
+    title: "Club Member Organisation",
+    description: uebersetze(sprache, "store.metaBeschreibung"),
+  };
+}
 
 const tinte = "#2A2028";
 const gedaempft = "#6B5F67";
@@ -80,6 +94,8 @@ async function vereinLaden(kennung: string) {
 
 export default async function Willkommen({ searchParams }: { searchParams: Promise<{ verein?: string }> }) {
   const { verein } = await searchParams;
+  const sprache = await seitenSprache();
+  const t = (schluessel: string) => uebersetze(sprache, schluessel);
   /* Die Vereinskennung wird durchgereicht, damit der Weg im Browser direkt
      bei der Beitrittsanfrage endet statt in der Vereinssuche. Geprueft wird
      sie hier auf ihre Form - was hier hineingegeben wird, landet in einer
@@ -111,7 +127,7 @@ export default async function Willkommen({ searchParams }: { searchParams: Promi
         {eingeladenZu ? (
           <>
             <p style={{ fontSize: 14, marginBottom: 6, lineHeight: 1.6, color: tinte }}>
-              Du wurdest eingeladen zu
+              {t("store.eingeladenZu")}
             </p>
             <p style={{ fontSize: 19, marginBottom: 8, fontWeight: 700, color: rot }}>
               {eingeladenZu.name}
@@ -120,34 +136,32 @@ export default async function Willkommen({ searchParams }: { searchParams: Promi
                 dem Store ist die Vereinskennung weg, und dann ist der Name das
                 Einzige, womit man den Verein in der Suche wiederfindet. */}
             <p style={{ fontSize: 13, marginBottom: 28, lineHeight: 1.6, color: gedaempft }}>
-              Lade die App, erstelle dein Konto und suche dort nach
-              „{eingeladenZu.name}“{eingeladenZu.city ? ` (${eingeladenZu.city})` : ""}.
-              Die Vereinsleitung gibt dich anschließend frei.
+              {t("store.eingeladenHinweis")
+                .replace("{verein}", () => eingeladenZu.name)
+                .replace("{ort}", () => (eingeladenZu.city ? ` (${eingeladenZu.city})` : ""))}
             </p>
           </>
         ) : (
           <p style={{ fontSize: 13, marginBottom: 28, lineHeight: 1.6, color: gedaempft }}>
-            Termine, Mannschaften, Helferdienste und Vereinsnachrichten an einem Ort.
-            Es gibt sie als App fürs Smartphone — und im Browser.
+            {t("store.willkommenText")}
           </p>
         )}
 
-        {appStore && <a href={appStore} style={linkStil}>Im App&nbsp;Store laden</a>}
-        {playStore && <a href={playStore} style={linkStil}>Bei Google&nbsp;Play laden</a>}
+        {appStore && <a href={appStore} style={linkStil}>{t("store.apple")}</a>}
+        {playStore && <a href={playStore} style={linkStil}>{t("store.google")}</a>}
         <a href={vereinsLink} style={{ ...linkStil, background: "#fff", color: tinte, border: "1px solid #E6E0E3" }}>
-          Im Browser öffnen
+          {t("store.imBrowserOeffnen")}
         </a>
         {!playStore && (
           <p style={{ fontSize: 12, marginTop: 14, lineHeight: 1.6, color: gedaempft }}>
-            Für Android kommt die App noch in den Play&nbsp;Store. Bis dahin läuft sie
-            im Browser — mit demselben Konto und allen Funktionen.
+            {t("store.androidHinweis")}
           </p>
         )}
 
         <div style={{ marginTop: 28, fontSize: 12 }}>
-          <a href="/nutzungsbedingungen" style={{ color: gedaempft, margin: "0 8px" }}>Nutzungsbedingungen</a>
-          <a href="/datenschutz" style={{ color: gedaempft, margin: "0 8px" }}>Datenschutz</a>
-          <a href="/impressum" style={{ color: gedaempft, margin: "0 8px" }}>Impressum</a>
+          <a href="/nutzungsbedingungen" style={{ color: gedaempft, margin: "0 8px" }}>{t("recht.nutzung")}</a>
+          <a href="/datenschutz" style={{ color: gedaempft, margin: "0 8px" }}>{t("recht.datenschutz")}</a>
+          <a href="/impressum" style={{ color: gedaempft, margin: "0 8px" }}>{t("recht.impressum")}</a>
         </div>
       </div>
     </div>
