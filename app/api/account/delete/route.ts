@@ -35,6 +35,44 @@ export const dynamic = "force-dynamic";
  * Anweisung: WELCHE Vereine mitgehen, ermittelt ausschliesslich die Datenbank
  * im Moment der Loeschung neu.
  */
+/* Wann hat sich dieses Konto angemeldet?
+ *
+ * Gelesen wird amr ("authentication methods reference") aus dem Token: Dort
+ * steht, WANN die Anmeldung stattgefunden hat. Der Eintrag entsteht beim
+ * Anmelden und wird danach nicht mehr angefasst - in PROD ist keine einzige
+ * der 31 Zeilen in auth.mfa_amr_claims je nachtraeglich veraendert worden.
+ * Ein blosses Erneuern des Tokens verjuengt die Sitzung also nicht.
+ *
+ * iat ist nur der Rueckfall fuer den Fall, dass amr fehlt. Er ist schwaecher
+ * (er springt bei jeder Erneuerung vor), aber nie strenger - und lieber
+ * schwaecher als ein zugemauerter Loeschweg.
+ *
+ * Geprueft wird die Echtheit hier NICHT: Das hat getUser() oben schon gegen
+ * Supabase getan. Hier wird nur noch das Alter abgelesen. */
+function anmeldeZeitpunkt(jwt: string): number | null {
+  try {
+    const teil = jwt.split(".")[1];
+    if (!teil) return null;
+    const inhalt = JSON.parse(Buffer.from(teil, "base64url").toString("utf8")) as {
+      amr?: { timestamp?: number }[];
+      iat?: number;
+    };
+    const zeiten = (inhalt.amr || []).map((e) => Number(e?.timestamp)).filter((z) => Number.isFinite(z) && z > 0);
+    if (zeiten.length) return Math.max(...zeiten);
+    return Number.isFinite(Number(inhalt.iat)) ? Number(inhalt.iat) : null;
+  } catch {
+    /* Unlesbarer Rumpf. Der Token ist echt - nur sein Alter bleibt unbekannt.
+       Dann durchlassen: Ein Loeschweg, den Apple 5.1.1(v) verlangt, darf
+       nicht an einer Formatfrage scheitern. */
+    return null;
+  }
+}
+
+/* Eine halbe Stunde. Lang genug fuer den ganzen Weg samt zweiter Rueckfrage
+   ("Der Verein geht mit"), kurz genug, dass ein liegengebliebenes Geraet
+   nichts mehr nuetzt. */
+const FRISCHE_SEKUNDEN = 30 * 60;
+
 export async function DELETE(request: Request) {
   const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -43,6 +81,32 @@ export async function DELETE(request: Request) {
   const authClient = createClient(url, key, { auth: { persistSession: false } });
   const { data: { user }, error } = await authClient.auth.getUser(token);
   if (error || !user) return NextResponse.json({ error: "Unauthorized", code: "nicht_angemeldet" }, { status: 401 });
+
+  /* Zweiter Riegel: Die Anmeldung muss frisch sein.
+   *
+   * Die App fragt vor dem Loeschen das Passwort ab und meldet sich damit neu
+   * an - der Token, der hier ankommt, ist dann Sekunden alt. Wer die
+   * Oberflaeche umgeht und mit einem gefundenen Token direkt auf diese Route
+   * zielt, hat dagegen meist einen alten: In PROD stehen Sitzungen offen, die
+   * vor zwei Wochen begonnen haben.
+   *
+   * KEINE SACKGASSE, und das ist die Bedingung dafuer, dass diese Pruefung
+   * ueberhaupt hier stehen darf:
+   *   - Abgelehnt wird mit nicht_angemeldet PLUS grund; die App fragt
+   *     daraufhin das Passwort erneut ab und ist danach frisch.
+   *   - Eine aeltere Fassung der App (offen ueber einen Rollout hinweg) kennt
+   *     den Grund nicht und zeigt "bitte erneut anmelden" - auch das fuehrt
+   *     zum Ziel, denn eine frische Anmeldung erfuellt die Bedingung.
+   *   - Die native App laedt dieselbe Adresse (capacitor.config.ts,
+   *     server.url), es gibt also keine im Store festgenagelte Fassung, die
+   *     hier dauerhaft haengen bliebe.
+   *   - Ist das Alter nicht lesbar, wird durchgelassen (siehe oben). */
+  const angemeldetSeit = anmeldeZeitpunkt(token);
+  const alter = angemeldetSeit === null ? 0 : Math.floor(Date.now() / 1000) - angemeldetSeit;
+  if (angemeldetSeit !== null && alter > FRISCHE_SEKUNDEN) {
+    console.error(`Kontoloeschung abgelehnt fuer ${user.id}: Die Anmeldung liegt ${Math.round(alter / 60)} Minuten zurueck.`);
+    return NextResponse.json({ error: "Unauthorized", code: "nicht_angemeldet", grund: "sitzung_zu_alt" }, { status: 401 });
+  }
 
   let admin: ReturnType<typeof getSupabaseAdmin>;
   try {

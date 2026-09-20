@@ -1806,6 +1806,15 @@ const de: Woerterbuch = {
   "kal.feed.mitgliedschaftInaktiv": "Mitgliedschaft nicht aktiv",
   "kal.feed.ladenFehler": "Kalender konnte nicht geladen werden",
   "kal.feed.nichtVerfuegbar": "Kalender gerade nicht verfügbar",
+  "konto.passwortHinweis": "Zur Sicherheit: Bitte gib dein Passwort ein.",
+  "konto.passwortFehlt": "Bitte gib dein Passwort ein.",
+  "konto.passwortFalsch": "Das Passwort stimmt nicht.",
+  "konto.erneutBestaetigen": "Das hat zu lange gedauert. Bitte bestätige noch einmal mit deinem Passwort.",
+  "sais.geteilterSieg": "Geteilt: {namen}",
+  "sais.keineStimmen": "Keine Stimmen abgegeben",
+  "sais.keineStimmenHinweis": "Für diese Saison wurde keine einzige Stimme abgegeben — deshalb gibt es keinen Sieger.",
+  "sais.ehrungGeteilt": "Athlet/in der Saison — geteilt, Ehrung beim Sommerfest",
+  "news.bildEntfernen": "Bild entfernen",
 };
 
 const en: Woerterbuch = {
@@ -3580,6 +3589,15 @@ const en: Woerterbuch = {
   "kal.feed.mitgliedschaftInaktiv": "Membership not active",
   "kal.feed.ladenFehler": "Calendar could not be loaded",
   "kal.feed.nichtVerfuegbar": "Calendar temporarily unavailable",
+  "konto.passwortHinweis": "For your security: please enter your password.",
+  "konto.passwortFehlt": "Please enter your password.",
+  "konto.passwortFalsch": "That password is not correct.",
+  "konto.erneutBestaetigen": "That took too long. Please confirm again with your password.",
+  "sais.geteilterSieg": "Shared: {namen}",
+  "sais.keineStimmen": "No votes cast",
+  "sais.keineStimmenHinweis": "Not a single vote was cast this season — so there is no winner.",
+  "sais.ehrungGeteilt": "Athlete of the season — shared, awarded at the summer party",
+  "news.bildEntfernen": "Remove image",
 };
 
 const es: Woerterbuch = {
@@ -5354,6 +5372,15 @@ const es: Woerterbuch = {
   "kal.feed.mitgliedschaftInaktiv": "La membresía no está activa",
   "kal.feed.ladenFehler": "No se ha podido cargar el calendario",
   "kal.feed.nichtVerfuegbar": "El calendario no está disponible en este momento",
+  "konto.passwortHinweis": "Por seguridad: introduce tu contraseña.",
+  "konto.passwortFehlt": "Introduce tu contraseña.",
+  "konto.passwortFalsch": "La contraseña no es correcta.",
+  "konto.erneutBestaetigen": "Ha pasado demasiado tiempo. Vuelve a confirmar con tu contraseña.",
+  "sais.geteilterSieg": "Compartido: {namen}",
+  "sais.keineStimmen": "Ningún voto emitido",
+  "sais.keineStimmenHinweis": "En esta temporada no se emitió ni un solo voto, así que no hay ganador/a.",
+  "sais.ehrungGeteilt": "Atleta de la temporada — compartido, entrega en la fiesta de verano",
+  "news.bildEntfernen": "Quitar imagen",
 };
 
 const pt: Woerterbuch = {
@@ -7128,6 +7155,15 @@ const pt: Woerterbuch = {
   "kal.feed.mitgliedschaftInaktiv": "A filiação não está ativa",
   "kal.feed.ladenFehler": "Não foi possível carregar o calendário",
   "kal.feed.nichtVerfuegbar": "O calendário não está disponível de momento",
+  "konto.passwortHinweis": "Por segurança: introduz a tua palavra-passe.",
+  "konto.passwortFehlt": "Introduz a tua palavra-passe.",
+  "konto.passwortFalsch": "A palavra-passe não está correta.",
+  "konto.erneutBestaetigen": "Demorou demasiado tempo. Confirma novamente com a tua palavra-passe.",
+  "sais.geteilterSieg": "Partilhado: {namen}",
+  "sais.keineStimmen": "Nenhum voto registado",
+  "sais.keineStimmenHinweis": "Nesta época não foi registado um único voto, por isso não há vencedor/a.",
+  "sais.ehrungGeteilt": "Atleta da época — partilhado, entrega na festa de verão",
+  "news.bildEntfernen": "Remover imagem",
 };
 
 const it: Woerterbuch = {
@@ -8902,6 +8938,15 @@ const it: Woerterbuch = {
   "kal.feed.mitgliedschaftInaktiv": "Tesseramento non attivo",
   "kal.feed.ladenFehler": "Impossibile caricare il calendario",
   "kal.feed.nichtVerfuegbar": "Calendario momentaneamente non disponibile",
+  "konto.passwortHinweis": "Per sicurezza: inserisci la tua password.",
+  "konto.passwortFehlt": "Inserisci la tua password.",
+  "konto.passwortFalsch": "La password non è corretta.",
+  "konto.erneutBestaetigen": "È passato troppo tempo. Conferma di nuovo con la tua password.",
+  "sais.geteilterSieg": "A pari merito: {namen}",
+  "sais.keineStimmen": "Nessun voto espresso",
+  "sais.keineStimmenHinweis": "In questa stagione non è stato espresso nemmeno un voto, quindi non c'è nessun vincitore.",
+  "sais.ehrungGeteilt": "Atleta della stagione — a pari merito, premiazione alla festa d'estate",
+  "news.bildEntfernen": "Rimuovi immagine",
 };
 
 const tr: Woerterbuch = {
@@ -10676,6 +10721,15 @@ const tr: Woerterbuch = {
   "kal.feed.mitgliedschaftInaktiv": "Üyelik aktif değil",
   "kal.feed.ladenFehler": "Takvim yüklenemedi",
   "kal.feed.nichtVerfuegbar": "Takvim şu anda kullanılamıyor",
+  "konto.passwortHinweis": "Güvenlik için: lütfen şifreni gir.",
+  "konto.passwortFehlt": "Lütfen şifreni gir.",
+  "konto.passwortFalsch": "Şifre doğru değil.",
+  "konto.erneutBestaetigen": "Bu çok uzun sürdü. Lütfen şifrenle yeniden onayla.",
+  "sais.geteilterSieg": "Ortak: {namen}",
+  "sais.keineStimmen": "Hiç oy verilmedi",
+  "sais.keineStimmenHinweis": "Bu sezon hiç oy verilmedi, bu yüzden kazanan yok.",
+  "sais.ehrungGeteilt": "Sezonun sporcusu — ortak, yaz şenliğinde ödül",
+  "news.bildEntfernen": "Görseli kaldır",
 };
 
 const fr: Woerterbuch = {
@@ -12450,6 +12504,15 @@ const fr: Woerterbuch = {
   "kal.feed.mitgliedschaftInaktiv": "Adhésion non active",
   "kal.feed.ladenFehler": "Impossible de charger le calendrier",
   "kal.feed.nichtVerfuegbar": "Calendrier momentanément indisponible",
+  "konto.passwortHinweis": "Par sécurité : saisis ton mot de passe.",
+  "konto.passwortFehlt": "Saisis ton mot de passe.",
+  "konto.passwortFalsch": "Le mot de passe est incorrect.",
+  "konto.erneutBestaetigen": "Cela a pris trop de temps. Confirme à nouveau avec ton mot de passe.",
+  "sais.geteilterSieg": "Ex aequo : {namen}",
+  "sais.keineStimmen": "Aucune voix exprimée",
+  "sais.keineStimmenHinweis": "Aucune voix n'a été exprimée cette saison, il n'y a donc pas de gagnant/e.",
+  "sais.ehrungGeteilt": "Athlète de la saison — ex aequo, remise à la fête d'été",
+  "news.bildEntfernen": "Retirer l'image",
 };
 
 const WOERTERBUECHER: Record<string, Woerterbuch> = { de, en, es, pt, it, tr, fr };

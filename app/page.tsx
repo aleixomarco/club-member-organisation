@@ -1196,11 +1196,47 @@ const canManageDuty = (m) => isAdmin(m) || (!!m && m.roles.includes("organisator
  * Massgeblich ist, was die Sicherheitsregel in der Datenbank zulaesst
  * (20260901070000_vorstand_darf_anfragen.sql): Vereinsleitung, nicht
  * Finanzmanager. Beide Stellen benutzen jetzt diese eine Liste. */
+/* EINE Quelle fuer die Leitungsrollen.
+ *
+ * Dieselbe Aufzaehlung stand fuenfmal in dieser Datei - Abo, Chat-Moderation,
+ * Saisonwahl, Fuhrpark, Vereinsfunktionen - und sie lief auseinander: mal mit
+ * sysadmin, mal ohne, mal mit vorstand, mal mit geschaeftsfuehrung. Wer eine
+ * Rolle ergaenzte, fand die anderen vier nicht.
+ *
+ * ABSICHTLICH KEINE NEUE REGEL: Jede der fuenf Listen behaelt GENAU die
+ * Rollen, die sie heute hat. Alles auf eine einzige Liste zu ziehen waere
+ * kein Aufraeumen, sondern eine stille Rechteaenderung:
+ *
+ *   - vorstand und geschaeftsfuehrung sind seit 20260905180000 abgeschafft.
+ *     In PROD gibt es dazu keine einzige Zeile in membership_roles - im
+ *     Demoverein aber sehr wohl (Dirk ist vorstand, Simone
+ *     geschaeftsfuehrung). Einen der Namen zusaetzlich einzutragen wuerde
+ *     dort also sofort Rechte verschieben.
+ *   - sysadmin fehlt beim Fuhrpark nicht aus Versehen: Die Datenbankfunktion
+ *     can_manage_fleet kennt ihn nicht. Haette er hier den Knopf, liefe er
+ *     in eine Ablehnung der Datenbank. Erst wenn can_manage_fleet umgestellt
+ *     ist (Befund "Rollenlisten": vereinsadmin, sysadmin, organisator),
+ *     faellt die Ausnahme weg.
+ *
+ * Die Abweichungen stehen deshalb einzeln und begruendet hier, statt viermal
+ * abgeschrieben irgendwo im Rumpf einer Ansicht. */
+const LEITUNGSROLLEN = ["vereinsadmin", "sysadmin", "vorstand", "geschaeftsfuehrung"];
+/* Fuhrpark: ohne sysadmin, solange can_manage_fleet ihn nicht kennt. */
+/* Fuhrpark: derselbe Satz wie can_manage_fleet seit 20260920100000 und wie
+   darf_fahrzeug_entscheiden - deshalb bewusst NICHT aus LEITUNGSROLLEN
+   abgeleitet: vorstand und geschaeftsfuehrung sind dort raus, organisator ist
+   dazugekommen. */
+const FUHRPARK_ROLLEN = ["vereinsadmin", "sysadmin", "organisator"];
+/* Saisonwahl: ohne geschaeftsfuehrung, dafuer mit dem Finanzmanager - er
+   zahlt die Praemie aus. */
+const SAISON_ROLLEN = [...LEITUNGSROLLEN.filter((r) => r !== "geschaeftsfuehrung"), "finanzmanager"];
+/* Vereinsfunktionen an- und abschalten: ohne geschaeftsfuehrung. */
+const VEREINSFUNKTION_ROLLEN = LEITUNGSROLLEN.filter((r) => r !== "geschaeftsfuehrung");
 /* Ohne den abgeschafften Vorstand: Die Regel "club leaders withdraw open
    access requests" kennt ihn nicht - er sah "Anfrage zurueckziehen", und das
    Loeschen traf null Zeilen (C6). geschaeftsfuehrung bleibt, weil beide
    Regeln (Anfragen, Zurueckziehen) sie noch fuehren. */
-const SUBSCRIPTION_ROLES = ["sysadmin", "vereinsadmin", "geschaeftsfuehrung"];
+const SUBSCRIPTION_ROLES = LEITUNGSROLLEN.filter((r) => r !== "vorstand");
 const canManageSubscription = (m) => !!m && m.roles.some((r) => SUBSCRIPTION_ROLES.includes(r));
 
 /* Mehr Zugaenge anfragen - per E-Mail an den Betreiber.
@@ -1659,7 +1695,18 @@ function seasonResults(stand, kandidaten = []) {
   }, {});
   const total = Number.isFinite(stand?.gesamt) ? stand.gesamt : Object.values(counts).reduce((a, b) => a + b, 0);
   const sorted = [...kandidaten].sort((a, b) => counts[b.id] - counts[a.id]);
-  return { counts, total, sorted };
+  /* Wer hat gewonnen - und hat ueberhaupt jemand gewonnen?
+     sorted[0] allein ist keine Antwort: Ohne eine einzige Stimme steht dort
+     der alphabetisch erste Name, weil saisonKandidaten nach Namen sortiert
+     und eine Sortierung nach lauter Nullen die Reihenfolge stehen laesst.
+     Bei Stimmengleichheit waere der Pokal willkuerlich vergeben.
+     Deshalb: einen Sieger gibt es nur mit Stimmen, und bei Gleichstand sind
+     es alle mit der Hoechstzahl. Gezaehlt wird gegen counts, nicht gegen
+     total - waehrend der Wahl bekommt ein gewoehnliches Mitglied nur die
+     Gesamtzahl, und aus lauter Nullen laesst sich kein Sieger lesen. */
+  const hoechste = sorted.length ? counts[sorted[0].id] : 0;
+  const sieger = hoechste > 0 ? sorted.filter((k) => counts[k.id] === hoechste) : [];
+  return { counts, total, sorted, sieger };
 }
 
 /* ------------------------------------------------------------------ */
@@ -2020,6 +2067,10 @@ function SponsorSlot({ slotKey, bookings, onImpression, onClick, visible = true 
   const anzeige = bookings?.[slotKey];
   const [showDetails, setShowDetails] = useState(false);
   useEffect(() => { if (anzeige && visible) onImpression?.(slotKey); }, [anzeige, slotKey, visible]);
+  /* Android-Zurueck (U6): Die aufgeschlagene Anzeige ist eine eigene Ebene.
+     Die Anmeldung steht VOR dem fruehen return - ein Hook dahinter liefe mal
+     mit und mal nicht, und React zaehlt Hooks nach Reihenfolge. */
+  useZurueck(() => setShowDetails(false), showDetails);
   if (!anzeige || !visible) return null;
 
   const vomVerein = anzeige.herkunft === "verein";
@@ -2612,6 +2663,69 @@ function NewClubScreen({ onCreate, goBack }) {
    vor allem wegen Apple-Richtlinie 5.1.1(v): Bisher blieb ein solches Konto auf
    dem Anmeldebildschirm hängen — es war angelegt, aber aus der App heraus nie
    wieder löschbar. Deshalb steht hier neben dem Abmelden auch die Löschung. */
+/* Das eigene Passwort vor einer unwiderruflichen Handlung.
+ *
+ * WARUM
+ * Die Kontoloeschung fragte bisher nur zurueck ("Wirklich?"). Wer ein
+ * entsperrtes Geraet in die Hand bekommt, loescht damit in zwei Tipps ein
+ * fremdes Konto - und als einziger Vereinsadmin ueber
+ * konto_loeschung_vormerken den ganzen Verein mit allen Daten. Die
+ * Rueckfrage schuetzt davor nichts: Sie laesst sich genauso wegtippen. Und
+ * die Sitzung steht lange offen, der Auto-Logout ist freiwillig - in PROD
+ * gibt es Sitzungen, die vor zwei Wochen begonnen haben.
+ *
+ * WIE
+ * Die Adresse kommt aus der SITZUNG (getUser), nicht aus dem Profil, und sie
+ * wird nirgends angezeigt: Gefragt ist das Passwort, nicht die Faehigkeit,
+ * eine Adresse abzulesen.
+ *
+ * signInWithPassword ist dabei kein Umweg, sondern der einzige Weg - GoTrue
+ * hat kein "Passwort nur pruefen". Der Nebeneffekt ist erwuenscht: Die
+ * erfolgreiche Anmeldung ERSETZT die Sitzung durch eine frische, und genau
+ * darauf stuetzt sich die Frischepruefung in app/api/account/delete. Ein
+ * falsches Passwort laesst die bestehende Sitzung dagegen unberuehrt -
+ * niemand fliegt durch einen Tippfehler aus der App. PasswordSettings geht
+ * diesen Weg seit Monaten, das Verhalten ist also erprobt.
+ *
+ * KEIN AUSSPERREN
+ * Falsches Passwort, Bremse nach zu vielen Versuchen, kein Netz: Es wird
+ * gemeldet und NICHT geloescht - abgemeldet wird nie. Die Bremse benennt
+ * anmeldeFehlerText als solche, damit niemand nach einem Passwort sucht, das
+ * er richtig getippt hat.
+ *
+ * KONTEN OHNE PASSWORT
+ * Es gibt keine: In PROD stehen alle 15 Identitaeten auf "email", keine
+ * einzige auf Apple oder Google, und die App ruft auch nirgends
+ * signInWithOAuth auf. Kaeme das dazu, braucht dieser Block einen zweiten
+ * Zweig (frische Anmeldung beim Anbieter) - sonst koennte sich ein Konto
+ * ohne Passwort nicht mehr loeschen, und das verlangt Apple 5.1.1(v).
+ *
+ * t kommt als Parameter: Das hier ist keine Komponente, useT() waere ein
+ * Haken ausserhalb einer Komponente - wie bei anmeldeFehlerText. */
+async function eigenesPasswortPruefen(passwort, captchaToken, t) {
+  /* Demoverein: Es gibt kein echtes Konto, das man pruefen koennte. Die
+     Aufrufer zeigen dort ohnehin ihre eigene Demomeldung. */
+  if (!supabase) return { ok: true };
+  if (!passwort) return { fehler: t("konto.passwortFehlt") };
+  const { data, error: sitzungsFehler } = await supabase.auth.getUser();
+  const email = data?.user?.email;
+  if (sitzungsFehler || !email) return { fehler: t("login.sitzungAbgelaufen") };
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password: passwort,
+    options: captchaToken ? { captchaToken } : undefined,
+  });
+  if (!error) return { ok: true };
+  /* Nur der wirklich falsche Tipp darf "Passwort stimmt nicht" heissen.
+     Eine Sperre darf hier beim Namen genannt werden: Wer bis hierher kommt,
+     ist angemeldet und kennt seine eigene Adresse - es gibt nichts zu
+     verraten. */
+  const falsch = error.code === "invalid_credentials" || /invalid login credentials/i.test(String(error.message || ""));
+  const gesperrt = error.code === "user_banned" || /user is banned/i.test(String(error.message || ""));
+  if (gesperrt) return { fehler: t("login.kontoGesperrt") };
+  return { fehler: falsch ? t("konto.passwortFalsch") : anmeldeFehlerText(error, t) };
+}
+
 /* Kontoloeschung, ueberall gleich.
  *
  * Bis heute gab es sie nur im PendingAccountScreen. Ein angemeldetes Konto ohne
@@ -2636,9 +2750,32 @@ function KontoLoeschenBlock({ onDelete }) {
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  /* Das Passwort vor der Loeschung (siehe eigenesPasswortPruefen). bestaetigt
+     merkt sich, dass es schon stimmte - die zweite Rueckfrage kommt Sekunden
+     spaeter, da noch einmal zu tippen waere Schikane ohne Gewinn. */
+  const [passwort, setPasswort] = useState("");
+  const [bestaetigt, setBestaetigt] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState(null);
+  const [captchaRunde, setCaptchaRunde] = useState(0);
+  const mitPasswort = !!supabase;
+  const mitCaptcha = captchaAktiv();
+  /* Ist die Pruefung entschieden - Token da oder gestoert -, gehoert die
+     "laeuft noch"-Meldung weg; sonst steht sie da und stimmt nicht mehr. */
+  const captchaMeldet = (token) => {
+    setCaptchaToken(token);
+    if (token !== null) setError((alt) => (alt === t("captcha.bitteWarten") ? "" : alt));
+  };
   /* Der zweite Dialog: Wenn mit dem Konto auch ein Verein untergeht, wird das
      nicht nebenbei erwaehnt, sondern einzeln bestaetigt. */
   const [vereineWarnung, setVereineWarnung] = useState(null);
+  /* Wer den Weg verlaesst, muss das Passwort neu eingeben. Sonst galt die
+     Pruefung, solange die Ansicht stand: Nach einem abgebrochenen Versuch
+     haette ein Tipp genuegt - genau die Luecke, gegen die die Abfrage ist. */
+  const loeschenAbbrechen = () => { setVereineWarnung(null); setBestaetigt(false); setPasswort(""); };
+  /* Android-Zurueck (U6): Diese Warnung steht vor drei Bildschirmen, auf
+     denen es keine Leiste zum Wegnavigieren gibt. Ohne Anmeldung legte die
+     Zurueck-Taste die App in den Hintergrund, statt die Frage zu schliessen. */
+  useZurueck(loeschenAbbrechen, !!vereineWarnung);
 
   const remove = async (vereineBestaetigt = false) => {
     setBusy(true); setError("");
@@ -2652,6 +2789,17 @@ function KontoLoeschenBlock({ onDelete }) {
      * drei Bildschirme VOR der Anmeldung, wo es keine Leiste zum
      * Wegnavigieren gibt - nur ein Neustart der App half. */
     try {
+      /* Erst das Passwort, dann die Loeschung - und nur beim ersten Mal. */
+      if (mitPasswort && !bestaetigt) {
+        if (mitCaptcha && captchaToken === null) { setError(t("captcha.bitteWarten")); return; }
+        const pruefung = await eigenesPasswortPruefen(passwort, captchaToken, t);
+        /* Ein Captcha-Token gilt einmal. Ohne diese Runde scheiterte der
+           zweite Versuch am verbrauchten Token, nicht am Passwort. */
+        if (mitCaptcha) setCaptchaRunde((r) => r + 1);
+        if (!pruefung.ok) { setError(pruefung.fehler); return; }
+        /* Das Passwort nicht laenger im Speicher halten als noetig. */
+        setBestaetigt(true); setPasswort("");
+      }
       const result = await onDelete(vereineBestaetigt);
       /* Der Server antwortet mit einem Code, nicht mit einem fertigen Satz -
          die App spricht sieben Sprachen und formuliert selbst. */
@@ -2660,6 +2808,11 @@ function KontoLoeschenBlock({ onDelete }) {
         setError(t("konto.nurAdmin") + (namen ? ` ${t("konto.nurAdminVereine").replace("{vereine}", namen)}` : ""));
       } else if (result?.code === "verein_geht_mit") {
         setVereineWarnung(result.vereine || []);
+      } else if (result?.code === "sitzung_zu_alt") {
+        /* Zwischen Bestaetigung und Loeschung lag zu viel Zeit (die Route
+           prueft das). Also noch einmal bestaetigen lassen, statt den Weg
+           abzubrechen - sonst waere die Loeschung eine Sackgasse. */
+        setBestaetigt(false); setError(t("konto.erneutBestaetigen"));
       } else if (result?.error) {
         setError(result.error);
       }
@@ -2687,8 +2840,15 @@ function KontoLoeschenBlock({ onDelete }) {
           <div className="text-[11px] leading-snug mb-3" style={{ color: C.textDim }}>
             {t("konto.loeschenKostenHinweis")}
           </div>
+          {mitPasswort && !bestaetigt && (
+            <div className="mb-3">
+              <div className="text-[11px] leading-snug mb-2" style={{ color: C.textDim }}>{t("konto.passwortHinweis")}</div>
+              <input type="password" autoComplete="current-password" value={passwort} onChange={(e) => setPasswort(e.target.value)} placeholder={t("login.passwort")} className="w-full px-3 py-3 rounded-xl text-xs" style={{ background: C.paperDim, color: C.ink }} />
+              {mitCaptcha && <CaptchaFeld onToken={captchaMeldet} runde={captchaRunde} />}
+            </div>
+          )}
           <div className="flex gap-2">
-            <button onClick={() => setConfirming(false)} disabled={busy} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>{t("allg.abbrechen")}</button>
+            <button onClick={() => { setConfirming(false); setBestaetigt(false); setPasswort(""); }} disabled={busy} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.ink }}>{t("allg.abbrechen")}</button>
             <button onClick={() => remove(false)} disabled={busy} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.red, color: C.aufPrimaer, opacity: busy ? .6 : 1 }}>{busy ? t("allg.wirdGeloescht") : t("allg.endgueltigLoeschen")}</button>
           </div>
         </div>
@@ -2701,7 +2861,7 @@ function KontoLoeschenBlock({ onDelete }) {
           wegklicken. */}
       {vereineWarnung && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setVereineWarnung(null)}>
+          style={{ background: "rgba(20,21,26,.72)" }} onClick={loeschenAbbrechen}>
           <div role="dialog" aria-modal="true" className="w-full max-w-sm rounded-3xl p-5"
             style={{ background: C.blatt, boxShadow: "0 -14px 38px rgba(20,21,26,.30)", border: `1px solid ${C.edge}` }}
             onClick={(e) => e.stopPropagation()}>
@@ -2722,7 +2882,7 @@ function KontoLoeschenBlock({ onDelete }) {
                 style={{ background: C.fehler, color: C.white }}>
                 {t("allg.ja")}
               </button>
-              <button onClick={() => setVereineWarnung(null)}
+              <button onClick={loeschenAbbrechen}
                 className="flex-1 py-2.5 rounded-xl text-xs font-bold"
                 style={{ background: C.glass, color: C.ink, border: `1px solid ${C.line}` }}>
                 {t("allg.nein")}
@@ -4009,10 +4169,17 @@ function Dashboard({ user, members, events, channels, news, dutyPlan, seasonStan
      aber undefined landete in der Zeichenkette - auf der Kachel stand woertlich
      "🏆 undefined", sobald die Frist verstrichen war. Die beiden anderen
      Ansichten fangen den leeren Fall ab, diese hier war uebersehen. */
-  const seasonSieger = seasonResults(seasonStand, saisonKandidaten(members)).sorted[0];
+  /* Und der Pokal geht nur an jemanden, der auch Stimmen hat: Ohne eine
+     einzige Stimme stand hier der alphabetisch erste Name, bei Gleichstand
+     ein willkuerlich Gekuerter. Beides entscheidet jetzt seasonResults. */
+  const { sieger: seasonSieger, sorted: seasonKandidatenListe } = seasonResults(seasonStand, saisonKandidaten(members));
+  const seasonSiegerNamen = seasonSieger.map((k) => k.name).join(", ");
   const seasonSubtitle = !seasonClosed
     ? mitWerten(t("sais.bisAbstimmen"), { datum: new Date(SEASON_VOTE_DEADLINE).toLocaleDateString(datumsLocale(), { day: "2-digit", month: "2-digit" }) })
-    : seasonSieger ? `🏆 ${seasonSieger.name}` : t("sais.keineKandidaten");
+    : seasonSieger.length > 1 ? `🏆 ${mitWerten(t("sais.geteilterSieg"), { namen: seasonSiegerNamen })}`
+    : seasonSieger.length === 1 ? `🏆 ${seasonSiegerNamen}`
+    : seasonKandidatenListe.length === 0 ? t("sais.keineKandidaten")
+    : t("sais.keineStimmen");
 
   /* Dieselbe Rechnung wie in der Tippansicht.
      Vorher stand hier member.tippPoints - ein Feld, das aus der Datenbank
@@ -5432,6 +5599,15 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
      Stand weiterzeigen. */
   const openEvent = selectedEvent ? events.find((ev) => ev.id === selectedEvent) : null;
 
+  /* Android-Zurueck (U6): Das Terminblatt und die Loeschfrage sind eigene
+     Ebenen. Ohne Anmeldung schloss die Taste nicht sie, sondern navigierte
+     die Liste dahinter weg. Steht hinter openEvent, weil die Bedingung beim
+     Zeichnen ausgewertet wird. Die Reihenfolge stimmt von selbst: Der Stapel
+     ruft den ZULETZT angemeldeten Handler, und die Loeschfrage geht erst
+     nach dem Blatt auf. */
+  useZurueck(() => setSelectedEvent(null), !!openEvent);
+  useZurueck(() => { setDeleteRequest(null); setTerminFehler(""); }, !!deleteRequest);
+
   return (
     <div className="px-4 pt-4 pb-24">
       <div className="flex items-start justify-between gap-3"><SectionTitle title={t("ev.termineTitel")} />{(canCreateSportEvent||canCreateClubEvent)&&<button onClick={openCreate} className="px-3 py-1.5 rounded-full text-xs flex-shrink-0" style={{background: C.red, color: C.aufPrimaer,fontWeight:700}}>＋ {t("allg.eintragenKnopf")}</button>}</div>
@@ -5703,6 +5879,9 @@ function AbstimmungKarte({ stand, meinProfil, onStimmen, onBeenden, onDetails, m
    nichts, was die Oberflaeche noch verbergen muesste. */
 function AbstimmungDetails({ stand, onSchliessen }) {
   const t = useT();
+  /* Android-Zurueck (U6). Vor dem fruehen return: Ein Hook dahinter liefe
+     nur bei offenem Blatt, und React zaehlt Hooks nach Reihenfolge. */
+  useZurueck(onSchliessen, !!stand);
   if (!stand) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center" style={{ background: "rgba(20,10,18,0.45)" }}
@@ -5757,6 +5936,9 @@ function AbstimmungDetails({ stand, onSchliessen }) {
    Unterhaltung im Ruecken behaelt. */
 function AbstimmungErstellen({ onAnlegen, onSchliessen }) {
   const t = useT();
+  /* Android-Zurueck (U6): Das Formular liegt als Blatt ueber dem Chat und
+     wird nur bei offenem Blatt gezeichnet - deshalb immer angemeldet. */
+  useZurueck(onSchliessen, true);
   const [frage, setFrage] = useState("");
   const [optionen, setOptionen] = useState(["", ""]);
   const [einstellungenOffen, setEinstellungenOffen] = useState(false);
@@ -6254,7 +6436,7 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
      sonst loescht der Kapitaen die unbequeme Nachricht seines Trainers.
      Dieselbe Aufteilung steht als Regel in der Datenbank - die Oberflaeche
      blendet nur aus, was ohnehin abgelehnt wuerde. */
-  const darfModerieren = user.roles.some((r) => ["vorstand", "geschaeftsfuehrung", "vereinsadmin", "sysadmin"].includes(r));
+  const darfModerieren = user.roles.some((r) => LEITUNGSROLLEN.includes(r));
   const nachrichtLoeschen = async (m) => {
     if (!window.confirm(t("chat.loeschenFrage"))) return;
     if (supabase && isDbId(m.id)) {
@@ -6564,6 +6746,12 @@ function RedaktionView({ user, news, setNews }) {
   const [text, setText] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [imageFile, setImageFile] = useState(null);
+  /* Merker fuer "das Bild soll weg".
+     Ein leeres imageUrl reicht dafuer nicht: Es heisst auch beim neuen
+     Beitrag "kein Bild", und update_news_post kann den Unterschied nicht
+     lesen - dort bedeutet ein fehlender Pfad "behalten". Der Wunsch geht
+     deshalb getrennt an die Datenbank. */
+  const [bildEntfernt, setBildEntfernt] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [editingPost, setEditingPost] = useState(null);
@@ -6577,12 +6765,13 @@ function RedaktionView({ user, news, setNews }) {
     setText(item.text || "");
     setImageUrl(item.imageUrl || "");
     setImageFile(null);
+    setBildEntfernt(false);
     setMessage("");
     setShowForm(true);
   };
   const cancelForm = () => {
     setShowForm(false); setEditingPost(null);
-    setTitle(""); setText(""); setImageUrl(""); setImageFile(null); setMessage("");
+    setTitle(""); setText(""); setImageUrl(""); setImageFile(null); setBildEntfernt(false); setMessage("");
   };
 
   const deleteNews = async (item) => {
@@ -6598,15 +6787,27 @@ function RedaktionView({ user, news, setNews }) {
 
   const onFile = (e) => {
     const file = e.target.files?.[0];
+    /* Feld leeren, sonst loest dieselbe Datei kein change mehr aus - etwa nach
+       "Bild entfernen" oder nach einer abgelehnten Datei. */
+    e.target.value = "";
     if (!file) return;
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 5 * 1024 * 1024) {
       setMessage(t("allg.bildFormatHinweis")); return;
     }
-    setImageFile(file); setMessage("");
+    /* Ein neu gewaehltes Bild hebt ein vorher angetipptes Entfernen auf -
+       beides zugleich weist update_news_post ab. */
+    setImageFile(file); setBildEntfernt(false); setMessage("");
     const reader = new FileReader();
     reader.onload = () => setImageUrl(reader.result);
     reader.readAsDataURL(file);
   };
+
+  /* Bild entfernen - der dritte Fall neben "noch keins" und "ein anderes".
+     Die Vorschau geht sofort weg, in der Datenbank passiert erst beim
+     Speichern etwas: Wer abbricht, hat nichts verloren. Bisher ging ein
+     ungewolltes Foto nur weg, indem man den ganzen Beitrag loeschte -
+     Kommentare und Verlauf gingen mit. */
+  const bildEntfernen = () => { setImageUrl(""); setImageFile(null); setBildEntfernt(true); setMessage(""); };
 
   const publish = async () => {
     if (!title.trim() || !text.trim()) return;
@@ -6640,10 +6841,19 @@ function RedaktionView({ user, news, setNews }) {
           new_title: vorlageBleibt ? rohBeitrag.title : title.trim(),
           new_body: vorlageBleibt ? rohBeitrag.text : text.trim(),
           new_image_path: imagePath,
+          /* NULL in new_image_path heisst "behalten" - einen Wert fuer "weg"
+             hatte die Funktion bisher gar nicht. Der Schalter liefert ihn; er
+             und ein neues Bild schliessen sich aus, onFile setzt ihn beim
+             Auswaehlen zurueck. */
+          ...(bildEntfernt ? { bild_entfernen: true } : {}),
         });
         if (error) { if (imagePath) await supabase.storage.from("news-images").remove([imagePath]); setMessage(t("news.aendernFehler")); setSaving(false); return; }
+        /* Zurueck kommt der Pfad, den niemand mehr braucht - beim Austauschen
+           wie beim Entfernen. Ohne dieses Aufraeumen bliebe das Foto im Eimer
+           liegen, obwohl es aus dem Beitrag verschwunden ist. */
         if (replacedImagePath) await supabase.storage.from("news-images").remove([replacedImagePath]);
-        if (!imageFile) finalImageUrl = editingPost.imageUrl;
+        if (bildEntfernt) finalImageUrl = undefined;
+        else if (!imageFile) finalImageUrl = editingPost.imageUrl;
       } else {
         const { data, error } = await supabase.rpc("create_news_post", {
           target_club: user.clubId,
@@ -6656,12 +6866,16 @@ function RedaktionView({ user, news, setNews }) {
       }
     }
     if (editingPost) {
+      /* Beim Entfernen faellt auch der gemerkte Pfad weg - sonst zeigte die
+         Liste nach dem Speichern weiter auf ein Bild, das es nicht mehr
+         gibt. */
+      const bildPfad = (m) => (bildEntfernt ? null : (imagePath || m.imagePath));
       setNews((alle) => alle.map((m) => (m.id === editingPost.id
         /* Bearbeitet ist er ein gewoehnlicher Beitrag: ohne Vorlage, sonst
            stuende weiter der Vorlagentext statt der Aenderung da. */
         ? (vorlageBleibt
-          ? { ...m, imageUrl: finalImageUrl, imagePath: imagePath || m.imagePath }
-          : { ...m, title: title.trim(), text: text.trim(), imageUrl: finalImageUrl, imagePath: imagePath || m.imagePath, vorlage: null, werte: null })
+          ? { ...m, imageUrl: finalImageUrl, imagePath: bildPfad(m) }
+          : { ...m, title: title.trim(), text: text.trim(), imageUrl: finalImageUrl, imagePath: bildPfad(m), vorlage: null, werte: null })
         : m)));
       cancelForm(); setSaving(false);
       return;
@@ -6687,10 +6901,19 @@ function RedaktionView({ user, news, setNews }) {
             className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={{ background: C.paperDim, fontFamily: "Inter", color: C.ink }} />
           <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder={t("ph.newsText")} rows={4}
             className="w-full px-3 py-2.5 rounded-lg text-sm outline-none resize-none" style={{ background: C.paperDim, fontFamily: "Inter", color: C.ink }} />
-          <label className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs cursor-pointer" style={{ background: C.paperDim, fontFamily: "Inter", color: C.textDim }}>
-            <ImageIcon size={14} /> {imageUrl ? t("allg.bildAendern") : t("allg.bildWaehlen2")}
-            <input type="file" accept="image/jpeg,image/png,image/webp" onChange={onFile} className="hidden" />
-          </label>
+          <div className="flex items-center gap-2">
+            <label className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg text-xs cursor-pointer" style={{ background: C.paperDim, fontFamily: "Inter", color: C.textDim }}>
+              <ImageIcon size={14} /> {imageUrl ? t("allg.bildAendern") : t("allg.bildWaehlen2")}
+              <input type="file" accept="image/jpeg,image/png,image/webp" onChange={onFile} className="hidden" />
+            </label>
+            {/* Entfernen neben der Vorschau, nicht nur Austauschen. Ein
+                versehentlich hochgeladenes Foto - etwa von jemandem, der
+                widerspricht - war bisher nur loszuwerden, indem der ganze
+                Beitrag geloescht und neu geschrieben wurde. */}
+            {imageUrl && (
+              <button type="button" onClick={bildEntfernen} className="px-3 py-2 rounded-lg text-xs flex-shrink-0" style={{ background: C.fehlerFlaeche, color: C.fehler, fontFamily: "Inter", fontWeight: 700 }}>{t("news.bildEntfernen")}</button>
+            )}
+          </div>
           {imageUrl && <img src={imageUrl} alt="" className="w-full rounded-lg" style={{ maxHeight: 160, objectFit: "cover" }} />}
           <div className="flex gap-2">
             <button onClick={publish} disabled={saving || !title.trim() || !text.trim()} className="flex-1 py-2.5 rounded-lg text-xs" style={{ background: C.red, color: C.aufPrimaer, fontFamily: "Inter", fontWeight: 700, opacity: (saving || !title.trim() || !text.trim()) ? 0.5 : 1 }}>{saving ? t("allg.wirdGespeichert") : editingPost ? t("allg.aenderungenSpeichern") : t("allg.veroeffentlichen")}</button>
@@ -7134,6 +7357,11 @@ function TeamMeldungenAbfrage({ currentUser, clubId }) {
     try { window.localStorage.setItem(merker, "1"); } catch { /* Privatmodus */ }
     setWeg(true);
   };
+
+  /* Android-Zurueck (U6): Die Abfrage hat kein Kreuz, nur "Spaeter" und
+     "Speichern". Die Taste tut deshalb dasselbe wie "Spaeter" - sie fragt
+     beim naechsten Start nicht wieder. Vorher legte sie die App weg. */
+  useZurueck(spaeter, !weg && !!mannschaften);
 
   const uebernehmen = async () => {
     setSpeichert(true); setFehler("");
@@ -7657,7 +7885,7 @@ function TeamPenaltyCatalog({ user }) {
     if (error) { setTeams(vorher); setMessage(t("sys.einstellungFehler")); return; }
     setMessage(t("sys.einstellungGespeichert"));
   };
-  const canManageSeasons = databaseMembership && user.roles.some((role) => ["vorstand", "finanzmanager", "sysadmin", "vereinsadmin"].includes(role));
+  const canManageSeasons = databaseMembership && user.roles.some((role) => SAISON_ROLLEN.includes(role));
   useEffect(() => {
     const loadTeams = async () => {
       setLoading(true); setMessage("");
@@ -8538,7 +8766,7 @@ function VehiclesView({ currentUser, currentClub }) {
   const t = useT();
   const cfg = sportConfig(currentClub?.sport);
   const databaseMembership = !!supabase && isDbId(currentUser.id);
-  const canManageFleet = currentUser.roles.some((r) => ["vorstand", "vereinsadmin", "geschaeftsfuehrung"].includes(r));
+  const canManageFleet = currentUser.roles.some((r) => FUHRPARK_ROLLEN.includes(r));
   /* Die Maske ist fuer alle dieselbe.
    *
    * Vorher stand hier eine eigene Rollenliste, und wer nicht daraufstand, kam
@@ -8573,6 +8801,11 @@ function VehiclesView({ currentUser, currentClub }) {
   const [viewingPhones, setViewingPhones] = useState(null);
   const [loadingPhones, setLoadingPhones] = useState(false);
   const [copiedPhone, setCopiedPhone] = useState("");
+  /* Android-Zurueck (U6): Buchungsblatt und Buchungsansicht sind eigene
+     Ebenen. Ohne Anmeldung sprang die Taste aus dem Fuhrpark heraus, statt
+     das offene Blatt zu schliessen - ausgerechnet beim haeufigsten Dialog. */
+  useZurueck(() => { setSelectedVehicle(null); setEditingBookingId(null); }, !!selectedVehicle);
+  useZurueck(() => setViewingBooking(null), !!viewingBooking);
   const HOURS = Array.from({ length: 24 }, (_, i) => i);
   const loadVehicles = useCallback(async () => {
     if (!databaseMembership) { setVehicles([]); return; }
@@ -9601,6 +9834,9 @@ function BoardMemberOverview({ members, currentUser, vorauswahl = null, onVoraus
 }
 function MemberDetailPanel({ member, onClose, leitung = false, clubId = null }) {
   const t = useT();
+  /* Android-Zurueck (U6): Das Blatt wird nur gezeichnet, wenn ein Mitglied
+     gewaehlt ist - deshalb immer angemeldet. */
+  useZurueck(onClose, true);
   const [loading, setLoading] = useState(true);
   const [penalties, setPenalties] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -10161,8 +10397,21 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const [deleting, setDeleting] = useState(false);
+  /* Das Passwort vor der Loeschung - derselbe Riegel wie in
+     KontoLoeschenBlock, siehe eigenesPasswortPruefen. */
+  const [loeschPasswort, setLoeschPasswort] = useState("");
+  const [loeschBestaetigt, setLoeschBestaetigt] = useState(false);
+  const [loeschCaptcha, setLoeschCaptcha] = useState(null);
+  const [loeschCaptchaRunde, setLoeschCaptchaRunde] = useState(0);
+  const mitLoeschCaptcha = captchaAktiv();
   /* Zweite Rueckfrage, wenn mit dem Konto ein ganzer Verein untergeht. */
   const [vereineWarnung, setVereineWarnung] = useState(null);
+  /* Wie im Loeschblock: Weg verlassen heisst Passwort neu eingeben. */
+  const loeschenAbbrechen = () => { setVereineWarnung(null); setLoeschBestaetigt(false); setLoeschPasswort(""); };
+  /* Android-Zurueck (U6): Diese Rueckfrage liegt ueber der Kontoansicht.
+     Ohne Anmeldung schloss die Taste die Unterlage darunter und liess die
+     Frage stehen. */
+  useZurueck(loeschenAbbrechen, !!vereineWarnung);
   const [profileUnderlay, setProfileUnderlay] = useState("");
   const [profileFolder, setProfileFolder] = useState("");
   const [referralAlreadyUsed, setReferralAlreadyUsed] = useState(false);
@@ -10205,6 +10454,17 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
   const deleteAccount = async (vereineBestaetigt = false) => {
     if (!supabase) { setDeleteError(t("konto.demoLoeschen")); return; }
     setDeleting(true); setDeleteError("");
+    /* Erst das Passwort, dann die Loeschung - und nur beim ersten Mal; die
+       Rueckfrage "Verein geht mit" kommt Sekunden spaeter. */
+    if (!loeschBestaetigt) {
+      if (mitLoeschCaptcha && loeschCaptcha === null) { setDeleteError(t("captcha.bitteWarten")); setDeleting(false); return; }
+      const pruefung = await eigenesPasswortPruefen(loeschPasswort, loeschCaptcha, t);
+      /* Ein Captcha-Token gilt einmal - sonst scheitert der zweite Versuch
+         daran und nicht am Passwort. */
+      if (mitLoeschCaptcha) setLoeschCaptchaRunde((r) => r + 1);
+      if (!pruefung.ok) { setDeleteError(pruefung.fehler); setDeleting(false); return; }
+      setLoeschBestaetigt(true); setLoeschPasswort("");
+    }
     const { data } = await supabase.auth.getSession();
     const token = data.session?.access_token;
     if (!token) { setDeleteError(t("sich.erneutAnmelden")); setDeleting(false); return; }
@@ -10237,7 +10497,12 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
       if (rumpf?.code === "verein_geht_mit") { setVereineWarnung(rumpf.vereine || []); return; }
       /* 401: Die Sitzung ist abgelaufen. Geloescht ist dann nichts -
          "unvollstaendig" waere falsch. */
-      if (rumpf?.code === "nicht_angemeldet") { setDeleteError(t("sich.erneutAnmelden")); return; }
+      if (rumpf?.code === "nicht_angemeldet") {
+        /* "Zu alt" heisst nicht "abgemeldet": Dann fehlt nur die frische
+           Bestaetigung, und die holt das Passwortfeld gleich nach. */
+        if (rumpf?.grund === "sitzung_zu_alt") { setLoeschBestaetigt(false); setDeleteError(t("konto.erneutBestaetigen")); return; }
+        setDeleteError(t("sich.erneutAnmelden")); return;
+      }
       setDeleteError(rumpf?.code === "fremdschluessel" ? t("konto.loeschenBlockiert") : t("konto.loeschenUnvollstaendig"));
       return;
     }
@@ -10518,7 +10783,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
           wegklicken wie die Loeschung des eigenen Kontos. */}
       {vereineWarnung && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setVereineWarnung(null)}>
+          style={{ background: "rgba(20,21,26,.72)" }} onClick={loeschenAbbrechen}>
           <div role="dialog" aria-modal="true" className="w-full max-w-sm rounded-3xl p-5"
             style={{ background: C.blatt, boxShadow: "0 -14px 38px rgba(20,21,26,.30)", border: `1px solid ${C.edge}` }}
             onClick={(e) => e.stopPropagation()}>
@@ -10532,18 +10797,18 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
             <div className="flex gap-2 mt-3">
               <button onClick={() => { setVereineWarnung(null); deleteAccount(true); }} disabled={deleting}
                 className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.fehler, color: C.white }}>{t("allg.ja")}</button>
-              <button onClick={() => setVereineWarnung(null)}
+              <button onClick={loeschenAbbrechen}
                 className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.glass, color: C.ink, border: `1px solid ${C.line}` }}>{t("allg.nein")}</button>
             </div>
           </div>
         </div>
       )}
-      {profileUnderlay === "account-delete" && <ProfileUnderlay title={t("konto.dlg.titel")} eyebrow={t("konto.dlg.eyebrow")} onClose={() => { setProfileUnderlay(""); setDeleteConfirm(false); setDeleteError(""); }}>
+      {profileUnderlay === "account-delete" && <ProfileUnderlay title={t("konto.dlg.titel")} eyebrow={t("konto.dlg.eyebrow")} onClose={() => { setProfileUnderlay(""); setDeleteConfirm(false); setDeleteError(""); setLoeschBestaetigt(false); setLoeschPasswort(""); }}>
         <div className="rounded-2xl p-4 mb-6" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="flex items-center gap-2 text-sm font-bold mb-1" style={{ color: C.ink }}><Mail size={15}/> {t("konto.dlg.email")}</div><div className="text-xs" style={{ color: C.textDim }}>{user.email}</div></div>
         <SectionTitle eyebrow={t("konto.dlg.gefahr")} title={t("konto.dlg.bereich")}/>
         <div className="text-[11px] mb-3" style={{ color: C.textDim }}>{t("konto.loeschungHinweis")}</div>
         {!deleteConfirm ? <button onClick={() => setDeleteConfirm(true)} className="w-full py-2.5 rounded-2xl text-xs" style={{ background: C.glass, border: `1px solid ${C.fehlerRand}`, color: C.red, fontWeight: 700 }}>{t("konto.loeschenLang")}</button> :
-          <div className="rounded-2xl p-3" style={{ background: C.fehlerFlaeche, border: `1px solid ${C.fehlerRand}` }}><div className="flex items-center gap-2 text-xs font-bold mb-2" style={{ color: C.fehler }}><AlertCircle size={15}/> {t("konto.dlg.bestaetigen")}</div><div className="text-xs mb-3" style={{ color: C.ink }}>{t("konto.dlg.warnung")}</div>{deleteError && <div className="text-xs mb-2" style={{ color: C.fehler }}>{deleteError}</div>}<div className="flex gap-2"><button disabled={deleting} onClick={() => deleteAccount(false)} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: C.red, color: C.aufPrimaer }}>{deleting ? t("allg.wirdGeloescht") : t("allg.endgueltigLoeschen")}</button><button onClick={() => { setDeleteConfirm(false); setDeleteError(""); }} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>{t("allg.abbrechen")}</button></div></div>}
+          <div className="rounded-2xl p-3" style={{ background: C.fehlerFlaeche, border: `1px solid ${C.fehlerRand}` }}><div className="flex items-center gap-2 text-xs font-bold mb-2" style={{ color: C.fehler }}><AlertCircle size={15}/> {t("konto.dlg.bestaetigen")}</div><div className="text-xs mb-3" style={{ color: C.ink }}>{t("konto.dlg.warnung")}</div>{!loeschBestaetigt && <div className="mb-3"><div className="text-[11px] mb-2" style={{ color: C.textDim }}>{t("konto.passwortHinweis")}</div><input type="password" autoComplete="current-password" value={loeschPasswort} onChange={(e) => setLoeschPasswort(e.target.value)} placeholder={t("login.passwort")} className="w-full px-3 py-3 rounded-xl text-xs" style={inputStyle}/>{mitLoeschCaptcha && <CaptchaFeld onToken={(token) => { setLoeschCaptcha(token); if (token !== null) setDeleteError((alt) => (alt === t("captcha.bitteWarten") ? "" : alt)); }} runde={loeschCaptchaRunde}/>}</div>}{deleteError && <div className="text-xs mb-2" style={{ color: C.fehler }}>{deleteError}</div>}<div className="flex gap-2"><button disabled={deleting} onClick={() => deleteAccount(false)} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: C.red, color: C.aufPrimaer }}>{deleting ? t("allg.wirdGeloescht") : t("allg.endgueltigLoeschen")}</button><button onClick={() => { setDeleteConfirm(false); setDeleteError(""); setLoeschBestaetigt(false); setLoeschPasswort(""); }} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>{t("allg.abbrechen")}</button></div></div>}
       </ProfileUnderlay>}
     </div>
   );
@@ -10557,7 +10822,7 @@ function SeasonVoteView({ currentUser, members, seasonVotes, seasonStand, setSea
   const closed = new Date() > new Date(SEASON_VOTE_DEADLINE);
   const { d, h, m } = useCountdown(SEASON_VOTE_DEADLINE);
   const myVote = seasonVotes[currentUser.id];
-  const { counts, total, sorted } = seasonResults(seasonStand, saisonKandidaten(members));
+  const { counts, total, sorted, sieger } = seasonResults(seasonStand, saisonKandidaten(members));
   const [fehler, setFehler] = useState("");
   /* Die Stimme geht in die Datenbank. Vorher lag sie im Zustandsblock, den nur
      Administratoren speichern - die Wahl zaehlte also nur die Stimmen der
@@ -10603,13 +10868,26 @@ function SeasonVoteView({ currentUser, members, seasonVotes, seasonStand, setSea
 
       {!closed && <div className="text-xs mb-3" style={{ color: C.textDim, fontFamily: "Inter" }}>{mitWerten(t("sais.stimmenBisher"), { anzahl: total })}</div>}
 
-      {closed && sorted[0] && (
+      {/* Der Pokal nur mit Stimmen - und ein Gleichstand steht als
+          Gleichstand da. Vorher stand hier sorted[0]: ohne eine einzige
+          Stimme der alphabetisch erste Name, bei Stimmengleichheit ein
+          willkuerlich Gekuerter. Sichtbar wird das erst nach dem 31.08.2027,
+          falsch ist es schon heute. */}
+      {closed && sieger.length > 0 && (
         <div className="rounded-2xl p-4 mb-5 flex items-center gap-3" style={{ background: C.sekundaerWeich, border: `1px solid ${C.edge}` }}>
           <Trophy size={22} style={{ color: C.secondary }} />
           <div>
-            <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>🏆 {sorted[0].name}</div>
-            <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("sais.ehrung")}</div>
+            <div className="text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>🏆 {sieger.map((k) => k.name).join(", ")}</div>
+            <div className="text-xs" style={{ color: C.textDim, fontFamily: "Inter" }}>{sieger.length > 1 ? t("sais.ehrungGeteilt") : t("sais.ehrung")}</div>
           </div>
+        </div>
+      )}
+
+      {/* Kandidaten da, aber niemand hat gewaehlt: Das steht jetzt da, statt
+          jemanden zu kueren. */}
+      {closed && sieger.length === 0 && sorted.length > 0 && (
+        <div className="rounded-2xl p-4 mb-5 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>
+          {t("sais.keineStimmenHinweis")}
         </div>
       )}
 
@@ -10752,6 +11030,11 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
     ? alleBegegnungen.filter((m) => m.team === aktuelleRunde.team_name)
     : [];
   const mine = tippPredictions[currentUser.id] || {};
+  /* Android-Zurueck (U6): Die Frage zum Verlassen der Runde ist eine eigene
+     Ebene. Steht hinter aktuelleRunde - die Bedingung wird beim Zeichnen
+     ausgewertet. Die Loeschfrage darueber meldet sich in JaNeinFrage selbst
+     an. */
+  useZurueck(() => setVerlassenFrage(false), verlassenFrage && !!aktuelleRunde);
 
   const rundenLaden = useCallback(async () => {
     if (!supabase || !isDbId(currentUser.clubId)) return;
@@ -11374,6 +11657,10 @@ function TeilnehmerWahl({ alle, gewaehlt, onAendern }) {
   const t = useT();
   const [offen, setOffen] = useState(false);
   const [suche, setSuche] = useState("");
+  /* Android-Zurueck (U6): Die Namensliste liegt als Blatt ueber dem
+     Protokollformular - die Taste soll sie schliessen, nicht das Formular
+     verlassen. */
+  useZurueck(() => setOffen(false), offen);
 
   const nachname = (name) => String(name || "").trim().split(/\s+/).slice(-1)[0] || "";
   const sortiert = [...(alle || [])].sort((a, b) =>
@@ -12621,6 +12908,10 @@ function Seitenname({ rolle, name, rechts = false }) {
    der man gerade steht. */
 function JaNeinFrage({ titel = "", frage, onJa, onNein }) {
   const t = useT();
+  /* Android-Zurueck (U6): Zurueck heisst hier "Nein" - dieselbe Antwort wie
+     ein Tipp neben den Dialog. Die Frage wird nur gezeichnet, wenn sie offen
+     ist, deshalb immer angemeldet. */
+  useZurueck(onNein, true);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ background: "rgba(20,21,26,.72)" }} onClick={onNein}>
@@ -13552,7 +13843,13 @@ function ClubFeatureOnboarding({ club, onDone }) {
   const sport = club?.sport || "rollhockey";
   const cfg = sportConfig(sport);
   const feature = CLUB_FEATURES[step];
-  const answersRef = useRef({});
+  /* Die Antworten stehen in der Zusammenfassung auf dem Bildschirm - also
+     gehoeren sie in den Zustand und nicht in eine Referenz. Sie beim Zeichnen
+     aus einer Referenz zu LESEN meldet react-hooks/refs zu Recht: React
+     erfaehrt so nie, dass sich etwas geaendert hat. Gutgegangen ist es nur,
+     weil jede Antwort ohnehin setStep oder setZusammenfassung ausloest - das
+     neue Bild kam also von woanders. */
+  const [antworten, setAntworten] = useState({});
   const [zusammenfassung, setZusammenfassung] = useState(false);
   const finish = async (finalAnswers) => {
     setSaving(true); setFehler("");
@@ -13574,7 +13871,7 @@ function ClubFeatureOnboarding({ club, onDone }) {
     onDone();
   };
   const answer = (value) => {
-    answersRef.current = { ...answersRef.current, [feature.key]: value };
+    setAntworten((alt) => ({ ...alt, [feature.key]: value }));
     if (step + 1 < CLUB_FEATURES.length) { setStep(step + 1); return; }
     /* Nicht sofort speichern: erst die Auswahl zeigen (C12). Ein Fehltipp
        schaltete sonst eine Funktion ohne Hinweis ab. */
@@ -13590,11 +13887,11 @@ function ClubFeatureOnboarding({ club, onDone }) {
         {zusammenfassung ? (
           <>
             <div className="rounded-2xl p-4 mb-5 space-y-2" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
-              {CLUB_FEATURES.map((f) => <div key={f.key} className="flex items-center justify-between gap-3 text-xs" style={{ fontFamily: "Inter" }}><span className="font-bold" style={{ color: C.ink }}>{f.label(sport, t)}</span><span style={{ color: answersRef.current[f.key] !== false ? C.erfolg : C.textDim }}>{answersRef.current[f.key] !== false ? t("allg.ja") : t("allg.nein")}</span></div>)}
+              {CLUB_FEATURES.map((f) => <div key={f.key} className="flex items-center justify-between gap-3 text-xs" style={{ fontFamily: "Inter" }}><span className="font-bold" style={{ color: C.ink }}>{f.label(sport, t)}</span><span style={{ color: antworten[f.key] !== false ? C.erfolg : C.textDim }}>{antworten[f.key] !== false ? t("allg.ja") : t("allg.nein")}</span></div>)}
             </div>
             <div className="flex gap-2">
               <button onClick={() => setZusammenfassung(false)} disabled={saving} className="flex-1 py-3 rounded-xl text-sm font-bold" style={{ background: C.paperDim, color: C.textDim, opacity: saving ? .6 : 1 }}>{t("verein.zurueck")}</button>
-              <button onClick={() => finish(answersRef.current)} disabled={saving} className="flex-1 py-3 rounded-xl text-sm font-bold" style={{ background: C.ink, color: C.white, opacity: saving ? .6 : 1 }}>{saving ? "…" : t("verein.uebernehmen")}</button>
+              <button onClick={() => finish(antworten)} disabled={saving} className="flex-1 py-3 rounded-xl text-sm font-bold" style={{ background: C.ink, color: C.white, opacity: saving ? .6 : 1 }}>{saving ? "…" : t("verein.uebernehmen")}</button>
             </div>
           </>
         ) : (
@@ -13845,7 +14142,7 @@ function AdminView({
   currentClub, onClubLogoUpdated, onClubColorsUpdated, clubFeatures, onClubFeaturesChanged,
 }) {
   const t = useT();
-  const canManageClubFeatures = currentUser.roles.some((role) => ["vereinsadmin", "vorstand", "sysadmin"].includes(role));
+  const canManageClubFeatures = currentUser.roles.some((role) => VEREINSFUNKTION_ROLLEN.includes(role));
   const dutyFeatureOn = clubFeatures?.duty_roster !== false;
   const dutyCfg = sportConfig(currentClub?.sport);
   const canSponsor = canManageSponsors(currentUser);
@@ -14110,7 +14407,13 @@ const ZurueckKontext = React.createContext(null);
 function useZurueck(handler, aktiv) {
   const anmelden = React.useContext(ZurueckKontext);
   const gemerkt = useRef(handler);
-  gemerkt.current = handler;
+  /* Die Zuweisung gehoert NACH das Zeichnen, nicht hinein (react-hooks/refs):
+     React darf einen Durchlauf verwerfen - die Zuweisung waere dann geschehen,
+     das Bild nicht. Ohne Abhaengigkeitsliste laeuft der Effekt nach JEDEM
+     Zeichnen, genau wie das Vorbild bei pollIdsRef weiter oben. Der Handler
+     wird erst auf einen Tastendruck hin gerufen; bis dahin steht der frische
+     Wert laengst, und der erste steht schon im useRef darueber. */
+  useEffect(() => { gemerkt.current = handler; });
   useEffect(() => {
     if (!aktiv || !anmelden) return undefined;
     /* Der angemeldete Handler ruft ueber die Referenz - so bleibt die
@@ -14865,6 +15168,8 @@ export default function ClubMemberOrganisationApp() {
      initialization" - ein weisser Bildschirm. scripts/pruefe-typen.mjs hat
      genau das gemeldet (TS2448). */
   const eineEbeneHoch = () => {
+    /* Der Sperrbildschirm deckt alles ab - verdeckte Ebenen nicht bedienen. */
+    if (updateNoetig || updateProbe) return;
     const offen = zurueckStapel.current;
     if (offen.length > 0) { offen[offen.length - 1](); return; }
     if (subView) { setSubView(null); return; }
@@ -14880,7 +15185,11 @@ export default function ClubMemberOrganisationApp() {
      dem naechsten Android-Build aus dem Store (@capacitor/app ist dort schon
      Abhaengigkeit). */
   const zurueckAktuell = useRef({ eineEbeneHoch, kannHoeher });
-  zurueckAktuell.current = { eineEbeneHoch, kannHoeher };
+  /* Nach dem Zeichnen, nicht waehrend (react-hooks/refs) - dasselbe Muster
+     wie bei pollIdsRef. Der Listener unten liest die Referenz erst, wenn
+     jemand die Zurueck-Taste drueckt; der Effekt ohne Abhaengigkeitsliste hat
+     sie bis dahin nach jedem Zeichnen nachgefuehrt. */
+  useEffect(() => { zurueckAktuell.current = { eineEbeneHoch, kannHoeher }; });
   useEffect(() => {
     if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "android") return;
     let griff = null;
@@ -17043,7 +17352,9 @@ export default function ClubMemberOrganisationApp() {
       /* 409 traegt einen Code und Vereinsnamen im Rumpf - den braucht der
          Aufrufer, um die richtige der beiden Rueckfragen zu stellen. */
       const rumpf = await response.json().catch(() => null);
-      if (rumpf?.code === "nicht_angemeldet") return { error: t("login.sitzungAbgelaufen") };
+      /* Zu alte Sitzung: Der Kasten fragt das Passwort erneut ab, statt eine
+         abgelaufene Anmeldung zu behaupten - geloescht ist nichts. */
+      if (rumpf?.code === "nicht_angemeldet") return rumpf?.grund === "sitzung_zu_alt" ? { code: "sitzung_zu_alt" } : { error: t("login.sitzungAbgelaufen") };
       if (rumpf?.code === "fremdschluessel") return { error: t("konto.loeschenBlockiert") };
       if (rumpf?.code === "letzter_admin" || rumpf?.code === "verein_geht_mit") return rumpf;
       return { error: t("konto.loeschenFehler") };
