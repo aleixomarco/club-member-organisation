@@ -12069,6 +12069,10 @@ function OverviewPanel({ members, events, protocols, dutyPlan, seasonStand, goPa
   const jetzt = new Date();
   const helperEvents = (events || []).filter((e) => e.helperSlots && e.helperSlots.length && !e.cancelled && new Date(e.date) > jetzt);
   const mitgliederZahl = (members || []).filter((m) => isFormalMember(m) && !m.accountPending).length;
+  /* Fans zaehlen nicht als Mitglieder (isFormalMember ist bei ihnen false) und
+     fehlten deshalb in der Uebersicht ganz - obwohl der Verein sie aufnimmt
+     und anschreibt. Dieselbe Regel wie ueberall: nur Fan, kein offener Zugang. */
+  const fanZahl = (members || []).filter((m) => istNurFan(m) && !m.accountPending).length;
   let openSlots = 0, totalSlots = 0;
   helperEvents.forEach((ev) => {
     const plan = dutyPlan[ev.id] || {};
@@ -12084,6 +12088,7 @@ function OverviewPanel({ members, events, protocols, dutyPlan, seasonStand, goPa
   return (
     <div className="grid grid-cols-2 gap-3">
       <StatCard icon={Users} label={t("verein.statMitglieder")} value={mitgliederZahl} sub={t("verein.statFormaleMitglieder")} accent={C.ink} />
+      <StatCard icon={Star} label={t("verein.statFans")} value={fanZahl} sub={t("verein.statFansSub")} accent={C.ink} />
       <StatCard icon={ClipboardList} label={t("verein.statOffeneAufgaben")} value={openTasks} sub={t("verein.statAusProtokollen")} accent={C.red} onClick={() => goPanel("protokolle")} />
       {dutyOn && <StatCard icon={AlertCircle} label={t("verein.statHelferLuecken")} value={openSlots} sub={mitWerten(t("verein.statPlaetzeOffen"), { gesamt: totalSlots })} accent={C.secondary} onClick={() => goHelfer?.()} />}
       {seasonOn && <StatCard icon={Trophy} label={t("verein.statSaisonStimmen")} value={seasonTotal} sub={t("sais.athletDerSaison")} accent={C.secondary} onClick={() => goPanel("season")} />}
