@@ -1076,7 +1076,7 @@ const de: Woerterbuch = {
   "allg.bildUploadFehler": "Das Bild konnte nicht hochgeladen werden.",
   "sp.werbungAusgeblendet": "Werbefläche ausgeblendet",
   "verein.logoWaehlen": "Vereinslogo auswählen",
-  "zug.ausgeschoepft": "Die Zahl der Zugänge deines Vereins ist ausgeschöpft. Unter Profil → Einstellungen → Zugang & Empfehlungen kann die Vereinsleitung mehr Zugänge anfragen.",
+  "zug.ausgeschoepft": "Die Mitglieder-Plätze deines Vereins sind ausgeschöpft. Unter Profil → Einstellungen → Zugang & Empfehlungen kann die Vereinsleitung mehr Plätze anfragen.",
   "mit.antraege": "Mitgliedsanträge",
   "umf.umschaltenFehler": "Die Umfrage konnte nicht umgeschaltet werden.",
   "push.ladenFehler": "Die Benachrichtigungen konnten nicht geladen werden.",
@@ -1722,7 +1722,7 @@ const de: Woerterbuch = {
   "prot.aufgabenFuerProtokoll": "Aufgaben für dieses Protokoll",
   "auf.offenePunkteEins": "{anzahl} offener Punkt",
   "auf.offenePunkteMehr": "{anzahl} offene Punkte",
-  "verein.statFormaleMitglieder": "alle formalen Mitglieder",
+  "verein.statFormaleMitglieder": "formale Mitglieder, ohne Fans",
   "verein.statAusProtokollen": "aus Protokollen",
   "sp.einleitung": "Vier Werbeplätze in der App. Wo Ihr Verein einen eigenen Sponsor einträgt, tritt die Werbung des Betreibers zurück. Eine Aktion — Rabatt, Gutschein, Sonderangebot — erscheint nur, solange sie läuft; danach bleibt der Sponsor stehen und der Aktionsknopf verschwindet von selbst.",
   "ph.sponsorWebsite": "https://website-des-sponsors.de",
@@ -1817,6 +1817,11 @@ const de: Woerterbuch = {
   "sais.keineStimmenHinweis": "Für diese Saison wurde keine einzige Stimme abgegeben — deshalb gibt es keinen Sieger.",
   "sais.ehrungGeteilt": "Athlet/in der Saison — geteilt, Ehrung beim Sommerfest",
   "news.bildEntfernen": "Bild entfernen",
+  "zug.mitgliederBelegt": "{belegt} von {erlaubt} Mitglieder-Plätzen belegt",
+  "zug.fansBelegt": "{belegt} von {erlaubt} Fan-Plätzen belegt",
+  "zug.fansVollHinweis": " — für weitere Fans braucht ihr mehr Fan-Plätze.",
+  "zug.mehrMitgliederHinweis": " — für weitere Mitglieder braucht ihr mehr Mitglieder-Plätze.",
+  "zug.fansAusgeschoepft": "Die Fan-Plätze deines Vereins sind ausgeschöpft. Mitglieder könnt ihr weiter aufnehmen, die Fan-Plätze zählen getrennt. Unter Profil → Einstellungen → Zugang & Empfehlungen kann die Vereinsleitung mehr Fan-Plätze anfragen.",
 };
 
 const en: Woerterbuch = {
@@ -2861,7 +2866,7 @@ const en: Woerterbuch = {
   "allg.bildUploadFehler": "The image could not be uploaded.",
   "sp.werbungAusgeblendet": "Ad space hidden",
   "verein.logoWaehlen": "Select club logo",
-  "zug.ausgeschoepft": "Your club has used up all its accesses. Under Profile → Settings → Access & referrals, the club management can request more accesses.",
+  "zug.ausgeschoepft": "Your club's member seats are used up. Under Profile → Settings → Access & referrals, the club management can request more seats.",
   "mit.antraege": "Join requests",
   "umf.umschaltenFehler": "The poll could not be toggled.",
   "push.ladenFehler": "The notifications could not be loaded.",
@@ -3507,7 +3512,7 @@ const en: Woerterbuch = {
   "prot.aufgabenFuerProtokoll": "Tasks for these minutes",
   "auf.offenePunkteEins": "{anzahl} open item",
   "auf.offenePunkteMehr": "{anzahl} open items",
-  "verein.statFormaleMitglieder": "all official members",
+  "verein.statFormaleMitglieder": "official members, fans not included",
   "verein.statAusProtokollen": "from minutes",
   "sp.einleitung": "Four ad slots in the app. Wherever your club adds its own sponsor, the provider's advertising gives way. An offer — discount, voucher, special deal — only appears while it is running; afterwards the sponsor stays and the offer button disappears by itself.",
   "ph.sponsorWebsite": "https://sponsor-website.com",
@@ -3602,6 +3607,11 @@ const en: Woerterbuch = {
   "sais.keineStimmenHinweis": "Not a single vote was cast this season — so there is no winner.",
   "sais.ehrungGeteilt": "Athlete of the season — shared, awarded at the summer party",
   "news.bildEntfernen": "Remove image",
+  "zug.mitgliederBelegt": "{belegt} of {erlaubt} member seats used",
+  "zug.fansBelegt": "{belegt} of {erlaubt} fan seats used",
+  "zug.fansVollHinweis": " — for more fans you need more fan seats.",
+  "zug.mehrMitgliederHinweis": " — for more members you need more member seats.",
+  "zug.fansAusgeschoepft": "Your club's fan seats are used up. You can still take in members, fan seats count separately. Under Profile → Settings → Access & referrals, the club management can request more fan seats.",
 };
 
 const es: Woerterbuch = {
@@ -4646,7 +4656,7 @@ const es: Woerterbuch = {
   "allg.bildUploadFehler": "No se pudo subir la imagen.",
   "sp.werbungAusgeblendet": "Espacio publicitario oculto",
   "verein.logoWaehlen": "Seleccionar el logotipo del club",
-  "zug.ausgeschoepft": "El número de accesos de tu club está agotado. En Perfil → Ajustes → Acceso y recomendaciones, la dirección del club puede solicitar más accesos.",
+  "zug.ausgeschoepft": "Las plazas de miembro de tu club están agotadas. En Perfil → Ajustes → Acceso y recomendaciones, la dirección del club puede solicitar más plazas.",
   "mit.antraege": "Solicitudes de socio",
   "umf.umschaltenFehler": "No se pudo cambiar la encuesta.",
   "push.ladenFehler": "No se pudieron cargar las notificaciones.",
@@ -5292,7 +5302,7 @@ const es: Woerterbuch = {
   "prot.aufgabenFuerProtokoll": "Tareas de esta acta",
   "auf.offenePunkteEins": "{anzahl} punto pendiente",
   "auf.offenePunkteMehr": "{anzahl} puntos pendientes",
-  "verein.statFormaleMitglieder": "todos los miembros oficiales",
+  "verein.statFormaleMitglieder": "miembros oficiales, sin aficionados",
   "verein.statAusProtokollen": "de las actas",
   "sp.einleitung": "Cuatro espacios publicitarios en la app. Donde tu club añada su propio patrocinador, la publicidad del proveedor deja de mostrarse. Una oferta — descuento, vale, precio especial — solo aparece mientras está activa; después, el patrocinador se mantiene y el botón de la oferta desaparece solo.",
   "ph.sponsorWebsite": "https://web-del-patrocinador.es",
@@ -5387,6 +5397,11 @@ const es: Woerterbuch = {
   "sais.keineStimmenHinweis": "En esta temporada no se emitió ni un solo voto, así que no hay ganador/a.",
   "sais.ehrungGeteilt": "Atleta de la temporada — compartido, entrega en la fiesta de verano",
   "news.bildEntfernen": "Quitar imagen",
+  "zug.mitgliederBelegt": "{belegt} de {erlaubt} plazas de miembro ocupadas",
+  "zug.fansBelegt": "{belegt} de {erlaubt} plazas de aficionado ocupadas",
+  "zug.fansVollHinweis": " — para más aficionados necesitáis más plazas de aficionado.",
+  "zug.mehrMitgliederHinweis": " — para más miembros necesitáis más plazas de miembro.",
+  "zug.fansAusgeschoepft": "Las plazas de aficionado de tu club están agotadas. Podéis seguir admitiendo miembros, las plazas de aficionado cuentan aparte. En Perfil → Ajustes → Acceso y recomendaciones, la dirección del club puede solicitar más plazas de aficionado.",
 };
 
 const pt: Woerterbuch = {
@@ -6431,7 +6446,7 @@ const pt: Woerterbuch = {
   "allg.bildUploadFehler": "Não foi possível carregar a imagem.",
   "sp.werbungAusgeblendet": "Espaço publicitário ocultado",
   "verein.logoWaehlen": "Selecionar o logótipo do clube",
-  "zug.ausgeschoepft": "O número de acessos do teu clube está esgotado. Em Perfil → Definições → Acesso e recomendações, a direção do clube pode pedir mais acessos.",
+  "zug.ausgeschoepft": "Os lugares de membro do teu clube estão esgotados. Em Perfil → Definições → Acesso e recomendações, a direção do clube pode pedir mais lugares.",
   "mit.antraege": "Pedidos de adesão",
   "umf.umschaltenFehler": "Não foi possível mudar a sondagem.",
   "push.ladenFehler": "Não foi possível carregar as notificações.",
@@ -7077,7 +7092,7 @@ const pt: Woerterbuch = {
   "prot.aufgabenFuerProtokoll": "Tarefas desta ata",
   "auf.offenePunkteEins": "{anzahl} ponto pendente",
   "auf.offenePunkteMehr": "{anzahl} pontos pendentes",
-  "verein.statFormaleMitglieder": "todos os membros efetivos",
+  "verein.statFormaleMitglieder": "membros efetivos, sem adeptos",
   "verein.statAusProtokollen": "das atas",
   "sp.einleitung": "Quatro espaços publicitários na app. Onde o teu clube indicar um patrocinador próprio, a publicidade do fornecedor deixa de aparecer. Uma promoção — desconto, vale, oferta especial — só aparece enquanto estiver a decorrer; depois, o patrocinador mantém-se e o botão da promoção desaparece sozinho.",
   "ph.sponsorWebsite": "https://site-do-patrocinador.pt",
@@ -7172,6 +7187,11 @@ const pt: Woerterbuch = {
   "sais.keineStimmenHinweis": "Nesta época não foi registado um único voto, por isso não há vencedor/a.",
   "sais.ehrungGeteilt": "Atleta da época — partilhado, entrega na festa de verão",
   "news.bildEntfernen": "Remover imagem",
+  "zug.mitgliederBelegt": "{belegt} de {erlaubt} lugares de membro ocupados",
+  "zug.fansBelegt": "{belegt} de {erlaubt} lugares de adepto ocupados",
+  "zug.fansVollHinweis": " — para mais adeptos precisam de mais lugares de adepto.",
+  "zug.mehrMitgliederHinweis": " — para mais membros precisam de mais lugares de membro.",
+  "zug.fansAusgeschoepft": "Os lugares de adepto do teu clube estão esgotados. Podem continuar a aceitar membros, os lugares de adepto contam à parte. Em Perfil → Definições → Acesso e recomendações, a direção do clube pode pedir mais lugares de adepto.",
 };
 
 const it: Woerterbuch = {
@@ -8216,7 +8236,7 @@ const it: Woerterbuch = {
   "allg.bildUploadFehler": "Impossibile caricare l'immagine.",
   "sp.werbungAusgeblendet": "Spazio pubblicitario nascosto",
   "verein.logoWaehlen": "Seleziona il logo del club",
-  "zug.ausgeschoepft": "Il numero di accessi del tuo club è esaurito. In Profilo → Impostazioni → Accesso e raccomandazioni, la dirigenza può richiedere altri accessi.",
+  "zug.ausgeschoepft": "I posti da membro del tuo club sono esauriti. In Profilo → Impostazioni → Accesso e raccomandazioni, la dirigenza può richiedere altri posti.",
   "mit.antraege": "Richieste di iscrizione",
   "umf.umschaltenFehler": "Impossibile cambiare il sondaggio.",
   "push.ladenFehler": "Impossibile caricare le notifiche.",
@@ -8862,7 +8882,7 @@ const it: Woerterbuch = {
   "prot.aufgabenFuerProtokoll": "Compiti di questo verbale",
   "auf.offenePunkteEins": "{anzahl} punto in sospeso",
   "auf.offenePunkteMehr": "{anzahl} punti in sospeso",
-  "verein.statFormaleMitglieder": "tutti i membri effettivi",
+  "verein.statFormaleMitglieder": "membri effettivi, tifosi esclusi",
   "verein.statAusProtokollen": "dai verbali",
   "sp.einleitung": "Quattro spazi pubblicitari nell'app. Dove il tuo club inserisce un proprio sponsor, la pubblicità del fornitore lascia il posto. Una promozione — sconto, buono, offerta speciale — compare solo finché è attiva; dopo, lo sponsor resta e il pulsante della promozione scompare da solo.",
   "ph.sponsorWebsite": "https://sito-dello-sponsor.it",
@@ -8957,6 +8977,11 @@ const it: Woerterbuch = {
   "sais.keineStimmenHinweis": "In questa stagione non è stato espresso nemmeno un voto, quindi non c'è nessun vincitore.",
   "sais.ehrungGeteilt": "Atleta della stagione — a pari merito, premiazione alla festa d'estate",
   "news.bildEntfernen": "Rimuovi immagine",
+  "zug.mitgliederBelegt": "{belegt} di {erlaubt} posti da membro occupati",
+  "zug.fansBelegt": "{belegt} di {erlaubt} posti da tifoso occupati",
+  "zug.fansVollHinweis": " — per altri tifosi vi servono più posti da tifoso.",
+  "zug.mehrMitgliederHinweis": " — per altri membri vi servono più posti da membro.",
+  "zug.fansAusgeschoepft": "I posti da tifoso del tuo club sono esauriti. Potete continuare ad accettare membri, i posti da tifoso contano a parte. In Profilo → Impostazioni → Accesso e raccomandazioni, la dirigenza può richiedere altri posti da tifoso.",
 };
 
 const tr: Woerterbuch = {
@@ -10001,7 +10026,7 @@ const tr: Woerterbuch = {
   "allg.bildUploadFehler": "Görsel yüklenemedi.",
   "sp.werbungAusgeblendet": "Reklam alanı gizlendi",
   "verein.logoWaehlen": "Kulüp logosu seç",
-  "zug.ausgeschoepft": "Kulübünün erişim sayısı doldu. Profil → Ayarlar → Erişim ve öneriler bölümünden kulüp yönetimi daha fazla erişim talep edebilir.",
+  "zug.ausgeschoepft": "Kulübünün üye yerleri doldu. Profil → Ayarlar → Erişim ve öneriler bölümünden kulüp yönetimi daha fazla yer talep edebilir.",
   "mit.antraege": "Üyelik başvuruları",
   "umf.umschaltenFehler": "Anket değiştirilemedi.",
   "push.ladenFehler": "Bildirimler yüklenemedi.",
@@ -10647,7 +10672,7 @@ const tr: Woerterbuch = {
   "prot.aufgabenFuerProtokoll": "Bu tutanağın görevleri",
   "auf.offenePunkteEins": "{anzahl} bekleyen madde",
   "auf.offenePunkteMehr": "{anzahl} bekleyen madde",
-  "verein.statFormaleMitglieder": "tüm resmî üyeler",
+  "verein.statFormaleMitglieder": "resmî üyeler, taraftarlar hariç",
   "verein.statAusProtokollen": "tutanaklardan",
   "sp.einleitung": "Uygulamada dört reklam alanı var. Kulübünün kendi sponsorunu girdiği yerde sağlayıcının reklamı yerini ona bırakır. Bir kampanya — indirim, kupon, özel fiyat — yalnızca devam ettiği sürece görünür; ardından sponsor yerinde kalır ve kampanya düğmesi kendiliğinden kaybolur.",
   "ph.sponsorWebsite": "https://sponsor-sitesi.com.tr",
@@ -10742,6 +10767,11 @@ const tr: Woerterbuch = {
   "sais.keineStimmenHinweis": "Bu sezon hiç oy verilmedi, bu yüzden kazanan yok.",
   "sais.ehrungGeteilt": "Sezonun sporcusu — ortak, yaz şenliğinde ödül",
   "news.bildEntfernen": "Görseli kaldır",
+  "zug.mitgliederBelegt": "{erlaubt} üye yerinden {belegt} tanesi dolu",
+  "zug.fansBelegt": "{erlaubt} taraftar yerinden {belegt} tanesi dolu",
+  "zug.fansVollHinweis": " — daha fazla taraftar için daha fazla taraftar yeri gerekiyor.",
+  "zug.mehrMitgliederHinweis": " — daha fazla üye için daha fazla üye yeri gerekiyor.",
+  "zug.fansAusgeschoepft": "Kulübünün taraftar yerleri doldu. Üye almaya devam edebilirsiniz, taraftar yerleri ayrı sayılır. Profil → Ayarlar → Erişim ve öneriler bölümünden kulüp yönetimi daha fazla taraftar yeri talep edebilir.",
 };
 
 const fr: Woerterbuch = {
@@ -11786,7 +11816,7 @@ const fr: Woerterbuch = {
   "allg.bildUploadFehler": "L'image n'a pas pu être envoyée.",
   "sp.werbungAusgeblendet": "Espace publicitaire masqué",
   "verein.logoWaehlen": "Sélectionner le logo du club",
-  "zug.ausgeschoepft": "Le nombre d'accès de ton club est épuisé. Dans Profil → Réglages → Accès et parrainage, la direction du club peut demander d'autres accès.",
+  "zug.ausgeschoepft": "Les places de membre de ton club sont épuisées. Dans Profil → Réglages → Accès et parrainage, la direction du club peut demander plus de places.",
   "mit.antraege": "Demandes d'adhésion",
   "umf.umschaltenFehler": "Le sondage n'a pas pu être changé.",
   "push.ladenFehler": "Les notifications n'ont pas pu être chargées.",
@@ -12432,7 +12462,7 @@ const fr: Woerterbuch = {
   "prot.aufgabenFuerProtokoll": "Tâches de ce compte rendu",
   "auf.offenePunkteEins": "{anzahl} point en suspens",
   "auf.offenePunkteMehr": "{anzahl} points en suspens",
-  "verein.statFormaleMitglieder": "tous les membres officiels",
+  "verein.statFormaleMitglieder": "membres officiels, sans les supporters",
   "verein.statAusProtokollen": "des comptes rendus",
   "sp.einleitung": "Quatre emplacements publicitaires dans l'app. Là où ton club saisit son propre sponsor, la publicité du fournisseur cède la place. Une offre — réduction, bon d'achat, prix spécial — n'apparaît que tant qu'elle est en cours ; ensuite, le sponsor reste affiché et le bouton de l'offre disparaît de lui-même.",
   "ph.sponsorWebsite": "https://site-du-sponsor.fr",
@@ -12527,6 +12557,11 @@ const fr: Woerterbuch = {
   "sais.keineStimmenHinweis": "Aucune voix n'a été exprimée cette saison, il n'y a donc pas de gagnant/e.",
   "sais.ehrungGeteilt": "Athlète de la saison — ex aequo, remise à la fête d'été",
   "news.bildEntfernen": "Retirer l'image",
+  "zug.mitgliederBelegt": "{belegt} places de membre utilisées sur {erlaubt}",
+  "zug.fansBelegt": "{belegt} places de supporter utilisées sur {erlaubt}",
+  "zug.fansVollHinweis": " — pour d'autres supporters, il vous faut plus de places de supporter.",
+  "zug.mehrMitgliederHinweis": " — pour d'autres membres, il vous faut plus de places de membre.",
+  "zug.fansAusgeschoepft": "Les places de supporter de ton club sont épuisées. Vous pouvez continuer à accueillir des membres, les places de supporter comptent à part. Dans Profil → Réglages → Accès et parrainage, la direction du club peut demander plus de places de supporter.",
 };
 
 const WOERTERBUECHER: Record<string, Woerterbuch> = { de, en, es, pt, it, tr, fr };

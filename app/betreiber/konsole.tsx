@@ -14,6 +14,10 @@ type Verein = {
   id: string; name: string; short_name: string | null; city: string | null; sport: string | null;
   created_at: string; vereinbarte_zugaenge: number | null; sponsoring_freigeschaltet: boolean;
   tarif: string; grenze: number; konten: number; laeuft_bis: string | null; beleg: string | null;
+  /* Die Fan-Plaetze sind ein eigenes Kontingent. Optional getippt, weil die
+     View betreiber_uebersicht sie erst nach der Migration liefert - bis dahin
+     bleibt die Zeile weg, statt "0 / 0" zu behaupten. */
+  fans?: number | null; fan_grenze?: number | null; vereinbarte_fans?: number | null;
   referral_credit_months: number;
   mitglieder: number; offene_aufnahmen: number; eigene_sponsoren: number; ansprechpartner: string | null;
   /* Lebenszeichen. Ein Verein kann bezahlen und trotzdem still sein - das
@@ -365,7 +369,7 @@ export default function BetreiberKonsole() {
               unten: `${kennzahlen.basic} Basic · ${kennzahlen.plus} Plus · ${kennzahlen.pro} Pro`, warnung: false },
             { wert: kennzahlen.konten, titel: "Konten", unten: `bei ${kennzahlen.mitglieder} Mitgliedern`, warnung: false },
             { wert: kennzahlen.still_30, titel: "Still", unten: "30 Tage ohne Regung", warnung: kennzahlen.still_30 > 0 },
-            { wert: kennzahlen.fast_voll, titel: "Fast voll", unten: "90 % der Zugänge belegt", warnung: kennzahlen.fast_voll > 0 },
+            { wert: kennzahlen.fast_voll, titel: "Fast voll", unten: "90 % der Mitglieder-Plätze belegt", warnung: kennzahlen.fast_voll > 0 },
             { wert: kennzahlen.gesperrt, titel: "Gesperrt", unten: `${kennzahlen.ohne_tarif} ohne Tarif`, warnung: false },
             ] : []),
             ...(kontenStand ? [kontenKachel(kontenStand)] : []),
@@ -403,7 +407,7 @@ export default function BetreiberKonsole() {
               <b style={{ fontSize: 15 }}>{a.verein || "Verein ohne Zuordnung"}</b>
               <span style={abzeichen}>{a.status === "berechnet" ? "Rechnung gestellt" : "offen"}</span>
               <span style={{ ...abzeichen, background: "#EEE9EC" }}>{a.quelle === "website" ? "Website" : "App"}</span>
-              {a.sponsoring_gewuenscht && <span style={{ ...abzeichen, background: "rgba(255,240,214,0.9)", color: "#8A5A00" }}>+ eigene Sponsoren, 5 €/Monat</span>}
+              {a.sponsoring_gewuenscht && <span style={{ ...abzeichen, background: "rgba(255,240,214,0.9)", color: "#8A5A00" }}>+ eigene Sponsoren, 15 €/Monat</span>}
               <span style={{ fontSize: 12, color: "#8A7F85", marginLeft: "auto" }}>{datum(a.created_at)}</span>
             </div>
             <div style={{ fontSize: 13, color: "#4A424A", marginTop: 6, lineHeight: 1.6 }}>
@@ -435,7 +439,7 @@ export default function BetreiberKonsole() {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 720 }}>
             <thead>
               <tr style={{ textAlign: "left", color: "#8A7F85", fontSize: 11, textTransform: "uppercase", letterSpacing: ".06em" }}>
-                <th style={zelle}>Verein</th><th style={zelle}>Tarif</th><th style={zelle}>Zugänge</th>
+                <th style={zelle}>Verein</th><th style={zelle}>Tarif</th><th style={zelle}>Mitglieder / Fans</th>
                 <th style={zelle}>Leben</th>
                 <th style={zelle}>Sponsoren</th><th style={zelle}>Läuft bis</th><th style={zelle}>Ansprechpartner</th><th style={zelle} />
               </tr>
@@ -463,6 +467,14 @@ export default function BetreiberKonsole() {
                     <td style={{ ...zelle, color: voll ? "#B3261E" : undefined, fontWeight: voll ? 700 : 400 }}>
                       {v.konten} / {v.grenze}
                       {v.vereinbarte_zugaenge != null && <div style={{ fontSize: 11, color: "#8A7F85" }}>vereinbart</div>}
+                      {/* Fans in einer zweiten Zeile, nicht daneben: Zwei
+                          Zahlenpaare nebeneinander liest niemand richtig.
+                          Fehlt die Spalte, faellt die Zeile weg. */}
+                      {typeof v.fan_grenze === "number" && (
+                        <div style={{ fontSize: 11, fontWeight: (v.fans ?? 0) >= v.fan_grenze ? 700 : 400, color: (v.fans ?? 0) >= v.fan_grenze ? "#B3261E" : "#8A7F85" }}>
+                          {v.fans ?? 0} / {v.fan_grenze} Fans{v.vereinbarte_fans != null ? " (vereinbart)" : ""}
+                        </div>
+                      )}
                     </td>
                     {/* Was hier steht, sagt mehr als der Tarif daneben: Ein
                         Verein mit 80 Mitgliedern und drei aktiven Nutzern ist
@@ -503,7 +515,7 @@ export default function BetreiberKonsole() {
                       {v.tarif !== "none" && (
                         <button style={{ ...knopfLeise, color: "#B3261E" }} disabled={laeuft}
                           onClick={async () => {
-                            if (!window.confirm(`\u201e${v.name}\u201c sperren?\n\nDer Verein fällt auf die kostenlose Stufe zurück: drei Zugänge, nur Trainings- und Spielpläne. Bestehende Konten bleiben bestehen, neue lassen sich nicht mehr anlegen.\n\nAusserdem wird zurückgesetzt:\n· die vereinbarte Zugangszahl${v.vereinbarte_zugaenge != null ? ` (derzeit ${v.vereinbarte_zugaenge})` : ""}\n· der Sponsorenzusatz${v.sponsoring_freigeschaltet ? " (derzeit freigeschaltet)" : ""}\n\nBeides muss beim erneuten Freischalten neu eingetragen werden.`)) return;
+                            if (!window.confirm(`\u201e${v.name}\u201c sperren?\n\nDer Verein fällt auf die kostenlose Stufe zurück: drei Zugänge, nur Trainings- und Spielpläne. Bestehende Konten bleiben bestehen, neue lassen sich nicht mehr anlegen.\n\nAusserdem wird zurückgesetzt:\n· die vereinbarte Zugangszahl${v.vereinbarte_zugaenge != null ? ` (derzeit ${v.vereinbarte_zugaenge})` : ""}\n· die vereinbarte Fan-Zahl${v.vereinbarte_fans != null ? ` (derzeit ${v.vereinbarte_fans})` : ""}\n· der Sponsorenzusatz${v.sponsoring_freigeschaltet ? " (derzeit freigeschaltet)" : ""}\n\nAlles muss beim erneuten Freischalten neu eingetragen werden.`)) return;
                             const ok = await aktion({ art: "sperren", verein: v.id });
                             if (ok) setMeldung(`${v.name} ist gesperrt.`);
                           }}>Sperren</button>
@@ -573,7 +585,7 @@ export default function BetreiberKonsole() {
             if (ergebnis) {
               const r = ergebnis.ergebnis;
               setMeldung(r
-                ? `${r.verein}: ${TARIF_NAMEN[r.tarif] || r.tarif}, ${r.grenze} Zugänge${r.sponsoren ? ", eigene Sponsoren" : ""}, bis ${datum(r.laeuft_bis)}.`
+                ? `${r.verein}: ${TARIF_NAMEN[r.tarif] || r.tarif}, ${r.grenze} Mitglieder-Plätze${typeof r.fan_grenze === "number" ? ` + ${r.fan_grenze} Fan-Plätze` : ""}${r.sponsoren ? ", eigene Sponsoren" : ""}, bis ${datum(r.laeuft_bis)}.`
                 : "Freigeschaltet.");
               setOffen(null);
             }
@@ -957,7 +969,8 @@ function VereinsDetail({ daten, onSchliessen }: {
         <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap", marginBottom: 4 }}>
           <h2 style={{ fontSize: 19, fontWeight: 700, margin: 0 }}>{verein.name}</h2>
           <span style={{ fontSize: 13, color: "#8A7F85" }}>
-            {verein.city || "—"} · {TARIF_NAMEN[verein.tarif] || verein.tarif} · {verein.konten} von {verein.grenze} Zugängen
+            {verein.city || "—"} · {TARIF_NAMEN[verein.tarif] || verein.tarif} · {verein.konten} von {verein.grenze} Mitglieder-Plätzen
+            {typeof verein.fan_grenze === "number" && <> · {verein.fans ?? 0} von {verein.fan_grenze} Fan-Plätzen</>}
           </span>
           <button onClick={onSchliessen} style={{ ...knopfLeise, marginLeft: "auto", marginRight: 0 }}>Schließen</button>
         </div>
@@ -1371,6 +1384,9 @@ function FreischaltDialog({ verein, laeuft, onAbbrechen, onFreischalten }: {
   const stuftHerab = RANG[verein.tarif] > 0 && RANG[stufe] < RANG[verein.tarif];
   const [laufzeit, setLaufzeit] = useState("jahr");
   const [zugaenge, setZugaenge] = useState("");
+  /* Getrennt vom Feld darueber: Ein Verein kann mehr Fan-Plaetze vereinbaren,
+     ohne mehr Mitglieder-Plaetze zu brauchen - das ist der haeufigere Fall. */
+  const [fanZugaenge, setFanZugaenge] = useState("");
   const [belegnummer, setBelegnummer] = useState("");
   const [sponsoring, setSponsoring] = useState("unveraendert");
 
@@ -1382,21 +1398,32 @@ function FreischaltDialog({ verein, laeuft, onAbbrechen, onFreischalten }: {
            style={{ ...karte, width: "100%", maxWidth: 460, maxHeight: "90vh", overflowY: "auto" }}>
         <h2 style={{ fontSize: 17, fontWeight: 700, margin: "0 0 2px" }}>{verein.name} freischalten</h2>
         <p style={{ fontSize: 12, color: "#8A7F85", margin: "0 0 16px" }}>
-          Aktuell {TARIF_NAMEN[verein.tarif] || verein.tarif}, {verein.konten} von {verein.grenze} Zugängen belegt
+          Aktuell {TARIF_NAMEN[verein.tarif] || verein.tarif}, {verein.konten} von {verein.grenze} Mitglieder-Plätzen belegt
+          {typeof verein.fan_grenze === "number" && <>, {verein.fans ?? 0} von {verein.fan_grenze} Fan-Plätzen</>}
           {verein.laeuft_bis && <> · läuft bis {datum(verein.laeuft_bis)}</>}
         </p>
 
         <label style={beschriftung}>Stufe</label>
+        {/* Die Zahlen muessen zur Staffel in der Datenbank passen
+            (club_account_limit / club_fan_limit). Steht hier etwas anderes,
+            schaltet der Betreiber etwas anderes frei, als er liest - genau das
+            war vom 06.09. bis heute der Fall (Konsole 350, Datenbank 450). */}
         <select value={stufe} onChange={(e) => setStufe(e.target.value)} style={feld}>
-          <option value="basic">Basic — bis 100 Zugänge</option>
-          <option value="plus">Plus — bis 350 Zugänge</option>
-          <option value="pro">Pro — bis 1.000 Zugänge</option>
+          <option value="basic">Basic — 100 Mitglieder + 100 Fans</option>
+          <option value="plus">Plus — 350 Mitglieder + 200 Fans</option>
+          <option value="pro">Pro — 1.000 Mitglieder + 500 Fans</option>
         </select>
         {stuftHerab && (
           <p role="status" style={{ ...hinweis, color: "#B3261E", fontWeight: 600, marginTop: -6 }}>
             Achtung: Das ist eine Herabstufung von {TARIF_NAMEN[verein.tarif]} auf {TARIF_NAMEN[stufe]}.
             {verein.konten > (stufe === "basic" ? 100 : stufe === "plus" ? 350 : 1000) && !zugaenge && (
-              <> Der Verein hat {verein.konten} Konten und läge damit über der Grenze — neue Mitglieder ließen sich nicht mehr aufnehmen.</>
+              <> Der Verein hat {verein.konten} Mitglieder-Konten und läge damit über der Grenze — neue Mitglieder ließen sich nicht mehr aufnehmen.</>
+            )}
+            {/* Dieselbe Warnung fuer die Fan-Plaetze: Pro auf Basic nimmt 400
+                Fan-Plaetze weg, und das faellt sonst erst auf, wenn sich ein
+                Fan nicht mehr freigeben laesst. */}
+            {(verein.fans ?? 0) > (stufe === "basic" ? 100 : stufe === "plus" ? 200 : 500) && !fanZugaenge && (
+              <> Der Verein hat {verein.fans} Fans und läge damit über den Fan-Plätzen der neuen Stufe.</>
             )}
           </p>
         )}
@@ -1410,7 +1437,7 @@ function FreischaltDialog({ verein, laeuft, onAbbrechen, onFreischalten }: {
           <option value="zwei_jahre">2 Jahre</option>
         </select>
 
-        <label style={beschriftung}>Vereinbarte Zugänge</label>
+        <label style={beschriftung}>Vereinbarte Mitglieder-Plätze</label>
         <input type="number" min="0" value={zugaenge} onChange={(e) => setZugaenge(e.target.value)}
                placeholder={verein.vereinbarte_zugaenge != null ? `derzeit ${verein.vereinbarte_zugaenge}` : "leer = Zahl des Tarifs"} style={feld} />
         <p style={hinweis}>
@@ -1418,7 +1445,15 @@ function FreischaltDialog({ verein, laeuft, onAbbrechen, onFreischalten }: {
           {" "}<b>0</b> setzt auf die Zahl des Tarifs zurück.
         </p>
 
-        <label style={beschriftung}>Eigene Sponsoren (+ 5 €/Monat)</label>
+        <label style={beschriftung}>Vereinbarte Fan-Plätze</label>
+        <input type="number" min="0" value={fanZugaenge} onChange={(e) => setFanZugaenge(e.target.value)}
+               placeholder={verein.vereinbarte_fans != null ? `derzeit ${verein.vereinbarte_fans}` : "leer = Zahl des Tarifs"} style={feld} />
+        <p style={hinweis}>
+          Gleiche Regel: leer lassen ändert nichts, <b>0</b> setzt auf die Zahl des Tarifs zurück.
+          {" "}Gilt nur für Konten, deren einzige Rolle „Fan“ ist — von den Mitglieder-Plätzen geht davon nichts ab.
+        </p>
+
+        <label style={beschriftung}>Eigene Sponsoren (+ 15 €/Monat oder 180 €/Jahr)</label>
         <select value={sponsoring} onChange={(e) => setSponsoring(e.target.value)} style={feld}>
           <option value="unveraendert">unverändert ({verein.sponsoring_freigeschaltet ? "derzeit freigeschaltet" : "derzeit nicht"})</option>
           <option value="an">freischalten</option>
@@ -1433,7 +1468,7 @@ function FreischaltDialog({ verein, laeuft, onAbbrechen, onFreischalten }: {
           <button style={{ ...knopfLeise, flex: 1 }} onClick={onAbbrechen}>Abbrechen</button>
           <button style={{ ...knopf, flex: 1, opacity: laeuft ? 0.6 : 1 }} disabled={laeuft}
             onClick={() => onFreischalten({
-              stufe, laufzeit, zugaenge, belegnummer,
+              stufe, laufzeit, zugaenge, fanZugaenge, belegnummer,
               sponsoring: sponsoring === "unveraendert" ? null : sponsoring === "an",
             })}>
             {laeuft ? "…" : "Freischalten"}

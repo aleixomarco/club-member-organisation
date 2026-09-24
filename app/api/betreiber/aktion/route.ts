@@ -90,21 +90,39 @@ export async function POST(request: Request) {
     if (zugaenge !== null && !Number.isFinite(zugaenge)) {
       return NextResponse.json({ error: "Die Zahl der Zugänge ist ungültig." }, { status: 400 });
     }
+    /* Dieselbe Regel fuer die Fan-Plaetze: Sie sind ein eigenes Kontingent und
+       duerfen nicht am Feld der Mitglieder haengen. */
+    const rohFanZugaenge = daten.fanZugaenge;
+    const fanZugaenge = rohFanZugaenge === "" || rohFanZugaenge === null || rohFanZugaenge === undefined
+      ? null
+      : Math.max(0, Math.min(Math.trunc(Number(rohFanZugaenge)), 1000000));
+    if (fanZugaenge !== null && !Number.isFinite(fanZugaenge)) {
+      return NextResponse.json({ error: "Die Zahl der Fan-Plätze ist ungültig." }, { status: 400 });
+    }
 
-    const { data, error } = await admin.rpc("verein_freischalten", {
+    /* fan_zugaenge geht nur mit, wenn der Betreiber wirklich etwas eingetragen
+       hat. PostgREST sucht die Funktion ueber die NAMEN der uebergebenen
+       Argumente: Solange die Migration nicht draussen ist, gibt es keine
+       Signatur mit fan_zugaenge, und ein immer mitgeschicktes Argument liesse
+       jede Freischaltung scheitern. So bleibt die Konsole in beiden Welten
+       benutzbar. */
+    const argumente: Record<string, unknown> = {
       target_club: daten.verein,
       stufe,
       zugaenge,
       laufzeit,
       belegnummer: typeof daten.belegnummer === "string" && daten.belegnummer.trim() ? daten.belegnummer.trim().slice(0, 120) : null,
       sponsoring: typeof daten.sponsoring === "boolean" ? daten.sponsoring : null,
-    });
+    };
+    if (fanZugaenge !== null) argumente.fan_zugaenge = fanZugaenge;
+
+    const { data, error } = await admin.rpc("verein_freischalten", argumente);
     if (error) {
       console.error("Freischaltung fehlgeschlagen", error);
       return NextResponse.json({ error: error.message || "Die Freischaltung ist fehlgeschlagen." }, { status: 500 });
     }
     await protokollieren("freischalten", daten.verein, {
-      stufe, laufzeit, zugaenge, sponsoring: daten.sponsoring ?? null,
+      stufe, laufzeit, zugaenge, fanZugaenge, sponsoring: daten.sponsoring ?? null,
       belegnummer: typeof daten.belegnummer === "string" ? daten.belegnummer : null,
       ergebnis: data?.[0] || null,
     });

@@ -1112,6 +1112,18 @@ const rollenFehlerText = (error, t, rueckfall) => {
   if (text.includes("letzter_vereinsadmin")) return t("stufe.letzterAdmin");
   if (text.includes("rolle_nicht_erlaubt")) return t("stufe.nurLeitung");
   if (text.includes("fan_exklusiv") || text.includes("fan_keine_mannschaft")) return t("stufe.fanExklusiv");
+  /* Die beiden Kontingente melden sich getrennt: die Mitglieder-Plaetze mit
+     club_account_limit_reached, die Fan-Plaetze mit club_fan_limit_reached.
+     Sie stehen hier und nicht nur im Freigabe-Panel, weil derselbe Trigger auf
+     JEDEM Weg feuert - beim Reaktivieren eines Mitglieds, beim Rollenwechsel
+     Fan <-> Mitglied und beim Beitritt. An all diesen Stellen stand bisher nur
+     "hat nicht geklappt", und niemand wusste, dass der Verein an einer Grenze
+     steht. Der Fan-Fall zuerst: Er ist der speziellere, und sein Satz darf
+     niemals durch den Mitglieder-Satz ersetzt werden - die Vereinsleitung
+     wuerde sonst einen groesseren Tarif kaufen, obwohl nur die Fan-Plaetze
+     voll sind. */
+  if (text.includes("club_fan_limit_reached")) return t("zug.fansAusgeschoepft");
+  if (text.includes("club_account_limit_reached")) return t("zug.ausgeschoepft");
   return rueckfall;
 };
 
@@ -9524,7 +9536,12 @@ function SubscriptionPanel({ user }) {
     if (!databaseClub) { setAnfrage(null); return; }
     const [{ data: tarif }, { data: nutzung }, { data: offen }] = await Promise.all([
       supabase.rpc("club_subscription_tier", { target_club: user.clubId }),
-      supabase.rpc("club_account_usage", { target_club: user.clubId }),
+      /* Seit 20260924100000 gibt es zwei Kontingente. club_kontingent_uebersicht
+         liefert beide Zahlen samt Grenzen und sagt ueber gemeinsamer_topf, ob
+         der Verein auf der freien Stufe steht - dort zaehlen Mitglieder und
+         Fans zusammen gegen dieselben drei Zugaenge. Fehlt die Funktion (alte
+         Datenbank), bleibt nutzung leer und die Zeile faellt weg. */
+      supabase.rpc("club_kontingent_uebersicht", { target_club: user.clubId }),
       /* Nur laufende Vorgaenge. Ohne den Filter blieb die zuletzt auf
          "freigeschaltet" oder "abgelehnt" gesetzte Zeile stehen, und der Verein
          sah bis in alle Ewigkeit "Anfrage liegt vor - wir melden uns" - ohne
@@ -9593,9 +9610,19 @@ function SubscriptionPanel({ user }) {
         <div className="text-sm font-bold mb-1" style={{ color: C.ink }}>
           {vollzugang ? mitWerten(t("zug.vollzugangAktiv"), { stufe: CLUB_TIER_INFO[clubStatus.tier]?.label || clubStatus.tier }) : t("zug.kostenloseStufe")}
         </div>
-        {accountUsage && <div className="text-[11px]" style={{ color: accountUsage.used >= accountUsage.allowed ? C.red : C.textDim }}>
-          {mitWerten(t("zug.zugaengeBelegt"), { belegt: accountUsage.used, erlaubt: accountUsage.allowed })}{accountUsage.used >= accountUsage.allowed ? t("zug.vollzugangHinweis") : ""}
-        </div>}
+        {accountUsage && (accountUsage.gemeinsamer_topf
+          /* Freie Stufe: EINE Zahl. "0 von 0 Fan-Plaetzen" waere dort schlicht falsch. */
+          ? <div className="text-[11px]" style={{ color: (accountUsage.mitglieder + accountUsage.fans) >= accountUsage.mitglieder_grenze ? C.red : C.textDim }}>
+              {mitWerten(t("zug.zugaengeBelegt"), { belegt: accountUsage.mitglieder + accountUsage.fans, erlaubt: accountUsage.mitglieder_grenze })}{(accountUsage.mitglieder + accountUsage.fans) >= accountUsage.mitglieder_grenze ? t("zug.vollzugangHinweis") : ""}
+            </div>
+          : <>
+              <div className="text-[11px]" style={{ color: accountUsage.mitglieder >= accountUsage.mitglieder_grenze ? C.red : C.textDim }}>
+                {mitWerten(t("zug.mitgliederBelegt"), { belegt: accountUsage.mitglieder, erlaubt: accountUsage.mitglieder_grenze })}{accountUsage.mitglieder >= accountUsage.mitglieder_grenze ? t("zug.mehrMitgliederHinweis") : ""}
+              </div>
+              <div className="text-[11px]" style={{ color: accountUsage.fans >= accountUsage.fan_grenze ? C.red : C.textDim }}>
+                {mitWerten(t("zug.fansBelegt"), { belegt: accountUsage.fans, erlaubt: accountUsage.fan_grenze })}{accountUsage.fans >= accountUsage.fan_grenze ? t("zug.fansVollHinweis") : ""}
+              </div>
+            </>)}
         {!vollzugang && <div className="text-[11px] mt-1.5" style={{ color: C.textDim }}>{t("zug.kostenlosVsVollzugang")}</div>}
       </div>
     )}
@@ -13705,20 +13732,20 @@ function MembershipApprovalsPanel({ club, members, setMembers, currentUser = nul
     const { error } = await supabase.rpc("beitritt_entscheiden", {
       target_membership: request.id, approve, stufe, zusatzrollen: stufe === "fan" ? [] : zusatz,
     });
-    /* Die Zugangsgrenze setzt ein Trigger in der Datenbank durch, damit sie auf
-       jedem Weg greift. Er meldet sich mit "club_account_limit_reached" - ohne
-       diese Uebersetzung stuende hier eine rohe Postgres-Meldung. */
+    /* Die Kontingente setzt ein Trigger in der Datenbank durch, damit sie auf
+       jedem Weg greifen. Er meldet sich mit "club_account_limit_reached" fuer
+       die Mitglieder-Plaetze und mit "club_fan_limit_reached" fuer die
+       Fan-Plaetze - ohne Uebersetzung stuende hier eine rohe Postgres-Meldung.
+       Welcher der beiden Saetze passt, entscheidet jetzt rollenFehlerText.
+       Vorher stand die Zuordnung NUR hier; beim Reaktivieren und beim
+       Rollenwechsel las die Vereinsleitung "hat nicht geklappt".
+
+       Der Satz zur vollen Mitgliederzahl erscheint im wichtigsten Moment. Er
+       schickte den Vereinsadmin frueher zu "Abo & Empfehlungen", einem Bereich,
+       den es seit dem Umbau nicht mehr gibt, und versprach dort eine
+       Tarifliste, die dort bewusst nicht steht. */
     if (error) {
-      const grenzeErreicht = `${error.message}${error.details || ""}`.includes("club_account_limit_reached");
-      setMessage(grenzeErreicht
-        /* Dieser Satz erscheint genau dann, wenn ein Verein an seine
-           Zugangsgrenze stoesst - also im wichtigsten Moment. Er schickte den
-           Vereinsadmin bisher zu "Abo & Empfehlungen", einem Bereich, den es
-           seit dem Umbau nicht mehr gibt, und versprach dort eine Tarifliste,
-           die dort bewusst nicht steht. Das kaufmaennische Und stand
-           ausserdem als "&amp;" im Klartext auf dem Bildschirm. */
-        ? t("zug.ausgeschoepft")
-        : rollenFehlerText(error, t, t("allg.entscheidungNichtGespeichert")));
+      setMessage(rollenFehlerText(error, t, t("allg.entscheidungNichtGespeichert")));
       setWorkingId(null); return;
     }
     setMembers((items) => approve
@@ -17102,9 +17129,14 @@ export default function ClubMemberOrganisationApp() {
       account_role: art, member_birthdate: null, member_team: team || null,
     });
     if (error) {
+      /* Auch hier koennen die Kontingente zuschlagen: Nimmt ein Verein
+         Beitritte ohne Freigabe an, legt register_for_club die Mitgliedschaft
+         sofort aktiv an - und dann entscheidet der Trigger. Ohne
+         rollenFehlerText stuende "Anfrage konnte nicht gesendet werden", und
+         der Beitretende suchte den Fehler bei sich. */
       return { error: /blocked/i.test(error.message || "")
         ? t("verein.gesperrtKeinBeitritt")
-        : t("zug.anfrageSendenFehler") };
+        : rollenFehlerText(error, t, t("zug.anfrageSendenFehler")) };
     }
     if (data?.[0]?.membership_status === "active") return loadSupabaseMembership(profileId, selectedClubId);
     await mitgliedschaftenLaden(profileId);
@@ -17475,7 +17507,10 @@ export default function ClubMemberOrganisationApp() {
         const result = await supabase.rpc("register_for_club", { target_club:draft.clubId, member_name:draft.name, account_role:familySetup?.accountType||"mitglied", member_birthdate:draft.birthdate||null, member_team:draft.team||null });
         registration=result.data; registrationError=result.error;
       }
-      if (registrationError) return { error: t("reg.kontoOhneVereinsprofil") };
+      /* Auch der erste Zugang laeuft in den Trigger: Ist ein Kontingent des
+         Vereins voll, ist das kein "Konto ohne Vereinsprofil", sondern eine
+         Grenze - und genau das soll dastehen. */
+      if (registrationError) return { error: rollenFehlerText(registrationError, t, t("reg.kontoOhneVereinsprofil")) };
       if (registration?.[0]?.membership_status === "pending") {
         await supabase.auth.signOut();
         return { ok: true, message: t("reg.freigabeNoetig") };
