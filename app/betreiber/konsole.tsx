@@ -1010,7 +1010,7 @@ function VereinsDetail({ daten, onSchliessen }: {
         <h3 style={{ ...ueberschrift, marginTop: 22 }}>Gebuchte Sponsoren</h3>
         {!verein.sponsoring_freigeschaltet ? (
           <p style={{ ...karte, fontSize: 13, color: "#8A7F85" }}>
-            Der Sponsorenzusatz ist für diesen Verein nicht freigeschaltet (9 € im Monat oder 80 € im Jahr).
+            Der Sponsorenzusatz ist für diesen Verein nicht freigeschaltet (15 € im Monat oder 180 € im Jahr).
             Er kann zwar Sponsoren vorbereiten, angezeigt wird davon nichts.
           </p>
         ) : sponsoren.length === 0 ? (
