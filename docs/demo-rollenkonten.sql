@@ -37,6 +37,7 @@ declare
   v_user uuid;
   v_mit  uuid;
   v_mail text;
+  v_nr   integer := 0;
   r record;
 begin
   /* Die Pruefung setzt den Platzhalter aus zwei Stuecken zusammen, damit das
@@ -85,7 +86,17 @@ begin
                                'email_verified', true, 'phone_verified', false),
             'email', now(), now());
 
-    /* Das Profil legt der Ausloeser handle_new_user selbst an. */
+    /* Das Profil legt der Ausloeser handle_new_user selbst an; hier kommt nur
+       noch die Telefonnummer dazu. Ohne eine hinterlegte Nummer laesst die App
+       keine Fahrzeugbuchung zu (hasPhone in VehiclesView), und die Vorfuehrung
+       bliebe an dieser Stelle stehen.
+       Die Nummern sind erfunden: Der Block 0151 0000 00xx ist nicht vergeben,
+       es klingelt also bei niemandem. */
+    v_nr := v_nr + 1;
+    update public.profiles
+       set contact_phones = array['+49 151 000000' || lpad(v_nr::text, 2, '0')]
+     where id = v_user;
+
     insert into public.club_memberships (club_id, profile_id, display_name, status,
                                          is_managed_profile, email, member_since)
     values (v_klub, v_user, r.anzeige, 'active', false, v_mail, 2026)
@@ -117,6 +128,8 @@ select m.display_name                                           as konto,
           from public.membership_roles mr where mr.membership_id = m.id) as rollen,
        (select count(*) from public.profiles p where p.id = m.profile_id)        as profil,
        (select count(*) from auth.identities i where i.user_id = m.profile_id)   as anmeldbar,
+       (select array_to_string(p.contact_phones, ', ') from public.profiles p
+         where p.id = m.profile_id)                                              as telefon,
        (select coalesce(string_agg(t.name, ', '), '-') from public.team_members tm
           join public.teams t on t.id = tm.team_id where tm.membership_id = m.id) as mannschaft
   from public.club_memberships m
