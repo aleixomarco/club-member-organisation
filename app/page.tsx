@@ -4622,16 +4622,34 @@ function HelperSlots({ ev, members, currentUser, dutyPlan, setDutyPlan, eligible
                 <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{names.length ? names.join(", ") : t("helf.niemand")} · {list.length}/{STATION_CAP}</div>
               )}
             </div>
-            {eligible && (
+            {/* Eintragen darf sich jeder selbst, austragen nur die Leitung
+                (Betreiberentscheidung 25.09.2026, Regel in der Datenbank:
+                20260925220000). Wer drinsteht, bekommt deshalb keinen Knopf
+                mehr, sondern einen Vermerk - ein Knopf, der nichts tut, sieht
+                aus wie eine kaputte App, und die Datenbank wuerde das
+                Austragen ohnehin abweisen. */}
+            {eligible && (imIn && !darfVerwalten ? (
+              <span className="px-2.5 py-1 rounded-full text-[11px] flex-shrink-0"
+                style={{ fontFamily: "Inter", fontWeight: 700, background: C.secondary, color: "#fff" }}>
+                {t("help.eingetragenHaken")}
+              </span>
+            ) : (
               <button onClick={() => toggleHelperSelf(setDutyPlan, ev.id, station, currentUser.id, onSetzen)} disabled={!imIn && full}
                 className="px-2.5 py-1 rounded-full text-[11px] flex-shrink-0"
                 style={{ fontFamily: "Inter", fontWeight: 700, background: imIn ? C.secondary : full ? C.paperDim : C.ink, color: imIn ? "#fff" : full ? C.textDim : "#fff" }}>
                 {imIn ? t("help.eingetragenHaken") : full ? t("help.voll") : t("allg.uebernehmen")}
               </button>
-            )}
+            ))}
           </div>
         );
       })}
+      {/* Ein Satz statt eines toten Knopfes: Ohne ihn tippt man dreimal auf
+          den Haken und haelt die App fuer kaputt. Er steht nur da, wenn er
+          jemanden betrifft - also wenn man selbst irgendwo eingetragen ist
+          und nicht ohnehin verwalten darf. */}
+      {!darfVerwalten && eligible && ev.helperSlots.some((st) => (plan[st] || []).includes(currentUser.id)) && (
+        <div className="text-[11px] px-1" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("help.austragenNurLeitung")}</div>
+      )}
       {/* Beliebige Person eintragen - auch sich selbst.
           Vorher konnte jeder nur sich selbst setzen; wer jemanden einteilen
           wollte, musste ihn bitten, es selbst zu tun. Die Auswahl sucht nach
