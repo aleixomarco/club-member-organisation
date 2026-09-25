@@ -8835,20 +8835,20 @@ function VehiclesView({ currentUser, currentClub }) {
     setLoading(true);
     const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
     const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 1);
-    /* Gelesen wird die Sicht fahrzeugbelegung, nicht die Tabelle: Sie zeigt
-       jedem Mitglied, DASS und WANN ein Fahrzeug belegt ist, gibt Name,
-       Freitext und membership_id aber nur an die Vereinsleitung und an die
-       buchende Person selbst heraus (Migration 20260925120000). Fahrzeug- und
-       Mannschaftsname stehen als eigene Spalten darin - ueber eine Sicht kann
-       PostgREST keine Fremdschluessel einbetten, und der frueher noetige
-       Beziehungsname club_memberships!vehicle_bookings_membership_id_fkey
-       entfaellt damit. */
-    const { data, error } = await supabase.from("fahrzeugbelegung")
-      .select("id,vehicle_id,fahrzeug,team_id,mannschaft,membership_id,private_label,gebucht_von,darf_namen_sehen,starts_at,ends_at,status,created_at")
-      .eq("club_id", currentUser.clubId)
-      .lt("starts_at", monthEnd.toISOString())
-      .gt("ends_at", monthStart.toISOString())
-      .order("starts_at");
+    /* Gelesen wird die Funktion fahrzeugbelegung_im_zeitraum, nicht die
+       Tabelle: Sie zeigt jedem Mitglied, DASS und WANN ein Fahrzeug belegt
+       ist, gibt Name, Freitext und membership_id aber nur an die
+       Vereinsleitung und an die buchende Person selbst heraus (Migrationen
+       20260925120000 und 20260925140000). Dasselbe Muster wie
+       kontaktdaten_im_verein. Fahrzeug- und Mannschaftsname kommen als eigene
+       Spalten zurueck, der frueher noetige Beziehungsname
+       club_memberships!vehicle_bookings_membership_id_fkey entfaellt damit,
+       und sortiert wird schon in der Datenbank. */
+    const { data, error } = await supabase.rpc("fahrzeugbelegung_im_zeitraum", {
+      target_club: currentUser.clubId,
+      von: monthStart.toISOString(),
+      bis: monthEnd.toISOString(),
+    });
     if (error) { setMessage(t("fzg.buchungenFehler")); setLoading(false); return; }
     /* bookedBy ist leer, wenn die Sicht den Namen zurueckhaelt - die Anzeige
        laesst die Zeile dann einfach weg statt einen Platzhalter zu zeigen. */
