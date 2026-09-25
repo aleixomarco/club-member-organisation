@@ -9483,6 +9483,8 @@ function DutyTemplatesPanel({ currentUser, sport }) {
   const [loading, setLoading] = useState(true);
   const [newName, setNewName] = useState("");
   const [newItemTitles, setNewItemTitles] = useState({});
+  /* Je Satz die Platzzahl, mit der die naechste Station angelegt wird. */
+  const [newItemPlaetze, setNewItemPlaetze] = useState({});
   const [expandedId, setExpandedId] = useState(null);
   const [message, setMessage] = useState("");
   const [messageOk, setMessageOk] = useState(false);
@@ -9490,7 +9492,7 @@ function DutyTemplatesPanel({ currentUser, sport }) {
   const loadTemplates = useCallback(async () => {
     setLoading(true);
     const { data, error } = await supabase.from("duty_task_templates")
-      .select("id,name,duty_task_template_items(id,title,sort_order)")
+      .select("id,name,duty_task_template_items(id,title,sort_order,plaetze)")
       .eq("club_id", currentUser.clubId)
       .order("name");
     if (error) { setMessage(t("help.saetzeLadenFehler")); setMessageOk(false); setLoading(false); return; }
@@ -9520,9 +9522,19 @@ function DutyTemplatesPanel({ currentUser, sport }) {
     if (!title) return;
     const template = templates.find((s) => s.id === templateId);
     const nextOrder = template?.items.length || 0;
-    const { error } = await supabase.from("duty_task_template_items").insert({ template_id: templateId, title, sort_order: nextOrder });
+    const plaetze = newItemPlaetze[templateId] || STATION_CAP;
+    const { error } = await supabase.from("duty_task_template_items").insert({ template_id: templateId, title, sort_order: nextOrder, plaetze });
     if (error) { setMessage(t("help.stationHinzufuegenFehler")); setMessageOk(false); return; }
     setNewItemTitles((all) => ({ ...all, [templateId]: "" }));
+    setNewItemPlaetze((all) => ({ ...all, [templateId]: STATION_CAP }));
+    await loadTemplates();
+  };
+  /* Die Platzzahl einer Station im Satz. Sie wirkt erst beim naechsten
+     Anwenden - Termine, die den Satz schon aufgelegt haben, behalten ihre
+     eigene Zahl. */
+  const plaetzeAendern = async (itemId, plaetze) => {
+    const { error } = await supabase.from("duty_task_template_items").update({ plaetze }).eq("id", itemId).select("id");
+    if (error) { setMessage(t("help.plaetzeFehler")); setMessageOk(false); return; }
     await loadTemplates();
   };
   const removeItem = async (itemId) => { const { error } = await supabase.from("duty_task_template_items").delete().eq("id", itemId); if (!error) await loadTemplates(); };
@@ -9561,12 +9573,25 @@ function DutyTemplatesPanel({ currentUser, sport }) {
               <div className="px-3.5 pb-3.5">
                 {satz.items.map((item) => (
                   <div key={item.id} className="flex items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 mb-1.5" style={{ background: C.paperDim }}>
-                    <span className="text-xs" style={{ color: C.ink }}>{item.title}</span>
-                    <button onClick={() => removeItem(item.id)} className="text-[10px] font-bold" style={{ color: C.red }}>{t("allg.entfernen")}</button>
+                    <span className="flex-1 min-w-0 text-xs break-words" style={{ color: C.ink }}>{item.title}</span>
+                    <select value={item.plaetze || STATION_CAP} onChange={(e) => plaetzeAendern(item.id, Number(e.target.value))}
+                      aria-label={mitWerten(t("help.plaetzeFuerStation"), { station: item.title })}
+                      className="shrink-0 text-[11px] px-1.5 py-1 rounded-lg outline-none"
+                      style={{ background: C.white, border: `1px solid ${C.line}`, color: C.ink }}>
+                      {PLATZ_ZAHLEN.map((n) => <option key={n} value={n}>{n}</option>)}
+                    </select>
+                    <button onClick={() => removeItem(item.id)} className="shrink-0 text-[10px] font-bold" style={{ color: C.red }}>{t("allg.entfernen")}</button>
                   </div>
                 ))}
                 <div className="flex gap-2 mt-2">
                   <input value={newItemTitles[satz.id] || ""} onChange={(e) => setNewItemTitles((all) => ({ ...all, [satz.id]: e.target.value }))} maxLength={60} placeholder={mitWerten(t("help.stationPlatzhalterBeispiele"), { beispiele: t(cfg.dutyStationExamples) })} className="flex-1 px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}/>
+                  <select value={newItemPlaetze[satz.id] || STATION_CAP}
+                    onChange={(e) => setNewItemPlaetze((all) => ({ ...all, [satz.id]: Number(e.target.value) }))}
+                    aria-label={t("help.plaetze")}
+                    className="shrink-0 text-xs px-2 py-2 rounded-lg outline-none"
+                    style={{ background: C.paperDim, color: C.ink }}>
+                    {PLATZ_ZAHLEN.map((n) => <option key={n} value={n}>{n}</option>)}
+                  </select>
                   <button onClick={() => addItem(satz.id)} disabled={!(newItemTitles[satz.id] || "").trim()} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: (newItemTitles[satz.id] || "").trim() ? C.ink : C.line, color: C.white }}>{t("help.plusStation")}</button>
                 </div>
                 <button onClick={() => deleteTemplate(satz.id)} className="w-full mt-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.paperDim, color: C.red }}>{t("helf.satzLoeschen")}</button>
