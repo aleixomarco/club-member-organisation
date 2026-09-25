@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { SITZUNGS_COOKIE, fremdeHerkunft, sitzungGueltig } from "@/lib/betreiber";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { BILD_EIMER, istBetreiberBild } from "@/lib/betreiber-bild";
 
 export const dynamic = "force-dynamic";
 
@@ -178,10 +179,26 @@ export async function POST(request: Request) {
      Sponsor auf denselben Platz setzt. */
   if (daten.art === "anzeige") {
     const PLAETZE = ["dashboard_top", "dashboard_bottom", "events_header", "profile_bottom"];
+    /* Das Bild, das bisher an dieser Anzeige hing. Es wird gleich gebraucht:
+       einmal beim Entfernen der Anzeige, einmal beim Austausch des Bildes.
+       Ohne das bliebe jedes abgelöste Bild für immer im Speicher liegen. */
+    const altesBild = async (): Promise<string | null> => {
+      if (!istUuid(daten.anzeige)) return null;
+      const { data } = await admin.from("anzeigen").select("bild_pfad").eq("id", daten.anzeige).is("club_id", null).maybeSingle();
+      return (data?.bild_pfad as string | null) ?? null;
+    };
+    const bildWegraeumen = async (pfad: string | null) => {
+      if (!istBetreiberBild(pfad)) return;
+      const { error } = await admin.storage.from(BILD_EIMER).remove([pfad]);
+      if (error) console.error("Anzeigenbild blieb liegen", error);
+    };
+
     if (daten.entfernen) {
       if (!istUuid(daten.anzeige)) return NextResponse.json({ error: "Keine Anzeige gewählt." }, { status: 400 });
+      const bild = await altesBild();
       const { error } = await admin.from("anzeigen").delete().eq("id", daten.anzeige).is("club_id", null);
       if (error) return NextResponse.json({ error: "Die Anzeige konnte nicht entfernt werden." }, { status: 500 });
+      await bildWegraeumen(bild);
       await protokollieren("anzeige:entfernt", null, { anzeige: daten.anzeige });
       return NextResponse.json({ ok: true });
     }
@@ -192,12 +209,19 @@ export async function POST(request: Request) {
     if (!titel) return NextResponse.json({ error: "Ohne Titel geht es nicht." }, { status: 400 });
 
     const text = (w: unknown, max: number) => (typeof w === "string" && w.trim() ? w.trim().slice(0, max) : null);
+    /* Das Vorschaubild kommt als Pfad, den /api/betreiber/bild vorher
+       zurückgegeben hat. Angenommen wird nur ein Pfad aus dem Betreiber-Ordner:
+       Sonst könnte hier das Bild eines Vereinssponsors eingetragen werden, und
+       beim nächsten Austausch löschte diese Route es weg. */
+    const bildPfad = istBetreiberBild(daten.bild_pfad) ? daten.bild_pfad : null;
+    const vorherigesBild = await altesBild();
     const satz = {
       club_id: null,
       platz,
       titel,
       text: text(daten.text, 400),
       ziel_url: text(daten.ziel_url, 500),
+      bild_pfad: bildPfad,
       aktiv: daten.aktiv !== false,
       laeuft_bis: text(daten.laeuft_bis, 40) ? new Date(`${daten.laeuft_bis}T23:59:59`).toISOString() : null,
     };
@@ -208,6 +232,9 @@ export async function POST(request: Request) {
       console.error("Anzeige konnte nicht gespeichert werden", error);
       return NextResponse.json({ error: error.message || "Die Anzeige konnte nicht gespeichert werden." }, { status: 500 });
     }
+    /* Erst wegräumen, wenn die Zeile wirklich steht - sonst wäre bei einem
+       Fehlschlag das Bild weg und die alte Anzeige zeigte ins Leere. */
+    if (vorherigesBild && vorherigesBild !== bildPfad) await bildWegraeumen(vorherigesBild);
     await protokollieren("anzeige", null, satz);
     return NextResponse.json({ ok: true });
   }

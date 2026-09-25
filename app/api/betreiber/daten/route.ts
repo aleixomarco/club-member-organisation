@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { SITZUNGS_COOKIE, sitzungGueltig } from "@/lib/betreiber";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { bildAdresse } from "@/lib/betreiber-bild";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,7 @@ export async function GET() {
     admin.from("offene_freischaltungen").select("*"),
     /* Die eigenen Werbeplaetze: club_id null heisst "gilt in jedem Verein".
        Sie liessen sich bisher nur von Hand im SQL-Editor anlegen. */
-    admin.from("anzeigen").select("id,platz,titel,text,ziel_url,telefon,email,aktion_titel,aktion_bis,laeuft_bis,aktiv,impressionen,klicks")
+    admin.from("anzeigen").select("id,platz,titel,text,ziel_url,bild_pfad,telefon,email,aktion_titel,aktion_bis,laeuft_bis,aktiv,impressionen,klicks")
       .is("club_id", null).order("platz"),
     /* Die Sponsoren der Vereine - nur so viel, wie die Auswahlliste im
        Reiter "Werbeanzeigen" braucht. Sie stehen dort neben der eigenen
@@ -102,7 +103,12 @@ export async function GET() {
       wartung: wartung.error ? null : imWartungsmodus.has(v.id as string),
     })),
     anfragen: anfragen.data || [],
-    anzeigen: anzeigen.data || [],
+    /* Der gespeicherte Pfad allein nuetzt der Konsole nichts - sie braucht
+       eine abrufbare Adresse, genau wie bei den Sponsorenbildern. */
+    anzeigen: (anzeigen.data || []).map((a: Record<string, unknown>) => ({
+      ...a,
+      bild_url: bildAdresse(a.bild_pfad),
+    })),
     sponsoren: (sponsoren.data || []).map((a: Record<string, unknown>) => ({
       ...a,
       verein: vereinsName.get(a.club_id as string) || "—",

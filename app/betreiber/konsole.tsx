@@ -57,6 +57,9 @@ function kontenKachel(k: KontenStand) {
 
 type Anzeige = {
   id: string; platz: string; titel: string; text: string | null; ziel_url: string | null;
+  /* bild_pfad ist, was in der Datenbank steht; bild_url baut die Laderoute
+     daraus zusammen, weil die Konsole keinen Supabase-Client hat. */
+  bild_pfad: string | null; bild_url: string | null;
   telefon: string | null; email: string | null;
   aktion_titel: string | null; laeuft_bis: string | null; aktiv: boolean;
   impressionen: number; klicks: number;
@@ -694,6 +697,7 @@ function WerbeReiter({ anzeigen, sponsoren, laeuft, onNeu, onBearbeiten, onFehle
                 {anzeigen.map((a) => (
                   <div key={a.id} style={{ ...karte, display: "flex", gap: 12, alignItems: "baseline", flexWrap: "wrap" }}>
                     <span style={abzeichen}>{PLATZ_NAMEN[a.platz] || a.platz}</span>
+                    {a.bild_url && <img src={a.bild_url} alt="" style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 8, border: "1px solid #E9E4E7", alignSelf: "center" }} />}
                     <b style={{ fontSize: 14 }}>{a.titel}</b>
                     {!a.aktiv && <span style={{ ...abzeichen, background: "#F0EBEE" }}>ausgeschaltet</span>}
                     {a.laeuft_bis && <span style={{ fontSize: 12, color: "#8A7F85" }}>bis {datum(a.laeuft_bis)}</span>}
@@ -1250,7 +1254,35 @@ function AnzeigeDialog({ anzeige, laeuft, onAbbrechen, onSpeichern, onEntfernen 
   const [zielUrl, setZielUrl] = useState(anzeige.ziel_url || "");
   const [bis, setBis] = useState(anzeige.laeuft_bis ? anzeige.laeuft_bis.slice(0, 10) : "");
   const [aktiv, setAktiv] = useState(anzeige.aktiv !== false);
+  const [bildPfad, setBildPfad] = useState(anzeige.bild_pfad || "");
+  const [bildUrl, setBildUrl] = useState(anzeige.bild_url || "");
+  const [bildLaeuft, setBildLaeuft] = useState(false);
   const [fehler, setFehler] = useState("");
+
+  /* Das Bild geht sofort in den Speicher, nicht erst beim Speichern der
+     Anzeige: Eine Datei lässt sich nicht als JSON an /api/betreiber/aktion
+     schicken, und ein Vorschaubild, das man vor dem Speichern nicht sieht,
+     ist kein Vorschaubild. Die Anzeige merkt sich davon nur den Pfad.
+     Bricht der Betreiber danach ab, bleibt die Datei liegen - das ist der
+     harmlosere Fehler, verglichen mit einem gelöschten Bild an einer
+     laufenden Anzeige. */
+  const bildHochladen = async (datei: File | undefined) => {
+    if (!datei) return;
+    setFehler(""); setBildLaeuft(true);
+    try {
+      const formular = new FormData();
+      formular.append("bild", datei);
+      const antwort = await fetch("/api/betreiber/bild", { method: "POST", body: formular });
+      const inhalt = await antwort.json().catch(() => ({}));
+      if (!antwort.ok) { setFehler(inhalt.error || "Das Bild konnte nicht gespeichert werden."); return; }
+      setBildPfad(inhalt.bild_pfad || "");
+      setBildUrl(inhalt.bild_url || "");
+    } catch {
+      setFehler("Das Bild konnte nicht gespeichert werden.");
+    } finally {
+      setBildLaeuft(false);
+    }
+  };
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(20,21,26,.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
@@ -1271,6 +1303,23 @@ function AnzeigeDialog({ anzeige, laeuft, onAbbrechen, onSpeichern, onEntfernen 
         <textarea value={text} onChange={(e) => setText(e.target.value)} maxLength={400} rows={3}
           style={{ ...feld, resize: "vertical" as const }} />
 
+        <label style={beschriftung}>Vorschaubild (optional)</label>
+        {bildUrl && (
+          <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 10 }}>
+            <img src={bildUrl} alt="" style={{ width: 96, height: 96, objectFit: "cover", borderRadius: 10, border: "1px solid #E9E4E7" }} />
+            <button type="button" style={knopfLeise} disabled={bildLaeuft}
+              onClick={() => { setBildPfad(""); setBildUrl(""); }}>Bild entfernen</button>
+          </div>
+        )}
+        <input type="file" accept="image/jpeg,image/png,image/webp" disabled={bildLaeuft}
+          onChange={(e) => { const datei = e.target.files?.[0]; e.target.value = ""; bildHochladen(datei); }}
+          style={{ ...feld, padding: 8 }} />
+        <p style={hinweis}>
+          {bildLaeuft
+            ? "Das Bild wird hochgeladen …"
+            : "JPG, PNG oder WebP, höchstens 2 MB. In der App steht es klein neben dem Titel und groß, sobald jemand die Anzeige aufschlägt."}
+        </p>
+
         <label style={beschriftung}>Ziel-Adresse (optional)</label>
         <input type="url" value={zielUrl} onChange={(e) => setZielUrl(e.target.value)} placeholder="https://…" style={feld} />
 
@@ -1287,10 +1336,10 @@ function AnzeigeDialog({ anzeige, laeuft, onAbbrechen, onSpeichern, onEntfernen 
 
         <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
           <button style={{ ...knopfLeise, flex: 1 }} onClick={onAbbrechen}>Abbrechen</button>
-          <button style={{ ...knopf, flex: 1, opacity: laeuft ? 0.6 : 1 }} disabled={laeuft}
+          <button style={{ ...knopf, flex: 1, opacity: laeuft || bildLaeuft ? 0.6 : 1 }} disabled={laeuft || bildLaeuft}
             onClick={() => {
               if (!titel.trim()) { setFehler("Ohne Titel geht es nicht."); return; }
-              onSpeichern({ platz, titel, text, ziel_url: zielUrl, laeuft_bis: bis, aktiv });
+              onSpeichern({ platz, titel, text, ziel_url: zielUrl, bild_pfad: bildPfad || null, laeuft_bis: bis, aktiv });
             }}>{laeuft ? "…" : "Speichern"}</button>
         </div>
         {anzeige.id && (
