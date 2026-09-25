@@ -696,7 +696,25 @@ const resolveDashboardTileOrder = (order) => {
   });
   return reihenfolge;
 };
+/* Wie viele Personen an eine Helferstation passen, wenn nichts anderes
+   eingestellt ist. Die Zahl steht seit 26.09.2026 je Station am Termin
+   (events.helper_caps); diese Vorgabe gilt fuer alles, was davor angelegt
+   wurde, und fuer Termine aus dem Demo-Betrieb ohne Datenbank.
+   Dieselbe Vorgabe und dieselben Grenzen kennt die Datenbank in
+   public.helferstation_plaetze - beides muss zusammenpassen, sonst zeigt die
+   App einen freien Platz an, den der Auslöser beim Eintragen abweist. */
 const STATION_CAP = 2;
+const STATION_CAP_MAX = 10;
+const PLATZ_ZAHLEN = Array.from({ length: STATION_CAP_MAX }, (_, i) => i + 1);
+const plaetzeFuer = (ev, station) => {
+  const wert = Number(ev?.helperCaps?.[station]);
+  return Number.isFinite(wert) && wert >= 1 ? Math.min(wert, STATION_CAP_MAX) : STATION_CAP;
+};
+/* Wie viele Plaetze ein Termin insgesamt hat und wie viele davon frei sind -
+   an drei Stellen gebraucht (Helferplanung, Support-Reiter, Startseite). */
+const plaetzeGesamt = (ev) => (ev.helperSlots || []).reduce((n, st) => n + plaetzeFuer(ev, st), 0);
+const plaetzeBelegt = (ev, plan) =>
+  (ev.helperSlots || []).reduce((n, st) => n + Math.min((plan?.[st] || []).length, plaetzeFuer(ev, st)), 0);
 const COUNTRY_CODES = "AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB LC LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS XK YE YT ZA ZM ZW".split(" ");
 const NOTIFICATION_OPTIONS = [
   /* Diese sechs muessen Wort fuer Wort so heissen, wie notify_event_audience
@@ -4452,14 +4470,14 @@ function Dashboard({ user, members, events, channels, news, dutyPlan, seasonStan
  * Helferplan im gemeinsamen Zustandsblock, den nur Administratoren schreiben -
  * wer sich als Mitglied eintrug, sah seinen Namen und war beim naechsten
  * Oeffnen wieder draussen. */
-function toggleHelperSelf(setDutyPlan, eventId, station, userId, onSetzen) {
+function toggleHelperSelf(setDutyPlan, eventId, station, userId, onSetzen, plaetze = STATION_CAP) {
   setDutyPlan((dp) => {
     const plan = dp[eventId] || {};
     const list = plan[station] || [];
     const already = list.includes(userId);
     let nextList;
     if (already) nextList = list.filter((id) => id !== userId);
-    else { if (list.length >= STATION_CAP) return dp; nextList = [...list, userId]; }
+    else { if (list.length >= plaetze) return dp; nextList = [...list, userId]; }
     /* Schlaegt das Schreiben fehl, wird die Anzeige zurueckgenommen. Sonst
        stuende dort ein Name, den die Datenbank nie angenommen hat. */
     Promise.resolve(onSetzen?.(eventId, station, userId, !already)).then((r) => {
@@ -4590,7 +4608,8 @@ function HelperSlots({ ev, members, currentUser, dutyPlan, setDutyPlan, eligible
         const list = plan[station] || [];
         const names = list.map((id) => members.find((m) => m.id === id)?.name).filter(Boolean);
         const imIn = list.includes(currentUser.id);
-        const full = list.length >= STATION_CAP;
+        const plaetze = plaetzeFuer(ev, station);
+        const full = list.length >= plaetze;
         return (
           <div key={station} className="flex items-center justify-between px-3 py-2 rounded-lg" style={{ background: C.paper }}>
             <div>
@@ -4616,10 +4635,10 @@ function HelperSlots({ ev, members, currentUser, dutyPlan, setDutyPlan, eligible
                       </button>
                     );
                   })}
-                  <span>· {list.length}/{STATION_CAP}</span>
+                  <span>· {list.length}/{plaetze}</span>
                 </div>
               ) : (
-                <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{names.length ? names.join(", ") : t("helf.niemand")} · {list.length}/{STATION_CAP}</div>
+                <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{names.length ? names.join(", ") : t("helf.niemand")} · {list.length}/{plaetze}</div>
               )}
             </div>
             {/* Eintragen darf sich jeder selbst, austragen nur die Leitung
@@ -4634,7 +4653,7 @@ function HelperSlots({ ev, members, currentUser, dutyPlan, setDutyPlan, eligible
                 {t("help.eingetragenHaken")}
               </span>
             ) : (
-              <button onClick={() => toggleHelperSelf(setDutyPlan, ev.id, station, currentUser.id, onSetzen)} disabled={!imIn && full}
+              <button onClick={() => toggleHelperSelf(setDutyPlan, ev.id, station, currentUser.id, onSetzen, plaetze)} disabled={!imIn && full}
                 className="px-2.5 py-1 rounded-full text-[11px] flex-shrink-0"
                 style={{ fontFamily: "Inter", fontWeight: 700, background: imIn ? C.secondary : full ? C.paperDim : C.ink, color: imIn ? "#fff" : full ? C.textDim : "#fff" }}>
                 {imIn ? t("help.eingetragenHaken") : full ? t("help.voll") : t("allg.uebernehmen")}
@@ -4678,7 +4697,7 @@ function HelperSlots({ ev, members, currentUser, dutyPlan, setDutyPlan, eligible
                    Datenbank nie angenommen hat. */
                 const vorher = dutyPlan[ev.id]?.[eintragStation] || [];
                 if (vorher.includes(eintragPerson)) { setEintragPerson(""); setEintragStation(""); return; }
-                if (vorher.length >= STATION_CAP) return;
+                if (vorher.length >= plaetzeFuer(ev, eintragStation)) return;
                 setDutyPlan((dp) => ({ ...dp, [ev.id]: { ...(dp[ev.id] || {}), [eintragStation]: [...vorher, eintragPerson] } }));
                 const station = eintragStation;
                 Promise.resolve(onSetzen?.(ev.id, station, eintragPerson, true)).then((r) => {
@@ -5021,7 +5040,7 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
           {featureEnabled("duty_roster") && (ev.helperSlots?.length > 0 || dutyLeitung) && (
             <div className="mt-3">
               <div className="text-xs font-semibold mb-2" style={{ fontFamily: "Inter", color: C.ink }}>{t("helf.gesucht")}</div>
-              {dutyLeitung && <DutyStationsManager ev={ev} currentUser={currentUser} onNeuLaden={onNeuLaden} dutyPlan={dutyPlan} />}
+              {dutyLeitung && <DutyStationsManager ev={ev} currentUser={currentUser} sport={currentClub?.sport} onNeuLaden={onNeuLaden} dutyPlan={dutyPlan} />}
               {ev.helperSlots?.length > 0 && (
                 <HelperSlots ev={ev} members={members} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} eligible={helperEligible} onSetzen={onDienstSetzen} darfVerwalten={canManageDuty(currentUser)} />
               )}
@@ -9280,11 +9299,15 @@ function VehiclesView({ currentUser, currentClub }) {
  * Die offenen Punkte der Verwaltung zaehlen seit 20260925210000 ebenfalls die
  * Eintragungen und nicht mehr duty_tasks; sonst stuende eine oben voll
  * besetzte Station dort fuer immer als unbesetzt. */
-function DutyStationsManager({ ev, currentUser, onNeuLaden, dutyPlan }) {
+function DutyStationsManager({ ev, currentUser, sport, onNeuLaden, dutyPlan }) {
   const t = useT();
+  const cfg = sportConfig(sport);
   const [templates, setTemplates] = useState([]);
   const [selectedTemplate, setSelectedTemplate] = useState("");
   const [applying, setApplying] = useState(false);
+  const [neueStation, setNeueStation] = useState("");
+  const [neuePlaetze, setNeuePlaetze] = useState(STATION_CAP);
+  const [legtAn, setLegtAn] = useState(false);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -9340,6 +9363,45 @@ function DutyStationsManager({ ev, currentUser, onNeuLaden, dutyPlan }) {
     onNeuLaden?.();
   };
 
+  /* Eine einzelne Station dazulegen. Bis zum 26.09.2026 ging das nur beim
+     Anlegen des Termins oder indem man einen ganzen Satz vorlud - einen
+     Rueckweg (remove_duty_station) gab es, einen Hinweg nicht.
+     Die Fehler kommen als Schluesselwort aus der Datenbank, damit hier ein
+     Satz stehen kann, der die Sache trifft. */
+  const stationDazulegen = async () => {
+    const name = neueStation.trim();
+    if (!name || legtAn) return;
+    setLegtAn(true); setMessage("");
+    const { error } = await supabase.rpc("add_duty_station", {
+      target_event: ev.id, station_name: name, plaetze: neuePlaetze,
+    });
+    setLegtAn(false);
+    if (error) {
+      const grund = String(error.message || "");
+      setMessage(grund.includes("station_schon_da") ? t("help.stationSchonDa")
+        : grund.includes("zu_viele_stationen") ? t("help.zuVieleStationen")
+        : t("help.stationHinzufuegenFehler"));
+      return;
+    }
+    setNeueStation("");
+    setMessage(OK_ZEICHEN + mitWerten(t("help.stationAngelegt"), { station: name }));
+    onNeuLaden?.();
+  };
+
+  /* Wer die Zahl unter die Zahl der Eingetragenen setzt, wirft niemanden
+     hinaus - die Station ist dann voller als vorgesehen, und das steht so in
+     der Liste. Jemandem den Dienst stillschweigend zu streichen waere der
+     schlimmere Weg. */
+  const plaetzeAendern = async (station, anzahl) => {
+    setMessage("");
+    const { error } = await supabase.rpc("set_duty_station_plaetze", {
+      target_event: ev.id, station_name: station, plaetze: anzahl,
+    });
+    if (error) { setMessage(t("help.plaetzeFehler")); return; }
+    setMessage(OK_ZEICHEN + mitWerten(t("help.plaetzeGeaendert"), { station, anzahl }));
+    onNeuLaden?.();
+  };
+
   if (!supabase) return null;
 
   return (
@@ -9358,24 +9420,57 @@ function DutyStationsManager({ ev, currentUser, onNeuLaden, dutyPlan }) {
             style={{ background: selectedTemplate ? C.ink : C.line, color: C.white }}>{applying ? "…" : t("help.anwenden")}</button>
         </div>
       )}
-      {ev.helperSlots?.length > 0 && (
-        <div className="rounded-xl p-2.5 mb-2" style={{ background: C.paperDim }}>
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[11px] font-bold" style={{ color: C.ink, fontFamily: "Inter" }}>{t("helf.stationen")}</span>
+      {/* Die Stationen dieses Termins: Plaetze aendern, einzeln wegnehmen,
+          und unten eine neue dazulegen. Frueher standen hier nur Chips zum
+          Wegklicken - dazulegen ging gar nicht, und wie viele Leute an eine
+          Station passen, stand als feste Zwei im Quelltext. */}
+      <div className="rounded-xl p-2.5 mb-2" style={{ background: C.paperDim }}>
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-[11px] font-bold" style={{ color: C.ink, fontFamily: "Inter" }}>{t("helf.stationen")}</span>
+          {ev.helperSlots?.length > 0 && (
             <button onClick={alleEntfernen} className="text-[11px] font-bold" style={{ color: C.fehler, fontFamily: "Inter" }}>{t("helf.alleEntfernen")}</button>
-          </div>
-          <div className="flex flex-wrap gap-1.5">
+          )}
+        </div>
+        {ev.helperSlots?.length > 0 && (
+          <div className="space-y-1.5 mb-2">
             {ev.helperSlots.map((station) => (
-              <button key={station} onClick={() => stationEntfernen(station)}
-                aria-label={mitWerten(t("help.stationNameEntfernen"), { station })}
-                className="px-2.5 py-1 rounded-full text-[11px] flex items-center gap-1.5"
-                style={{ background: C.glass, border: `1px solid ${C.line}`, color: C.ink, fontFamily: "Inter", fontWeight: 600 }}>
-                {station} <X size={11} style={{ color: C.fehler }} />
-              </button>
+              <div key={station} className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl"
+                style={{ background: C.glass, border: `1px solid ${C.line}` }}>
+                <span className="flex-1 min-w-0 text-[11px] break-words" style={{ color: C.ink, fontFamily: "Inter", fontWeight: 600 }}>{station}</span>
+                <select value={plaetzeFuer(ev, station)} onChange={(event) => plaetzeAendern(station, Number(event.target.value))}
+                  aria-label={mitWerten(t("help.plaetzeFuerStation"), { station })}
+                  className="shrink-0 text-[11px] px-1.5 py-1 rounded-lg outline-none"
+                  style={{ background: C.white, border: `1px solid ${C.line}`, color: C.ink }}>
+                  {PLATZ_ZAHLEN.map((n) => <option key={n} value={n}>{n}</option>)}
+                </select>
+                <button onClick={() => stationEntfernen(station)}
+                  aria-label={mitWerten(t("help.stationNameEntfernen"), { station })}
+                  className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center" style={{ background: C.white }}>
+                  <X size={11} style={{ color: C.fehler }} />
+                </button>
+              </div>
             ))}
           </div>
+        )}
+        <div className="flex gap-1.5">
+          <input value={neueStation} maxLength={60}
+            onChange={(event) => { setNeueStation(event.target.value); setMessage(""); }}
+            onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); stationDazulegen(); } }}
+            placeholder={mitWerten(t("help.stationPlatzhalterBeispiele"), { beispiele: t(cfg.dutyStationExamples) })}
+            aria-label={t("feld.helferstationen")}
+            className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg text-[11px] outline-none"
+            style={{ background: C.white, border: `1px solid ${C.line}`, color: C.ink }} />
+          <select value={neuePlaetze} onChange={(event) => setNeuePlaetze(Number(event.target.value))}
+            aria-label={t("help.plaetze")}
+            className="shrink-0 text-[11px] px-1.5 py-1.5 rounded-lg outline-none"
+            style={{ background: C.white, border: `1px solid ${C.line}`, color: C.ink }}>
+            {PLATZ_ZAHLEN.map((n) => <option key={n} value={n}>{n}</option>)}
+          </select>
+          <button onClick={stationDazulegen} disabled={!neueStation.trim() || legtAn}
+            className="shrink-0 px-2.5 py-1.5 rounded-lg text-[11px] font-bold"
+            style={{ background: neueStation.trim() ? C.ink : C.line, color: C.white }}>{legtAn ? "…" : t("help.plusStation")}</button>
         </div>
-      )}
+      </div>
       {message && <div role="status" className="text-[11px] mb-1.5" style={{ color: istErfolg(message) ? C.erfolg : C.fehler }}>{meldungstext(message)}</div>}
     </div>
   );
@@ -11411,8 +11506,8 @@ function DutyView({ members, currentUser, events, dutyPlan, setDutyPlan, onDiens
       {helperEvents.map((ev) => {
         const eligible = formalMember;
         const plan = dutyPlan?.[ev.id] || {};
-        const belegt = ev.helperSlots.reduce((n, st) => n + Math.min((plan[st] || []).length, STATION_CAP), 0);
-        const gesamt = ev.helperSlots.length * STATION_CAP;
+        const belegt = plaetzeBelegt(ev, plan);
+        const gesamt = plaetzeGesamt(ev);
         const binDabei = ev.helperSlots.some((st) => (plan[st] || []).includes(currentUser.id));
         const aufgeklappt = offen.has(ev.id);
         return (
@@ -11579,7 +11674,10 @@ function AdminDutyPanel({ members, events, dutyPlan, setDutyPlan, onSetzen }) {
   const add = (eventId, station, memberId) => {
     if (!memberId) return;
     const vorher = dutyPlan[eventId]?.[station] || [];
-    if (vorher.includes(memberId) || vorher.length >= STATION_CAP) return;
+    /* Die Platzzahl haengt am Termin, nicht an dieser Ansicht - hier liegt nur
+       die Kennung vor, der Termin muss also nachgeschlagen werden. */
+    const termin = helperEvents.find((e) => e.id === eventId);
+    if (vorher.includes(memberId) || vorher.length >= plaetzeFuer(termin, station)) return;
     setDutyPlan((dp) => ({ ...dp, [eventId]: { ...(dp[eventId] || {}), [station]: [...vorher, memberId] } }));
     Promise.resolve(onSetzen?.(eventId, station, memberId, true)).then((r) => {
       if (r?.error) setDutyPlan((jetzt) => ({ ...jetzt, [eventId]: { ...(jetzt[eventId] || {}), [station]: vorher } }));
@@ -11603,8 +11701,8 @@ function AdminDutyPanel({ members, events, dutyPlan, setDutyPlan, onSetzen }) {
       {helperEvents.map((ev) => {
         const plan = dutyPlan[ev.id] || {};
         const pool = formalMembers;
-        const belegt = ev.helperSlots.reduce((n, st) => n + Math.min((plan[st] || []).length, STATION_CAP), 0);
-        const gesamt = ev.helperSlots.length * STATION_CAP;
+        const belegt = plaetzeBelegt(ev, plan);
+        const gesamt = plaetzeGesamt(ev);
         const aufgeklappt = offen.has(ev.id);
         return (
           <div key={ev.id} className="rounded-2xl mb-3 overflow-hidden" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
@@ -11625,7 +11723,7 @@ function AdminDutyPanel({ members, events, dutyPlan, setDutyPlan, onSetzen }) {
                 const list = plan[station] || [];
                 return (
                   <div key={station}>
-                    <div className="text-xs mb-1" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{station} ({list.length}/{STATION_CAP})</div>
+                    <div className="text-xs mb-1" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{station} ({list.length}/{plaetzeFuer(ev, station)})</div>
                     <div className="flex flex-wrap gap-1.5 mb-1.5">
                       {list.map((id) => {
                         const m = members.find((x) => x.id === id);
@@ -11636,7 +11734,7 @@ function AdminDutyPanel({ members, events, dutyPlan, setDutyPlan, onSetzen }) {
                         );
                       })}
                     </div>
-                    {list.length < STATION_CAP && (
+                    {list.length < plaetzeFuer(ev, station) && (
                       /* Durchsuchbar wie bei Aufgaben und Helferdiensten (NutzerWahl):
                          In einem <select> mit allen Mitgliedern kann man weder tippen
                          noch springen. Die Auswahl bleibt danach leer fuer die naechste
@@ -12097,7 +12195,7 @@ function OverviewPanel({ members, events, protocols, dutyPlan, seasonStand, goPa
   let openSlots = 0, totalSlots = 0;
   helperEvents.forEach((ev) => {
     const plan = dutyPlan[ev.id] || {};
-    ev.helperSlots.forEach((s) => { totalSlots += STATION_CAP; openSlots += STATION_CAP - (plan[s]?.length || 0); });
+    ev.helperSlots.forEach((s) => { const p = plaetzeFuer(ev, s); totalSlots += p; openSlots += Math.max(0, p - (plan[s]?.length || 0)); });
   });
   const { total: seasonTotal } = seasonResults(seasonStand, saisonKandidaten(members));
   /* Zeigte bislang den ersten Eintrag des Demo-Feldes - in einem echten Verein
@@ -15725,7 +15823,7 @@ export default function ClubMemberOrganisationApp() {
     let abgebrochen = false;
     const loadEvents = async () => {
       let abfrage = supabase.from("events")
-        .select("id,type,status,title,description,starts_at,ends_at,location,home_away,opponent,series_id,helper_slots,created_by,created_at,teams(name,zusagen_aktiv,zusagen_spiele_aktiv)")
+        .select("id,type,status,title,description,starts_at,ends_at,location,home_away,opponent,series_id,helper_slots,helper_caps,created_by,created_at,teams(name,zusagen_aktiv,zusagen_spiele_aktiv)")
         .eq("club_id", currentUser.clubId);
       /* Fans bekommen Trainings gar nicht erst geliefert. Die Datenbank
          filtert seit 20260914110100 ebenso (rollen-04); die Ansicht darunter
@@ -15781,6 +15879,8 @@ export default function ClubMemberOrganisationApp() {
           cancelled: row.status === "cancelled",
           seriesId: row.series_id || null,
           helperSlots: (row.helper_slots || []).length ? row.helper_slots : undefined,
+          /* Stationsname -> Plaetze. Fehlt ein Name, gilt STATION_CAP. */
+          helperCaps: row.helper_caps || {},
           /* Diese Zeile hiess frueher teamName. Beim Umbau auf den
              Zu-/Absage-Schalter wurde die Variable zu team - hier aber nicht
              mitgeaendert. Der Zugriff auf einen Namen, den es nicht gibt,
