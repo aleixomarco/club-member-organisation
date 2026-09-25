@@ -4409,7 +4409,9 @@ function Dashboard({ user, members, events, channels, news, dutyPlan, seasonStan
               case "tasks":
                 return !istNurFan(user) && <FeatureRow key={tileKey} icon={ClipboardList} title={t("auf.titel")} subtitle={t("auf.fuerVereinMithelfen")} onClick={goTasks} accent={C.red} locked={featureLocked} />;
               case "vehicle_booking":
-                return featureEnabled("vehicle_booking") && <FeatureRow key={tileKey} icon={Car} title={sportText(t, sport, "vehicleTabLabel")} subtitle={t("fzg.kalenderBuchung")} onClick={goVehicles} accent={C.secondary} locked={featureLocked} />;
+                /* Fans folgen dem Verein, mehr nicht - der Fuhrpark geht sie
+                   so wenig an wie Aufgaben und Helferdienste. */
+                return !istNurFan(user) && featureEnabled("vehicle_booking") && <FeatureRow key={tileKey} icon={Car} title={sportText(t, sport, "vehicleTabLabel")} subtitle={t("fzg.kalenderBuchung")} onClick={goVehicles} accent={C.secondary} locked={featureLocked} />;
               default:
                 return null;
             }
@@ -8253,29 +8255,36 @@ function TaskCreateForm({ form, setForm, onSubmit, onCancel, editing = false, te
   const hinzufuegen = (id) => { if (id && !verantwortliche.includes(id)) setForm({ ...form, verantwortliche: [...verantwortliche, id] }); };
   const entfernen = (id) => setForm({ ...form, verantwortliche: verantwortliche.filter((v) => v !== id) });
   return (
-    <div className="rounded-2xl p-3.5 mb-3" style={{ background: C.paperDim }}>
+    /* Ein Abstand fuer alle Zeilen (gap) statt mb-2 an jedem Block: Vorher
+       summierten sich Aussenabstaende ungleich, sobald eine Zeile wegfiel -
+       die Felder standen mal enger, mal weiter auseinander. */
+    <div className="rounded-2xl p-3.5 mb-3 flex flex-col gap-2.5" style={{ background: C.paperDim }}>
       {/* Beschriftung UEBER dem Feld, nicht nur als Platzhalter darin.
           Ein Platzhalter verschwindet, sobald man tippt - danach steht dort
           Text ohne Erklaerung, und beim Nachbearbeiten weiss niemand mehr,
           welches Kaestchen der Titel und welches die Beschreibung war. */}
-      <label className="block mb-2">
+      <label className="block">
         <span className="block text-[10px] font-bold mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("feld.titel")}</span>
-        <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} maxLength={120} placeholder={t("ph.aufgabeTitel")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.glass, color: C.ink }}/>
+        <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} maxLength={120} placeholder={t("ph.aufgabeTitel")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.white, border: `1px solid ${C.line}`, color: C.ink }}/>
       </label>
-      <label className="block mb-2">
+      <label className="block">
         <span className="block text-[10px] font-bold mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("feld.beschreibungLabel")}</span>
-        <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} maxLength={300} placeholder={t("feld.beschreibung")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.glass, color: C.ink }}/>
+        <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} maxLength={300} placeholder={t("feld.beschreibung")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.white, border: `1px solid ${C.line}`, color: C.ink }}/>
       </label>
       {/* Beschriftete Felder statt nackter Kaesten: Ein leeres Datumsfeld
           sieht auf dem iPhone aus wie ein grauer Balken - man sieht nicht, ob
           dort Beginn oder Ende hingehoert. */}
-      <div className="flex gap-2 mb-2">
-        <label className="flex-1">
+      {/* min-w-0: Ein leeres <input type="date"> bringt auf dem iPhone eine
+          Eigenbreite mit. Ohne min-w-0 schrumpft das Flex-Kind nicht darunter,
+          das Feld schob sich unter "Personen" und die Zeile sah verrutscht
+          aus. shrink-0 haelt die Personen-Spalte dabei auf ihrer Breite. */}
+      <div className="flex gap-2">
+        <label className="flex-1 min-w-0">
           <span className="block text-[10px] font-bold mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("feld.faelligkeitsdatum")}</span>
           <input type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
             className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.white, border: `1px solid ${C.line}`, color: C.ink }} />
         </label>
-        <label className="w-24">
+        <label className="w-20 shrink-0">
           <span className="block text-[10px] font-bold mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("feld.personen")}</span>
           <input type="number" min="1" value={form.slots} onChange={(e) => setForm({ ...form, slots: e.target.value })}
             className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.white, border: `1px solid ${C.line}`, color: C.ink }} />
@@ -8286,9 +8295,9 @@ function TaskCreateForm({ form, setForm, onSubmit, onCancel, editing = false, te
           nicht zuverlaessig an die Seite zurueck - das Feld sah danach leer
           aus und schickte trotzdem die alte Uhrzeit. Die Taste hier setzt den
           Wert selbst und erscheint nur, wenn etwas drinsteht. */}
-      <div className="flex gap-2 mb-2">
+      <div className="flex gap-2">
         {[["startTime", t("feld.startzeit")], ["endTime", t("feld.endzeit")]].map(([feld, beschriftung]) => (
-          <label key={feld} className="flex-1">
+          <label key={feld} className="flex-1 min-w-0">
             <span className="block text-[10px] font-bold mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>{beschriftung}</span>
             <div className="relative">
               <input type="time" value={form[feld] || ""} onChange={(e) => setForm({ ...form, [feld]: e.target.value })}
@@ -8307,7 +8316,7 @@ function TaskCreateForm({ form, setForm, onSubmit, onCancel, editing = false, te
         ))}
       </div>
       {teams.length > 0 && (
-        <label className="block mb-2">
+        <label className="block">
           <span className="block text-[10px] font-bold mb-1" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("tm.mannschaft")}</span>
           <select value={form.teamId || ""} onChange={(e) => setForm({ ...form, teamId: e.target.value })}
             className="w-full px-3 py-2.5 rounded-xl text-xs outline-none"
@@ -8318,7 +8327,7 @@ function TaskCreateForm({ form, setForm, onSubmit, onCancel, editing = false, te
         </label>
       )}
 
-      {zeigeVerantwortliche && <div className="rounded-xl p-2 mb-2" style={{ background: C.white, border: `1px solid ${C.line}` }}>
+      {zeigeVerantwortliche && <div className="rounded-xl px-3 py-2.5" style={{ background: C.white, border: `1px solid ${C.line}` }}>
         <div className="text-[10px] font-bold mb-1.5" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("auf.verantwortlich")}</div>
         {verantwortliche.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mb-1.5">
@@ -8338,7 +8347,7 @@ function TaskCreateForm({ form, setForm, onSubmit, onCancel, editing = false, te
           onWaehlen={hinzufuegen} leerLabel={t("auf.personHinzufuegen")} klein />
       </div>}
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 mt-0.5">
         <button onClick={onSubmit} disabled={busy} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{ background: busy ? C.line : C.ink, color: C.white, opacity: busy ? .7 : 1 }}>{busy ? t("allg.wirdGespeichert") : editing ? t("allg.aenderungenSpeichern") : t("allg.anlegen")}</button>
         <button onClick={onCancel} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>{t("allg.abbrechen")}</button>
       </div>
@@ -15899,8 +15908,9 @@ export default function ClubMemberOrganisationApp() {
       case "aufgabe": case "helferdienst": return !!e.ziel_id || !istNurFan(currentUser);
       case "protokollaufgabe": return !istNurFan(currentUser);
       /* Die Fahrzeugansicht gibt es nur, wenn der Verein sie eingeschaltet
-         hat - sonst stuende dort eine leere Seite mit Ueberschrift. */
-      case "fahrzeug": return featureEnabled("vehicle_booking");
+         hat - sonst stuende dort eine leere Seite mit Ueberschrift. Fans
+         sehen den Fuhrpark gar nicht, fuer sie bleibt die Meldung eine Notiz. */
+      case "fahrzeug": return featureEnabled("vehicle_booking") && !istNurFan(currentUser);
       /* Antraege und Mitgliederuebersicht gehoeren der Vereinsleitung. Hat
          jemand die Rolle inzwischen verloren, bleibt die Meldung eine Notiz
          statt einer Tuer, hinter der nichts ist. */
@@ -17979,7 +17989,7 @@ export default function ClubMemberOrganisationApp() {
                 {subView === "postfach" && <PostfachView eintraege={postfach} laedt={postfachLaedt} onGelesen={postfachGelesen} onAlleLoeschen={postfachAlleLoeschen} onLoeschen={postfachLoeschen} onOeffnen={meldungAntippen} kannOeffnen={meldungOeffenbar}/>}
                 {subView === "duty" && featureEnabled("duty_roster") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("sub.duty")}><DutyView members={clubMembers} currentUser={currentUser} events={sichtbareTermine} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={dienstSetzen} /></LockedFeature>}
                 {subView === "tasks" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("auf.titel")}><TasksView currentUser={currentUser} members={clubMembers} /></LockedFeature>}
-                {subView === "vehicles" && featureEnabled("vehicle_booking") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("sport.vehi.vereinsfahrzeuge")}><VehiclesView currentUser={currentUser} currentClub={currentClub} /></LockedFeature>}
+                {subView === "vehicles" && featureEnabled("vehicle_booking") && !istNurFan(currentUser) && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("sport.vehi.vereinsfahrzeuge")}><VehiclesView currentUser={currentUser} currentClub={currentClub} /></LockedFeature>}
 
                 {!subView && tab === "home" && (
                   <Dashboard user={currentUser} onFavoritMannschaft={setzeFavoritMannschaft} members={clubMembers} events={sichtbareTermine} channels={channels} news={vereinsNews} dutyPlan={dutyPlan} seasonVotes={seasonVotes} seasonStand={seasonStand} tippPredictions={tippPredictions} tippResults={tippResults} polls={polls} setPolls={setPolls} onVote={stimmeAbgeben} onUnvote={stimmeZuruecknehmen}

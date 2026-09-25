@@ -20,10 +20,12 @@ zu einem Verein. Wer in zwei Vereinen ist, sieht nach der Anmeldung beide.
 **Höchstens zwei Geräte je Konto.** Durchgesetzt durch Verdrängen des ältesten,
 nicht durch Abweisen: Wer sein Telefon wechselt, meldet sich einfach an.
 
-**Eigene Sponsoren, 9 € im Monat oder 85 € im Jahr über dem Tarif.** Vier
+**Eigene Sponsoren, 15 € im Monat oder 180 € im Jahr über dem Tarif.** Vier
 Werbeplätze, die der Verein selbst belegen kann, mit Aktionen, die nach ihrem
 Ende von selbst verschwinden. (Der Preis stand hier lange bei 5 €, dann bei
-80 € im Jahr — maßgeblich ist `lib/preise.ts`.)
+9 € im Monat und — je nach Dokument — 80 oder 85 € im Jahr. Seit dem
+24.09.2026 gilt 15 € / 180 €; die Betreiber-Konsole nennt diese Zahlen bereits.
+`lib/preise.ts` trägt noch die alten, bis die Außentexte freigegeben sind.)
 
 **Die App startete tagelang nicht — und niemand merkte es.** Ein
 `useEffect(() => { f(); }, [f])` stand über dem `const f = useCallback(...)`.
