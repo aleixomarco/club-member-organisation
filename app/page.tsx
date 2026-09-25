@@ -4853,6 +4853,9 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
 
   const helperEligible = ev.helperSlots ? isFormalMember(currentUser) : false;
   const eventIsReal = !!supabase && isDbId(ev.id);
+  /* Stationen vorladen und wieder wegnehmen darf die Leitung, und nur beim
+     Heimspiel - auswaerts stellt der Gastgeber die Helfer. */
+  const dutyLeitung = eventIsReal && ev.type === "spiel" && ev.home === true && canManageDuty(currentUser);
 
   return (
     <div className="rounded-2xl mb-3 overflow-hidden" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
@@ -4991,13 +4994,21 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
             </button>
           ))}
 
-          {ev.helperSlots && featureEnabled("duty_roster") && (
+          {/* EIN Helferblock, nicht zwei (25.09.2026). Darunter stand bis
+              heute "Helferdienst" mit denselben Stationen, aber einer eigenen
+              Ablage - wer sich hier eintrug, blieb dort "niemand zugewiesen".
+              Jetzt laedt die Leitung oben einen Satz Stationen vor, und
+              darunter tragen sich die Helfer selbst ein oder werden von der
+              Leitung eingetragen. */}
+          {featureEnabled("duty_roster") && (ev.helperSlots?.length > 0 || dutyLeitung) && (
             <div className="mt-3">
               <div className="text-xs font-semibold mb-2" style={{ fontFamily: "Inter", color: C.ink }}>{t("helf.gesucht")}</div>
-              <HelperSlots ev={ev} members={members} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} eligible={helperEligible} onSetzen={onDienstSetzen} darfVerwalten={canManageDuty(currentUser)} />
+              {dutyLeitung && <DutyStationsManager ev={ev} currentUser={currentUser} onNeuLaden={onNeuLaden} dutyPlan={dutyPlan} />}
+              {ev.helperSlots?.length > 0 && (
+                <HelperSlots ev={ev} members={members} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} eligible={helperEligible} onSetzen={onDienstSetzen} darfVerwalten={canManageDuty(currentUser)} />
+              )}
             </div>
           )}
-          {eventIsReal && ev.type === "spiel" && ev.home === true && featureEnabled("duty_roster") && <DutyTasksSection ev={ev} currentUser={currentUser} sport={currentClub?.sport} onNeuLaden={onNeuLaden} dutyPlan={dutyPlan} members={members} />}
           <Erstellt von={ev.erstelltVon} am={ev.erstelltAm} />
         </div>
       )}
@@ -9232,94 +9243,59 @@ function VehiclesView({ currentUser, currentClub }) {
   );
 }
 
-function DutyTasksSection({ ev, currentUser, sport, onNeuLaden, dutyPlan, members }) {
+/* Die Stationen eines Heimspiels: einen Satz vorladen, eine Station wieder
+ * wegnehmen. Mehr steht hier nicht mehr.
+ *
+ * Bis zum 25.09.2026 stand an dieser Stelle eine zweite, vollstaendige
+ * Helferliste mit eigener Ablage (duty_tasks): eine Person je Station, eine
+ * Frist, ein "Erledigt?". Darueber lag "Helfer:innen gesucht" mit
+ * duty_assignments - selbst uebernehmen, und die Leitung traegt jemanden ein.
+ * Beide zeigten dieselben Stationen, aber keine wusste von der anderen: In
+ * PROD standen zwoelf Zeilen in duty_tasks und keine einzige in
+ * duty_assignments. Wer oben jemanden eintrug, sah unten weiter "niemand
+ * zugewiesen".
+ *
+ * Geblieben ist die obere Liste. Hier stehen nur noch die zwei Handgriffe,
+ * die es dort nicht gibt - und beide gehoeren der Leitung, deshalb zeichnet
+ * die Terminkarte diesen Block nur fuer sie.
+ *
+ * Die offenen Punkte der Verwaltung zaehlen seit 20260925210000 ebenfalls die
+ * Eintragungen und nicht mehr duty_tasks; sonst stuende eine oben voll
+ * besetzte Station dort fuer immer als unbesetzt. */
+function DutyStationsManager({ ev, currentUser, onNeuLaden, dutyPlan }) {
   const t = useT();
-  const cfg = sportConfig(sport);
-  const [tasks, setTasks] = useState([]);
   const [templates, setTemplates] = useState([]);
-  const [duMembers, setDutyMembers] = useState([]);
-  const [canManage, setCanManage] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [selectedTemplate, setSelectedTemplate] = useState("");
   const [applying, setApplying] = useState(false);
   const [message, setMessage] = useState("");
 
-  const loadTasks = useCallback(async () => {
-    const { data, error } = await supabase.from("duty_tasks")
-      /* Auch hier muss die Beziehung benannt werden: duty_tasks zeigt mit
-         assignee_membership_id UND created_by auf club_memberships. Gemeint
-         ist, wer die Aufgabe uebernommen hat. */
-      .select("id,title,due_date,done,assignee_membership_id,created_by,created_at,club_memberships!duty_tasks_assignee_membership_id_fkey(display_name)")
-      .eq("event_id", ev.id)
-      .order("created_at", { ascending: true });
-    if (!error) {
-      setTasks((data || []).map((row) => {
-        const assignee = Array.isArray(row.club_memberships) ? row.club_memberships[0] : row.club_memberships;
-        return { erstelltVon: row.created_by, erstelltAm: row.created_at, id: row.id, title: row.title, dueDate: row.due_date, done: row.done, assigneeId: row.assignee_membership_id, assigneeName: assignee?.display_name || null };
-      }));
-    }
-    setLoading(false);
-  }, [ev.id]);
-
   useEffect(() => {
     let active = true;
-    supabase.rpc("can_manage_duty_task", { target_event: ev.id }).then(({ data }) => { if (active) setCanManage(!!data); });
-    loadTasks();
+    supabase.from("duty_task_templates").select("id,name").eq("club_id", currentUser.clubId).order("name")
+      .then(({ data }) => { if (active) setTemplates(data || []); });
     return () => { active = false; };
-  }, [ev.id, loadTasks]);
-
-  useEffect(() => {
-    if (!canManage) return;
-    (async () => {
-      const [{ data: templateRows }, { data: memberRows }] = await Promise.all([
-        supabase.from("duty_task_templates").select("id,name,created_by,created_at").eq("club_id", currentUser.clubId).order("name"),
-        supabase.from("club_memberships").select("id,display_name").eq("club_id", currentUser.clubId).eq("status", "active").order("display_name"),
-      ]);
-      setTemplates(templateRows || []);
-      setDutyMembers(memberRows || []);
-    })();
-  }, [canManage, currentUser.clubId]);
+  }, [currentUser.clubId]);
 
   const applyTemplate = async () => {
     if (!selectedTemplate) return;
     setApplying(true); setMessage("");
     /* Die Funktion liefert seit 20260905090000 die Zahl der uebernommenen
        Stationen. Vorher gab sie void zurueck, und die App meldete deshalb auch
-       dann "angewendet", wenn der Satz gar keine Station enthielt - oder wenn
-       die Stationen zwar in die Aufgabenliste wanderten, aber nicht an den
-       Termin, wo man sich eintraegt. Beides sah fuer den Nutzer gleich aus:
-       freundliche Meldung, nichts passiert. */
+       dann "angewendet", wenn der Satz gar keine Station enthielt. */
     const { data: uebernommen, error } = await supabase.rpc("apply_duty_template", { target_event: ev.id, target_template: selectedTemplate });
     setApplying(false);
     if (error) { setMessage(t("help.vorlageNichtAngewendet")); return; }
     if (!uebernommen) { setMessage(t("help.satzOhneStationen")); return; }
     setSelectedTemplate("");
     setMessage(OK_ZEICHEN + (uebernommen === 1 ? t("help.stationUebernommen") : mitWerten(t("help.stationenUebernommen"), { anzahl: uebernommen })));
-    await loadTasks();
-    /* Die Stationen stehen jetzt am Termin selbst (events.helper_slots). Ohne
-       diesen Aufruf zeigt die Karte weiter die alte Liste - loadTasks holt nur
-       die Aufgabenliste, nicht den Termin. */
+    /* Die Stationen stehen am Termin selbst (events.helper_slots). Ohne
+       diesen Aufruf zeigt die Karte weiter die alte Liste. */
     onNeuLaden?.();
   };
-  /* Fehler werden jetzt gezeigt (C2). Vorher blieb die Ansicht einfach
-     stehen, als sei gespeichert. */
-  const assignTask = async (taskId, membershipId) => { setMessage(""); const { error } = await supabase.from("duty_tasks").update({ assignee_membership_id: membershipId || null }).eq("id", taskId); if (error) { setMessage(t("allg.speichernFehler")); return; } await loadTasks(); };
-  const setDueDate = async (taskId, date) => { setMessage(""); const { error } = await supabase.from("duty_tasks").update({ due_date: date || null }).eq("id", taskId); if (error) { setMessage(t("allg.speichernFehler")); return; } await loadTasks(); };
-  const toggleDone = async (task) => { setMessage(""); const { error } = await supabase.from("duty_tasks").update({ done: !task.done }).eq("id", task.id); if (error) { setMessage(t("allg.speichernFehler")); return; } await loadTasks(); };
-  const deleteTask = async (taskId) => { if (!window.confirm(t("help.stationLoeschenFrage"))) return; setMessage(""); const { error } = await supabase.from("duty_tasks").delete().eq("id", taskId); if (error) { setMessage(t("allg.loeschenFehler")); return; } await loadTasks(); };
-  const claimTask = async (taskId) => {
-    setMessage("");
-    const { error } = await supabase.rpc("claim_duty_task", { target_task: taskId });
-    if (error) { setMessage(t("allg.aktionNichtMoeglich")); return; }
-    await loadTasks();
-  };
 
-  /* Stationen wieder entfernen - einzeln oder alle.
-     Vorher gewarnt wird nur, wenn wirklich jemand betroffen ist: Eine
-     Rueckfrage bei einer leeren Station ist eine Ruecktrage zu viel. Die Zahl
-     steht im Geraet schon bereit (dutyPlan), es braucht keinen Zusatzaufruf.
-     Geloescht wird in der Datenbank, weil eine Station an drei Stellen haengt -
-     am Termin, in den Eintragungen und in dieser Aufgabenliste. */
+  /* Gewarnt wird nur, wenn wirklich jemand betroffen ist: Eine Rueckfrage bei
+     einer leeren Station ist eine Rueckfrage zu viel. Die Zahl steht im
+     Geraet schon bereit (dutyPlan), es braucht keinen Zusatzaufruf. */
   const stationEntfernen = async (station) => {
     const eingetragen = (dutyPlan?.[ev.id]?.[station] || []).length;
     const frage = eingetragen
@@ -9330,7 +9306,6 @@ function DutyTasksSection({ ev, currentUser, sport, onNeuLaden, dutyPlan, member
     const { data, error } = await supabase.rpc("remove_duty_station", { target_event: ev.id, station_name: station });
     if (error) { setMessage(t("help.stationEntfernenFehler")); return; }
     setMessage(OK_ZEICHEN + (data ? (data === 1 ? t("help.stationEntferntEineEintragung") : mitWerten(t("help.stationEntferntEintragungenMehr"), { anzahl: data })) : t("help.stationEntfernt")));
-    await loadTasks();
     onNeuLaden?.();
   };
 
@@ -9344,31 +9319,29 @@ function DutyTasksSection({ ev, currentUser, sport, onNeuLaden, dutyPlan, member
     const { data, error } = await supabase.rpc("clear_duty_stations", { target_event: ev.id });
     if (error) { setMessage(t("help.stationenEntfernenFehler")); return; }
     setMessage(data ? OK_ZEICHEN + (data === 1 ? t("help.alleStationenEntferntEineEintragung") : mitWerten(t("help.alleStationenEntferntEintragungenMehr"), { anzahl: data })) : t("help.alleStationenEntfernt"));
-    await loadTasks();
     onNeuLaden?.();
   };
 
   if (!supabase) return null;
-  if (loading) return <div className="mt-3 text-xs" style={{ color: C.textDim }}>{t("help.begriffLaedt").replace("{begriff}", t(cfg.dutyTabLabel))}</div>;
 
   return (
-    <div className="mt-3">
-      <div className="text-xs font-semibold mb-2" style={{ fontFamily: "Inter", color: C.ink }}>{t(cfg.dutyTabLabel)}</div>
-      {canManage && templates.length > 0 && (
-        <div className="flex gap-2 mb-2.5">
-          <select value={selectedTemplate} onChange={(e) => setSelectedTemplate(e.target.value)} className="flex-1 px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, color: C.ink }}>
+    <div className="mb-2">
+      {templates.length > 0 && (
+        <div className="flex gap-2 mb-2">
+          <select value={selectedTemplate} onChange={(e) => setSelectedTemplate(e.target.value)}
+            aria-label={t("helf.satzVorladen")}
+            className="flex-1 min-w-0 px-3 py-2 rounded-lg text-xs outline-none"
+            style={{ background: C.paperDim, color: C.ink }}>
             <option value="">{t("helf.satzVorladen")}</option>
-            {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            {templates.map((satz) => <option key={satz.id} value={satz.id}>{satz.name}</option>)}
           </select>
-          <button onClick={applyTemplate} disabled={!selectedTemplate || applying} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: selectedTemplate ? C.ink : C.line, color: C.white }}>{applying ? "…" : t("help.anwenden")}</button>
+          <button onClick={applyTemplate} disabled={!selectedTemplate || applying}
+            className="shrink-0 px-3 py-2 rounded-lg text-xs font-bold"
+            style={{ background: selectedTemplate ? C.ink : C.line, color: C.white }}>{applying ? "…" : t("help.anwenden")}</button>
         </div>
       )}
-      {/* Stationen dieses Termins wieder abraeumen. Steht bewusst hier und nicht
-          in der Liste t("helf.gesucht") darueber: Dort traegt man sich ein,
-          hier verwaltet die Leitung - und nur dieser Abschnitt weiss ueberhaupt,
-          ob der Betrachter das darf (canManage). */}
-      {canManage && (ev.helperSlots?.length > 0) && (
-        <div className="rounded-xl p-2.5 mb-2.5" style={{ background: C.paperDim }}>
+      {ev.helperSlots?.length > 0 && (
+        <div className="rounded-xl p-2.5 mb-2" style={{ background: C.paperDim }}>
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-[11px] font-bold" style={{ color: C.ink, fontFamily: "Inter" }}>{t("helf.stationen")}</span>
             <button onClick={alleEntfernen} className="text-[11px] font-bold" style={{ color: C.fehler, fontFamily: "Inter" }}>{t("helf.alleEntfernen")}</button>
@@ -9385,38 +9358,7 @@ function DutyTasksSection({ ev, currentUser, sport, onNeuLaden, dutyPlan, member
           </div>
         </div>
       )}
-      {tasks.length === 0 ? (
-        <div className="text-[11px] rounded-xl p-2.5" style={{ background: C.paperDim, color: C.textDim }}>{t("help.keineStationen").replace("{begriff}", t(cfg.homeEventLabel))}</div>
-      ) : (
-        <div className="flex flex-col gap-2">
-          {tasks.map((task) => (
-            <div key={task.id} className="rounded-xl p-2.5" style={{ background: C.paperDim }}>
-              <div className="flex items-center justify-between gap-2 mb-1">
-                <div className="text-xs font-bold flex items-center gap-1.5" style={{ color: C.ink }}>
-                  {task.done ? <CheckCircle2 size={13} style={{ color: C.secondary }} /> : <Circle size={13} style={{ color: C.textDim }} />}
-                  {task.title}
-                </div>
-                {canManage && <button onClick={() => deleteTask(task.id)} className="text-[10px] font-bold" style={{ color: C.red }}>{t("allg.loeschen")}</button>}
-              </div>
-              <div className="text-[10px] mb-1.5" style={{ color: C.textDim }}>
-                {task.assigneeName ? mitWerten(t("auf.zugewiesenAn"), { name: task.assigneeName }) : t("auf.niemandZugewiesen")}
-                {task.dueDate ? ` · ${mitWerten(t("auf.fristDatum"), { datum: new Date(task.dueDate).toLocaleDateString(datumsLocale()) })}` : ""}
-              </div>
-              {canManage && (
-                <div className="flex gap-1.5 flex-wrap">
-                  <NutzerWahl personen={members.filter((m) => !istNurFan(m))} wert={task.assigneeId || ""} onWaehlen={(v) => assignTask(task.id, v)} leerLabel={t("auf.niemandZugewiesenKurz")} klein />
-                  <input type="date" value={task.dueDate || ""} onChange={(e) => setDueDate(task.id, e.target.value)} className="px-2 py-1.5 rounded-lg text-[11px] outline-none" style={{ background: C.glass, color: C.ink }}/>
-                  <button onClick={() => toggleDone(task)} className="px-2 py-1.5 rounded-lg text-[11px] font-bold" style={{ background: task.done ? C.erfolgFlaeche : C.white, color: task.done ? C.secondary : C.textDim }}>{task.done ? t("auf.erledigt") : t("auf.erledigtFrage")}</button>
-                </div>
-              )}
-              {!canManage && !task.assigneeId && <button onClick={() => claimTask(task.id)} className="w-full py-1.5 rounded-lg text-[11px] font-bold" style={{ background: C.ink, color: C.white }}>{t("auf.uebernehmeIch")}</button>}
-              {!canManage && task.assigneeId === currentUser.id && <button onClick={() => claimTask(task.id)} className="w-full py-1.5 rounded-lg text-[11px] font-bold" style={{ background: C.glass, color: C.red }}>{t("auf.zurueckziehen")}</button>}
-              <Erstellt von={task.erstelltVon} am={task.erstelltAm} />
-            </div>
-          ))}
-        </div>
-      )}
-      {message && <div className="text-[11px] mt-1.5" style={{ color: istErfolg(message) ? C.erfolg : C.fehler }}>{meldungstext(message)}</div>}
+      {message && <div role="status" className="text-[11px] mb-1.5" style={{ color: istErfolg(message) ? C.erfolg : C.fehler }}>{meldungstext(message)}</div>}
     </div>
   );
 }
@@ -12101,7 +12043,10 @@ function TodoBoard({ currentClub, goPanel, goFahrzeuge, goAufgaben, goHelfer }) 
              Verwaltung in den Support-Reiter umgezogen. offene_punkte_fuer_verein
              liefert dafuer weiter ziel = 'duty'. */
         punkte.map((p, i) => (
-        <button key={`${p.art}-${p.ziel_id}`} onClick={() => (p.ziel === "vehicle" ? goFahrzeuge?.() : p.ziel === "tasks" ? goAufgaben?.() : p.ziel === "duty" ? goHelfer?.() : goPanel?.(p.ziel))}
+        /* Der Schluessel traegt seit 20260925210000 die Reihenfolge mit: Bei
+           den Helferstationen ist ziel_id der Termin, und ein Termin kann
+           mehrere unbesetzte Stationen haben. */
+        <button key={`${p.art}-${p.ziel_id}-${i}`} onClick={() => (p.ziel === "vehicle" ? goFahrzeuge?.() : p.ziel === "tasks" ? goAufgaben?.() : p.ziel === "duty" ? goHelfer?.() : goPanel?.(p.ziel))}
           className="w-full text-left flex items-center gap-2 px-4 py-2.5"
           style={{ background: C.white, borderTop: i ? `1px solid ${C.line}` : "none" }}>
           <span className="w-1.5 h-1.5 rounded-full flex-shrink-0"
