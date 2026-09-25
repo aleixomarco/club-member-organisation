@@ -2118,7 +2118,7 @@ function SponsorSlot({ slotKey, bookings, onImpression, onClick, visible = true 
     <>
       <button onClick={open} className="w-full rounded-2xl px-4 py-3 mb-5 flex items-center gap-3 text-left overflow-hidden" style={{ background: C.paperDim, border: `1px dashed ${C.line}` }}>
         <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
-          {anzeige.bild_url ? <img src={anzeige.bild_url} alt="" className="w-full h-full object-cover rounded-lg"/> : <Sparkles size={14} style={{ color: C.secondary }} />}
+          {anzeige.bild_url ? <img src={anzeige.bild_url} alt="" className="w-full h-full object-contain rounded-lg"/> : <Sparkles size={14} style={{ color: C.secondary }} />}
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: C.textDim, fontFamily: "Inter" }}>{vomVerein ? t("sp.sponsor") : t("sp.anzeige")}</div>
@@ -2133,9 +2133,30 @@ function SponsorSlot({ slotKey, bookings, onImpression, onClick, visible = true 
       {showDetails && <div className="absolute inset-0 z-50 flex items-end p-3" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setShowDetails(false)}>
         <div role="dialog" aria-modal="true" aria-label={anzeige.titel} onClick={(e) => e.stopPropagation()} className="w-full rounded-3xl overflow-hidden" style={{ background: C.glass, maxHeight: "80%", overflowY: "auto" }}>
           <div className="p-4">
-            <div className="text-[9px] uppercase tracking-widest font-bold mb-1" style={{ color: vomVerein ? C.secondary : C.textDim }}>{vomVerein ? t("sp.unseresVereins") : t("sp.anzeige")}</div>
-            <h2 className="text-lg font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{anzeige.titel}</h2>
-            {anzeige.text && <p className="text-sm leading-relaxed mt-2" style={{ color: C.textDim }}>{anzeige.text}</p>}
+            {/* Kopf und Bild nebeneinander.
+                Das Bild hing frueher in voller Breite unter der Karte und nahm
+                bei einem querformatigen Logo den halben Bildschirm ein - bei
+                80 % Hoehe blieb vom Text kaum etwas uebrig. Rechts daneben ist
+                es eine Abbildung und kein Aushang.
+                objectFit contain statt cover: Ein Logo darf nicht angeschnitten
+                werden, und weiss dahinter, weil die meisten Logos auf weissem
+                Grund gezeichnet sind. */}
+            <div className="flex items-start gap-3">
+              <div className="flex-1 min-w-0">
+                <div className="text-[9px] uppercase tracking-widest font-bold mb-1" style={{ color: vomVerein ? C.secondary : C.textDim }}>{vomVerein ? t("sp.unseresVereins") : t("sp.anzeige")}</div>
+                <h2 className="text-lg font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{anzeige.titel}</h2>
+                {anzeige.text && <p className="text-sm leading-relaxed mt-2" style={{ color: C.textDim }}>{anzeige.text}</p>}
+              </div>
+              {anzeige.bild_url && (
+                <div className="shrink-0 rounded-2xl overflow-hidden" style={{ width: 104, background: C.white, border: `1px solid ${C.line}` }}>
+                  {/* Keine feste Hoehe: Der Rahmen legt sich um das Bild, statt
+                      ein breites Logo zwischen zwei weissen Balken zu setzen.
+                      Nach oben begrenzt, damit ein hochkantes Bild die Karte
+                      nicht auseinanderzieht. */}
+                  <img src={anzeige.bild_url} alt={anzeige.titel} className="w-full block" style={{ maxHeight: 140, objectFit: "contain" }}/>
+                </div>
+              )}
+            </div>
 
             {/* Die Aktion steht abgesetzt, damit sie nicht mit der
                 Sponsorenbeschreibung verschwimmt - und mit ihrem Ende, damit
@@ -2158,7 +2179,6 @@ function SponsorSlot({ slotKey, bookings, onImpression, onClick, visible = true 
             {anzeige.telefon && <a href={`tel:${String(anzeige.telefon).replace(/[^+0-9]/g, "")}`} onClick={() => onClick?.(slotKey, "telefon")} className="flex items-center justify-between rounded-xl px-3 py-2.5 text-xs font-bold mt-2" style={{ background: C.paperDim, color: C.ink }}>{t("sp.anrufen")} <Phone size={14}/></a>}
             {anzeige.email && <a href={`mailto:${anzeige.email}`} onClick={() => onClick?.(slotKey, "email")} className="flex items-center justify-between rounded-xl px-3 py-2.5 text-xs font-bold mt-2" style={{ background: C.paperDim, color: C.ink }}>{t("sp.schreiben")} <Mail size={14}/></a>}
           </div>
-          {anzeige.bild_url && <img src={anzeige.bild_url} alt={anzeige.titel} className="w-full block" style={{ maxHeight: 280, objectFit: "cover" }}/>}
         </div>
       </div>}
     </>
