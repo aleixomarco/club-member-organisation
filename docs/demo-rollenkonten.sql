@@ -5,11 +5,18 @@
 -- eines fuer jede Rolle, die es heute noch gibt.
 --
 -- KEIN PASSWORT IN DIESER DATEI. Die Datei enthaelt den Platzhalter
--- __PASSWORT__. Es wird erst beim Ausfuehren ersetzt, damit kein Geheimnis
--- im Repo landet:
+-- __PASSWORT__. Er wird erst beim Ausfuehren ersetzt, damit kein Geheimnis
+-- im Repo landet. Das Passwort wird verdeckt abgefragt, landet nicht im
+-- Verlauf der Kommandozeile, und die Zwischendatei faellt danach weg:
 --
 --   cd ~/Projekte/club-member-organisation
---   supabase db query --linked "$(sed 's/__PASSWORT__/DEIN-PASSWORT/' docs/demo-rollenkonten.sql)"
+--   read -rs "?Passwort fuer die Demo-Konten: " PW && echo
+--   sed "s|__PASSWORT__|$PW|" docs/demo-rollenkonten.sql > /tmp/anlegen.sql
+--   supabase db query --linked -f /tmp/anlegen.sql; rm -f /tmp/anlegen.sql; unset PW
+--
+-- NICHT als Argument uebergeben: Die Datei beginnt mit "--", und das haelt
+-- die CLI fuer einen Schalter. Nur der Weg ueber -f funktioniert.
+-- Im Passwort keine senkrechten Striche verwenden, sed trennt daran.
 --
 -- NUR IM DEMO-VEREIN. Die Verein-ID steht fest auf
 -- d0000000-0000-4000-a000-000000000001 (SV Musterstadt). ERG Iserlohn wird
