@@ -25,8 +25,12 @@ select (select count(*) from pg_views
          where schemaname = 'public' and viewname = 'fahrzeugbelegung')      as sicht_weg_soll_0,
        (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
          where n.nspname = 'public' and p.proname = 'fahrzeugbelegung_im_zeitraum') as funktion_da,
+       /* Bleiben 2: betreiber_uebersicht und offene_freischaltungen. Beide
+          duerfen die Zeilenregeln umgehen - sie sind ausschliesslich fuer
+          service_role lesbar (Betreiber-Konsole), kein Mitgliedskonto kommt
+          an sie heran. Geprueft am 25.09.2026 ueber role_table_grants. */
        (select count(*) from pg_class c
          where c.relkind = 'v' and c.relnamespace = 'public'::regnamespace
-           and coalesce(c.reloptions::text, '') not like '%security_invoker=on%')   as sichten_ohne_invoker_soll_0,
+           and coalesce(c.reloptions::text, '') not like '%security_invoker=on%')   as sichten_ohne_invoker_erwartet_2,
        (select string_agg(policyname, ' | ') from pg_policies
          where schemaname = 'public' and tablename = 'vehicle_bookings' and cmd = 'SELECT') as leseregel;
