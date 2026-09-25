@@ -9153,13 +9153,16 @@ function VehiclesView({ currentUser, currentClub }) {
             )}
             <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>{t("fzg.vonLabel")}</div>
             <div className="flex gap-2 mb-3">
-              <input type="date" value={bookingForm.startDate} onChange={(e) => setBookingForm({ ...bookingForm, startDate: e.target.value })} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/>
-              <select value={bookingForm.startHour} onChange={(e) => setBookingForm({ ...bookingForm, startHour: e.target.value })} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}>{HOURS.map((h) => <option key={h} value={h}>{String(h).padStart(2,"0")}:00</option>)}</select>
+              {/* min-w-0 und shrink-0: Ohne das behaelt ein leeres Datumsfeld auf
+                  dem iPhone seine Eigenbreite, schrumpft nicht und schiebt die
+                  Stundenauswahl aus der Zeile. */}
+              <input type="date" value={bookingForm.startDate} onChange={(e) => setBookingForm({ ...bookingForm, startDate: e.target.value })} className="flex-1 min-w-0 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/>
+              <select value={bookingForm.startHour} onChange={(e) => setBookingForm({ ...bookingForm, startHour: e.target.value })} className="shrink-0 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}>{HOURS.map((h) => <option key={h} value={h}>{String(h).padStart(2,"0")}:00</option>)}</select>
             </div>
             <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>{t("fzg.bisLabel")}</div>
             <div className="flex gap-2 mb-3">
-              <input type="date" value={bookingForm.endDate} onChange={(e) => setBookingForm({ ...bookingForm, endDate: e.target.value })} className="flex-1 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/>
-              <select value={bookingForm.endHour} onChange={(e) => setBookingForm({ ...bookingForm, endHour: e.target.value })} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}>{HOURS.map((h) => <option key={h} value={h}>{String(h).padStart(2,"0")}:00</option>)}</select>
+              <input type="date" value={bookingForm.endDate} onChange={(e) => setBookingForm({ ...bookingForm, endDate: e.target.value })} className="flex-1 min-w-0 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/>
+              <select value={bookingForm.endHour} onChange={(e) => setBookingForm({ ...bookingForm, endHour: e.target.value })} className="shrink-0 px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}>{HOURS.map((h) => <option key={h} value={h}>{String(h).padStart(2,"0")}:00</option>)}</select>
             </div>
             <label className="flex items-center gap-2 mb-3"><input type="checkbox" checked={bookingForm.isPrivate} onChange={(e) => setBookingForm({ ...bookingForm, isPrivate: e.target.checked })}/><span className="text-xs font-bold" style={{ color: C.ink }}>{t("fz.privat")}</span></label>
             {bookingForm.isPrivate ? (
@@ -14807,13 +14810,15 @@ function AufgabeOverlay({ taskId, currentUser, onClose }) {
               <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} maxLength={300}
                 placeholder={t("feld.beschreibung")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={feldStil} />
             </label>
+            {/* min-w-0 wie im Anlegen-Formular: sonst schiebt sich das leere
+                Datumsfeld auf dem iPhone unter "Personen". */}
             <div className="flex gap-2 mb-2">
-              <label className="flex-1">
+              <label className="flex-1 min-w-0">
                 <span className="block text-[10px] font-bold mb-1" style={{ color: C.textDim }}>{t("feld.faelligkeitsdatum")}</span>
                 <input type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
                   className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={feldStil} />
               </label>
-              <label className="w-24">
+              <label className="w-20 shrink-0">
                 <span className="block text-[10px] font-bold mb-1" style={{ color: C.textDim }}>{t("feld.personen")}</span>
                 <input type="number" min="1" value={form.slots} onChange={(e) => setForm({ ...form, slots: e.target.value })}
                   className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={feldStil} />
@@ -14821,7 +14826,7 @@ function AufgabeOverlay({ taskId, currentUser, onClose }) {
             </div>
             <div className="flex gap-2 mb-3">
               {[["startTime", t("feld.startzeit")], ["endTime", t("feld.endzeit")]].map(([feld, beschriftung]) => (
-                <label key={feld} className="flex-1">
+                <label key={feld} className="flex-1 min-w-0">
                   <span className="block text-[10px] font-bold mb-1" style={{ color: C.textDim }}>{beschriftung}</span>
                   <input type="time" value={form[feld]} onChange={(e) => setForm({ ...form, [feld]: e.target.value })}
                     className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={feldStil} />
