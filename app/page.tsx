@@ -8835,25 +8835,32 @@ function VehiclesView({ currentUser, currentClub }) {
     setLoading(true);
     const monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
     const monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 1);
-    const { data, error } = await supabase.from("vehicle_bookings")
-      /* club_memberships MUSS hier benannt werden.
-         vehicle_bookings zeigt seit der Buchungsfreigabe zweimal auf diese
-         Tabelle: membership_id (wer gebucht hat) und decided_by (wer
-         entschieden hat). Ohne den Namen der Beziehung weiss die Abfrage
-         nicht, welche gemeint ist, und liefert gar nichts - die Ansicht
-         meldete nur "Die Buchungen konnten nicht geladen werden". */
-      .select("id,vehicle_id,membership_id,team_id,private_label,starts_at,ends_at,status,created_at,club_vehicles(label),teams(name),club_memberships!vehicle_bookings_membership_id_fkey(display_name)")
+    /* Gelesen wird die Sicht fahrzeugbelegung, nicht die Tabelle: Sie zeigt
+       jedem Mitglied, DASS und WANN ein Fahrzeug belegt ist, gibt Name,
+       Freitext und membership_id aber nur an die Vereinsleitung und an die
+       buchende Person selbst heraus (Migration 20260925120000). Fahrzeug- und
+       Mannschaftsname stehen als eigene Spalten darin - ueber eine Sicht kann
+       PostgREST keine Fremdschluessel einbetten, und der frueher noetige
+       Beziehungsname club_memberships!vehicle_bookings_membership_id_fkey
+       entfaellt damit. */
+    const { data, error } = await supabase.from("fahrzeugbelegung")
+      .select("id,vehicle_id,fahrzeug,team_id,mannschaft,membership_id,private_label,gebucht_von,darf_namen_sehen,starts_at,ends_at,status,created_at")
       .eq("club_id", currentUser.clubId)
       .lt("starts_at", monthEnd.toISOString())
       .gt("ends_at", monthStart.toISOString())
       .order("starts_at");
     if (error) { setMessage(t("fzg.buchungenFehler")); setLoading(false); return; }
-    setBookings((data || []).map((row) => {
-      const vehicle = Array.isArray(row.club_vehicles) ? row.club_vehicles[0] : row.club_vehicles;
-      const team = Array.isArray(row.teams) ? row.teams[0] : row.teams;
-      const member = Array.isArray(row.club_memberships) ? row.club_memberships[0] : row.club_memberships;
-      return { erstelltAm: row.created_at, id: row.id, status: row.status || "bestaetigt", vehicleId: row.vehicle_id, membershipId: row.membership_id, teamId: row.team_id, privateLabel: row.private_label, vehicleLabel: vehicle?.label || "—", label: team?.name || row.private_label || t("fzg.privat"), bookedBy: member?.display_name || "—", startsAt: new Date(row.starts_at), endsAt: new Date(row.ends_at) };
-    }));
+    /* bookedBy ist leer, wenn die Sicht den Namen zurueckhaelt - die Anzeige
+       laesst die Zeile dann einfach weg statt einen Platzhalter zu zeigen. */
+    setBookings((data || []).map((row) => ({
+      erstelltAm: row.created_at, id: row.id, status: row.status || "bestaetigt", vehicleId: row.vehicle_id,
+      membershipId: row.membership_id, teamId: row.team_id, privateLabel: row.private_label,
+      vehicleLabel: row.fahrzeug || "—",
+      label: row.mannschaft || row.private_label || t("fzg.privat"),
+      bookedBy: row.gebucht_von || "",
+      darfNamenSehen: !!row.darf_namen_sehen,
+      startsAt: new Date(row.starts_at), endsAt: new Date(row.ends_at),
+    })));
     setLoading(false);
   }, [databaseMembership, currentUser.clubId, monthDate]);
   useEffect(() => { loadVehicles(); loadTeams(); }, [loadVehicles, loadTeams]);
@@ -8911,6 +8918,10 @@ function VehiclesView({ currentUser, currentClub }) {
   const openBookingDetail = async (booking) => {
     setViewingBooking(booking);
     setViewingPhones(null);
+    /* Ohne Namen auch keine Nummer: get_booking_contact_phone gibt sie seit
+       20260925120000 nur noch an Leitung und buchende Person heraus, der
+       Aufruf waere fuer alle anderen ein leerer Umweg. */
+    if (!booking.darfNamenSehen) { setLoadingPhones(false); return; }
     setLoadingPhones(true);
     const { data } = await supabase.rpc("get_booking_contact_phone", { target_booking: booking.id });
     setViewingPhones(data || []);
@@ -9064,7 +9075,7 @@ function VehiclesView({ currentUser, currentClub }) {
                 <div key={i} className="rounded-lg p-1 min-h-[54px]" style={{ background: day ? C.paperDim : "transparent" }}>
                   {day && <div className="text-[9px] font-bold mb-0.5" style={{ color: C.textDim }}>{day.getDate()}</div>}
                   {dayBookings.slice(0, 2).map((b) => (
-                    <div key={b.id} className="text-[8px] px-1 py-0.5 rounded mb-0.5 truncate" style={{ background: C.fehlerFlaeche, color: C.fehler }} title={`${b.vehicleLabel} · ${b.label} · ${b.bookedBy}`}>{b.vehicleLabel}: {b.label}</div>
+                    <div key={b.id} className="text-[8px] px-1 py-0.5 rounded mb-0.5 truncate" style={{ background: C.fehlerFlaeche, color: C.fehler }} title={b.bookedBy ? `${b.vehicleLabel} · ${b.label} · ${b.bookedBy}` : `${b.vehicleLabel} · ${b.label}`}>{b.vehicleLabel}: {b.label}</div>
                   ))}
                   {dayBookings.length > 2 && <div className="text-[8px]" style={{ color: C.textDim }}>{mitWerten(t("kal.plusMehr"), { anzahl: dayBookings.length - 2 })}</div>}
                 </div>
@@ -9082,7 +9093,7 @@ function VehiclesView({ currentUser, currentClub }) {
                      opacity: b.status === "abgelehnt" ? .6 : 1 }}>
             <button onClick={() => openBookingDetail(b)} className="flex-1 min-w-0 text-left">
               <div className="text-xs font-bold truncate" style={{ color: C.ink }}>{b.vehicleLabel} · {b.label}</div>
-              <div className="text-[10px] truncate" style={{ color: C.textDim }}>{b.bookedBy} · {b.startsAt.toLocaleDateString(datumsLocale())} {String(b.startsAt.getHours()).padStart(2,"0")}:00 – {b.endsAt.toLocaleDateString(datumsLocale())} {String(b.endsAt.getHours()).padStart(2,"0")}:00</div>
+              <div className="text-[10px] truncate" style={{ color: C.textDim }}>{b.bookedBy ? `${b.bookedBy} · ` : ""}{b.startsAt.toLocaleDateString(datumsLocale())} {String(b.startsAt.getHours()).padStart(2,"0")}:00 – {b.endsAt.toLocaleDateString(datumsLocale())} {String(b.endsAt.getHours()).padStart(2,"0")}:00</div>
               <Erstellt von={b.membershipId} am={b.erstelltAm} rahmenlos />
             </button>
             {/* Eine Anfrage sieht aus wie eine Buchung - so war es gewuenscht -
@@ -9172,6 +9183,13 @@ function VehiclesView({ currentUser, currentClub }) {
             </div>
             <div className="text-xs font-bold mb-1" style={{ color: C.ink }}>{viewingBooking.label}</div>
             <div className="text-[11px] mb-4" style={{ color: C.textDim }}>{viewingBooking.startsAt.toLocaleDateString(datumsLocale())} {String(viewingBooking.startsAt.getHours()).padStart(2,"0")}:00 – {viewingBooking.endsAt.toLocaleDateString(datumsLocale())} {String(viewingBooking.endsAt.getHours()).padStart(2,"0")}:00</div>
+            {/* Wer gebucht hat - und damit auch die Telefonnummer - sieht nur
+                die Vereinsleitung und die buchende Person selbst. Fuer alle
+                anderen steht hier der Grund statt einer leeren Zeile; die
+                Belegung oben bleibt vollstaendig sichtbar. */}
+            {!viewingBooking.darfNamenSehen ? (
+              <div className="rounded-2xl p-3.5 text-[11px]" style={{ background: C.paperDim, color: C.textDim }}>{t("fzg.nurLeitungSiehtNamen")}</div>
+            ) : (
             <div className="rounded-2xl p-3.5" style={{ background: C.paperDim }}>
               <div className="text-[10px] font-bold mb-1" style={{ color: C.textDim }}>{t("fzg.gebuchtVonLabel")}</div>
               <div className="text-sm font-bold mb-2.5" style={{ color: C.ink }}>{viewingBooking.bookedBy}</div>
@@ -9194,6 +9212,7 @@ function VehiclesView({ currentUser, currentClub }) {
                 <div className="text-xs" style={{ color: C.textDim }}>{t("tel.keine")}</div>
               )}
             </div>
+            )}
           </div>
         </div>
       )}
