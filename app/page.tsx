@@ -9976,6 +9976,11 @@ function MemberDetailPanel({ member, onClose, leitung = false, clubId = null }) 
           )}
           </>}
           {!istFan && <>
+          {/* Dauerhafte Aufgaben ("Ansprechpartner Homepage") stehen hier nur
+              zum Nachlesen - und zuerst, weil sie die Person beschreiben und
+              nicht einen einzelnen Termin. Gepflegt werden sie in der
+              Benutzerverwaltung, damit es dafuer einen einzigen Weg gibt. */}
+          <MitgliedAufgabenPanel member={member} clubId={clubId} rahmen={false}/>
           <div className="text-[10px] uppercase tracking-widest font-bold mb-2" style={{ color: C.textDim }}>{t("auf.titel")}</div>
           {tasks.length === 0 ? <div className="text-[11px] rounded-xl p-3 mb-4" style={{ background: C.paperDim, color: C.textDim }}>{t("auf.keineEingetragen")}</div> : (
             <div className="space-y-1.5 mb-4">
@@ -9997,6 +10002,144 @@ function MemberDetailPanel({ member, onClose, leitung = false, clubId = null }) 
    Profilkachel "Beitrittsanfragen" zeigt jetzt dieselbe Freigabe wie die
    Verwaltung (MembershipApprovalsPanel mit nurAnfragen) - ein Schreibweg,
    beitritt_entscheiden. */
+/* Aufgaben, die eine Person dauerhaft im Verein uebernimmt: "Ansprechpartner
+   Homepage", "Bewirtungsplan", "Platzwart".
+ *
+ * Bewusst etwas anderes als die Aufgaben aus club_tasks, die im Mitglieds-
+ * Detail darueber stehen: Die haben eine Frist und sind irgendwann erledigt.
+ * Diese hier gelten, bis jemand sie abgibt - deshalb kein Datum, kein Haken,
+ * nur ein Freitext je Zeile (Migration 20260925180000_mitglied_aufgaben.sql).
+ *
+ * Eine eigene Rolle waere der falsche Weg gewesen: club_role ist ein fester
+ * Satz, an dem Rechte und Kontingente haengen. "Homepage" ist keine Rolle.
+ *
+ * leitung=false zeichnet dieselbe Liste ohne Eingabefeld und ohne Papierkorb -
+ * so steht sie im Mitglieds-Detail der Mitgliederuebersicht.
+ * rahmen=false laesst die Karte weg und setzt die Ueberschrift in derselben
+ * Zeile wie "Strafen" und "Aufgaben" im Detailblatt. */
+function MitgliedAufgabenPanel({ member, clubId = null, currentUser = null, leitung = false, rahmen = true }) {
+  const t = useT();
+  const [aufgaben, setAufgaben] = useState([]);
+  const [neu, setNeu] = useState("");
+  const [laedt, setLaedt] = useState(true);
+  const [speichert, setSpeichert] = useState(false);
+  const [message, setMessage] = useState("");
+  /* Zwei Tipps kurz hintereinander lesen beide denselben Zustand - ohne
+     diesen Riegel stuende die Aufgabe zweimal in der Liste. Derselbe Grund
+     wie bei aufgabeSpeichertRef in TasksView. */
+  const speichertRef = useRef(false);
+  const istFan = istNurFan(member);
+  const ausDatenbank = !!supabase && isDbId(member?.id) && isDbId(clubId);
+
+  useEffect(() => {
+    let weg = false;
+    const laden = async () => {
+      setLaedt(true); setMessage("");
+      if (!ausDatenbank) { setAufgaben([]); setLaedt(false); return; }
+      const { data, error } = await supabase.from("mitglied_aufgaben")
+        .select("id,bezeichnung")
+        .eq("membership_id", member.id)
+        .order("erstellt_am", { ascending: true });
+      if (weg) return;
+      if (error) { setMessage(t("zust.ladenFehler")); setAufgaben([]); setLaedt(false); return; }
+      setAufgaben((data || []).map((row) => ({ id: row.id, bezeichnung: row.bezeichnung })));
+      setLaedt(false);
+    };
+    laden();
+    return () => { weg = true; };
+  }, [member?.id, ausDatenbank]);
+
+  const hinzufuegen = async () => {
+    const text = neu.trim();
+    if (!text || speichertRef.current) return;
+    /* Die Datenbank weist Dubletten ohnehin ab (eindeutiger Index ueber
+       membership_id und die kleingeschriebene Bezeichnung). Hier steht die
+       Pruefung nur, damit der Satz vor dem Fehlschlag kommt. */
+    if (aufgaben.some((a) => a.bezeichnung.trim().toLowerCase() === text.toLowerCase())) {
+      setMessage(t("zust.schonVorhanden")); return;
+    }
+    speichertRef.current = true; setSpeichert(true); setMessage("");
+    try {
+      if (ausDatenbank) {
+        const { data, error } = await supabase.from("mitglied_aufgaben")
+          .insert({ club_id: clubId, membership_id: member.id, bezeichnung: text,
+                    erstellt_von: isDbId(currentUser?.id) ? currentUser.id : null })
+          .select("id,bezeichnung");
+        if (error || !(data || []).length) { setMessage(t("zust.speichernFehler")); return; }
+        setAufgaben((liste) => [...liste, { id: data[0].id, bezeichnung: data[0].bezeichnung }]);
+      } else {
+        setAufgaben((liste) => [...liste, { id: `lokal-${liste.length + 1}-${text}`, bezeichnung: text }]);
+      }
+      setNeu(""); setMessage(OK_ZEICHEN + t("zust.gespeichert"));
+    } finally {
+      speichertRef.current = false; setSpeichert(false);
+    }
+  };
+
+  const entfernen = async (id) => {
+    setMessage("");
+    if (ausDatenbank) {
+      /* Ohne .select("id") meldet ein Loeschen, das die Zeilenregel abweist,
+         keinen Fehler - die Zeile verschwaende nur auf dem Bildschirm und
+         waere beim naechsten Oeffnen wieder da. */
+      const { data, error } = await supabase.from("mitglied_aufgaben").delete().eq("id", id).select("id");
+      if (error || !(data || []).length) { setMessage(t("zust.loeschenFehler")); return; }
+    }
+    setAufgaben((liste) => liste.filter((a) => a.id !== id));
+    setMessage(OK_ZEICHEN + t("zust.entfernt"));
+  };
+
+  const inhalt = istFan ? (
+    <div className="text-[11px] rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{t("zust.nurMitglieder")}</div>
+  ) : <>
+    {leitung && (
+      <div className="flex gap-2 mb-3">
+        <input value={neu} maxLength={80}
+          onChange={(event) => { setNeu(event.target.value); setMessage(""); }}
+          onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); hinzufuegen(); } }}
+          placeholder={t("ph.zustaendigkeit")} aria-label={t("feld.zustaendigkeit")}
+          className="flex-1 min-w-0 px-3 py-2.5 rounded-xl text-xs outline-none"
+          style={{ background: C.paperDim, color: C.ink, border: `1px solid ${C.line}` }} />
+        <button onClick={hinzufuegen} disabled={speichert || !neu.trim()}
+          className="shrink-0 flex items-center gap-1 px-3.5 py-2.5 rounded-xl text-xs font-bold"
+          style={{ background: C.ink, color: C.white, opacity: speichert || !neu.trim() ? .35 : 1 }}>
+          <Plus size={14}/> {t("zust.hinzufuegen")}
+        </button>
+      </div>
+    )}
+    {laedt ? <div className="text-xs py-2" style={{ color: C.textDim }}>{t("allg.laedt")}</div>
+      : aufgaben.length === 0 ? <div className="text-[11px] rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{t("zust.keine")}</div>
+      : <div className="space-y-1.5">
+          {aufgaben.map((aufgabe) => (
+            <div key={aufgabe.id} className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: C.paperDim }}>
+              <span className="flex-1 min-w-0 text-xs break-words" style={{ color: C.ink }}>{aufgabe.bezeichnung}</span>
+              {leitung && (
+                <button onClick={() => entfernen(aufgabe.id)} aria-label={t("zust.entfernen")}
+                  className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center" style={{ background: C.white }}>
+                  <Trash2 size={13} style={{ color: C.fehler }}/>
+                </button>
+              )}
+            </div>
+          ))}
+        </div>}
+    {message && <div role="status" className="text-[11px] mt-3 rounded-xl px-3 py-2" style={{ background: istErfolg(message) ? C.erfolgFlaeche : C.fehlerFlaeche, color: istErfolg(message) ? C.erfolg : C.fehler }}>{meldungstext(message)}</div>}
+  </>;
+
+  if (!rahmen) return (
+    <div className="mb-4">
+      <div className="text-[10px] uppercase tracking-widest font-bold mb-2" style={{ color: C.textDim }}>{t("zust.titel")}</div>
+      {inhalt}
+    </div>
+  );
+  return (
+    <div className="rounded-2xl p-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
+      <div className="text-sm font-bold" style={{ color: C.ink }}>{t("zust.titel")}</div>
+      <div className="text-[11px] mb-3" style={{ color: C.textDim }}>{t("zust.hinweis")}</div>
+      {inhalt}
+    </div>
+  );
+}
+
 function SysAdminUserManager({ members, setMembers, currentUser = null }) {
   const t = useT();
   const [selectedId, setSelectedId] = useState("");
@@ -10117,11 +10260,15 @@ function SysAdminUserManager({ members, setMembers, currentUser = null }) {
       </button>
     )}
     {selected && <><div className="rounded-2xl p-4 mb-4 flex items-center gap-3" style={{ background: C.ink, color: C.white }}><div className="w-11 h-11 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: selected.color }}>{initialsOf(selected.name)}</div><div className="min-w-0"><div className="text-base font-bold truncate" style={{ fontFamily: "Oswald" }}>{selected.name}</div><div className="text-[10px] truncate" style={{ color: C.textDim }}>{selected.email || t("pf.ohneEigeneMail")}</div></div></div>
-      <div className="grid grid-cols-2 gap-2 mb-4">{[["overview", t("pf.stammdaten")], ["roles", t("rol.rollenTrainer")], ["teams", t("tm.athletenTeamsKurz")], ["family", t("fam.familie")]].map(([id, label]) => <button key={id} onClick={() => { setSection(id); setMessage(""); }} className="py-2.5 rounded-xl text-[11px] font-bold" style={{ background: section === id ? C.ink : C.white, color: section === id ? C.white : C.textDim, border: `1px solid ${section === id ? C.ink : C.line}` }}>{label}</button>)}</div>
+      {/* Fuenf Reiter in zwei Spalten: Der fuenfte stuende sonst allein in
+          einer dritten Zeile. Er bekommt deshalb die ganze Breite - das sieht
+          gewollt aus statt uebriggeblieben. */}
+      <div className="grid grid-cols-2 gap-2 mb-4">{[["overview", t("pf.stammdaten")], ["roles", t("rol.rollenTrainer")], ["teams", t("tm.athletenTeamsKurz")], ["family", t("fam.familie")], ["aufgaben", t("zust.reiter")]].map(([id, label]) => <button key={id} onClick={() => { setSection(id); setMessage(""); }} className={"py-2.5 rounded-xl text-[11px] font-bold" + (id === "aufgaben" ? " col-span-2" : "")} style={{ background: section === id ? C.ink : C.white, color: section === id ? C.white : C.textDim, border: `1px solid ${section === id ? C.ink : C.line}` }}>{label}</button>)}</div>
       {section === "overview" && <div className="rounded-2xl p-4 space-y-2" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="text-sm font-bold mb-2" style={{ color: C.ink }}>{t("verein.profilBearbeiten")}</div><input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder={t("ph.anzeigename")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/><input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} placeholder={t("ph.kontaktmail")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/><div className="grid grid-cols-2 gap-2"><input type="date" value={form.birthdate} onChange={(event) => setForm({ ...form, birthdate: event.target.value })} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/><input type="number" min="1800" max="2200" value={form.since} onChange={(event) => setForm({ ...form, since: event.target.value })} placeholder={t("ph.mitgliedSeit")} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}/></div><select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{ background: C.paperDim }}><option value="active">{t("status.aktiv")}</option><option value="pending">{t("status.ausstehend")}</option><option value="inactive">{t("status.inaktiv")}</option><option value="blocked">{t("status.gesperrt")}</option></select><button onClick={saveProfile} disabled={saving} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: C.red, color: C.aufPrimaer }}>{saving ? t("allg.wirdGespeichert") : t("pf.stammdatenSpeichern")}</button></div>}
       {section === "roles" && <RolesPanel members={[selected]} setMembers={setMembers} currentUser={currentUser} alleMitglieder={members}/>}
       {section === "teams" && <div className="rounded-2xl p-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>{!selected.roles.includes("spieler") ? <div className="text-xs" style={{ color: C.textDim }}>{t("tm.rolleAthletZuerst")}</div> : <><div className="flex items-center justify-between mb-2"><div className="text-sm font-bold">{t("tm.athletenTeams")}</div><span className="text-[10px] font-bold" style={{ color: playerTeamIds.length === 3 ? C.red : C.textDim }}>{playerTeamIds.length}/3</span></div><div className="space-y-2 mb-3">{teams.map((team) => { const active = playerTeamIds.includes(team.id); return <button key={team.id} onClick={() => togglePlayerTeam(team.id)} className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left" style={{ background: active ? C.erfolgFlaeche : C.paperDim, border: active ? `1px solid ${C.secondary}` : "1px solid transparent" }}><span className="text-xs font-bold">{team.name}</span>{active && <Check size={14} style={{ color: C.erfolg }}/>}</button>; })}</div><button onClick={savePlayerTeams} disabled={saving || JSON.stringify([...playerTeamIds].sort()) === JSON.stringify([...savedPlayerTeamIds].sort())} className="w-full py-2.5 rounded-xl text-xs font-bold" style={{ background: C.ink, color: C.white, opacity: JSON.stringify([...playerTeamIds].sort()) === JSON.stringify([...savedPlayerTeamIds].sort()) ? .35 : 1 }}>{saving ? t("allg.wirdGespeichert") : t("tm.mannschaftenSpeichern")}</button></>}</div>}
       {section === "family" && <><FamilyTree user={selected} members={members}/><div className="mt-3"><FamilyLinkManager user={selected} members={members} setMembers={setMembers} adminMode /></div></>}
+      {section === "aufgaben" && <MitgliedAufgabenPanel member={selected} clubId={selected.clubId} currentUser={currentUser} leitung/>}
       {message && <div role="status" className="text-[11px] mt-3 rounded-xl px-3 py-2" style={{ background: istErfolg(message) ? C.erfolgFlaeche : C.fehlerFlaeche, color: istErfolg(message) ? C.erfolg : C.fehler }}>{meldungstext(message)}</div>}
     </>}
   </div>;
