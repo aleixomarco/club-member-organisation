@@ -8469,6 +8469,10 @@ function TasksView({ currentUser, members }) {
      den einfachen" - ein Fan traegt nur 'fan' und hatte damit bisher eine
      solche Rolle, durfte also Vereinsaufgaben anlegen. */
   const canCreateClubTask = currentUser.roles.some((r) => !["spieler", "mitglied", "fan"].includes(r));
+  /* Austragen und fremde Eintragungen entfernen: Vereinsadministration,
+     Organisation, Systemverwaltung - dieselbe Runde, die auch die Mitglieder
+     verwaltet, und dieselbe Regel wie in der Datenbank. */
+  const darfAustragen = darfVereinVerwalten(currentUser);
   /* Im Demo-Betrieb aendern die Knoepfe nur, was auf dem Bildschirm steht.
      Ohne das warfen sie: Jeder Handgriff unten geht sonst geradewegs an die
      Datenbank, und die gibt es hier nicht. */
@@ -8662,11 +8666,18 @@ function TasksView({ currentUser, members }) {
     await loadAll();
     supabase.rpc("check_task_reminder_threshold", { target_club: currentUser.clubId });
   };
-  const withdraw = async (taskId) => {
-    if (!supabase) { lokalAendern(taskId, (x) => ({ ...x, signups: x.signups.filter((e) => e.membershipId !== currentUser.id) })); return; }
+  /* Austragen ist seit 26.09.2026 Sache der Vereinsleitung - fuer sich selbst
+     und fuer andere (Regel "leitung traegt aus vereinsaufgaben"). Eine Zusage
+     an den Verein streicht man nicht still und heimlich zwei Tage vorher; wer
+     doch nicht kann, sagt es der Organisation, und die sorgt fuer Ersatz. */
+  const withdraw = async (taskId, membershipId = currentUser.id) => {
+    if (!supabase) { lokalAendern(taskId, (x) => ({ ...x, signups: x.signups.filter((e) => e.membershipId !== membershipId) })); return; }
     setMessage("");
-    const { error } = await supabase.from("club_task_signups").delete().eq("task_id", taskId).eq("membership_id", currentUser.id);
-    if (error) { setMessage(t("allg.entfernenFehler")); return; }
+    const { data, error } = await supabase.from("club_task_signups").delete()
+      .eq("task_id", taskId).eq("membership_id", membershipId).select("task_id");
+    /* Ohne .select() meldet ein Loeschen, das die Zeilenregel abweist, keinen
+       Fehler - die Zeile verschwaende nur auf dem Bildschirm. */
+    if (error || !(data || []).length) { setMessage(t("allg.entfernenFehler")); return; }
     await loadAll();
   };
   /* Abhaken. Die Datenbank entscheidet, wer das darf - der Verantwortliche,
@@ -8708,7 +8719,21 @@ function TasksView({ currentUser, members }) {
         {task.description && <div className="text-xs mb-1.5" style={{ color: C.textDim }}>{task.description}</div>}
         <div className="text-[10px] mb-2" style={{ color: C.textDim }}>{task.teamName ? `${task.teamName} · ` : t("verein.mitPunktRaum")}{task.dueDate ? mitWerten(t("auf.faelligBis"), { datum: new Date(task.dueDate).toLocaleDateString(datumsLocale()) }) : t("auf.keinFaelligkeitsdatum")}</div>
         {verantwortliche.length > 0 && <div className="text-[10px] mb-2" style={{ color: C.textDim }}>{t("auf.verantwortlich")} {verantwortliche.map((v) => v.name).join(", ")}</div>}
-        {task.signups.length > 0 && <div className="text-[10px] mb-2" style={{ color: C.textDim }}>{t("help.eingetragenLabel")}: {task.signups.map((s) => s.name).join(", ")}</div>}
+        {task.signups.length > 0 && (darfAustragen ? (
+          <div className="text-[10px] mb-2 flex flex-wrap items-center gap-1" style={{ color: C.textDim }}>
+            <span>{t("help.eingetragenLabel")}:</span>
+            {task.signups.map((s) => (
+              <button key={s.membershipId} onClick={() => withdraw(task.id, s.membershipId)}
+                aria-label={mitWerten(t("help.eintragungEntfernen"), { name: s.name })}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
+                style={{ background: C.paperDim, color: C.ink, fontWeight: 600 }}>
+                {s.name} <X size={9} style={{ color: C.fehler }} />
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="text-[10px] mb-2" style={{ color: C.textDim }}>{t("help.eingetragenLabel")}: {task.signups.map((s) => s.name).join(", ")}</div>
+        ))}
         {erledigt && <div className="text-[10px] mb-2" style={{ color: C.erfolg }}>{t("auf.erledigtAm")} {new Date(task.erledigtAm).toLocaleDateString(datumsLocale())}</div>}
         <div className="flex gap-2">
           {/* Wer schon drin ist, bekommt kein "Eintragen" mehr angeboten -
@@ -8716,7 +8741,7 @@ function TasksView({ currentUser, members }) {
               gruenen Haken. */}
           {!binDrin && !erledigt && free > 0 && <button onClick={() => signUp(task.id)} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: C.ink, color: C.white }}>{t("allg.eintragenKnopf")}</button>}
           {binDrin && <button onClick={() => erledigenUmschalten(task)} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: erledigt ? C.paperDim : C.erfolg, color: erledigt ? C.textDim : C.white }}>{erledigt ? t("auf.wiederOeffnen") : t("auf.erledigt")}</button>}
-          {isSignedUp && !erledigt && <button onClick={() => withdraw(task.id)} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: C.paperDim, color: C.red }}>{t("allg.austragen")}</button>}
+          {isSignedUp && !erledigt && darfAustragen && <button onClick={() => withdraw(task.id)} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: C.paperDim, color: C.red }}>{t("allg.austragen")}</button>}
           {(isCreator || canManage) && <button onClick={() => onEdit(task)} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.paperDim, color: C.textDim }}>{t("allg.bearbeiten")}</button>}
           {/* Loeschen darf NUR der Ersteller - so steht es in der Regel
               "task creator deletes task". Der Knopf stand hier unter derselben
@@ -8726,6 +8751,11 @@ function TasksView({ currentUser, members }) {
               danach abwies. */}
           {isCreator && <button onClick={() => removeTask(task)} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.paperDim, color: C.red }}>{t("allg.loeschen")}</button>}
         </div>
+        {/* Ein Satz statt eines fehlenden Knopfes: Sonst sucht man ihn und
+            haelt die App fuer kaputt. */}
+        {isSignedUp && !erledigt && !darfAustragen && (
+          <div className="text-[10px] mt-2" style={{ color: C.textDim }}>{t("help.austragenNurLeitung")}</div>
+        )}
         <Erstellt von={task.createdBy} am={task.createdAt} />
       </div>
     );
@@ -14828,6 +14858,9 @@ function AufgabeOverlay({ taskId, currentUser, onClose }) {
   const vereinsweit = isAdmin(currentUser) || currentUser.roles.includes("organisator");
   const darfAendern = binErsteller || vereinsweit || fuehrtMannschaft;
   const darfLoeschen = binErsteller;
+  /* Austragen ist Sache der Vereinsleitung - fuer sich selbst und fuer andere
+     (26.09.2026, Regel "leitung traegt aus vereinsaufgaben"). */
+  const darfAustragen = darfVereinVerwalten(currentUser);
 
   const bearbeitenStarten = () => {
     setForm({
@@ -14877,6 +14910,15 @@ function AufgabeOverlay({ taskId, currentUser, onClose }) {
     else ({ error } = await supabase.rpc("aufgabe_erledigen", { target_task: taskId, erledigt: !erledigt }));
     setArbeitet(false);
     if (error) { setFehler(was === "eintragen" ? t("help.eintragenNichtMoeglich") : was === "austragen" ? t("allg.entfernenFehler") : t("auf.erledigenFehler")); return; }
+    await laden();
+  };
+
+  const eintragungEntfernen = async (membershipId) => {
+    setArbeitet(true); setFehler("");
+    const { data, error } = await supabase.from("club_task_signups").delete()
+      .eq("task_id", taskId).eq("membership_id", membershipId).select("task_id");
+    setArbeitet(false);
+    if (error || !(data || []).length) { setFehler(t("allg.entfernenFehler")); return; }
     await laden();
   };
 
@@ -14962,7 +15004,21 @@ function AufgabeOverlay({ taskId, currentUser, onClose }) {
 
             <div className="rounded-xl p-3 mb-3" style={{ background: C.paperDim }}>
               {verantwortliche.length > 0 && <div className="text-[11px] mb-1" style={{ color: C.textDim }}>{t("auf.verantwortlich")} {verantwortliche.map((p) => p.name).join(", ")}</div>}
-              {eintragungen.length > 0 && <div className="text-[11px] mb-1" style={{ color: C.textDim }}>{t("help.eingetragenLabel")}: {eintragungen.map((p) => p.name).join(", ")}</div>}
+              {eintragungen.length > 0 && (darfAustragen ? (
+                <div className="text-[11px] mb-1 flex flex-wrap items-center gap-1" style={{ color: C.textDim }}>
+                  <span>{t("help.eingetragenLabel")}:</span>
+                  {eintragungen.map((p) => (
+                    <button key={p.membershipId} onClick={() => eintragungEntfernen(p.membershipId)} disabled={arbeitet}
+                      aria-label={mitWerten(t("help.eintragungEntfernen"), { name: p.name })}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
+                      style={{ background: C.white, color: C.ink, fontWeight: 600 }}>
+                      {p.name} <X size={10} style={{ color: C.fehler }} />
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-[11px] mb-1" style={{ color: C.textDim }}>{t("help.eingetragenLabel")}: {eintragungen.map((p) => p.name).join(", ")}</div>
+              ))}
               <div className="text-[11px]" style={{ color: erledigt ? C.erfolg : frei > 0 ? C.textDim : C.fehler, fontWeight: 700 }}>
                 {erledigt ? `${t("auf.erledigtAm")} ${new Date(aufgabe.erledigt_am).toLocaleDateString(datumsLocale())}`
                   /* Auch im vollen Fall die Kapazitaet zeigen. Ein blosses
@@ -14989,7 +15045,7 @@ function AufgabeOverlay({ taskId, currentUser, onClose }) {
                   {erledigt ? t("auf.wiederOeffnen") : t("auf.erledigt")}
                 </button>
               )}
-              {binEingetragen && !erledigt && (
+              {binEingetragen && !erledigt && darfAustragen && (
                 <button onClick={() => tun("austragen")} disabled={arbeitet} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.glass, color: C.textDim }}>{t("allg.austragen")}</button>
               )}
               {darfAendern && (
@@ -14999,6 +15055,10 @@ function AufgabeOverlay({ taskId, currentUser, onClose }) {
                 <button onClick={loeschen} disabled={arbeitet} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: C.paperDim, color: C.red }}>{t("allg.loeschen")}</button>
               )}
             </div>
+            {/* Ein Satz statt eines fehlenden Knopfes. */}
+            {binEingetragen && !erledigt && !darfAustragen && (
+              <div className="text-[11px] mt-2" style={{ color: C.textDim }}>{t("help.austragenNurLeitung")}</div>
+            )}
           </>
         )}
       </div>
