@@ -30,7 +30,7 @@ export async function GET() {
     admin.from("offene_freischaltungen").select("*"),
     /* Die eigenen Werbeplaetze: club_id null heisst "gilt in jedem Verein".
        Sie liessen sich bisher nur von Hand im SQL-Editor anlegen. */
-    admin.from("anzeigen").select("id,platz,titel,text,ziel_url,bild_pfad,telefon,email,aktion_titel,aktion_bis,laeuft_bis,aktiv,impressionen,klicks")
+    admin.from("anzeigen").select("id,platz,titel,text,ziel_url,ziel_knopf,bild_pfad,telefon,email,aktion_titel,aktion_bis,laeuft_bis,aktiv,impressionen,klicks")
       .is("club_id", null).order("platz"),
     /* Die Sponsoren der Vereine - nur so viel, wie die Auswahlliste im
        Reiter "Werbeanzeigen" braucht. Sie stehen dort neben der eigenen

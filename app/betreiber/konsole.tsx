@@ -56,7 +56,7 @@ function kontenKachel(k: KontenStand) {
 }
 
 type Anzeige = {
-  id: string; platz: string; titel: string; text: string | null; ziel_url: string | null;
+  id: string; platz: string; titel: string; text: string | null; ziel_url: string | null; ziel_knopf: string | null;
   /* bild_pfad ist, was in der Datenbank steht; bild_url baut die Laderoute
      daraus zusammen, weil die Konsole keinen Supabase-Client hat. */
   bild_pfad: string | null; bild_url: string | null;
@@ -79,7 +79,7 @@ type Kpi = {
   stand: string;
   anzeige: { id: string; titel: string; platz: string; herkunft: string; aktiv: boolean;
     laeuft_von: string | null; laeuft_bis: string | null; laeuft_gerade: boolean;
-    ziel_url: string | null; telefon: string | null; email: string | null };
+    ziel_url: string | null; ziel_knopf: string | null; telefon: string | null; email: string | null };
   zeitraum: { von: string; bis: string; tage: number };
   gesamt: { impressionen: number; klicks: number };
   fenster: { impressionen: number; klicks: number; oeffnungen: number; kontakte: number; tage_mit_kontakt: number };
@@ -117,7 +117,7 @@ type Zielgruppe = {
 
 type Sponsor = {
   id: string; platz: string; titel: string; text: string | null; bild_url: string | null;
-  ziel_url: string | null; aktion_titel: string | null; aktion_text: string | null; aktion_url: string | null;
+  ziel_url: string | null; ziel_knopf: string | null; aktion_titel: string | null; aktion_text: string | null; aktion_url: string | null;
   laeuft_bis: string | null; aktion_bis: string | null; aktiv: boolean;
   impressionen: number; klicks: number; laeuft_gerade: boolean;
 };
@@ -1252,6 +1252,7 @@ function AnzeigeDialog({ anzeige, laeuft, onAbbrechen, onSpeichern, onEntfernen 
   const [titel, setTitel] = useState(anzeige.titel || "");
   const [text, setText] = useState(anzeige.text || "");
   const [zielUrl, setZielUrl] = useState(anzeige.ziel_url || "");
+  const [zielKnopf, setZielKnopf] = useState(anzeige.ziel_knopf || "");
   const [bis, setBis] = useState(anzeige.laeuft_bis ? anzeige.laeuft_bis.slice(0, 10) : "");
   const [aktiv, setAktiv] = useState(anzeige.aktiv !== false);
   const [bildPfad, setBildPfad] = useState(anzeige.bild_pfad || "");
@@ -1322,6 +1323,10 @@ function AnzeigeDialog({ anzeige, laeuft, onAbbrechen, onSpeichern, onEntfernen 
 
         <label style={beschriftung}>Ziel-Adresse (optional)</label>
         <input type="url" value={zielUrl} onChange={(e) => setZielUrl(e.target.value)} placeholder="https://…" style={feld} />
+        {/* Beschriftung des Knopfes. Leer = die App setzt ihren uebersetzten
+            Standardtext ein; deshalb steht die Vorgabe im Platzhalter und
+            nicht im Feld. */}
+        <input value={zielKnopf} onChange={(e) => setZielKnopf(e.target.value)} maxLength={40} placeholder="Knopftext — leer: Hier klicken" style={feld} />
 
         <label style={beschriftung}>Läuft bis (optional)</label>
         <input type="date" value={bis} onChange={(e) => setBis(e.target.value)} style={feld} />
@@ -1339,7 +1344,7 @@ function AnzeigeDialog({ anzeige, laeuft, onAbbrechen, onSpeichern, onEntfernen 
           <button style={{ ...knopf, flex: 1, opacity: laeuft || bildLaeuft ? 0.6 : 1 }} disabled={laeuft || bildLaeuft}
             onClick={() => {
               if (!titel.trim()) { setFehler("Ohne Titel geht es nicht."); return; }
-              onSpeichern({ platz, titel, text, ziel_url: zielUrl, bild_pfad: bildPfad || null, laeuft_bis: bis, aktiv });
+              onSpeichern({ platz, titel, text, ziel_url: zielUrl, ziel_knopf: zielKnopf, bild_pfad: bildPfad || null, laeuft_bis: bis, aktiv });
             }}>{laeuft ? "…" : "Speichern"}</button>
         </div>
         {anzeige.id && (

@@ -221,6 +221,7 @@ export async function POST(request: Request) {
       titel,
       text: text(daten.text, 400),
       ziel_url: text(daten.ziel_url, 500),
+      ziel_knopf: text(daten.ziel_knopf, 40),
       bild_pfad: bildPfad,
       aktiv: daten.aktiv !== false,
       laeuft_bis: text(daten.laeuft_bis, 40) ? new Date(`${daten.laeuft_bis}T23:59:59`).toISOString() : null,

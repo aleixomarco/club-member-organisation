@@ -2263,7 +2263,7 @@ function SponsorSlot({ slotKey, bookings, onImpression, onClick, visible = true 
               </div>
             )}
 
-            {anzeige.ziel_url && <a href={anzeige.ziel_url} target="_blank" rel="noopener noreferrer" onClick={() => onClick?.(slotKey, "website")} className="flex items-center justify-between rounded-xl px-3 py-2.5 text-xs font-bold mt-3" style={{ background: C.paperDim, color: C.ink }}>{t("sp.website")} <ExternalLink size={14}/></a>}
+            {anzeige.ziel_url && <a href={anzeige.ziel_url} target="_blank" rel="noopener noreferrer" onClick={() => onClick?.(slotKey, "website")} className="flex items-center justify-between rounded-xl px-3 py-2.5 text-xs font-bold mt-3" style={{ background: C.paperDim, color: C.ink }}>{String(anzeige.ziel_knopf || "").trim() || t("sp.hierKlicken")} <ExternalLink size={14}/></a>}
             {/* Anrufen und Schreiben sind die beiden Wege, auf denen aus einer
                 Einblendung ein Gespraech wird. Sie stehen deshalb als eigene
                 Knoepfe da und nicht als Text im Beschreibungsfeld - und werden
@@ -12892,7 +12892,7 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
     return `${d.getFullYear()}-${zwei(d.getMonth() + 1)}-${zwei(d.getDate())}T${zwei(d.getHours())}:${zwei(d.getMinutes())}`;
   };
   const leer = (platz) => ({
-    id: null, platz, titel: "", text: "", bild_pfad: "", ziel_url: "",
+    id: null, platz, titel: "", text: "", bild_pfad: "", ziel_url: "", ziel_knopf: "",
     telefon: "", email: "",
     aktion_titel: "", aktion_text: "", aktion_url: "",
     laeuft_von: tag(new Date().toISOString()), laeuft_bis: "",
@@ -12903,7 +12903,7 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
     setOffen(platz);
     setFehler("");
     setEntwurf(vorhanden
-      ? { ...vorhanden, text: vorhanden.text || "", bild_pfad: vorhanden.bild_pfad || "", ziel_url: vorhanden.ziel_url || "",
+      ? { ...vorhanden, text: vorhanden.text || "", bild_pfad: vorhanden.bild_pfad || "", ziel_url: vorhanden.ziel_url || "", ziel_knopf: vorhanden.ziel_knopf || "",
           telefon: vorhanden.telefon || "", email: vorhanden.email || "",
           aktion_titel: vorhanden.aktion_titel || "", aktion_text: vorhanden.aktion_text || "", aktion_url: vorhanden.aktion_url || "",
           laeuft_von: tag(vorhanden.laeuft_von), laeuft_bis: tag(vorhanden.laeuft_bis),
@@ -12946,6 +12946,7 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
       club_id: currentClub.id, platz: entwurf.platz,
       titel: entwurf.titel.trim(), text: entwurf.text.trim() || null,
       bild_pfad: entwurf.bild_pfad || null, ziel_url: entwurf.ziel_url.trim() || null,
+      ziel_knopf: entwurf.ziel_knopf.trim() || null,
       telefon: entwurf.telefon.trim() || null, email: entwurf.email.trim() || null,
       aktion_titel: entwurf.aktion_titel.trim() || null,
       aktion_text: entwurf.aktion_text.trim() || null,
@@ -13083,6 +13084,11 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
                 <input value={entwurf.titel} onChange={(e) => setzen("titel", e.target.value)} placeholder={t("ph.sponsorName")} maxLength={120} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} />
                 <textarea value={entwurf.text} onChange={(e) => setzen("text", e.target.value)} placeholder={t("ph.kurzerText")} rows={2} maxLength={400} className="w-full px-3 py-2 rounded-lg text-xs outline-none resize-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} />
                 <input type="url" inputMode="url" value={entwurf.ziel_url} onChange={(e) => setzen("ziel_url", e.target.value)} placeholder={t("ph.sponsorWebsite")} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} />
+                {/* Die Beschriftung des Knopfes. Leer heisst: der uebersetzte
+                    Standardtext - deshalb der Vorgabewert im Platzhalter statt
+                    im Feld, sonst stuende er als Eingabe da und liesse sich
+                    nicht mehr von einer bewussten Wahl unterscheiden. */}
+                {entwurf.ziel_url.trim() && <input value={entwurf.ziel_knopf} onChange={(e) => setzen("ziel_knopf", e.target.value)} placeholder={t("ph.knopfText")} maxLength={40} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} />}
                 {/* Telefon und E-Mail sind nicht nur Zierde: Sie werden im
                     Inserat zu eigenen Knoepfen und im Bericht zu eigenen
                     Zeilen. "Vier Anrufe" ist die Zahl, mit der ein Sponsor
