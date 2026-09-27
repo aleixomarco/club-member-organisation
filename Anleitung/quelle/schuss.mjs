@@ -36,8 +36,23 @@ ws.onmessage = (e) => {
     n.error ? nein(new Error(JSON.stringify(n.error))) : ja(n.result);
   }
 };
+/* Mit Zeitgrenze. Ohne sie wartet ein Aufruf, den Chrome nie beantwortet, bis
+   in alle Ewigkeit: Node beendet sich mit "Detected unsettled top-level await",
+   und im Protokoll steht nur, welches Bild als letztes gelang - nicht, an
+   welchem Schritt es haengt. Genau so ging ein Durchlauf am 27.09. verloren.
+   Besser ein lauter Abbruch mit Namen des Schritts. */
+const ZEITGRENZE = Number(process.env.CDP_ZEITGRENZE || 90000);
 const senden = (method, params = {}) =>
-  new Promise((ja, nein) => { const id = ++nr; offen.set(id, { ja, nein }); ws.send(JSON.stringify({ id, method, params })); });
+  new Promise((ja, nein) => {
+    const id = ++nr;
+    const wecker = setTimeout(() => {
+      offen.delete(id);
+      nein(new Error(`${method} hat nach ${ZEITGRENZE} ms nicht geantwortet`));
+    }, ZEITGRENZE);
+    offen.set(id, { ja: (r) => { clearTimeout(wecker); ja(r); },
+                    nein: (f) => { clearTimeout(wecker); nein(f); } });
+    ws.send(JSON.stringify({ id, method, params }));
+  });
 
 const js = async (ausdruck) => {
   const r = await senden("Runtime.evaluate", { expression: `(async () => { ${ausdruck} })()`, awaitPromise: true, returnByValue: true });
@@ -76,7 +91,14 @@ await senden("Emulation.setDeviceMetricsOverride", {
    der erste Screenshot auf eine Serifenschrift zurueck - im PDF sofort
    sichtbar, weil die App sonst nirgends Serifen benutzt. */
 const warteAufSchriften = () => js(`
-  await document.fonts.ready;
+  /* Mit Wettlauf gegen die Uhr. document.fonts.ready wird nie erfuellt, solange
+     eine per @import angeforderte Schrift aus dem Netz nicht ankommt - der
+     Aufruf haengt dann fuer immer, und der ganze Durchlauf steht (27.09.: zwei
+     Durchlaeufe an unterschiedlichen Bildern verloren, weil die Fundstelle mit
+     der Netzlage wandert). Nach acht Sekunden wird weitergemacht: Die Schriften
+     liegen dann im Zwischenspeicher des Profils, und beim naechsten Bild ist
+     document.fonts.ready sofort erfuellt. */
+  await Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 8000))]);
   await new Promise(r => setTimeout(r, 600));
   return document.fonts.size;
 `);

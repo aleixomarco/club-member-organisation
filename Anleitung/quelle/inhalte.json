@@ -15,6 +15,18 @@
     "bildschirm": "Anmeldung / Meine Vereine"
    },
    {
+    "titel": "Mitglied, Athlet/in oder Fan",
+    "wo": "Ergibt sich aus der Freigabe durch die Vereinsleitung",
+    "punkte": [
+     "Jede Mitgliedschaft ist genau eines von beidem: Mitglied oder Fan. Das wählst du bei der Anfrage.",
+     "„Athlet/in“ ist keine dritte Wahl, sondern kommt als Zusatzrolle obendrauf — vergeben wird sie von der Vereinsleitung, nie von dir.",
+     "Erst als Athlet/in gehörst du einer Mannschaft an. Daraus folgt alles Weitere: Kader, Mannschaftskanal, Strafenkatalog und die Wahl zur Athletin oder zum Athleten der Saison.",
+     "Ein Fan folgt dem Verein, zählt aber nicht als Mitglied: kein Support-Reiter, keine Trainings, keine Aufgaben, Dienste oder Fahrzeuge."
+    ],
+    "hinweis": "Wählen darf bei „Athlet/in der Saison“ jedes Mitglied — gewählt werden kann nur, wer die Rolle Athlet/in trägt.",
+    "bildschirm": "Verwaltung > Rollen"
+   },
+   {
     "titel": "Die Startseite",
     "wo": "Untere Leiste > Home",
     "punkte": [
@@ -148,12 +160,12 @@
     "titel": "Mannschaften und Strafenkatalog",
     "wo": "Untere Leiste > Teams",
     "punkte": [
-     "Unter „Teams“ stehen zuerst deine Mannschaften, darunter alle des Vereins.",
+     "Unter „Teams“ stehen alle Mannschaften des Vereins; trägst du die Rolle Athlet/in, stehen deine eigenen zuerst.",
      "Ein Tipp auf eine Mannschaft zeigt ihren Kader.",
-     "Im Profil öffnest du unter „Einstellungen“ den Strafenkatalog und siehst, was welche Strafe kostet.",
+     "Den Strafenkatalog im Profil sehen nur Athlet/innen, Kapitäne, Teammanager und die Verantwortlichen der Mannschaft — als reines Mitglied ohne Mannschaft gibt es die Kachel nicht.",
      "Oben wählst du dort die Mannschaft, aufgeführt sind nur Erwachsenenmannschaften."
     ],
-    "hinweis": "Einer Mannschaft zuordnen können dich nur Trainer, Teammanager oder die Vereinsleitung. Offene Strafen sehen nur die Verantwortlichen der Mannschaft, und der Trainer kann den Katalog ganz ausblenden. Teams braucht den Vollzugang.",
+    "hinweis": "Einer Mannschaft zuordnen können dich nur Trainer, Teammanager oder die Vereinsleitung — und nur, wenn du die Rolle Athlet/in trägst. Offene Strafen sehen nur die Verantwortlichen der Mannschaft, und der Trainer kann den Katalog ganz ausblenden. Teams braucht den Vollzugang.",
     "bildschirm": "Teams / Profil > Strafenkatalog"
    },
    {
@@ -172,7 +184,7 @@
    }
   ],
   "einleitung": "Jede Mitgliedschaft ist entweder Mitglied oder Fan. Als Mitglied siehst du Termine, sagst zu oder ab, hilfst bei Aufgaben und Diensten mit, schreibst im Chat und pflegst dein Profil; weitere Rollen wie Athlet/in vergibt die Vereinsleitung. Als Fan folgst du dem Verein, ohne weitere Rollen.",
-  "rolle": "Mitglied / Athlet/in"
+  "rolle": "Mitglied (und was als Athlet/in dazukommt)"
  },
  {
   "key": "trainer",
@@ -277,6 +289,18 @@
     ],
     "bildschirm": "Profil > Trainerbereich > Mannschaftseinstellungen",
     "hinweis": "Den Strafenkatalog gibt es nur für Erwachsenenmannschaften, und jede Mannschaft führt ihre eigenen Regeln und Kosten. Eine Saison archiviert die Vereinsleitung."
+   },
+   {
+    "titel": "Für Kapitän/in und Teammanager/in",
+    "wo": "Dieselben Wege wie für Trainer/innen",
+    "punkte": [
+     "Kapitän/in und Teammanager/in dürfen bei ihrer eigenen Mannschaft dasselbe wie die Trainer/innen: Termine anlegen und absagen, Ergebnisse eintragen, den Kader sehen und den Strafenkatalog schalten.",
+     "Athlet/innen einer Mannschaft zuordnen darf davon nur der Teammanager oder die Teammanagerin.",
+     "Den Trainerbereich im Profil gibt es für beide nicht — er bleibt den Trainer/innen vorbehalten.",
+     "Im Mannschaftskanal dürfen beide schreiben."
+    ],
+    "hinweis": "Alles Übrige in diesem Heft gilt für euch genauso. Wo „Trainer/in“ steht, sind Kapitän/in und Teammanager/in mitgemeint, außer der Text sagt ausdrücklich etwas anderes.",
+    "bildschirm": "Verwaltung > Funktionen"
    }
   ],
   "einleitung": "Du führst eine Mannschaft: Du setzt Trainings und Spiele an, sagst sie ab und siehst, wer dabei ist. Du entscheidest auch, was deine Mannschaft in der App sieht.",
@@ -676,11 +700,23 @@
     "punkte": [
      "Wähle zuerst, was du für die andere Person bist: Vater, Mutter, Sohn, Tochter, Opa oder Oma.",
      "Tippe den Namen ins Suchfeld und bei der richtigen Person auf „Verbinden“.",
-     "Die Verknüpfung steht danach in beiden Profilen, die andere Person muss nichts bestätigen.",
+     "Die Anfrage geht an die andere Person. Erst wenn sie zustimmt, gilt die Verknüpfung und öffnet Kanal, Termine und Meldungen. Bei einem Kinderprofil ohne eigenes Konto entscheidet die Vereinsleitung.",
      "Mit „Löschen“ neben dem Eintrag löst du die Verbindung wieder, auch auf der anderen Seite."
     ],
     "bildschirm": "Profil > Persönliche Daten > Familie, Bereich „Familienverknüpfung\" aufgeklappt",
-    "hinweis": "Die Suche findet nur Personen mit eigenem Konto in deinem Verein. Profile ohne Konto tauchen dort nicht auf."
+    "hinweis": "Die Suche findet Mitglieder deines Vereins, auch betreute Kinderprofile ohne eigenes Konto. Wer noch auf die Aufnahme wartet, taucht dort nicht auf."
+   },
+   {
+    "titel": "Offene Anfragen",
+    "wo": "Profil > Persönliche Daten > Familie, Bereich „Offene Anfragen“",
+    "punkte": [
+     "Hier stehen Anfragen, die an dich gerichtet sind, und die, die du selbst gestellt hast.",
+     "Eine eingehende Anfrage nimmst du an oder lehnst sie ab — erst mit dem Annehmen gilt die Verknüpfung.",
+     "Bei einer eigenen Anfrage steht „Wartet auf Bestätigung durch …“; du kannst sie zurückziehen.",
+     "Über ein Kinderprofil ohne eigenes Konto entscheidet nicht das Kind, sondern die Vereinsleitung."
+    ],
+    "hinweis": "Bis zur Bestätigung passiert nichts: kein Kanal, keine Termine, keine Meldungen. Eine Verknüpfung ohne Zustimmung gibt es seit dem 14.09. nicht mehr.",
+    "bildschirm": "Profil > Persönliche Daten > Familie, Bereich „Offene Anfragen“"
    },
    {
     "titel": "Kind ohne Konto anlegen",
@@ -704,7 +740,7 @@
      "Unter „Benachrichtigungen“ schaltest du einzelne Meldungen ab, darunter den Schalter „Familienverknüpfungen“."
     ],
     "bildschirm": "Chat mit dem Mannschaftskanal des Kindes",
-    "hinweis": "Das greift erst, wenn dein Kind in einer Mannschaft ist. Ohne Mannschaft gibt es weder Kanal noch Termin-Meldungen."
+    "hinweis": "Das greift erst, wenn die Verknüpfung bestätigt ist UND dein Kind in einer Mannschaft steht. Fehlt eines von beidem, gibt es weder Kanal noch Termin-Meldungen."
    },
    {
     "titel": "Betreutes Profil zusammenführen",
@@ -719,8 +755,8 @@
     "hinweis": "Als Elternteil kannst du das nicht selbst, diesen Bereich sieht nur der Vereins-Administrator oder der Sys-Admin. Der Bereich „Profile ohne Konto zusammenführen“ steht unter der Mitgliederliste und erscheint nur, solange es im Verein mindestens ein Profil ohne Konto gibt."
    }
   ],
-  "einleitung": "„Elternteil“ ist keine Rolle, die dir jemand zuteilt: Du trägst die Verknüpfung selbst in deinem Profil ein. Sie verbindet dein Konto mit dem deines Kindes und bringt dir dessen Mannschaftskanal und dessen Termine.",
-  "rolle": "Elternteil"
+  "einleitung": "Es gibt im Verein KEINE Rolle „Eltern“ — niemand teilt sie dir zu, und in der Rollenliste deines Vereins kommt sie nicht vor. Was zählt, ist allein die Verknüpfung: Du trägst sie selbst in deinem Profil ein, sie verbindet dein Konto mit dem deines Kindes und bringt dir dessen Mannschaftskanal und dessen Termine.",
+  "rolle": "Familie & Kinderkonten"
  },
  {
   "key": "betreiber",

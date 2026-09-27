@@ -13,7 +13,10 @@ await senden("Emulation.setDeviceMetricsOverride", { width: 1123, height: 794, d
 for (const name of AUSGABEN) {
   await senden("Page.navigate", { url: `file://${ORDNER}/${name}.html` });
   await schlaf(3500);
-  await js(`await document.fonts.ready; await new Promise(r => setTimeout(r, 800)); return true;`);
+  /* Wettlauf gegen die Uhr, aus demselben Grund wie in schuss.mjs: Kommt eine
+     Schrift aus dem Netz nicht an, wird document.fonts.ready nie erfuellt und
+     der Druck steht still, statt abzubrechen. */
+  await js(`await Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 8000))]); await new Promise(r => setTimeout(r, 800)); return true;`);
   /* Warten, bis wirklich jedes Bild da ist - ein halb geladenes Bild druckt
      als leere Flaeche, und das faellt erst im fertigen PDF auf. */
   const bilder = await js(`
