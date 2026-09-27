@@ -2193,8 +2193,19 @@ function SponsorSlot({ slotKey, bookings, onImpression, onClick, visible = true 
         <ChevronRight size={14} style={{ color: C.textDim, flexShrink: 0 }} />
       </button>
 
-      {showDetails && <div className="absolute inset-0 z-50 flex items-end p-3" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setShowDetails(false)}>
-        <div role="dialog" aria-modal="true" aria-label={anzeige.titel} onClick={(e) => e.stopPropagation()} className="w-full rounded-3xl overflow-hidden" style={{ background: C.glass, maxHeight: "80%", overflowY: "auto" }}>
+      {/* Ueber den GANZEN Bildschirm, nicht nur ueber den Anzeigenplatz.
+          Vorher stand hier absolute inset-0: Das bezieht sich auf die Kachel,
+          in der die Anzeige sitzt - die Einblendung klebte deshalb als
+          schmaler Streifen am unteren Rand, und daneben lief die App weiter.
+          fixed inset-0 nimmt den Bildschirm; mittig statt unten, damit der
+          Blick nicht erst nach unten wandern muss.
+          Und C.white statt C.glass: glass ist zu 55 % durchsichtiges Weiss.
+          Ueber der zu 72 % dunklen Abdeckung schlug das Dunkel durch, und die
+          Schrift stand grau auf grau - genau der Grund, warum die Anzeige
+          unleserlich war. Eine Anzeige, die man nicht lesen kann, ist fuer den
+          Sponsor wertlos. */}
+      {showDetails && <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ background: "rgba(20,21,26,.72)" }} onClick={() => setShowDetails(false)}>
+        <div role="dialog" aria-modal="true" aria-label={anzeige.titel} onClick={(e) => e.stopPropagation()} className="w-full rounded-3xl overflow-hidden" style={{ background: C.white, maxWidth: 560, maxHeight: "86vh", overflowY: "auto", boxShadow: "0 24px 60px rgba(20,21,26,.35)" }}>
           <div className="p-4">
             {/* Kopf und Bild nebeneinander.
                 Das Bild hing frueher in voller Breite unter der Karte und nahm
@@ -2206,9 +2217,12 @@ function SponsorSlot({ slotKey, bookings, onImpression, onClick, visible = true 
                 Grund gezeichnet sind. */}
             <div className="flex items-start gap-3">
               <div className="flex-1 min-w-0">
-                <div className="text-[9px] uppercase tracking-widest font-bold mb-1" style={{ color: vomVerein ? C.secondary : C.textDim }}>{vomVerein ? t("sp.unseresVereins") : t("sp.anzeige")}</div>
-                <h2 className="text-lg font-bold" style={{ fontFamily: "Oswald", color: C.ink }}>{anzeige.titel}</h2>
-                {anzeige.text && <p className="text-sm leading-relaxed mt-2" style={{ color: C.textDim }}>{anzeige.text}</p>}
+                <div className="text-[10px] uppercase tracking-widest font-bold mb-1.5" style={{ color: vomVerein ? C.secondary : C.red }}>{vomVerein ? t("sp.unseresVereins") : t("sp.anzeige")}</div>
+                <h2 className="text-2xl font-bold leading-tight" style={{ fontFamily: "Oswald", color: C.ink }}>{anzeige.titel}</h2>
+                {/* C.ink statt C.textDim: Die gedaempfte Farbe traegt in dieser
+                    App Nebensaechliches - Datumsangaben, Hinweise. Der
+                    Anzeigentext ist die Hauptsache. */}
+                {anzeige.text && <p className="text-base leading-relaxed mt-2.5" style={{ color: C.ink }}>{anzeige.text}</p>}
               </div>
               {anzeige.bild_url && (
                 <div className="shrink-0 rounded-2xl overflow-hidden" style={{ width: 104, background: C.white, border: `1px solid ${C.line}` }}>
