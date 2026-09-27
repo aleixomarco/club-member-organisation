@@ -29,6 +29,15 @@ async function lies<T extends { error: { code?: string | null } | null }>(was: s
 const spaeterNochmal = (sprache: string) => NextResponse.json({ error: uebersetze(sprache, "kal.feed.nichtVerfuegbar") },
   { status: 503, headers: { "Retry-After": "60" } });
 
+/* Apple und Google Kalender bauen aus LOCATION von sich aus eine Route - aber
+   nur, wenn dort etwas Geokodierbares steht. "Hemberghalle" allein findet kein
+   Kartendienst, "Hemberghalle, Hauptstrasse 12, 58644 Iserlohn" schon. Beides
+   in einer Zeile, damit der vertraute Hallenname sichtbar bleibt und der
+   Eintrag trotzdem antippbar wird - ICS kennt nur dieses eine Ortsfeld. */
+function ortMitAdresse(event: { location?: unknown; address?: unknown }) {
+  return [event.location, event.address].map((x) => String(x || "").trim()).filter(Boolean).join(", ");
+}
+
 function icsDate(value: string) {
   return new Date(value).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
 }
@@ -141,7 +150,7 @@ export async function GET(request: Request, context: { params: Promise<{ token: 
   /* Die Abfrage wird fuer jeden Versuch neu gebaut - ein zweites await auf
      dasselbe Objekt waere kein zweiter Versuch. */
   const termine = () => {
-    const basis = admin.from("events").select("id,title,description,starts_at,ends_at,location,status,type,team_id").eq("club_id", subscription.club_id).gte("starts_at", new Date(Date.now() - 86400000).toISOString()).order("starts_at");
+    const basis = admin.from("events").select("id,title,description,starts_at,ends_at,location,address,status,type,team_id").eq("club_id", subscription.club_id).gte("starts_at", new Date(Date.now() - 86400000).toISOString()).order("starts_at");
     /* Bleibt keine Art uebrig (ein Fan, der nur Trainings abonniert hatte),
        wird der Kalender leer - ohne Abfrage mit leerer in-Liste, die PostgREST
        als "in.()" bekaeme. */
@@ -180,7 +189,7 @@ export async function GET(request: Request, context: { params: Promise<{ token: 
   const calendarName = `CMO ${artenName}${mannschaftsName}`;
   const abgesagt = t("kal.feed.abgesagt");
   const body = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//CMO//Club Member Organisation//DE", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", `X-WR-CALNAME:${escapeIcs(calendarName)}`, `REFRESH-INTERVAL;VALUE=DURATION:${refreshInterval}`, `X-PUBLISHED-TTL:${refreshInterval}`,
-    ...(events || []).flatMap((event) => ["BEGIN:VEVENT", `UID:${event.id}@cmo.app`, `DTSTAMP:${icsDate(new Date().toISOString())}`, `DTSTART:${icsDate(event.starts_at)}`, `DTEND:${icsDate(event.ends_at || new Date(new Date(event.starts_at).getTime()+7200000).toISOString())}`, `SUMMARY:${escapeIcs(event.status === "cancelled" ? abgesagt.replace("{titel}", () => String(event.title)) : event.title)}`, `DESCRIPTION:${escapeIcs(event.description || "")}`, `LOCATION:${escapeIcs(event.location || "")}`, `STATUS:${event.status === "cancelled" ? "CANCELLED" : "CONFIRMED"}`, "END:VEVENT"]), "END:VCALENDAR", ""].join("\r\n");
+    ...(events || []).flatMap((event) => ["BEGIN:VEVENT", `UID:${event.id}@cmo.app`, `DTSTAMP:${icsDate(new Date().toISOString())}`, `DTSTART:${icsDate(event.starts_at)}`, `DTEND:${icsDate(event.ends_at || new Date(new Date(event.starts_at).getTime()+7200000).toISOString())}`, `SUMMARY:${escapeIcs(event.status === "cancelled" ? abgesagt.replace("{titel}", () => String(event.title)) : event.title)}`, `DESCRIPTION:${escapeIcs(event.description || "")}`, `LOCATION:${escapeIcs(ortMitAdresse(event))}`, `STATUS:${event.status === "cancelled" ? "CANCELLED" : "CONFIRMED"}`, "END:VEVENT"]), "END:VCALENDAR", ""].join("\r\n");
   return new NextResponse(body, { headers: { "Content-Type": "text/calendar; charset=utf-8", "Content-Disposition": "inline; filename=CMO-Kalender.ics", "Cache-Control": "no-store" } });
   } catch (fehler) {
     if (fehler instanceof Zeitversatz) return spaeterNochmal(kopfSprache);

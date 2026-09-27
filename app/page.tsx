@@ -9,7 +9,7 @@ import {
   ShieldCheck, ArrowRight, ArrowLeft, AlertCircle, UserPlus, Eye, EyeOff,
   Target, ClipboardList, Newspaper, Bell, KeyRound, Settings, RefreshCw,
   Bug, Smartphone, Save, Plus, Building2, ExternalLink, Phone, Copy, PlayCircle, ChevronUp
-, ListFilter, Globe, Download, BarChart3, GripVertical
+, ListFilter, Globe, Download, BarChart3, GripVertical, Navigation
 } from "lucide-react";
 import { ANMELDUNG_MERKEN, isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { SPRACHEN, gespeicherteSprache, spracheMerken, uebersetze } from "@/lib/sprachen";
@@ -1159,6 +1159,21 @@ const isSysAdmin = (m) => !!m && m.roles.includes("sysadmin");
 const darfVereinVerwalten = (m) =>
   !!m && m.roles.some((r) => ["vereinsadmin", "organisator", "sysadmin"].includes(r));
 
+/* Wer ueber Beitrittsanfragen entscheidet - ein ENGERER Satz als
+   darfVereinVerwalten, bewusst ohne Organisation.
+   Wunsch des Betreibers (27.09.2026): Die Meldung ueber eine neue Anfrage, das
+   Annehmen und Ablehnen und die Liste der Wartenden gehen nur die
+   Vereinsadministration etwas an. Der Organisator kam am 11.09. dazu, als die
+   Aufnahme von allen Mitgliedern auf die Leitung eingeengt wurde; inzwischen
+   ist er die Rolle fuer Helferdienste und Umfragen, und wer in den Verein
+   aufgenommen wird, ist eine andere Frage.
+   Muss mit der Datenbank zusammenpassen: beitritt_entscheiden, die Leseregel
+   auf club_memberships und beitrittsanfrage_melden nennen seit
+   20260927160000 denselben Zweiersatz. Wer hier etwas aendert, aendert es
+   dort mit - sonst sieht jemand einen Knopf, den die Datenbank abweist. */
+const darfBeitritteEntscheiden = (m) =>
+  !!m && m.roles.some((r) => ["vereinsadmin", "sysadmin"].includes(r));
+
 /* Wen Trainings nichts angehen.
  *
  * Ein Fan kommt zu den Spielen. Wann eine Mannschaft trainiert, ist fuer ihn
@@ -1292,6 +1307,54 @@ const kapazitaetsMailLink = (vereinsname) => {
   const text = `Hallo,\r\nwir sind ${verein} und wollen unsere Vereinskapazität erhöhen. Gerne eine Rückmeldung!\r\nDanke!`;
   return `mailto:${KAPAZITAET_EMPFAENGER}?subject=${encodeURIComponent(betreff)}&body=${encodeURIComponent(text)}`;
 };
+
+/* Die Adresse eines Termins als Weg in die Navigations-App des Geraets.
+ *
+ * WARUM JE SYSTEM EINE ANDERE ADRESSE
+ * Eine Form fuer alle gibt es nicht. geo: ist auf dem iPhone kein
+ * registriertes Schema - iOS oeffnet den Link kommentarlos gar nicht. Umgekehrt
+ * ist geo: auf Android der EINZIGE Weg, bei dem das Geraet die vom Nutzer
+ * bevorzugte Karten-App nimmt oder die Auswahl anbietet; eine Google-Maps-
+ * Adresse wuerde diese Wahl uebergehen. Auf dem Rechner gibt es gar keine
+ * Navigations-App, dort bleibt nur eine Kartenseite.
+ *
+ * WARUM KEIN PLUGIN
+ * Capacitor gibt eine Navigation, die weder zur server.url passt noch in
+ * allowNavigation steht, von sich aus an das Betriebssystem weiter - auf iOS
+ * mit UIApplication.shared.open, auf Android mit einem ACTION_VIEW-Intent.
+ * Denselben Weg nimmt der webcal:-Link beim Kalender-Abo schon heute. Ein
+ * Plugin haette dagegen neue Fassungen fuer beide Stores erzwungen, und die
+ * Huelle laedt die Seite ohnehin ueber das Netz.
+ *
+ * ACHTUNG: maps.apple.com oder google.com duerfen NICHT in allowNavigation -
+ * was dort steht, laedt Capacitor INNERHALB der Webansicht, und die App waere
+ * weg. */
+const navigationsZiel = (adresse) => {
+  const ziel = encodeURIComponent(String(adresse || "").trim());
+  const geraet = Capacitor.getPlatform();
+  if (geraet === "ios") return `https://maps.apple.com/?q=${ziel}`;
+  if (geraet === "android") return `geo:0,0?q=${ziel}`;
+  return `https://www.google.com/maps/search/?api=1&query=${ziel}`;
+};
+
+/* Ein echtes <a> mit Fingertipp, nicht window.location.href aus JavaScript:
+   Der Tipp ist eine Nutzeraktion und erreicht die Weiche der Webansicht auf
+   jeder Fassung zuverlaessig. "hell" ist fuer die farbigen Kacheln auf der
+   Startseite - dort waere die rote Linkfarbe auf Rot unsichtbar. */
+function AdresseLink({ adresse, hell = false }) {
+  const t = useT();
+  const text = String(adresse || "").trim();
+  if (!text) return null;
+  return (
+    <a href={navigationsZiel(text)} target="_blank" rel="noopener noreferrer"
+       aria-label={t("aria.routeOeffnen")} title={t("aria.routeOeffnen")}
+       className="flex items-start gap-1.5 text-xs"
+       style={{ color: hell ? "rgba(255,255,255,0.95)" : C.red, fontFamily: "Inter", fontWeight: 600 }}>
+      <Navigation size={12} style={{ flexShrink: 0, marginTop: "0.15em" }} />
+      <span className="underline">{text}</span>
+    </a>
+  );
+}
 
 // "App kennenlernen": Kurzvideos, gefiltert nach den Aktionen, die die Rolle
 // des jeweiligen Nutzers tatsächlich ausführen kann (gleiche Berechtigungslogik
@@ -1533,9 +1596,9 @@ const tageAb = (tage, stunde, minute = 0) => {
    entgangen. */
 const DEMO_SERIE = "00000000-0000-4000-8000-0000000000a1";
 const EVENTS = [
-  { id: 1, type: "training", team: "Herren 1", title: "Training Herren 1", seriesId: DEMO_SERIE, date: tageAb(2, 18, 30), location: "Hemberghalle, Iserlohn", desc: "Reguläres Mannschaftstraining. Schienbeinschoner nicht vergessen!", carpool: false, youthClassIds: ["herren1"] },
-  { id: 2, type: "spiel", team: "Herren 1", title: "Heimspiel vs. Herringen", date: tageAb(7, 19, 0), location: "Hemberghalle, Iserlohn", desc: "Bundesliga, Spieltag 3. Support von den Rängen ist gewünscht!", carpool: false, home: true, helperSlots: ["Theke", "Zeitnahme", "Grill", "Kasse"] },
-  { id: 3, type: "spiel", team: "Herren 1", title: "Auswärtsspiel bei ERC Wimbern", date: tageAb(14, 20, 0), location: "Wimbern · 85 km", desc: "Gemeinsame Abfahrt ab Hemberghalle. Fahrgemeinschaft bitte eintragen.", carpool: true, home: false },
+  { id: 1, type: "training", team: "Herren 1", title: "Training Herren 1", seriesId: DEMO_SERIE, date: tageAb(2, 18, 30), location: "Hemberghalle, Iserlohn", adresse: "Hembergstraße 14, 58644 Iserlohn", desc: "Reguläres Mannschaftstraining. Schienbeinschoner nicht vergessen!", carpool: false, youthClassIds: ["herren1"] },
+  { id: 2, type: "spiel", team: "Herren 1", title: "Heimspiel vs. Herringen", date: tageAb(7, 19, 0), location: "Hemberghalle, Iserlohn", adresse: "Hembergstraße 14, 58644 Iserlohn", desc: "Bundesliga, Spieltag 3. Support von den Rängen ist gewünscht!", carpool: false, home: true, helperSlots: ["Theke", "Zeitnahme", "Grill", "Kasse"] },
+  { id: 3, type: "spiel", team: "Herren 1", title: "Auswärtsspiel bei ERC Wimbern", date: tageAb(14, 20, 0), location: "Wimbern · 85 km", adresse: "Sportzentrum Wimbern, Am Sportplatz 3, 58739 Wickede", desc: "Gemeinsame Abfahrt ab Hemberghalle. Fahrgemeinschaft bitte eintragen.", carpool: true, home: false },
   { id: 4, type: "event", title: "Sommerfest & Saisonabschluss", date: tageAb(21, 15, 0), location: "Vereinsheim am Hemberg", desc: "Grillen, Siegerehrung U11–U15, abends DJ. Familien sind herzlich willkommen.", carpool: false, helperSlots: ["Aufbau", "Kuchenbuffet", "Abbau"] },
   { id: 5, type: "training", team: "Herren 1", title: "Torwarttraining Spezial", seriesId: DEMO_SERIE, date: tageAb(9, 19, 0), location: "Hemberghalle", desc: "Extra-Einheit mit Torwarttrainer Miguel Costa.", carpool: false, youthClassIds: ["herren1", "damen1"] },
   { id: 6, type: "spiel", team: "Herren 1", title: "Heimspiel vs. Cronenberg", date: tageAb(28, 19, 0), location: "Hemberghalle, Iserlohn", desc: "Bundesliga, Spieltag 5.", carpool: false, home: true, helperSlots: ["Theke", "Zeitnahme", "Grill", "Kasse"] },
@@ -3728,8 +3791,16 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
    Bewusst NICHT absolut positioniert - in Karten mit overflow:hidden waere die
    Liste sonst abgeschnitten. Sie schiebt den Inhalt darunter weg, was auf dem
    Telefon ohnehin natuerlicher wirkt. */
-function NutzerWahl({ personen, wert, onWaehlen, leerLabel: leerLabelVorgabe, klein, vorschlaege }) {
+function NutzerWahl({ personen, wert, onWaehlen, leerLabel: leerLabelVorgabe, klein, vorschlaege, onAnlegen }) {
   const t = useT();
+  /* onAnlegen legt eine Person ohne App-Konto an und gibt ihre Kennung
+     zurueck. Es steckt hier und nicht bei den Aufrufern, weil dieselbe
+     Auswahl an zwei Stellen benutzt wird - beim Einteilen an einer
+     Helferstation und beim Zuweisen einer Vereinsaufgabe. Wer sucht und
+     nichts findet, soll die Person genau dort anlegen koennen, statt die
+     Ansicht zu verlassen und den Faden zu verlieren. */
+  const [legtAn, setLegtAn] = useState(false);
+  const [anlegeFehler, setAnlegeFehler] = useState("");
   const leerLabel = leerLabelVorgabe ?? t("allg.nichtZugewiesen");
   const [offen, setOffen] = useState(false);
   const [suche, setSuche] = useState("");
@@ -3784,9 +3855,28 @@ function NutzerWahl({ personen, wert, onWaehlen, leerLabel: leerLabelVorgabe, kl
                 <div className="px-3.5 py-1.5 text-xs font-bold" style={{ color: C.textDim, background: C.paperDim }}>{t("mit.alle")}</div>
               </>
             )}
-            {treffer.length === 0 ? (
+            {treffer.length === 0 && (
               <div className={listenGroesse} style={{ color: C.textDim }}>{t("allg.niemandGefunden")}</div>
-            ) : treffer.map((p) => (
+            )}
+            {/* Nur wenn wirklich gesucht wurde: Ohne Suchtext gaebe es keinen
+                Namen, den man anlegen koennte, und der Knopf stuende sinnlos
+                unter jeder Liste. */}
+            {onAnlegen && q && !treffer.some((p) => String(p.name || "").trim().toLowerCase() === suche.trim().toLowerCase()) && (
+              <button type="button" disabled={legtAn}
+                onClick={async () => {
+                  setLegtAn(true); setAnlegeFehler("");
+                  const neueId = await onAnlegen(suche.trim());
+                  setLegtAn(false);
+                  if (!neueId) { setAnlegeFehler(t("auf.personAnlegenFehler")); return; }
+                  onWaehlen(neueId); setOffen(false); setSuche("");
+                }}
+                className={`w-full text-left ${listenGroesse}`}
+                style={{ color: C.red, fontFamily: "Inter", fontWeight: 700, borderTop: `1px solid ${C.line}` }}>
+                {legtAn ? t("allg.wirdGespeichert") : mitWerten(t("auf.personOhneKonto"), { name: suche.trim() })}
+              </button>
+            )}
+            {anlegeFehler && <div className={listenGroesse} style={{ color: C.fehler }}>{anlegeFehler}</div>}
+            {treffer.map((p) => (
               <button type="button" key={p.id} onClick={() => { onWaehlen(p.id); setOffen(false); }}
                 className={`w-full text-left ${listenGroesse}`}
                 style={{ color: C.ink, fontFamily: "Inter", fontWeight: p.id === wert ? 700 : 500,
@@ -3993,7 +4083,8 @@ function Scoreboard({ nextEvent, auswahlVorhanden = false }) {
         <span className="text-xs" style={{ color: "rgba(255,255,255,0.85)", fontFamily: "Inter" }}>{formatDate(nextEvent.date)} · {formatTime(nextEvent.date)}</span>
       </div>
       <div className="relative text-white text-xl mb-1.5" style={{ fontFamily: "Oswald", fontWeight: 700, letterSpacing: "-0.01em" }}>{nextEvent.title}</div>
-      <div className="relative flex items-center gap-1.5 mb-5 text-xs" style={{ color: "rgba(255,255,255,0.8)", fontFamily: "Inter" }}><MapPin size={12} /> {nextEvent.location}</div>
+      <div className={`relative flex items-center gap-1.5 text-xs ${nextEvent.adresse ? "mb-1.5" : "mb-5"}`} style={{ color: "rgba(255,255,255,0.8)", fontFamily: "Inter" }}><MapPin size={12} /> {nextEvent.location}</div>
+      {nextEvent.adresse && <div className="relative mb-5"><AdresseLink adresse={nextEvent.adresse} hell /></div>}
       <div className="relative flex items-center gap-2">
         {[[t("home.countdownTage"), d], [t("home.countdownStunden"), h], [t("home.countdownMinuten"), m]].map(([label, val], i) => (
           <React.Fragment key={label}>
@@ -4104,7 +4195,8 @@ function NextTrainingCard({ training, team, auswahlVorhanden = false }) {
           haengendem Trennzeichen. Gemeint war die Mannschaft. */}
       <div className="relative text-[10px] uppercase font-bold mb-2.5" style={{ color: "rgba(255,255,255,0.82)", fontFamily: "Inter", letterSpacing: "0.14em" }}>{t("home.naechstesTraining")}{team ? ` · ${team}` : ""}</div>
       <div className="relative text-white text-xl mb-1.5" style={{ fontFamily: "Oswald", fontWeight: 700, letterSpacing: "-0.01em" }}>{formatDate(training.date)} · {formatTime(training.date)}</div>
-      <div className="relative flex items-center gap-1.5 text-xs mb-5" style={{ color: "rgba(255,255,255,0.8)", fontFamily: "Inter" }}><MapPin size={12} /> {training.location}</div>
+      <div className={`relative flex items-center gap-1.5 text-xs ${training.adresse ? "mb-1.5" : "mb-5"}`} style={{ color: "rgba(255,255,255,0.8)", fontFamily: "Inter" }}><MapPin size={12} /> {training.location}</div>
+      {training.adresse && <div className="relative mb-5"><AdresseLink adresse={training.adresse} hell /></div>}
       <div className="relative flex items-center gap-2">
         {[[t("home.countdownTage"), d], [t("home.countdownStunden"), h], [t("home.countdownMinuten"), m]].map(([label, val], i) => (
           <React.Fragment key={label}>
@@ -4617,7 +4709,7 @@ function TerminZusage({ ev, currentUser, darfListeSehen = false }) {
    laengst ("leaders manage duties" fuer vereinsadmin, sysadmin, organisator) -
    es fehlte nur die Bedienung. Wer eingeteilt war und absagte, musste bisher
    selbst in die App, sonst stand sein Name weiter im Plan. */
-function HelperSlots({ ev, members, currentUser, dutyPlan, setDutyPlan, eligible, onSetzen, darfVerwalten }) {
+function HelperSlots({ ev, members, currentUser, dutyPlan, setDutyPlan, eligible, onSetzen, darfVerwalten, onPersonAnlegen }) {
   const t = useT();
   const plan = dutyPlan[ev.id] || {};
   const [eintragPerson, setEintragPerson] = useState("");
@@ -4698,7 +4790,7 @@ function HelperSlots({ ev, members, currentUser, dutyPlan, setDutyPlan, eligible
         <div className="rounded-lg p-2 mt-1" style={{ background: C.paperDim }}>
           <div className="text-[10px] font-bold mb-1.5" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("helf.jemanden")}</div>
           <div className="flex gap-1.5 items-start flex-wrap">
-            <NutzerWahl personen={members.filter((m) => !istNurFan(m))} wert={eintragPerson} onWaehlen={setEintragPerson} leerLabel={t("helf.personWaehlen")} klein />
+            <NutzerWahl personen={members.filter((m) => !istNurFan(m))} wert={eintragPerson} onWaehlen={setEintragPerson} leerLabel={t("helf.personWaehlen")} klein onAnlegen={onPersonAnlegen} />
             <select value={eintragStation} onChange={(e) => setEintragStation(e.target.value)}
               aria-label={t("aria.stationWaehlen")}
               className="flex-1 min-w-0 text-[11px] px-2 py-1.5 rounded-lg outline-none"
@@ -4897,7 +4989,7 @@ function CarpoolSection({ ev, currentUser }) {
 
 /* initialOpen: Im Kalender-Overlay ist bereits klar, welcher Termin gemeint ist —
    dort wird die Karte aufgeklappt gezeigt, statt noch einmal tippen zu lassen. */
-function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser, dutyPlan, setDutyPlan, onDienstSetzen, canCancelTraining, onCancelTraining, onDeleteTraining, onEditTraining, darfListeSehen = false, nurAbsagen = false, currentClub, featureEnabled, onNeuLaden, ergebnis = null, darfErgebnis = false, onErgebnisOeffnen, initialOpen = false }) {
+function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser, dutyPlan, setDutyPlan, onDienstSetzen, onPersonAnlegen, canCancelTraining, onCancelTraining, onDeleteTraining, onEditTraining, darfListeSehen = false, nurAbsagen = false, currentClub, featureEnabled, onNeuLaden, ergebnis = null, darfErgebnis = false, onErgebnisOeffnen, initialOpen = false }) {
   const t = useT();
   const [open, setOpen] = useState(initialOpen);
   const [absageOffen, setAbsageOffen] = useState(false);
@@ -4948,6 +5040,7 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
         <div className="px-4 pb-4">
           {ev.cancelled&&<div className="rounded-xl p-3 mb-3 text-xs font-bold" style={{background:C.fehlerFlaeche,color:C.fehler,border: `1px solid ${C.fehlerRand}`}}>{ev.team?mitWerten(t("ev.wurdeAbgesagtTeam"), { art: terminArt(t, ev.type), team: ev.team }):mitWerten(t("ev.wurdeAbgesagt"), { art: terminArt(t, ev.type) })}</div>}
           <p className="text-sm mb-3" style={{ color: C.textDim, fontFamily: "Inter" }}>{ev.desc}</p>
+          {ev.adresse && <div className="mb-3"><AdresseLink adresse={ev.adresse} /></div>}
           {!ev.cancelled && ev.zusagenAktiv !== false && <TerminZusage ev={ev} currentUser={currentUser} darfListeSehen={darfListeSehen} />}
           {/* Der Endstand am Spiel selbst, Heim : Gast wie in der
               Ergebnisansicht. Der Teams-Reiter fuehrt nur Erwachsenen-
@@ -5062,7 +5155,7 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
               <div className="text-xs font-semibold mb-2" style={{ fontFamily: "Inter", color: C.ink }}>{t("helf.gesucht")}</div>
               {dutyLeitung && <DutyStationsManager ev={ev} currentUser={currentUser} sport={currentClub?.sport} onNeuLaden={onNeuLaden} dutyPlan={dutyPlan} />}
               {ev.helperSlots?.length > 0 && (
-                <HelperSlots ev={ev} members={members} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} eligible={helperEligible} onSetzen={onDienstSetzen} darfVerwalten={canManageDuty(currentUser)} />
+                <HelperSlots ev={ev} members={members} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} eligible={helperEligible} onSetzen={onDienstSetzen} onPersonAnlegen={onPersonAnlegen} darfVerwalten={canManageDuty(currentUser)} />
               )}
             </div>
           )}
@@ -5156,12 +5249,12 @@ function EventMonthCalendar({ events, onSelect }) {
        zweiten Termin war das Datumsfeld also nicht mehr angebunden.
    Ein Bauplan statt zweier Listen: Was hier steht, gilt an beiden Stellen. */
 const leererTerminentwurf = (team = "") => ({
-  type: "training", team, title: "", day: "", location: "", desc: "",
+  type: "training", team, title: "", day: "", location: "", adresse: "", desc: "",
   recurring: false, weekdays: [], startTime: "19:30", endTime: "22:00",
   rangeStart: "", rangeEnd: "", helferStationen: "", isHome: true,
 });
 
-function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpools, setCarpools, dutyPlan, setDutyPlan, onDienstSetzen, werbeplaetze, onSponsorImpression, onSponsorClick, focusRequest, onFocusApplied, currentClub, featureEnabled, entitlement, goSubscribe, tippResults = {}, tippPredictions = {}, onErgebnisOeffnen }) {
+function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpools, setCarpools, dutyPlan, setDutyPlan, onDienstSetzen, onPersonAnlegen, werbeplaetze, onSponsorImpression, onSponsorClick, focusRequest, onFocusApplied, currentClub, featureEnabled, entitlement, goSubscribe, tippResults = {}, tippPredictions = {}, onErgebnisOeffnen }) {
   const t = useT();
   const [filter, setFilter] = useState("alle");
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -5357,6 +5450,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
         event_title: eventDraft.title.trim(),
         event_description: eventDraft.desc.trim() || null,
         event_location: eventDraft.location.trim(),
+        event_address: eventDraft.adresse.trim() || null,
         weekdays: eventDraft.weekdays,
         start_time: eventDraft.startTime,
         end_time: eventDraft.endTime,
@@ -5396,7 +5490,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
     let eventId = Date.now();
     if (supabase && currentUser.authProfileId) {
       const { data: team } = eventDraft.team ? await supabase.from("teams").select("id").eq("club_id",currentUser.clubId).eq("name",eventDraft.team).maybeSingle() : { data: null };
-      const { data: saved, error: anlegeFehler } = await supabase.from("events").insert({club_id:currentUser.clubId,team_id:team?.id||null,type:eventDraft.type,status:"scheduled",title:eventDraft.title.trim(),description:eventDraft.desc.trim()||null,starts_at:beginn.toISOString(),ends_at:ende.toISOString(),location:eventDraft.location.trim(),created_by:currentUser.authProfileId,home_away:eventDraft.type==="spiel"?(eventDraft.isHome?"heim":"auswaerts"):null,helper_slots:stationen}).select("id").maybeSingle();
+      const { data: saved, error: anlegeFehler } = await supabase.from("events").insert({club_id:currentUser.clubId,team_id:team?.id||null,type:eventDraft.type,status:"scheduled",title:eventDraft.title.trim(),description:eventDraft.desc.trim()||null,starts_at:beginn.toISOString(),ends_at:ende.toISOString(),location:eventDraft.location.trim(),address:eventDraft.adresse.trim()||null,created_by:currentUser.authProfileId,home_away:eventDraft.type==="spiel"?(eventDraft.isHome?"heim":"auswaerts"):null,helper_slots:stationen}).select("id").maybeSingle();
       /* Das Ergebnis MUSS ausgewertet werden. Vorher stand hier nur
          "if (saved?.id) eventId = saved.id" - schlug das Anlegen fehl, blieb
          eventId die Zahl aus Date.now(), und der Termin landete allein in der
@@ -5415,7 +5509,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
       }
       eventId = saved.id;
     }
-    const created = { helperSlots: stationen.length ? stationen : undefined, id: eventId, type: eventDraft.type, team: eventDraft.team, title: eventDraft.title.trim(), date: beginn.toISOString(), location: eventDraft.location.trim(), desc: eventDraft.desc.trim(), carpool: false, home: eventDraft.type === "spiel" ? eventDraft.isHome : true, ...(eventDraft.type === "training" ? { youthClassIds: [TEAM_TO_YOUTHCLASS[eventDraft.team]] } : {}) };
+    const created = { helperSlots: stationen.length ? stationen : undefined, id: eventId, type: eventDraft.type, team: eventDraft.team, title: eventDraft.title.trim(), date: beginn.toISOString(), location: eventDraft.location.trim(), adresse: eventDraft.adresse.trim(), desc: eventDraft.desc.trim(), carpool: false, home: eventDraft.type === "spiel" ? eventDraft.isHome : true, ...(eventDraft.type === "training" ? { youthClassIds: [TEAM_TO_YOUTHCLASS[eventDraft.team]] } : {}) };
     setTerminFehler("");
     setEvents((all) => [...all, { ...created, endDate: ende.toISOString() }].sort((a, b) => new Date(a.date) - new Date(b.date)));
     setFilter(eventDraft.type);
@@ -5445,7 +5539,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
       ...leererTerminentwurf(ev.team || ""), type: ev.type, title: ev.title || "",
       day: alsDatum(beginn), startTime: `${zweistellig(beginn.getHours())}:${zweistellig(beginn.getMinutes())}`,
       endTime: `${zweistellig(ende.getHours())}:${zweistellig(ende.getMinutes())}`,
-      location: ev.location || "", desc: ev.desc || "", isHome: typeof ev.home === "boolean" ? ev.home : undefined,
+      location: ev.location || "", adresse: ev.adresse || "", desc: ev.desc || "", isHome: typeof ev.home === "boolean" ? ev.home : undefined,
     });
     setEditingEventId(ev.id);
     setEventFehler("");
@@ -5473,6 +5567,9 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
     const neu = {
       title: eventDraft.title.trim(), description: eventDraft.desc.trim() || null,
       starts_at: beginn.toISOString(), ends_at: ende.toISOString(), location: eventDraft.location.trim(),
+      /* Leer heisst null, nicht Leerstring - sonst meldet der Vergleich mit
+         alt jedes Mal eine Aenderung, obwohl nie eine Adresse dastand. */
+      address: eventDraft.adresse.trim() || null,
       /* Nur schreiben, wenn der Ort feststeht: Ein Spiel ohne Ort wurde sonst bei
          jeder Aenderung zum Heimspiel (Durchsicht 14.09.). */
       ...(vorlage.type === "spiel" && typeof eventDraft.isHome === "boolean" ? { home_away: eventDraft.isHome ? "heim" : "auswaerts" } : {}),
@@ -5481,6 +5578,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
       title: vorlage.title || "", description: vorlage.desc || null,
       starts_at: new Date(vorlage.date).toISOString(), ends_at: vorlage.endDate ? new Date(vorlage.endDate).toISOString() : null,
       location: vorlage.location || "",
+      address: vorlage.adresse || null,
       ...(vorlage.type === "spiel" ? { home_away: vorlage.home === true ? "heim" : vorlage.home === false ? "auswaerts" : null } : {}),
     };
     const aenderung = Object.fromEntries(Object.entries(neu).filter(([k, v]) => v !== alt[k]));
@@ -5491,7 +5589,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
     }
     setEventFehler("");
     setEvents((all) => all.map((item) => item.id === id ? {
-      ...item, title: neu.title, desc: neu.description || "", date: neu.starts_at, endDate: neu.ends_at, location: neu.location,
+      ...item, title: neu.title, desc: neu.description || "", date: neu.starts_at, endDate: neu.ends_at, location: neu.location, adresse: neu.address || "",
       ...(vorlage.type === "spiel" ? { home: eventDraft.isHome } : {}),
     } : item).sort((a, b) => new Date(a.date) - new Date(b.date)));
     setEditingEventId(null);
@@ -5699,7 +5797,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
           <label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.beginnPflicht")}</span><input type="time" value={eventDraft.startTime} onChange={(e)=>setEventDraft({...eventDraft,startTime:e.target.value})} className="erg-datetime w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim,color:C.ink}}/></label>
           <label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.endePflicht")}</span><input type="time" value={eventDraft.endTime} onChange={(e)=>setEventDraft({...eventDraft,endTime:e.target.value})} className="erg-datetime w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim,color:C.ink}}/></label>
         </div>
-      </div> : <div className="space-y-2"><div className="flex gap-1.5 flex-wrap">{[["1",t("kal.tagMo")],["2",t("kal.tagDi")],["3",t("kal.tagMi")],["4",t("kal.tagDo")],["5",t("kal.tagFr")],["6",t("kal.tagSa")],["7",t("kal.tagSo")]].map(([num,label])=>{const n=Number(num);const active=eventDraft.weekdays.includes(n);return <button type="button" key={num} onClick={()=>setEventDraft({...eventDraft,weekdays:active?eventDraft.weekdays.filter((w)=>w!==n):[...eventDraft.weekdays,n]})} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?C.red:C.paperDim,color:active?C.white:C.textDim}}>{label}</button>;})}</div><div className="grid grid-cols-2 gap-2"><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.beginnPflicht")}</span><input type="time" value={eventDraft.startTime} onChange={(e)=>setEventDraft({...eventDraft,startTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></label><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.endePflicht")}</span><input type="time" value={eventDraft.endTime} onChange={(e)=>setEventDraft({...eventDraft,endTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></label></div><div className="grid grid-cols-2 gap-2"><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.ersterTermin")}</span><input type="date" value={eventDraft.rangeStart} onChange={(e)=>setEventDraft({...eventDraft,rangeStart:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></label><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.letzterTermin")}</span><input type="date" value={eventDraft.rangeEnd} onChange={(e)=>setEventDraft({...eventDraft,rangeEnd:e.target.value})} className="erg-datetime px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim,color:C.ink}}/></label></div></div>}<label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.ort")}</span><input value={eventDraft.location} onChange={(e)=>setEventDraft({...eventDraft,location:e.target.value})} placeholder={t("ph.ortPflicht")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></label><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.beschreibungLabel")}</span><textarea value={eventDraft.desc} onChange={(e)=>setEventDraft({...eventDraft,desc:e.target.value})} placeholder={t("feld.beschreibung")} rows={2} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none" style={{background:C.paperDim}}/></label>{/* Helferstationen gibt es nur beim Einzeltermin: Die Reihe legt keine an, und beim Bearbeiten wuerden geaenderte Stationen bestehende Einteilungen verwaisen lassen. */}{!eventDraft.recurring && !editingEventId && <label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.helferstationen")}</span><input value={eventDraft.helferStationen} onChange={(e)=>setEventDraft({...eventDraft,helferStationen:e.target.value})} placeholder={`${t("ph.helferstationen")} — ${sportText(t, currentClub?.sport, "dutyStationExamples")}`} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></label>}{/* Die Meldung stand vorher IM Zweig fuer Einzeltermine. Bei einer Serie erschien sie deshalb nie, und das Speichern blieb wieder stumm - genau der Fehler, den sie beheben sollte. Jetzt steht sie vor der Knopfzeile und gilt fuer beide Zweige. */}{eventFehler && <div className="text-[10px] rounded-xl px-3 py-2" style={{background:C.fehlerFlaeche,color:C.fehler}}>{eventFehler}</div>}<div className="flex gap-2"><button type="submit" disabled={eventSpeichert} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{background:eventSpeichert?C.line:C.ink,color:C.white,opacity:eventSpeichert?.7:1}}>{eventSpeichert?t("allg.wirdGespeichert"):t("allg.speichern")}</button><button type="button" onClick={()=>{setShowCreate(false);setEventFehler("");if(editingEventId){setEditingEventId(null);resetEventDraft();}}} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{background:C.paperDim,color:C.textDim}}>{t("allg.abbrechen")}</button></div></form>}
+      </div> : <div className="space-y-2"><div className="flex gap-1.5 flex-wrap">{[["1",t("kal.tagMo")],["2",t("kal.tagDi")],["3",t("kal.tagMi")],["4",t("kal.tagDo")],["5",t("kal.tagFr")],["6",t("kal.tagSa")],["7",t("kal.tagSo")]].map(([num,label])=>{const n=Number(num);const active=eventDraft.weekdays.includes(n);return <button type="button" key={num} onClick={()=>setEventDraft({...eventDraft,weekdays:active?eventDraft.weekdays.filter((w)=>w!==n):[...eventDraft.weekdays,n]})} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?C.red:C.paperDim,color:active?C.white:C.textDim}}>{label}</button>;})}</div><div className="grid grid-cols-2 gap-2"><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.beginnPflicht")}</span><input type="time" value={eventDraft.startTime} onChange={(e)=>setEventDraft({...eventDraft,startTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></label><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.endePflicht")}</span><input type="time" value={eventDraft.endTime} onChange={(e)=>setEventDraft({...eventDraft,endTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></label></div><div className="grid grid-cols-2 gap-2"><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.ersterTermin")}</span><input type="date" value={eventDraft.rangeStart} onChange={(e)=>setEventDraft({...eventDraft,rangeStart:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></label><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.letzterTermin")}</span><input type="date" value={eventDraft.rangeEnd} onChange={(e)=>setEventDraft({...eventDraft,rangeEnd:e.target.value})} className="erg-datetime px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim,color:C.ink}}/></label></div></div>}<label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.ort")}</span><input value={eventDraft.location} onChange={(e)=>setEventDraft({...eventDraft,location:e.target.value})} placeholder={t("ph.ortPflicht")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></label><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.terminAdresse")}</span><input value={eventDraft.adresse} onChange={(e)=>setEventDraft({...eventDraft,adresse:e.target.value})} placeholder={t("ph.terminAdresse")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></label><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.beschreibungLabel")}</span><textarea value={eventDraft.desc} onChange={(e)=>setEventDraft({...eventDraft,desc:e.target.value})} placeholder={t("feld.beschreibung")} rows={2} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none" style={{background:C.paperDim}}/></label>{/* Helferstationen gibt es nur beim Einzeltermin: Die Reihe legt keine an, und beim Bearbeiten wuerden geaenderte Stationen bestehende Einteilungen verwaisen lassen. */}{!eventDraft.recurring && !editingEventId && <label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.helferstationen")}</span><input value={eventDraft.helferStationen} onChange={(e)=>setEventDraft({...eventDraft,helferStationen:e.target.value})} placeholder={`${t("ph.helferstationen")} — ${sportText(t, currentClub?.sport, "dutyStationExamples")}`} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></label>}{/* Die Meldung stand vorher IM Zweig fuer Einzeltermine. Bei einer Serie erschien sie deshalb nie, und das Speichern blieb wieder stumm - genau der Fehler, den sie beheben sollte. Jetzt steht sie vor der Knopfzeile und gilt fuer beide Zweige. */}{eventFehler && <div className="text-[10px] rounded-xl px-3 py-2" style={{background:C.fehlerFlaeche,color:C.fehler}}>{eventFehler}</div>}<div className="flex gap-2"><button type="submit" disabled={eventSpeichert} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{background:eventSpeichert?C.line:C.ink,color:C.white,opacity:eventSpeichert?.7:1}}>{eventSpeichert?t("allg.wirdGespeichert"):t("allg.speichern")}</button><button type="button" onClick={()=>{setShowCreate(false);setEventFehler("");if(editingEventId){setEditingEventId(null);resetEventDraft();}}} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{background:C.paperDim,color:C.textDim}}>{t("allg.abbrechen")}</button></div></form>}
       <SponsorSlot slotKey="events_header" bookings={werbeplaetze} onImpression={onSponsorImpression} onClick={onSponsorClick} visible={featureEnabled("sponsor_events_header")} />
       <div className="flex items-center gap-2 mb-3">
         <div className="flex gap-2 overflow-x-auto pb-1 flex-1 min-w-0" style={{ scrollbarWidth: "none" }}>
@@ -5748,7 +5846,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
           carpoolOn={!!myCarpools[ev.id]} onCarpool={handleCarpool}
           currentUser={currentUser} members={members} isAdminUser={isAdminUser}
           currentClub={currentClub} featureEnabled={featureEnabled} onNeuLaden={onNeuLaden}
-          dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={onDienstSetzen}
+          dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={onDienstSetzen} onPersonAnlegen={onPersonAnlegen}
           canCancelTraining={canCancelFor(ev)} onCancelTraining={cancelTraining} onDeleteTraining={deleteTraining}
           onEditTraining={openEdit} darfListeSehen={darfAnwesenheitSehen(ev)} nurAbsagen={nurAbsagen(ev)}
           ergebnis={tippResults?.[ev.id] || null} darfErgebnis={darfErgebnisEintragen(currentUser, ev, { streng: !!supabase })} onErgebnisOeffnen={onErgebnisOeffnen}
@@ -5770,7 +5868,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
               carpoolOn={!!myCarpools[openEvent.id]} onCarpool={handleCarpool}
               currentUser={currentUser} members={members} isAdminUser={isAdminUser}
               currentClub={currentClub} featureEnabled={featureEnabled} onNeuLaden={onNeuLaden}
-              dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={onDienstSetzen}
+              dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={onDienstSetzen} onPersonAnlegen={onPersonAnlegen}
               canCancelTraining={canCancelFor(openEvent)} onCancelTraining={(...args) => { cancelTraining(...args); setSelectedEvent(null); }} onDeleteTraining={(...args) => { deleteTraining(...args); setSelectedEvent(null); }}
               onEditTraining={openEdit} darfListeSehen={darfAnwesenheitSehen(openEvent)} nurAbsagen={nurAbsagen(openEvent)}
               ergebnis={tippResults?.[openEvent.id] || null} darfErgebnis={darfErgebnisEintragen(currentUser, openEvent, { streng: !!supabase })}
@@ -8317,7 +8415,7 @@ function TeamPenaltyCatalog({ user }) {
    Eintragungen. Wer sich eintraegt, hilft mit - das ist etwas anderes als
    jemand, der die Aufgabe verantwortet. Beides nebeneinander ist richtig:
    "Kuchenverkauf" hat eine Verantwortliche und braucht drei Helfer. */
-function TaskCreateForm({ form, setForm, onSubmit, onCancel, editing = false, teams = [], members = [], busy = false, zeigeVerantwortliche = true }) {
+function TaskCreateForm({ form, setForm, onSubmit, onCancel, editing = false, teams = [], members = [], busy = false, zeigeVerantwortliche = true, onPersonAnlegen }) {
   const t = useT();
   const verantwortliche = form.verantwortliche || [];
   const hinzufuegen = (id) => { if (id && !verantwortliche.includes(id)) setForm({ ...form, verantwortliche: [...verantwortliche, id] }); };
@@ -8412,7 +8510,7 @@ function TaskCreateForm({ form, setForm, onSubmit, onCancel, editing = false, te
           </div>
         )}
         <NutzerWahl personen={members.filter((m) => !verantwortliche.includes(m.id))} wert=""
-          onWaehlen={hinzufuegen} leerLabel={t("auf.personHinzufuegen")} klein />
+          onWaehlen={hinzufuegen} leerLabel={t("auf.personHinzufuegen")} klein onAnlegen={onPersonAnlegen} />
       </div>}
 
       <div className="flex gap-2 mt-0.5">
@@ -8443,7 +8541,7 @@ function aufgabenKennzahlen(aufgaben) {
   return { gesamt: aufgaben.length, offen, ohneEintrag, erledigt, ueberfaellig };
 }
 
-function TasksView({ currentUser, members }) {
+function TasksView({ currentUser, members, onPersonAnlegen }) {
   const t = useT();
   const databaseMembership = !!supabase && isDbId(currentUser.id);
   const [clubTasks, setClubTasks] = useState([]);
@@ -8824,7 +8922,7 @@ function TasksView({ currentUser, members }) {
         </>}
         {aktiverBereich === "verein" && <>
         <SectionTitle eyebrow={t("auf.vereinsweit")} title={t("auf.vereinsaufgaben")}/>
-        {showCreateClub && <TaskCreateForm teams={myTeams} members={members} form={form} setForm={setForm} editing={!!editingTaskId} busy={aufgabeSpeichert} zeigeVerantwortliche={!editingTaskId || istAufgabenLeitung} onSubmit={() => createTask(null)} onCancel={() => { setShowCreateClub(false); resetForm(); setEditingTaskId(null); }}/>}
+        {showCreateClub && <TaskCreateForm teams={myTeams} members={members} onPersonAnlegen={onPersonAnlegen} form={form} setForm={setForm} editing={!!editingTaskId} busy={aufgabeSpeichert} zeigeVerantwortliche={!editingTaskId || istAufgabenLeitung} onSubmit={() => createTask(null)} onCancel={() => { setShowCreateClub(false); resetForm(); setEditingTaskId(null); }}/>}
         {/* Bearbeiten an Vereinsaufgaben: Ersteller oder Leitung. Vorher reichte
             jede Rolle ausser Spieler, Mitglied und Fan - die Regel wies das
             Aendern dann ab (M8). */}
@@ -8836,7 +8934,7 @@ function TasksView({ currentUser, members }) {
           return (
             <div key={team.id} className="mb-5">
               <SectionTitle eyebrow={t("tm.mannschaft")} title={`${t("auf.titel")} · ${team.name}`} right={canManage ? <button onClick={() => { if (showCreateTeamId === team.id) { setEditingTaskId(null); resetForm(); } setShowCreateTeamId((v) => v === team.id ? "" : team.id); }} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showCreateTeamId === team.id ? t("allg.schliessen") : t("auf.neueAufgabePlus")}</button> : null}/>
-              {showCreateTeamId === team.id && <TaskCreateForm teams={myTeams} members={members} form={form} setForm={setForm} editing={!!editingTaskId} busy={aufgabeSpeichert} zeigeVerantwortliche={!editingTaskId || istAufgabenLeitung} onSubmit={() => createTask(team.id)} onCancel={() => { setShowCreateTeamId(""); resetForm(); setEditingTaskId(null); }}/>}
+              {showCreateTeamId === team.id && <TaskCreateForm teams={myTeams} members={members} onPersonAnlegen={onPersonAnlegen} form={form} setForm={setForm} editing={!!editingTaskId} busy={aufgabeSpeichert} zeigeVerantwortliche={!editingTaskId || istAufgabenLeitung} onSubmit={() => createTask(team.id)} onCancel={() => { setShowCreateTeamId(""); resetForm(); setEditingTaskId(null); }}/>}
               {tasks.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{mitWerten(t("auf.keineFuerTeam"), { name: team.name })}</div> : tasks.map((t) => <TaskCard key={t.id} task={t} canManage={canManage} onEdit={openEditTask}/>)}
             </div>
           );
@@ -10851,7 +10949,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
               abgeschafft - die Kachel war damit fuer niemanden mehr sichtbar.
               Sie gehoert zur Vereinsverwaltung und bekommt deren Rollen. */}
           {darfVereinVerwalten(user) && <ProfileSettingsCard icon={Eye} title={t("pf.mitgliederuebersicht")} description={t("pf.mitgliederuebersichtBeschreibung")} color={C.textDim} onClick={() => setProfileUnderlay("board-overview")}/>}
-          {darfVereinVerwalten(user) && <ProfileSettingsCard icon={UserPlus} title={t("benach.join_requests")} description={t("pf.beitrittsanfragenBeschreibung")} color={C.secondary} onClick={() => setProfileUnderlay("join-requests")}/>}
+          {darfBeitritteEntscheiden(user) && <ProfileSettingsCard icon={UserPlus} title={t("benach.join_requests")} description={t("pf.beitrittsanfragenBeschreibung")} color={C.secondary} onClick={() => setProfileUnderlay("join-requests")}/>}
         </div>
       </ProfileUnderlay>}
 
@@ -10956,7 +11054,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
       {profileUnderlay === "family" && <ProfileUnderlay title={t("fam.familieVerknuepfungen")} onClose={() => setProfileUnderlay("")}><SectionTitle eyebrow={t("fam.familie")} title={t("fam.stammbaum")}/><div className="mb-2"><FamilyTree user={user} members={members}/></div><FamilyLinkManager user={user} members={members} setMembers={setMembers}/></ProfileUnderlay>}
       {profileUnderlay === "users" && darfVereinVerwalten(user) && <ProfileUnderlay title={t("pf.benutzerverwaltung")} eyebrow={t("sys.sysAdministration")} onClose={() => setProfileUnderlay("")}><SysAdminUserManager members={members} setMembers={setMembers} currentUser={user}/></ProfileUnderlay>}
       {profileUnderlay === "board-overview" && darfVereinVerwalten(user) && <ProfileUnderlay title={t("pf.mitgliederuebersicht")} eyebrow={t("rol.vorstand")} onClose={() => setProfileUnderlay("")}><BoardMemberOverview members={members} currentUser={user} vorauswahl={mitgliedZiel} onVorauswahlErledigt={onMitgliedZielErreicht}/></ProfileUnderlay>}
-      {profileUnderlay === "join-requests" && darfVereinVerwalten(user) && <ProfileUnderlay title={t("benach.join_requests")} eyebrow={t("allg.verwalten")} onClose={() => setProfileUnderlay("")}><MembershipApprovalsPanel club={{ id: user.clubId }} members={members} setMembers={setMembers} currentUser={user} nurAnfragen /></ProfileUnderlay>}
+      {profileUnderlay === "join-requests" && darfBeitritteEntscheiden(user) && <ProfileUnderlay title={t("benach.join_requests")} eyebrow={t("allg.verwalten")} onClose={() => setProfileUnderlay("")}><MembershipApprovalsPanel club={{ id: user.clubId }} members={members} setMembers={setMembers} currentUser={user} nurAnfragen /></ProfileUnderlay>}
       {profileUnderlay === "account" && <ProfileUnderlay title={t("konto.dlg.eyebrow")} onClose={() => setProfileUnderlay("")}>
         <div className="rounded-2xl p-4 mb-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="flex items-center gap-2 text-sm font-bold mb-1" style={{ color: C.ink }}><ShieldCheck size={16} style={{ color: C.sekundaerAufHell }}/> {t("pf.sicherheit")}</div><div className="text-[11px]" style={{ color: C.textDim }}>{t("pf.kontoSupabaseHinweis")}</div></div>
         <div className="space-y-2 mb-6"><a href="/datenschutz" className="w-full flex items-center justify-between rounded-2xl px-3.5 py-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}><span className="text-xs font-bold" style={{ color: C.ink }}>{t("recht.datenschutz")}</span><ChevronRight size={14} style={{ color: C.textDim }}/></a><a href="/nutzungsbedingungen" className="w-full flex items-center justify-between rounded-2xl px-3.5 py-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}><span className="text-xs font-bold" style={{ color: C.ink }}>{t("recht.nutzung")}</span><ChevronRight size={14} style={{ color: C.textDim }}/></a></div>
@@ -11550,7 +11648,7 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
 /* ------------------------------------------------------------------ */
 /* Helferplanung — eigene Ansicht                                       */
 /* ------------------------------------------------------------------ */
-function DutyView({ members, currentUser, events, dutyPlan, setDutyPlan, onDienstSetzen }) {
+function DutyView({ members, currentUser, events, dutyPlan, setDutyPlan, onDienstSetzen, onPersonAnlegen }) {
   const t = useT();
   /* Aufgeklappte Termine. Zugeklappt steht nur Termin, Belegung und ob man
      selbst dabei ist - so passen mehrere Termine auf eine Seite. Antippen
@@ -11601,7 +11699,7 @@ function DutyView({ members, currentUser, events, dutyPlan, setDutyPlan, onDiens
             </button>
             {aufgeklappt && (
               <div className="px-4 pb-4">
-                <HelperSlots ev={ev} members={members} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} eligible={eligible} onSetzen={onDienstSetzen} darfVerwalten={canManageDuty(currentUser)} />
+                <HelperSlots ev={ev} members={members} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} eligible={eligible} onSetzen={onDienstSetzen} onPersonAnlegen={onPersonAnlegen} darfVerwalten={canManageDuty(currentUser)} />
               </div>
             )}
           </div>
@@ -11622,7 +11720,7 @@ function DutyView({ members, currentUser, events, dutyPlan, setDutyPlan, onDiens
  * Verwalten-Reiter. Dort stehen auch Mitgliedsantraege und fehlende
  * Spielergebnisse - Dinge nur fuer die Vereinsleitung, die in einem Reiter
  * fuer alle nichts verloren haben. */
-function SupportView({ currentUser, members, events, dutyPlan, setDutyPlan, onDienstSetzen, dutyOn, bereichWunsch, onBereichUebernommen, currentClub, goVerwaltung, goFahrzeuge, goTermin }) {
+function SupportView({ currentUser, members, events, dutyPlan, setDutyPlan, onDienstSetzen, onPersonAnlegen, dutyOn, bereichWunsch, onBereichUebernommen, currentClub, goVerwaltung, goFahrzeuge, goTermin }) {
   const t = useT();
   /* Wofuer bin ich eingeteilt? Aus dem Helferplan (Station an einem Termin)
      und aus den Stationen, die mir jemand zugewiesen hat. Bisher stand das nur
@@ -11723,8 +11821,8 @@ function SupportView({ currentUser, members, events, dutyPlan, setDutyPlan, onDi
           </div>
         )}
       </div>
-      {aktiv === "aufgaben" && <TasksView currentUser={currentUser} members={members} />}
-      {aktiv === "helfer" && <DutyView members={members} currentUser={currentUser} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={onDienstSetzen} />}
+      {aktiv === "aufgaben" && <TasksView currentUser={currentUser} members={members} onPersonAnlegen={onPersonAnlegen} />}
+      {aktiv === "helfer" && <DutyView members={members} currentUser={currentUser} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={onDienstSetzen} onPersonAnlegen={onPersonAnlegen} />}
       {aktiv === "einteilen" && <div className="px-4 pt-4 pb-24"><AdminDutyPanel members={members} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onSetzen={onDienstSetzen} /></div>}
     </div>
   );
@@ -13743,7 +13841,7 @@ function MembershipApprovalsPanel({ club, members, setMembers, currentUser = nul
        authenticated nicht lesbar, die Leitung bekommt sie dort. */
     const [{ data, error }, { data: kontaktData }] = await Promise.all([
       supabase.from("club_memberships")
-        .select("id,display_name,status")
+        .select("id,display_name,status,is_managed_profile")
         .eq("club_id", club.id).in("status", ["active", "inactive", "blocked"]).order("display_name"),
       supabase.rpc("kontaktdaten_im_verein", { target_club: club.id }),
     ]);
@@ -13828,7 +13926,15 @@ function MembershipApprovalsPanel({ club, members, setMembers, currentUser = nul
   const removeMember = async (member) => {
     if (!window.confirm(mitWerten(t("mit.endgueltigEntfernenFrage"), { name: member.display_name }))) return;
     setWorkingId(member.id); setMessage("");
-    const { error } = await supabase.from("club_memberships").delete().eq("id", member.id).eq("club_id", club.id);
+    /* Zwei Wege, ein Ergebnis. Eine Person OHNE Konto darf auch die
+       Organisation loeschen - dafuer gibt es person_ohne_konto_entfernen
+       (20260927190000), die genau das prueft und sonst abweist. Die Zeilenregel
+       "admins manage memberships" laesst den direkten Weg dagegen nur der
+       Vereinsadministration; wer organisiert und eine falsch geschriebene
+       Aushilfe wieder loswerden will, kaeme damit nicht weiter. */
+    const { error } = member.is_managed_profile
+      ? await supabase.rpc("person_ohne_konto_entfernen", { target_membership: member.id })
+      : await supabase.from("club_memberships").delete().eq("id", member.id).eq("club_id", club.id);
     if (error) {
       /* Ein Fremdschluessel kann die Loeschung weiterhin sperren, wenn spaeter
          eine neue Tabelle ohne cascade hinzukommt. Dann soll dastehen, was los
@@ -14363,10 +14469,6 @@ function AdminView({
        Der Sponsorenmanager darf sie nicht mehr anlegen oder verwalten
        (20260914110100). Die Leitung sieht sie in der vollen Liste. */
     ...(currentUser.roles.includes("organisator") ? [["polls", t("umf.umfragen")]] : []),
-    /* Der Organisator entscheidet Beitrittsanfragen mit (beitritt_entscheiden)
-       - und bekommt die Meldung dazu. Ohne diesen Bereich fuehrte ihn die
-       Glocke auf eine Seite, die es fuer ihn nicht gab. */
-    ...(currentUser.roles.includes("organisator") ? [["memberships", t("mit.antraege")]] : []),
   ];
   const [panel, setPanel] = useState(restrictedOnly ? restrictedPanels[0][0] : "overview");
   /* Aus der Glocke heraus soll die Verwaltung gleich im richtigen Bereich
@@ -14438,7 +14540,7 @@ function AdminView({
       </div>
 
       {panel === "overview" && <OverviewPanel members={members} events={events} protocols={protocols} dutyPlan={dutyPlan} seasonVotes={seasonVotes} seasonStand={seasonStand} goPanel={panelWaehlen} goHelfer={goHelferEinteilen} dutyOn={dutyFeatureOn} seasonOn={clubFeatures?.season_award !== false} />}
-      {panel === "memberships" && darfVereinVerwalten(currentUser) && <MembershipApprovalsPanel club={currentClub} members={members} setMembers={setMembers} currentUser={currentUser} nurAnfragen={!currentUser.roles.some((role) => ["vereinsadmin", "sysadmin"].includes(role))} />}
+      {panel === "memberships" && darfBeitritteEntscheiden(currentUser) && <MembershipApprovalsPanel club={currentClub} members={members} setMembers={setMembers} currentUser={currentUser} />}
       {/* Ohne geladenen Verein kein Logo- und Farbenbereich: ClubColorPanel las
           club.primaryColor ohne Pruefung, und der ganze Bereich stuerzte ab, wenn
           die Vereinsdaten beim Start nicht angekommen waren (12.09.). */}
@@ -15928,7 +16030,7 @@ export default function ClubMemberOrganisationApp() {
     let abgebrochen = false;
     const loadEvents = async () => {
       let abfrage = supabase.from("events")
-        .select("id,type,status,title,description,starts_at,ends_at,location,home_away,opponent,series_id,helper_slots,helper_caps,created_by,created_at,teams(name,zusagen_aktiv,zusagen_spiele_aktiv)")
+        .select("id,type,status,title,description,starts_at,ends_at,location,address,home_away,opponent,series_id,helper_slots,helper_caps,created_by,created_at,teams(name,zusagen_aktiv,zusagen_spiele_aktiv)")
         .eq("club_id", currentUser.clubId);
       /* Fans bekommen Trainings gar nicht erst geliefert. Die Datenbank
          filtert seit 20260914110100 ebenso (rollen-04); die Ansicht darunter
@@ -15976,6 +16078,7 @@ export default function ClubMemberOrganisationApp() {
              eine Endzeit raten und wuerde sie beim Speichern ueberschreiben. */
           endDate: row.ends_at || null,
           location: row.location || "",
+          adresse: row.address || "",
           desc: row.description || "",
           carpool: false,
           home: row.home_away === "heim" ? true : row.home_away === "auswaerts" ? false : undefined,
@@ -16603,6 +16706,39 @@ export default function ClubMemberOrganisationApp() {
     return {};
   };
 
+  /* Eine Person ohne App-Konto anlegen - fuer Helferstationen und
+     Vereinsaufgaben. Sie bekommt eine gewoehnliche Mitgliedschaft mit der
+     Rolle "mitglied" und dem Kennzeichen is_managed_profile; dadurch traegt
+     sie eine membership_id und passt in duty_assignments und
+     club_task_assignees, ohne dass dort eine zweite Art von Eintrag noetig
+     waere. Die Datenbank laesst das nur fuer Vereinsadministration und
+     Organisation zu (person_ohne_konto_anlegen, 20260927190000); die App
+     reicht den Handgriff deshalb nur an diese Rollen weiter.
+     Die neue Person kommt sofort in die oertliche Liste - sonst stuende sie
+     nach dem Anlegen nicht in der Auswahl, aus der sie gerade gewaehlt
+     werden soll. */
+  const personOhneKontoAnlegen = async (name) => {
+    const sauber = String(name || "").trim();
+    if (!sauber || !currentUser?.clubId) return null;
+    /* Im Demo-Betrieb gibt es keine Datenbank. Ohne diesen Zweig liefe der
+       Knopf dort in eine Fehlermeldung - und genau dort wird die App
+       vorgefuehrt und fuer die Anleitung abgelichtet. */
+    let data = `person-${Date.now()}`;
+    if (supabase) {
+      const { data: angelegt, error } = await supabase.rpc("person_ohne_konto_anlegen", {
+        target_club: currentUser.clubId, person_name: sauber });
+      if (error || !angelegt) { console.error("person_ohne_konto_anlegen", error?.message); return null; }
+      data = angelegt;
+    }
+    setMembers((alle) => [...alle, {
+      id: data, clubId: currentUser.clubId, name: sauber, email: "", team: "",
+      since: new Date().getFullYear(), roles: ["mitglied"], color: AVATAR_FARBEN[4],
+      points: 0, tippPoints: 0, badges: [], birthdate: "",
+      status: "active", mitgliedsStatus: "active",
+      accountPending: true, verwaltetesProfil: true,
+    }]);
+    return data;
+  };
   const dienstSetzen = async (eventId, station, mitgliedsId, eintragen) => {
     if (!supabase || typeof eventId !== "string" || !isDbId(mitgliedsId)) return;
     /* Genau hier ging bisher am meisten verloren: Ein Trainer, der jemand
@@ -18160,8 +18296,8 @@ export default function ClubMemberOrganisationApp() {
                 {subView === "ergebnisse" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("sub.ergebnisse")}><ErgebnisseView events={events} results={tippResults} currentUser={currentUser} favorit={startseiteWahl} fokusId={ergebnisFokus} onFokusErledigt={setErgebnisFokus} onSpeichern={saveTippResult} onEntfernen={deleteTippResult} mitPunkten={featureEnabled("tippspiel")} /></LockedFeature>}
                 {subView === "tipp" && featureEnabled("tippspiel") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("sub.tipp")}><TippView members={clubMembers} currentUser={currentUser} events={events} tippPredictions={tippPredictions} setTippPredictions={setTippPredictions} tippResults={tippResults} onTippSpeichern={tippSpeichern} onZurueck={() => setSubView(null)} /></LockedFeature>}
                 {subView === "postfach" && <PostfachView eintraege={postfach} laedt={postfachLaedt} onGelesen={postfachGelesen} onAlleLoeschen={postfachAlleLoeschen} onLoeschen={postfachLoeschen} onOeffnen={meldungAntippen} kannOeffnen={meldungOeffenbar}/>}
-                {subView === "duty" && featureEnabled("duty_roster") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("sub.duty")}><DutyView members={clubMembers} currentUser={currentUser} events={sichtbareTermine} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={dienstSetzen} /></LockedFeature>}
-                {subView === "tasks" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("auf.titel")}><TasksView currentUser={currentUser} members={clubMembers} /></LockedFeature>}
+                {subView === "duty" && featureEnabled("duty_roster") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("sub.duty")}><DutyView onPersonAnlegen={darfVereinVerwalten(currentUser) ? personOhneKontoAnlegen : null} members={clubMembers} currentUser={currentUser} events={sichtbareTermine} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={dienstSetzen} /></LockedFeature>}
+                {subView === "tasks" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("auf.titel")}><TasksView currentUser={currentUser} members={clubMembers} onPersonAnlegen={darfVereinVerwalten(currentUser) ? personOhneKontoAnlegen : null} /></LockedFeature>}
                 {subView === "vehicles" && featureEnabled("vehicle_booking") && !istNurFan(currentUser) && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("sport.vehi.vereinsfahrzeuge")}><VehiclesView currentUser={currentUser} currentClub={currentClub} /></LockedFeature>}
 
                 {!subView && tab === "home" && (
@@ -18174,7 +18310,7 @@ export default function ClubMemberOrganisationApp() {
                     mannschaften={startseiteAuswahl} gewaehlteMannschaft={startseiteWahl} onMannschaftWechsel={setStartseiteTeam} />
                 )}
                 {!subView && tab === "events" && (
-                  <EventsView onNeuLaden={datenNeuLaden} currentUser={currentUser} members={clubMembers} events={sichtbareTermine} setEvents={setEvents} carpools={carpools} setCarpools={setCarpools}
+                  <EventsView onNeuLaden={datenNeuLaden} currentUser={currentUser} members={clubMembers} onPersonAnlegen={darfVereinVerwalten(currentUser) ? personOhneKontoAnlegen : null} events={sichtbareTermine} setEvents={setEvents} carpools={carpools} setCarpools={setCarpools}
                     dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={dienstSetzen} entitlement={entitlement} goSubscribe={goSubscribe}
                     werbeplaetze={werbeplaetze} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick}
                     focusRequest={eventFocusRequest} onFocusApplied={()=>setEventFocusRequest(null)}
@@ -18190,7 +18326,7 @@ export default function ClubMemberOrganisationApp() {
                     Hier fehlte der dritte Teil - ein reiner Organisator sah
                     den Reiter also in der Leiste und darunter eine leere
                     Seite. */}
-                {!subView && tab === "support" && !!currentUser && !istNurFan(currentUser) && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("nav.support")}><SupportView currentUser={currentUser} members={clubMembers} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={dienstSetzen} dutyOn={featureEnabled("duty_roster")} bereichWunsch={supportBereich} onBereichUebernommen={() => setSupportBereich(null)} currentClub={currentClub} goVerwaltung={goVerwaltung} goFahrzeuge={() => setSubView("vehicles")} goTermin={(id) => { setSubView(null); setEventFocusRequest({ team: "alle", eventId: id, requestedAt: Date.now() }); setTab("events"); }} /></LockedFeature>}
+                {!subView && tab === "support" && !!currentUser && !istNurFan(currentUser) && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("nav.support")}><SupportView onPersonAnlegen={darfVereinVerwalten(currentUser) ? personOhneKontoAnlegen : null} currentUser={currentUser} members={clubMembers} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={dienstSetzen} dutyOn={featureEnabled("duty_roster")} bereichWunsch={supportBereich} onBereichUebernommen={() => setSupportBereich(null)} currentClub={currentClub} goVerwaltung={goVerwaltung} goFahrzeuge={() => setSubView("vehicles")} goTermin={(id) => { setSubView(null); setEventFocusRequest({ team: "alle", eventId: id, requestedAt: Date.now() }); setTab("events"); }} /></LockedFeature>}
                 {!subView && tab === "admin" && (currentUserIsAdmin || currentUserCanEditSponsors || canManageDuty(currentUser)) && (
                   <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("sys.verwaltung")}>
                   <AdminView bereichWunsch={verwaltungsBereich} onBereichUebernommen={() => setVerwaltungsBereich(null)}
