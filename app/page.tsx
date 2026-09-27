@@ -705,6 +705,22 @@ const resolveDashboardTileOrder = (order) => {
    App einen freien Platz an, den der Auslöser beim Eintragen abweist. */
 const STATION_CAP = 2;
 const STATION_CAP_MAX = 10;
+/* Ein Gast ohne App-Konto steht in derselben Liste wie ein Mitglied - nur
+   traegt er statt einer Kennung seinen Namen mit einem Praefix davor.
+   WARUM SO UND NICHT ALS EIGENE LISTE
+   Der Helferplan ist eine Liste je Station, und daran haengt alles: die
+   Platzzaehlung, das Entfernen ueber filter, die Anzeige. Eine zweite Liste
+   daneben haette jede dieser Stellen verdoppelt, und die erste vergessene
+   haette still falsch gezaehlt. Mit dem Praefix bleibt die Mechanik, wie sie
+   ist; nur wer den Namen bildet, muss zwei Faelle kennen.
+   Der Doppelpunkt kann in einem Namen nicht stoeren: Gelesen wird nur bis zum
+   ERSTEN, der Rest bleibt Name. */
+const GAST_PRAEFIX = "gast:";
+const istGast = (x) => typeof x === "string" && x.startsWith(GAST_PRAEFIX);
+const gastName = (x) => String(x).slice(GAST_PRAEFIX.length);
+const personName = (x, members, ersatz = "") =>
+  istGast(x) ? gastName(x) : ((members || []).find((m) => m.id === x)?.name || ersatz);
+
 const PLATZ_ZAHLEN = Array.from({ length: STATION_CAP_MAX }, (_, i) => i + 1);
 const plaetzeFuer = (ev, station) => {
   const wert = Number(ev?.helperCaps?.[station]);
@@ -3805,20 +3821,20 @@ function RegisterScreen({ onRegister, members, club, goLogin }) {
    Bewusst NICHT absolut positioniert - in Karten mit overflow:hidden waere die
    Liste sonst abgeschnitten. Sie schiebt den Inhalt darunter weg, was auf dem
    Telefon ohnehin natuerlicher wirkt. */
-function NutzerWahl({ personen, wert, onWaehlen, leerLabel: leerLabelVorgabe, klein, vorschlaege, onAnlegen }) {
+function NutzerWahl({ personen, wert, onWaehlen, leerLabel: leerLabelVorgabe, klein, vorschlaege, gastErlaubt }) {
   const t = useT();
-  /* onAnlegen legt eine Person ohne App-Konto an und gibt ihre Kennung
-     zurueck. Es steckt hier und nicht bei den Aufrufern, weil dieselbe
-     Auswahl an zwei Stellen benutzt wird - beim Einteilen an einer
-     Helferstation und beim Zuweisen einer Vereinsaufgabe. Wer sucht und
-     nichts findet, soll die Person genau dort anlegen koennen, statt die
-     Ansicht zu verlassen und den Faden zu verlieren. */
-  const [legtAn, setLegtAn] = useState(false);
-  const [anlegeFehler, setAnlegeFehler] = useState("");
+  /* gastErlaubt schaltet den Weg frei, einen blossen NAMEN zu waehlen statt
+     einer Person aus dem Verein. Der Name wird nirgends gespeichert - er
+     haengt an genau der Zuteilung, fuer die er hier gewaehlt wird, und
+     verschwindet mit ihr. Es steckt hier und nicht bei den Aufrufern, weil
+     dieselbe Auswahl an zwei Stellen benutzt wird: beim Einteilen an einer
+     Helferstation und beim Zuweisen einer Vereinsaufgabe. */
   const leerLabel = leerLabelVorgabe ?? t("allg.nichtZugewiesen");
   const [offen, setOffen] = useState(false);
   const [suche, setSuche] = useState("");
-  const gewaehlt = (personen || []).find((p) => p.id === wert);
+  /* Ein Gast steht in keiner Personenliste - sein Name kommt aus dem Wert
+     selbst, sonst stuende oben weiter "Person waehlen ...". */
+  const gewaehlt = istGast(wert) ? { id: wert, name: gastName(wert) } : (personen || []).find((p) => p.id === wert);
   const q = suche.trim().toLowerCase();
   const treffer = (personen || []).slice()
     .sort((a, b) => String(a.name || "").trim().localeCompare(String(b.name || "").trim(), "de", { sensitivity: "base" }))
@@ -3875,21 +3891,14 @@ function NutzerWahl({ personen, wert, onWaehlen, leerLabel: leerLabelVorgabe, kl
             {/* Nur wenn wirklich gesucht wurde: Ohne Suchtext gaebe es keinen
                 Namen, den man anlegen koennte, und der Knopf stuende sinnlos
                 unter jeder Liste. */}
-            {onAnlegen && q && !treffer.some((p) => String(p.name || "").trim().toLowerCase() === suche.trim().toLowerCase()) && (
-              <button type="button" disabled={legtAn}
-                onClick={async () => {
-                  setLegtAn(true); setAnlegeFehler("");
-                  const neueId = await onAnlegen(suche.trim());
-                  setLegtAn(false);
-                  if (!neueId) { setAnlegeFehler(t("auf.personAnlegenFehler")); return; }
-                  onWaehlen(neueId); setOffen(false); setSuche("");
-                }}
+            {gastErlaubt && q && !treffer.some((p) => String(p.name || "").trim().toLowerCase() === suche.trim().toLowerCase()) && (
+              <button type="button"
+                onClick={() => { onWaehlen(GAST_PRAEFIX + suche.trim()); setOffen(false); setSuche(""); }}
                 className={`w-full text-left ${listenGroesse}`}
                 style={{ color: C.red, fontFamily: "Inter", fontWeight: 700, borderTop: `1px solid ${C.line}` }}>
-                {legtAn ? t("allg.wirdGespeichert") : mitWerten(t("auf.personOhneKonto"), { name: suche.trim() })}
+                {mitWerten(t("auf.personOhneKonto"), { name: suche.trim() })}
               </button>
             )}
-            {anlegeFehler && <div className={listenGroesse} style={{ color: C.fehler }}>{anlegeFehler}</div>}
             {treffer.map((p) => (
               <button type="button" key={p.id} onClick={() => { onWaehlen(p.id); setOffen(false); }}
                 className={`w-full text-left ${listenGroesse}`}
@@ -4723,7 +4732,7 @@ function TerminZusage({ ev, currentUser, darfListeSehen = false }) {
    laengst ("leaders manage duties" fuer vereinsadmin, sysadmin, organisator) -
    es fehlte nur die Bedienung. Wer eingeteilt war und absagte, musste bisher
    selbst in die App, sonst stand sein Name weiter im Plan. */
-function HelperSlots({ ev, members, currentUser, dutyPlan, setDutyPlan, eligible, onSetzen, darfVerwalten, onPersonAnlegen }) {
+function HelperSlots({ ev, members, currentUser, dutyPlan, setDutyPlan, eligible, onSetzen, darfVerwalten, gastErlaubt }) {
   const t = useT();
   const plan = dutyPlan[ev.id] || {};
   const [eintragPerson, setEintragPerson] = useState("");
@@ -4732,7 +4741,7 @@ function HelperSlots({ ev, members, currentUser, dutyPlan, setDutyPlan, eligible
     <div className="space-y-2">
       {ev.helperSlots.map((station) => {
         const list = plan[station] || [];
-        const names = list.map((id) => members.find((m) => m.id === id)?.name).filter(Boolean);
+        const names = list.map((id) => personName(id, members)).filter(Boolean);
         const imIn = list.includes(currentUser.id);
         const plaetze = plaetzeFuer(ev, station);
         const full = list.length >= plaetze;
@@ -4743,7 +4752,7 @@ function HelperSlots({ ev, members, currentUser, dutyPlan, setDutyPlan, eligible
               {darfVerwalten ? (
                 <div className="text-[11px] flex flex-wrap items-center gap-1 mt-0.5" style={{ color: C.textDim, fontFamily: "Inter" }}>
                   {list.length === 0 ? <span>{t("helf.niemand")}</span> : list.map((id) => {
-                    const person = members.find((m) => m.id === id);
+                    const angezeigt = personName(id, members, t("allg.unbekannt"));
                     return (
                       <button key={id} onClick={() => {
                         /* Auch hier: erst die Anzeige, dann schreiben - und
@@ -4754,10 +4763,10 @@ function HelperSlots({ ev, members, currentUser, dutyPlan, setDutyPlan, eligible
                           if (r?.error) setDutyPlan((jetzt) => ({ ...jetzt, [ev.id]: { ...(jetzt[ev.id] || {}), [station]: vorher } }));
                         });
                       }}
-                        aria-label={mitWerten(t("help.eintragEntfernen"), { name: person?.name || t("help.eintragLabel"), station })}
+                        aria-label={mitWerten(t("help.eintragEntfernen"), { name: angezeigt, station })}
                         className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
                         style={{ background: C.paperDim, color: C.ink, fontWeight: 600 }}>
-                        {person?.name || t("allg.unbekannt")} <X size={9} style={{ color: C.fehler }} />
+                        {angezeigt} <X size={9} style={{ color: C.fehler }} />
                       </button>
                     );
                   })}
@@ -4804,7 +4813,7 @@ function HelperSlots({ ev, members, currentUser, dutyPlan, setDutyPlan, eligible
         <div className="rounded-lg p-2 mt-1" style={{ background: C.paperDim }}>
           <div className="text-[10px] font-bold mb-1.5" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("helf.jemanden")}</div>
           <div className="flex gap-1.5 items-start flex-wrap">
-            <NutzerWahl personen={members.filter((m) => !istNurFan(m))} wert={eintragPerson} onWaehlen={setEintragPerson} leerLabel={t("helf.personWaehlen")} klein onAnlegen={onPersonAnlegen} />
+            <NutzerWahl personen={members.filter((m) => !istNurFan(m))} wert={eintragPerson} onWaehlen={setEintragPerson} leerLabel={t("helf.personWaehlen")} klein gastErlaubt={gastErlaubt} />
             <select value={eintragStation} onChange={(e) => setEintragStation(e.target.value)}
               aria-label={t("aria.stationWaehlen")}
               className="flex-1 min-w-0 text-[11px] px-2 py-1.5 rounded-lg outline-none"
@@ -5003,7 +5012,7 @@ function CarpoolSection({ ev, currentUser }) {
 
 /* initialOpen: Im Kalender-Overlay ist bereits klar, welcher Termin gemeint ist —
    dort wird die Karte aufgeklappt gezeigt, statt noch einmal tippen zu lassen. */
-function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser, dutyPlan, setDutyPlan, onDienstSetzen, onPersonAnlegen, canCancelTraining, onCancelTraining, onDeleteTraining, onEditTraining, darfListeSehen = false, nurAbsagen = false, currentClub, featureEnabled, onNeuLaden, ergebnis = null, darfErgebnis = false, onErgebnisOeffnen, initialOpen = false }) {
+function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser, dutyPlan, setDutyPlan, onDienstSetzen, gastErlaubt, canCancelTraining, onCancelTraining, onDeleteTraining, onEditTraining, darfListeSehen = false, nurAbsagen = false, currentClub, featureEnabled, onNeuLaden, ergebnis = null, darfErgebnis = false, onErgebnisOeffnen, initialOpen = false }) {
   const t = useT();
   const [open, setOpen] = useState(initialOpen);
   const [absageOffen, setAbsageOffen] = useState(false);
@@ -5169,7 +5178,7 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
               <div className="text-xs font-semibold mb-2" style={{ fontFamily: "Inter", color: C.ink }}>{t("helf.gesucht")}</div>
               {dutyLeitung && <DutyStationsManager ev={ev} currentUser={currentUser} sport={currentClub?.sport} onNeuLaden={onNeuLaden} dutyPlan={dutyPlan} />}
               {ev.helperSlots?.length > 0 && (
-                <HelperSlots ev={ev} members={members} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} eligible={helperEligible} onSetzen={onDienstSetzen} onPersonAnlegen={onPersonAnlegen} darfVerwalten={canManageDuty(currentUser)} />
+                <HelperSlots ev={ev} members={members} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} eligible={helperEligible} onSetzen={onDienstSetzen} gastErlaubt={gastErlaubt} darfVerwalten={canManageDuty(currentUser)} />
               )}
             </div>
           )}
@@ -5268,7 +5277,7 @@ const leererTerminentwurf = (team = "") => ({
   rangeStart: "", rangeEnd: "", helferStationen: "", isHome: true,
 });
 
-function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpools, setCarpools, dutyPlan, setDutyPlan, onDienstSetzen, onPersonAnlegen, werbeplaetze, onSponsorImpression, onSponsorClick, focusRequest, onFocusApplied, currentClub, featureEnabled, entitlement, goSubscribe, tippResults = {}, tippPredictions = {}, onErgebnisOeffnen }) {
+function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpools, setCarpools, dutyPlan, setDutyPlan, onDienstSetzen, gastErlaubt, werbeplaetze, onSponsorImpression, onSponsorClick, focusRequest, onFocusApplied, currentClub, featureEnabled, entitlement, goSubscribe, tippResults = {}, tippPredictions = {}, onErgebnisOeffnen }) {
   const t = useT();
   const [filter, setFilter] = useState("alle");
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -5860,7 +5869,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
           carpoolOn={!!myCarpools[ev.id]} onCarpool={handleCarpool}
           currentUser={currentUser} members={members} isAdminUser={isAdminUser}
           currentClub={currentClub} featureEnabled={featureEnabled} onNeuLaden={onNeuLaden}
-          dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={onDienstSetzen} onPersonAnlegen={onPersonAnlegen}
+          dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={onDienstSetzen} gastErlaubt={gastErlaubt}
           canCancelTraining={canCancelFor(ev)} onCancelTraining={cancelTraining} onDeleteTraining={deleteTraining}
           onEditTraining={openEdit} darfListeSehen={darfAnwesenheitSehen(ev)} nurAbsagen={nurAbsagen(ev)}
           ergebnis={tippResults?.[ev.id] || null} darfErgebnis={darfErgebnisEintragen(currentUser, ev, { streng: !!supabase })} onErgebnisOeffnen={onErgebnisOeffnen}
@@ -5882,7 +5891,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
               carpoolOn={!!myCarpools[openEvent.id]} onCarpool={handleCarpool}
               currentUser={currentUser} members={members} isAdminUser={isAdminUser}
               currentClub={currentClub} featureEnabled={featureEnabled} onNeuLaden={onNeuLaden}
-              dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={onDienstSetzen} onPersonAnlegen={onPersonAnlegen}
+              dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={onDienstSetzen} gastErlaubt={gastErlaubt}
               canCancelTraining={canCancelFor(openEvent)} onCancelTraining={(...args) => { cancelTraining(...args); setSelectedEvent(null); }} onDeleteTraining={(...args) => { deleteTraining(...args); setSelectedEvent(null); }}
               onEditTraining={openEdit} darfListeSehen={darfAnwesenheitSehen(openEvent)} nurAbsagen={nurAbsagen(openEvent)}
               ergebnis={tippResults?.[openEvent.id] || null} darfErgebnis={darfErgebnisEintragen(currentUser, openEvent, { streng: !!supabase })}
@@ -8469,7 +8478,7 @@ function TeamPenaltyCatalog({ user }) {
    Eintragungen. Wer sich eintraegt, hilft mit - das ist etwas anderes als
    jemand, der die Aufgabe verantwortet. Beides nebeneinander ist richtig:
    "Kuchenverkauf" hat eine Verantwortliche und braucht drei Helfer. */
-function TaskCreateForm({ form, setForm, onSubmit, onCancel, editing = false, teams = [], members = [], busy = false, zeigeVerantwortliche = true, onPersonAnlegen }) {
+function TaskCreateForm({ form, setForm, onSubmit, onCancel, editing = false, teams = [], members = [], busy = false, zeigeVerantwortliche = true, gastErlaubt }) {
   const t = useT();
   const verantwortliche = form.verantwortliche || [];
   const hinzufuegen = (id) => { if (id && !verantwortliche.includes(id)) setForm({ ...form, verantwortliche: [...verantwortliche, id] }); };
@@ -8552,19 +8561,19 @@ function TaskCreateForm({ form, setForm, onSubmit, onCancel, editing = false, te
         {verantwortliche.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mb-1.5">
             {verantwortliche.map((id) => {
-              const person = members.find((m) => m.id === id);
+              const angezeigt = personName(id, members, t("allg.unbekannt"));
               return (
-                <button key={id} onClick={() => entfernen(id)} aria-label={mitWerten(t("auf.personEntfernen"), { name: person?.name || t("help.personLabel") })}
+                <button key={id} onClick={() => entfernen(id)} aria-label={mitWerten(t("auf.personEntfernen"), { name: angezeigt })}
                   className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px]"
                   style={{ background: C.paperDim, color: C.ink, fontWeight: 600 }}>
-                  {person?.name || t("allg.unbekannt")} <X size={9} style={{ color: C.fehler }} />
+                  {angezeigt} <X size={9} style={{ color: C.fehler }} />
                 </button>
               );
             })}
           </div>
         )}
         <NutzerWahl personen={members.filter((m) => !verantwortliche.includes(m.id))} wert=""
-          onWaehlen={hinzufuegen} leerLabel={t("auf.personHinzufuegen")} klein onAnlegen={onPersonAnlegen} />
+          onWaehlen={hinzufuegen} leerLabel={t("auf.personHinzufuegen")} klein gastErlaubt={gastErlaubt} />
       </div>}
 
       <div className="flex gap-2 mt-0.5">
@@ -8595,7 +8604,7 @@ function aufgabenKennzahlen(aufgaben) {
   return { gesamt: aufgaben.length, offen, ohneEintrag, erledigt, ueberfaellig };
 }
 
-function TasksView({ currentUser, members, onPersonAnlegen }) {
+function TasksView({ currentUser, members, gastErlaubt }) {
   const t = useT();
   const databaseMembership = !!supabase && isDbId(currentUser.id);
   const [clubTasks, setClubTasks] = useState([]);
@@ -8691,7 +8700,7 @@ function TasksView({ currentUser, members, onPersonAnlegen }) {
       .sort((a, b) => a.name.localeCompare(b.name, "de")));
     setManageableTeamIds([...new Set(vereinsweit ? [...manageIds, ...teamMap.keys()] : manageIds)]);
     const { data: tasksData, error } = await supabase.from("club_tasks")
-      .select("id,team_id,title,description,due_date,slots_needed,start_time,end_time,created_by,created_at,erledigt_am,erledigt_von,teams(name),club_task_signups(membership_id,club_memberships(display_name)),club_task_assignees(membership_id,club_memberships(display_name))")
+      .select("id,team_id,title,description,due_date,slots_needed,start_time,end_time,created_by,created_at,erledigt_am,erledigt_von,teams(name),club_task_signups(membership_id,club_memberships(display_name)),club_task_assignees(membership_id,gast_name,club_memberships(display_name))")
       .eq("club_id", currentUser.clubId)
       .order("created_at", { ascending: false });
     if (error) { setMessage(t("auf.ladenFehler")); setLoading(false); return; }
@@ -8699,6 +8708,10 @@ function TasksView({ currentUser, members, onPersonAnlegen }) {
       const team = Array.isArray(row.teams) ? row.teams[0] : row.teams;
       const namen = (eintrag) => {
         const m = Array.isArray(eintrag.club_memberships) ? eintrag.club_memberships[0] : eintrag.club_memberships;
+        /* Ein Gast hat keine Mitgliedschaft - sein Name steht an der Zuteilung
+           selbst. membershipId traegt dann den Namen mit Praefix, damit Liste
+           und Formular mit demselben Wert arbeiten. */
+        if (!eintrag.membership_id && eintrag.gast_name) return { membershipId: GAST_PRAEFIX + eintrag.gast_name, name: eintrag.gast_name };
         return { membershipId: eintrag.membership_id, name: m?.display_name || "—" };
       };
       const signups = (row.club_task_signups || []).map(namen);
@@ -8760,12 +8773,29 @@ function TasksView({ currentUser, members, onPersonAnlegen }) {
         let zuFehler = null;
         if (dazu.length) {
           ({ error: zuFehler } = await supabase.from("club_task_assignees")
-            .insert(dazu.map((mid) => ({ task_id: editingTaskId, membership_id: mid }))));
+            .insert(dazu.map((mid) => istGast(mid)
+              ? { task_id: editingTaskId, gast_name: gastName(mid) }
+              : { task_id: editingTaskId, membership_id: mid })));
         }
         if (!zuFehler && weg.length) {
-          const { data: entfernt, error: wegFehler } = await supabase.from("club_task_assignees")
-            .delete().eq("task_id", editingTaskId).in("membership_id", weg).select("membership_id");
-          zuFehler = wegFehler || ((entfernt || []).length < weg.length ? { message: "0 rows" } : null);
+          /* Gaeste und Mitglieder stehen in derselben Tabelle, werden aber
+             ueber verschiedene Spalten angesprochen - deshalb zwei Loeschungen
+             statt einer. Gezaehlt wird zusammen: Bleibt eine Zeile stehen,
+             war der Handgriff nicht vollstaendig, und das muss auffallen. */
+          const wegMitglieder = weg.filter((x) => !istGast(x));
+          const wegGaeste = weg.filter(istGast).map(gastName);
+          let entferntZahl = 0, wegFehler = null;
+          if (wegMitglieder.length) {
+            const { data: e1, error: f1 } = await supabase.from("club_task_assignees")
+              .delete().eq("task_id", editingTaskId).in("membership_id", wegMitglieder).select("id");
+            entferntZahl += (e1 || []).length; wegFehler = wegFehler || f1;
+          }
+          if (!wegFehler && wegGaeste.length) {
+            const { data: e2, error: f2 } = await supabase.from("club_task_assignees")
+              .delete().eq("task_id", editingTaskId).in("gast_name", wegGaeste).select("id");
+            entferntZahl += (e2 || []).length; wegFehler = wegFehler || f2;
+          }
+          zuFehler = wegFehler || (entferntZahl < weg.length ? { message: "0 rows" } : null);
         }
         if (zuFehler) {
           resetForm(); setEditingTaskId(null); setShowCreateClub(false); setShowCreateTeamId("");
@@ -8789,7 +8819,9 @@ function TasksView({ currentUser, members, onPersonAnlegen }) {
     if (error) { setMessage(t("auf.anlegenFehler")); return; }
     if (angelegt?.id && (form.verantwortliche || []).length) {
       const { error: zuFehler } = await supabase.from("club_task_assignees")
-        .insert(form.verantwortliche.map((mid) => ({ task_id: angelegt.id, membership_id: mid })));
+        .insert(form.verantwortliche.map((mid) => istGast(mid)
+          ? { task_id: angelegt.id, gast_name: gastName(mid) }
+          : { task_id: angelegt.id, membership_id: mid }));
       /* Die Aufgabe steht schon - eine misslungene Zuweisung darf sie nicht
          zurueckziehen, aber verschweigen darf man sie auch nicht. */
       if (zuFehler) { setMessage(t("auf.angelegtOhneVerantwortliche")); await loadAll(); return; }
@@ -8976,7 +9008,7 @@ function TasksView({ currentUser, members, onPersonAnlegen }) {
         </>}
         {aktiverBereich === "verein" && <>
         <SectionTitle eyebrow={t("auf.vereinsweit")} title={t("auf.vereinsaufgaben")}/>
-        {showCreateClub && <TaskCreateForm teams={myTeams} members={members} onPersonAnlegen={onPersonAnlegen} form={form} setForm={setForm} editing={!!editingTaskId} busy={aufgabeSpeichert} zeigeVerantwortliche={!editingTaskId || istAufgabenLeitung} onSubmit={() => createTask(null)} onCancel={() => { setShowCreateClub(false); resetForm(); setEditingTaskId(null); }}/>}
+        {showCreateClub && <TaskCreateForm teams={myTeams} members={members} gastErlaubt={gastErlaubt} form={form} setForm={setForm} editing={!!editingTaskId} busy={aufgabeSpeichert} zeigeVerantwortliche={!editingTaskId || istAufgabenLeitung} onSubmit={() => createTask(null)} onCancel={() => { setShowCreateClub(false); resetForm(); setEditingTaskId(null); }}/>}
         {/* Bearbeiten an Vereinsaufgaben: Ersteller oder Leitung. Vorher reichte
             jede Rolle ausser Spieler, Mitglied und Fan - die Regel wies das
             Aendern dann ab (M8). */}
@@ -8988,7 +9020,7 @@ function TasksView({ currentUser, members, onPersonAnlegen }) {
           return (
             <div key={team.id} className="mb-5">
               <SectionTitle eyebrow={t("tm.mannschaft")} title={`${t("auf.titel")} · ${team.name}`} right={canManage ? <button onClick={() => { if (showCreateTeamId === team.id) { setEditingTaskId(null); resetForm(); } setShowCreateTeamId((v) => v === team.id ? "" : team.id); }} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showCreateTeamId === team.id ? t("allg.schliessen") : t("auf.neueAufgabePlus")}</button> : null}/>
-              {showCreateTeamId === team.id && <TaskCreateForm teams={myTeams} members={members} onPersonAnlegen={onPersonAnlegen} form={form} setForm={setForm} editing={!!editingTaskId} busy={aufgabeSpeichert} zeigeVerantwortliche={!editingTaskId || istAufgabenLeitung} onSubmit={() => createTask(team.id)} onCancel={() => { setShowCreateTeamId(""); resetForm(); setEditingTaskId(null); }}/>}
+              {showCreateTeamId === team.id && <TaskCreateForm teams={myTeams} members={members} gastErlaubt={gastErlaubt} form={form} setForm={setForm} editing={!!editingTaskId} busy={aufgabeSpeichert} zeigeVerantwortliche={!editingTaskId || istAufgabenLeitung} onSubmit={() => createTask(team.id)} onCancel={() => { setShowCreateTeamId(""); resetForm(); setEditingTaskId(null); }}/>}
               {tasks.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{mitWerten(t("auf.keineFuerTeam"), { name: team.name })}</div> : tasks.map((t) => <TaskCard key={t.id} task={t} canManage={canManage} onEdit={openEditTask}/>)}
             </div>
           );
@@ -11702,7 +11734,7 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
 /* ------------------------------------------------------------------ */
 /* Helferplanung — eigene Ansicht                                       */
 /* ------------------------------------------------------------------ */
-function DutyView({ members, currentUser, events, dutyPlan, setDutyPlan, onDienstSetzen, onPersonAnlegen }) {
+function DutyView({ members, currentUser, events, dutyPlan, setDutyPlan, onDienstSetzen, gastErlaubt }) {
   const t = useT();
   /* Aufgeklappte Termine. Zugeklappt steht nur Termin, Belegung und ob man
      selbst dabei ist - so passen mehrere Termine auf eine Seite. Antippen
@@ -11753,7 +11785,7 @@ function DutyView({ members, currentUser, events, dutyPlan, setDutyPlan, onDiens
             </button>
             {aufgeklappt && (
               <div className="px-4 pb-4">
-                <HelperSlots ev={ev} members={members} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} eligible={eligible} onSetzen={onDienstSetzen} onPersonAnlegen={onPersonAnlegen} darfVerwalten={canManageDuty(currentUser)} />
+                <HelperSlots ev={ev} members={members} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} eligible={eligible} onSetzen={onDienstSetzen} gastErlaubt={gastErlaubt} darfVerwalten={canManageDuty(currentUser)} />
               </div>
             )}
           </div>
@@ -11774,7 +11806,7 @@ function DutyView({ members, currentUser, events, dutyPlan, setDutyPlan, onDiens
  * Verwalten-Reiter. Dort stehen auch Mitgliedsantraege und fehlende
  * Spielergebnisse - Dinge nur fuer die Vereinsleitung, die in einem Reiter
  * fuer alle nichts verloren haben. */
-function SupportView({ currentUser, members, events, dutyPlan, setDutyPlan, onDienstSetzen, onPersonAnlegen, dutyOn, bereichWunsch, onBereichUebernommen, currentClub, goVerwaltung, goFahrzeuge, goTermin }) {
+function SupportView({ currentUser, members, events, dutyPlan, setDutyPlan, onDienstSetzen, gastErlaubt, dutyOn, bereichWunsch, onBereichUebernommen, currentClub, goVerwaltung, goFahrzeuge, goTermin }) {
   const t = useT();
   /* Wofuer bin ich eingeteilt? Aus dem Helferplan (Station an einem Termin)
      und aus den Stationen, die mir jemand zugewiesen hat. Bisher stand das nur
@@ -11875,8 +11907,8 @@ function SupportView({ currentUser, members, events, dutyPlan, setDutyPlan, onDi
           </div>
         )}
       </div>
-      {aktiv === "aufgaben" && <TasksView currentUser={currentUser} members={members} onPersonAnlegen={onPersonAnlegen} />}
-      {aktiv === "helfer" && <DutyView members={members} currentUser={currentUser} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={onDienstSetzen} onPersonAnlegen={onPersonAnlegen} />}
+      {aktiv === "aufgaben" && <TasksView currentUser={currentUser} members={members} gastErlaubt={gastErlaubt} />}
+      {aktiv === "helfer" && <DutyView members={members} currentUser={currentUser} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={onDienstSetzen} gastErlaubt={gastErlaubt} />}
       {aktiv === "einteilen" && <div className="px-4 pt-4 pb-24"><AdminDutyPanel members={members} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onSetzen={onDienstSetzen} /></div>}
     </div>
   );
@@ -13980,15 +14012,7 @@ function MembershipApprovalsPanel({ club, members, setMembers, currentUser = nul
   const removeMember = async (member) => {
     if (!window.confirm(mitWerten(t("mit.endgueltigEntfernenFrage"), { name: member.display_name }))) return;
     setWorkingId(member.id); setMessage("");
-    /* Zwei Wege, ein Ergebnis. Eine Person OHNE Konto darf auch die
-       Organisation loeschen - dafuer gibt es person_ohne_konto_entfernen
-       (20260927190000), die genau das prueft und sonst abweist. Die Zeilenregel
-       "admins manage memberships" laesst den direkten Weg dagegen nur der
-       Vereinsadministration; wer organisiert und eine falsch geschriebene
-       Aushilfe wieder loswerden will, kaeme damit nicht weiter. */
-    const { error } = member.is_managed_profile
-      ? await supabase.rpc("person_ohne_konto_entfernen", { target_membership: member.id })
-      : await supabase.from("club_memberships").delete().eq("id", member.id).eq("club_id", club.id);
+    const { error } = await supabase.from("club_memberships").delete().eq("id", member.id).eq("club_id", club.id);
     if (error) {
       /* Ein Fremdschluessel kann die Loeschung weiterhin sperren, wenn spaeter
          eine neue Tabelle ohne cascade hinzukommt. Dann soll dastehen, was los
@@ -14977,7 +15001,7 @@ function AufgabeOverlay({ taskId, currentUser, onClose }) {
   const laden = useCallback(async () => {
     if (!supabase || !isDbId(taskId)) { setLaedt(false); return; }
     const { data, error } = await supabase.from("club_tasks")
-      .select("id,team_id,title,description,due_date,slots_needed,start_time,end_time,erledigt_am,created_by,created_at,teams(name),club_task_signups(membership_id,club_memberships(display_name)),club_task_assignees(membership_id,club_memberships(display_name))")
+      .select("id,team_id,title,description,due_date,slots_needed,start_time,end_time,erledigt_am,created_by,created_at,teams(name),club_task_signups(membership_id,club_memberships(display_name)),club_task_assignees(membership_id,gast_name,club_memberships(display_name))")
       .eq("id", taskId).maybeSingle();
     setLaedt(false);
     if (error) { setFehler(t("auf.ladenFehler")); return; }
@@ -14998,6 +15022,7 @@ function AufgabeOverlay({ taskId, currentUser, onClose }) {
 
   const namen = (e) => {
     const m = Array.isArray(e.club_memberships) ? e.club_memberships[0] : e.club_memberships;
+    if (!e.membership_id && e.gast_name) return { membershipId: GAST_PRAEFIX + e.gast_name, name: e.gast_name };
     return { membershipId: e.membership_id, name: m?.display_name || "—" };
   };
   const verantwortliche = (aufgabe?.club_task_assignees || []).map(namen);
@@ -16488,7 +16513,7 @@ export default function ClubMemberOrganisationApp() {
       supabase.from("poll_options").select("id,poll_id,label,position,legacy_votes").eq("club_id", clubId),
       supabase.from("poll_votes").select("poll_id,option_id,profile_id").eq("club_id", clubId),
       supabase.from("season_votes").select("voter_profile_id,candidate_membership_id").eq("club_id", clubId).eq("season", SAISON_KENNUNG),
-      supabase.from("duty_assignments").select("event_id,station,membership_id").eq("club_id", clubId),
+      supabase.from("duty_assignments").select("event_id,station,membership_id,gast_name").eq("club_id", clubId),
       supabase.from("protocols").select("id,title,meeting_date,raw_text,attendee_membership_ids,oeffentlich,created_at,created_by").eq("club_id", clubId).order("meeting_date", { ascending: false }),
       supabase.from("protocol_tasks").select("id,protocol_id,text,assignee_membership_id,due_date,done").eq("club_id", clubId),
       supabase.from("club_settings").select("maintenance_mode,welcome_automation,billing_automation,punkte_ziel,punkte_praemie").eq("club_id", clubId).maybeSingle(),
@@ -16538,7 +16563,10 @@ export default function ClubMemberOrganisationApp() {
     saisonStandLaden(clubId);
 
     const dienstBlock = {};
-    for (const d of dienste.data || []) ((dienstBlock[d.event_id] ||= {})[d.station] ||= []).push(d.membership_id);
+    /* Entweder eine Mitgliedschaft oder ein Gastname - die Datenbank laesst
+       per Bedingung nie beides zu. */
+    for (const d of dienste.data || []) ((dienstBlock[d.event_id] ||= {})[d.station] ||= [])
+      .push(d.membership_id || (d.gast_name ? GAST_PRAEFIX + d.gast_name : null));
     setDutyPlan(dienstBlock);
 
     const aufgabenJeProtokoll = {};
@@ -16760,49 +16788,25 @@ export default function ClubMemberOrganisationApp() {
     return {};
   };
 
-  /* Eine Person ohne App-Konto anlegen - fuer Helferstationen und
-     Vereinsaufgaben. Sie bekommt eine gewoehnliche Mitgliedschaft mit der
-     Rolle "mitglied" und dem Kennzeichen is_managed_profile; dadurch traegt
-     sie eine membership_id und passt in duty_assignments und
-     club_task_assignees, ohne dass dort eine zweite Art von Eintrag noetig
-     waere. Die Datenbank laesst das nur fuer Vereinsadministration und
-     Organisation zu (person_ohne_konto_anlegen, 20260927190000); die App
-     reicht den Handgriff deshalb nur an diese Rollen weiter.
-     Die neue Person kommt sofort in die oertliche Liste - sonst stuende sie
-     nach dem Anlegen nicht in der Auswahl, aus der sie gerade gewaehlt
-     werden soll. */
-  const personOhneKontoAnlegen = async (name) => {
-    const sauber = String(name || "").trim();
-    if (!sauber || !currentUser?.clubId) return null;
-    /* Im Demo-Betrieb gibt es keine Datenbank. Ohne diesen Zweig liefe der
-       Knopf dort in eine Fehlermeldung - und genau dort wird die App
-       vorgefuehrt und fuer die Anleitung abgelichtet. */
-    let data = `person-${Date.now()}`;
-    if (supabase) {
-      const { data: angelegt, error } = await supabase.rpc("person_ohne_konto_anlegen", {
-        target_club: currentUser.clubId, person_name: sauber });
-      if (error || !angelegt) { console.error("person_ohne_konto_anlegen", error?.message); return null; }
-      data = angelegt;
-    }
-    setMembers((alle) => [...alle, {
-      id: data, clubId: currentUser.clubId, name: sauber, email: "", team: "",
-      since: new Date().getFullYear(), roles: ["mitglied"], color: AVATAR_FARBEN[4],
-      points: 0, tippPoints: 0, badges: [], birthdate: "",
-      status: "active", mitgliedsStatus: "active",
-      accountPending: true, verwaltetesProfil: true,
-    }]);
-    return data;
-  };
   const dienstSetzen = async (eventId, station, mitgliedsId, eintragen) => {
-    if (!supabase || typeof eventId !== "string" || !isDbId(mitgliedsId)) return;
+    if (!supabase || typeof eventId !== "string") return;
+    /* Ein Gast wird ueber seinen Namen angesprochen, ein Mitglied ueber die
+       Kennung - sonst dieselbe Zeile in derselben Tabelle. */
+    const gast = istGast(mitgliedsId);
+    if (!gast && !isDbId(mitgliedsId)) return;
     /* Genau hier ging bisher am meisten verloren: Ein Trainer, der jemand
        anderen einteilt, darf das laut Sicherheitsregel nicht - die eigene Zeile
        ja, fremde nur die Vereinsleitung. Die Ansicht zeigte den Namen trotzdem
        an, und nach dem naechsten Start war er weg. */
     const { error } = eintragen
-      ? await supabase.from("duty_assignments").insert({ event_id: eventId, station, membership_id: mitgliedsId })
-      : await supabase.from("duty_assignments").delete()
-          .eq("event_id", eventId).eq("station", station).eq("membership_id", mitgliedsId);
+      ? await supabase.from("duty_assignments").insert(gast
+          ? { event_id: eventId, station, gast_name: gastName(mitgliedsId) }
+          : { event_id: eventId, station, membership_id: mitgliedsId })
+      : await (gast
+          ? supabase.from("duty_assignments").delete()
+              .eq("event_id", eventId).eq("station", station).eq("gast_name", gastName(mitgliedsId))
+          : supabase.from("duty_assignments").delete()
+              .eq("event_id", eventId).eq("station", station).eq("membership_id", mitgliedsId));
     if (error) {
       setSchreibFehler(eintragen
         ? t("help.einteilungSpeichernFehler")
@@ -18350,8 +18354,8 @@ export default function ClubMemberOrganisationApp() {
                 {subView === "ergebnisse" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("sub.ergebnisse")}><ErgebnisseView events={events} results={tippResults} currentUser={currentUser} favorit={startseiteWahl} fokusId={ergebnisFokus} onFokusErledigt={setErgebnisFokus} onSpeichern={saveTippResult} onEntfernen={deleteTippResult} mitPunkten={featureEnabled("tippspiel")} /></LockedFeature>}
                 {subView === "tipp" && featureEnabled("tippspiel") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("sub.tipp")}><TippView members={clubMembers} currentUser={currentUser} events={events} tippPredictions={tippPredictions} setTippPredictions={setTippPredictions} tippResults={tippResults} onTippSpeichern={tippSpeichern} onZurueck={() => setSubView(null)} /></LockedFeature>}
                 {subView === "postfach" && <PostfachView eintraege={postfach} laedt={postfachLaedt} onGelesen={postfachGelesen} onAlleLoeschen={postfachAlleLoeschen} onLoeschen={postfachLoeschen} onOeffnen={meldungAntippen} kannOeffnen={meldungOeffenbar}/>}
-                {subView === "duty" && featureEnabled("duty_roster") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("sub.duty")}><DutyView onPersonAnlegen={darfVereinVerwalten(currentUser) ? personOhneKontoAnlegen : null} members={clubMembers} currentUser={currentUser} events={sichtbareTermine} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={dienstSetzen} /></LockedFeature>}
-                {subView === "tasks" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("auf.titel")}><TasksView currentUser={currentUser} members={clubMembers} onPersonAnlegen={darfVereinVerwalten(currentUser) ? personOhneKontoAnlegen : null} /></LockedFeature>}
+                {subView === "duty" && featureEnabled("duty_roster") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("sub.duty")}><DutyView gastErlaubt={darfVereinVerwalten(currentUser)} members={clubMembers} currentUser={currentUser} events={sichtbareTermine} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={dienstSetzen} /></LockedFeature>}
+                {subView === "tasks" && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("auf.titel")}><TasksView currentUser={currentUser} members={clubMembers} gastErlaubt={darfVereinVerwalten(currentUser)} /></LockedFeature>}
                 {subView === "vehicles" && featureEnabled("vehicle_booking") && !istNurFan(currentUser) && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("sport.vehi.vereinsfahrzeuge")}><VehiclesView currentUser={currentUser} currentClub={currentClub} /></LockedFeature>}
 
                 {!subView && tab === "home" && (
@@ -18364,7 +18368,7 @@ export default function ClubMemberOrganisationApp() {
                     mannschaften={startseiteAuswahl} gewaehlteMannschaft={startseiteWahl} onMannschaftWechsel={setStartseiteTeam} />
                 )}
                 {!subView && tab === "events" && (
-                  <EventsView onNeuLaden={datenNeuLaden} currentUser={currentUser} members={clubMembers} onPersonAnlegen={darfVereinVerwalten(currentUser) ? personOhneKontoAnlegen : null} events={sichtbareTermine} setEvents={setEvents} carpools={carpools} setCarpools={setCarpools}
+                  <EventsView onNeuLaden={datenNeuLaden} currentUser={currentUser} members={clubMembers} gastErlaubt={darfVereinVerwalten(currentUser)} events={sichtbareTermine} setEvents={setEvents} carpools={carpools} setCarpools={setCarpools}
                     dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={dienstSetzen} entitlement={entitlement} goSubscribe={goSubscribe}
                     werbeplaetze={werbeplaetze} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick}
                     focusRequest={eventFocusRequest} onFocusApplied={()=>setEventFocusRequest(null)}
@@ -18380,7 +18384,7 @@ export default function ClubMemberOrganisationApp() {
                     Hier fehlte der dritte Teil - ein reiner Organisator sah
                     den Reiter also in der Leiste und darunter eine leere
                     Seite. */}
-                {!subView && tab === "support" && !!currentUser && !istNurFan(currentUser) && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("nav.support")}><SupportView onPersonAnlegen={darfVereinVerwalten(currentUser) ? personOhneKontoAnlegen : null} currentUser={currentUser} members={clubMembers} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={dienstSetzen} dutyOn={featureEnabled("duty_roster")} bereichWunsch={supportBereich} onBereichUebernommen={() => setSupportBereich(null)} currentClub={currentClub} goVerwaltung={goVerwaltung} goFahrzeuge={() => setSubView("vehicles")} goTermin={(id) => { setSubView(null); setEventFocusRequest({ team: "alle", eventId: id, requestedAt: Date.now() }); setTab("events"); }} /></LockedFeature>}
+                {!subView && tab === "support" && !!currentUser && !istNurFan(currentUser) && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("nav.support")}><SupportView gastErlaubt={darfVereinVerwalten(currentUser)} currentUser={currentUser} members={clubMembers} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={dienstSetzen} dutyOn={featureEnabled("duty_roster")} bereichWunsch={supportBereich} onBereichUebernommen={() => setSupportBereich(null)} currentClub={currentClub} goVerwaltung={goVerwaltung} goFahrzeuge={() => setSubView("vehicles")} goTermin={(id) => { setSubView(null); setEventFocusRequest({ team: "alle", eventId: id, requestedAt: Date.now() }); setTab("events"); }} /></LockedFeature>}
                 {!subView && tab === "admin" && (currentUserIsAdmin || currentUserCanEditSponsors || canManageDuty(currentUser)) && (
                   <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("sys.verwaltung")}>
                   <AdminView bereichWunsch={verwaltungsBereich} onBereichUebernommen={() => setVerwaltungsBereich(null)}
