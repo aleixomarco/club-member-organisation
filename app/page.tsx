@@ -9720,6 +9720,14 @@ function DutyTemplatesPanel({ currentUser, sport }) {
   /* Je Satz die Platzzahl, mit der die naechste Station angelegt wird. */
   const [newItemPlaetze, setNewItemPlaetze] = useState({});
   const [expandedId, setExpandedId] = useState(null);
+  /* Der Entwurf des aufgeklappten Sets. Vorher schrieb JEDE Auswahl im
+     Platz-Auswahlfeld sofort in die Datenbank - dann gibt es keinen Moment,
+     an dem eine Rueckfrage "nach der Speicherung aendert sich auch ..."
+     erscheinen koennte; sie kaeme bei jedem einzelnen Handgriff. Mit einem
+     Entwurf gibt es genau einen solchen Moment. */
+  const [entwurf, setEntwurf] = useState(null);
+  const [nutzung, setNutzung] = useState(null);
+  const [speichert, setSpeichert] = useState(false);
   const [message, setMessage] = useState("");
   const [messageOk, setMessageOk] = useState(false);
 
@@ -9751,27 +9759,51 @@ function DutyTemplatesPanel({ currentUser, sport }) {
     if (error) { setMessage(t("help.satzNichtGeloescht")); setMessageOk(false); return; }
     await loadTemplates();
   };
-  const addItem = async (templateId) => {
+  /* Alles am Entwurf, nichts an der Datenbank - bis auf Speichern. */
+  const addItem = (templateId) => {
     const title = (newItemTitles[templateId] || "").trim();
-    if (!title) return;
-    const template = templates.find((s) => s.id === templateId);
-    const nextOrder = template?.items.length || 0;
-    const plaetze = newItemPlaetze[templateId] || STATION_CAP;
-    const { error } = await supabase.from("duty_task_template_items").insert({ template_id: templateId, title, sort_order: nextOrder, plaetze });
-    if (error) { setMessage(t("help.stationHinzufuegenFehler")); setMessageOk(false); return; }
+    if (!title || !entwurf) return;
+    if (entwurf.some((i) => i.title.toLowerCase() === title.toLowerCase())) {
+      setMessage(t("help.stationDoppelt")); setMessageOk(false); return;
+    }
+    setEntwurf([...entwurf, { title, plaetze: newItemPlaetze[templateId] || STATION_CAP }]);
     setNewItemTitles((all) => ({ ...all, [templateId]: "" }));
     setNewItemPlaetze((all) => ({ ...all, [templateId]: STATION_CAP }));
-    await loadTemplates();
   };
-  /* Die Platzzahl einer Station im Satz. Sie wirkt erst beim naechsten
-     Anwenden - Termine, die den Satz schon aufgelegt haben, behalten ihre
-     eigene Zahl. */
-  const plaetzeAendern = async (itemId, plaetze) => {
-    const { error } = await supabase.from("duty_task_template_items").update({ plaetze }).eq("id", itemId).select("id");
-    if (error) { setMessage(t("help.plaetzeFehler")); setMessageOk(false); return; }
-    await loadTemplates();
+  const plaetzeAendern = (index, plaetze) =>
+    setEntwurf((e) => (e || []).map((i, n) => (n === index ? { ...i, plaetze } : i)));
+  const removeItem = (index) => setEntwurf((e) => (e || []).filter((_, n) => n !== index));
+
+  /* Hat sich ueberhaupt etwas geaendert? Sonst stuende "Speichern" bereit fuer
+     einen Abgleich, der nichts tut - und die Rueckfrage erschiene grundlos. */
+  const entwurfGeaendert = (satz) => {
+    if (!entwurf) return false;
+    const alt = satz.items.map((i) => `${i.title}:${i.plaetze || STATION_CAP}`).join("|");
+    const neu = entwurf.map((i) => `${i.title}:${i.plaetze}`).join("|");
+    return alt !== neu;
   };
-  const removeItem = async (itemId) => { const { error } = await supabase.from("duty_task_template_items").delete().eq("id", itemId); if (!error) await loadTemplates(); };
+
+  const setSpeichern = async (satz) => {
+    if (!entwurf) return;
+    setSpeichert(true); setMessage("");
+    /* Frisch abfragen statt der Zahl vom Aufklappen zu vertrauen: In der
+       Zwischenzeit kann jemand anders das Set an einem Spieltag angewendet
+       haben. */
+    const { data: jetzt } = await supabase.rpc("helferset_nutzung", { target_template: satz.id });
+    const spiele = Number(jetzt?.spiele || 0);
+    if (spiele > 0 && !window.confirm(t("help.setWarnung"))) { setSpeichert(false); return; }
+    const { data, error } = await supabase.rpc("helferset_speichern", {
+      target_template: satz.id, posten: entwurf.map((i) => ({ title: i.title, plaetze: i.plaetze })) });
+    if (error) { setMessage(t("help.setSpeichernFehler")); setMessageOk(false); setSpeichert(false); return; }
+    await loadTemplates();
+    setNutzung(jetzt || null);
+    setMessage(OK_ZEICHEN + mitWerten(t("help.setGespeichert"), {
+      spiele: Number(data?.spiele || 0), neu: Number(data?.stationen_neu || 0),
+      geaendert: Number(data?.plaetze_geaendert || 0), entfernt: Number(data?.stationen_entfernt || 0),
+    }) + (Number(data?.stationen_behalten || 0) > 0
+      ? " " + mitWerten(t("help.setBehalten"), { anzahl: Number(data.stationen_behalten) }) : ""));
+    setMessageOk(true); setSpeichert(false);
+  };
 
   if (!supabase) return <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{t("help.saetzeNurEcht").replace("{begriff}", t(cfg.dutyTabLabel))}.</div>;
   if (loading) return <div className="text-xs py-4" style={{ color: C.textDim }}>{t("help.saetzeLaden").replace("{begriff}", t(cfg.dutyTabLabel))}</div>;
@@ -9796,7 +9828,14 @@ function DutyTemplatesPanel({ currentUser, sport }) {
         const open = expandedId === satz.id;
         return (
           <div key={satz.id} className="rounded-2xl mb-2.5 overflow-hidden" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
-            <button className="w-full text-left p-3.5 flex items-center justify-between" aria-expanded={open} onClick={() => setExpandedId(open ? null : satz.id)}>
+            <button className="w-full text-left p-3.5 flex items-center justify-between" aria-expanded={open} onClick={async () => {
+                if (open) { setExpandedId(null); setEntwurf(null); setNutzung(null); return; }
+                setExpandedId(satz.id);
+                setEntwurf(satz.items.map((i) => ({ title: i.title, plaetze: i.plaetze || STATION_CAP })));
+                setNutzung(null);
+                const { data } = await supabase.rpc("helferset_nutzung", { target_template: satz.id });
+                setNutzung(data || null);
+              }}>
               <div>
                 <div className="text-sm font-bold" style={{ color: C.ink }}>{satz.name}</div>
                 <div className="text-[10px]" style={{ color: C.textDim }}>{satz.items.length === 1 ? t("help.stationAnzahlEins") : mitWerten(t("help.stationAnzahlMehr"), { anzahl: satz.items.length })}</div>
@@ -9805,16 +9844,25 @@ function DutyTemplatesPanel({ currentUser, sport }) {
             </button>
             {open && (
               <div className="px-3.5 pb-3.5">
-                {satz.items.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 mb-1.5" style={{ background: C.paperDim }}>
+                {/* Die Zahl steht hier und nicht erst im Warnfenster: Wer weiss,
+                    dass zehn Spieltage daranhaengen, geht anders an die
+                    Aenderung heran - und wird nicht erst beim Speichern
+                    ueberrascht. */}
+                {Number(nutzung?.spiele || 0) > 0 && (
+                  <div className="text-[11px] rounded-lg px-2.5 py-2 mb-2" style={{ background: C.paperDim, color: C.textDim }}>
+                    {mitWerten(t("help.setWirdBenutzt"), { anzahl: Number(nutzung.spiele) })}
+                  </div>
+                )}
+                {(entwurf || []).map((item, index) => (
+                  <div key={`${item.title}-${index}`} className="flex items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 mb-1.5" style={{ background: C.paperDim }}>
                     <span className="flex-1 min-w-0 text-xs break-words" style={{ color: C.ink }}>{item.title}</span>
-                    <select value={item.plaetze || STATION_CAP} onChange={(e) => plaetzeAendern(item.id, Number(e.target.value))}
+                    <select value={item.plaetze || STATION_CAP} onChange={(e) => plaetzeAendern(index, Number(e.target.value))}
                       aria-label={mitWerten(t("help.plaetzeFuerStation"), { station: item.title })}
                       className="shrink-0 text-[11px] px-1.5 py-1 rounded-lg outline-none"
                       style={{ background: C.white, border: `1px solid ${C.line}`, color: C.ink }}>
                       {PLATZ_ZAHLEN.map((n) => <option key={n} value={n}>{n}</option>)}
                     </select>
-                    <button onClick={() => removeItem(item.id)} className="shrink-0 text-[10px] font-bold" style={{ color: C.red }}>{t("allg.entfernen")}</button>
+                    <button onClick={() => removeItem(index)} className="shrink-0 text-[10px] font-bold" style={{ color: C.red }}>{t("allg.entfernen")}</button>
                   </div>
                 ))}
                 <div className="flex gap-2 mt-2">
@@ -9827,6 +9875,19 @@ function DutyTemplatesPanel({ currentUser, sport }) {
                     {PLATZ_ZAHLEN.map((n) => <option key={n} value={n}>{n}</option>)}
                   </select>
                   <button onClick={() => addItem(satz.id)} disabled={!(newItemTitles[satz.id] || "").trim()} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: (newItemTitles[satz.id] || "").trim() ? C.ink : C.line, color: C.white }}>{t("help.plusStation")}</button>
+                </div>
+                {/* Erst hier wird geschrieben - und nur hier kann die
+                    Rueckfrage stehen. */}
+                <div className="flex gap-2 mt-3">
+                  <button onClick={() => setSpeichern(satz)} disabled={speichert || !entwurfGeaendert(satz)}
+                    className="flex-1 py-2.5 rounded-xl text-xs font-bold"
+                    style={{ background: entwurfGeaendert(satz) && !speichert ? C.ink : C.line, color: C.white }}>
+                    {speichert ? t("allg.wirdGespeichert") : t("allg.speichern")}
+                  </button>
+                  <button onClick={() => setEntwurf(satz.items.map((i) => ({ title: i.title, plaetze: i.plaetze || STATION_CAP })))}
+                    disabled={!entwurfGeaendert(satz)}
+                    className="px-4 py-2.5 rounded-xl text-xs font-bold"
+                    style={{ background: C.paperDim, color: C.textDim }}>{t("allg.verwerfen")}</button>
                 </div>
                 <button onClick={() => deleteTemplate(satz.id)} className="w-full mt-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.paperDim, color: C.red }}>{t("helf.satzLoeschen")}</button>
                 <Erstellt von={satz.erstelltVon} am={satz.erstelltAm} />
