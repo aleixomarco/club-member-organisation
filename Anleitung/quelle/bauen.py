@@ -20,6 +20,7 @@ FARBEN = {
  "mitglied": "#B3261E", "trainer": "#1E6B3A", "vereinsadmin": "#7A2E86",
  "organisator": "#8A5A00", "sponsoren": "#0F5F86", "redaktion": "#A03A6B",
  "eltern": "#2F5AA8", "betreiber": "#2A2028", "fan": "#4A5568",
+ "kapitaen": "#8C3B2E", "teammanager": "#1F6F6B", "athlet": "#5B3FA0",
 }
 
 BILDER = {
@@ -53,6 +54,15 @@ BILDER = {
  ("vereinsadmin","Logo und Farben einstellen"): "30-vereinsprofil",
  ("vereinsadmin","Funktionen ein- und ausschalten"): "29-funktionen",
  ("organisator","Termine anlegen"): "27-termin-anlegen",
+ ("kapitaen","Was du in deiner Mannschaft darfst"): "33-team-detail",
+ ("kapitaen","Wo die Grenze ist"): "29-funktionen",
+ ("kapitaen","Der Strafenkatalog"): "26-strafenkatalog",
+ ("teammanager","Was du in deiner Mannschaft darfst"): "33-team-detail",
+ ("teammanager","Den Kader zusammenstellen"): "33-team-detail",
+ ("teammanager","Athlet/in ohne eigenes Konto"): "33-team-detail",
+ ("athlet","Deine Mannschaft"): "05-teams",
+ ("athlet","Mannschaftskanal und Strafenkatalog"): "26-strafenkatalog",
+ ("athlet","Athlet/in der Saison"): "24-athlet",
  ("organisator","Termine absagen und löschen"): "40-training-absagen",
  ("organisator","Stationen am Termin pflegen"): "04-termin-detail",
  ("organisator","Helfer einteilen"): "32-helferplanung-verwaltung",
@@ -90,7 +100,7 @@ QUER = {"13-betreiber-vereine", "14-betreiber-anzeigen", "15-betreiber-kpi"}
 # zusammen: Beide arbeiten im selben Reiter, und wer das eine tut, tut in
 # aller Regel auch das andere.
 AUSGABEN = [
- {"datei": "CMO-Anleitung", "rollen": ["mitglied","trainer","vereinsadmin","organisator","sponsoren","redaktion","eltern","fan"],
+ {"datei": "CMO-Anleitung", "rollen": ["mitglied","athlet","trainer","kapitaen","teammanager","vereinsadmin","organisator","sponsoren","redaktion","eltern","fan"],
   "titel": "Die Vereins-App<br><span>von A bis Z</span>",
   "unter": "Einführung und Anleitung für alle Rollen —<br>vom Mitglied bis zur Vereinsleitung.",
   "kopf": "Anleitung"},
@@ -102,10 +112,26 @@ AUSGABEN = [
   "titel": "Handbuch<br><span>für Trainer/innen</span>",
   "unter": "Für Trainer/innen, Kapitäne und Teammanager —<br>alles, was deine Mannschaft betrifft.",
   "kopf": "Handbuch Trainer/innen"},
- {"datei": "CMO-Handbuch-Vereinsleitung", "rollen": ["mitglied","vereinsadmin","organisator"],
+ {"datei": "CMO-Handbuch-Vereinsadmin", "rollen": ["mitglied","vereinsadmin"],
   "titel": "Handbuch<br><span>für die Vereinsleitung</span>",
   "unter": "Vereinsadministration und Organisation —<br>alles, was den Verein am Laufen hält.",
   "kopf": "Handbuch Vereinsleitung"},
+ {"datei": "CMO-Handbuch-Organisator", "rollen": ["mitglied","organisator"],
+  "titel": "Handbuch<br><span>für die Organisation</span>",
+  "unter": "Helferdienste, Aufgaben und Fahrzeuge —<br>alles, was einen Spieltag am Laufen hält.",
+  "kopf": "Handbuch Organisation"},
+ {"datei": "CMO-Handbuch-Kapitaen", "rollen": ["mitglied","athlet","kapitaen"],
+  "titel": "Handbuch<br><span>für Kapitän/innen</span>",
+  "unter": "Fast alles, was Trainer/innen dürfen —<br>und wo die Grenze verläuft.",
+  "kopf": "Handbuch Kapitän/innen"},
+ {"datei": "CMO-Handbuch-Teammanager", "rollen": ["mitglied","athlet","teammanager"],
+  "titel": "Handbuch<br><span>für Teammanager/innen</span>",
+  "unter": "Den Kader führen — und als Einzige außerhalb<br>der Leitung Athlet/innen zuordnen.",
+  "kopf": "Handbuch Teammanager/innen"},
+ {"datei": "CMO-Handbuch-Athlet", "rollen": ["mitglied","athlet"],
+  "titel": "Handbuch<br><span>für Athlet/innen</span>",
+  "unter": "Was zum Mitglied dazukommt, sobald du<br>einer Mannschaft angehörst.",
+  "kopf": "Handbuch Athlet/innen"},
  {"datei": "CMO-Handbuch-Sponsoren", "rollen": ["mitglied","sponsoren"],
   "titel": "Handbuch<br><span>für die Sponsorenbetreuung</span>",
   "unter": "Werbeplätze, Sponsoren und die Zahlen,<br>die du deinem Sponsor gibst.",
@@ -301,7 +327,7 @@ def bauen(ausgabe):
   <div class="eyebrow">Übersicht</div>
   <h2 class="inh-h2">Inhalt</h2>
   <p class="inh-hilfe">Jede Zeile ist ein Sprung. Zurück kommst du oben rechts auf jeder Seite.</p>
-  <div class="inh-spalten{" eins" if themen_gesamt + rollen_gesamt <= 10 else " zwei" if themen_gesamt + rollen_gesamt <= 26 else " voll" if themen_gesamt + rollen_gesamt > 70 else ""}">{''.join(zeilen)}</div>
+  <div class="inh-spalten{" eins" if themen_gesamt + rollen_gesamt <= 10 else " zwei" if themen_gesamt + rollen_gesamt <= 26 else " voll sehrvoll" if themen_gesamt + rollen_gesamt > 85 else " voll" if themen_gesamt + rollen_gesamt > 70 else ""}">{''.join(zeilen)}</div>
 </section>
 """)
 
@@ -464,6 +490,14 @@ p { font-size: 10.5pt; line-height: 1.55; color: #4A424A; margin: 0; }
 .inh-spalten.voll .inh-rolle { margin: 3.2mm 0 1.4mm; }
 .inh-spalten.voll .inh-nr { font-size: 9.5pt; }
 .inh-spalten.voll .inh-zeile { padding-top: 0.6mm; padding-bottom: 0.6mm; }
+/* Und noch eine Stufe enger, ab etwa fuenfundachtzig Eintraegen: Mit elf
+   Kapiteln lief das Verzeichnis erneut aus der Seite, gemessen 30 Punkt.
+   Vier Spalten statt drei bringen mehr als weiteres Schrumpfen - die Zeilen
+   sind kurz, die Spalten dagegen breit. */
+.inh-spalten.sehrvoll { column-count: 4; column-gap: 7mm; font-size: 7.4pt; }
+.inh-spalten.sehrvoll .inh-rolle { margin: 2.6mm 0 1.1mm; padding-bottom: 0.9mm; }
+.inh-spalten.sehrvoll .inh-nr { font-size: 8.5pt; }
+.inh-spalten.sehrvoll .inh-zeile { padding-top: 0.45mm; padding-bottom: 0.45mm; }
 .inh-spalten.zwei .inh-zeile { padding-top: 1.2mm; padding-bottom: 1.2mm; }
 .inh-rolle { break-inside: avoid; display: flex; align-items: baseline; gap: 2.5mm; margin: 5mm 0 2mm;
              border-bottom: 1.5px solid var(--f); padding-bottom: 1.2mm; }

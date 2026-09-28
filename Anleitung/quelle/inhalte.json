@@ -503,7 +503,7 @@
     "hinweis": "Ein Vereinsevent sagt nur der Vereinsadmin ab."
    },
    {
-    "titel": "Sätze und Stationen anlegen",
+    "titel": "Helfersets und Stationen anlegen",
     "wo": "Reiter \"Verwaltung\" unten > Knopf \"Helferdienst-Sätze\"",
     "punkte": [
      "Den Reiter \"Verwaltung\" siehst du wegen deiner Rolle, dort aber nur deine Bereiche.",
@@ -978,6 +978,135 @@
     ],
     "hinweis": "Die Stufe ist immer genau eine von beiden. Mitglied und Fan zugleich gibt es nicht.",
     "bildschirm": "Anmeldung / Meine Vereine"
+   }
+  ]
+ },
+ {
+  "key": "kapitaen",
+  "rolle": "Kapitän/in",
+  "einleitung": "Als Kapitän oder Kapitänin führst du die Mannschaft auf dem Feld – und in der App fast alles, was auch die Trainer/innen dürfen. Dieses Heft sagt dir, was das ist und wo die Grenze verläuft.",
+  "abschnitte": [
+   {
+    "titel": "Was du in deiner Mannschaft darfst",
+    "wo": "Untere Leiste > Teams > deine Mannschaft",
+    "punkte": [
+     "Termine deiner Mannschaft anlegen – Training, Spiel oder Veranstaltung.",
+     "Termine absagen und löschen, mit Grund für alle sichtbar.",
+     "Ergebnisse eintragen, sobald ein Spiel vorbei ist.",
+     "Den Kader sehen und im Mannschaftskanal schreiben."
+    ],
+    "hinweis": "Die Bestimmung zur Kapitänin oder zum Kapitän nimmt der Trainer vor. Du bekommst sie zugeteilt, du wählst sie nicht.",
+    "bildschirm": "Teams > Herren 1"
+   },
+   {
+    "titel": "Wo die Grenze ist",
+    "wo": "Fällt auf, sobald man danach sucht",
+    "punkte": [
+     "Den Trainerbereich im Profil gibt es für dich nicht – der bleibt den Trainer/innen vorbehalten.",
+     "Athlet/innen einer Mannschaft zuordnen darf nur der Teammanager oder die Vereinsleitung.",
+     "Rollen vergeben, Mitglieder aufnehmen, den Verein einstellen: alles Vereinsleitung.",
+     "Helferdienste einteilen macht die Organisation, nicht die Mannschaftsführung."
+    ],
+    "hinweis": "Alles Übrige in diesem Heft gilt für dich genauso wie für Trainer/innen. Wo in der App „Trainer/in“ steht, bist du meist mitgemeint.",
+    "bildschirm": "Verwaltung > Funktionen"
+   },
+   {
+    "titel": "Der Strafenkatalog",
+    "wo": "Profil > Einstellungen > Strafenkatalog",
+    "punkte": [
+     "Du siehst, was welche Strafe kostet, und die offenen Beträge deiner Mannschaft.",
+     "Oben wählst du die Mannschaft – aufgeführt sind nur Erwachsenenmannschaften.",
+     "Der Trainer kann den Katalog für die Mannschaft ganz ausblenden.",
+     "Eintragen und abhaken dürfen die Verantwortlichen der Mannschaft."
+    ],
+    "hinweis": "Ohne die Rolle Athlet/in und ohne Mannschaft gibt es die Kachel gar nicht.",
+    "bildschirm": "Profil > Strafenkatalog"
+   }
+  ]
+ },
+ {
+  "key": "teammanager",
+  "rolle": "Teammanager/in",
+  "einleitung": "Als Teammanager/in führst du den Kader. Du darfst bei deiner Mannschaft dasselbe wie die Trainer/innen – und eine Sache mehr, die sonst niemand außerhalb der Vereinsleitung darf.",
+  "abschnitte": [
+   {
+    "titel": "Was du in deiner Mannschaft darfst",
+    "wo": "Untere Leiste > Teams > deine Mannschaft",
+    "punkte": [
+     "Termine anlegen, absagen und löschen.",
+     "Ergebnisse eintragen.",
+     "Den Kader sehen und im Mannschaftskanal schreiben.",
+     "Den Strafenkatalog der Mannschaft führen."
+    ],
+    "hinweis": "Den Trainerbereich im Profil gibt es für dich nicht – der bleibt den Trainer/innen vorbehalten.",
+    "bildschirm": "Teams > Herren 1"
+   },
+   {
+    "titel": "Den Kader zusammenstellen",
+    "wo": "Teams > Mannschaft > Kader > „＋ Zuweisen“",
+    "punkte": [
+     "Du ordnest Athlet/innen deiner Mannschaft zu – das darf außer dir nur die Vereinsleitung.",
+     "Zuordnen kannst du nur zu deinen EIGENEN Mannschaften, nicht zu fremden.",
+     "Eine Person passt in höchstens drei Mannschaften.",
+     "Zuordnen lässt sich nur, wer die Rolle Athlet/in trägt – die vergibt die Vereinsleitung."
+    ],
+    "hinweis": "Versuchst du eine fremde Mannschaft, weist die App es ab. Das ist keine Panne, sondern die Grenze deiner Rolle.",
+    "bildschirm": "Teams > Herren 1"
+   },
+   {
+    "titel": "Athlet/in ohne eigenes Konto",
+    "wo": "Teams > Mannschaft > Kader > „Spieler/in ohne Konto anlegen“",
+    "punkte": [
+     "Für Athlet/innen ohne eigenes Handy oder Konto – typisch bei Kindermannschaften.",
+     "Vorname und Nachname reichen; die Person steht danach im Kader wie jede andere.",
+     "Sie bekommt keine Anmeldung, keine Mitteilungen und zählt nicht ins Abo des Vereins.",
+     "Später lässt sich daraus ein richtiges Konto machen – das macht die Vereinsleitung."
+    ],
+    "hinweis": "Seit dem 28.09.2026 darfst du das. Vorher zeigte die App dir den Knopf, die Datenbank wies dich ab.",
+    "bildschirm": "Teams > Herren 1"
+   }
+  ]
+ },
+ {
+  "key": "athlet",
+  "rolle": "Athlet/in",
+  "einleitung": "„Athlet/in“ ist keine dritte Wahl neben Mitglied und Fan, sondern kommt als Zusatzrolle obendrauf – vergeben von der Vereinsleitung, nie von dir selbst. Dieses Heft beschreibt nur, was dadurch dazukommt. Alles Übrige steht im Handbuch für Mitglieder.",
+  "abschnitte": [
+   {
+    "titel": "Deine Mannschaft",
+    "wo": "Untere Leiste > Teams",
+    "punkte": [
+     "Erst als Athlet/in gehörst du überhaupt einer Mannschaft an – das ist der eigentliche Unterschied.",
+     "Unter „Teams“ stehen deine Mannschaften zuerst, darunter alle des Vereins.",
+     "Du passt in höchstens drei Mannschaften.",
+     "Zuordnen können dich Trainer, Teammanager oder die Vereinsleitung – nicht du selbst."
+    ],
+    "hinweis": "Ohne Mannschaft steht dort „Kein Team als Athlet“. Das ist kein Fehler, sondern heißt: Dich hat noch niemand zugeordnet.",
+    "bildschirm": "Teams"
+   },
+   {
+    "titel": "Mannschaftskanal und Strafenkatalog",
+    "wo": "Chat und Profil > Einstellungen",
+    "punkte": [
+     "Im Chat siehst du den Kanal deiner Mannschaft – ein reines Mitglied sieht ihn nicht.",
+     "Im Profil öffnest du den Strafenkatalog und siehst, was welche Strafe kostet.",
+     "Aufgeführt sind dort nur Erwachsenenmannschaften.",
+     "Der Trainer kann den Katalog ganz ausblenden."
+    ],
+    "hinweis": "Beides hängt an der Mannschaft, nicht an der Rolle allein: ohne Zuordnung kein Kanal und kein Katalog.",
+    "bildschirm": "Profil > Strafenkatalog"
+   },
+   {
+    "titel": "Athlet/in der Saison",
+    "wo": "Startseite > Athlet/in der Saison",
+    "punkte": [
+     "Gewählt werden kann nur, wer die Rolle Athlet/in trägt – also du.",
+     "Wählen darf dagegen jedes Mitglied des Vereins.",
+     "Die Wahl läuft je Saison; deine Stimme zählt einmal.",
+     "Die Kachel erscheint nur, wenn der Verein die Funktion eingeschaltet hat."
+    ],
+    "hinweis": "Ein Fan kann weder wählen noch gewählt werden.",
+    "bildschirm": "Startseite > Athlet/in der Saison"
    }
   ]
  }
