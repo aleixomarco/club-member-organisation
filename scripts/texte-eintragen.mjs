@@ -28,41 +28,44 @@ if (!dateiPfad) {
    falschen Sprache. Deshalb wird sie unten gegengeprueft. */
 const REIHENFOLGE = ["de", "en", "es", "pt", "it", "tr", "fr"];
 
-const ziel = "lib/sprachen.ts";
-let quelltext = readFileSync(ziel, "utf8");
+/* Seit dem 28.09.2026 liegt nur noch Deutsch in lib/sprachen.ts; die uebrigen
+   sechs Woerterbuecher stehen in lib/sprachen/<code>.ts und werden erst bei
+   Bedarf nachgeladen. Der Anker kommt deshalb in JEDER Datei genau einmal vor,
+   nicht siebenmal in einer. Die Pruefung darauf bleibt streng: Wer sie
+   aufweicht, schreibt Texte irgendwann in die falsche Sprache - genau der
+   Fehler, den dieses Skript verhindern soll. */
 const texte = JSON.parse(readFileSync(dateiPfad, "utf8"));
+const dateiFuer = (code) => (code === "de" ? "lib/sprachen.ts" : `lib/sprachen/${code}.ts`);
+const ankerMuster = new RegExp(`^  "${ankerName.replace(".", "\\.")}": .*,$`, "m");
 
-const anker = new RegExp(`^  "${ankerName.replace(".", "\\.")}": .*,$`, "gm");
-const stellen = [...quelltext.matchAll(anker)];
-if (stellen.length !== REIHENFOLGE.length) {
-  console.error(`Anker "${ankerName}" kommt ${stellen.length}-mal vor, erwartet ${REIHENFOLGE.length}.`);
-  process.exit(1);
-}
-
-/* Gegenprobe der Blockreihenfolge: Der Sprachcode steht in SPRACHEN oben in
-   derselben Reihenfolge, in der die Bloecke folgen. */
-const kopf = quelltext.slice(0, quelltext.indexOf("] as const;"));
-const gefundene = [...kopf.matchAll(/\{ code: "([a-z]{2})"/g)].map((m) => m[1]);
-if (gefundene.join(",") !== REIHENFOLGE.join(",")) {
-  console.error(`Blockreihenfolge weicht ab: ${gefundene.join(",")} statt ${REIHENFOLGE.join(",")}`);
-  process.exit(1);
+/* Erst alles pruefen, dann alles schreiben. Sonst stuenden nach einem Abbruch
+   in der Mitte drei Sprachen mit und vier ohne den neuen Text da. */
+const geplant = [];
+for (const sprache of REIHENFOLGE) {
+  const block = texte[sprache];
+  if (!block) continue;
+  const datei = dateiFuer(sprache);
+  const quelltext = readFileSync(datei, "utf8");
+  const treffer = quelltext.match(ankerMuster);
+  if (!treffer) {
+    console.error(`Anker "${ankerName}" fehlt in ${datei}.`);
+    process.exit(1);
+  }
+  if (quelltext.split("\n").filter((z) => ankerMuster.test(z)).length !== 1) {
+    console.error(`Anker "${ankerName}" kommt in ${datei} mehrfach vor.`);
+    process.exit(1);
+  }
+  geplant.push({ sprache, datei, quelltext, treffer, block });
 }
 
 let eingefuegt = 0;
-/* Von hinten nach vorne, damit die vorderen Fundstellen gueltig bleiben. */
-for (let i = REIHENFOLGE.length - 1; i >= 0; i--) {
-  const sprache = REIHENFOLGE[i];
-  const block = texte[sprache];
-  if (!block) continue;
+for (const { sprache, datei, quelltext, treffer, block } of geplant) {
   const zeilen = Object.entries(block)
     .map(([k, v]) => `\n  ${JSON.stringify(k)}: ${JSON.stringify(v)},`)
     .join("");
-  const stelle = stellen[i];
-  const ende = stelle.index + stelle[0].length;
-  quelltext = quelltext.slice(0, ende) + zeilen + quelltext.slice(ende);
+  const ende = treffer.index + treffer[0].length;
+  writeFileSync(datei, quelltext.slice(0, ende) + zeilen + quelltext.slice(ende));
   eingefuegt += Object.keys(block).length;
-  console.log(`  ${sprache}: ${Object.keys(block).length} Texte`);
+  console.log(`  ${sprache}: ${Object.keys(block).length} Texte -> ${datei}`);
 }
-
-writeFileSync(ziel, quelltext);
 console.log(`${eingefuegt} Texte eingetragen.`);

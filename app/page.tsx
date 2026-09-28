@@ -12,7 +12,7 @@ import {
 , ListFilter, Globe, Download, BarChart3, GripVertical, Navigation
 } from "lucide-react";
 import { ANMELDUNG_MERKEN, isSupabaseConfigured, supabase } from "@/lib/supabase";
-import { SPRACHEN, gespeicherteSprache, spracheMerken, uebersetze } from "@/lib/sprachen";
+import { SPRACHEN, gespeicherteSprache, spracheMerken, uebersetze, spracheLaden } from "@/lib/sprachen";
 import { enablePushNotifications, disablePushNotifications, listenForForegroundMessages, pushTokenAuffrischen, meldungsTippsAbonnieren, zugestellteEntfernen } from "@/lib/firebase-push";
 import { Capacitor } from "@capacitor/core";
 import { legal } from "./legal-shell";
@@ -15515,7 +15515,21 @@ export default function ClubMemberOrganisationApp() {
 
   const [sprache, setSprache] = useState(null);
   useEffect(() => { setSprache(gespeicherteSprache() || ""); }, []);
-  const t = useCallback((schluessel) => uebersetze(sprache || "de", schluessel), [sprache]);
+  /* Das Woerterbuch der gewaehlten Sprache wird nachgeladen - fest dabei ist
+     nur Deutsch (siehe lib/sprachen.ts). Bis es da ist, zeigt uebersetze()
+     den deutschen Text; danach zaehlt sprachStand hoch, und weil keine
+     Komponente dieser Datei gemerkt ist, zeichnet sich der ganze Baum mit dem
+     neuen Woerterbuch neu.
+     Kommt das Woerterbuch nicht an, bleibt es bei Deutsch - unschoen, aber die
+     App laeuft. */
+  const [sprachStand, setSprachStand] = useState(0);
+  useEffect(() => {
+    if (!sprache || sprache === "de") return;
+    let weg = false;
+    spracheLaden(sprache).then((neu) => { if (neu && !weg) setSprachStand((n) => n + 1); });
+    return () => { weg = true; };
+  }, [sprache]);
+  const t = useCallback((schluessel) => uebersetze(sprache || "de", schluessel), [sprache, sprachStand]);
   /* <html lang> folgt der App-Sprache. layout.tsx liefert fest "de" aus -
      ohne diesen Abgleich liest ein Screenreader einen tuerkischen Text mit
      deutscher Aussprache, und die Uebersetzungsfunktion des Browsers haelt

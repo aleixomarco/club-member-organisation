@@ -211,10 +211,20 @@ const VERSAL_DEUTSCH = /[ÄÖÜ]|\b(UND|ODER|DER|DIE|DAS|MEIN|MEINE|DEIN|DEINE|N
  * sagt nichts darueber, ob t("tm.keineAthleten") auf Tuerkisch etwas
  * zurueckgibt. Faellt ein Schluessel durch, liefert uebersetze() das
  * deutsche Wort - unauffaellig, aber falsch. */
+/* Deutsch steht weiter in lib/sprachen.ts - es ist der Rueckfall und deshalb
+   fest eingebunden. Die uebrigen sechs Woerterbuecher liegen seit dem
+   28.09.2026 in lib/sprachen/<code>.ts und werden erst bei Bedarf geladen;
+   dieses Skript muss sie dort suchen, sonst meldet es 1815 Luecken je Sprache
+   und niemand glaubt ihm noch. */
 const woerterbuch = readFileSync("lib/sprachen.ts", "utf8");
 const SPRACHCODES = ["de", "en", "es", "pt", "it", "tr", "fr"];
 const lies = (code) => {
-  const block = woerterbuch.match(new RegExp(`const ${code}: Woerterbuch = \\{([\\s\\S]*?)\\n\\};`));
+  const quelle = code === "de"
+    ? woerterbuch
+    : readFileSync(`lib/sprachen/${code}.ts`, "utf8");
+  const block = code === "de"
+    ? quelle.match(new RegExp(`const de: Woerterbuch = \\{([\\s\\S]*?)\\n\\};`))
+    : quelle.match(/const woerter: Record<string, string> = \{([\s\S]*?)\n\};/);
   const eintraege = new Map();
   if (!block) return eintraege;
   for (const [, k, v] of block[1].matchAll(/^\s*"([a-zA-Z0-9._]+)":\s*("(?:[^"\\]|\\.)*")/gm)) {

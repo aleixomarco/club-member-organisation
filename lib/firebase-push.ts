@@ -1,8 +1,44 @@
-import { initializeApp, getApps } from "firebase/app";
-import { getMessaging, getToken, isSupported } from "firebase/messaging";
+/* Firebase wird NACHGELADEN, nicht fest eingebunden.
+ *
+ * WARUM
+ * Gemessen am 28.09.2026: Das Firebase-SDK macht 611 KB des ausgelieferten
+ * JavaScripts aus - mehr als ein Viertel von allem. Gebraucht wird es nur von
+ * denen, die Mitteilungen eingeschaltet haben, und auch bei denen erst nach
+ * der Anmeldung. Fest eingebunden laedt es jeder mit, der die Seite oeffnet -
+ * auch wer sich nur anmelden will, auch wer gar keine Mitteilungen will, und
+ * auch die native Huelle, die ueberhaupt einen anderen Weg geht
+ * (FirebaseMessaging von Capacitor statt des Web-SDK).
+ *
+ * Die Importe stehen deshalb in den Funktionen, die sie brauchen. Der Vertrag
+ * dieser Datei nach aussen bleibt unveraendert: app/page.tsx importiert
+ * weiterhin dieselben Namen, und die Datei selbst ist ohne Firebase winzig.
+ *
+ * Einmal geladen, bleibt das Modul im Speicher - der Zwischenspeicher hier
+ * verhindert, dass sechs Aufrufstellen sechsmal laden. */
+type FirebaseTeile = {
+  initializeApp: typeof import("firebase/app").initializeApp;
+  getApps: typeof import("firebase/app").getApps;
+  getMessaging: typeof import("firebase/messaging").getMessaging;
+  getToken: typeof import("firebase/messaging").getToken;
+  isSupported: typeof import("firebase/messaging").isSupported;
+};
+let firebaseTeile: Promise<FirebaseTeile> | null = null;
+const firebaseLaden = (): Promise<FirebaseTeile> => (firebaseTeile ||= (async () => {
+  const [app, messaging] = await Promise.all([import("firebase/app"), import("firebase/messaging")]);
+  return {
+    initializeApp: app.initializeApp, getApps: app.getApps,
+    getMessaging: messaging.getMessaging, getToken: messaging.getToken,
+    isSupported: messaging.isSupported,
+  };
+})());
 import { supabase } from "@/lib/supabase";
 import { Capacitor, type PluginListenerHandle } from "@capacitor/core";
-import { FirebaseMessaging } from "@capacitor-firebase/messaging";
+/* Auch das Capacitor-Plugin wird nachgeladen. Es sieht harmlos aus, zieht aber
+   ueber seinen Web-Teil dasselbe Firebase-SDK herein (peerDependency firebase
+   ^12.6.0) - solange es fest eingebunden ist, nuetzt das Nachladen oben nichts.
+   Gebraucht wird es ausschliesslich in der nativen Huelle; im Browser laeuft
+   jeder Zweig, der es anfasst, ohnehin nie. */
+const plugin = () => import("@capacitor-firebase/messaging").then((m) => m.FirebaseMessaging);
 
 /* Zwei Wege zum selben Ziel - und bis zum 04.09.2026 gab es nur den falschen.
  *
@@ -117,9 +153,10 @@ export async function pushTokenAuffrischen(membershipId: string): Promise<boolea
 
   try {
     if (imGeraet()) {
-      const stand = await FirebaseMessaging.checkPermissions();
+      const FM = await plugin();
+      const stand = await FM.checkPermissions();
       if (stand.receive !== "granted") return false;
-      const { token } = await FirebaseMessaging.getToken();
+      const { token } = await FM.getToken();
       if (!token) return false;
       return await tokenSpeichern(membershipId, token);
     }
@@ -128,6 +165,7 @@ export async function pushTokenAuffrischen(membershipId: string): Promise<boolea
        zu LESEN oeffnet keinen Dialog - im Gegensatz zu requestPermission(). */
     if (!("Notification" in window) || !("serviceWorker" in navigator)) return false;
     if (Notification.permission !== "granted") return false;
+    const { isSupported, getApps, initializeApp, getMessaging, getToken } = await firebaseLaden();
     if (!(await isSupported().catch(() => false))) return false;
 
     const registration = await navigator.serviceWorker.getRegistration("/firebase-messaging-sw.js")
@@ -160,13 +198,14 @@ export async function enablePushNotifications(membershipId: string): Promise<Ena
          iOS-Einstellungen dauerhaft verweigert, oeffnet requestPermissions
          keinen Dialog mehr und liefert stumm "denied". Dann soll die App das
          auch sagen koennen, statt scheinbar nichts zu tun. */
-      let stand = await FirebaseMessaging.checkPermissions();
+      const FM = await plugin();
+      let stand = await FM.checkPermissions();
       if (stand.receive === "prompt" || stand.receive === "prompt-with-rationale") {
-        stand = await FirebaseMessaging.requestPermissions();
+        stand = await FM.requestPermissions();
       }
       if (stand.receive !== "granted") return { error: "denied" };
 
-      const { token } = await FirebaseMessaging.getToken();
+      const { token } = await FM.getToken();
       if (!token) return { error: "no_token" };
       if (!(await tokenSpeichern(membershipId, token))) return { error: "save_failed" };
       return { token };
@@ -176,6 +215,7 @@ export async function enablePushNotifications(membershipId: string): Promise<Ena
   }
 
   if (!("Notification" in window) || !("serviceWorker" in navigator)) return { error: "unsupported" };
+  const { isSupported, getApps, initializeApp, getMessaging, getToken } = await firebaseLaden();
   const supported = await isSupported().catch(() => false);
   if (!supported) return { error: "unsupported" };
 
@@ -252,10 +292,10 @@ export function meldungsTippsAbonnieren(beiTipp: (tipp: MeldungsTipp) => void): 
   if (imGeraet()) {
     let griff: PluginListenerHandle | null = null;
     let beendet = false;
-    FirebaseMessaging.addListener("notificationActionPerformed", (ereignis) => {
+    plugin().then((FM) => FM.addListener("notificationActionPerformed", (ereignis) => {
       const tipp = tippAusDaten(ereignis?.notification?.data);
       if (tipp) beiTipp(tipp);
-    }).then((g) => { if (beendet) g.remove(); else griff = g; }).catch(() => {});
+    }).then((g) => { if (beendet) g.remove(); else griff = g; }).catch(() => {}));
     return () => { beendet = true; griff?.remove(); };
   }
 
@@ -291,11 +331,11 @@ export function listenForForegroundMessages() {
     /* iOS zeigt eine Mitteilung NICHT von selbst an, solange die App im
        Vordergrund ist. Ohne diesen Zuhoerer bekaeme man sie nur, wenn die App
        geschlossen ist - was beim Testen zuverlaessig fuer Verwirrung sorgt. */
-    FirebaseMessaging.addListener("notificationReceived", () => {}).catch(() => {});
+    plugin().then((FM) => FM.addListener("notificationReceived", () => {})).catch(() => {});
     return;
   }
 
-  isSupported().then((supported) => {
+  firebaseLaden().then(({ isSupported, getApps, initializeApp, getMessaging }) => isSupported().then((supported) => {
     if (!supported) return;
     const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
     const messaging = getMessaging(app);
@@ -317,7 +357,7 @@ export function listenForForegroundMessages() {
         }
       });
     });
-  });
+  }));
 }
 
 /* Gelesene Meldungen auch aus der Mitteilungszentrale nehmen.
@@ -332,12 +372,13 @@ export async function zugestellteEntfernen(notificationId?: string) {
   if (!imGeraet()) return;
   try {
     if (!notificationId) {
-      await FirebaseMessaging.removeAllDeliveredNotifications();
+      await (await plugin()).removeAllDeliveredNotifications();
       return;
     }
-    const { notifications } = await FirebaseMessaging.getDeliveredNotifications();
+    const FMd = await plugin();
+    const { notifications } = await FMd.getDeliveredNotifications();
     const passend = notifications.filter((n) => (n.data as Record<string, unknown> | undefined)?.notification_id === notificationId);
-    if (passend.length) await FirebaseMessaging.removeDeliveredNotifications({ notifications: passend });
+    if (passend.length) await FMd.removeDeliveredNotifications({ notifications: passend });
   } catch { /* Fassung ohne diese Funktionen - dann bleibt es, wie es war */ }
 }
 
@@ -353,7 +394,8 @@ export async function disablePushNotifications(membershipId: string): Promise<{ 
          Erst wenn auch der leer ist, bleibt nichts als alle Zeilen zu
          loeschen; dann ist dieses Geraet das einzige, von dem wir je etwas
          wussten. */
-      const { token } = await FirebaseMessaging.getToken().catch(() => ({ token: "" }));
+      const FMt = await plugin();
+      const { token } = await FMt.getToken().catch(() => ({ token: "" }));
       const meiner = token || gemerkterToken(membershipId);
       if (supabase) {
         if (meiner) {
@@ -363,7 +405,7 @@ export async function disablePushNotifications(membershipId: string): Promise<{ 
         }
       }
       merkerVergessen(membershipId);
-      await FirebaseMessaging.deleteToken().catch(() => {});
+      await FMt.deleteToken().catch(() => {});
       return { success: true };
     } catch {
       return { error: "failed" };
@@ -371,6 +413,7 @@ export async function disablePushNotifications(membershipId: string): Promise<{ 
   }
 
   try {
+    const { isSupported, getApps, initializeApp, getMessaging, getToken } = await firebaseLaden();
     const supported = await isSupported().catch(() => false);
     if (!supported) return { error: "unsupported" };
     const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
