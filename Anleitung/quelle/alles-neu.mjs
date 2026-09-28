@@ -108,7 +108,12 @@ const PLAN = [
   ["30-vereinsprofil",         "jose@cmo.app",     ["Verwaltung"], ["Vereinsprofil"]],
   ["31-mitgliedsantraege",     "jose@cmo.app",     ["Verwaltung"], ["Mitgliedsanträge"]],
   ["32-helferplanung-verwaltung","jose@cmo.app",   ["Support"], ["Helfer einteilen"]],
-  ["34-helferset",             "jose@cmo.app",     ["Verwaltung"], ["Sets", "▾"]],
+  /* Ohne "▾": Der Set-Editor braucht eine echte Datenbank - im Demo-Betrieb
+     steht dort nur der Hinweis "nur mit einem echten Vereinskonto", und es
+     gibt nichts aufzuklappen. Der Marker meldete deshalb bei JEDEM Lauf
+     "nicht gefunden", und eine echte Fehlmeldung waere darin untergegangen.
+     Das Bild zeigt, WO man den Editor findet - mehr geht hier nicht. */
+  ["34-helferset",             "jose@cmo.app",     ["Verwaltung"], ["Sets"]],
   ["33-team-detail",           "jose@cmo.app",     ["Teams"], ["Herren 1"]],
   /* Neu seit dem 28.09.2026 - die Funktionen dieses Tages. */
   ["43-mannschaft-bearbeiten", "jose@cmo.app",     ["Teams"], ["Herren 1", "Bearbeiten"]],

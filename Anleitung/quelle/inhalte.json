@@ -342,7 +342,7 @@
      "Ein Tipp auf einen offenen Punkt bringt dich dorthin, wo du ihn erledigst.",
      "Unter „Aufgaben“ siehst du in „Aufgaben nach Bereich“ für den Verein und jede Mannschaft, wie viele Aufgaben offen, ohne Eintrag, erledigt oder überfällig sind, und legst Aufgaben an. Benachrichtigt werden nur die Verantwortlichen, nicht der ganze Verein."
     ],
-    "hinweis": "Die Tafel mit den offenen Punkten sehen Vereinsadmin und Organisation; ist nichts offen, steht dort „Nichts offen“. Fans lassen sich nicht einteilen.",
+    "hinweis": "Die Tafel mit den offenen Punkten sehen Vereinsadmin und Organisation; ist nichts offen, steht dort „Nichts offen“. Fans lassen sich nicht einteilen. Bei den Helferstationen steht jetzt der Stand dabei („Theke · 1/2“) – eine halb besetzte Station gilt als offener Punkt, nicht erst eine ganz leere.",
     "bildschirm": "Support > Helfer einteilen"
    },
    {
@@ -584,7 +584,7 @@
      "Beim Speichern fragt die App nach, wenn das Set schon benutzt wird. Sagst du ja, werden alle künftigen Spieltage mit diesem Set mitgezogen.",
      "Danach steht da, was geschehen ist: wie viele Spieltage abgeglichen wurden, wie viele Stationen neu sind, wie viele Platzzahlen sich geändert haben."
     ],
-    "hinweis": "Eine gelöschte Station verschwindet nur dort, wo NIEMAND eingeteilt ist. Wo jemand steht, bleibt sie stehen und gilt fortan als von Hand angelegt – niemandem wird sein Dienst weggenommen. Von Hand angelegte Stationen fasst der Abgleich nie an.",
+    "hinweis": "Drei Regeln, damit der Abgleich nichts kaputt macht: Eine gelöschte Station verschwindet nur dort, wo NIEMAND eingeteilt ist – wo jemand steht, bleibt sie und gilt fortan als von Hand angelegt. Eine Station, die du an einem einzelnen Spieltag entfernt hast, holt der Abgleich NICHT zurück – wer eine Station wegnimmt, hat einen Grund. Und von Hand angelegte Stationen fasst er nie an.",
     "bildschirm": "Verwaltung > Helferdienst-Sets"
    }
   ],
