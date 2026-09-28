@@ -96,13 +96,15 @@ BILDER = {
 QUER = {"13-betreiber-vereine", "14-betreiber-anzeigen", "15-betreiber-kpi"}
 
 # Die Ausgaben. Der erste Eintrag ist die Gesamtanleitung, danach je ein
-# Handbuch. "Vereinsleitung" fasst Vereinsadministration und Organisation
-# zusammen: Beide arbeiten im selben Reiter, und wer das eine tut, tut in
-# aller Regel auch das andere.
+# Handbuch - seit dem 28.09.2026 eines je Rolle. Vereinsadministration und
+# Organisation hatten bis dahin ein gemeinsames Heft ("Vereinsleitung"), weil
+# beide im selben Reiter arbeiten; auf Wunsch des Betreibers sind es jetzt
+# zwei. Ebenso haben Kapitaen, Teammanager und Athlet eigene Hefte, obwohl
+# sie sich mit Trainer und Mitglied stark ueberschneiden.
 AUSGABEN = [
  {"datei": "CMO-Anleitung", "rollen": ["mitglied","athlet","trainer","kapitaen","teammanager","vereinsadmin","organisator","sponsoren","redaktion","eltern","fan"],
   "titel": "Die Vereins-App<br><span>von A bis Z</span>",
-  "unter": "Einführung und Anleitung für alle Rollen —<br>vom Mitglied bis zur Vereinsleitung.",
+  "unter": "Einführung und Anleitung für alle Rollen —<br>vom Fan bis zur Vereinsadministration.",
   "kopf": "Anleitung"},
  {"datei": "CMO-Handbuch-Mitglieder", "rollen": ["mitglied"],
   "titel": "Handbuch<br><span>für Mitglieder</span>",
@@ -113,9 +115,9 @@ AUSGABEN = [
   "unter": "Für Trainer/innen, Kapitäne und Teammanager —<br>alles, was deine Mannschaft betrifft.",
   "kopf": "Handbuch Trainer/innen"},
  {"datei": "CMO-Handbuch-Vereinsadmin", "rollen": ["mitglied","vereinsadmin"],
-  "titel": "Handbuch<br><span>für die Vereinsleitung</span>",
-  "unter": "Vereinsadministration und Organisation —<br>alles, was den Verein am Laufen hält.",
-  "kopf": "Handbuch Vereinsleitung"},
+  "titel": "Handbuch<br><span>für die Vereinsadministration</span>",
+  "unter": "Mitglieder, Rollen, Mannschaften und Verein —<br>alles, was nur die Administration darf.",
+  "kopf": "Handbuch Vereinsadministration"},
  {"datei": "CMO-Handbuch-Organisator", "rollen": ["mitglied","organisator"],
   "titel": "Handbuch<br><span>für die Organisation</span>",
   "unter": "Helferdienste, Aufgaben und Fahrzeuge —<br>alles, was einen Spieltag am Laufen hält.",
