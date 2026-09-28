@@ -450,6 +450,7 @@ const woerter: Record<string, string> = {
   "ph.namenSuchen": "İsim ara …",
   "ph.mitgliedSuchen": "Üye ara …",
   "ph.landSuchen": "Ülke ara …",
+  "help.entwurfVerwerfen": "Bu yardımcı setinde kaydedilmemiş değişiklikler var. Vazgeçilsin mi?",
   "allg.verwerfen": "Vazgeç",
   "help.stationDoppelt": "Bu görev sette zaten var.",
   "help.setWirdBenutzt": "Bu yardımcı seti {anzahl} maç gününde kullanılıyor. Değişiklikler oraya da yansır.",

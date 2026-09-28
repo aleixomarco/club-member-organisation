@@ -450,6 +450,7 @@ const woerter: Record<string, string> = {
   "ph.namenSuchen": "Search names …",
   "ph.mitgliedSuchen": "Search member …",
   "ph.landSuchen": "Search country …",
+  "help.entwurfVerwerfen": "You have unsaved changes to this helper set. Discard them?",
   "allg.verwerfen": "Discard",
   "help.stationDoppelt": "That station is already in the set.",
   "help.setWirdBenutzt": "This helper set is already used on {anzahl} match days. Changes will take effect there.",

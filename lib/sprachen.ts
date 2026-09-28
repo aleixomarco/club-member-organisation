@@ -473,6 +473,7 @@ const de: Woerterbuch = {
   "ph.namenSuchen": "Namen suchen …",
   "ph.mitgliedSuchen": "Mitglied suchen …",
   "ph.landSuchen": "Land suchen …",
+  "help.entwurfVerwerfen": "Du hast Änderungen an diesem Helferset, die noch nicht gespeichert sind. Wirklich verwerfen?",
   "allg.verwerfen": "Verwerfen",
   "help.stationDoppelt": "Diese Station steht schon im Set.",
   "help.setWirdBenutzt": "Dieses Helferset wird bereits bei {anzahl} Spieltagen verwendet. Änderungen wirken sich dort aus.",

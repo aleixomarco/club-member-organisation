@@ -5176,7 +5176,7 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
           {featureEnabled("duty_roster") && (ev.helperSlots?.length > 0 || dutyLeitung) && (
             <div className="mt-3">
               <div className="text-xs font-semibold mb-2" style={{ fontFamily: "Inter", color: C.ink }}>{t("helf.gesucht")}</div>
-              {dutyLeitung && <DutyStationsManager ev={ev} currentUser={currentUser} sport={currentClub?.sport} onNeuLaden={onNeuLaden} dutyPlan={dutyPlan} />}
+              {dutyLeitung && <DutyStationsManager ev={ev} currentUser={currentUser} sport={currentClub?.sport} onNeuLaden={onNeuLaden} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} />}
               {ev.helperSlots?.length > 0 && (
                 <HelperSlots ev={ev} members={members} currentUser={currentUser} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} eligible={helperEligible} onSetzen={onDienstSetzen} gastErlaubt={gastErlaubt} darfVerwalten={canManageDuty(currentUser)} />
               )}
@@ -9533,7 +9533,7 @@ function VehiclesView({ currentUser, currentClub }) {
  * Die offenen Punkte der Verwaltung zaehlen seit 20260925210000 ebenfalls die
  * Eintragungen und nicht mehr duty_tasks; sonst stuende eine oben voll
  * besetzte Station dort fuer immer als unbesetzt. */
-function DutyStationsManager({ ev, currentUser, sport, onNeuLaden, dutyPlan }) {
+function DutyStationsManager({ ev, currentUser, sport, onNeuLaden, dutyPlan, setDutyPlan }) {
   const t = useT();
   const cfg = sportConfig(sport);
   const [templates, setTemplates] = useState([]);
@@ -9580,6 +9580,11 @@ function DutyStationsManager({ ev, currentUser, sport, onNeuLaden, dutyPlan }) {
     setMessage("");
     const { data, error } = await supabase.rpc("remove_duty_station", { target_event: ev.id, station_name: station });
     if (error) { setMessage(t("help.stationEntfernenFehler")); return; }
+    /* Die Datenbank hat die Eintragungen mitgeloescht - der Plan im Speicher
+       weiss davon nichts. onNeuLaden holt nur die Termine, nicht den Plan;
+       legt die Leitung die Station gleich wieder an, stuenden die alten Namen
+       sofort wieder da, obwohl es sie nicht mehr gibt. */
+    setDutyPlan?.((dp) => ({ ...dp, [ev.id]: { ...(dp[ev.id] || {}), [station]: [] } }));
     setMessage(OK_ZEICHEN + (data ? (data === 1 ? t("help.stationEntferntEineEintragung") : mitWerten(t("help.stationEntferntEintragungenMehr"), { anzahl: data })) : t("help.stationEntfernt")));
     onNeuLaden?.();
   };
@@ -9593,6 +9598,8 @@ function DutyStationsManager({ ev, currentUser, sport, onNeuLaden, dutyPlan }) {
     setMessage("");
     const { data, error } = await supabase.rpc("clear_duty_stations", { target_event: ev.id });
     if (error) { setMessage(t("help.stationenEntfernenFehler")); return; }
+    /* Wie beim einzelnen Entfernen: der Plan im Speicher muss mit. */
+    setDutyPlan?.((dp) => ({ ...dp, [ev.id]: {} }));
     setMessage(data ? OK_ZEICHEN + (data === 1 ? t("help.alleStationenEntferntEineEintragung") : mitWerten(t("help.alleStationenEntferntEintragungenMehr"), { anzahl: data })) : t("help.alleStationenEntfernt"));
     onNeuLaden?.();
   };
@@ -9767,6 +9774,7 @@ function DutyTemplatesPanel({ currentUser, sport }) {
       setMessage(t("help.stationDoppelt")); setMessageOk(false); return;
     }
     setEntwurf([...entwurf, { title, plaetze: newItemPlaetze[templateId] || STATION_CAP }]);
+    setMessage("");
     setNewItemTitles((all) => ({ ...all, [templateId]: "" }));
     setNewItemPlaetze((all) => ({ ...all, [templateId]: STATION_CAP }));
   };
@@ -9796,7 +9804,7 @@ function DutyTemplatesPanel({ currentUser, sport }) {
       target_template: satz.id, posten: entwurf.map((i) => ({ title: i.title, plaetze: i.plaetze })) });
     if (error) { setMessage(t("help.setSpeichernFehler")); setMessageOk(false); setSpeichert(false); return; }
     await loadTemplates();
-    setNutzung(jetzt || null);
+    setNutzung(jetzt ? { ...jetzt, fuer: satz.id } : null);
     setMessage(OK_ZEICHEN + mitWerten(t("help.setGespeichert"), {
       spiele: Number(data?.spiele || 0), neu: Number(data?.stationen_neu || 0),
       geaendert: Number(data?.plaetze_geaendert || 0), entfernt: Number(data?.stationen_entfernt || 0),
@@ -9829,12 +9837,19 @@ function DutyTemplatesPanel({ currentUser, sport }) {
         return (
           <div key={satz.id} className="rounded-2xl mb-2.5 overflow-hidden" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
             <button className="w-full text-left p-3.5 flex items-center justify-between" aria-expanded={open} onClick={async () => {
+                /* Wer vier Platzzahlen geaendert hat und zum Vergleich ein
+                   anderes Set aufklappt, verlor bisher alles ohne ein Wort. */
+                if (entwurfGeaendert(satz) && !window.confirm(t("help.entwurfVerwerfen"))) return;
+                setMessage("");
                 if (open) { setExpandedId(null); setEntwurf(null); setNutzung(null); return; }
                 setExpandedId(satz.id);
                 setEntwurf(satz.items.map((i) => ({ title: i.title, plaetze: i.plaetze || STATION_CAP })));
                 setNutzung(null);
                 const { data } = await supabase.rpc("helferset_nutzung", { target_template: satz.id });
-                setNutzung(data || null);
+                /* Mit der Kennung merken, zu WELCHEM Set die Zahl gehoert.
+                   Ohne das zeigt die Zeile nach einem schnellen Wechsel die
+                   Zahl des vorigen Sets - und bleibt dann falsch stehen. */
+                setNutzung(data ? { ...data, fuer: satz.id } : null);
               }}>
               <div>
                 <div className="text-sm font-bold" style={{ color: C.ink }}>{satz.name}</div>
@@ -9848,7 +9863,7 @@ function DutyTemplatesPanel({ currentUser, sport }) {
                     dass zehn Spieltage daranhaengen, geht anders an die
                     Aenderung heran - und wird nicht erst beim Speichern
                     ueberrascht. */}
-                {Number(nutzung?.spiele || 0) > 0 && (
+                {nutzung?.fuer === satz.id && Number(nutzung?.spiele || 0) > 0 && (
                   <div className="text-[11px] rounded-lg px-2.5 py-2 mb-2" style={{ background: C.paperDim, color: C.textDim }}>
                     {mitWerten(t("help.setWirdBenutzt"), { anzahl: Number(nutzung.spiele) })}
                   </div>
@@ -12046,10 +12061,12 @@ function AdminDutyPanel({ members, events, dutyPlan, setDutyPlan, onSetzen }) {
                     <div className="text-xs mb-1" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}>{station} ({list.length}/{plaetzeFuer(ev, station)})</div>
                     <div className="flex flex-wrap gap-1.5 mb-1.5">
                       {list.map((id) => {
-                        const m = members.find((x) => x.id === id);
+                        /* personName, nicht members.find: Ein Gast ohne Konto
+                           steht in members nie - der Chip blieb sonst leer. */
+                        const angezeigt = personName(id, members, t("allg.unbekannt"));
                         return (
                           <span key={id} className="flex items-center gap-1 px-2 py-1 rounded-full text-[11px]" style={{ background: C.paperDim, fontFamily: "Inter", color: C.ink }}>
-                            {m?.name} <button onClick={() => remove(ev.id, station, id)}><X size={11} /></button>
+                            {angezeigt} <button onClick={() => remove(ev.id, station, id)}><X size={11} /></button>
                           </span>
                         );
                       })}

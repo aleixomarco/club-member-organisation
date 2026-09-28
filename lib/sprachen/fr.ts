@@ -450,6 +450,7 @@ const woerter: Record<string, string> = {
   "ph.namenSuchen": "Rechercher un nom …",
   "ph.mitgliedSuchen": "Rechercher un membre …",
   "ph.landSuchen": "Rechercher un pays …",
+  "help.entwurfVerwerfen": "Tu as des modifications non enregistrées sur ce set. Les abandonner ?",
   "allg.verwerfen": "Annuler les modifications",
   "help.stationDoppelt": "Ce poste figure déjà dans le set.",
   "help.setWirdBenutzt": "Ce set est déjà utilisé pour {anzahl} journées. Les modifications s’y appliqueront.",
