@@ -53,6 +53,18 @@
     "bildschirm": "Termine"
    },
    {
+    "titel": "Die Adresse antippen",
+    "wo": "Untere Leiste > Termine > Termin aufklappen",
+    "punkte": [
+     "Unter der Beschreibung steht die Adresse des Termins, rot und unterstrichen.",
+     "Ein Tipp darauf öffnet die Navigation deines Geräts – auf dem iPhone die Karten-App, auf Android die App, die du dafür eingestellt hast.",
+     "Am Rechner öffnet sich stattdessen eine Kartenseite im Browser.",
+     "Die Adresse ist freiwillig. Steht dort nichts, hat sie niemand eingetragen – der Ort darüber bleibt trotzdem immer da."
+    ],
+    "hinweis": "Hast du den Kalender abonniert, steht die Adresse auch dort beim Ort – Apple und Google Kalender machen daraus von selbst eine Route.",
+    "bildschirm": "Termine > Heimspiel aufgeklappt"
+   },
+   {
     "titel": "Mitfahren und Fahrten anbieten",
     "wo": "Termine > Termin antippen > Bereich „Fahrgemeinschaft“",
     "punkte": [
@@ -434,6 +446,30 @@
     ],
     "bildschirm": "Verwaltung > Protokolle",
     "hinweis": "Schaltest du unter „Funktionen“ die Helferplanung ab, verschwinden hier die „Helferdienst-Sätze“ und im Reiter „Support“ die Helferdienste. Ebenso verschwindet „Athlet/in der Saison“, wenn du es abschaltest. Sponsoring-Anzeigen kannst du immer vorbereiten, sichtbar werden sie erst mit dem Sponsoring-Zusatz."
+   },
+   {
+    "titel": "Mannschaft löschen",
+    "wo": "Untere Leiste > Teams > Mannschaft > Bearbeiten",
+    "punkte": [
+     "Unter „Bearbeiten“ steht ganz unten „Mannschaft endgültig löschen“ – nur für die Vereinsadministration.",
+     "Vorher zeigt eine Rückfrage, was verschwindet: der Kader, der Mannschaftskanal samt allen Nachrichten, der Strafenkatalog und die Tipprunde.",
+     "Die Termine der Mannschaft BLEIBEN dem Verein erhalten – sie verlieren nur die Mannschaft. Ergebnisse, Zusagen und Helfereinteilung sind damit nicht verloren.",
+     "Die Mitglieder bleiben ebenfalls im Verein. Gelöscht wird die Zuordnung, nicht der Mensch."
+    ],
+    "hinweis": "Zum bloßen Stilllegen gibt es weiter „Archivieren“: Die Mannschaft verschwindet aus den Listen, bleibt aber mit allem daran bestehen. Löschen lässt sich nicht rückgängig machen.",
+    "bildschirm": "Teams > Herren 1 > Bearbeiten"
+   },
+   {
+    "titel": "Beitrittsanfragen",
+    "wo": "Profil > Beitrittsanfragen oder Verwaltung > Mitgliedsanträge",
+    "punkte": [
+     "Nur die Vereinsadministration bekommt die Meldung über eine neue Anfrage, entscheidet darüber und sieht die Liste der Wartenden.",
+     "Organisatorinnen und Organisatoren sehen davon nichts mehr – auch nicht, wenn sie die Daten direkt abfragen würden.",
+     "Beim Annehmen legst du zugleich die Stufe fest (Mitglied oder Fan) und vergibst Zusatzrollen.",
+     "Setzt du dabei die Rolle Athlet/in, wird die Person gleich in die gewünschte Mannschaft eingetragen."
+    ],
+    "hinweis": "Wer abgelehnt wird, kann sich erneut bewerben. Die App zählt die Ablehnungen mit.",
+    "bildschirm": "Verwaltung > Mitgliedsanträge"
    }
   ],
   "einleitung": "Die Vereinsadministration ist die höchste Rolle im Verein. Du nimmst Mitglieder auf, vergibst Rollen, legst Mannschaften an, pflegst Logo und Farben und schaltest Funktionen für alle ein oder aus.",
@@ -526,6 +562,30 @@
     ],
     "bildschirm": "Profil > Verein & Mitgliedschaft",
     "hinweis": "Rollen vergeben, das Vereinsprofil ändern und Funktionen ein- oder ausschalten darf nur der Vereinsadmin."
+   },
+   {
+    "titel": "Jemanden ohne Konto eintragen",
+    "wo": "Termin aufklappen > „Jemanden eintragen“ – oder beim Anlegen einer Vereinsaufgabe",
+    "punkte": [
+     "Tippe den Namen in das Suchfeld. Findet die App niemanden, erscheint rot „…“ ohne Konto eintragen“.",
+     "Ein Tipp darauf setzt den Namen an diesen einen Dienst – die Person bekommt KEIN Konto und wird nirgends gespeichert.",
+     "Der Name belegt einen Platz wie jede andere Person: Die Station zählt ihn mit, und der tägliche Hinweis „Helfer gesucht“ bleibt aus.",
+     "Entfernen geht über das Kreuz neben dem Namen."
+    ],
+    "hinweis": "Weil der Name nirgends gespeichert wird, steht er beim nächsten Spiel nicht in der Auswahl – dann tippst du ihn erneut. Wer dauerhaft dazugehört, gehört als Mitglied aufgenommen.",
+    "bildschirm": "Termine > Heimspiel > Jemanden eintragen"
+   },
+   {
+    "titel": "Ein Helferset zentral ändern",
+    "wo": "Untere Leiste > Verwaltung > Helferdienst-Sets",
+    "punkte": [
+     "Klappe ein Set auf. Steht es schon bei Spieltagen im Einsatz, sagt dir eine Zeile sofort, bei wie vielen.",
+     "Platzzahl ändern, Station entfernen, Station ergänzen – nichts davon wirkt sofort. Erst „Speichern“ schreibt.",
+     "Beim Speichern fragt die App nach, wenn das Set schon benutzt wird. Sagst du ja, werden alle künftigen Spieltage mit diesem Set mitgezogen.",
+     "Danach steht da, was geschehen ist: wie viele Spieltage abgeglichen wurden, wie viele Stationen neu sind, wie viele Platzzahlen sich geändert haben."
+    ],
+    "hinweis": "Eine gelöschte Station verschwindet nur dort, wo NIEMAND eingeteilt ist. Wo jemand steht, bleibt sie stehen und gilt fortan als von Hand angelegt – niemandem wird sein Dienst weggenommen. Von Hand angelegte Stationen fasst der Abgleich nie an.",
+    "bildschirm": "Verwaltung > Helferdienst-Sets"
    }
   ],
   "einleitung": "Als Organisator/in planst du für den ganzen Verein: Termine aller Mannschaften, die Helferdienste dazu, Aufgaben und Fahrzeuge. Du bist kein Vereinsadmin, darfst aber deutlich mehr als ein einfaches Mitglied.",
@@ -607,6 +667,18 @@
     ],
     "bildschirm": "Sponsoren > Sponsoring > Zahlen ansehen > Bericht für den Sponsor",
     "hinweis": ""
+   },
+   {
+    "titel": "Der Knopf unter der Anzeige",
+    "wo": "Sponsoren > Anzeige bearbeiten",
+    "punkte": [
+     "Unter der Zieladresse lässt sich die Beschriftung des Knopfes setzen – zum Beispiel „Platz sichern“ oder „Termin buchen“.",
+     "Bleibt das Feld leer, steht dort „Hier klicken“.",
+     "Das Feld erscheint erst, wenn eine Zieladresse eingetragen ist – ohne Ziel gibt es keinen Knopf.",
+     "Höchstens 40 Zeichen, damit der Knopf auf jedem Telefon in eine Zeile passt."
+    ],
+    "hinweis": "Jeder Klick auf diesen Knopf wird gezählt und steht im Bericht für den Sponsor.",
+    "bildschirm": "Sponsoren"
    }
   ],
   "einleitung": "Du betreust die Sponsoren deines Vereins in der App. Du trägst sie auf den vier Werbeplätzen ein, hinterlegst Aktionen und siehst, wie oft sie gesehen und angetippt wurden.",
@@ -853,5 +925,60 @@
   ],
   "einleitung": "Du betreibst die App und betreust alle Vereine, die sie nutzen. Deine Oberfläche heißt „Vereinsverwaltung“, hat einen eigenen Zugang und gehört nicht zur Vereins-App: kein Verein und kein Vereinsadmin kommt hinein.",
   "rolle": "Betreiber (Vereinsverwaltung)"
+ },
+ {
+  "key": "fan",
+  "rolle": "Fan",
+  "einleitung": "Als Fan folgst du dem Verein, ohne Mitglied zu sein. Du siehst, wann gespielt wird, liest die Vereins-News und feuerst an – aber alles, was mit Pflichten zu tun hat, bleibt außen vor. Dieses Heft sagt dir, was du hast und was dir bewusst fehlt.",
+  "abschnitte": [
+   {
+    "titel": "Was du als Fan siehst",
+    "wo": "Untere Leiste > Home",
+    "punkte": [
+     "Die Startseite zeigt dir das nächste Spiel mit Gegner, Ort und Countdown.",
+     "Darunter laufen die Vereins-News – dieselben, die alle sehen.",
+     "Im Chat liest du die Kanäle mit, die für alle offen sind.",
+     "In deinem Profil stellst du Sprache und Benachrichtigungen ein wie jedes andere Konto."
+    ],
+    "hinweis": "Du wirst beim Beitritt gefragt, ob du als Mitglied oder als Fan dabei sein willst. Die Vereinsleitung gibt beides frei.",
+    "bildschirm": "Startseite als Fan"
+   },
+   {
+    "titel": "Termine als Fan",
+    "wo": "Untere Leiste > Termine",
+    "punkte": [
+     "Du siehst Spiele und Veranstaltungen des Vereins.",
+     "Trainings siehst du NICHT. Wann eine Mannschaft trainiert, gibt der Verein nicht nach außen – es sagt, wann eine Halle mit Kindern belegt ist.",
+     "Zu- und absagen kannst du nicht; das ist den Mitgliedern vorbehalten.",
+     "Den Kalender abonnieren geht trotzdem: Die Spiele landen dann in deinem eigenen Kalender."
+    ],
+    "hinweis": "Ein Fan trägt genau eine Rolle und sonst keine. Das setzt die App durch – eine zusätzliche Rolle macht aus dir automatisch ein Mitglied.",
+    "bildschirm": "Termine als Fan"
+   },
+   {
+    "titel": "Was dir fehlt – und warum",
+    "wo": "Fällt auf, sobald man danach sucht",
+    "punkte": [
+     "Kein Reiter „Support“: keine Helferdienste, keine Vereinsaufgaben, keine Vereinsfahrzeuge.",
+     "Keine Mannschaft, kein Kader, kein Mannschaftskanal.",
+     "Kein Tippspiel, keine Wahl zur Athletin oder zum Athleten der Saison.",
+     "Keine Punkte und keine Helferpflicht – ein Fan zählt nicht zur Mitgliederzahl des Vereins."
+    ],
+    "hinweis": "Das ist keine Sparfassung, sondern der Sinn der Sache: Ein Fan hat Anteil, aber keine Pflichten.",
+    "bildschirm": "Startseite als Fan"
+   },
+   {
+    "titel": "Vom Fan zum Mitglied",
+    "wo": "Profil > Verein wechseln, oder über die Vereinsleitung",
+    "punkte": [
+     "Willst du mitmachen statt nur zuschauen, sprich die Vereinsleitung an.",
+     "Sie ändert deine Stufe von Fan auf Mitglied – dein Konto bleibt, deine Anmeldung bleibt.",
+     "Ab dann siehst du Trainings, kannst zusagen, Dienste übernehmen und sammelst Punkte.",
+     "Umgekehrt geht es genauso: Wer kürzertreten will, wird wieder Fan."
+    ],
+    "hinweis": "Die Stufe ist immer genau eine von beiden. Mitglied und Fan zugleich gibt es nicht.",
+    "bildschirm": "Anmeldung / Meine Vereine"
+   }
+  ]
  }
 ]

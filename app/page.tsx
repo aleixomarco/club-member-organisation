@@ -9805,7 +9805,7 @@ function DutyTemplatesPanel({ currentUser, sport }) {
     setMessageOk(true); setSpeichert(false);
   };
 
-  if (!supabase) return <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{t("help.saetzeNurEcht").replace("{begriff}", t(cfg.dutyTabLabel))}.</div>;
+  if (!supabase) return <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{t("help.saetzeNurEcht").replace("{begriff}", t(cfg.dutyTabLabel))}</div>;
   if (loading) return <div className="text-xs py-4" style={{ color: C.textDim }}>{t("help.saetzeLaden").replace("{begriff}", t(cfg.dutyTabLabel))}</div>;
 
   return (

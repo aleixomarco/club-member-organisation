@@ -19,7 +19,7 @@ NACH_KEY = {r["key"]: r for r in ALLE}
 FARBEN = {
  "mitglied": "#B3261E", "trainer": "#1E6B3A", "vereinsadmin": "#7A2E86",
  "organisator": "#8A5A00", "sponsoren": "#0F5F86", "redaktion": "#A03A6B",
- "eltern": "#2F5AA8", "betreiber": "#2A2028",
+ "eltern": "#2F5AA8", "betreiber": "#2A2028", "fan": "#4A5568",
 }
 
 BILDER = {
@@ -69,6 +69,14 @@ BILDER = {
  # ein eigenes Bild waere im Demo-Betrieb leer, weil dort keine Anfrage wartet.
  ("eltern","Offene Anfragen"): "41-familie",
  ("eltern","Betreutes Profil zusammenführen"): "28-rollen",
+ ("mitglied","Die Adresse antippen"): "04-termin-detail",
+ ("vereinsadmin","Mannschaft löschen"): "43-mannschaft-bearbeiten",
+ ("organisator","Jemanden ohne Konto eintragen"): "44-gast-eintragen",
+ ("organisator","Ein Helferset zentral ändern"): "34-helferset",
+ ("sponsoren","Der Knopf unter der Anzeige"): "12-sponsoren",
+ ("fan","Was du als Fan siehst"): "45-fan-startseite",
+ ("fan","Termine als Fan"): "46-fan-termine",
+ ("fan","Vom Fan zum Mitglied"): "01-anmeldung",
  ("betreiber","Anmelden und Überblick"): "13-betreiber-vereine",
  ("betreiber","Anfragen bis zur Freischaltung"): "13-betreiber-vereine",
  ("betreiber","Die Vereinsliste"): "13-betreiber-vereine",
@@ -82,7 +90,7 @@ QUER = {"13-betreiber-vereine", "14-betreiber-anzeigen", "15-betreiber-kpi"}
 # zusammen: Beide arbeiten im selben Reiter, und wer das eine tut, tut in
 # aller Regel auch das andere.
 AUSGABEN = [
- {"datei": "CMO-Anleitung", "rollen": ["mitglied","trainer","vereinsadmin","organisator","sponsoren","redaktion","eltern"],
+ {"datei": "CMO-Anleitung", "rollen": ["mitglied","trainer","vereinsadmin","organisator","sponsoren","redaktion","eltern","fan"],
   "titel": "Die Vereins-App<br><span>von A bis Z</span>",
   "unter": "Einführung und Anleitung für alle Rollen —<br>vom Mitglied bis zur Vereinsleitung.",
   "kopf": "Anleitung"},
@@ -110,6 +118,10 @@ AUSGABEN = [
   "titel": "Handbuch<br><span>Familie &amp; Kinderkonten</span>",
   "unter": "Die App für dich — und für das Profil<br>deines Kindes. „Eltern“ ist dabei keine Rolle.",
   "kopf": "Handbuch Familie"},
+ {"datei": "CMO-Handbuch-Fan", "rollen": ["fan"],
+  "titel": "Handbuch<br><span>für Fans</span>",
+  "unter": "Du folgst dem Verein, ohne Mitglied zu sein —<br>was das heißt, und was dir dadurch fehlt.",
+  "kopf": "Handbuch Fans"},
  {"datei": "CMO-Handbuch-Betreiber", "rollen": ["betreiber"],
   "titel": "Handbuch<br><span>Vereinsverwaltung</span>",
   "unter": "Die Konsole des Betreibers.<br>Nicht für Vereine bestimmt.",
@@ -289,7 +301,7 @@ def bauen(ausgabe):
   <div class="eyebrow">Übersicht</div>
   <h2 class="inh-h2">Inhalt</h2>
   <p class="inh-hilfe">Jede Zeile ist ein Sprung. Zurück kommst du oben rechts auf jeder Seite.</p>
-  <div class="inh-spalten{" eins" if themen_gesamt + rollen_gesamt <= 10 else " zwei" if themen_gesamt + rollen_gesamt <= 26 else ""}">{''.join(zeilen)}</div>
+  <div class="inh-spalten{" eins" if themen_gesamt + rollen_gesamt <= 10 else " zwei" if themen_gesamt + rollen_gesamt <= 26 else " voll" if themen_gesamt + rollen_gesamt > 70 else ""}">{''.join(zeilen)}</div>
 </section>
 """)
 
@@ -443,6 +455,15 @@ p { font-size: 10.5pt; line-height: 1.55; color: #4A424A; margin: 0; }
 /* Wenige Eintraege in drei Spalten lassen die halbe Seite leer. */
 .inh-spalten.zwei { column-count: 2; column-gap: 14mm; font-size: 9.5pt; }
 .inh-spalten.eins { column-count: 1; max-width: 150mm; font-size: 10pt; }
+/* Ab etwa siebzig Eintraegen laeuft das Verzeichnis aus der Seite - bei der
+   Gesamtanleitung passierte das mit dem neunten Kapitel (Fan). Statt es auf
+   zwei Seiten zu brechen, wo der Zusammenhang verloren ginge, ruecken Schrift
+   und Abstaende enger zusammen. Gemessen am 28.09.2026: 37 Punkt zu viel,
+   danach passt es mit Rand. */
+.inh-spalten.voll { font-size: 8pt; }
+.inh-spalten.voll .inh-rolle { margin: 3.2mm 0 1.4mm; }
+.inh-spalten.voll .inh-nr { font-size: 9.5pt; }
+.inh-spalten.voll .inh-zeile { padding-top: 0.6mm; padding-bottom: 0.6mm; }
 .inh-spalten.zwei .inh-zeile { padding-top: 1.2mm; padding-bottom: 1.2mm; }
 .inh-rolle { break-inside: avoid; display: flex; align-items: baseline; gap: 2.5mm; margin: 5mm 0 2mm;
              border-bottom: 1.5px solid var(--f); padding-bottom: 1.2mm; }

@@ -30,6 +30,23 @@ const klick = (t, warten = 2100) => js(`
    Begriffe enthaelt - etwa ein Mitglied in "Rollen" ("⊙Athlet/in+Mitglied";
    nur "Athlet/in" traf den Reiter "Athlet/in der Saison") -, und rollt zur
    Stufenwahl. */
+/* "✎Name" oeffnet die Personenauswahl und tippt einen Namen hinein, ohne ihn
+   zu waehlen. Gebraucht fuer die Zeile "... ohne Konto eintragen", die erst
+   erscheint, wenn gesucht wurde und nichts gefunden wird. Alle anderen Marker
+   klicken oder rollen nur. */
+const tippenIns = (name) => js(`
+  const w = (ms) => new Promise(r => setTimeout(r, ms));
+  const knopf = [...document.querySelectorAll("button")].find(b => (b.textContent||"").includes("Person wählen"));
+  if (!knopf) return "fehlt";
+  knopf.click(); await w(900);
+  const suche = [...document.querySelectorAll("input")].find(i => /such/i.test(i.placeholder||""));
+  if (!suche) return "fehlt";
+  const setzen = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+  setzen.call(suche, ${JSON.stringify(name)});
+  suche.dispatchEvent(new Event("input", { bubbles: true }));
+  await w(900); return "ok";
+`);
+
 const aufklappen = () => js(`
   const w = (ms) => new Promise(r => setTimeout(r, ms));
   const b = document.querySelector('button[aria-expanded="false"]');
@@ -91,8 +108,13 @@ const PLAN = [
   ["30-vereinsprofil",         "jose@cmo.app",     ["Verwaltung"], ["Vereinsprofil"]],
   ["31-mitgliedsantraege",     "jose@cmo.app",     ["Verwaltung"], ["Mitgliedsanträge"]],
   ["32-helferplanung-verwaltung","jose@cmo.app",   ["Support"], ["Helfer einteilen"]],
-  ["34-saetze-stationen",      "jose@cmo.app",     ["Verwaltung"], ["Sätze"]],
+  ["34-helferset",             "jose@cmo.app",     ["Verwaltung"], ["Sets", "▾"]],
   ["33-team-detail",           "jose@cmo.app",     ["Teams"], ["Herren 1"]],
+  /* Neu seit dem 28.09.2026 - die Funktionen dieses Tages. */
+  ["43-mannschaft-bearbeiten", "jose@cmo.app",     ["Teams"], ["Herren 1", "Bearbeiten"]],
+  ["44-gast-eintragen",        "jose@cmo.app",     ["Termine"], ["Heimspiel", "✎Oma Kuchenstand"]],
+  ["45-fan-startseite",        "renate@cmo.app",   [], []],
+  ["46-fan-termine",           "renate@cmo.app",   ["Termine"], []],
   ["12-sponsoren",             "guido@cmo.app",    ["Sponsoren"], []],
   ["35-redaktion-news",        "guido@cmo.app",    ["Redaktion"], []],
 ];
@@ -106,6 +128,7 @@ for (const [name, konto, reiter, pfad] of PLAN) {
     const r = p.startsWith("↓") ? (gerollt = true, await rollen(p.slice(1)))
       : p === "▾" ? (gerollt = true, await aufklappen())
       : p.startsWith("⊙") ? (gerollt = true, await zeileOeffnen(p.slice(1)))
+      : p.startsWith("✎") ? (gerollt = true, await tippenIns(p.slice(1)))
       : await klick(p);
     if (r !== "ok") { console.log(`  ! ${name}: "${p}" nicht gefunden`); fehler++; }
   }
