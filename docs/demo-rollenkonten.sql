@@ -4,19 +4,15 @@
 -- Datei legt im Verein "SV Musterstadt" (Demo, Pro-Tarif) elf Konten an -
 -- eines fuer jede Rolle, die es heute noch gibt.
 --
--- KEIN PASSWORT IN DIESER DATEI. Die Datei enthaelt den Platzhalter
--- __PASSWORT__. Er wird erst beim Ausfuehren ersetzt, damit kein Geheimnis
--- im Repo landet. Das Passwort wird verdeckt abgefragt, landet nicht im
--- Verlauf der Kommandozeile, und die Zwischendatei faellt danach weg:
+-- KEIN PASSWORT IN DIESER DATEI UND IN KEINEM BEFEHL. Das Skript wuerfelt
+-- selbst eines, setzt es fuer alle elf Konten und gibt es am Ende aus:
 --
 --   cd ~/Projekte/club-member-organisation
---   read -rs "?Passwort fuer die Demo-Konten: " PW && echo
---   sed "s|__PASSWORT__|$PW|" docs/demo-rollenkonten.sql > /tmp/anlegen.sql
---   supabase db query --linked -f /tmp/anlegen.sql; rm -f /tmp/anlegen.sql; unset PW
+--   supabase db query --linked -f docs/demo-rollenkonten.sql
 --
--- NICHT als Argument uebergeben: Die Datei beginnt mit "--", und das haelt
--- die CLI fuer einen Schalter. Nur der Weg ueber -f funktioniert.
--- Im Passwort keine senkrechten Striche verwenden, sed trennt daran.
+-- Die letzte Spalte der Ausgabe heisst "passwort" - das ist die Anmeldung
+-- fuer alle elf Konten. Sie steht nur in dieser einen Ausgabe; wer sie
+-- verliert, loescht die Konten und legt sie neu an.
 --
 -- NUR IM DEMO-VEREIN. Die Verein-ID steht fest auf
 -- d0000000-0000-4000-a000-000000000001 (SV Musterstadt). ERG Iserlohn wird
@@ -36,10 +32,14 @@
 --
 -- WIEDER WEG: docs/demo-rollenkonten-loeschen.sql
 
+/* Das Passwort entsteht hier und lebt nur in dieser Sitzung. */
+create temp table if not exists demo_zugang as
+  select 'Demo-' || upper(substr(md5(random()::text || clock_timestamp()::text), 1, 6)) as pw;
+
 do $$
 declare
   v_klub uuid := 'd0000000-0000-4000-a000-000000000001';
-  v_pw   text := '__PASSWORT__';
+  v_pw   text;
   v_team uuid;
   v_user uuid;
   v_mit  uuid;
@@ -47,10 +47,9 @@ declare
   v_nr   integer := 0;
   r record;
 begin
-  /* Die Pruefung setzt den Platzhalter aus zwei Stuecken zusammen, damit das
-     sed beim Aufruf sie nicht miterwischt. */
-  if v_pw = '__PASS' || 'WORT__' or length(v_pw) < 8 then
-    raise exception 'Bitte beim Aufruf einen eigenen Wert einsetzen (siehe Kopf der Datei), mindestens acht Zeichen.';
+  select pw into v_pw from demo_zugang;
+  if v_pw is null or length(v_pw) < 8 then
+    raise exception 'Kein Passwort erzeugt - Abbruch.';
   end if;
 
   select id into v_team from public.teams where club_id = v_klub and name = 'U11' limit 1;
@@ -138,7 +137,8 @@ select m.display_name                                           as konto,
        (select array_to_string(p.contact_phones, ', ') from public.profiles p
          where p.id = m.profile_id)                                              as telefon,
        (select coalesce(string_agg(t.name, ', '), '-') from public.team_members tm
-          join public.teams t on t.id = tm.team_id where tm.membership_id = m.id) as mannschaft
+          join public.teams t on t.id = tm.team_id where tm.membership_id = m.id) as mannschaft,
+       (select pw from demo_zugang)                                              as passwort
   from public.club_memberships m
  where m.club_id = 'd0000000-0000-4000-a000-000000000001'
    and m.email like 'demo.%@idbranding.de'
