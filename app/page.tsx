@@ -1226,6 +1226,11 @@ const canWriteNews = (m) => isAdmin(m) || (!!m && (m.roles.includes("redakteur")
  * ueber clubs.sponsoring_freigeschaltet. Der Kommentar hier sagte noch das
  * Gegenteil ("Der Reiter bleibt deshalb ausgeblendet") - wer ihn las, hielt die
  * Funktion fuer abgeschaltet. */
+/* Vereinspunkte vorerst nicht zeigen (30.09.2026). Gerechnet werden sie
+   weiter - das Ausblenden ist eine Entscheidung ueber die Anzeige, nicht
+   ueber die Daten. */
+const VEREINSPUNKTE_SICHTBAR = false;
+
 const SPONSOREN_VERWALTUNG_SICHTBAR = true;
 
 /* "Vereine werben Vereine" ist ausgeblendet.
@@ -10147,7 +10152,12 @@ function ProfileUnderlay({ title, eyebrow, onClose, onSave, saving = false, save
   </div>;
 }
 
-function ProfileSettingsCard({ icon: Icon, title, description, onClick, color = C.red }) {
+/* Die Symbolfelder tragen alle dieselbe Farbe (Wunsch des Betreibers,
+   30.09.2026). Vorher waren es vier - rot, Zweitfarbe, ein Avatarton und
+   gedaempft -, ohne dass die Wahl etwas bedeutete: Dieselbe Kachel hatte
+   an zwei Stellen verschiedene Farben. Der Wert bleibt als Angabe
+   erhalten, damit eine einzelne Kachel spaeter wieder ausscheren kann. */
+function ProfileSettingsCard({ icon: Icon, title, description, onClick, color = C.ink }) {
   return <button onClick={onClick} className="w-full flex items-center gap-3.5 rounded-2xl px-4 py-3.5 text-left" style={{ background: C.glass, border: `1px solid ${C.edge}`, boxShadow: "0 10px 26px rgba(60,30,45,0.07)" }}><div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `linear-gradient(155deg, color-mix(in srgb, ${color} 72%, #fff), ${color})`, boxShadow: `0 6px 14px color-mix(in srgb, ${color} 34%, transparent), inset 0 1px 0 rgba(255,255,255,0.45)`, color: "#fff" }}><Icon size={18}/></div><div className="flex-1 min-w-0"><div className="text-sm font-bold" style={{ color: C.ink }}>{title}</div><div className="text-[10px] leading-snug" style={{ color: C.textDim }}>{description}</div></div><ChevronRight size={15} style={{ color: C.textDim }}/></button>;
 }
 
@@ -10991,9 +11001,9 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
       {darfVereinVerwalten(user) && <>
       <SectionTitle eyebrow={t("pf.vereinVerwalten")} title={t("pf.vereinseinstellungen")} />
       <div className="space-y-2 mb-6">
-        {isAdmin(user) && <ProfileSettingsCard icon={Settings} title={t("pf.vereinseinstellungen")} description={t("pf.vereinseinstellungenHinweis")} color={C.red} onClick={() => setProfileFolder("clubsettings")}/>}
-        <ProfileSettingsCard icon={Trophy} title={t("pf.vereinMitglied")} description={t("pf.vereinMitgliedHinweis")} color={C.red} onClick={() => setProfileFolder("club")}/>
-        <ProfileSettingsCard icon={Euro} title={t("pf.zugangNur")} description={t("pf.zugangText")} color={C.red} onClick={() => setProfileFolder("billing")}/>
+        {isAdmin(user) && <ProfileSettingsCard icon={Settings} title={t("pf.vereinseinstellungen")} description={t("pf.vereinseinstellungenHinweis")} color={C.ink} onClick={() => setProfileFolder("clubsettings")}/>}
+        <ProfileSettingsCard icon={Trophy} title={t("pf.vereinMitglied")} description={t("pf.vereinMitgliedHinweis")} color={C.ink} onClick={() => setProfileFolder("club")}/>
+        <ProfileSettingsCard icon={Euro} title={t("pf.zugangNur")} description={t("pf.zugangText")} color={C.ink} onClick={() => setProfileFolder("billing")}/>
       </div>
       </>}
 
@@ -11006,8 +11016,8 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
       {user.roles.includes("trainer") && <>
       <SectionTitle eyebrow={t("rolle.trainer")} title={t("pf.trainerbereich")} />
       <div className="space-y-2 mb-6">
-        <ProfileSettingsCard icon={Trophy} title={t("pf.trainerRollen")} description={t("pf.trainerRollenHinweis")} color={C.red} onClick={() => setProfileUnderlay("trainer")}/>
-        <ProfileSettingsCard icon={ClipboardList} title={t("pf.mannschaftseinstellungen")} description={t("pf.mannschaftseinstellungenHinweis")} color={C.secondary} onClick={() => setProfileUnderlay("penalties")}/>
+        <ProfileSettingsCard icon={Trophy} title={t("pf.trainerRollen")} description={t("pf.trainerRollenHinweis")} color={C.ink} onClick={() => setProfileUnderlay("trainer")}/>
+        <ProfileSettingsCard icon={ClipboardList} title={t("pf.mannschaftseinstellungen")} description={t("pf.mannschaftseinstellungenHinweis")} color={C.ink} onClick={() => setProfileUnderlay("penalties")}/>
       </div>
       </>}
 
@@ -11017,7 +11027,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
           seinen eigenen Kontoeinstellungen. */}
       <SectionTitle eyebrow={t("pf.einstellungen2")} title={t("pf.einstellungen")} />
       <div className="space-y-2 mb-6">
-        <ProfileSettingsCard icon={User} title={t("pf.persoenlich")} description={t("pf.persoenlichHinweis")} color={C.secondary} onClick={() => setProfileFolder("personal")}/>
+        <ProfileSettingsCard icon={User} title={t("pf.persoenlich")} description={t("pf.persoenlichHinweis")} color={C.ink} onClick={() => setProfileFolder("personal")}/>
         {/* Der Strafenkatalog gehoert auch den Athletinnen und Athleten: Sie
             muessen nachsehen koennen, was eine Strafe kostet und was sie
             selbst offen haben. Beim Abriegeln von "Verein & Mitgliedschaft"
@@ -11029,8 +11039,8 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
             der Bildschirm selbst. */}
         {!user.roles.includes("trainer") && !darfVereinVerwalten(user)
           && ["spieler", "teammanager", "kapitaen"].some((r) => user.roles.includes(r))
-          && <ProfileSettingsCard icon={ClipboardList} title={t("straf.katalog")} description={t("straf.katalogHinweis")} color={C.secondary} onClick={() => setProfileUnderlay("penalties")}/>}
-        <ProfileSettingsCard icon={KeyRound} title={t("pf.konto")} description={t("pf.kontoHinweis")} color={AVATAR_FARBEN[2]} onClick={() => setProfileFolder("security")}/>
+          && <ProfileSettingsCard icon={ClipboardList} title={t("straf.katalog")} description={t("straf.katalogHinweis")} color={C.ink} onClick={() => setProfileUnderlay("penalties")}/>}
+        <ProfileSettingsCard icon={KeyRound} title={t("pf.konto")} description={t("pf.kontoHinweis")} color={C.ink} onClick={() => setProfileFolder("security")}/>
         {/* Die Sprache wird beim ersten Oeffnen gewaehlt - danach muss sie
             auch aenderbar sein. Ohne diese Karte waere die Wahl endgueltig,
             und wer sich vertippt hat, muesste die App loeschen. */}
@@ -11038,7 +11048,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
             und ein Konto anlegt, landet direkt bei der Beitrittsanfrage fuer
             genau diesen Verein - statt in einer Vereinssuche, in der er den
             Namen tippen muesste, den ihm gerade jemand geschickt hat. */}
-        <ProfileSettingsCard icon={UserPlus} title={t("pf.einladen")} description={t("pf.einladenHinweis")} color={C.secondary} onClick={async () => {
+        <ProfileSettingsCard icon={UserPlus} title={t("pf.einladen")} description={t("pf.einladenHinweis")} color={C.ink} onClick={async () => {
           /* Ueber /willkommen statt direkt in die App: Wer eingeladen wird, hat
              die App in aller Regel noch nicht. Der alte Link oeffnete sofort die
              Weboberflaeche - die funktioniert zwar, aber der Freund soll sie
@@ -11057,16 +11067,16 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
             window.prompt(t("zug.einladungslink"), link);
           }
         }}/>
-        <ProfileSettingsCard icon={Globe} title={t("profil.sprache")} description={SPRACHEN.find((x) => x.code === sprache)?.name || "Deutsch"} color={C.secondary} onClick={() => setProfileFolder("sprache")}/>
-        <ProfileSettingsCard icon={Home} title={t("pf.startseite.titel")} description={t("pf.startseite.beschreibung")} color={C.secondary} onClick={() => setProfileUnderlay("startseite")}/>
-        <ProfileSettingsCard icon={Bell} title={t("pf.benachrichtigungen")} description={t("pf.benachrichtigungenHinweis")} color={C.secondary} onClick={() => setProfileFolder("notify")}/>
-        <ProfileSettingsCard icon={Star} title={t("pf.support")} description={t("pf.supportHinweis")} color={C.textDim} onClick={() => setProfileFolder("support")}/>
-        {vorhandeneVideos.length > 0 && <ProfileSettingsCard icon={PlayCircle} title={t("pf.appKennenlernen")} description={t("pf.appKennenlernenHinweis")} color={C.secondary} onClick={() => setProfileFolder("howto")}/>}
+        <ProfileSettingsCard icon={Globe} title={t("profil.sprache")} description={SPRACHEN.find((x) => x.code === sprache)?.name || "Deutsch"} color={C.ink} onClick={() => setProfileFolder("sprache")}/>
+        <ProfileSettingsCard icon={Home} title={t("pf.startseite.titel")} description={t("pf.startseite.beschreibung")} color={C.ink} onClick={() => setProfileUnderlay("startseite")}/>
+        <ProfileSettingsCard icon={Bell} title={t("pf.benachrichtigungen")} description={t("pf.benachrichtigungenHinweis")} color={C.ink} onClick={() => setProfileFolder("notify")}/>
+        <ProfileSettingsCard icon={Star} title={t("pf.support")} description={t("pf.supportHinweis")} color={C.ink} onClick={() => setProfileFolder("support")}/>
+        {vorhandeneVideos.length > 0 && <ProfileSettingsCard icon={PlayCircle} title={t("pf.appKennenlernen")} description={t("pf.appKennenlernenHinweis")} color={C.ink} onClick={() => setProfileFolder("howto")}/>}
         {/* Direkter Weg zur Kontolöschung. Vorher lag sie drei Overlay-Ebenen tief
             und keine der Zwischenkacheln trug das Wort „löschen" — ein Prüfer, der
             unserer eigenen Anleitung („Profil → Verwalten → Konto löschen") folgt,
             hätte die Funktion nicht gefunden und als fehlend gemeldet. */}
-        <ProfileSettingsCard icon={Trash2} title={t("konto.dlg.titel")} description={t("konto.karte.beschreibung")} color={C.red} onClick={() => setProfileUnderlay("account-delete")}/>
+        <ProfileSettingsCard icon={Trash2} title={t("konto.dlg.titel")} description={t("konto.karte.beschreibung")} color={C.ink} onClick={() => setProfileUnderlay("account-delete")}/>
       </div>
 
       {profileFolder === "sprache" && <ProfileUnderlay title={t("profil.sprache")} eyebrow={t("pf.einstellungen")} onClose={() => setProfileFolder("")}>
@@ -11094,16 +11104,16 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
 
       {profileFolder === "personal" && <ProfileUnderlay title={t("pf.persoenlich")} eyebrow={t("pf.einstellungen")} onClose={() => setProfileFolder("")}>
         <div className="space-y-2">
-          <ProfileSettingsCard icon={User} title={t("pf.persoenlich")} description={t("pf.persoenlicheDatenHinweis")} color={C.secondary} onClick={() => setProfileUnderlay("personal")}/>
-          <ProfileSettingsCard icon={Users} title={t("fam.familie")} description={t("pf.familieHinweis")} color={C.secondary} onClick={() => setProfileUnderlay("family")}/>
+          <ProfileSettingsCard icon={User} title={t("pf.persoenlich")} description={t("pf.persoenlicheDatenHinweis")} color={C.ink} onClick={() => setProfileUnderlay("personal")}/>
+          <ProfileSettingsCard icon={Users} title={t("fam.familie")} description={t("pf.familieHinweis")} color={C.ink} onClick={() => setProfileUnderlay("family")}/>
         </div>
       </ProfileUnderlay>}
 
       {profileFolder === "security" && <ProfileUnderlay title={t("pf.konto")} eyebrow={t("pf.einstellungen")} onClose={() => setProfileFolder("")}>
         <div className="space-y-2">
-          <ProfileSettingsCard icon={KeyRound} title={t("pf.passwortAendern")} description={t("pf.passwortAktualisieren")} color={AVATAR_FARBEN[2]} onClick={() => setProfileUnderlay("password")}/>
-          <ProfileSettingsCard icon={Settings} title={t("pf.sicherheit")} description={t("pf.autoLogoutEinstellen")} color={C.textDim} onClick={() => setProfileUnderlay("security")}/>
-          <ProfileSettingsCard icon={ShieldCheck} title={t("konto.dlg.eyebrow")} description={t("pf.kontoeinstellungenBeschreibung")} color={C.textDim} onClick={() => setProfileUnderlay("account")}/>
+          <ProfileSettingsCard icon={KeyRound} title={t("pf.passwortAendern")} description={t("pf.passwortAktualisieren")} color={C.ink} onClick={() => setProfileUnderlay("password")}/>
+          <ProfileSettingsCard icon={Settings} title={t("pf.sicherheit")} description={t("pf.autoLogoutEinstellen")} color={C.ink} onClick={() => setProfileUnderlay("security")}/>
+          <ProfileSettingsCard icon={ShieldCheck} title={t("konto.dlg.eyebrow")} description={t("pf.kontoeinstellungenBeschreibung")} color={C.ink} onClick={() => setProfileUnderlay("account")}/>
         </div>
       </ProfileUnderlay>}
 
@@ -11112,33 +11122,33 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
           nicht sieht, soll auch den Inhalt nicht sehen. */}
       {profileFolder === "club" && darfVereinVerwalten(user) && <ProfileUnderlay title={t("pf.vereinMitglied")} eyebrow={t("pf.einstellungen")} onClose={() => setProfileFolder("")}>
         <div className="space-y-2">
-          {darfVereinVerwalten(user) && <ProfileSettingsCard icon={UserPlus} title={t("pf.benutzerverwaltung")} description={t("pf.benutzerverwaltungBeschreibung")} color={AVATAR_FARBEN[2]} onClick={() => setProfileUnderlay("users")}/>}
+          {darfVereinVerwalten(user) && <ProfileSettingsCard icon={UserPlus} title={t("pf.benutzerverwaltung")} description={t("pf.benutzerverwaltungBeschreibung")} color={C.ink} onClick={() => setProfileUnderlay("users")}/>}
           {/* Hing an der Rolle "vorstand". Die ist seit 20260905180000
               abgeschafft - die Kachel war damit fuer niemanden mehr sichtbar.
               Sie gehoert zur Vereinsverwaltung und bekommt deren Rollen. */}
-          {darfVereinVerwalten(user) && <ProfileSettingsCard icon={Eye} title={t("pf.mitgliederuebersicht")} description={t("pf.mitgliederuebersichtBeschreibung")} color={C.textDim} onClick={() => setProfileUnderlay("board-overview")}/>}
-          {darfBeitritteEntscheiden(user) && <ProfileSettingsCard icon={UserPlus} title={t("benach.join_requests")} description={t("pf.beitrittsanfragenBeschreibung")} color={C.secondary} onClick={() => setProfileUnderlay("join-requests")}/>}
+          {darfVereinVerwalten(user) && <ProfileSettingsCard icon={Eye} title={t("pf.mitgliederuebersicht")} description={t("pf.mitgliederuebersichtBeschreibung")} color={C.ink} onClick={() => setProfileUnderlay("board-overview")}/>}
+          {darfBeitritteEntscheiden(user) && <ProfileSettingsCard icon={UserPlus} title={t("benach.join_requests")} description={t("pf.beitrittsanfragenBeschreibung")} color={C.ink} onClick={() => setProfileUnderlay("join-requests")}/>}
         </div>
       </ProfileUnderlay>}
 
       {profileFolder === "notify" && <ProfileUnderlay title={t("pf.benachrichtigungen")} eyebrow={t("pf.einstellungen")} onClose={() => setProfileFolder("")}>
         <div className="space-y-2">
-          <ProfileSettingsCard icon={Bell} title={t("sub.postfach")} description={t("pf.benachrichtigungenBeschreibung")} color={C.secondary} onClick={() => setProfileUnderlay("notifications")}/>
-          <ProfileSettingsCard icon={Smartphone} title={t("pf.kalenderSync")} description={t("pf.kalenderSyncBeschreibung")} color={AVATAR_FARBEN[2]} onClick={() => setProfileUnderlay("calendar")}/>
+          <ProfileSettingsCard icon={Bell} title={t("sub.postfach")} description={t("pf.benachrichtigungenBeschreibung")} color={C.ink} onClick={() => setProfileUnderlay("notifications")}/>
+          <ProfileSettingsCard icon={Smartphone} title={t("pf.kalenderSync")} description={t("pf.kalenderSyncBeschreibung")} color={C.ink} onClick={() => setProfileUnderlay("calendar")}/>
         </div>
       </ProfileUnderlay>}
 
       {profileFolder === "billing" && <ProfileUnderlay title={t("pf.zugangNur")} eyebrow={t("pf.einstellungen")} onClose={() => setProfileFolder("")}>
         <div className="space-y-2">
           <ProfileSettingsCard icon={Euro} title={t("pf.zugangNur")} description={t("pf.zugangText")} onClick={() => setProfileUnderlay("subscription")}/>
-          {EMPFEHLUNGEN_SICHTBAR && (!referralAlreadyUsed || user.roles.includes("sysadmin")) && <ProfileSettingsCard icon={Building2} title={t("zug.werben")} description={t("pf.vereinWerbenText")} color={C.red} onClick={() => setProfileUnderlay("referral")}/>}
+          {EMPFEHLUNGEN_SICHTBAR && (!referralAlreadyUsed || user.roles.includes("sysadmin")) && <ProfileSettingsCard icon={Building2} title={t("zug.werben")} description={t("pf.vereinWerbenText")} color={C.ink} onClick={() => setProfileUnderlay("referral")}/>}
         </div>
       </ProfileUnderlay>}
 
       {profileFolder === "support" && <ProfileUnderlay title={t("pf.support")} eyebrow={t("pf.einstellungen")} onClose={() => setProfileFolder("")}>
         <div className="space-y-2">
-          <ProfileSettingsCard icon={Star} title={t("pf.appBewerten")} description={t("pf.appBewertenText")} color={C.secondary} onClick={() => setProfileUnderlay("feedback")}/>
-          <ProfileSettingsCard icon={Bug} title={t("pf.fehlerMeldenKurz")} description={t("pf.fehlerMeldenText")} color={C.red} onClick={() => setProfileUnderlay("bug")}/>
+          <ProfileSettingsCard icon={Star} title={t("pf.appBewerten")} description={t("pf.appBewertenText")} color={C.ink} onClick={() => setProfileUnderlay("feedback")}/>
+          <ProfileSettingsCard icon={Bug} title={t("pf.fehlerMeldenKurz")} description={t("pf.fehlerMeldenText")} color={C.ink} onClick={() => setProfileUnderlay("bug")}/>
         </div>
       </ProfileUnderlay>}
 
@@ -11146,6 +11156,12 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
         <HowToVideoLibrary user={user} vorhanden={vorhandeneVideos}/>
       </ProfileUnderlay>}
 
+      {/* Vereinspunkte: vorerst ausgeblendet (Wunsch des Betreibers,
+          30.09.2026). Der Schalter steht bewusst hier als benannte
+          Konstante und nicht als geloeschter Block - die Punkte werden in
+          der Datenbank weiter gerechnet (punkte_je_mitglied), nur nicht
+          mehr gezeigt. Zum Wiedereinschalten: true. */}
+      {VEREINSPUNKTE_SICHTBAR && (
       <div className="rounded-2xl p-4 mb-5" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2 text-sm" style={{ fontFamily: "Inter", fontWeight: 700, color: C.ink }}><Sparkles size={15} style={{ color: C.secondary }} /> {t("pf.vereinspunkte")}</div>
@@ -11163,6 +11179,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
           </div>
         </div>
       </div>
+      )}
       {/* Hier standen t("pf.badges") samt Erklaertext.
           Entfernt, weil die Auszeichnungen nichts steuern und nichts
           freischalten - sie waren Zierde, die Platz auf dem wichtigsten
@@ -11227,7 +11244,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
         <div className="rounded-2xl p-4 mb-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}><div className="flex items-center gap-2 text-sm font-bold mb-1" style={{ color: C.ink }}><ShieldCheck size={16} style={{ color: C.sekundaerAufHell }}/> {t("pf.sicherheit")}</div><div className="text-[11px]" style={{ color: C.textDim }}>{t("pf.kontoSupabaseHinweis")}</div></div>
         <div className="space-y-2 mb-6"><a href="/datenschutz" className="w-full flex items-center justify-between rounded-2xl px-3.5 py-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}><span className="text-xs font-bold" style={{ color: C.ink }}>{t("recht.datenschutz")}</span><ChevronRight size={14} style={{ color: C.textDim }}/></a><a href="/nutzungsbedingungen" className="w-full flex items-center justify-between rounded-2xl px-3.5 py-3" style={{ background: C.glass, border: `1px solid ${C.line}` }}><span className="text-xs font-bold" style={{ color: C.ink }}>{t("recht.nutzung")}</span><ChevronRight size={14} style={{ color: C.textDim }}/></a></div>
         <SectionTitle eyebrow={t("allg.weitereOptionen")} title={t("pf.accountverwaltung")}/>
-        <ProfileSettingsCard icon={User} title={t("pf.accountVerwalten")} description={t("pf.accountVerwaltenHinweis")} color={C.textDim} onClick={() => setProfileUnderlay("account-delete")}/>
+        <ProfileSettingsCard icon={User} title={t("pf.accountVerwalten")} description={t("pf.accountVerwaltenHinweis")} color={C.ink} onClick={() => setProfileUnderlay("account-delete")}/>
       </ProfileUnderlay>}
       {/* Schließt zurück ins Profil statt in die Kontoeinstellungen: Die Ansicht ist
           jetzt auch direkt aus der Einstellungsliste erreichbar, und ein Zurück in
