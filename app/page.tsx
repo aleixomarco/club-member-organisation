@@ -5159,7 +5159,13 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
           ) :           <button onClick={()=>setAbsageOffen(true)} className="w-full py-2.5 rounded-xl text-xs font-bold mb-3" style={{background:C.fehlerFlaeche,color:C.fehler,border: `1px solid ${C.fehlerRand}`}}>{ev.team?mitWerten(t("ev.artAbsagenTeam"), { art: terminArt(t, ev.type), team: ev.team }):mitWerten(t("ev.artAbsagen"), { art: terminArt(t, ev.type) })}</button>)}{/* Ein Spiel mit Ergebnis oder Tipps laesst sich nur absagen: Das Loeschen
               nahm ueber ON DELETE CASCADE das Ergebnis und jeden Tipp mit (C1). */}{canCancelTraining&&nurAbsagen&&<div className="text-[11px] mb-3 px-1" style={{color:C.textDim}}>{t("ev.gespieltNurAbsagen")}</div>}{canCancelTraining&&!nurAbsagen&&<button onClick={()=>onDeleteTraining(ev.id, ev.team, ev.seriesId)} className="w-full py-2.5 rounded-xl text-xs font-bold mb-3" style={{background:C.paperDim,color:C.fehler}}>{mitWerten(t("ev.artEndgueltigLoeschen"), { art: terminArt(t, ev.type) })}</button>}
 
-          {ev.home !== true && (
+          {/* Nichts davon bei einem abgesagten Termin: Wer eine Mitfahrt
+              anbietet oder sich fuer einen Dienst eintraegt, den es nicht
+              mehr gibt, arbeitet ins Leere - und seit 20260930090000 weist
+              die Datenbank es ohnehin ab. Einen Knopf zu zeigen, der
+              garantiert in eine Fehlermeldung laeuft, ist schlechter als
+              keiner. */}
+          {ev.home !== true && !ev.cancelled && (
             eventIsReal ? <CarpoolSection ev={ev} currentUser={currentUser} /> : ev.carpool && (
             <button onClick={() => onCarpool(ev.id)} className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs mb-1"
               style={{ fontFamily: "Inter", fontWeight: 700, background: carpoolOn ? C.erfolgFlaeche : C.ink, color: carpoolOn ? C.secondary : C.white, border: carpoolOn ? `1px solid ${C.secondary}` : "none" }}>
@@ -5173,7 +5179,7 @@ function EventCard({ ev, carpoolOn, onCarpool, currentUser, members, isAdminUser
               Jetzt laedt die Leitung oben einen Satz Stationen vor, und
               darunter tragen sich die Helfer selbst ein oder werden von der
               Leitung eingetragen. */}
-          {featureEnabled("duty_roster") && (ev.helperSlots?.length > 0 || dutyLeitung) && (
+          {featureEnabled("duty_roster") && !ev.cancelled && (ev.helperSlots?.length > 0 || dutyLeitung) && (
             <div className="mt-3">
               <div className="text-xs font-semibold mb-2" style={{ fontFamily: "Inter", color: C.ink }}>{t("helf.gesucht")}</div>
               {dutyLeitung && <DutyStationsManager ev={ev} currentUser={currentUser} sport={currentClub?.sport} onNeuLaden={onNeuLaden} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} />}
