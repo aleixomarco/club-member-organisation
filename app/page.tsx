@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { ANMELDUNG_MERKEN, isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { SPRACHEN, gespeicherteSprache, spracheMerken, uebersetze, spracheLaden } from "@/lib/sprachen";
+import { KAPITEL as HANDBUCH_INHALT, kapitelLaden } from "@/lib/handbuch";
 import { enablePushNotifications, disablePushNotifications, listenForForegroundMessages, pushTokenAuffrischen, meldungsTippsAbonnieren, zugestellteEntfernen } from "@/lib/firebase-push";
 import { Capacitor } from "@capacitor/core";
 import { legal } from "./legal-shell";
@@ -1412,6 +1413,37 @@ const HOWTO_VIDEOS = [
   },
 ];
 const howToVideosFor = (user) => HOWTO_VIDEOS.filter((video) => video.can(user));
+
+/* Welches Handbuch-Kapitel wer sieht.
+ *
+ * Gleiche Bauart wie HOWTO_VIDEOS darueber: Jeder Eintrag entscheidet selbst,
+ * und zwar mit derselben Pruefung wie die Sache, die er beschreibt. Wer keine
+ * Helferdienste einteilen darf, bekommt auch das Kapitel darueber nicht - eine
+ * Anleitung fuer Knoepfe, die man nicht hat, verwirrt mehr, als sie hilft.
+ *
+ * Die Reihenfolge auf dem Bildschirm steht NICHT hier, sondern in
+ * Anleitung/quelle/inhalte.json - der Filter unten laesst sie unangetastet.
+ * Heft und App zaehlen die Kapitel also gleich auf, und wer umsortieren will,
+ * tut das an der Quelle und aendert damit beides.
+ *
+ * "betreiber" fehlt mit Absicht - das ist die Konsole unter /betreiber, eine
+ * andere Anwendung. Und "eltern" haengt an keiner Rolle: Die Familienfunktion
+ * steht jedem offen, der ein Kind im Verein hat. */
+const HANDBUCH_RECHTE = {
+  fan:         (u) => istNurFan(u),
+  mitglied:    (u) => !istNurFan(u),
+  athlet:      (u) => !!u && u.roles.includes("spieler"),
+  eltern:      (u) => !istNurFan(u),
+  trainer:     (u) => !!u && u.roles.includes("trainer"),
+  kapitaen:    (u) => !!u && u.roles.includes("kapitaen"),
+  teammanager: (u) => !!u && u.roles.includes("teammanager"),
+  organisator: (u) => canManageDuty(u),
+  vereinsadmin:(u) => darfVereinVerwalten(u),
+  redaktion:   (u) => canWriteNews(u),
+  sponsoren:   (u) => canManageSponsors(u),
+};
+const handbuchFuer = (user) =>
+  HANDBUCH_INHALT.filter((k) => HANDBUCH_RECHTE[k.key]?.(user));
 const howToVideoUrl = (file) => supabase?.storage.from(HOWTO_VIDEO_BUCKET).getPublicUrl(file).data.publicUrl || "";
 
 /* Welche der vier Dateien wirklich im Speicher liegen.
@@ -10161,6 +10193,93 @@ function ProfileSettingsCard({ icon: Icon, title, description, onClick, color = 
   return <button onClick={onClick} className="w-full flex items-center gap-3.5 rounded-2xl px-4 py-3.5 text-left" style={{ background: C.glass, border: `1px solid ${C.edge}`, boxShadow: "0 10px 26px rgba(60,30,45,0.07)" }}><div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `linear-gradient(155deg, color-mix(in srgb, ${color} 72%, #fff), ${color})`, boxShadow: `0 6px 14px color-mix(in srgb, ${color} 34%, transparent), inset 0 1px 0 rgba(255,255,255,0.45)`, color: "#fff" }}><Icon size={18}/></div><div className="flex-1 min-w-0"><div className="text-sm font-bold" style={{ color: C.ink }}>{title}</div><div className="text-[10px] leading-snug" style={{ color: C.textDim }}>{description}</div></div><ChevronRight size={15} style={{ color: C.textDim }}/></button>;
 }
 
+/* Das Handbuch in der App.
+ *
+ * Dieselben Texte wie in den gedruckten Heften - die Quelle ist
+ * Anleitung/quelle/inhalte.json, erzeugt von scripts/handbuch-bauen.mjs. Die
+ * Hefte brauchen Screenshots, weil Papier nicht springen kann; hier gibt es
+ * stattdessen einen Knopf, der genau dorthin fuehrt, wovon der Abschnitt
+ * handelt. Deshalb sind es 96 KB statt 68 MB.
+ *
+ * Geladen wird je Kapitel und erst beim Aufklappen: Ein Mitglied braucht
+ * fuenfzehn Abschnitte, nicht dreiundachtzig. */
+function HandbuchBibliothek({ user, onSpringen }) {
+  const t = useT();
+  const kapitel = handbuchFuer(user);
+  const [offen, setOffen] = useState("");
+  const [inhalte, setInhalte] = useState({});
+  const [laedt, setLaedt] = useState("");
+
+  const aufklappen = async (key) => {
+    if (offen === key) { setOffen(""); return; }
+    setOffen(key);
+    if (inhalte[key]) return;
+    setLaedt(key);
+    const abschnitte = await kapitelLaden(key);
+    setLaedt("");
+    if (abschnitte) setInhalte((alle) => ({ ...alle, [key]: abschnitte }));
+  };
+
+  if (kapitel.length === 0) return null;
+
+  return (
+    <div>
+      {/* Der Hinweis steht oben und nicht im Kleingedruckten: Wer die App auf
+          Tuerkisch benutzt, soll nicht erst drei Abschnitte lesen, um zu
+          merken, dass hier Deutsch steht. */}
+      <div className="text-[11px] rounded-xl px-3 py-2 mb-3" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>
+        {t("hb.nurDeutsch")}
+      </div>
+      {kapitel.map((k) => {
+        const auf = offen === k.key;
+        const abschnitte = inhalte[k.key] || [];
+        return (
+          <div key={k.key} className="rounded-2xl mb-2.5 overflow-hidden" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
+            <button className="w-full text-left p-3.5 flex items-center justify-between" aria-expanded={auf}
+              onClick={() => aufklappen(k.key)}>
+              <div className="min-w-0">
+                <div className="text-sm font-bold" style={{ color: C.ink, fontFamily: "Inter" }}>{k.rolle}</div>
+                <div className="text-[10px]" style={{ color: C.textDim }}>
+                  {k.anzahl === 1 ? t("hb.einAbschnitt") : mitWerten(t("hb.abschnitte"), { anzahl: k.anzahl })}
+                </div>
+              </div>
+              <ChevronDown size={16} style={{ color: C.textDim, transform: auf ? "rotate(180deg)" : "none", transition: "transform .2s", flexShrink: 0 }} />
+            </button>
+            {auf && (
+              <div className="px-3.5 pb-3.5">
+                <p className="text-xs leading-relaxed mb-3" style={{ color: C.textDim, fontFamily: "Inter" }}>{k.einleitung}</p>
+                {laedt === k.key && <div className="text-xs py-2" style={{ color: C.textDim }}>{t("allg.laedt")}</div>}
+                {abschnitte.map((a, i) => (
+                  <div key={`${k.key}-${i}`} className="rounded-xl p-3 mb-2" style={{ background: C.paperDim }}>
+                    <div className="text-xs font-bold mb-1" style={{ color: C.ink, fontFamily: "Inter" }}>{a.titel}</div>
+                    <div className="text-[10px] mb-2" style={{ color: C.textDim }}>{a.wo}</div>
+                    <ul className="text-[11px] leading-relaxed mb-2" style={{ color: C.ink, fontFamily: "Inter", listStyle: "disc", paddingLeft: "1.1rem" }}>
+                      {a.punkte.map((punkt, n) => <li key={n} className="mb-0.5">{punkt}</li>)}
+                    </ul>
+                    {a.hinweis && (
+                      <div className="text-[10px] leading-relaxed rounded-lg px-2.5 py-2" style={{ background: C.glass, color: C.textDim }}>{a.hinweis}</div>
+                    )}
+                    {/* Der Knopf gibt es nur, wo das Ziel eindeutig ist. Ein
+                        Sprung, der woanders landet, ist schlechter als keiner -
+                        siehe scripts/handbuch-bauen.mjs. */}
+                    {a.sprung && onSpringen && (
+                      <button onClick={() => onSpringen(a.sprung.tab)}
+                        className="flex items-center gap-1.5 mt-2 text-[11px] font-bold"
+                        style={{ color: C.red, fontFamily: "Inter" }}>
+                        <ArrowRight size={12} /> {t("hb.dahinSpringen")}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function HowToVideoLibrary({ user, vorhanden = null }) {
   const t = useT();
   const [openId, setOpenId] = useState("");
@@ -10848,7 +10967,7 @@ function CalendarSyncSettings({ user, saveRef }) {
   </div>;
 }
 
-function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, currentClub, dutyPlan, punkteZiel, punktePraemie, werbeplaetze, onSponsorImpression, onSponsorClick, onLogout, clubFeatures, onClubFeaturesChanged, entitlement, goSubscribe, dashboardTileOrder, setDashboardTileOrder, ziel, onZielErreicht, mitgliedZiel = null, onMitgliedZielErreicht }) {
+function ProfileView({ sprache, onSpracheWaehlen, onSpringen, user, members, setMembers, currentClub, dutyPlan, punkteZiel, punktePraemie, werbeplaetze, onSponsorImpression, onSponsorClick, onLogout, clubFeatures, onClubFeaturesChanged, entitlement, goSubscribe, dashboardTileOrder, setDashboardTileOrder, ziel, onZielErreicht, mitgliedZiel = null, onMitgliedZielErreicht }) {
   const t = useT();
   const featureEnabled = (key) => clubFeatures[key] !== false;
   /* Ziel und Praemie legt der VEREIN fest, nicht die App. Ohne Eintrag steht
@@ -11072,6 +11191,7 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
         <ProfileSettingsCard icon={Bell} title={t("pf.benachrichtigungen")} description={t("pf.benachrichtigungenHinweis")} color={C.ink} onClick={() => setProfileFolder("notify")}/>
         <ProfileSettingsCard icon={Star} title={t("pf.support")} description={t("pf.supportHinweis")} color={C.ink} onClick={() => setProfileFolder("support")}/>
         {vorhandeneVideos.length > 0 && <ProfileSettingsCard icon={PlayCircle} title={t("pf.appKennenlernen")} description={t("pf.appKennenlernenHinweis")} color={C.ink} onClick={() => setProfileFolder("howto")}/>}
+        <ProfileSettingsCard icon={ClipboardList} title={t("pf.handbuch")} description={t("pf.handbuchHinweis")} color={C.ink} onClick={() => setProfileFolder("handbuch")}/>
         {/* Direkter Weg zur Kontolöschung. Vorher lag sie drei Overlay-Ebenen tief
             und keine der Zwischenkacheln trug das Wort „löschen" — ein Prüfer, der
             unserer eigenen Anleitung („Profil → Verwalten → Konto löschen") folgt,
@@ -11154,6 +11274,10 @@ function ProfileView({ sprache, onSpracheWaehlen, user, members, setMembers, cur
 
       {profileFolder === "howto" && <ProfileUnderlay title={t("pf.appKennenlernen")} eyebrow={t("pf.einstellungen")} onClose={() => setProfileFolder("")}>
         <HowToVideoLibrary user={user} vorhanden={vorhandeneVideos}/>
+      </ProfileUnderlay>}
+
+      {profileFolder === "handbuch" && <ProfileUnderlay title={t("pf.handbuch")} eyebrow={t("pf.einstellungen")} onClose={() => setProfileFolder("")}>
+        <HandbuchBibliothek user={user} onSpringen={(ziel) => { setProfileFolder(""); onSpringen?.(ziel); }}/>
       </ProfileUnderlay>}
 
       {/* Vereinspunkte: vorerst ausgeblendet (Wunsch des Betreibers,
@@ -18522,7 +18646,7 @@ export default function ClubMemberOrganisationApp() {
                     currentClub={currentClub} onClubLogoUpdated={updateCurrentClubLogo} onClubColorsUpdated={updateCurrentClubColors} clubFeatures={clubFeatures} onClubFeaturesChanged={loadClubFeatures} />
                   </LockedFeature>
                 )}
-                {!subView && tab === "profile" && <ProfileView sprache={sprache} onSpracheWaehlen={spracheWaehlen} ziel={profilZiel} onZielErreicht={() => setProfilZiel("")} mitgliedZiel={mitgliedZiel} onMitgliedZielErreicht={() => setMitgliedZiel(null)} user={currentUser} members={clubMembers} setMembers={setMembers} currentClub={currentClub} dutyPlan={dutyPlan} punkteZiel={punkteZiel} punktePraemie={punktePraemie} werbeplaetze={werbeplaetze} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick} onLogout={logout} clubFeatures={clubFeatures} onClubFeaturesChanged={loadClubFeatures} entitlement={entitlement} goSubscribe={goSubscribe} dashboardTileOrder={dashboardTileOrder} setDashboardTileOrder={setDashboardTileOrder} />}
+                {!subView && tab === "profile" && <ProfileView sprache={sprache} onSpracheWaehlen={spracheWaehlen} onSpringen={(ziel) => { setSubView(null); setTab(ziel); }} ziel={profilZiel} onZielErreicht={() => setProfilZiel("")} mitgliedZiel={mitgliedZiel} onMitgliedZielErreicht={() => setMitgliedZiel(null)} user={currentUser} members={clubMembers} setMembers={setMembers} currentClub={currentClub} dutyPlan={dutyPlan} punkteZiel={punkteZiel} punktePraemie={punktePraemie} werbeplaetze={werbeplaetze} onSponsorImpression={onSponsorImpression} onSponsorClick={onSponsorClick} onLogout={logout} clubFeatures={clubFeatures} onClubFeaturesChanged={loadClubFeatures} entitlement={entitlement} goSubscribe={goSubscribe} dashboardTileOrder={dashboardTileOrder} setDashboardTileOrder={setDashboardTileOrder} />}
               </Fehlergrenze>
             </ZumAktualisierenZiehen>
 

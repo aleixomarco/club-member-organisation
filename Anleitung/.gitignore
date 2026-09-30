@@ -8,6 +8,12 @@
 #
 # Die Quelle daneben (quelle/) bleibt drin. Sie ist Code.
 *.pdf
+# Auch die HTML-Zwischenstufe (je 200-300 KB). bauen.py erzeugt sie aus
+# quelle/inhalte.json, drucken.mjs macht das PDF daraus - sie ist reines
+# Zwischenergebnis und entsteht bei jedem Lauf neu. Eingecheckt waeren es
+# dreizehn Dateien, die sich bei jeder Textaenderung alle zugleich aendern,
+# ohne dass je jemand ihren Unterschied liest. Die Quelle ist inhalte.json.
+*.html
 quelle/bilder/
 quelle/chrome-*/
 quelle/vorschau/
