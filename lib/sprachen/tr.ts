@@ -471,6 +471,7 @@ const woerter: Record<string, string> = {
   "tm.wurdeGeloescht": "„{name}“ silindi.",
   "tm.loeschenFehler": "Takım silinemedi.",
   "auf.personOhneKonto": "„{name}“ kişisini hesapsız ekle",
+  "auf.familieEintragen": "„{name}“ ailesini ekle",
   "auf.personAnlegenFehler": "Kişi eklenemedi.",
   "feld.terminAdresse": "Adres (isteğe bağlı)",
   "ph.terminAdresse": "örn. Hauptstraße 12, 58644 Iserlohn",

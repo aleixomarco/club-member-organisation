@@ -471,6 +471,7 @@ const woerter: Record<string, string> = {
   "tm.wurdeGeloescht": "« {name} » a été supprimée.",
   "tm.loeschenFehler": "L’équipe n’a pas pu être supprimée.",
   "auf.personOhneKonto": "Ajouter « {name} » sans compte",
+  "auf.familieEintragen": "Ajouter la famille « {name} »",
   "auf.personAnlegenFehler": "La personne n’a pas pu être ajoutée.",
   "feld.terminAdresse": "Adresse (facultative)",
   "ph.terminAdresse": "p. ex. Hauptstraße 12, 58644 Iserlohn",

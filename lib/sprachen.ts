@@ -494,6 +494,7 @@ const de: Woerterbuch = {
   "tm.wurdeGeloescht": "„{name}“ wurde gelöscht.",
   "tm.loeschenFehler": "Die Mannschaft konnte nicht gelöscht werden.",
   "auf.personOhneKonto": "„{name}“ ohne Konto eintragen",
+  "auf.familieEintragen": "Familie „{name}“ eintragen",
   "auf.personAnlegenFehler": "Die Person konnte nicht angelegt werden.",
   "feld.terminAdresse": "Adresse (optional)",
   "ph.terminAdresse": "z. B. Hauptstraße 12, 58644 Iserlohn",

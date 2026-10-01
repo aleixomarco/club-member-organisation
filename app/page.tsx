@@ -719,6 +719,15 @@ const STATION_CAP_MAX = 10;
 const GAST_PRAEFIX = "gast:";
 const istGast = (x) => typeof x === "string" && x.startsWith(GAST_PRAEFIX);
 const gastName = (x) => String(x).slice(GAST_PRAEFIX.length);
+/* "Schmitz" wird zu "Familie Schmitz". Ein Haushalt ist im System keine
+   eigene Groesse - family_links verbindet immer nur zwei Personen, nie einen
+   Haushalt. Der Bewirtungsplan braucht die Familie aber als TRAEGER eines
+   Dienstes, und dafuer genuegt ihr Name: Er haengt an genau dieser Zuteilung
+   und verschwindet mit ihr, wie jeder Gastname seit dem 28.09.
+   Deutsches Wort mit Absicht: Der Name steht so im Plan, der am Vereinsheim
+   haengt. Uebersetzt wird der KNOPF, nicht der eingetragene Name - sonst
+   hiesse dieselbe Familie je nach Spracheinstellung des Lesers anders. */
+const familienName = (text) => `Familie ${String(text || "").trim()}`;
 const personName = (x, members, ersatz = "") =>
   istGast(x) ? gastName(x) : ((members || []).find((m) => m.id === x)?.name || ersatz);
 
@@ -3934,6 +3943,28 @@ function NutzerWahl({ personen, wert, onWaehlen, leerLabel: leerLabelVorgabe, kl
                 className={`w-full text-left ${listenGroesse}`}
                 style={{ color: C.red, fontFamily: "Inter", fontWeight: 700, borderTop: `1px solid ${C.line}` }}>
                 {mitWerten(t("auf.personOhneKonto"), { name: suche.trim() })}
+              </button>
+            )}
+            {/* ... und derselbe Weg fuer einen HAUSHALT.
+                Im Bewirtungsplan ist der Traeger oft keine Person, sondern eine
+                Familie: "Samstag ist Familie Schmitz dran" - wer von ihnen
+                kommt, klaeren die untereinander. Technisch ist das derselbe
+                Freitextname wie oben, nur mit "Familie " davor.
+                WARUM EIN EIGENER KNOPF UND KEIN HINWEIS "tipp einfach Familie
+                davor": Weil niemand auf die Idee kommt. Die Moeglichkeit gab es
+                seit dem 28.09. bereits - sie stand nur unter einem Knopf, der
+                "Person" heisst, und war damit fuer den Betreiber nicht
+                vorhanden. Der zweite Knopf baut keine neue Faehigkeit, er macht
+                eine vorhandene auffindbar.
+                Steht "Familie" schon im Suchtext, entfaellt er - sonst stuende
+                dort "Familie Familie Schmitz". */}
+            {gastErlaubt && q && !/^famili/i.test(suche.trim())
+              && !treffer.some((p) => String(p.name || "").trim().toLowerCase() === familienName(suche).toLowerCase()) && (
+              <button type="button"
+                onClick={() => { onWaehlen(GAST_PRAEFIX + familienName(suche)); setOffen(false); setSuche(""); }}
+                className={`w-full text-left ${listenGroesse}`}
+                style={{ color: C.red, fontFamily: "Inter", fontWeight: 700, borderTop: `1px solid ${C.line}` }}>
+                {mitWerten(t("auf.familieEintragen"), { name: suche.trim() })}
               </button>
             )}
             {treffer.map((p) => (
