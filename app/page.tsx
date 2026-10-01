@@ -11996,6 +11996,234 @@ function TippView({ members, currentUser, events, tippPredictions, setTippPredic
 }
 
 /* ------------------------------------------------------------------ */
+/* Bewirtungsplan — die Saison auf einen Blick                          */
+/* ------------------------------------------------------------------ */
+/* WOZU
+ * Die Helferdienste zeigen einen Termin nach dem anderen. Wer den Plan für
+ * das Vereinsheim macht, braucht das Gegenteil: alle Heimspiele untereinander,
+ * daneben die Posten, und sofort sichtbar, wo noch niemand steht.
+ *
+ * WARUM KEINE EIGENE DATENHALTUNG
+ * Diese Ansicht liest nur, was an den Terminen ohnehin steht (helperSlots,
+ * helperCaps, dutyPlan). Wer hier eine Lücke sieht, trägt sie am Termin ein —
+ * es gibt keinen zweiten Schreibweg und damit keine zweite Wahrheit. Eine
+ * eigene Tabelle "bewirtungsplaene" wäre genau der zweite Ort für dieselbe
+ * Frage, den der Betreiber am 25.09. hat zurücknehmen lassen.
+ *
+ * Der einzige Schreibweg hier ist das Anwenden eines Helfersets auf einen
+ * ganzen Zeitraum (bewirtungsplan_anwenden) — siebzehn Heimspiele waren vorher
+ * siebzehn Handgriffe in siebzehn aufgeklappten Terminkarten. */
+function BewirtungsplanView({ currentUser, members, events, dutyPlan, onSpringen, onNeuLaden }) {
+  const t = useT();
+  const darfAnwenden = canManageDuty(currentUser);
+  const [sets, setSets] = useState([]);
+  const [setId, setSetId] = useState("");
+  const heuteIso = new Date().toISOString().slice(0, 10);
+  const inEinemJahr = new Date(Date.now() + 365 * 86400000).toISOString().slice(0, 10);
+  const [von, setVon] = useState(heuteIso);
+  const [bis, setBis] = useState(inEinemJahr);
+  const [laeuft, setLaeuft] = useState(false);
+  const [meldung, setMeldung] = useState(null);
+  const [kopiert, setKopiert] = useState(false);
+
+  useEffect(() => {
+    if (!darfAnwenden || !supabase || !currentUser?.clubId) return;
+    let abgebrochen = false;
+    supabase.from("duty_task_templates").select("id,name").eq("club_id", currentUser.clubId)
+      .order("name").then(({ data }) => {
+        if (abgebrochen) return;
+        setSets(data || []);
+        if ((data || []).length === 1) setSetId(data[0].id);
+      });
+    return () => { abgebrochen = true; };
+  }, [darfAnwenden, currentUser?.clubId]);
+
+  /* Nur Heimspiele, nur künftige, nicht abgesagte - genau die Menge, auf die
+     bewirtungsplan_anwenden wirkt. Stünde hier mehr, zeigte die Tabelle
+     Zeilen, die der Knopf darüber nie anfasst. */
+  const heute = new Date(); heute.setHours(0, 0, 0, 0);
+  const heimspiele = (events || [])
+    .filter((ev) => ev.type === "spiel" && ev.home === true && !ev.cancelled && new Date(ev.date) >= heute)
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  const zeilen = heimspiele.map((ev) => {
+    const plan = dutyPlan?.[ev.id] || {};
+    const posten = (ev.helperSlots || []).map((station) => {
+      const besetzt = (plan[station] || []).map((x) => personName(x, members, t("allg.unbekannt")));
+      const plaetze = plaetzeFuer(ev, station);
+      return { station, besetzt, plaetze, luecke: besetzt.length < plaetze };
+    });
+    return { ev, posten, luecken: posten.filter((p) => p.luecke).length };
+  });
+
+  const anwenden = async () => {
+    if (!setId || !supabase) return;
+    setLaeuft(true); setMeldung(null);
+    const { data, error } = await supabase.rpc("bewirtungsplan_anwenden", {
+      target_club: currentUser.clubId, target_template: setId, von, bis,
+    });
+    setLaeuft(false);
+    if (error) { setMeldung({ art: "fehler", text: error.message }); return; }
+    setMeldung({ art: "erfolg", zahlen: data || {} });
+    /* Ohne dieses Neuladen stuende unter der Erfolgsmeldung "17 Heimspiele
+       bearbeitet, 68 Posten neu angelegt" eine Tabelle, in der sich nichts
+       geaendert hat - die Termine im Speicher kennen die neuen Stationen ja
+       nicht. Der Betreiber haette dann zwei widersprechende Angaben vor sich
+       und keinen Grund, der Meldung zu glauben. */
+    onNeuLaden?.();
+  };
+
+  /* Zum Aushängen. Die App kann bis heute nichts ausgeben - kein Druck, kein
+     CSV. Die Zwischenablage ist der kleinste Weg dorthin, der auf dem Telefon
+     auch funktioniert: von dort in Mail, Notiz oder Textprogramm. */
+  const alsText = () => zeilen.map(({ ev, posten }) =>
+    `${formatDate(ev.date)} ${formatTime(ev.date)}  ${ev.title}\n` +
+    (posten.length
+      ? posten.map((p) => `    ${p.station}: ${p.besetzt.length ? p.besetzt.join(", ") : t("bwp.offen")}` +
+          ` (${p.besetzt.length}/${p.plaetze})`).join("\n")
+      : `    ${t("bwp.keinePosten")}`)
+  ).join("\n\n");
+
+  const kopieren = async () => {
+    try {
+      await navigator.clipboard.writeText(alsText());
+      setKopiert(true);
+      setTimeout(() => setKopiert(false), 2500);
+    } catch {
+      /* Ohne Erlaubnis für die Zwischenablage - oder im eingebetteten Browser,
+         wo es sie nicht gibt - bleibt der Plan trotzdem lesbar: Er steht ja
+         direkt darüber auf dem Schirm. Eine Fehlermeldung hülfe niemandem. */
+      setMeldung({ art: "fehler", text: t("bwp.kopierenFehler") });
+    }
+  };
+
+  return (
+    <div className="px-4 pt-4 pb-24">
+      <div className="text-xs mb-4" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("bwp.einleitung")}</div>
+
+      {darfAnwenden && (
+        <div className="rounded-2xl p-3.5 mb-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
+          <div className="text-xs font-bold mb-2" style={{ color: C.ink, fontFamily: "Inter" }}>{t("bwp.anwendenTitel")}</div>
+          <div className="text-[11px] mb-2.5" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("bwp.anwendenHinweis")}</div>
+          {sets.length === 0 ? (
+            <div className="text-[11px]" style={{ color: C.textDim }}>{t("bwp.keineSets")}</div>
+          ) : (
+            <>
+              <select value={setId} onChange={(e) => setSetId(e.target.value)} aria-label={t("bwp.setWaehlen")}
+                className="w-full text-xs px-2.5 py-2 rounded-lg outline-none mb-2"
+                style={{ background: C.white, border: `1px solid ${C.line}`, color: C.ink }}>
+                <option value="">{t("bwp.setWaehlen")}</option>
+                {sets.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+              <div className="flex gap-2 mb-2.5">
+                <label className="flex-1 min-w-0">
+                  <span className="block text-[10px] mb-1" style={{ color: C.textDim }}>{t("bwp.von")}</span>
+                  <input type="date" value={von} onChange={(e) => setVon(e.target.value)}
+                    className="w-full text-xs px-2.5 py-2 rounded-lg outline-none"
+                    style={{ background: C.white, border: `1px solid ${C.line}`, color: C.ink }} />
+                </label>
+                <label className="flex-1 min-w-0">
+                  <span className="block text-[10px] mb-1" style={{ color: C.textDim }}>{t("bwp.bis")}</span>
+                  <input type="date" value={bis} onChange={(e) => setBis(e.target.value)}
+                    className="w-full text-xs px-2.5 py-2 rounded-lg outline-none"
+                    style={{ background: C.white, border: `1px solid ${C.line}`, color: C.ink }} />
+                </label>
+              </div>
+              <button onClick={anwenden} disabled={!setId || laeuft}
+                className="w-full py-2.5 rounded-xl text-xs font-bold"
+                style={{ background: setId && !laeuft ? C.ink : C.line, color: C.white }}>
+                {laeuft ? t("allg.laedt") : t("bwp.anwenden")}
+              </button>
+            </>
+          )}
+          {meldung?.art === "fehler" && (
+            <div role="status" className="text-[11px] mt-2" style={{ color: C.fehler }}>{meldung.text}</div>
+          )}
+          {meldung?.art === "erfolg" && (
+            /* Jede Zahl einzeln und im Klartext. "Fertig" allein liesse offen,
+               ob überhaupt etwas geschah - und übergangene Spiele muss der
+               Betreiber erfahren, sonst glaubt er, der Plan stehe. */
+            <div role="status" className="text-[11px] mt-2 leading-relaxed" style={{ color: C.erfolg, fontFamily: "Inter" }}>
+              <div>{mitWerten(t("bwp.ergebnisSpiele"), { spiele: meldung.zahlen.spiele ?? 0, stationen: meldung.zahlen.stationen_neu ?? 0 })}</div>
+              {(meldung.zahlen.schon_vollstaendig ?? 0) > 0 && (
+                <div style={{ color: C.textDim }}>{mitWerten(t("bwp.ergebnisSchonDa"), { anzahl: meldung.zahlen.schon_vollstaendig })}</div>
+              )}
+              {(meldung.zahlen.uebergangen_vergangen ?? 0) > 0 && (
+                <div style={{ color: C.textDim }}>{mitWerten(t("bwp.ergebnisVergangen"), { anzahl: meldung.zahlen.uebergangen_vergangen })}</div>
+              )}
+              {(meldung.zahlen.uebergangen_abgesagt ?? 0) > 0 && (
+                <div style={{ color: C.textDim }}>{mitWerten(t("bwp.ergebnisAbgesagt"), { anzahl: meldung.zahlen.uebergangen_abgesagt })}</div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {zeilen.length === 0 && (
+        <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>
+          {t("bwp.keineHeimspiele")}
+        </div>
+      )}
+
+      {zeilen.length > 0 && (
+        <>
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-xs font-bold" style={{ color: C.ink, fontFamily: "Inter" }}>
+              {mitWerten(t("bwp.spieltage"), { anzahl: zeilen.length })}
+            </div>
+            <button onClick={kopieren} className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg"
+              style={{ background: C.paperDim, color: kopiert ? C.erfolg : C.ink, fontFamily: "Inter" }}>
+              {kopiert ? t("bwp.kopiert") : t("bwp.kopieren")}
+            </button>
+          </div>
+          {zeilen.map(({ ev, posten, luecken }) => (
+            <div key={ev.id} className="rounded-2xl mb-2.5 overflow-hidden" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
+              <button type="button" onClick={() => onSpringen?.(ev.id)}
+                className="w-full text-left px-3.5 pt-3 pb-2 flex items-start gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-bold truncate" style={{ color: C.ink, fontFamily: "Inter" }}>{ev.title}</div>
+                  <div className="text-[10px]" style={{ color: C.textDim, fontFamily: "Inter" }}>
+                    {formatDate(ev.date)} · {formatTime(ev.date)}
+                  </div>
+                </div>
+                {luecken > 0 && (
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md flex-shrink-0"
+                    style={{ background: C.red, color: C.white }}>
+                    {mitWerten(t("bwp.luecken"), { anzahl: luecken })}
+                  </span>
+                )}
+                <ChevronRight size={13} style={{ color: C.textDim, flexShrink: 0, marginTop: 2 }} />
+              </button>
+              <div className="px-3.5 pb-3">
+                {posten.length === 0 ? (
+                  <div className="text-[11px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("bwp.keinePosten")}</div>
+                ) : posten.map((p) => (
+                  <div key={p.station} className="flex items-baseline gap-2 py-1"
+                    style={{ borderTop: `1px solid ${C.line}` }}>
+                    <span className="text-[11px] font-bold flex-shrink-0" style={{ color: C.ink, fontFamily: "Inter", minWidth: 78 }}>{p.station}</span>
+                    {/* Rot ist der MANGEL, nicht die Person. "Theke · Marco
+                        Aleixo · 1/2" heisst: Marco steht da, ein Platz ist noch
+                        frei - sein Name in Rot liest sich aber, als waere er
+                        das Problem. Also bleibt der Name schwarz, und nur die
+                        Zahl rechts und das Wort "offen" warnen. */}
+                    <span className="text-[11px] flex-1 min-w-0" style={{ color: p.besetzt.length ? C.ink : C.red, fontFamily: "Inter" }}>
+                      {p.besetzt.length ? p.besetzt.join(", ") : t("bwp.offen")}
+                    </span>
+                    <span className="text-[10px] flex-shrink-0" style={{ color: p.luecke ? C.red : C.textDim }}>
+                      {p.besetzt.length}/{p.plaetze}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /* Helferplanung — eigene Ansicht                                       */
 /* ------------------------------------------------------------------ */
 function DutyView({ members, currentUser, events, dutyPlan, setDutyPlan, onDienstSetzen, gastErlaubt }) {
@@ -12070,7 +12298,7 @@ function DutyView({ members, currentUser, events, dutyPlan, setDutyPlan, onDiens
  * Verwalten-Reiter. Dort stehen auch Mitgliedsantraege und fehlende
  * Spielergebnisse - Dinge nur fuer die Vereinsleitung, die in einem Reiter
  * fuer alle nichts verloren haben. */
-function SupportView({ currentUser, members, events, dutyPlan, setDutyPlan, onDienstSetzen, gastErlaubt, dutyOn, bereichWunsch, onBereichUebernommen, currentClub, goVerwaltung, goFahrzeuge, goTermin }) {
+function SupportView({ currentUser, members, events, dutyPlan, setDutyPlan, onDienstSetzen, gastErlaubt, dutyOn, bereichWunsch, onBereichUebernommen, currentClub, goVerwaltung, goFahrzeuge, goTermin, onNeuLaden }) {
   const t = useT();
   /* Wofuer bin ich eingeteilt? Aus dem Helferplan (Station an einem Termin)
      und aus den Stationen, die mir jemand zugewiesen hat. Bisher stand das nur
@@ -12112,6 +12340,11 @@ function SupportView({ currentUser, members, events, dutyPlan, setDutyPlan, onDi
   const bereiche = [
     ["aufgaben", t("auf.titel")],
     ...(dutyOn ? [["helfer", t("sup.helferdienste")]] : []),
+    /* Der Bewirtungsplan steht neben den Helferdiensten, nicht darin: Dieselben
+       Daten, andere Frage. "Helferdienste" beantwortet "wo kann ich mithelfen",
+       der Plan "steht die Saison". Deshalb sieht ihn auch jeder, der die
+       Helferdienste sieht - nur anwenden darf ihn die Leitung. */
+    ...(dutyOn ? [["plan", t("bwp.titel")]] : []),
     ...(darfEinteilen ? [["einteilen", t("sup.einteilen")]] : []),
   ];
   const [bereich, setBereich] = useState("aufgaben");
@@ -12173,6 +12406,7 @@ function SupportView({ currentUser, members, events, dutyPlan, setDutyPlan, onDi
       </div>
       {aktiv === "aufgaben" && <TasksView currentUser={currentUser} members={members} gastErlaubt={gastErlaubt} />}
       {aktiv === "helfer" && <DutyView members={members} currentUser={currentUser} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={onDienstSetzen} gastErlaubt={gastErlaubt} />}
+      {aktiv === "plan" && <BewirtungsplanView currentUser={currentUser} members={members} events={events} dutyPlan={dutyPlan} onSpringen={goTermin} onNeuLaden={onNeuLaden} />}
       {aktiv === "einteilen" && <div className="px-4 pt-4 pb-24"><AdminDutyPanel members={members} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onSetzen={onDienstSetzen} /></div>}
     </div>
   );
@@ -18670,7 +18904,7 @@ export default function ClubMemberOrganisationApp() {
                     Hier fehlte der dritte Teil - ein reiner Organisator sah
                     den Reiter also in der Leiste und darunter eine leere
                     Seite. */}
-                {!subView && tab === "support" && !!currentUser && !istNurFan(currentUser) && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("nav.support")}><SupportView gastErlaubt={darfVereinVerwalten(currentUser)} currentUser={currentUser} members={clubMembers} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={dienstSetzen} dutyOn={featureEnabled("duty_roster")} bereichWunsch={supportBereich} onBereichUebernommen={() => setSupportBereich(null)} currentClub={currentClub} goVerwaltung={goVerwaltung} goFahrzeuge={() => setSubView("vehicles")} goTermin={(id) => { setSubView(null); setEventFocusRequest({ team: "alle", eventId: id, requestedAt: Date.now() }); setTab("events"); }} /></LockedFeature>}
+                {!subView && tab === "support" && !!currentUser && !istNurFan(currentUser) && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("nav.support")}><SupportView onNeuLaden={datenNeuLaden} gastErlaubt={darfVereinVerwalten(currentUser)} currentUser={currentUser} members={clubMembers} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={dienstSetzen} dutyOn={featureEnabled("duty_roster")} bereichWunsch={supportBereich} onBereichUebernommen={() => setSupportBereich(null)} currentClub={currentClub} goVerwaltung={goVerwaltung} goFahrzeuge={() => setSubView("vehicles")} goTermin={(id) => { setSubView(null); setEventFocusRequest({ team: "alle", eventId: id, requestedAt: Date.now() }); setTab("events"); }} /></LockedFeature>}
                 {!subView && tab === "admin" && (currentUserIsAdmin || currentUserCanEditSponsors || canManageDuty(currentUser)) && (
                   <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("sys.verwaltung")}>
                   <AdminView bereichWunsch={verwaltungsBereich} onBereichUebernommen={() => setVerwaltungsBereich(null)}

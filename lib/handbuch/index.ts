@@ -14,7 +14,7 @@ export const KAPITEL = [
   "key": "mitglied",
   "rolle": "Mitglied (und was als Athlet/in dazukommt)",
   "einleitung": "Jede Mitgliedschaft ist entweder Mitglied oder Fan. Als Mitglied siehst du Termine, sagst zu oder ab, hilfst bei Aufgaben und Diensten mit, schreibst im Chat und pflegst dein Profil; weitere Rollen wie Athlet/in vergibt die Vereinsleitung. Als Fan folgst du dem Verein, ohne weitere Rollen.",
-  "anzahl": 15
+  "anzahl": 16
  },
  {
   "key": "trainer",
@@ -32,7 +32,7 @@ export const KAPITEL = [
   "key": "organisator",
   "rolle": "Organisator/in",
   "einleitung": "Als Organisator/in planst du für den ganzen Verein: Termine aller Mannschaften, die Helferdienste dazu, Aufgaben und Fahrzeuge. Du bist kein Vereinsadmin, darfst aber deutlich mehr als ein einfaches Mitglied.",
-  "anzahl": 9
+  "anzahl": 10
  },
  {
   "key": "sponsoren",

@@ -193,6 +193,18 @@
     ],
     "hinweis": "Punkte gibt es fürs Mitmachen: Helferdienste, Aufgaben, Umfragen, Tipps und Vereinstreue; Ziel und Prämie legt der Verein fest. Deine Anmelde-E-Mail änderst du hier nicht. Sprache, Einladungslink, Fehlermeldung und „Konto löschen“ stehen ebenfalls im Profil, übersetzt sind bisher vor allem Anmeldung und Registrierung.",
     "bildschirm": "Profil / Benachrichtigungen"
+   },
+   {
+    "titel": "Der Bewirtungsplan",
+    "wo": "Reiter \"Support\" > \"Bewirtungsplan\"",
+    "punkte": [
+     "Dort siehst du alle kommenden Heimspiele mit ihren Posten und wer schon zugesagt hat.",
+     "Rot heißt: Hier wird noch jemand gebraucht.",
+     "Tippe den Spieltag an, dann landest du beim Termin und kannst einen Posten übernehmen.",
+     "Bist du eingeteilt, bekommst du am Vorabend um 18 Uhr eine Erinnerung — mit Spieltag, Uhrzeit und deinem Posten."
+    ],
+    "bildschirm": "Support > Bewirtungsplan",
+    "hinweis": "Die Erinnerung kommt einmal und nur, wenn du namentlich eingeteilt bist."
    }
   ],
   "einleitung": "Jede Mitgliedschaft ist entweder Mitglied oder Fan. Als Mitglied siehst du Termine, sagst zu oder ab, hilfst bei Aufgaben und Diensten mit, schreibst im Chat und pflegst dein Profil; weitere Rollen wie Athlet/in vergibt die Vereinsleitung. Als Fan folgst du dem Verein, ohne weitere Rollen.",
@@ -586,6 +598,21 @@
     ],
     "hinweis": "Drei Regeln, damit der Abgleich nichts kaputt macht: Eine gelöschte Station verschwindet nur dort, wo NIEMAND eingeteilt ist – wo jemand steht, bleibt sie und gilt fortan als von Hand angelegt. Eine Station, die du an einem einzelnen Spieltag entfernt hast, holt der Abgleich NICHT zurück – wer eine Station wegnimmt, hat einen Grund. Und von Hand angelegte Stationen fasst er nie an.",
     "bildschirm": "Verwaltung > Helferdienst-Sets"
+   },
+   {
+    "titel": "Bewirtungsplan: die Saison auf einen Blick",
+    "wo": "Reiter \"Support\" > \"Bewirtungsplan\"",
+    "punkte": [
+     "Hier stehen alle kommenden Heimspiele untereinander, darunter je Spieltag die Posten und wer daran steht.",
+     "Offene Posten stehen rot, und oben rechts an jedem Spieltag siehst du, wie viele es sind.",
+     "\"Helferset auf einen Zeitraum anwenden\" legt die Posten eines Sets in einem Rutsch an allen künftigen Heimspielen des Zeitraums an — statt Termin für Termin.",
+     "Posten, die an einem Spieltag schon stehen, bleiben unverändert; eingeteilt wird dabei niemand aus- oder eingetragen.",
+     "Vergangene und abgesagte Heimspiele lässt die Anwendung aus und sagt dir in der Rückmeldung, wie viele es waren.",
+     "\"Plan kopieren\" legt den ganzen Plan als Text in die Zwischenablage — von dort in eine Mail, eine Notiz oder ein Textprogramm zum Aushängen.",
+     "Ein Spieltag angetippt führt dich zum Termin, wo du einteilst."
+    ],
+    "bildschirm": "Support > Bewirtungsplan",
+    "hinweis": "Der Plan hat keine eigenen Daten: Er zeigt dieselben Stationen, die am Termin stehen. Wer hier eine Lücke sieht und sie am Termin füllt, sieht sie hier sofort gefüllt — es gibt nur eine Wahrheit."
    }
   ],
   "einleitung": "Als Organisator/in planst du für den ganzen Verein: Termine aller Mannschaften, die Helferdienste dazu, Aufgaben und Fahrzeuge. Du bist kein Vereinsadmin, darfst aber deutlich mehr als ein einfaches Mitglied.",
