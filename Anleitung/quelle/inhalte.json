@@ -181,17 +181,16 @@
     "bildschirm": "Teams / Profil > Strafenkatalog"
    },
    {
-    "titel": "Profil, Punkte, Benachrichtigungen",
+    "titel": "Profil und Benachrichtigungen",
     "wo": "Untere Leiste > Profil; Glocke oben rechts",
     "punkte": [
      "Die Glocke oben rechts zeigt ungelesene Meldungen, ein Tipp öffnet dein Postfach, dort liest, markierst oder löschst du sie.",
      "Ein Tipp auf eine Meldung führt direkt dorthin, worum es geht: zur News, zum Termin, zur Aufgabe oder zum Helferdienst.",
      "Im Profil stehen oben dein Name, deine Mannschaften und deine Rollen.",
      "Unter „Persönliche Daten“ pflegst du Stammdaten, Adresse, Telefonnummern und Familienverknüpfungen.",
-     "Der Balken „Vereinspunkte“ zeigt, wie weit du vom Ziel des Vereins entfernt bist.",
      "Unter „Benachrichtigungen & Kalender“ schaltest du Push-Nachrichten ein und legst für jede Art fest, ob du sie bekommst."
     ],
-    "hinweis": "Punkte gibt es fürs Mitmachen: Helferdienste, Aufgaben, Umfragen, Tipps und Vereinstreue; Ziel und Prämie legt der Verein fest. Deine Anmelde-E-Mail änderst du hier nicht. Sprache, Einladungslink, Fehlermeldung und „Konto löschen“ stehen ebenfalls im Profil, übersetzt sind bisher vor allem Anmeldung und Registrierung.",
+    "hinweis": "Deine Anmelde-E-Mail änderst du hier nicht. Sprache, Einladungslink, Fehlermeldung und „Konto löschen“ stehen ebenfalls im Profil; „Konto löschen“ ist als einziger Eintrag rot, weil dahinter nichts rückgängig zu machen ist.",
     "bildschirm": "Profil / Benachrichtigungen"
    },
    {
@@ -205,6 +204,18 @@
     ],
     "bildschirm": "Support > Bewirtungsplan",
     "hinweis": "Die Erinnerung kommt einmal und nur, wenn du namentlich eingeteilt bist."
+   },
+   {
+    "titel": "Die Anleitung in der App",
+    "wo": "Reiter \"Profil\" > \"Handbuch\"",
+    "punkte": [
+     "Dieselben Texte, die du hier auf Papier liest, stehen auch in der App.",
+     "Du siehst dort nur die Kapitel, die zu deinen Rollen gehören — ein Mitglied drei, die Vereinsleitung sieben.",
+     "Viele Abschnitte haben einen Knopf „Dahin springen“, der dich gleich an die beschriebene Stelle bringt.",
+     "Die Kapitel laden erst beim Aufklappen, damit die App schnell bleibt."
+    ],
+    "bildschirm": "Profil > Handbuch",
+    "hinweis": "Die Anleitung in der App gibt es bisher nur auf Deutsch, auch wenn du die App in einer anderen Sprache benutzt. Ein Hinweis oben sagt dir das."
    }
   ],
   "einleitung": "Jede Mitgliedschaft ist entweder Mitglied oder Fan. Als Mitglied siehst du Termine, sagst zu oder ab, hilfst bei Aufgaben und Diensten mit, schreibst im Chat und pflegst dein Profil; weitere Rollen wie Athlet/in vergibt die Vereinsleitung. Als Fan folgst du dem Verein, ohne weitere Rollen.",
@@ -270,6 +281,7 @@
      "Öffne den Termin, tippe auf \"absagen\" und gib einen Grund an — ohne Grund geht es nicht.",
      "Gehört der Termin zu einer Reihe, fragt die App zuerst: nur dieser oder die ganze Reihe.",
      "Der Termin bleibt mit dem Vermerk \"Abgesagt\" stehen, damit alle es sehen.",
+     "Ein abgesagter Termin nimmt nichts mehr an: keine Zu- und Absagen, keine Helferdienste, keine Fahrgemeinschaften, keine Tipps. Austragen geht weiterhin, damit die Leitung aufräumen kann.",
      "Soll er ganz verschwinden, tippe darunter auf \"endgültig löschen\".",
      "Beides geht nur bei deinen eigenen Mannschaften."
     ],
@@ -338,7 +350,7 @@
     "wo": "Unten in der Leiste > Reiter „Verwaltung“ (Schild-Symbol) neben „Profil“",
     "punkte": [
      "Mit deiner Rolle bekommst du unten den Reiter „Verwaltung“, direkt neben „Profil“.",
-     "Oben stehen deine Bereiche: Übersicht, Spielergebnisse/Tippspiel, Funktionen, Vereinsprofil, Mitgliedsanträge, Automatisierung, Helferdienst-Sätze, Protokolle, Umfragen, Sponsoring, Athlet/in der Saison und Rollen.",
+     "Oben stehen deine Bereiche: Übersicht, Spielergebnisse/Tippspiel, Funktionen, Vereinsprofil, Mitgliedsanträge, Automatisierung, Helferdienst-Sets, Protokolle, Umfragen, Sponsoring, Athlet/in der Saison und Rollen.",
      "Deine offenen Punkte – wartende Anträge, fehlende Spielergebnisse, fällige Aufgaben, unbesetzte Helferstationen, Fahrzeuganfragen – stehen im Reiter „Support“ in der Tafel „offene Punkte“, direkt unter „Für dich eingeteilt“.",
      "Über das Zahnrad im Profil erreichst du „Verein & Mitgliedschaft“, „Vereinseinstellungen“ und „Zugang des Vereins“."
     ],
@@ -448,16 +460,16 @@
    },
    {
     "titel": "Weitere Bereiche der Verwaltung",
-    "wo": "Reiter „Verwaltung“ > Protokolle, Umfragen, Helferdienst-Sätze, Sponsoring, Automatisierung, Athlet/in der Saison",
+    "wo": "Reiter „Verwaltung“ > Protokolle, Umfragen, Helferdienst-Sets, Sponsoring, Automatisierung, Athlet/in der Saison",
     "punkte": [
      "In „Protokolle“ hältst du Sitzungen mit Datum, Anwesenden und Text fest und machst daraus Aufgaben mit Verantwortlichem und Frist; der Verantwortliche wird benachrichtigt.",
      "In „Umfragen“ veröffentlichst du eine Frage mit mindestens zwei Antworten und stellst sie später auf inaktiv.",
-     "In „Helferdienst-Sätze“ legst du Stationen als Vorlage an und pflegst die Helfersätze; eingeteilt wird im Reiter „Support“ unter „Helfer einteilen“.",
+     "In „Helferdienst-Sets“ legst du Stationen als Vorlage an und pflegst die Helfersets; eingeteilt wird im Reiter „Support“ unter „Helfer einteilen“.",
      "In „Sponsoring“ bereitest du Anzeigen für die Werbeplätze der App vor und legst die Laufzeiten fest.",
      "In „Automatisierung“ schaltest du den Willkommensbeitrag für neue Mitglieder ein; er steht in den News, ohne alle zu benachrichtigen."
     ],
     "bildschirm": "Verwaltung > Protokolle",
-    "hinweis": "Schaltest du unter „Funktionen“ die Helferplanung ab, verschwinden hier die „Helferdienst-Sätze“ und im Reiter „Support“ die Helferdienste. Ebenso verschwindet „Athlet/in der Saison“, wenn du es abschaltest. Sponsoring-Anzeigen kannst du immer vorbereiten, sichtbar werden sie erst mit dem Sponsoring-Zusatz."
+    "hinweis": "Schaltest du unter „Funktionen“ die Helferplanung ab, verschwinden hier die „Helferdienst-Sets“ und im Reiter „Support“ die Helferdienste. Ebenso verschwindet „Athlet/in der Saison“, wenn du es abschaltest. Sponsoring-Anzeigen kannst du immer vorbereiten, sichtbar werden sie erst mit dem Sponsoring-Zusatz."
    },
    {
     "titel": "Mannschaft löschen",
@@ -516,7 +528,7 @@
    },
    {
     "titel": "Helfersets und Stationen anlegen",
-    "wo": "Reiter \"Verwaltung\" unten > Knopf \"Helferdienst-Sätze\"",
+    "wo": "Reiter \"Verwaltung\" unten > Knopf \"Helferdienst-Sets\"",
     "punkte": [
      "Den Reiter \"Verwaltung\" siehst du wegen deiner Rolle, dort aber nur deine Bereiche.",
      "Ein Satz ist eine Vorlage wie \"Heimspiel\": Du gibst ihm einen Namen und legst ihn an.",

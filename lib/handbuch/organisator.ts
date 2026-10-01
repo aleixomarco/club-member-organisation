@@ -39,7 +39,7 @@ const abschnitte = [
  },
  {
   "titel": "Helfersets und Stationen anlegen",
-  "wo": "Reiter \"Verwaltung\" unten > Knopf \"Helferdienst-Sätze\"",
+  "wo": "Reiter \"Verwaltung\" unten > Knopf \"Helferdienst-Sets\"",
   "punkte": [
    "Den Reiter \"Verwaltung\" siehst du wegen deiner Rolle, dort aber nur deine Bereiche.",
    "Ein Satz ist eine Vorlage wie \"Heimspiel\": Du gibst ihm einen Namen und legst ihn an.",

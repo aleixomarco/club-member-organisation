@@ -14,7 +14,7 @@ const abschnitte = [
   "wo": "Unten in der Leiste > Reiter „Verwaltung“ (Schild-Symbol) neben „Profil“",
   "punkte": [
    "Mit deiner Rolle bekommst du unten den Reiter „Verwaltung“, direkt neben „Profil“.",
-   "Oben stehen deine Bereiche: Übersicht, Spielergebnisse/Tippspiel, Funktionen, Vereinsprofil, Mitgliedsanträge, Automatisierung, Helferdienst-Sätze, Protokolle, Umfragen, Sponsoring, Athlet/in der Saison und Rollen.",
+   "Oben stehen deine Bereiche: Übersicht, Spielergebnisse/Tippspiel, Funktionen, Vereinsprofil, Mitgliedsanträge, Automatisierung, Helferdienst-Sets, Protokolle, Umfragen, Sponsoring, Athlet/in der Saison und Rollen.",
    "Deine offenen Punkte – wartende Anträge, fehlende Spielergebnisse, fällige Aufgaben, unbesetzte Helferstationen, Fahrzeuganfragen – stehen im Reiter „Support“ in der Tafel „offene Punkte“, direkt unter „Für dich eingeteilt“.",
    "Über das Zahnrad im Profil erreichst du „Verein & Mitgliedschaft“, „Vereinseinstellungen“ und „Zugang des Vereins“."
   ],
@@ -145,15 +145,15 @@ const abschnitte = [
  },
  {
   "titel": "Weitere Bereiche der Verwaltung",
-  "wo": "Reiter „Verwaltung“ > Protokolle, Umfragen, Helferdienst-Sätze, Sponsoring, Automatisierung, Athlet/in der Saison",
+  "wo": "Reiter „Verwaltung“ > Protokolle, Umfragen, Helferdienst-Sets, Sponsoring, Automatisierung, Athlet/in der Saison",
   "punkte": [
    "In „Protokolle“ hältst du Sitzungen mit Datum, Anwesenden und Text fest und machst daraus Aufgaben mit Verantwortlichem und Frist; der Verantwortliche wird benachrichtigt.",
    "In „Umfragen“ veröffentlichst du eine Frage mit mindestens zwei Antworten und stellst sie später auf inaktiv.",
-   "In „Helferdienst-Sätze“ legst du Stationen als Vorlage an und pflegst die Helfersätze; eingeteilt wird im Reiter „Support“ unter „Helfer einteilen“.",
+   "In „Helferdienst-Sets“ legst du Stationen als Vorlage an und pflegst die Helfersets; eingeteilt wird im Reiter „Support“ unter „Helfer einteilen“.",
    "In „Sponsoring“ bereitest du Anzeigen für die Werbeplätze der App vor und legst die Laufzeiten fest.",
    "In „Automatisierung“ schaltest du den Willkommensbeitrag für neue Mitglieder ein; er steht in den News, ohne alle zu benachrichtigen."
   ],
-  "hinweis": "Schaltest du unter „Funktionen“ die Helferplanung ab, verschwinden hier die „Helferdienst-Sätze“ und im Reiter „Support“ die Helferdienste. Ebenso verschwindet „Athlet/in der Saison“, wenn du es abschaltest. Sponsoring-Anzeigen kannst du immer vorbereiten, sichtbar werden sie erst mit dem Sponsoring-Zusatz.",
+  "hinweis": "Schaltest du unter „Funktionen“ die Helferplanung ab, verschwinden hier die „Helferdienst-Sets“ und im Reiter „Support“ die Helferdienste. Ebenso verschwindet „Athlet/in der Saison“, wenn du es abschaltest. Sponsoring-Anzeigen kannst du immer vorbereiten, sichtbar werden sie erst mit dem Sponsoring-Zusatz.",
   "sprung": {
    "tab": "admin"
   }

@@ -1425,31 +1425,56 @@ const howToVideosFor = (user) => HOWTO_VIDEOS.filter((video) => video.can(user))
 
 /* Welches Handbuch-Kapitel wer sieht.
  *
- * Gleiche Bauart wie HOWTO_VIDEOS darueber: Jeder Eintrag entscheidet selbst,
- * und zwar mit derselben Pruefung wie die Sache, die er beschreibt. Wer keine
- * Helferdienste einteilen darf, bekommt auch das Kapitel darueber nicht - eine
- * Anleitung fuer Knoepfe, die man nicht hat, verwirrt mehr, als sie hilft.
+ * GEPRUEFT WIRD DIE ROLLE, NICHT DAS RECHT. Das ist der Unterschied, an dem
+ * die erste Fassung gescheitert ist (Betreiber, 01.10.2026: "jede Rolle muss
+ * das anzeigen was sie auch sind, nicht mehr und nicht weniger").
+ *
+ * Dort stand redaktion: canWriteNews - und canWriteNews ist
+ * "isAdmin || redakteur || organisator". Ein Vereinsadministrator DARF News
+ * schreiben, also bekam er das Heft "Redakteur", ohne je Redakteur zu sein.
+ * Dasselbe bei canManageDuty (Admin sah "Organisator/in") und
+ * canManageSponsors (Admin sah "Sponsorenbetreuung"). Wer vier Rollen hat,
+ * bekam sieben Kapitel.
+ *
+ * Die can*-Pruefungen sind fuer KNOEPFE richtig: Der Administrator darf
+ * ueberall eingreifen, und der Knopf gehoert dorthin, wo er wirkt. Fuer ein
+ * ROLLENHEFT sind sie falsch: Es beschreibt, wer man ist, nicht was man
+ * ausnahmsweise auch darf. Deshalb steht hier ueberall roles.includes.
+ *
+ * sysadmin steht bewusst NICHT beim Vereinsadmin-Heft. Ein Sys-Admin ist
+ * Betreiber, nicht Vereinsleitung; sein Heft ist "betreiber", und das gehoert
+ * zur Konsole unter /betreiber, nicht in diese App. Geprueft am 01.10.2026:
+ * In PROD gibt es genau eine Mitgliedschaft mit sysadmin ohne vereinsadmin,
+ * und das ist ein Demo-Konto im versteckten Testverein - kein echter Verein
+ * verliert dadurch sein Heft. (register_new_club gibt dem Gruender ohnehin
+ * beide Rollen zugleich.)
  *
  * Die Reihenfolge auf dem Bildschirm steht NICHT hier, sondern in
  * Anleitung/quelle/inhalte.json - der Filter unten laesst sie unangetastet.
  * Heft und App zaehlen die Kapitel also gleich auf, und wer umsortieren will,
- * tut das an der Quelle und aendert damit beides.
- *
- * "betreiber" fehlt mit Absicht - das ist die Konsole unter /betreiber, eine
- * andere Anwendung. Und "eltern" haengt an keiner Rolle: Die Familienfunktion
- * steht jedem offen, der ein Kind im Verein hat. */
+ * tut das an der Quelle und aendert damit beides. */
+const hatRolle = (u, rolle) => !!u && Array.isArray(u.roles) && u.roles.includes(rolle);
 const HANDBUCH_RECHTE = {
   fan:         (u) => istNurFan(u),
+  /* "Mitglied" ist keine Zusatzrolle, sondern der Grundzustand: Wer kein
+     reiner Fan ist, IST Mitglied. Dieses eine Kapitel sehen deshalb alle. */
   mitglied:    (u) => !istNurFan(u),
-  athlet:      (u) => !!u && u.roles.includes("spieler"),
+  athlet:      (u) => hatRolle(u, "spieler"),
+  /* "Familie & Kinderkonten" ist das einzige Kapitel, das an keiner Rolle
+     haengt - eine Elternrolle gibt es im System nicht (abgeschafft). Die
+     Familienverknuepfung steht jedem Mitglied offen, also steht ihm auch die
+     Anleitung dazu offen. */
   eltern:      (u) => !istNurFan(u),
-  trainer:     (u) => !!u && u.roles.includes("trainer"),
-  kapitaen:    (u) => !!u && u.roles.includes("kapitaen"),
-  teammanager: (u) => !!u && u.roles.includes("teammanager"),
-  organisator: (u) => canManageDuty(u),
-  vereinsadmin:(u) => darfVereinVerwalten(u),
-  redaktion:   (u) => canWriteNews(u),
-  sponsoren:   (u) => canManageSponsors(u),
+  trainer:     (u) => hatRolle(u, "trainer"),
+  kapitaen:    (u) => hatRolle(u, "kapitaen"),
+  teammanager: (u) => hatRolle(u, "teammanager"),
+  organisator: (u) => hatRolle(u, "organisator"),
+  vereinsadmin:(u) => hatRolle(u, "vereinsadmin"),
+  redaktion:   (u) => hatRolle(u, "redakteur"),
+  /* Der Schalter bleibt: Solange die Sponsorenverwaltung im Haus
+     ausgeblendet ist, gehoert auch ihr Heft nicht in die Liste - sonst
+     beschriebe es Knoepfe, die niemand sieht. */
+  sponsoren:   (u) => SPONSOREN_VERWALTUNG_SICHTBAR && hatRolle(u, "sponsorenmanager"),
 };
 const handbuchFuer = (user) =>
   HANDBUCH_INHALT.filter((k) => HANDBUCH_RECHTE[k.key]?.(user));

@@ -74,6 +74,7 @@ const abschnitte = [
    "Öffne den Termin, tippe auf \"absagen\" und gib einen Grund an — ohne Grund geht es nicht.",
    "Gehört der Termin zu einer Reihe, fragt die App zuerst: nur dieser oder die ganze Reihe.",
    "Der Termin bleibt mit dem Vermerk \"Abgesagt\" stehen, damit alle es sehen.",
+   "Ein abgesagter Termin nimmt nichts mehr an: keine Zu- und Absagen, keine Helferdienste, keine Fahrgemeinschaften, keine Tipps. Austragen geht weiterhin, damit die Leitung aufräumen kann.",
    "Soll er ganz verschwinden, tippe darunter auf \"endgültig löschen\".",
    "Beides geht nur bei deinen eigenen Mannschaften."
   ],

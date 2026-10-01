@@ -120,6 +120,11 @@ const PLAN = [
   ["44-gast-eintragen",        "jose@cmo.app",     ["Termine"], ["Heimspiel", "✎Oma Kuchenstand"]],
   ["45-fan-startseite",        "renate@cmo.app",   [], []],
   ["46-fan-termine",           "renate@cmo.app",   ["Termine"], []],
+  /* Neu seit dem 01.10.2026: der Bewirtungsplan. jose, weil nur die Leitung
+     den Kasten "Helferset auf einen Zeitraum anwenden" sieht - und genau der
+     ist das Neue an dieser Ansicht. */
+  ["47-bewirtungsplan",        "jose@cmo.app",     ["Support"], ["Bewirtungsplan"]],
+  ["48-handbuch",              "rodrigo@cmo.app",  ["Profil"], ["Handbuch"]],
   ["12-sponsoren",             "guido@cmo.app",    ["Sponsoren"], []],
   ["35-redaktion-news",        "guido@cmo.app",    ["Redaktion"], []],
 ];

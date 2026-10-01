@@ -38,7 +38,8 @@ BILDER = {
  # Die Stufe wird nicht im eigenen Profil gewaehlt, sondern bei der Freigabe
  # vergeben - deshalb zeigt dieser Abschnitt die Rollenvergabe.
  ("mitglied","Mitglied, Athlet/in oder Fan"): "28-rollen",
- ("mitglied","Profil, Punkte, Benachrichtigungen"): "07-profil",
+ ("mitglied","Profil und Benachrichtigungen"): "07-profil",
+ ("mitglied","Die Anleitung in der App"): "48-handbuch",
  ("trainer","Dein Trainerbereich"): "11-trainerbereich",
  ("trainer","Kapitän oder Kapitänin bestimmen"): "11-trainerbereich",
  ("trainer","Training oder Spiel ansetzen"): "27-termin-anlegen",
@@ -54,6 +55,8 @@ BILDER = {
  ("vereinsadmin","Logo und Farben einstellen"): "30-vereinsprofil",
  ("vereinsadmin","Funktionen ein- und ausschalten"): "29-funktionen",
  ("organisator","Termine anlegen"): "27-termin-anlegen",
+ ("organisator","Bewirtungsplan: die Saison auf einen Blick"): "47-bewirtungsplan",
+ ("mitglied","Der Bewirtungsplan"): "47-bewirtungsplan",
  ("kapitaen","Was du in deiner Mannschaft darfst"): "33-team-detail",
  ("kapitaen","Wo die Grenze ist"): "29-funktionen",
  ("kapitaen","Der Strafenkatalog"): "26-strafenkatalog",

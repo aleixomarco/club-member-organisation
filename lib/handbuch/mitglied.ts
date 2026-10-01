@@ -210,17 +210,16 @@ const abschnitte = [
   }
  },
  {
-  "titel": "Profil, Punkte, Benachrichtigungen",
+  "titel": "Profil und Benachrichtigungen",
   "wo": "Untere Leiste > Profil; Glocke oben rechts",
   "punkte": [
    "Die Glocke oben rechts zeigt ungelesene Meldungen, ein Tipp öffnet dein Postfach, dort liest, markierst oder löschst du sie.",
    "Ein Tipp auf eine Meldung führt direkt dorthin, worum es geht: zur News, zum Termin, zur Aufgabe oder zum Helferdienst.",
    "Im Profil stehen oben dein Name, deine Mannschaften und deine Rollen.",
    "Unter „Persönliche Daten“ pflegst du Stammdaten, Adresse, Telefonnummern und Familienverknüpfungen.",
-   "Der Balken „Vereinspunkte“ zeigt, wie weit du vom Ziel des Vereins entfernt bist.",
    "Unter „Benachrichtigungen & Kalender“ schaltest du Push-Nachrichten ein und legst für jede Art fest, ob du sie bekommst."
   ],
-  "hinweis": "Punkte gibt es fürs Mitmachen: Helferdienste, Aufgaben, Umfragen, Tipps und Vereinstreue; Ziel und Prämie legt der Verein fest. Deine Anmelde-E-Mail änderst du hier nicht. Sprache, Einladungslink, Fehlermeldung und „Konto löschen“ stehen ebenfalls im Profil, übersetzt sind bisher vor allem Anmeldung und Registrierung.",
+  "hinweis": "Deine Anmelde-E-Mail änderst du hier nicht. Sprache, Einladungslink, Fehlermeldung und „Konto löschen“ stehen ebenfalls im Profil; „Konto löschen“ ist als einziger Eintrag rot, weil dahinter nichts rückgängig zu machen ist.",
   "sprung": {
    "tab": "profile"
   }
@@ -237,6 +236,20 @@ const abschnitte = [
   "hinweis": "Die Erinnerung kommt einmal und nur, wenn du namentlich eingeteilt bist.",
   "sprung": {
    "tab": "support"
+  }
+ },
+ {
+  "titel": "Die Anleitung in der App",
+  "wo": "Reiter \"Profil\" > \"Handbuch\"",
+  "punkte": [
+   "Dieselben Texte, die du hier auf Papier liest, stehen auch in der App.",
+   "Du siehst dort nur die Kapitel, die zu deinen Rollen gehören — ein Mitglied drei, die Vereinsleitung sieben.",
+   "Viele Abschnitte haben einen Knopf „Dahin springen“, der dich gleich an die beschriebene Stelle bringt.",
+   "Die Kapitel laden erst beim Aufklappen, damit die App schnell bleibt."
+  ],
+  "hinweis": "Die Anleitung in der App gibt es bisher nur auf Deutsch, auch wenn du die App in einer anderen Sprache benutzt. Ein Hinweis oben sagt dir das.",
+  "sprung": {
+   "tab": "profile"
   }
  }
 ] as const;
