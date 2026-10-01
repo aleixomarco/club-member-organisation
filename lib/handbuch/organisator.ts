@@ -140,10 +140,10 @@ const abschnitte = [
   "titel": "Bewirtungsplan: die Saison auf einen Blick",
   "wo": "Reiter \"Support\" > \"Bewirtungsplan\"",
   "punkte": [
-   "Hier stehen alle kommenden Heimspiele untereinander, darunter je Spieltag die Posten und wer daran steht.",
-   "Offene Posten stehen rot, und oben rechts an jedem Spieltag siehst du, wie viele es sind.",
-   "\"Helferset auf einen Zeitraum anwenden\" legt die Posten eines Sets in einem Rutsch an allen künftigen Heimspielen des Zeitraums an — statt Termin für Termin.",
-   "Posten, die an einem Spieltag schon stehen, bleiben unverändert; eingeteilt wird dabei niemand aus- oder eingetragen.",
+   "Hier stehen alle kommenden Heimspiele untereinander, darunter je Spieltag die Stationen und wer daran steht.",
+   "Offene Plätze stehen rot, und oben rechts an jedem Spieltag siehst du, wie viele es sind.",
+   "\"Helferset auf einen Zeitraum anwenden\" legt die Stationen eines Sets in einem Rutsch an allen künftigen Heimspielen des Zeitraums an — statt Termin für Termin.",
+   "Stationen, die an einem Spieltag schon stehen, bleiben unverändert; niemand wird dabei ein- oder ausgetragen.",
    "Vergangene und abgesagte Heimspiele lässt die Anwendung aus und sagt dir in der Rückmeldung, wie viele es waren.",
    "\"Plan kopieren\" legt den ganzen Plan als Text in die Zwischenablage — von dort in eine Mail, eine Notiz oder ein Textprogramm zum Aushängen.",
    "Ein Spieltag angetippt führt dich zum Termin, wo du einteilst."

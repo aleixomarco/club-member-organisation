@@ -12025,6 +12025,11 @@ function BewirtungsplanView({ currentUser, members, events, dutyPlan, onSpringen
   const [laeuft, setLaeuft] = useState(false);
   const [meldung, setMeldung] = useState(null);
   const [kopiert, setKopiert] = useState(false);
+  /* Eigener Zustand und NICHT meldung: Der Kopieren-Knopf steht ausserhalb des
+     Leitungskastens, meldung wird aber nur darin gezeigt. Ein einfaches
+     Mitglied, bei dem die Zwischenablage fehlt, haette gar nichts gesehen -
+     kein Text, kein Fehler, ein Knopf, der nichts tut. */
+  const [kopierFehler, setKopierFehler] = useState(false);
 
   useEffect(() => {
     if (!darfAnwenden || !supabase || !currentUser?.clubId) return;
@@ -12053,17 +12058,41 @@ function BewirtungsplanView({ currentUser, members, events, dutyPlan, onSpringen
       const plaetze = plaetzeFuer(ev, station);
       return { station, besetzt, plaetze, luecke: besetzt.length < plaetze };
     });
-    return { ev, posten, luecken: posten.filter((p) => p.luecke).length };
+    /* Gezaehlt werden freie PLAETZE, nicht Stationen mit einer Luecke.
+       Erste Fassung zaehlte Stationen und schrieb "2 offen", waehrend derselbe
+       Termin unter "Helferdienste" "1/4 Plaetze belegt" zeigte - drei Angaben
+       zu einer Lage. plaetzeBelegt/plaetzeGesamt sind der Massstab im ganzen
+       Haus; der Plan haelt sich daran. */
+    const frei = posten.reduce((n, p) => n + Math.max(0, p.plaetze - p.besetzt.length), 0);
+    return { ev, posten, frei };
   });
 
   const anwenden = async () => {
     if (!setId || !supabase) return;
+    /* Vor dem Absenden, nicht danach: Ein leeres Datumsfeld laesst PostgREST
+       mit "invalid input syntax for type date" antworten - ein englischer
+       Datenbanksatz, der nichts im Bildschirm zu suchen hat. */
+    if (!von || !bis) { setMeldung({ art: "fehler", text: t("bwp.fehlerZeitraum") }); return; }
     setLaeuft(true); setMeldung(null);
     const { data, error } = await supabase.rpc("bewirtungsplan_anwenden", {
       target_club: currentUser.clubId, target_template: setId, von, bis,
     });
     setLaeuft(false);
-    if (error) { setMeldung({ art: "fehler", text: error.message }); return; }
+    if (error) {
+      /* Die Funktion wirft Schluesselwoerter, die App haelt die Saetze dazu
+         bereit - in jeder Sprache. Vorbild: add_duty_station, app/page.tsx:9693.
+         Vorher stand hier error.message, und das war die einzige Stelle im
+         ganzen Haus, die eine Datenbankmeldung ungefiltert anzeigte: Wer die
+         App auf Tuerkisch stellt, las woertlich "Zeitraum unvollstaendig". */
+      const grund = String(error.message || "");
+      setMeldung({ art: "fehler", text:
+        grund.includes("satz_ohne_stationen") ? t("help.satzOhneStationen")
+        : grund.includes("zeitraum_zu_lang") ? t("bwp.fehlerZuLang")
+        : grund.includes("zeitraum_falsch") ? t("bwp.fehlerZeitraum")
+        : grund.includes("fremdes_set") ? t("bwp.fehlerFremdesSet")
+        : t("bwp.fehlerAllgemein") });
+      return;
+    }
     setMeldung({ art: "erfolg", zahlen: data || {} });
     /* Ohne dieses Neuladen stuende unter der Erfolgsmeldung "17 Heimspiele
        bearbeitet, 68 Posten neu angelegt" eine Tabelle, in der sich nichts
@@ -12087,19 +12116,26 @@ function BewirtungsplanView({ currentUser, members, events, dutyPlan, onSpringen
   const kopieren = async () => {
     try {
       await navigator.clipboard.writeText(alsText());
+      setKopierFehler(false);
       setKopiert(true);
       setTimeout(() => setKopiert(false), 2500);
     } catch {
       /* Ohne Erlaubnis für die Zwischenablage - oder im eingebetteten Browser,
          wo es sie nicht gibt - bleibt der Plan trotzdem lesbar: Er steht ja
          direkt darüber auf dem Schirm. Eine Fehlermeldung hülfe niemandem. */
-      setMeldung({ art: "fehler", text: t("bwp.kopierenFehler") });
+      setKopierFehler(true);
     }
   };
 
   return (
     <div className="px-4 pt-4 pb-24">
-      <div className="text-xs mb-4" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("bwp.einleitung")}</div>
+      {/* Zwei Einleitungen. Die erste versprach jedem "Tippe einen Spieltag an,
+          um dort einzuteilen" - fremde Leute eintragen darf aber nur die
+          Leitung (HelperSlots darfVerwalten). Ein Mitglied folgte dem Satz und
+          fand die zugesagte Moeglichkeit nicht. */}
+      <div className="text-xs mb-4" style={{ color: C.textDim, fontFamily: "Inter" }}>
+        {darfAnwenden ? t("bwp.einleitung") : t("bwp.einleitungMitglied")}
+      </div>
 
       {darfAnwenden && (
         <div className="rounded-2xl p-3.5 mb-4" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
@@ -12176,7 +12212,12 @@ function BewirtungsplanView({ currentUser, members, events, dutyPlan, onSpringen
               {kopiert ? t("bwp.kopiert") : t("bwp.kopieren")}
             </button>
           </div>
-          {zeilen.map(({ ev, posten, luecken }) => (
+          {kopierFehler && (
+            <div role="status" className="text-[11px] mb-2" style={{ color: C.fehler, fontFamily: "Inter" }}>
+              {t("bwp.kopierenFehler")}
+            </div>
+          )}
+          {zeilen.map(({ ev, posten, frei }) => (
             <div key={ev.id} className="rounded-2xl mb-2.5 overflow-hidden" style={{ background: C.glass, border: `1px solid ${C.line}` }}>
               <button type="button" onClick={() => onSpringen?.(ev.id)}
                 className="w-full text-left px-3.5 pt-3 pb-2 flex items-start gap-2">
@@ -12186,10 +12227,10 @@ function BewirtungsplanView({ currentUser, members, events, dutyPlan, onSpringen
                     {formatDate(ev.date)} · {formatTime(ev.date)}
                   </div>
                 </div>
-                {luecken > 0 && (
+                {frei > 0 && (
                   <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md flex-shrink-0"
                     style={{ background: C.red, color: C.white }}>
-                    {mitWerten(t("bwp.luecken"), { anzahl: luecken })}
+                    {mitWerten(t("bwp.luecken"), { anzahl: frei })}
                   </span>
                 )}
                 <ChevronRight size={13} style={{ color: C.textDim, flexShrink: 0, marginTop: 2 }} />

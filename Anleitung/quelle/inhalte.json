@@ -198,10 +198,10 @@
     "titel": "Der Bewirtungsplan",
     "wo": "Reiter \"Support\" > \"Bewirtungsplan\"",
     "punkte": [
-     "Dort siehst du alle kommenden Heimspiele mit ihren Posten und wer schon zugesagt hat.",
+     "Dort siehst du alle kommenden Heimspiele mit ihren Stationen und wer schon zugesagt hat.",
      "Rot heißt: Hier wird noch jemand gebraucht.",
-     "Tippe den Spieltag an, dann landest du beim Termin und kannst einen Posten übernehmen.",
-     "Bist du eingeteilt, bekommst du am Vorabend um 18 Uhr eine Erinnerung — mit Spieltag, Uhrzeit und deinem Posten."
+     "Tippe den Spieltag an, dann landest du beim Termin und kannst einen Dienst übernehmen.",
+     "Bist du eingeteilt, bekommst du am Vorabend um 18 Uhr eine Erinnerung — mit Spieltag, Uhrzeit und deiner Station."
     ],
     "bildschirm": "Support > Bewirtungsplan",
     "hinweis": "Die Erinnerung kommt einmal und nur, wenn du namentlich eingeteilt bist."
@@ -603,10 +603,10 @@
     "titel": "Bewirtungsplan: die Saison auf einen Blick",
     "wo": "Reiter \"Support\" > \"Bewirtungsplan\"",
     "punkte": [
-     "Hier stehen alle kommenden Heimspiele untereinander, darunter je Spieltag die Posten und wer daran steht.",
-     "Offene Posten stehen rot, und oben rechts an jedem Spieltag siehst du, wie viele es sind.",
-     "\"Helferset auf einen Zeitraum anwenden\" legt die Posten eines Sets in einem Rutsch an allen künftigen Heimspielen des Zeitraums an — statt Termin für Termin.",
-     "Posten, die an einem Spieltag schon stehen, bleiben unverändert; eingeteilt wird dabei niemand aus- oder eingetragen.",
+     "Hier stehen alle kommenden Heimspiele untereinander, darunter je Spieltag die Stationen und wer daran steht.",
+     "Offene Plätze stehen rot, und oben rechts an jedem Spieltag siehst du, wie viele es sind.",
+     "\"Helferset auf einen Zeitraum anwenden\" legt die Stationen eines Sets in einem Rutsch an allen künftigen Heimspielen des Zeitraums an — statt Termin für Termin.",
+     "Stationen, die an einem Spieltag schon stehen, bleiben unverändert; niemand wird dabei ein- oder ausgetragen.",
      "Vergangene und abgesagte Heimspiele lässt die Anwendung aus und sagt dir in der Rückmeldung, wie viele es waren.",
      "\"Plan kopieren\" legt den ganzen Plan als Text in die Zwischenablage — von dort in eine Mail, eine Notiz oder ein Textprogramm zum Aushängen.",
      "Ein Spieltag angetippt führt dich zum Termin, wo du einteilst."

@@ -229,10 +229,10 @@ const abschnitte = [
   "titel": "Der Bewirtungsplan",
   "wo": "Reiter \"Support\" > \"Bewirtungsplan\"",
   "punkte": [
-   "Dort siehst du alle kommenden Heimspiele mit ihren Posten und wer schon zugesagt hat.",
+   "Dort siehst du alle kommenden Heimspiele mit ihren Stationen und wer schon zugesagt hat.",
    "Rot heißt: Hier wird noch jemand gebraucht.",
-   "Tippe den Spieltag an, dann landest du beim Termin und kannst einen Posten übernehmen.",
-   "Bist du eingeteilt, bekommst du am Vorabend um 18 Uhr eine Erinnerung — mit Spieltag, Uhrzeit und deinem Posten."
+   "Tippe den Spieltag an, dann landest du beim Termin und kannst einen Dienst übernehmen.",
+   "Bist du eingeteilt, bekommst du am Vorabend um 18 Uhr eine Erinnerung — mit Spieltag, Uhrzeit und deiner Station."
   ],
   "hinweis": "Die Erinnerung kommt einmal und nur, wenn du namentlich eingeteilt bist.",
   "sprung": {
