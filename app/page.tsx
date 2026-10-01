@@ -11192,11 +11192,21 @@ function ProfileView({ sprache, onSpracheWaehlen, onSpringen, user, members, set
         <ProfileSettingsCard icon={Star} title={t("pf.support")} description={t("pf.supportHinweis")} color={C.ink} onClick={() => setProfileFolder("support")}/>
         {vorhandeneVideos.length > 0 && <ProfileSettingsCard icon={PlayCircle} title={t("pf.appKennenlernen")} description={t("pf.appKennenlernenHinweis")} color={C.ink} onClick={() => setProfileFolder("howto")}/>}
         <ProfileSettingsCard icon={ClipboardList} title={t("pf.handbuch")} description={t("pf.handbuchHinweis")} color={C.ink} onClick={() => setProfileFolder("handbuch")}/>
-        {/* Direkter Weg zur Kontolöschung. Vorher lag sie drei Overlay-Ebenen tief
-            und keine der Zwischenkacheln trug das Wort „löschen" — ein Prüfer, der
-            unserer eigenen Anleitung („Profil → Verwalten → Konto löschen") folgt,
-            hätte die Funktion nicht gefunden und als fehlend gemeldet. */}
-        <ProfileSettingsCard icon={Trash2} title={t("konto.dlg.titel")} description={t("konto.karte.beschreibung")} color={C.ink} onClick={() => setProfileUnderlay("account-delete")}/>
+        {/* Die Kontolöschung: sichtbar, und als einzige rot.
+            SICHTBAR, weil sie vorher drei Overlay-Ebenen tief lag und keine der
+            Zwischenkacheln das Wort „löschen" trug — ein Prüfer, der unserer
+            eigenen Anleitung („Profil → Verwalten → Konto löschen") folgt, hätte
+            die Funktion nicht gefunden und als fehlend gemeldet.
+            ROT, obwohl seit dem 30.09. alle achtundzwanzig Einstellungskacheln
+            dieselbe Farbe tragen (Entscheidung des Betreibers, 01.10.2026).
+            Vereinheitlicht wurde, weil die vier Farben vorher nichts bedeuteten.
+            Hier bedeutet sie etwas: Das ist der einzige Knopf in dieser Liste,
+            hinter dem etwas Unumkehrbares liegt. Rot ist keine Zierde, sondern
+            die Warnung davor.
+            „Account verwalten" weiter unten führt zur selben Fläche, bleibt aber
+            grau: Die Kachel kündigt kein Löschen an, sie führt zu den Kontodaten
+            — erst DIESE hier sagt, was passiert. */}
+        <ProfileSettingsCard icon={Trash2} title={t("konto.dlg.titel")} description={t("konto.karte.beschreibung")} color={C.red} onClick={() => setProfileUnderlay("account-delete")}/>
       </div>
 
       {profileFolder === "sprache" && <ProfileUnderlay title={t("profil.sprache")} eyebrow={t("pf.einstellungen")} onClose={() => setProfileFolder("")}>
