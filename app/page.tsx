@@ -5379,6 +5379,24 @@ const leererTerminentwurf = (team = "") => ({
 function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpools, setCarpools, dutyPlan, setDutyPlan, onDienstSetzen, gastErlaubt, werbeplaetze, onSponsorImpression, onSponsorClick, focusRequest, onFocusApplied, currentClub, featureEnabled, entitlement, goSubscribe, tippResults = {}, tippPredictions = {}, onErgebnisOeffnen }) {
   const t = useT();
   const [filter, setFilter] = useState("alle");
+  /* Heim oder auswaerts - eine Verengung INNERHALB der Spiele, keine eigene
+     Terminart (Entscheidung des Betreibers, 02.10.2026). Erste Fassung hatte
+     dafuer eine fuenfte Schaltflaeche neben "Spiele"; das war fachlich schief,
+     weil Heimspiele eine Teilmenge der Spiele sind und nicht ihr Nachbar.
+     Die Zeile wird dadurch auch nicht laenger - sie passte mit fuenf
+     Schaltflaechen auf dem Telefon nicht mehr in einem Stueck.
+     Der Wert bleibt stehen, wenn man zwischendurch auf "Alle" geht und
+     zurueck: Wer einmal "Heim" gewaehlt hat, meint es meistens weiter. */
+  const [spielOrtFilter, setSpielOrtFilter] = useState("alle");
+  /* Die Schaltflaechenzeile scrollt waagerecht. Steht die aktive ausserhalb des
+     Sichtbaren - etwa nach einem Sprung aus einer Meldung oder nach dem
+     Anlegen eines Termins -, sieht der Nutzer eine gefilterte Liste,
+     ohne zu erkennen, WONACH gefiltert ist. Deshalb rueckt sie ins Bild. */
+  const filterLeisteRef = useRef(null);
+  useEffect(() => {
+    const knopf = filterLeisteRef.current?.querySelector(`[data-filter="${filter}"]`);
+    knopf?.scrollIntoView({ inline: "nearest", block: "nearest", behavior: "smooth" });
+  }, [filter]);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -5430,6 +5448,17 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
 
   const filtered = events.filter((e) => {
     if (filter !== "alle" && e.type !== filter) return false;
+    /* Heim/auswaerts greift NUR, solange die Spiele gewaehlt sind - sonst
+       verschwaende die Einstellung die Trainings gleich mit.
+       Geprueft wird ausdruecklich auf true bzw. false, nicht auf "nicht true":
+       Ein Spiel ohne Angabe traegt home === undefined (so bildet der Lader
+       home_away ab) und
+       gehoert dann in keine der beiden Listen - es stuende sonst unter
+       "Auswaerts", obwohl niemand das je eingetragen hat. */
+    if (filter === "spiel" && spielOrtFilter !== "alle") {
+      if (spielOrtFilter === "heim" && e.home !== true) return false;
+      if (spielOrtFilter === "auswaerts" && e.home !== false) return false;
+    }
     if (teamFilter === "alle") return true;
     /* Fuer Spiele und Trainings dieselbe Regel: die Mannschaft am Termin.
        Vorher liefen Trainings ueber die Jugendklasse - fuer Mannschaften ohne
@@ -5922,10 +5951,10 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
       </div> : <div className="space-y-2"><div className="flex gap-1.5 flex-wrap">{[["1",t("kal.tagMo")],["2",t("kal.tagDi")],["3",t("kal.tagMi")],["4",t("kal.tagDo")],["5",t("kal.tagFr")],["6",t("kal.tagSa")],["7",t("kal.tagSo")]].map(([num,label])=>{const n=Number(num);const active=eventDraft.weekdays.includes(n);return <button type="button" key={num} onClick={()=>setEventDraft({...eventDraft,weekdays:active?eventDraft.weekdays.filter((w)=>w!==n):[...eventDraft.weekdays,n]})} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold" style={{background:active?C.red:C.paperDim,color:active?C.white:C.textDim}}>{label}</button>;})}</div><div className="grid grid-cols-2 gap-2"><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.beginnPflicht")}</span><input type="time" value={eventDraft.startTime} onChange={(e)=>setEventDraft({...eventDraft,startTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></label><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.endePflicht")}</span><input type="time" value={eventDraft.endTime} onChange={(e)=>setEventDraft({...eventDraft,endTime:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></label></div><div className="grid grid-cols-2 gap-2"><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.ersterTermin")}</span><input type="date" value={eventDraft.rangeStart} onChange={(e)=>setEventDraft({...eventDraft,rangeStart:e.target.value})} className="px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></label><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.letzterTermin")}</span><input type="date" value={eventDraft.rangeEnd} onChange={(e)=>setEventDraft({...eventDraft,rangeEnd:e.target.value})} className="erg-datetime px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim,color:C.ink}}/></label></div></div>}<label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.ort")}</span><input value={eventDraft.location} onChange={(e)=>setEventDraft({...eventDraft,location:e.target.value})} placeholder={t("ph.ortPflicht")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></label><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.terminAdresse")}</span><input value={eventDraft.adresse} onChange={(e)=>setEventDraft({...eventDraft,adresse:e.target.value})} placeholder={t("ph.terminAdresse")} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></label><label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.beschreibungLabel")}</span><textarea value={eventDraft.desc} onChange={(e)=>setEventDraft({...eventDraft,desc:e.target.value})} placeholder={t("feld.beschreibung")} rows={2} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none resize-none" style={{background:C.paperDim}}/></label>{/* Helferstationen gibt es nur beim Einzeltermin: Die Reihe legt keine an, und beim Bearbeiten wuerden geaenderte Stationen bestehende Einteilungen verwaisen lassen. */}{!eventDraft.recurring && !editingEventId && <label className="block"><span className="block text-[10px] font-bold mb-1" style={{color:C.textDim}}>{t("feld.helferstationen")}</span><input value={eventDraft.helferStationen} onChange={(e)=>setEventDraft({...eventDraft,helferStationen:e.target.value})} placeholder={`${t("ph.helferstationen")} — ${sportText(t, currentClub?.sport, "dutyStationExamples")}`} className="w-full px-3 py-2.5 rounded-xl text-xs outline-none" style={{background:C.paperDim}}/></label>}{/* Die Meldung stand vorher IM Zweig fuer Einzeltermine. Bei einer Serie erschien sie deshalb nie, und das Speichern blieb wieder stumm - genau der Fehler, den sie beheben sollte. Jetzt steht sie vor der Knopfzeile und gilt fuer beide Zweige. */}{eventFehler && <div className="text-[10px] rounded-xl px-3 py-2" style={{background:C.fehlerFlaeche,color:C.fehler}}>{eventFehler}</div>}<div className="flex gap-2"><button type="submit" disabled={eventSpeichert} className="flex-1 py-2.5 rounded-xl text-xs font-bold" style={{background:eventSpeichert?C.line:C.ink,color:C.white,opacity:eventSpeichert?.7:1}}>{eventSpeichert?t("allg.wirdGespeichert"):t("allg.speichern")}</button><button type="button" onClick={()=>{setShowCreate(false);setEventFehler("");if(editingEventId){setEditingEventId(null);resetEventDraft();}}} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{background:C.paperDim,color:C.textDim}}>{t("allg.abbrechen")}</button></div></form>}
       <SponsorSlot slotKey="events_header" bookings={werbeplaetze} onImpression={onSponsorImpression} onClick={onSponsorClick} visible={featureEnabled("sponsor_events_header")} />
       <div className="flex items-center gap-2 mb-3">
-        <div className="flex gap-2 overflow-x-auto pb-1 flex-1 min-w-0" style={{ scrollbarWidth: "none" }}>
+        <div ref={filterLeisteRef} className="flex gap-2 overflow-x-auto pb-1 flex-1 min-w-0" style={{ scrollbarWidth: "none" }}>
           {/* Fans sehen keine Trainings - also auch keinen Filter dafuer. */}
           {[["alle", t("ev.alle2")], ...(istNurFan(currentUser) ? [] : [["training", t("ev.training")]]), ["spiel", t("ev.spiele2")], ["event", t("ev.events2")]].map(([k, l]) => (
-            <button key={k} onClick={() => setFilter(k)} className="px-3 py-1.5 rounded-full text-xs flex-shrink-0"
+            <button key={k} data-filter={k} onClick={() => setFilter(k)} className="px-3 py-1.5 rounded-full text-xs flex-shrink-0"
               style={{ fontFamily: "Inter", fontWeight: 700, background: filter === k ? C.ink : C.paperDim, color: filter === k ? C.white : C.textDim }}>{l}</button>
           ))}
         </div>
@@ -5944,6 +5973,21 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
           <RefreshCw size={14} style={{ color: C.textDim }} />
         </button>
       </div>
+      {/* Heim oder auswaerts - nur sichtbar, solange die Spiele gewaehlt sind.
+          Das Einruecken und die kleinere Schrift sagen ohne Worte, dass diese
+          Zeile zur Schaltflaeche darueber gehoert und nicht neben ihr steht. */}
+      {filter === "spiel" && (
+        <div className="flex gap-1.5 mb-3 pl-3" role="group" aria-label={t("ev.spielort")}>
+          {[["alle", t("ev.alle2")], ["heim", t("ev.heim")], ["auswaerts", t("ev.auswaerts")]].map(([k, l]) => (
+            <button key={k} onClick={() => setSpielOrtFilter(k)} aria-pressed={spielOrtFilter === k}
+              className="px-2.5 py-1 rounded-full text-[11px] flex-shrink-0"
+              style={{ fontFamily: "Inter", fontWeight: 700,
+                       background: spielOrtFilter === k ? C.primaerWeich : "transparent",
+                       border: `1px solid ${spielOrtFilter === k ? C.primaerRand : C.line}`,
+                       color: spielOrtFilter === k ? C.red : C.textDim }}>{l}</button>
+          ))}
+        </div>
+      )}
       {teamFilterActive && <div className="flex items-center gap-2 mb-4 px-2.5 py-2 rounded-xl" style={{background:C.glass,border:`1px solid ${C.line}`}}>
         <Users size={13} style={{color:C.textDim,flexShrink:0}}/>
         <select aria-label={t("feld.mannschaftFiltern")} value={teamFilter} onChange={(e)=>setTeamFilter(e.target.value)} className="flex-1 min-w-0 bg-transparent text-[11px] font-bold outline-none" style={{color:C.ink}}>
@@ -5974,7 +6018,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
           ergebnis={tippResults?.[ev.id] || null} darfErgebnis={darfErgebnisEintragen(currentUser, ev, { streng: !!supabase })} onErgebnisOeffnen={onErgebnisOeffnen}
         />
       ))}
-      {filtered.length===0&&<div className="rounded-2xl p-6 text-center text-xs" style={{background:C.paperDim,color:C.textDim}}>{filter === "training" ? t("ev.keineTrainingsHinterlegt") : t("ev.keineSpieleHinterlegt")}</div>}
+      {filtered.length===0&&<div className="rounded-2xl p-6 text-center text-xs" style={{background:C.paperDim,color:C.textDim}}>{filter === "training" ? t("ev.keineTrainingsHinterlegt") : filter === "spiel" && spielOrtFilter === "heim" ? t("ev.keineHeimspiele") : filter === "spiel" && spielOrtFilter === "auswaerts" ? t("ev.keineAuswaertsspiele") : t("ev.keineSpieleHinterlegt")}</div>}
 
       {/* Termin aus dem Kalender. Bewusst dieselbe EventCard wie in der Liste —
           damit gelten hier zwangsläufig dieselben Lese- und Schreibrechte,
@@ -12176,18 +12220,28 @@ function BewirtungsplanView({ currentUser, members, events, dutyPlan, onSpringen
                 <option value="">{t("bwp.setWaehlen")}</option>
                 {sets.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
-              <div className="flex gap-2 mb-2.5">
-                <label className="flex-1 min-w-0">
+              {/* Raster statt flex, und min-width auch am FELD.
+                  Mit flex-1 lief der rechte Kasten auf dem Telefon ueber den
+                  Kartenrand hinaus (gemeldet vom Betreiber, 02.10.2026, mit
+                  Bildschirmfoto): Ein input[type=date] bringt eine eigene
+                  Mindestbreite mit (Safari setzt sie aus dem Datumsformat), und
+                  ein Flex-Kind schrumpft von sich aus nicht unter seinen Inhalt.
+                  min-w-0 am Label half nicht - das Feld DARIN behielt seine
+                  Breite. Tailwinds grid-cols-2 rechnet mit minmax(0,1fr) und
+                  loest genau das; die Mindestbreite am Feld selbst setzt den
+                  Riegel ein zweites Mal, fuer Browser ohne diese Rechnung. */}
+              <div className="grid grid-cols-2 gap-2 mb-2.5">
+                <label className="min-w-0">
                   <span className="block text-[10px] mb-1" style={{ color: C.textDim }}>{t("bwp.von")}</span>
                   <input type="date" value={von} onChange={(e) => setVon(e.target.value)}
                     className="w-full text-xs px-2.5 py-2 rounded-lg outline-none"
-                    style={{ background: C.white, border: `1px solid ${C.line}`, color: C.ink }} />
+                    style={{ background: C.white, border: `1px solid ${C.line}`, color: C.ink, minWidth: 0 }} />
                 </label>
-                <label className="flex-1 min-w-0">
+                <label className="min-w-0">
                   <span className="block text-[10px] mb-1" style={{ color: C.textDim }}>{t("bwp.bis")}</span>
                   <input type="date" value={bis} onChange={(e) => setBis(e.target.value)}
                     className="w-full text-xs px-2.5 py-2 rounded-lg outline-none"
-                    style={{ background: C.white, border: `1px solid ${C.line}`, color: C.ink }} />
+                    style={{ background: C.white, border: `1px solid ${C.line}`, color: C.ink, minWidth: 0 }} />
                 </label>
               </div>
               <button onClick={anwenden} disabled={!setId || laeuft}
