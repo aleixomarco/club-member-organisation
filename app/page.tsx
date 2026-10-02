@@ -4015,9 +4015,18 @@ function MannschaftsWahl({ mannschaften, gewaehlt, onWechsel, favorit, onFavorit
     <label className="inline-flex items-center gap-1.5 rounded-full pl-3 pr-2 py-1.5 cursor-pointer"
       style={{ background: C.glass, border: `1px solid ${C.line}` }}>
       <ListFilter size={13} style={{ color: C.red, flexShrink: 0 }} />
+      {/* Gedeckelt, weil die Pille drumherum inline-flex ist und damit mit dem
+          Feld mitwaechst - die Regel in globals.css greift hier nicht, sie
+          deckelt das Feld auf 100 % eines Behaelters, der selbst schon zu breit
+          ist. Gemessen am 02.10.2026: Bei einem 40 Zeichen langen
+          Mannschaftsnamen ragte die Pille 100 px ueber den Bildschirm, bei den
+          erlaubten 80 Zeichen 510 px. Und weil die Seite nicht waagerecht
+          scrollt, war der Teil nicht abgeschnitten sichtbar, sondern schlicht
+          weg. 52vw laesst auch auf einem schmalen Telefon genug Platz fuer das
+          Trichtersymbol und den Pfeil daneben. */}
       <select aria-label={t("feld.mannschaftFiltern")} value={gewaehlt} onChange={(e) => onWechsel?.(e.target.value)}
-        className="text-[11px] font-bold outline-none appearance-none bg-transparent cursor-pointer pr-4"
-        style={{ color: C.ink, fontFamily: "Inter" }}>
+        className="text-[11px] font-bold outline-none appearance-none bg-transparent cursor-pointer pr-4 truncate"
+        style={{ color: C.ink, fontFamily: "Inter", maxWidth: "52vw" }}>
         {mannschaften.map((m) => <option key={m} value={m} style={{ color: C.ink }}>{m}</option>)}
       </select>
       <ChevronDown size={13} style={{ color: C.textDim, marginLeft: -14, pointerEvents: "none" }} />
@@ -6002,7 +6011,14 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
       )}
       {teamFilterActive && <div className="flex items-center gap-2 mb-4 px-2.5 py-2 rounded-xl" style={{background:C.glass,border:`1px solid ${C.line}`}}>
         <Users size={13} style={{color:C.textDim,flexShrink:0}}/>
-        <select aria-label={t("feld.mannschaftFiltern")} value={teamFilter} onChange={(e)=>setTeamFilter(e.target.value)} className="flex-1 min-w-0 bg-transparent text-[11px] font-bold outline-none" style={{color:C.ink}}>
+        {/* py-2 -my-2: Die Kachel ist 34 px hoch, das Auswahlfeld darin war 16 px -
+            und nur diese 16 px reagierten auf einen Tipp. Gemessen am 02.10.2026.
+            Die Polsterung vergroessert die Trefferflaeche auf die ganze Zeilenhoehe,
+            der negative Rand haelt die Kachel optisch unveraendert.
+            Sein Zwilling in der Mannschaftswahl steckt in einem <label>, dort ist
+            die ganze Kachel tippbar; hier ginge das nicht, weil in derselben Zeile
+            noch ein Knopf sitzt - ein <label> wuerde dessen Tipp mitnehmen. */}
+        <select aria-label={t("feld.mannschaftFiltern")} value={teamFilter} onChange={(e)=>setTeamFilter(e.target.value)} className="flex-1 min-w-0 bg-transparent text-[11px] font-bold outline-none py-2 -my-2" style={{color:C.ink}}>
           <option value="alle">{t("ev.alleTeams")}</option>{filterTeams.map((team)=><option key={team} value={team}>{team}</option>)}
         </select>
         <button aria-label={t("aria.standardansicht")} title={t("ev.alsStandardSpeichern")} onClick={saveDefaultTeam} disabled={savedTeam===teamFilter} className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{background:savedTeam===teamFilter?C.erfolgFlaeche:C.paperDim,color:savedTeam===teamFilter?C.secondary:C.textDim}}><Star size={13} fill={savedTeam===teamFilter?C.secondary:"none"}/></button>
@@ -12332,7 +12348,12 @@ function BewirtungsplanView({ currentUser, members, events, dutyPlan, onSpringen
                 ) : posten.map((p) => (
                   <div key={p.station} className="flex items-baseline gap-2 py-1"
                     style={{ borderTop: `1px solid ${C.line}` }}>
-                    <span className="text-[11px] font-bold flex-shrink-0" style={{ color: C.ink, fontFamily: "Inter", minWidth: 78 }}>{p.station}</span>
+                    {/* Die Stationsspalte durfte nicht schrumpfen (flex-shrink-0 mit fester
+                        Mindestbreite) - und ein Stationsname darf 60 Zeichen haben
+                        (add_duty_station kuerzt erst dort). "Getraenkeausgabe
+                        Nordtribuene" haette die Namen rechts aus der Zeile gedrueckt.
+                        Jetzt eine gedeckelte Spalte mit Abschneiden. */}
+                    <span className="text-[11px] font-bold truncate" style={{ color: C.ink, fontFamily: "Inter", minWidth: 78, maxWidth: "48%" }}>{p.station}</span>
                     {/* Rot ist der MANGEL, nicht die Person. "Theke · Marco
                         Aleixo · 1/2" heisst: Marco steht da, ein Platz ist noch
                         frei - sein Name in Rot liest sich aber, als waere er
@@ -13753,10 +13774,18 @@ function SponsoringPanel({ bookings, currentClub, clubFeatures, onFeaturesChange
                     gesetzt wird das beim Speichern. */}
 
                 <div className="text-[10px] uppercase tracking-widest font-bold pt-1" style={{ color: C.textDim }}>{t("sp.stehtAufPlatz")}</div>
-                <div className="flex gap-2">
-                  <label className="flex-1"><span className="text-[10px] block mb-1" style={{ color: C.textDim }}>{t("allg.von")}</span>
+                {/* Raster, nicht flex. Zwei datetime-local nebeneinander sind der
+                    schlimmste Fall dieser Art: Sie tragen Datum UND Uhrzeit und
+                    sind damit breiter als jedes reine Datumsfeld. Mit flex-1
+                    wuchs das LABEL auf die Breite seines Feldes mit, das rechte
+                    ragte 53 px aus der Karte. Die globale Regel in globals.css
+                    half hier nicht - sie deckelt das Feld auf 100 % des Labels,
+                    und das Label war ja schon zu breit. grid-cols-2 rechnet mit
+                    minmax(0,1fr) und zwingt beide Spalten auf die halbe Breite. */}
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="min-w-0"><span className="text-[10px] block mb-1" style={{ color: C.textDim }}>{t("allg.von")}</span>
                     <input type="datetime-local" value={entwurf.laeuft_von} onChange={(e) => setzen("laeuft_von", e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} /></label>
-                  <label className="flex-1"><span className="text-[10px] block mb-1" style={{ color: C.textDim }}>{t("allg.bis")}</span>
+                  <label className="min-w-0"><span className="text-[10px] block mb-1" style={{ color: C.textDim }}>{t("allg.bis")}</span>
                     <input type="datetime-local" value={entwurf.laeuft_bis} onChange={(e) => setzen("laeuft_bis", e.target.value)} className="w-full px-3 py-2 rounded-lg text-xs outline-none" style={{ background: C.paperDim, border: `1px solid ${C.line}` }} /></label>
                 </div>
                 <div className="text-[10px]" style={{ color: C.textDim }}>{t("sp.zeitraumHinweis")}</div>

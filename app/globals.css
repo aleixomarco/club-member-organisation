@@ -30,3 +30,35 @@ body {
   color: #2A2028;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
 }
+
+/* Eingabefelder duerfen schrumpfen.
+ *
+ * WARUM DIESE EINE REGEL NOETIG IST
+ * Ein <select> ist so breit wie seine laengste Option, ein <input type="date">
+ * oder "datetime-local" so breit wie sein Format - und BEIDE schrumpfen von
+ * sich aus nicht darunter. Als Flex- oder Grid-Kind erben sie zusaetzlich
+ * min-width: auto, also "mindestens so breit wie mein Inhalt". Steht so ein
+ * Feld in einer engen Spalte, ragt es ueber den Kartenrand hinaus, und
+ * sichtbar wird das erst bei langen Daten.
+ *
+ * Genau das ist am 02.10.2026 passiert: Im Bewirtungsplan lief der rechte
+ * Datumskasten ueber den Rand, gemeldet vom Betreiber mit Bildschirmfoto. Die
+ * anschliessende Durchsicht fand SIEBEN weitere Stellen mit derselben Ursache
+ * - Sponsor-Laufzeit, Terminformular, Fahrgemeinschaft, Strafenfilter und
+ * weitere. Alle einzeln zu flicken hiesse, auf die achte zu warten.
+ *
+ * min-width: 0   nimmt dem Feld das "mindestens so breit wie mein Inhalt".
+ * max-width: 100% laesst es nie breiter werden als sein Platz.
+ * Zusammen: Ein Feld wird so schmal wie noetig und ragt nie heraus. Ein zu
+ * schmales Feld ist unschoen, ein ueberlaufendes ist kaputt.
+ *
+ * Feste Breiten (w-20, style width) bleiben wirksam - max-width deckelt nur
+ * nach oben. Kaestchen und Schalter sind ausgenommen: Sie haben eine feste
+ * Groesse, und ein max-width: 100% in einer schmalen Zelle wuerde sie
+ * zusammendruecken. */
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+  min-width: 0;
+  max-width: 100%;
+}
