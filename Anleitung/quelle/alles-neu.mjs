@@ -73,7 +73,12 @@ const zeileOeffnen = (t) => js(`
 const PLAN = [
   ["01-anmeldung",             null,               [], []],
   ["02-startseite",            "rodrigo@cmo.app",  [], []],
-  ["03-termine",               "rodrigo@cmo.app",  ["Termine"], []],
+  /* Auf "Spiele" statt "Alle" (Wunsch des Betreibers, 02.10.2026): Nur dort
+     erscheint die zweite Filterzeile Alle/Heim/Auswaerts, die der Abschnitt
+     beschreibt. Der Preis ist bekannt und in Kauf genommen - im Bild stehen
+     dann keine Trainings und keine Vereins-Events mehr, obwohl die uebrigen
+     Stichpunkte derselben Seite sie erwaehnen. */
+  ["03-termine",               "rodrigo@cmo.app",  ["Termine"], ["Spiele"]],
   ["04-termin-detail",         "rodrigo@cmo.app",  ["Termine"], ["Heimspiel"]],
   ["05-teams",                 "rodrigo@cmo.app",  ["Teams"], []],
   /* Ein Mannschaftskanal, in dem geschrieben werden darf - im Kanal
