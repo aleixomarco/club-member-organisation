@@ -7040,11 +7040,26 @@ function ChatView({ user, channels, setChannels, activeId, setActiveId, members 
                     </div>
                   )}
                 </div>
+                {/* Melden, Blockieren, Loeschen: 10px Schrift, aber eine
+                    Trefferflaeche von 31 px (Wunsch des Betreibers, 02.10.2026).
+                    py-2 vergroessert sie, -my-2 nimmt die Hoehe wieder aus dem
+                    Fluss - die Zeile sieht unveraendert aus und wird von der
+                    Uhrzeit links bestimmt. Gemessen waren es vorher 15 px.
+                    relative + z-10 sind noetig, nicht schmueckend: Ohne sie
+                    ragt die vergroesserte Flaeche zwar nach oben, liegt dort
+                    aber UNTER der Nachrichtenblase, und ein Tipp landet auf der
+                    Blase statt auf dem Knopf. Nachgemessen mit
+                    elementFromPoint: vorher traf nur die untere Haelfte.
+                    Die Sorge, ein Fehltipp werde dadurch teurer, hat sich beim
+                    Nachsehen weitgehend erledigt: "Loeschen" fragt ueber
+                    window.confirm nach, und wer versehentlich blockiert, sieht
+                    den Namen sofort oben unter "Ausgeblendet" und hebt es mit
+                    einem Tipp wieder auf. */}
                 <div className="flex items-center gap-2 mt-0.5">
                   <div className="text-[10px]" style={{ color: C.textDim, fontFamily: "Inter" }}>{m.time}</div>
-                  {!mine && <a href={`mailto:${legal.email}?subject=${encodeURIComponent(t("chat.meldenBetreff") + (active.name || t("nav.chat")))}&body=${encodeURIComponent(mitWerten(t("chat.meldenMailText"), { verfasser: m.who, inhalt: m.text || "" }))}`} className="text-[10px]" style={{ color: C.textDim, fontFamily: "Inter", textDecoration: "underline" }}>{t("chat.melden")}</a>}
-                  {!mine && <button onClick={() => blockAuthor(m.authorId)} className="text-[10px]" style={{ color: C.textDim, fontFamily: "Inter", textDecoration: "underline" }}>{t("chat.blockieren")}</button>}
-                  {(mine || darfModerieren) && <button onClick={() => nachrichtLoeschen(m)} className="text-[10px]" style={{ color: C.textDim, fontFamily: "Inter", textDecoration: "underline" }}>{t("allg.loeschen")}</button>}
+                  {!mine && <a href={`mailto:${legal.email}?subject=${encodeURIComponent(t("chat.meldenBetreff") + (active.name || t("nav.chat")))}&body=${encodeURIComponent(mitWerten(t("chat.meldenMailText"), { verfasser: m.who, inhalt: m.text || "" }))}`} className="text-[10px] py-2 -my-2 relative z-10" style={{ color: C.textDim, fontFamily: "Inter", textDecoration: "underline" }}>{t("chat.melden")}</a>}
+                  {!mine && <button onClick={() => blockAuthor(m.authorId)} className="text-[10px] py-2 -my-2 relative z-10" style={{ color: C.textDim, fontFamily: "Inter", textDecoration: "underline" }}>{t("chat.blockieren")}</button>}
+                  {(mine || darfModerieren) && <button onClick={() => nachrichtLoeschen(m)} className="text-[10px] py-2 -my-2 relative z-10" style={{ color: C.textDim, fontFamily: "Inter", textDecoration: "underline" }}>{t("allg.loeschen")}</button>}
                 </div>
               </div>
             </div>
