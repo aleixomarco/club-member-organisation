@@ -417,6 +417,7 @@ const woerter: Record<string, string> = {
   "sup.helferdienste": "Bénévolat",
   "sup.einteilen": "Répartir les bénévoles",
   "sup.einleitung": "Tâches et bénévolat pour le club – inscris-toi ici.",
+  "sup.einleitungFan": "Les tâches et services du club. En tant que fan, tu vois où tu es affecté ; seule la direction peut t'inscrire.",
   "sup.eingeteiltEyebrow": "Planning des bénévoles",
   "sup.eingeteiltTitel": "Tes affectations",
   "sup.plaetzeBelegt": "{belegt}/{gesamt} places prises",

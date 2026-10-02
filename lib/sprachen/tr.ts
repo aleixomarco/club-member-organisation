@@ -417,6 +417,7 @@ const woerter: Record<string, string> = {
   "sup.helferdienste": "Gönüllü görevleri",
   "sup.einteilen": "Gönüllü ata",
   "sup.einleitung": "Kulüp için görevler ve gönüllü işleri – buradan kaydol.",
+  "sup.einleitungFan": "Kulübün görevleri ve yardımcı hizmetleri. Taraftar olarak nereye verildiğini görürsün; seni yalnızca kulüp yönetimi ekleyebilir.",
   "sup.eingeteiltEyebrow": "Gönüllü planı",
   "sup.eingeteiltTitel": "Sana atananlar",
   "sup.plaetzeBelegt": "{belegt}/{gesamt} yer dolu",

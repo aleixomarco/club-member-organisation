@@ -4915,7 +4915,14 @@ function HelperSlots({ ev, members, currentUser, dutyPlan, setDutyPlan, eligible
         <div className="rounded-lg p-2 mt-1" style={{ background: C.paperDim }}>
           <div className="text-[10px] font-bold mb-1.5" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("helf.jemanden")}</div>
           <div className="flex gap-1.5 items-start flex-wrap">
-            <NutzerWahl personen={members.filter((m) => !istNurFan(m))} wert={eintragPerson} onWaehlen={setEintragPerson} leerLabel={t("helf.personWaehlen")} klein gastErlaubt={gastErlaubt} />
+            {/* Fans stehen hier MIT in der Liste (Betreiber, 02.10.2026): Die
+                Schwiegermutter am Kuchenstand ist Fan, nicht Mitglied - die
+                Leitung soll sie eintragen koennen. Gefahrlos, weil dieser
+                ganze Block an darfVerwalten haengt: Ein Fan sieht ihn nie.
+                Selbst uebernehmen kann er trotzdem nichts - dafuer sorgt der
+                Ausloeser helferdienst_eintrag_pruefen, der die Fan-Sperre nur
+                dann zieht, wenn NICHT die Leitung eintraegt. */}
+            <NutzerWahl personen={members} wert={eintragPerson} onWaehlen={setEintragPerson} leerLabel={t("helf.personWaehlen")} klein gastErlaubt={gastErlaubt} />
             <select value={eintragStation} onChange={(e) => setEintragStation(e.target.value)}
               aria-label={t("aria.stationWaehlen")}
               className="flex-1 min-w-0 text-[11px] px-2 py-1.5 rounded-lg outline-none"
@@ -9109,7 +9116,11 @@ function TasksView({ currentUser, members, gastErlaubt }) {
           {/* Wer schon drin ist, bekommt kein "Eintragen" mehr angeboten -
               weder der Verantwortliche noch der Freiwillige. Er bekommt den
               gruenen Haken. */}
-          {!binDrin && !erledigt && free > 0 && <button onClick={() => signUp(task.id)} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: C.ink, color: C.white }}>{t("allg.eintragenKnopf")}</button>}
+          {/* Ein Fan sagt nicht selbst zu - er wird eingetragen. Ohne diese
+              Pruefung stuende der Knopf da und liefe in die Zeilenregel
+              "club members signup for tasks", die seit dem 02.10. einen
+              ist_nur_fan-Riegel hat: ein Knopf, der nur Fehler erzeugt. */}
+          {!binDrin && !erledigt && free > 0 && !istNurFan(currentUser) && <button onClick={() => signUp(task.id)} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: C.ink, color: C.white }}>{t("allg.eintragenKnopf")}</button>}
           {binDrin && <button onClick={() => erledigenUmschalten(task)} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: erledigt ? C.paperDim : C.erfolg, color: erledigt ? C.textDim : C.white }}>{erledigt ? t("auf.wiederOeffnen") : t("auf.erledigt")}</button>}
           {isSignedUp && !erledigt && darfAustragen && <button onClick={() => withdraw(task.id)} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: C.paperDim, color: C.red }}>{t("allg.austragen")}</button>}
           {(isCreator || canManage) && <button onClick={() => onEdit(task)} className="px-3 py-2 rounded-lg text-xs font-bold" style={{ background: C.paperDim, color: C.textDim }}>{t("allg.bearbeiten")}</button>}
@@ -12530,7 +12541,13 @@ function SupportView({ currentUser, members, events, dutyPlan, setDutyPlan, onDi
     <div>
       <div className="px-4 pt-4">
         <SectionTitle eyebrow={t("home.mitmachen")} title={t("nav.support")} />
-        <div className="text-xs mb-3 -mt-2" style={{ color: C.textDim, fontFamily: "Inter" }}>{t("sup.einleitung")}</div>
+        {/* Zwei Einleitungen. "hier traegst du dich ein" stimmt fuer einen Fan
+            nicht - er kann sich nirgends selbst eintragen, die Leitung traegt
+            ihn ein. Ein Satz, der etwas verspricht, das die Rolle nicht kann,
+            ist schlimmer als gar keiner. */}
+        <div className="text-xs mb-3 -mt-2" style={{ color: C.textDim, fontFamily: "Inter" }}>
+          {istNurFan(currentUser) ? t("sup.einleitungFan") : t("sup.einleitung")}
+        </div>
         {meineEinteilungen.length > 0 && (
           <div className="mb-4">
             <SectionTitle eyebrow={t("sup.eingeteiltEyebrow")} title={t("sup.eingeteiltTitel")} />
@@ -15541,8 +15558,18 @@ function baseTabs(t, isAdminUser, canEditNews, canEditSponsors, canManageDutyUse
      der Startseite, und die Vereinsleitung teilte Helfer irgendwo zwischen
      Spielergebnissen und Rollen im Verwalten-Reiter ein. Wer mithelfen will,
      soll dafuer nicht suchen muessen.
-     Fuer Fans nicht: Sie tragen sich weder fuer Helferdienste ein noch fuer
-     Vereinsaufgaben - DutyView laesst sie gar nicht erst zu. */
+     Fans bekommen den Reiter seit dem 02.10.2026 AUCH - aber nur zum Lesen.
+     Die Leitung kann sie zu Diensten und Aufgaben eintragen (Betreiber:
+     "fans koennen nur eingetragen werden, sie koennen auch nur lesen"), und
+     wer eingeteilt ist, muss nachsehen koennen, wo und wann. Vorher war der
+     Reiter zu, weil ein Fan sich nirgends selbst eintragen konnte - das
+     stimmt weiterhin, taugt aber nicht mehr als Begruendung, ihm auch die
+     SICHT zu nehmen.
+     Uebernehmen kann er nach wie vor nichts: DutyView bekommt eligible=false
+     (isFormalMember), der Zusage-Knopf bei den Aufgaben prueft istNurFan,
+     "Helfer einteilen" haengt an canManageDuty, und in der Datenbank sperren
+     ihn der Ausloeser helferdienst_eintrag_pruefen und die Zeilenregel
+     "club members signup for tasks" (20261002200000). */
   if (zeigeSupport) tabs.splice(tabs.findIndex((tab) => tab.id === "profile"), 0, { id: "support", label: t("nav.support"), icon: ClipboardList });
   if (canEditNews) tabs.splice(tabs.findIndex((tab) => tab.id === "chat"), 0, { id: "redaktion", label: t("nav.news"), icon: Newspaper });
   if (isAdminUser || canEditSponsors || canManageDutyUser) tabs.splice(tabs.findIndex((tab) => tab.id === "profile"), 0, { id: "admin", label: canEditSponsors && !isAdminUser ? t("nav.sponsors") : t("nav.admin"), icon: ShieldCheck });
@@ -18819,7 +18846,7 @@ export default function ClubMemberOrganisationApp() {
   const currentUserCanEditNews = canWriteNews(currentUser);
   const currentUserCanEditSponsors = canManageSponsors(currentUser);
   const currentUserCanManageDuty = canManageDuty(currentUser);
-  const TABS = baseTabs(t, currentUserIsAdmin, currentUserCanEditNews, currentUserCanEditSponsors, currentUserCanManageDuty, !!currentUser && !istNurFan(currentUser));
+  const TABS = baseTabs(t, currentUserIsAdmin, currentUserCanEditNews, currentUserCanEditSponsors, currentUserCanManageDuty, !!currentUser);
   const clubPrimary = currentClub?.primaryColor || DEFAULT_CLUB_COLORS.primary;
   const clubSecondary = currentClub?.secondaryColor || DEFAULT_CLUB_COLORS.secondary;
   /* Alle abgeleiteten Toene werden hier einmal ausgerechnet und als Variablen
@@ -19080,7 +19107,7 @@ export default function ClubMemberOrganisationApp() {
                     Hier fehlte der dritte Teil - ein reiner Organisator sah
                     den Reiter also in der Leiste und darunter eine leere
                     Seite. */}
-                {!subView && tab === "support" && !!currentUser && !istNurFan(currentUser) && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("nav.support")}><SupportView onNeuLaden={datenNeuLaden} gastErlaubt={darfVereinVerwalten(currentUser)} currentUser={currentUser} members={clubMembers} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={dienstSetzen} dutyOn={featureEnabled("duty_roster")} bereichWunsch={supportBereich} onBereichUebernommen={() => setSupportBereich(null)} currentClub={currentClub} goVerwaltung={goVerwaltung} goFahrzeuge={() => setSubView("vehicles")} goTermin={(id) => { setSubView(null); setEventFocusRequest({ team: "alle", eventId: id, requestedAt: Date.now() }); setTab("events"); }} /></LockedFeature>}
+                {!subView && tab === "support" && !!currentUser && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("nav.support")}><SupportView onNeuLaden={datenNeuLaden} gastErlaubt={darfVereinVerwalten(currentUser)} currentUser={currentUser} members={clubMembers} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={dienstSetzen} dutyOn={featureEnabled("duty_roster")} bereichWunsch={supportBereich} onBereichUebernommen={() => setSupportBereich(null)} currentClub={currentClub} goVerwaltung={goVerwaltung} goFahrzeuge={() => setSubView("vehicles")} goTermin={(id) => { setSubView(null); setEventFocusRequest({ team: "alle", eventId: id, requestedAt: Date.now() }); setTab("events"); }} /></LockedFeature>}
                 {!subView && tab === "admin" && (currentUserIsAdmin || currentUserCanEditSponsors || canManageDuty(currentUser)) && (
                   <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("sys.verwaltung")}>
                   <AdminView bereichWunsch={verwaltungsBereich} onBereichUebernommen={() => setVerwaltungsBereich(null)}

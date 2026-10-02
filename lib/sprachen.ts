@@ -438,6 +438,7 @@ const de: Woerterbuch = {
   "sup.helferdienste": "Helferdienste",
   "sup.einteilen": "Helfer einteilen",
   "sup.einleitung": "Aufgaben und Helferdienste für den Verein – hier trägst du dich ein.",
+  "sup.einleitungFan": "Aufgaben und Helferdienste des Vereins. Als Fan siehst du, wo du eingeteilt bist – eintragen kann dich die Vereinsleitung.",
   "sup.eingeteiltEyebrow": "Helferplanung",
   "sup.eingeteiltTitel": "Für dich eingeteilt",
   "sup.plaetzeBelegt": "{belegt}/{gesamt} Plätze belegt",
