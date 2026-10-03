@@ -3,11 +3,17 @@
  * Kein Puppeteer: Node bringt seit v22 einen WebSocket-Client mit, und Chrome
  * liegt ohnehin auf dem Rechner. Ein Paket weniger, das man pflegen muss.
  */
-import { writeFileSync } from "node:fs";
+import { writeFileSync, mkdirSync } from "node:fs";
 
 const PORT = process.env.CDP_PORT || "9333";
 const ZIEL = process.env.APP_URL || "http://localhost:3100";
 const ORDNER = process.env.BILD_ORDNER;
+/* Den Zielordner selbst anlegen. bilder/ steht in Anleitung/.gitignore und ist
+   damit NICHT in der Versionsverwaltung - wer das Projekt frisch auscheckt
+   oder den Ordner verliert, hatte ihn bisher nicht, und der Lauf brach beim
+   ersten Bild mit ENOENT ab. Genau das ist am 03.10.2026 passiert. Ein
+   fehlender Ordner ist kein Grund, einen Durchlauf zu verlieren. */
+if (ORDNER) mkdirSync(ORDNER, { recursive: true });
 
 const schlaf = (ms) => new Promise((r) => setTimeout(r, ms));
 
