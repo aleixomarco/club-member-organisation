@@ -27,7 +27,7 @@ const abschnitte = [
    "Jede Mitgliedschaft ist genau eines von beidem: Mitglied oder Fan. Das wählst du bei der Anfrage.",
    "„Athlet/in“ ist keine dritte Wahl, sondern kommt als Zusatzrolle obendrauf — vergeben wird sie von der Vereinsleitung, nie von dir.",
    "Erst als Athlet/in gehörst du einer Mannschaft an. Daraus folgt alles Weitere: Kader, Mannschaftskanal, Strafenkatalog und die Wahl zur Athletin oder zum Athleten der Saison.",
-   "Ein Fan folgt dem Verein, zählt aber nicht als Mitglied: kein Support-Reiter, keine Trainings, keine Aufgaben, Dienste oder Fahrzeuge."
+   "Ein Fan folgt dem Verein, zählt aber nicht als Mitglied: keine Trainings, keine Fahrzeuge, und übernehmen kann er weder Aufgaben noch Dienste. Eintragen kann ihn die Vereinsleitung sehr wohl."
   ],
   "hinweis": "Wählen darf bei „Athlet/in der Saison“ jedes Mitglied — gewählt werden kann nur, wer die Rolle Athlet/in trägt."
  },
@@ -99,7 +99,7 @@ const abschnitte = [
    "Du siehst die Aufgaben des Vereins, deiner eigenen Mannschaften und die dir aus einem Protokoll zugewiesenen – immer nur für den Verein, den du gerade geöffnet hast.",
    "Eine Benachrichtigung bekommst du nur, wenn dir jemand eine Aufgabe, eine Station, einen Helferdienst oder eine Protokollaufgabe zuweist; am Abend vorher erinnert dich die App, wenn du eingeteilt oder eingetragen bist. Neue Aufgaben im Verein melden sich nicht bei allen."
   ],
-  "hinweis": "Fans haben keinen Support-Reiter. Er braucht den Vollzugang des Vereins.",
+  "hinweis": "Fans sehen den Support-Reiter nur zum Lesen: Sie finden dort, wozu die Vereinsleitung sie eingeteilt hat, können aber nichts selbst übernehmen. Der Reiter braucht den Vollzugang des Vereins.",
   "sprung": {
    "tab": "support"
   }

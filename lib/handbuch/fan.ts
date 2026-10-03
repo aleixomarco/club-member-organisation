@@ -38,15 +38,31 @@ const abschnitte = [
   }
  },
  {
+  "titel": "Wenn du eingeteilt wirst",
+  "wo": "Untere Leiste > Support",
+  "punkte": [
+   "Die Vereinsleitung kann dich zu einer Vereinsaufgabe oder zu einem Helferdienst am Spieltag eintragen – etwa zum Kuchenstand oder an den Grill.",
+   "Das geschieht immer auf Absprache: Du kannst dich nirgends selbst eintragen, und niemand steht ungefragt im Plan.",
+   "Im Reiter „Support“ siehst du oben unter „Du bist eingeteilt“, wofür du vorgesehen bist, mit Termin und Uhrzeit.",
+   "Unter „Helferdienste“ und „Bewirtungsplan“ siehst du den ganzen Plan – wer wann an welcher Station steht.",
+   "Knöpfe zum Übernehmen oder Zusagen findest du dort nicht; die gibt es nur für Mitglieder.",
+   "Austragen kann dich ebenfalls nur die Vereinsleitung. Sprich sie an, wenn du doch nicht kannst."
+  ],
+  "hinweis": "Am Termin selbst siehst du die Stationen mit allen Namen – auch deinem. Das ist dieselbe Liste, die die Mitglieder sehen.",
+  "sprung": {
+   "tab": "support"
+  }
+ },
+ {
   "titel": "Was dir fehlt – und warum",
   "wo": "Fällt auf, sobald man danach sucht",
   "punkte": [
-   "Kein Reiter „Support“: keine Helferdienste, keine Vereinsaufgaben, keine Vereinsfahrzeuge.",
+   "Keine Vereinsfahrzeuge. Den Reiter „Support“ siehst du zwar, aber nur zum Lesen – eintragen kannst du dich dort nirgends.",
    "Keine Mannschaft, kein Kader, kein Mannschaftskanal.",
    "Kein Tippspiel, keine Wahl zur Athletin oder zum Athleten der Saison.",
    "Keine Punkte und keine Helferpflicht – ein Fan zählt nicht zur Mitgliederzahl des Vereins."
   ],
-  "hinweis": "Das ist keine Sparfassung, sondern der Sinn der Sache: Ein Fan hat Anteil, aber keine Pflichten."
+  "hinweis": "Das ist keine Sparfassung, sondern der Sinn der Sache: Ein Fan hat Anteil, aber keine Pflichten. Übernimmst du doch einmal etwas, geschieht das auf Absprache – die Vereinsleitung trägt dich ein, nicht du selbst."
  },
  {
   "titel": "Vom Fan zum Mitglied",

@@ -100,7 +100,7 @@ const abschnitte = [
   "punkte": [
    "Unter \"Beitrittsanfragen\" nimmst du neue Mitglieder an oder lehnst sie ab; neue Anfragen und neue Mitglieder meldet dir die Glocke. Dabei entscheidest du, ob jemand als Mitglied oder als Fan aufgenommen wird.",
    "Unter \"Benutzerverwaltung\" pflegst du Name, E-Mail, Geburtsdatum, Eintrittsjahr und Mannschaften eines Mitglieds.",
-   "\"Mitgliederübersicht\" zeigt dir alle Mitglieder zum Nachlesen; ein Tipp auf ein Mitglied zeigt seine Strafen (nur bei Athlet/innen) und Aufgaben, bei Fans keins von beidem.",
+   "\"Mitgliederübersicht\" zeigt dir alle Mitglieder zum Nachlesen; ein Tipp auf ein Mitglied zeigt seine Strafen (nur bei Athlet/innen) und Aufgaben. Ein Fan hat keine Strafen; Aufgaben kann er haben, wenn du ihn eingetragen hast.",
    "Oben im Reiter \"Support\" stehen die offenen Punkte: wartende Anträge, fehlende Spielergebnisse, fällige Aufgaben, unbesetzte Helferstationen und Fahrzeuganfragen. Ein Tipp bringt dich hin."
   ],
   "hinweis": "Rollen vergeben, das Vereinsprofil ändern und Funktionen ein- oder ausschalten darf nur der Vereinsadmin.",

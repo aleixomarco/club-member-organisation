@@ -61,8 +61,8 @@ export const KAPITEL = [
  {
   "key": "fan",
   "rolle": "Fan",
-  "einleitung": "Als Fan folgst du dem Verein, ohne Mitglied zu sein. Du siehst, wann gespielt wird, liest die Vereins-News und feuerst an – aber alles, was mit Pflichten zu tun hat, bleibt außen vor. Dieses Heft sagt dir, was du hast und was dir bewusst fehlt.",
-  "anzahl": 4
+  "einleitung": "Als Fan folgst du dem Verein, ohne Mitglied zu sein. Du siehst, wann gespielt wird, liest die Vereins-News und feuerst an. Pflichten hast du keine – die Vereinsleitung kann dich aber zu einer Aufgabe oder einem Helferdienst eintragen, wenn ihr das abgesprochen habt. Dieses Heft sagt dir, was du hast und was dir bewusst fehlt.",
+  "anzahl": 5
  },
  {
   "key": "kapitaen",

@@ -21,7 +21,7 @@
      "Jede Mitgliedschaft ist genau eines von beidem: Mitglied oder Fan. Das wählst du bei der Anfrage.",
      "„Athlet/in“ ist keine dritte Wahl, sondern kommt als Zusatzrolle obendrauf — vergeben wird sie von der Vereinsleitung, nie von dir.",
      "Erst als Athlet/in gehörst du einer Mannschaft an. Daraus folgt alles Weitere: Kader, Mannschaftskanal, Strafenkatalog und die Wahl zur Athletin oder zum Athleten der Saison.",
-     "Ein Fan folgt dem Verein, zählt aber nicht als Mitglied: kein Support-Reiter, keine Trainings, keine Aufgaben, Dienste oder Fahrzeuge."
+     "Ein Fan folgt dem Verein, zählt aber nicht als Mitglied: keine Trainings, keine Fahrzeuge, und übernehmen kann er weder Aufgaben noch Dienste. Eintragen kann ihn die Vereinsleitung sehr wohl."
     ],
     "hinweis": "Wählen darf bei „Athlet/in der Saison“ jedes Mitglied — gewählt werden kann nur, wer die Rolle Athlet/in trägt.",
     "bildschirm": "Verwaltung > Rollen"
@@ -86,7 +86,7 @@
      "Du siehst die Aufgaben des Vereins, deiner eigenen Mannschaften und die dir aus einem Protokoll zugewiesenen – immer nur für den Verein, den du gerade geöffnet hast.",
      "Eine Benachrichtigung bekommst du nur, wenn dir jemand eine Aufgabe, eine Station, einen Helferdienst oder eine Protokollaufgabe zuweist; am Abend vorher erinnert dich die App, wenn du eingeteilt oder eingetragen bist. Neue Aufgaben im Verein melden sich nicht bei allen."
     ],
-    "hinweis": "Fans haben keinen Support-Reiter. Er braucht den Vollzugang des Vereins.",
+    "hinweis": "Fans sehen den Support-Reiter nur zum Lesen: Sie finden dort, wozu die Vereinsleitung sie eingeteilt hat, können aber nichts selbst übernehmen. Der Reiter braucht den Vollzugang des Vereins.",
     "bildschirm": "Support (mit „Für dich eingeteilt“)"
    },
    {
@@ -366,7 +366,7 @@
      "Ein Tipp auf einen offenen Punkt bringt dich dorthin, wo du ihn erledigst.",
      "Unter „Aufgaben“ siehst du in „Aufgaben nach Bereich“ für den Verein und jede Mannschaft, wie viele Aufgaben offen, ohne Eintrag, erledigt oder überfällig sind, und legst Aufgaben an. Benachrichtigt werden nur die Verantwortlichen, nicht der ganze Verein."
     ],
-    "hinweis": "Die Tafel mit den offenen Punkten sehen Vereinsadmin und Organisation; ist nichts offen, steht dort „Nichts offen“. Fans lassen sich nicht einteilen. Bei den Helferstationen steht jetzt der Stand dabei („Theke · 1/2“) – eine halb besetzte Station gilt als offener Punkt, nicht erst eine ganz leere.",
+    "hinweis": "Die Tafel mit den offenen Punkten sehen Vereinsadmin und Organisation; ist nichts offen, steht dort „Nichts offen“. Fans lassen sich einteilen – sie können sich nur nicht selbst eintragen. Bei den Helferstationen steht jetzt der Stand dabei („Theke · 1/2“) – eine halb besetzte Station gilt als offener Punkt, nicht erst eine ganz leere.",
     "bildschirm": "Support > Helfer einteilen"
    },
    {
@@ -581,7 +581,7 @@
     "punkte": [
      "Unter \"Beitrittsanfragen\" nimmst du neue Mitglieder an oder lehnst sie ab; neue Anfragen und neue Mitglieder meldet dir die Glocke. Dabei entscheidest du, ob jemand als Mitglied oder als Fan aufgenommen wird.",
      "Unter \"Benutzerverwaltung\" pflegst du Name, E-Mail, Geburtsdatum, Eintrittsjahr und Mannschaften eines Mitglieds.",
-     "\"Mitgliederübersicht\" zeigt dir alle Mitglieder zum Nachlesen; ein Tipp auf ein Mitglied zeigt seine Strafen (nur bei Athlet/innen) und Aufgaben, bei Fans keins von beidem.",
+     "\"Mitgliederübersicht\" zeigt dir alle Mitglieder zum Nachlesen; ein Tipp auf ein Mitglied zeigt seine Strafen (nur bei Athlet/innen) und Aufgaben. Ein Fan hat keine Strafen; Aufgaben kann er haben, wenn du ihn eingetragen hast.",
      "Oben im Reiter \"Support\" stehen die offenen Punkte: wartende Anträge, fehlende Spielergebnisse, fällige Aufgaben, unbesetzte Helferstationen und Fahrzeuganfragen. Ein Tipp bringt dich hin."
     ],
     "bildschirm": "Profil > Verein & Mitgliedschaft",
@@ -968,7 +968,7 @@
  {
   "key": "fan",
   "rolle": "Fan",
-  "einleitung": "Als Fan folgst du dem Verein, ohne Mitglied zu sein. Du siehst, wann gespielt wird, liest die Vereins-News und feuerst an – aber alles, was mit Pflichten zu tun hat, bleibt außen vor. Dieses Heft sagt dir, was du hast und was dir bewusst fehlt.",
+  "einleitung": "Als Fan folgst du dem Verein, ohne Mitglied zu sein. Du siehst, wann gespielt wird, liest die Vereins-News und feuerst an. Pflichten hast du keine – die Vereinsleitung kann dich aber zu einer Aufgabe oder einem Helferdienst eintragen, wenn ihr das abgesprochen habt. Dieses Heft sagt dir, was du hast und was dir bewusst fehlt.",
   "abschnitte": [
    {
     "titel": "Was du als Fan siehst",
@@ -995,15 +995,29 @@
     "bildschirm": "Termine als Fan"
    },
    {
+    "titel": "Wenn du eingeteilt wirst",
+    "wo": "Untere Leiste > Support",
+    "punkte": [
+     "Die Vereinsleitung kann dich zu einer Vereinsaufgabe oder zu einem Helferdienst am Spieltag eintragen – etwa zum Kuchenstand oder an den Grill.",
+     "Das geschieht immer auf Absprache: Du kannst dich nirgends selbst eintragen, und niemand steht ungefragt im Plan.",
+     "Im Reiter „Support“ siehst du oben unter „Du bist eingeteilt“, wofür du vorgesehen bist, mit Termin und Uhrzeit.",
+     "Unter „Helferdienste“ und „Bewirtungsplan“ siehst du den ganzen Plan – wer wann an welcher Station steht.",
+     "Knöpfe zum Übernehmen oder Zusagen findest du dort nicht; die gibt es nur für Mitglieder.",
+     "Austragen kann dich ebenfalls nur die Vereinsleitung. Sprich sie an, wenn du doch nicht kannst."
+    ],
+    "bildschirm": "Support > Helferdienste",
+    "hinweis": "Am Termin selbst siehst du die Stationen mit allen Namen – auch deinem. Das ist dieselbe Liste, die die Mitglieder sehen."
+   },
+   {
     "titel": "Was dir fehlt – und warum",
     "wo": "Fällt auf, sobald man danach sucht",
     "punkte": [
-     "Kein Reiter „Support“: keine Helferdienste, keine Vereinsaufgaben, keine Vereinsfahrzeuge.",
+     "Keine Vereinsfahrzeuge. Den Reiter „Support“ siehst du zwar, aber nur zum Lesen – eintragen kannst du dich dort nirgends.",
      "Keine Mannschaft, kein Kader, kein Mannschaftskanal.",
      "Kein Tippspiel, keine Wahl zur Athletin oder zum Athleten der Saison.",
      "Keine Punkte und keine Helferpflicht – ein Fan zählt nicht zur Mitgliederzahl des Vereins."
     ],
-    "hinweis": "Das ist keine Sparfassung, sondern der Sinn der Sache: Ein Fan hat Anteil, aber keine Pflichten.",
+    "hinweis": "Das ist keine Sparfassung, sondern der Sinn der Sache: Ein Fan hat Anteil, aber keine Pflichten. Übernimmst du doch einmal etwas, geschieht das auf Absprache – die Vereinsleitung trägt dich ein, nicht du selbst.",
     "bildschirm": "Startseite als Fan"
    },
    {

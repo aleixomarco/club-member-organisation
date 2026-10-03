@@ -125,6 +125,9 @@ const PLAN = [
   ["44-gast-eintragen",        "jose@cmo.app",     ["Termine"], ["Heimspiel", "✎Oma Kuchenstand"]],
   ["45-fan-startseite",        "renate@cmo.app",   [], []],
   ["46-fan-termine",           "renate@cmo.app",   ["Termine"], []],
+  /* Neu seit dem 03.10.2026: Fans sehen den Support-Reiter, aber nur zum
+     Lesen. renate ist reiner Fan - genau deshalb steht sie hier. */
+  ["49-fan-support",           "renate@cmo.app",   ["Support"], []],
   /* Neu seit dem 01.10.2026: der Bewirtungsplan. jose, weil nur die Leitung
      den Kasten "Helferset auf einen Zeitraum anwenden" sieht - und genau der
      ist das Neue an dieser Ansicht. */

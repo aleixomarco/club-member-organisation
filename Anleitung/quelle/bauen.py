@@ -57,6 +57,7 @@ BILDER = {
  ("organisator","Termine anlegen"): "27-termin-anlegen",
  ("organisator","Bewirtungsplan: die Saison auf einen Blick"): "47-bewirtungsplan",
  ("mitglied","Der Bewirtungsplan"): "47-bewirtungsplan",
+ ("fan","Wenn du eingeteilt wirst"): "49-fan-support",
  ("kapitaen","Was du in deiner Mannschaft darfst"): "33-team-detail",
  ("kapitaen","Wo die Grenze ist"): "29-funktionen",
  ("kapitaen","Der Strafenkatalog"): "26-strafenkatalog",

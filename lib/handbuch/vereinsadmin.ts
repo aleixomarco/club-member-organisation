@@ -32,7 +32,7 @@ const abschnitte = [
    "Ein Tipp auf einen offenen Punkt bringt dich dorthin, wo du ihn erledigst.",
    "Unter „Aufgaben“ siehst du in „Aufgaben nach Bereich“ für den Verein und jede Mannschaft, wie viele Aufgaben offen, ohne Eintrag, erledigt oder überfällig sind, und legst Aufgaben an. Benachrichtigt werden nur die Verantwortlichen, nicht der ganze Verein."
   ],
-  "hinweis": "Die Tafel mit den offenen Punkten sehen Vereinsadmin und Organisation; ist nichts offen, steht dort „Nichts offen“. Fans lassen sich nicht einteilen. Bei den Helferstationen steht jetzt der Stand dabei („Theke · 1/2“) – eine halb besetzte Station gilt als offener Punkt, nicht erst eine ganz leere.",
+  "hinweis": "Die Tafel mit den offenen Punkten sehen Vereinsadmin und Organisation; ist nichts offen, steht dort „Nichts offen“. Fans lassen sich einteilen – sie können sich nur nicht selbst eintragen. Bei den Helferstationen steht jetzt der Stand dabei („Theke · 1/2“) – eine halb besetzte Station gilt als offener Punkt, nicht erst eine ganz leere.",
   "sprung": {
    "tab": "support"
   }
