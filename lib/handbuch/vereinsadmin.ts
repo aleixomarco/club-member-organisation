@@ -27,7 +27,7 @@ const abschnitte = [
   "titel": "Support: offene Punkte und Helfer einteilen",
   "wo": "Untere Leiste > Support",
   "punkte": [
-   "Unter „Helfer einteilen“ siehst du alle Termine mit Helferstationen und teilst über „+ Mitglied zuteilen“ Mitglieder ein; das × am Namen nimmt sie wieder heraus. Die Eingeteilten bekommen eine Benachrichtigung.",
+   "Unter „Helfer einteilen“ siehst du alle Termine mit Helferstationen und teilst über „+ Person zuteilen“ Personen ein; das × am Namen nimmt sie wieder heraus. Die Eingeteilten bekommen eine Benachrichtigung.",
    "Über den Knöpfen, direkt unter „Für dich eingeteilt“, steht die Tafel mit den offenen Punkten deines Vereins: wartende Mitgliedsanträge, fehlende Spielergebnisse, fällige Aufgaben, unbesetzte Helferstationen und Fahrzeuganfragen.",
    "Ein Tipp auf einen offenen Punkt bringt dich dorthin, wo du ihn erledigst.",
    "Unter „Aufgaben“ siehst du in „Aufgaben nach Bereich“ für den Verein und jede Mannschaft, wie viele Aufgaben offen, ohne Eintrag, erledigt oder überfällig sind, und legst Aufgaben an. Benachrichtigt werden nur die Verantwortlichen, nicht der ganze Verein."

@@ -12765,12 +12765,12 @@ function SupportView({ currentUser, members, events, dutyPlan, setDutyPlan, onDi
       {aktiv === "aufgaben" && <TasksView currentUser={currentUser} members={members} gastErlaubt={gastErlaubt} />}
       {aktiv === "helfer" && <DutyView members={members} currentUser={currentUser} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onDienstSetzen={onDienstSetzen} gastErlaubt={gastErlaubt} />}
       {aktiv === "plan" && <BewirtungsplanView currentUser={currentUser} members={members} events={events} dutyPlan={dutyPlan} onSpringen={goTermin} onNeuLaden={onNeuLaden} />}
-      {aktiv === "einteilen" && <div className="px-4 pt-4 pb-24"><AdminDutyPanel members={members} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onSetzen={onDienstSetzen} /></div>}
+      {aktiv === "einteilen" && <div className="px-4 pt-4 pb-24"><AdminDutyPanel members={members} events={events} dutyPlan={dutyPlan} setDutyPlan={setDutyPlan} onSetzen={onDienstSetzen} gastErlaubt={gastErlaubt} /></div>}
     </div>
   );
 }
 
-function AdminDutyPanel({ members, events, dutyPlan, setDutyPlan, onSetzen }) {
+function AdminDutyPanel({ members, events, dutyPlan, setDutyPlan, onSetzen, gastErlaubt }) {
   const t = useT();
   /* Aufklappbar wie unter "Helferdienste" (DutyView): Zugeklappt stehen nur
      Termin, Zeit und Belegung, so passen mehrere Termine auf eine Seite. */
@@ -12781,7 +12781,19 @@ function AdminDutyPanel({ members, events, dutyPlan, setDutyPlan, onSetzen }) {
     return neu;
   });
   const helperEvents = (events || []).filter((e) => e.helperSlots && e.helperSlots.length);
-  const formalMembers = members.filter((m) => isFormalMember(m));
+  /* WER EINGETEILT WERDEN DARF - dieselbe Antwort wie in der Terminkarte.
+     Hier stand members.filter(isFormalMember), in HelperSlots steht
+     personen={members}. Zwei Antworten auf dieselbe Frage, und beide Hefte
+     schicken die Leitung HIERHIN: Sie suchte den Fan, den vereinsadmin.ts ihr
+     ausdruecklich zusagt, fand ihn nicht und hielt die Zusage fuer eine
+     Luege - obwohl es ueber die aufgeklappte Terminkarte ging.
+     Dass ein Fan hier auftaucht, verwischt NICHTS: Dieses Panel haengt ganz
+     an canManageDuty, ein Fan sieht es nie. Selbst eintragen kann er sich
+     weiter nicht - dafuer sorgen die Regel "mitglied traegt sich selbst ein"
+     und der Ausloeser helferdienst_eintrag_pruefen, der die Fan-Sperre genau
+     dann zieht, wenn NICHT die Leitung eintraegt (20261004190000). */
+  const einteilbare = members;
+  const fanZahl = einteilbare.filter((m) => istNurFan(m)).length;
   /* Schreiben AUSSERHALB des Zustands-Updaters (C2): Ein Updater kann doppelt
      laufen und darf keine Seiteneffekte haben - und das Ergebnis des
      Entfernens wurde nie ausgewertet. Wie in HelperSlots: vorherige Liste
@@ -12807,7 +12819,14 @@ function AdminDutyPanel({ members, events, dutyPlan, setDutyPlan, onSetzen }) {
   };
   return (
     <div>
-      <div className="text-xs mb-4" style={{ color: C.textDim, fontFamily: "Inter" }}>{mitWerten(t("sup.einteilbar"), { anzahl: formalMembers.length })}</div>
+      {/* Die Zahl zaehlte die Fans nicht mit, obwohl sie einteilbar sind -
+          wer 19 liest und 20 Namen sieht, misstraut der Liste. Der Zusatz
+          steht nur da, wenn es Fans gibt, und sagt gleich, was an ihnen
+          anders ist. */}
+      <div className="text-xs mb-4" style={{ color: C.textDim, fontFamily: "Inter" }}>
+        {mitWerten(t("sup.einteilbarPersonen"), { anzahl: einteilbare.length })}
+        {fanZahl > 0 ? " " + (fanZahl === 1 ? t("sup.einteilbarFanEins") : mitWerten(t("sup.einteilbarFansMehr"), { fans: fanZahl })) : ""}
+      </div>
       {helperEvents.length === 0 && (
         <div className="rounded-2xl p-4 text-xs" style={{ background: C.paperDim, color: C.textDim, fontFamily: "Inter" }}>
           {t("sup.keineTermineEinteilen")}
@@ -12815,7 +12834,7 @@ function AdminDutyPanel({ members, events, dutyPlan, setDutyPlan, onSetzen }) {
       )}
       {helperEvents.map((ev) => {
         const plan = dutyPlan[ev.id] || {};
-        const pool = formalMembers;
+        const pool = einteilbare;
         const belegt = plaetzeBelegt(ev, plan);
         const gesamt = plaetzeGesamt(ev);
         const aufgeklappt = offen.has(ev.id);
@@ -12858,7 +12877,7 @@ function AdminDutyPanel({ members, events, dutyPlan, setDutyPlan, onSetzen }) {
                          Person; add() ignoriert die leere Zeile der Liste. */
                       <div className="flex max-w-sm">
                         <NutzerWahl personen={pool.filter((m) => !list.includes(m.id))} wert=""
-                          onWaehlen={(id) => add(ev.id, station, id)} leerLabel={t("sup.mitgliedZuteilen")} klein />
+                          onWaehlen={(id) => add(ev.id, station, id)} leerLabel={t("sup.personZuteilen")} klein gastErlaubt={gastErlaubt} />
                       </div>
                     )}
                   </div>

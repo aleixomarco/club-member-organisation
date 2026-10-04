@@ -71,10 +71,10 @@ const abschnitte = [
   "punkte": [
    "Im Reiter Support unter \"Helfer einteilen\" siehst du alle Termine mit Helferstationen auf einen Blick.",
    "Bei jeder Station siehst du, wer eingetragen ist; zwei Personen passen hinein.",
-   "Im Reiter Support wählst du bei jeder Station über \"+ Mitglied zuteilen\" eine Person aus; das × am Namen nimmt sie wieder heraus. In der aufgeklappten Terminkarte geht dasselbe über \"Jemanden eintragen\" mit Person und Station.",
+   "Im Reiter Support wählst du bei jeder Station über \"+ Person zuteilen\" eine Person aus; das × am Namen nimmt sie wieder heraus. In der aufgeklappten Terminkarte geht dasselbe über \"Jemanden eintragen\" mit Person und Station.",
    "Wen du einteilst, der bekommt eine Benachrichtigung; wer sich selbst einträgt, nicht."
   ],
-  "hinweis": "Alle Mitglieder sind für alle Stationen einteilbar – wen ihr wo einsetzt, entscheidet der Verein.",
+  "hinweis": "Alle Mitglieder sind für alle Stationen einteilbar – wen ihr wo einsetzt, entscheidet der Verein. Fans und Personen ohne Konto (auch „Familie Schmitz“) kannst du ebenfalls einteilen; selbst eintragen können sie sich nicht.",
   "sprung": {
    "tab": "support"
   }
