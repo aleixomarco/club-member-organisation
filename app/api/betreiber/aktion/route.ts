@@ -263,6 +263,23 @@ export async function POST(request: Request) {
      club_settings. Ein update liefe dort ins Leere und meldete trotzdem
      Erfolg; beim Einfuegen bekommen die uebrigen Spalten ihre Vorgaben, bei
      einer vorhandenen Zeile bleiben sie, wie sie sind. */
+  /* Einen Fehlerbericht abhaken. Geloescht wird er nicht - wer im Herbst
+     wissen will, ob derselbe Fehler schon im Fruehjahr auftrat, soll ihn
+     wiederfinden. Der woechentliche Lauf raeumt Erledigtes nach einem Jahr
+     von selbst weg (run_fehlerberichte_aufraeumen). */
+  if (daten.art === "fehler_erledigt") {
+    if (!istUuid(daten.bericht)) return NextResponse.json({ error: "Kein Bericht gewählt." }, { status: 400 });
+    const { error } = await admin.from("fehlerberichte")
+      .update({ erledigt_am: new Date().toISOString(), erledigt_von: "Betreiber" })
+      .eq("id", daten.bericht).is("erledigt_am", null);
+    if (error) {
+      console.error("Fehlerbericht konnte nicht abgehakt werden", error);
+      return NextResponse.json({ error: "Der Bericht konnte nicht abgehakt werden." }, { status: 500 });
+    }
+    await protokollieren("fehler:erledigt", null, { bericht: daten.bericht });
+    return NextResponse.json({ ok: true });
+  }
+
   if (daten.art === "wartung") {
     if (!istUuid(daten.verein)) return NextResponse.json({ error: "Kein Verein gewählt." }, { status: 400 });
     if (typeof daten.an !== "boolean") return NextResponse.json({ error: "Unklar, ob an- oder ausschalten." }, { status: 400 });

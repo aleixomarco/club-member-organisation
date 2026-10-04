@@ -55,6 +55,14 @@ function kontenKachel(k: KontenStand) {
   };
 }
 
+/* Eine Selbstmeldung der App. Geschrieben von fehler_melden(), gelesen nur
+   hier - siehe 20261004100000_fehlerberichte.sql. */
+type Fehlerbericht = {
+  id: string; gemeldet_am: string; art: string; meldung: string;
+  stapel: string | null; bereich: string | null; geraet: string | null;
+  fassung: string | null; verein: string;
+};
+
 type Anzeige = {
   id: string; platz: string; titel: string; text: string | null; ziel_url: string | null; ziel_knopf: string | null;
   /* bild_pfad ist, was in der Datenbank steht; bild_url baut die Laderoute
@@ -178,12 +186,14 @@ export default function BetreiberKonsole() {
   const [vereine, setVereine] = useState<Verein[]>([]);
   const [anfragen, setAnfragen] = useState<Anfrage[]>([]);
   const [anzeigen, setAnzeigen] = useState<Anzeige[]>([]);
+  const [fehlerberichte, setFehlerberichte] = useState<Fehlerbericht[]>([]);
+  const [stapelOffen, setStapelOffen] = useState<string>("");
   const [sponsoren, setSponsoren] = useState<VereinsAnzeige[]>([]);
   /* Zwei Reiter, weil die Konsole zwei Aufgaben hat, die nichts miteinander
      zu tun haben: Vereine betreuen und Werbung verkaufen. Untereinander auf
      einer Seite hiess das bisher, an fuenf Vereinstabellen vorbeizuscrollen,
      um eine Anzeige zu bearbeiten. */
-  const [reiter, setReiter] = useState<"vereine" | "werbung">("vereine");
+  const [reiter, setReiter] = useState<"vereine" | "werbung" | "fehler">("vereine");
   const [anzeigeOffen, setAnzeigeOffen] = useState<Partial<Anzeige> | null>(null);
   const [detail, setDetail] = useState<{ verein: Verein; mitglieder: Mitglied[]; zielgruppe: Zielgruppe | null; sponsoren: Sponsor[] } | null>(null);
   const [suche, setSuche] = useState("");
@@ -207,6 +217,7 @@ export default function BetreiberKonsole() {
     if (!antwort.ok) { setFehler(inhalt.error || "Die Übersicht konnte nicht geladen werden."); return; }
     setVereine(inhalt.vereine || []); setAnfragen(inhalt.anfragen || []); setAnzeigen(inhalt.anzeigen || []);
     setSponsoren(inhalt.sponsoren || []);
+    setFehlerberichte(inhalt.fehlerberichte || []);
     setKennzahlen(inhalt.kennzahlen || null); setKontenStand(inhalt.kontenStand || null); setFehler("");
   }, []);
 
@@ -354,7 +365,11 @@ export default function BetreiberKonsole() {
           Vereinstabelle vorbei - und wer einen Verein suchte, an der
           Werbung. */}
       <nav style={{ display: "flex", gap: 6, marginBottom: 20 }}>
-        {([["vereine", "Vereine"], ["werbung", "Werbeanzeigen"]] as const).map(([wert, label]) => (
+        {/* Die Zahl steht am Reiter, nicht erst darin: Ein Betreiber, der die
+            Konsole wegen einer Rechnung oeffnet, soll an offenen Fehlern nicht
+            vorbeilaufen. Ohne offene Meldungen steht dort nichts. */}
+        {([["vereine", "Vereine"], ["werbung", "Werbeanzeigen"],
+           ["fehler", fehlerberichte.length ? `Fehler (${fehlerberichte.length})` : "Fehler"]] as const).map(([wert, label]) => (
           <button key={wert} onClick={() => setReiter(wert)} aria-pressed={reiter === wert}
             style={reiter === wert ? reiterAktiv : reiterLeise}>{label}</button>
         ))}
@@ -594,6 +609,90 @@ export default function BetreiberKonsole() {
             }
           }}
         />
+      )}
+
+      {/* Die Selbstmeldungen der App.
+          Zweck ist nicht Vollstaendigkeit, sondern ein Blick: Welcher Fehler
+          trifft gerade wen, und wie oft. Deshalb nach Meldung gebuendelt - bei
+          einem kaputten Bildschirm stehen sonst dreissig gleiche Zeilen
+          untereinander und der EINE andere Fehler geht darin unter.
+          Der Stapel ist eingeklappt: Er ist das Wichtigste zum Suchen und das
+          Unleserlichste zum Ueberfliegen. */}
+      {reiter === "fehler" && (
+        <section>
+          {fehlerberichte.length === 0 ? (
+            <p style={{ fontSize: 13, color: "#6E626A" }}>
+              Keine offenen Fehlermeldungen. Die App meldet sich hier von selbst, wenn
+              bei jemandem ein Bereich abstuerzt.
+            </p>
+          ) : (
+            <>
+              <p style={{ fontSize: 12, color: "#8A7F85", margin: "0 0 14px", lineHeight: 1.5 }}>
+                {fehlerberichte.length} offene Meldung{fehlerberichte.length === 1 ? "" : "en"},
+                gebündelt nach Fehlertext. Abgehakte bleiben ein Jahr lesbar und verschwinden dann von selbst.
+              </p>
+              {Object.entries(
+                fehlerberichte.reduce((sammlung: Record<string, Fehlerbericht[]>, f) => {
+                  (sammlung[f.meldung] ||= []).push(f);
+                  return sammlung;
+                }, {}),
+              )
+                .sort((a, b) => b[1].length - a[1].length)
+                .map(([meldung, gruppe]) => {
+                  const neuester = gruppe[0];
+                  const bereiche = [...new Set(gruppe.map((g) => g.bereich).filter(Boolean))];
+                  const vereine = [...new Set(gruppe.map((g) => g.verein).filter((v) => v && v !== "—"))];
+                  return (
+                    <article key={meldung} style={{
+                      border: "1px solid #E4DCDF", borderRadius: 14, padding: "14px 16px",
+                      marginBottom: 10, background: "#FFFFFF",
+                    }}>
+                      <div style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
+                        <strong style={{ fontSize: 13, color: "#2A2028", flex: 1, minWidth: 200 }}>{meldung}</strong>
+                        {gruppe.length > 1 && (
+                          <span style={{
+                            fontSize: 11, fontWeight: 700, background: "#FDECEC", color: "#B3261E",
+                            padding: "2px 8px", borderRadius: 999,
+                          }}>{gruppe.length}×</span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: 11, color: "#8A7F85", marginTop: 6, lineHeight: 1.6 }}>
+                        {new Date(neuester.gemeldet_am).toLocaleString("de-DE")}
+                        {" · "}{neuester.art === "bereich" ? "Bereich abgestürzt"
+                          : neuester.art === "fenster" ? "Fehler im Fenster" : "Abgelehntes Versprechen"}
+                        {bereiche.length > 0 && <> · {bereiche.join(", ")}</>}
+                        {vereine.length > 0 && <> · {vereine.join(", ")}</>}
+                        {neuester.geraet && <> · {neuester.geraet}</>}
+                      </div>
+                      <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                        {neuester.stapel && (
+                          <button onClick={() => setStapelOffen(stapelOffen === meldung ? "" : meldung)}
+                            style={reiterLeise}>
+                            {stapelOffen === meldung ? "Stapel verbergen" : "Stapel zeigen"}
+                          </button>
+                        )}
+                        <button disabled={laeuft}
+                          onClick={async () => {
+                            /* Die ganze Gruppe abhaken, nicht nur die neueste Zeile -
+                               sonst steht derselbe Fehler nach dem Neuladen wieder da. */
+                            for (const g of gruppe) await aktion({ art: "fehler_erledigt", bericht: g.id });
+                            setMeldung(`Abgehakt: ${gruppe.length} Meldung${gruppe.length === 1 ? "" : "en"}.`);
+                          }}
+                          style={reiterLeise}>Erledigt</button>
+                      </div>
+                      {stapelOffen === meldung && neuester.stapel && (
+                        <pre style={{
+                          marginTop: 10, padding: 12, background: "#F7F4F5", borderRadius: 10,
+                          fontSize: 11, lineHeight: 1.5, color: "#4A424A",
+                          whiteSpace: "pre-wrap", wordBreak: "break-word", maxHeight: 320, overflowY: "auto",
+                        }}>{neuester.stapel}</pre>
+                      )}
+                    </article>
+                  );
+                })}
+            </>
+          )}
+        </section>
       )}
     </main>
   );

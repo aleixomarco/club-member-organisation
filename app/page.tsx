@@ -2631,7 +2631,68 @@ function BeitrittsScreen({ club, vorschlagName, onBeitreten, goBack }) {
  *
  * Geworfene Fehler landen ausserdem in der Konsole. Ohne das verschwaende ein
  * Absturz spurlos - und niemand koennte sagen, was ihn ausgeloest hat. */
-class Fehlergrenze extends React.Component {
+/* Die App meldet ihre eigenen Abstuerze.
+ *
+ * WOZU
+ * Bisher erfuhr der Betreiber von einem Fehler nur, wenn jemand im Profil auf
+ * "Fehler melden" tippte und eine Mail schrieb. Das tut fast niemand - man
+ * laedt neu und macht weiter. Jetzt schreibt die App selbst eine Zeile, und
+ * der Betreiber sieht sie in seiner Konsole.
+ *
+ * WAS NICHT MITGESCHICKT WIRD
+ * Keine Eingaben, kein Seiteninhalt. Nur die Fehlermeldung, der gekuerzte
+ * Stapel, der Reiter und das Geraet. Mehr braucht man nicht, um den Fehler zu
+ * finden, und mehr darf man nicht sammeln.
+ *
+ * DIE SPERREN sind wichtiger als die Meldung selbst:
+ *   schonGemeldet  Derselbe Fehler kommt oft im Dutzend (ein kaputter
+ *                  Bildschirm wirft bei jedem Antippen neu). Die Datenbank
+ *                  sperrt zehn Minuten je Person und Meldung; hier wird schon
+ *                  vorher abgefangen, damit gar nicht erst gesendet wird.
+ *   meldetGerade   Ohne das koennte ein Fehler IM Melden den Melder erneut
+ *                  anstossen - eine Schleife, die das Telefon lahmlegt.
+ * Scheitert das Melden, geschieht nichts weiter. Ein Fehlerbericht, der
+ * seinerseits einen Fehler zeigt, hilft niemandem. */
+const schonGemeldet = new Set();
+let meldetGerade = false;
+const fehlerMelden = async (art: string, fehler: { message?: string; stack?: string } | unknown, bereich?: string | null) => {
+  if (!supabase || meldetGerade) return;
+  const f = (fehler || {}) as { message?: string; stack?: string };
+  const meldung = String(f.message || fehler || "").slice(0, 500);
+  if (!meldung) return;
+  const schluessel = `${art}|${meldung}`;
+  if (schonGemeldet.has(schluessel)) return;
+  schonGemeldet.add(schluessel);
+  meldetGerade = true;
+  try {
+    await supabase.rpc("fehler_melden", {
+      p_art: art,
+      p_meldung: meldung,
+      p_stapel: String(f.stack || "").slice(0, 4000) || null,
+      p_bereich: bereich || null,
+      p_geraet: `${Capacitor.getPlatform()} · ${String(navigator.userAgent || "").slice(0, 90)}`,
+      p_fassung: process.env.NEXT_PUBLIC_FASSUNG || null,
+    });
+  } catch {
+    /* Absicht: siehe oben. */
+  } finally {
+    meldetGerade = false;
+  }
+};
+
+/* Einmal je Sitzung an das Fenster haengen. Die Fehlergrenze faengt nur, was
+   React beim Zeichnen wirft - ein Fehler in einem Ereignis oder ein
+   abgelehntes Versprechen laeuft an ihr vorbei und landete bisher nur in der
+   Konsole, die niemand sieht. */
+let haekenGesetzt = false;
+const fehlerHaekenSetzen = () => {
+  if (haekenGesetzt || typeof window === "undefined") return;
+  haekenGesetzt = true;
+  window.addEventListener("error", (e) => fehlerMelden("fenster", e.error || { message: e.message }, null));
+  window.addEventListener("unhandledrejection", (e) => fehlerMelden("versprechen", e.reason, null));
+};
+
+class Fehlergrenze extends React.Component<{ bereich?: string; children?: React.ReactNode }, { fehler: unknown }> {
   constructor(props) {
     super(props);
     this.state = { fehler: null };
@@ -2641,6 +2702,9 @@ class Fehlergrenze extends React.Component {
   }
   componentDidCatch(fehler, info) {
     console.error("Fehlergrenze:", fehler, info?.componentStack);
+    /* Der Bauteil-Stapel sagt, WO es brach - oft mehr wert als der
+       JavaScript-Stapel, der nach dem Bau nur noch Kuerzel enthaelt. */
+    fehlerMelden("bereich", { message: fehler?.message, stack: info?.componentStack || fehler?.stack }, this.props.bereich);
   }
   render() {
     if (this.state.fehler) {
@@ -16157,6 +16221,10 @@ export default function ClubMemberOrganisationApp() {
 
   const [sprache, setSprache] = useState(null);
   useEffect(() => { setSprache(gespeicherteSprache() || ""); }, []);
+  /* Die Fensterhaken einmal je Sitzung. Ohne sie faengt nur die Fehlergrenze,
+     und die sieht allein, was React beim Zeichnen wirft - nicht den Fehler in
+     einem Ereignis und nicht das abgelehnte Versprechen. */
+  useEffect(() => { fehlerHaekenSetzen(); }, []);
   /* Das Woerterbuch der gewaehlten Sprache wird nachgeladen - fest dabei ist
      nur Deutsch (siehe lib/sprachen.ts). Bis es da ist, zeigt uebersetze()
      den deutschen Text; danach zaehlt sprachStand hoch, und weil keine
@@ -19068,7 +19136,7 @@ export default function ClubMemberOrganisationApp() {
               {/* Stuerzt EIN Reiter ab, bleibt der Rest der App bedienbar - und der
                   naechste Reiterwechsel fuehrt aus dem Fehler heraus, weil der
                   Schluessel die Grenze zuruecksetzt. */}
-              <Fehlergrenze key={`grenze-${tab}-${subView || ""}`}>
+              <Fehlergrenze key={`grenze-${tab}-${subView || ""}`} bereich={subView ? `${tab}/${subView}` : tab}>
                 {subView === "season" && featureEnabled("season_award") && <LockedFeature entitlement={entitlement} goSubscribe={goSubscribe} feature={t("sub.season")}><SeasonVoteView currentUser={currentUser} members={clubMembers} seasonVotes={seasonVotes} seasonStand={seasonStand} setSeasonVotes={setSeasonVotes} onVote={saisonStimmeAbgeben} onUnvote={saisonStimmeZuruecknehmen} /></LockedFeature>}
                 {/* Ergebnisse haengen am Abo wie die anderen Kacheln, nicht am
                     Tippspiel-Schalter. Alle Termine statt der sichtbaren:

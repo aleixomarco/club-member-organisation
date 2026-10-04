@@ -25,7 +25,7 @@ export async function GET() {
     return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
   }
 
-  const [vereine, anfragen, anzeigen, sponsoren, kennzahlen, kontenStand, wartung] = await Promise.all([
+  const [vereine, anfragen, anzeigen, sponsoren, kennzahlen, kontenStand, wartung, fehler] = await Promise.all([
     admin.from("betreiber_uebersicht").select("*").order("name"),
     admin.from("offene_freischaltungen").select("*"),
     /* Die eigenen Werbeplaetze: club_id null heisst "gilt in jedem Verein".
@@ -64,6 +64,13 @@ export async function GET() {
        Nur die eingeschalteten: Vereine ohne Zeile in club_settings stehen
        nicht im Wartungsmodus, die Vorgabe der Spalte ist false. */
     admin.from("club_settings").select("club_id").eq("maintenance_mode", true),
+    /* Die Selbstmeldungen der App. Nur die offenen und nur die letzten
+       zweihundert: Wer dreihundert gleiche Zeilen durchblaettert, sieht die
+       eine andere nicht mehr. Erledigtes bleibt in der Tabelle und faellt
+       nach einem Jahr von selbst weg. */
+    admin.from("fehlerberichte")
+      .select("id,gemeldet_am,art,meldung,stapel,bereich,geraet,fassung,club_id")
+      .is("erledigt_am", null).order("gemeldet_am", { ascending: false }).limit(200),
   ]);
 
   /* Was die Uebersicht AUSMACHT, muss da sein: Vereine, Anfragen, die eigenen
@@ -114,6 +121,12 @@ export async function GET() {
       verein: vereinsName.get(a.club_id as string) || "—",
     })),
     kennzahlen: kennzahlen.error ? null : (kennzahlen.data?.[0] ?? null),
+    /* Fehler duerfen die Konsole nicht mitreissen: Scheitert die Abfrage,
+       steht dort eine leere Liste statt einer weissen Seite. */
+    fehlerberichte: fehler.error ? [] : (fehler.data || []).map((f: Record<string, unknown>) => ({
+      ...f,
+      verein: f.club_id ? (vereinsName.get(f.club_id as string) || "—") : "—",
+    })),
     kontenStand: kontenStand.error ? null : (kontenStand.data?.[0] ?? null),
   });
 }
