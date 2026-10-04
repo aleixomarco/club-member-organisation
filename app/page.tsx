@@ -16941,9 +16941,17 @@ export default function ClubMemberOrganisationApp() {
              wissen will, wer kommt, bekam die Abfrage bisher zwangslaeufig
              auch unter jedes Spiel. zusagen_aktiv gilt jetzt fuer Trainings
              und alles Uebrige, zusagen_spiele_aktiv fuer Spiele. */
+          /* Ohne Mannschaft heisst nicht automatisch "vereinsweit". Wird eine
+             Mannschaft geloescht, bleiben ihre Termine stehen und fallen auf
+             team_id = NULL (20260927210000). Ein Training oder Spiel kann man
+             aber ohne Mannschaft gar nicht anlegen (siehe terminAnlegen) - ein
+             solcher Termin ist also immer eine Waise, und fuer ihn gibt es
+             keinen Trainer, der die Abfrage freigeben koennte. Bisher
+             erschien sie an allen Terminen der geloeschten Mannschaft neu,
+             auch dort, wo der Trainer sie bewusst aus hatte. */
           zusagenAktiv: team
             ? (row.type === "spiel" ? team.zusagen_spiele_aktiv === true : team.zusagen_aktiv === true)
-            : true,
+            : row.type === "event",
           erstelltVon: row.created_by || null,
           erstelltAm: row.created_at || null,
           title: row.title,
