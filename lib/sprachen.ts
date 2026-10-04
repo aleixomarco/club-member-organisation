@@ -303,6 +303,7 @@ const de: Woerterbuch = {
   "feld.rueckennummer": "Rückennummer",
   "feld.stadt": "Stadt",
   "feld.gegner": "Gegner",
+  "ph.gegner": "z. B. SG Lindental – erscheint im Ergebnis und im Tippspiel",
   "tm.mannschaften": "Mannschaften",
   "recht.impressum": "Impressum",
   "recht.datenschutz": "Datenschutz",

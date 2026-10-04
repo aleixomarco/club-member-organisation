@@ -282,6 +282,7 @@ const woerter: Record<string, string> = {
   "feld.rueckennummer": "Dorsal",
   "feld.stadt": "Ciudad",
   "feld.gegner": "Rival",
+  "ph.gegner": "p. ej. SG Lindental: aparece en resultados y pronósticos",
   "tm.mannschaften": "Equipos",
   "recht.impressum": "Aviso legal",
   "recht.datenschutz": "Privacidad",

@@ -282,6 +282,7 @@ const woerter: Record<string, string> = {
   "feld.rueckennummer": "Número",
   "feld.stadt": "Cidade",
   "feld.gegner": "Adversário",
+  "ph.gegner": "p. ex. SG Lindental – aparece nos resultados e nos palpites",
   "tm.mannschaften": "Equipas",
   "recht.impressum": "Ficha técnica",
   "recht.datenschutz": "Privacidade",

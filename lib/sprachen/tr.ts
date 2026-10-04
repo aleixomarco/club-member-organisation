@@ -282,6 +282,7 @@ const woerter: Record<string, string> = {
   "feld.rueckennummer": "Forma numarası",
   "feld.stadt": "Şehir",
   "feld.gegner": "Rakip",
+  "ph.gegner": "örn. SG Lindental – sonuçlarda ve tahmin oyununda görünür",
   "tm.mannschaften": "Takımlar",
   "recht.impressum": "Künye",
   "recht.datenschutz": "Gizlilik",

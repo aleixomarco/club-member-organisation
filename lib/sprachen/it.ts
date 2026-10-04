@@ -282,6 +282,7 @@ const woerter: Record<string, string> = {
   "feld.rueckennummer": "Numero di maglia",
   "feld.stadt": "Città",
   "feld.gegner": "Avversario",
+  "ph.gegner": "es. SG Lindental – compare nei risultati e nei pronostici",
   "tm.mannschaften": "Squadre",
   "recht.impressum": "Note legali",
   "recht.datenschutz": "Privacy",
