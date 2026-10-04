@@ -90,6 +90,28 @@
 --     definer - sie laufen mit den Rechten des Aufrufers, und fuer anon
 --     halten die Zeilenregeln. Kein Loch, nur Laerm.
 --
+-- NACHTRAG VOM 04.10.2026, NOCH AM SELBEN TAG
+-- Die Angabe oben zu anzeigen_fuer_verein ist zu stark und wird hier
+-- berichtigt, statt sie stehen zu lassen.
+-- Gezaehlt hatte ich "1 Zeile" und daraus geschlossen, anon bekomme Titel,
+-- Text, Zieladresse, Telefon und E-Mail eines Sponsors. Nachgesehen, WELCHE
+-- Zeile es war: Es gibt in PROD genau zwei Anzeigen - eine des Betreibers
+-- (club_id is null, laeuft seit 25.09.) und eine von SV Musterstadt, die am
+-- 06.09. ausgelaufen ist und deren Verein sponsoring_freigeschaltet = false
+-- hat. Die eine Zeile war also die BETREIBER-Anzeige, und die ist oeffentliche
+-- Werbung - kein Geheimnis.
+-- Was bleibt: Die MOEGLICHKEIT lag offen. Jede aktive, laufende Anzeige eines
+-- Vereins mit freigeschaltetem Sponsoring waere mit Telefon und E-Mail
+-- herausgekommen, sobald es eine gibt; heute gibt es keine. Fuer die beiden
+-- anderen Funde aendert sich nichts, und sie sind die schwereren:
+-- anzeigen_kennzahlen gab anon die VOLLE Auswertung der Anzeige von SV
+-- Musterstadt heraus (Verein, Titel 'Iwanowski', Platz, Laufzeit, Reichweite
+-- 14, Klicks, Impressionen, Tagesverlauf) - das ist club-eigen und war echt.
+-- anzeige_ereignis liess anon schreiben; das war unabhaengig von den Daten
+-- offen.
+-- Der Entzug bleibt also richtig, nur die Begruendung bei einer von vierzehn
+-- Funktionen war ein Fund in der Anlage und keiner in den Daten.
+
 -- MUSS NICHT zusammen mit der App ausgeliefert werden: Alle vierzehn werden
 -- in der App erst nach der Anmeldung aufgerufen (geprueft, Treffer fuer
 -- Treffer in app/ und lib/).

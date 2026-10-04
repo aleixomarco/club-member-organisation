@@ -10220,8 +10220,13 @@ function SubscriptionPanel({ user }) {
 
   const laden = useCallback(async () => {
     if (!databaseClub) { setAnfrage(null); return; }
-    const [{ data: tarif }, { data: nutzung }, { data: offen }] = await Promise.all([
-      supabase.rpc("club_subscription_tier", { target_club: user.clubId }),
+    const [{ data: nutzung }, { data: offen }] = await Promise.all([
+      /* Den Tarif liefert club_kontingent_uebersicht als erste Spalte mit.
+         Vorher stand hier ein zweiter Aufruf von club_subscription_tier -
+         derselbe Wert aus derselben Quelle, nur einzeln geholt. Seit
+         20261004240000 ist club_subscription_tier ein Baustein, den nur noch
+         die Datenbank selbst aufruft: Ueber den RPC-Weg konnte jedes Konto
+         nachsehen, welchen Tarif ein FREMDER Verein zahlt. */
       /* Seit 20260924100000 gibt es zwei Kontingente. club_kontingent_uebersicht
          liefert beide Zahlen samt Grenzen und sagt ueber gemeinsamer_topf, ob
          der Verein auf der freien Stufe steht - dort zaehlen Mitglieder und
@@ -10236,7 +10241,7 @@ function SubscriptionPanel({ user }) {
          Verlaengerung anfragen. Die Datenbank haette beides erlaubt. */
       supabase.from("club_access_requests").select("id,status,created_at,contact_name").eq("club_id", user.clubId).in("status", ["offen", "berechnet"]).order("created_at", { ascending: false }).limit(1),
     ]);
-    setClubStatus({ tier: tarif || "none" });
+    setClubStatus({ tier: nutzung?.[0]?.tarif || "none" });
     setAccountUsage(nutzung?.[0] || null);
     setAnfrage(offen?.[0] || null);
   }, [databaseClub, user.clubId]);
