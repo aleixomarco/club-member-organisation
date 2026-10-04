@@ -6001,19 +6001,34 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
      Hier stand vorher nur isSysAdmin. Ein Vereinsadministrator konnte also
      ein Training anlegen, es danach aber nicht mehr absagen - die Datenbank
      haette es erlaubt, der Knopf war nur nicht da. */
+  /* Mit echter Mitgliedschaft zaehlen nur die Mannschaften, in denen diese
+     Person laut team_members eine Leitungsfunktion hat - genau die Frage, die
+     can_manage_team in der Datenbank stellt (trainer, kapitaen, teammanager).
+     Die Rueckfaelle in mannschaften.mjs leiten aus der globalen Vereinsrolle
+     "kapitaen" plus member.team eine Leitungsmannschaft ab. Im Demo-Betrieb
+     ist das richtig, die Datenbank kennt den Rueckfall aber nicht: Wer
+     darueber an "Bearbeiten", "Absagen" und "Termin endgueltig loeschen" kam,
+     traf beim Bestaetigen null Zeilen und bekam "ev.absageNichtGespeichert" -
+     drei Knoepfe, die garantiert nichts tun. In PROD stehen 3 Rollenzeilen
+     "kapitaen" und keine einzige team_members-Zeile mit function='kapitaen'.
+     Rechte zurueck gibt es ueber den Trainerbereich (set_team_captain
+     schreibt die team_members-Zeile), nicht ueber die Rollenliste.
+     Die Listen stehen fertig an currentUser, geladen aus team_members -
+     deshalb gilt die strenge Regel ab dem ersten Rendern, ohne Fenster, in
+     dem einem Trainer die Knoepfe fehlen. Dieselbe Trennung und dieselbe
+     Pruefung wie bei darfErgebnisEintragen weiter unten (streng: !!supabase);
+     im Demo-Betrieb ist supabase null. */
+  const eigeneLeitungsTeams = !!supabase
+    ? [...(currentUser.trainerTeams || []), ...(currentUser.captainTeams || []), ...(currentUser.managedTeams || [])]
+    : [...memberTrainerTeams(currentUser), ...memberCaptainTeams(currentUser), ...memberManagedTeams(currentUser)];
   const canCancelFor = (ev) => {
     if (ev.type === "event") return darfVereinsweitPlanen;
     if (ev.type !== "training" && ev.type !== "spiel") return false;
-    return darfVereinsweitPlanen
-      || memberTrainerTeams(currentUser).includes(ev.team)
-      || memberCaptainTeams(currentUser).includes(ev.team)
-      || memberManagedTeams(currentUser).includes(ev.team);
+    return darfVereinsweitPlanen || eigeneLeitungsTeams.includes(ev.team);
   };
   /* Wer die Zu- und Absagen eines Termins sieht - dieselbe Regel wie
-     darf_anwesenheit_sehen in der Datenbank (C3). */
-  const eigeneLeitungsTeams = manageableTeams !== null
-    ? manageableTeams
-    : [...memberTrainerTeams(currentUser), ...memberCaptainTeams(currentUser), ...memberManagedTeams(currentUser)];
+     darf_anwesenheit_sehen in der Datenbank (C3). Sie liest dieselbe strenge
+     Liste: has_club_role(...) or can_manage_team(team_id). */
   const darfAnwesenheitSehen = (ev) => canManageDuty(currentUser) || (!!ev.team && eigeneLeitungsTeams.includes(ev.team));
   /* Ein Spiel mit Ergebnis oder mit Tipps wird nur noch abgesagt (C1).
      Fremde Tipps liefert die Datenbank erst mit dem Ergebnis; vorher zaehlen
@@ -8068,8 +8083,20 @@ function TeamsView({ currentUser, members, setMembers, currentClub, teamWunsch =
   const [playerPenalties, setPlayerPenalties] = useState([]);
   const [teamsOpen, setTeamsOpen] = useState(false);
   const [penaltyOpen, setPenaltyOpen] = useState(false);
+  /* Steht hier und nicht erst bei selectedTeam weiter unten: Die
+     Abhaengigkeitsliste des folgenden Effekts liest den Wert, und eine erst
+     spaeter deklarierte Konstante waere dort ein ReferenceError. */
+  const istErwachsenenmannschaft = !!teams.find((team) => team.id === selectedTeamId)?.is_adult;
   useEffect(() => {
     if (!databaseMembership || !selectedTeamId) { setCanManagePenalties(false); setPenaltyRules([]); return; }
+    /* Strafen gibt es nur in Erwachsenenmannschaften. Alle vier Regeln auf
+       team_penalty_rules und team_penalty_assignments verlangen zusaetzlich
+       is_adult_team(team_id) - auch die zum LESEN. In einer Jugendmannschaft
+       klappte der Block "Strafenverwaltung" deshalb auf, das Auswahlfeld
+       blieb fuer immer leer und "Bisherige" zeigte dauerhaft "Keine": ein
+       Angebot, das nicht einmal einen Datensatz zeigen konnte. Die
+       Mannschaftsliste in TeamPenaltyCatalog filtert schon so. */
+    if (!istErwachsenenmannschaft) { setCanManagePenalties(false); setPenaltyRules([]); return; }
     const checkPenaltyAccess = async () => {
       const { data } = await supabase.from("team_members")
         .select("function")
@@ -8082,9 +8109,11 @@ function TeamsView({ currentUser, members, setMembers, currentClub, teamWunsch =
       setPenaltyRules((rules || []).map((r) => ({ ...r, amount: Number(r.amount) })));
     };
     checkPenaltyAccess();
-  }, [databaseMembership, selectedTeamId, currentUser.id]);
+  }, [databaseMembership, selectedTeamId, currentUser.id, istErwachsenenmannschaft]);
   useEffect(() => {
-    if (!databaseMembership || !selectedPlayerId || !selectedTeamId) { setPlayerPenalties([]); return; }
+    /* Auch die Liste "Bisherige" nur in Erwachsenenmannschaften. Eine
+       Abfrage, deren Ergebnis man vorher kennt, soll nicht rausgehen. */
+    if (!databaseMembership || !selectedPlayerId || !selectedTeamId || !istErwachsenenmannschaft) { setPlayerPenalties([]); return; }
     const loadPlayerPenalties = async () => {
       const { data } = await supabase.from("team_penalty_assignments")
         .select("id,assigned_at,paid_at,assigned_by,team_penalty_rules(title,amount)")
@@ -8098,7 +8127,7 @@ function TeamsView({ currentUser, members, setMembers, currentClub, teamWunsch =
       }));
     };
     loadPlayerPenalties();
-  }, [databaseMembership, selectedPlayerId, selectedTeamId, penaltyMessage]);
+  }, [databaseMembership, selectedPlayerId, selectedTeamId, penaltyMessage, istErwachsenenmannschaft]);
   const assignPenaltyToPlayer = async () => {
     if (!assignRuleId || !selectedPlayerId) return;
     setAssigningPenalty(true); setPenaltyMessage("");
@@ -8139,7 +8168,10 @@ function TeamsView({ currentUser, members, setMembers, currentClub, teamWunsch =
       setTeams((current) => names.map((teamName) => current.find((team) => team.name === teamName) || { id: teamName, name: teamName, category: t("tm.mannschaft") }));
       setLoading(false); return;
     }
-    const { data, error } = await supabase.from("teams").select("id,name,category,active,created_by,created_at").eq("club_id", currentUser.clubId).eq("active", true).order("name");
+    /* is_adult gehoert mitgeladen: An ihm haengt, ob die Strafenverwaltung
+       ueberhaupt erscheinen darf. Ohne die Spalte waere jede Pruefung darauf
+       stumm falsch. */
+    const { data, error } = await supabase.from("teams").select("id,name,category,active,is_adult,created_by,created_at").eq("club_id", currentUser.clubId).eq("active", true).order("name");
     if (error) setMessage(t("tm.ladenFehler"));
     else setTeams(data || []);
     setLoading(false);
@@ -8991,6 +9023,24 @@ function TasksView({ currentUser, members, gastErlaubt }) {
   /* Vereinsleitung im Sinne der Aufgaben: Nur sie setzt Verantwortliche und
      aendert jede Vereinsaufgabe - wie in AufgabeOverlay (M8). */
   const istAufgabenLeitung = isAdmin(currentUser) || currentUser.roles.includes("organisator");
+  /* Im Auswahlfeld stehen nur Mannschaften, fuer die die Regel 'authorized
+     members create tasks' die Zeile auch annimmt: eigene Leitungsfunktion in
+     team_members (trainer, kapitaen, teammanager) oder eine vereinsweite
+     Rolle - genau das steht in manageableTeamIds.
+     Vorher kam das Feld aus myTeams, und darin steht auch jede Mannschaft, in
+     der man nur Spieler ist. Ein Kapitaen ohne Mannschaftsfunktion sah so
+     seine U11 im Feld, waehlte sie und bekam beim Speichern nur
+     'auf.anlegenFehler' - die Oberflaeche versprach etwas, das die Datenbank
+     sicher abweist.
+     Beim Bearbeiten faellt damit ein zweiter Weg weg, und zwar absichtlich:
+     'authorized members update tasks' laesst den ERSTELLER jede seiner
+     Aufgaben an jede Mannschaft des Vereins haengen, ohne nach
+     can_manage_team zu fragen. Wer eine Mannschaft nicht fuehrt, soll ihr
+     auch nachtraeglich keine Aufgabe unterschieben koennen.
+     myTeams bleibt absichtlich ungefiltert: Es traegt die Kacheln und die
+     Aufgabenlisten. Wer in der U11 spielt, soll ihre Aufgaben weiter sehen,
+     nur dort keine anlegen. */
+  const anlegbareTeams = myTeams.filter((team) => manageableTeamIds.includes(team.id));
   /* Sperre gegen den Doppeltipp (U13): Zwei schnelle Tipper legten die
      Aufgabe zweimal an. Der Zustand allein reicht nicht, beide Klicks lesen
      im selben Durchlauf denselben alten Wert. */
@@ -9273,7 +9323,7 @@ function TasksView({ currentUser, members, gastErlaubt }) {
         </>}
         {aktiverBereich === "verein" && <>
         <SectionTitle eyebrow={t("auf.vereinsweit")} title={t("auf.vereinsaufgaben")}/>
-        {showCreateClub && <TaskCreateForm teams={myTeams} members={members} gastErlaubt={gastErlaubt} form={form} setForm={setForm} editing={!!editingTaskId} busy={aufgabeSpeichert} zeigeVerantwortliche={!editingTaskId || istAufgabenLeitung} onSubmit={() => createTask(null)} onCancel={() => { setShowCreateClub(false); resetForm(); setEditingTaskId(null); }}/>}
+        {showCreateClub && <TaskCreateForm teams={anlegbareTeams} members={members} gastErlaubt={gastErlaubt} form={form} setForm={setForm} editing={!!editingTaskId} busy={aufgabeSpeichert} zeigeVerantwortliche={!editingTaskId || istAufgabenLeitung} onSubmit={() => createTask(null)} onCancel={() => { setShowCreateClub(false); resetForm(); setEditingTaskId(null); }}/>}
         {/* Bearbeiten an Vereinsaufgaben: Ersteller oder Leitung. Vorher reichte
             jede Rolle ausser Spieler, Mitglied und Fan - die Regel wies das
             Aendern dann ab (M8). */}
@@ -9285,7 +9335,7 @@ function TasksView({ currentUser, members, gastErlaubt }) {
           return (
             <div key={team.id} className="mb-5">
               <SectionTitle eyebrow={t("tm.mannschaft")} title={`${t("auf.titel")} · ${team.name}`} right={canManage ? <button onClick={() => { if (showCreateTeamId === team.id) { setEditingTaskId(null); resetForm(); } setShowCreateTeamId((v) => v === team.id ? "" : team.id); }} className="px-3 py-1.5 rounded-full text-[10px] font-bold" style={{ background: C.ink, color: C.white }}>{showCreateTeamId === team.id ? t("allg.schliessen") : t("auf.neueAufgabePlus")}</button> : null}/>
-              {showCreateTeamId === team.id && <TaskCreateForm teams={myTeams} members={members} gastErlaubt={gastErlaubt} form={form} setForm={setForm} editing={!!editingTaskId} busy={aufgabeSpeichert} zeigeVerantwortliche={!editingTaskId || istAufgabenLeitung} onSubmit={() => createTask(team.id)} onCancel={() => { setShowCreateTeamId(""); resetForm(); setEditingTaskId(null); }}/>}
+              {showCreateTeamId === team.id && <TaskCreateForm teams={anlegbareTeams} members={members} gastErlaubt={gastErlaubt} form={form} setForm={setForm} editing={!!editingTaskId} busy={aufgabeSpeichert} zeigeVerantwortliche={!editingTaskId || istAufgabenLeitung} onSubmit={() => createTask(team.id)} onCancel={() => { setShowCreateTeamId(""); resetForm(); setEditingTaskId(null); }}/>}
               {tasks.length === 0 ? <div className="text-xs rounded-xl p-3" style={{ background: C.paperDim, color: C.textDim }}>{mitWerten(t("auf.keineFuerTeam"), { name: team.name })}</div> : tasks.map((t) => <TaskCard key={t.id} task={t} canManage={canManage} onEdit={openEditTask}/>)}
             </div>
           );
