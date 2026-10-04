@@ -5756,6 +5756,18 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
     setTerminFehler("");
     setEvents((all) => [...all, { ...created, endDate: ende.toISOString() }].sort((a, b) => new Date(a.date) - new Date(b.date)));
     setFilter(eventDraft.type);
+    /* Der Unterfilter muss mitwandern, sonst zeigt die Liste genau den Termin
+       nicht, den man gerade gespeichert hat: Steht er auf "Auswaerts" und
+       jemand legt ein Heimspiel an, wirft ihn die Pruefung weiter oben wieder
+       heraus - und hat der Verein kein Auswaertsspiel, steht dort "Aktuell
+       sind keine Auswaertsspiele hinterlegt.", unmittelbar nachdem jemand ein
+       Spiel eingetragen hat. Dieselbe Taeuschung, die a592fef fuer die Serien
+       beschrieben hat, nur aus der anderen Richtung.
+       Derselbe Ausdruck wie beim Speichern (home_away oben, home unten) - so
+       kann die Ansicht nicht auf eine andere Seite zeigen als die, die in der
+       Datenbank steht. Fuer Training und Vereinsevent bleibt der Wert stehen:
+       Dort wird die Zeile nicht gezeichnet und die Pruefung greift nicht. */
+    if (eventDraft.type === "spiel") setSpielOrtFilter(eventDraft.isHome ? "heim" : "auswaerts");
     setTeamFilter(eventDraft.team);
     resetEventDraft();
     setShowCreate(false);
@@ -10230,6 +10242,29 @@ function DutyTemplatesPanel({ currentUser, sport }) {
   );
 }
 
+/* Die Zustaende eines LAUFENDEN Vorgangs - und genau die, die die Datenbank
+   seit 20260903170000 kennt (CHECK club_access_requests_status_check: offen,
+   rechnung_erstellt, rechnung_versendet, rechnung_bezahlt, freigeschaltet,
+   abgelehnt). Liste UND Text stehen bewusst an einer Stelle.
+   Vorher fragte die Abfrage unten .in("status", ["offen","berechnet"]) und die
+   Anzeige verzweigte auf "berechnet" - einen Wert, den es seit dem 03.09.
+   nicht mehr gibt. Folge: Sobald der Betreiber "Rechnung erstellt" drueckte,
+   fiel die Anfrage aus dem Filter. Die Vereinsleitung sah wieder das leere
+   Formular und schickte eine zweite Anfrage - die INSERT-Regel erlaubt sie
+   als "offen", und der eindeutige Index greift nur gegen eine zweite OFFENE.
+   Danach verweigerte verein_freischalten mit "Der Verein hat eine offene
+   Anfrage im Zustand ...", obwohl die erste Rechnung bezahlt war. Die Texte
+   "Rechnung unterwegs" und "Rechnung geschickt" konnten nie erscheinen.
+   Wer hier einen Zustand ergaenzt, ergaenzt ihn damit in beidem.
+   freigeschaltet und abgelehnt stehen bewusst NICHT drin: Danach ist der
+   Vorgang zu Ende, und der Verein soll wieder anfragen koennen. */
+const ANFRAGE_LAEUFT = {
+  offen:              { titel: "zug.anfrageLiegtVor",   text: "zug.anfrageEingegangen" },
+  rechnung_erstellt:  { titel: "zug.rechnungInArbeit",  text: "zug.rechnungInArbeitText" },
+  rechnung_versendet: { titel: "bei.rechnungUnterwegs", text: "zug.rechnungGeschickt" },
+  rechnung_bezahlt:   { titel: "zug.zahlungDa",         text: "zug.zahlungDaText" },
+};
+
 /* Zugang und Freischaltung.
  *
  * Hier stand bis zum 31.08.2026 der In-App-Kauf: Tarifauswahl, Preise,
@@ -10289,7 +10324,7 @@ function SubscriptionPanel({ user }) {
          Formular und ohne Knopf zum Zuruecknehmen. Damit konnte weder ein
          abgelehnter Verein es erneut versuchen noch ein zahlender seine
          Verlaengerung anfragen. Die Datenbank haette beides erlaubt. */
-      supabase.from("club_access_requests").select("id,status,created_at,contact_name").eq("club_id", user.clubId).in("status", ["offen", "berechnet"]).order("created_at", { ascending: false }).limit(1),
+      supabase.from("club_access_requests").select("id,status,created_at,contact_name").eq("club_id", user.clubId).in("status", Object.keys(ANFRAGE_LAEUFT)).order("created_at", { ascending: false }).limit(1),
     ]);
     setClubStatus({ tier: nutzung?.[0]?.tarif || "none" });
     setAccountUsage(nutzung?.[0] || null);
@@ -10378,12 +10413,14 @@ function SubscriptionPanel({ user }) {
         {anfrage ? (
           <div className="rounded-2xl p-4 mb-5" style={{ background: C.sekundaerWeich, border: `1px solid ${C.edge}` }}>
             <div className="text-sm font-bold mb-1" style={{ color: C.ink }}>
-              {anfrage.status === "berechnet" ? t("bei.rechnungUnterwegs") : t("zug.anfrageLiegtVor")}
+              {t((ANFRAGE_LAEUFT[anfrage.status] || ANFRAGE_LAEUFT.offen).titel)}
             </div>
             <div className="text-[11px]" style={{ color: C.textDim }}>
-              {anfrage.status === "berechnet"
-                ? t("zug.rechnungGeschickt")
-                : mitWerten(t("zug.anfrageEingegangen"), { datum: new Date(anfrage.created_at).toLocaleDateString(datumsLocale()), name: anfrage.contact_name })}
+              {/* Alle vier Texte laufen durch mitWerten: Nur der zu "offen" hat
+                  Platzhalter, bei den anderen gibt mitWerten den Satz
+                  unveraendert zurueck. Damit faellt die Verzweigung weg, in
+                  der dieser Fehler entstanden ist. */}
+              {mitWerten(t((ANFRAGE_LAEUFT[anfrage.status] || ANFRAGE_LAEUFT.offen).text), { datum: new Date(anfrage.created_at).toLocaleDateString(datumsLocale()), name: anfrage.contact_name })}
             </div>
             {anfrage.status === "offen" && darfAnfragen && (
               <button onClick={zurueckziehen} className="text-[11px] font-bold mt-2.5 underline" style={{ color: C.textDim }}>{t("zug.zurueckziehen")}</button>
@@ -12289,12 +12326,25 @@ function BewirtungsplanView({ currentUser, members, events, dutyPlan, onSpringen
     return () => { abgebrochen = true; };
   }, [darfAnwenden, currentUser?.clubId]);
 
-  /* Nur Heimspiele, nur künftige, nicht abgesagte - genau die Menge, auf die
-     bewirtungsplan_anwenden wirkt. Stünde hier mehr, zeigte die Tabelle
-     Zeilen, die der Knopf darüber nie anfasst. */
-  const heute = new Date(); heute.setHours(0, 0, 0, 0);
+  /* Nur Heimspiele, nur künftige, nicht abgesagte - derselbe Zeitschnitt wie
+     bewirtungsplan_anwenden. Die Funktion nimmt e.starts_at >= now()
+     (20261001180000:126) und zählt alles Frühere unter uebergangen_vergangen
+     (:111-118). Mit dem alten Mitternachtsschnitt stand ein Heimspiel, das um
+     15 Uhr angepfiffen wurde, bis Mitternacht rot mit "4 Plätze offen" im
+     Plan, während die Erfolgsmeldung gleichzeitig sagte, ein Spiel sei
+     übergangen worden, weil es schon vorbei ist - zwei Angaben zu derselben
+     Zeile, und an der Zeile änderte sich nichts. Wer am Spieltag selbst
+     nachsehen will, wer hinter der Theke steht, findet den Termin unter
+     "Helferdienste"; dieser Plan ist der Blick nach vorne.
+     NICHT deckungsgleich bleibt der Zeitraum: Von/Bis darüber gilt nur für
+     das Anwenden, diese Tabelle zeigt die ganze kommende Saison. Wer Von/Bis
+     verengt, sieht hier also mehr Spieltage, als der Knopf anfasst - und die
+     Meldung zählt sie nicht als übergangen. Soll die Tabelle auch das
+     nachziehen, gehört der Zeitraum in diesen Filter; das ist ein eigener
+     Eingriff, keine Nebensache. */
+  const jetzt = new Date();
   const heimspiele = (events || [])
-    .filter((ev) => ev.type === "spiel" && ev.home === true && !ev.cancelled && new Date(ev.date) >= heute)
+    .filter((ev) => ev.type === "spiel" && ev.home === true && !ev.cancelled && new Date(ev.date) >= jetzt)
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
   const zeilen = heimspiele.map((ev) => {

@@ -340,13 +340,19 @@ export default function BetreiberKonsole() {
   const gefiltert = nurStille ? gesucht.filter((v) => zustand(v).still) : gesucht;
   const freigeschaltet = vereine.filter((v) => v.tarif !== "none").length;
   const amLimit = vereine.filter((v) => v.konten >= v.grenze).length;
+  /* "Offen" heisst: wartet noch auf einen Handgriff. Die Sicht
+     offene_freischaltungen liefert absichtlich auch Erledigtes - alles ausser
+     laenger als 30 Tage Abgelehntem. Das mitzuzaehlen machte aus "3 offene
+     Anfragen" eine Zahl, nach der man drei Vorgaenge sucht und keinen
+     findet. */
+  const offeneAnfragen = anfragen.filter((a) => a.status !== "freigeschaltet" && a.status !== "abgelehnt").length;
 
   return (
     <main style={huelle}>
       <header style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap", marginBottom: 20 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>Vereinsverwaltung</h1>
         <span style={{ fontSize: 13, color: "#8A7F85" }}>
-          {vereine.length} Vereine · {freigeschaltet} freigeschaltet · {anfragen.length} offene Anfragen
+          {vereine.length} Vereine · {freigeschaltet} freigeschaltet · {offeneAnfragen} offene Anfragen
           {amLimit > 0 && <> · <b style={{ color: "#B3261E" }}>{amLimit} an der Grenze</b></>}
         </span>
         {/* Der Export steht neben dem Abmelden, nicht bei den Vereinen:
@@ -414,16 +420,34 @@ export default function BetreiberKonsole() {
       {meldung && <p role="status" style={{ ...fehlerText, background: "rgba(231,243,236,0.72)", color: "#1E6B3A" }}>{meldung}</p>}
 
       {reiter === "vereine" && (<>
-      {/* Anfragen zuerst: Sie sind das Einzige, was auf eine Reaktion wartet. */}
+      {/* Anfragen zuerst: Hier wartet etwas auf einen Handgriff. Erledigte und
+          abgelehnte Zeilen bleiben bewusst stehen - die Sicht
+          offene_freischaltungen liefert Abgelehntes noch 30 Tage, und der
+          Betreiber muss "Rechnung versendet" im Blick behalten, um dem Geld
+          nachzugehen. Deshalb zaehlt die Kopfzeile weniger, als hier steht. */}
       <section style={{ marginBottom: 28 }}>
-        <h2 style={ueberschrift}>Offene Anfragen</h2>
+        <h2 style={ueberschrift}>Anfragen</h2>
         {anfragen.length === 0 ? (
-          <p style={{ ...karte, color: "#8A7F85", fontSize: 13 }}>Keine offenen Anfragen.</p>
+          <p style={{ ...karte, color: "#8A7F85", fontSize: 13 }}>Keine Anfragen.</p>
         ) : anfragen.map((a) => (
           <div key={a.id} style={{ ...karte, marginBottom: 10 }}>
             <div style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
               <b style={{ fontSize: 15 }}>{a.verein || "Verein ohne Zuordnung"}</b>
-              <span style={abzeichen}>{a.status === "berechnet" ? "Rechnung gestellt" : "offen"}</span>
+              {/* Die Beschriftung kommt aus ABLAUF - derselben Liste, aus der
+                  AnfrageAblauf direkt darunter seine Kette baut. Vorher stand
+                  hier ein Vergleich mit "berechnet" und sonst "offen": Diesen
+                  Wert gibt es seit 20260903170000 nicht mehr, also trug JEDE
+                  Zeile das Abzeichen "offen" - auch eine bezahlte und eine
+                  schon freigeschaltete. Die Kette darunter zeigte den wahren
+                  Schritt und widersprach dem Abzeichen darueber; wer von oben
+                  nach unten liest, glaubt dem Abzeichen. Faellt ein Status aus
+                  ABLAUF heraus, steht hier der Rohwert - falsch beschriftet
+                  ist schlimmer als unbeschriftet. */}
+              <span style={a.status === "abgelehnt" ? { ...abzeichen, background: "rgba(253,236,236,0.9)", color: "#B3261E" }
+                : a.status === "freigeschaltet" ? { ...abzeichen, background: "rgba(231,243,236,0.9)", color: "#1E6B3A" }
+                : abzeichen}>
+                {a.status === "abgelehnt" ? "Abgelehnt" : (ABLAUF.find((x) => x.status === a.status)?.label || a.status)}
+              </span>
               <span style={{ ...abzeichen, background: "#EEE9EC" }}>{a.quelle === "website" ? "Website" : "App"}</span>
               {a.sponsoring_gewuenscht && <span style={{ ...abzeichen, background: "rgba(255,240,214,0.9)", color: "#8A5A00" }}>+ eigene Sponsoren, 15 €/Monat</span>}
               <span style={{ fontSize: 12, color: "#8A7F85", marginLeft: "auto" }}>{datum(a.created_at)}</span>

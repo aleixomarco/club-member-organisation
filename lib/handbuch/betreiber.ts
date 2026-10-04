@@ -24,14 +24,14 @@ const abschnitte = [
  },
  {
   "titel": "Anfragen bis zur Freischaltung",
-  "wo": "Reiter \"Vereine\" > Bereich \"Offene Anfragen\" ganz oben",
+  "wo": "Reiter \"Vereine\" > Bereich \"Anfragen\" ganz oben",
   "punkte": [
    "Jede Anfrage zeigt Verein, Ansprechpartner, E-Mail, Telefon, die gewünschten Zugänge und ob sie über die Website oder die App kam. Wünscht der Verein eigene Sponsoren, steht das gelb in der Zeile.",
    "Der Weg steht als Kette in der Zeile: Angefragt, Rechnung erstellt, Rechnung versendet, Bezahlt, Freigeschaltet. Erledigte Schritte tragen ihr Datum.",
    "Im ersten Schritt trägst du Rechnungsnummer, Betrag und monatlich oder jährlich ein, danach klickst du dich mit je einem Knopf weiter.",
    "Erst nach \"Bezahlt\" erscheint \"Verein freischalten …\", danach hakst du \"Bestätigungsmail versendet\" ab.",
    "Mit \"Ablehnen …\" beendest du eine Anfrage; der Grund bleibt hinterlegt, und der Verein kann jederzeit neu anfragen.",
-   "Vereine auf der kostenlosen Stufe (drei Zugänge) können dir auch direkt schreiben: Ihre Vereinsleitung sieht oben auf der Startseite den Hinweis „Mehr Zugänge für euren Verein?“; ein Tipp öffnet eine fertige E-Mail an info@idbranding.de. Diese Mails kommen ins Postfach, nicht unter „Offene Anfragen“."
+   "Vereine auf der kostenlosen Stufe (drei Zugänge) können dir auch direkt schreiben: Ihre Vereinsleitung sieht oben auf der Startseite den Hinweis „Mehr Zugänge für euren Verein?“; ein Tipp öffnet eine fertige E-Mail an info@idbranding.de. Diese Mails kommen ins Postfach, nicht unter „Anfragen“."
   ],
   "hinweis": "Einen Verein, der noch nicht in der App angelegt ist, kannst du nicht freischalten. Die Vereinsverwaltung meldet dir das an dieser Stelle."
  },
