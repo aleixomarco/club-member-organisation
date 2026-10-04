@@ -17182,7 +17182,23 @@ export default function ClubMemberOrganisationApp() {
          Meldungen aus der Zeit davor bleiben so eine Notiz. */
       case "termin":
         return !nurFanAnsicht || !events.some((ev) => ev.id === e.ziel_id && ev.type === "training");
-      case "umfrage": case "chat": case "news": case "strafe": case "mannschaft":
+      /* Eine Umfrage-Meldung fuehrt auf die Startseite, und dort steht nur,
+         was polls.filter((p) => p.active) hergibt. Ist die Umfrage
+         geschlossen oder geloescht, findet der Fokus-Effekt im Dashboard
+         keinen Knoten und bricht still ab: Die Zeile liess sich antippen und
+         tat nichts - genau das, was der Kopf dieser Funktion verbietet.
+         Gefragt wird deshalb dieselbe Frage, die die Startseite beantwortet,
+         und keine zweite daneben.
+         Dass polls hier schon geladen ist, haengt an der Reihenfolge beim
+         Start: loadSupabaseMembership wartet mit enterApp - und damit mit
+         currentUser, auf das der Push-Sprung wartet - bis ladeVereinsdaten
+         durch ist. Die Termine kommen dagegen aus einem eigenen Effekt und
+         sind in dem Moment noch leer; darum stuetzt sich die Ergebnismeldung
+         bewusst nicht auf sie.
+         Gemessen am 04.10.2026: fuenf ungelesene Meldungen vom 07.09. an fuenf
+         Mitglieder auf eine Umfrage, die es in polls nicht mehr gibt. */
+      case "umfrage": return polls.some((p) => p.id === e.ziel_id && p.active);
+      case "chat": case "news": case "strafe": case "mannschaft":
       case "familie": case "sicherheit": case "verein": case "geburtstag":
         return true;
       /* Eine Art, die diese App noch nicht kennt - etwa weil die Datenbank
