@@ -10942,18 +10942,24 @@ function SysAdminUserManager({ members, setMembers, currentUser = null }) {
         man ueber dem Formular zwei Felder, von denen eines nicht zur gerade
         bearbeiteten Person passt. */}
     {[
-      { key: "mitglieder", titel: t("sys.gruppeMitglieder"), leute: members.filter((m) => !istNurFan(m)),
+      { key: "mitglieder", titel: "sys.gruppeMitglieder", leute: members.filter((m) => !istNurFan(m)),
         q: sucheMitglied, setQ: setSucheMitglied,
         platzhalter: selected ? t("ph.anderesMitgliedSuchen") : t("ph.mitgliedSuchen"), leer: t("allg.niemandGefunden") },
-      { key: "fans", titel: t("sys.gruppeFans"), leute: members.filter((m) => istNurFan(m)),
+      { key: "fans", titel: "sys.gruppeFans", leute: members.filter((m) => istNurFan(m)),
         q: sucheFan, setQ: setSucheFan,
         platzhalter: selected ? t("ph.anderenFanSuchen") : t("ph.fanSuchen"), leer: t("sys.nochKeineFans") },
-    ].filter((g) => !selected || g.key === (istNurFan(selected) ? "fans" : "mitglieder")).map((g) => (
-      <div key={g.key} className="mb-4">
-        <div className="flex items-baseline justify-between mb-1.5">
-          <div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.textDim, fontFamily: "Inter" }}>{g.titel}</div>
-          <span className="text-[10px]" style={{ color: C.textDim, fontFamily: "JetBrains Mono" }}>{g.leute.length}</span>
-        </div>
+    ].filter((g) => !selected || g.key === (istNurFan(selected) ? "fans" : "mitglieder")).map((g, i) => (
+      /* Die Zahl steht IM Titel, nicht rechts daneben (Betreiber,
+         12.10.2026): Als kleine Ziffer am rechten Rand war sie dort, wo sonst
+         nichts steht, und wurde ueberlesen.
+         Ueberschrift in der Hausschrift statt der kleinen grauen Kapitaelchen,
+         und zwischen den beiden Gruppen eine Linie mit Luft: Erst damit sieht
+         man auf einen Blick, dass dieser Bildschirm zwei Haelften hat. Die
+         Linie nur, wenn wirklich zwei dastehen - ist jemand geoeffnet, bleibt
+         eine Gruppe uebrig, und ein Strich ueber der ersten traenne nichts. */
+      <div key={g.key} className={i > 0 ? "mb-4 pt-6 mt-6" : "mb-4"}
+        style={i > 0 ? { borderTop: `1px solid ${C.line}` } : undefined}>
+        <SectionTitle title={mitWerten(t(g.titel), { anzahl: g.leute.length })} />
         <input value={g.q} onChange={(e) => g.setQ(e.target.value)}
           placeholder={g.platzhalter}
           aria-label={g.platzhalter}
