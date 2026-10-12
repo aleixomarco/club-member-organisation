@@ -10066,6 +10066,21 @@ function DutyTemplatesPanel({ currentUser, sport }) {
   const [messageOk, setMessageOk] = useState(false);
 
   const loadTemplates = useCallback(async () => {
+    /* Ohne Datenbank gibt es keine Saetze zu laden.
+       Der Riegel muss HIER stehen und nicht nur im Rendern: Ein Effekt laeuft,
+       egal was die Komponente zurueckgibt. Das "if (!supabase) return ..."
+       weiter unten verhindert nur das Bild, nicht diesen Aufruf - und im
+       Demo-Betrieb ist supabase null (dev-demo.sh setzt die beiden Schluessel
+       leer). "supabase.from" warf dort bei jedem Oeffnen von Verwaltung >
+       Helferdienst-Sets, und seit dem 04.10. faengt die Fehlergrenze das ab
+       und MELDET es als Absturz: ein Fehlerbericht, der jeden Demo-Durchlauf
+       begleitet und nichts aussagt. In PROD kann es nicht auftreten, der
+       Bildschirm sah auch im Demo richtig aus - der Schaden war allein das
+       Rauschen im Protokoll und in den Fehlerberichten.
+       loading faellt dabei auf false. Die Ansicht braucht es nicht (der
+       Vereinskonto-Hinweis steht vor der Ladezeile), aber eine Komponente,
+       die fuer immer "laedt", ist eine Luege im Zustand. */
+    if (!supabase) { setLoading(false); return; }
     setLoading(true);
     const { data, error } = await supabase.from("duty_task_templates")
       .select("id,name,duty_task_template_items(id,title,sort_order,plaetze)")
