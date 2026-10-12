@@ -43,8 +43,8 @@ const abschnitte = [
   "punkte": [
    "Die Vereinsleitung kann dich zu einer Vereinsaufgabe oder zu einem Helferdienst am Spieltag eintragen – etwa zum Kuchenstand oder an den Grill.",
    "Das geschieht immer auf Absprache: Du kannst dich nirgends selbst eintragen, und niemand steht ungefragt im Plan.",
-   "Im Reiter „Support“ siehst du oben unter „Du bist eingeteilt“, wofür du vorgesehen bist, mit Termin und Uhrzeit.",
-   "Unter „Helferdienste“ und „Bewirtungsplan“ siehst du den ganzen Plan – wer wann an welcher Station steht.",
+   "Im Reiter „Support“ siehst du oben unter „Für dich eingeteilt“, wofür du vorgesehen bist, mit Termin und Uhrzeit.",
+   "Unter „Helferdienste“ siehst du die Spieltage mit ihren Stationen – wer wann wo steht. Den „Bewirtungsplan“, der die ganze Saison auf einmal zeigt, siehst du nicht: Er ist zum Einteilen da, und einteilen darf dich nur die Vereinsleitung.",
    "Knöpfe zum Übernehmen oder Zusagen findest du dort nicht; die gibt es nur für Mitglieder.",
    "Austragen kann dich ebenfalls nur die Vereinsleitung. Sprich sie an, wenn du doch nicht kannst."
   ],

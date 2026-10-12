@@ -12529,8 +12529,15 @@ function BewirtungsplanView({ currentUser, members, events, dutyPlan, onSpringen
                 className="w-full text-left px-3.5 pt-3 pb-2 flex items-start gap-2">
                 <div className="flex-1 min-w-0">
                   <div className="text-xs font-bold truncate" style={{ color: C.ink, fontFamily: "Inter" }}>{ev.title}</div>
-                  <div className="text-[10px]" style={{ color: C.textDim, fontFamily: "Inter" }}>
-                    {formatDate(ev.date)} · {formatTime(ev.date)}
+                  {/* Die Mannschaft gehoert hierhin, nicht in eine eigene
+                      Spalte: Diese Zeile ist kurz (Datum und Uhrzeit), und
+                      rechts daneben steht schon das rote "x Plaetze offen".
+                      Am 15.11. stehen drei Heimspiele untereinander - ohne die
+                      Mannschaft sieht man nicht, welches davon das eigene ist
+                      (Betreiber, 12.10.2026). Ein vereinsweiter Termin hat
+                      keine; dann bleibt der Zusatz weg. */}
+                  <div className="text-[10px] truncate" style={{ color: C.textDim, fontFamily: "Inter" }}>
+                    {formatDate(ev.date)} · {formatTime(ev.date)}{ev.team ? ` · ${ev.team}` : ""}
                   </div>
                 </div>
                 {frei > 0 && (
@@ -12624,7 +12631,21 @@ function DutyView({ members, currentUser, events, dutyPlan, setDutyPlan, onDiens
                   {binDabei && <span style={{ color: C.red, fontWeight: 700 }}> · {t("sup.duBistDabei")}</span>}
                 </div>
               </div>
-              <div className="flex-shrink-0"><Pill bg={ev.home ? C.red : typeMeta[ev.type].color}>{ev.home ? t("ev.heimspiel") : terminArt(t, ev.type)}</Pill></div>
+              {/* Die Mannschaft UNTER das Abzeichen, nicht daneben und nicht in
+                  die graue Zeile darunter: Dort stehen schon Datum, Uhrzeit,
+                  Belegung und "Du bist dabei" - auf dem Telefon bricht sie
+                  ohnehin um. Hier kostet die Mannschaft keine Breite, weil die
+                  Spalte so breit ist wie das laengere ihrer beiden Stuecke,
+                  und der Titel daneben verliert nichts.
+                  Gewuenscht vom Betreiber (12.10.2026): Am 15.11. stehen drei
+                  Heimspiele untereinander, alle mit demselben Abzeichen - ohne
+                  die Mannschaft sieht man nicht, welches davon das eigene ist.
+                  Ein vereinsweiter Termin hat keine Mannschaft; dann bleibt die
+                  Zeile weg, statt leer dazustehen. */}
+              <div className="flex-shrink-0 flex flex-col items-end gap-0.5">
+                <Pill bg={ev.home ? C.red : typeMeta[ev.type].color}>{ev.home ? t("ev.heimspiel") : terminArt(t, ev.type)}</Pill>
+                {ev.team && <span className="text-[10px] font-bold truncate" style={{ color: C.textDim, fontFamily: "Inter", maxWidth: 110 }}>{ev.team}</span>}
+              </div>
               <ChevronDown size={16} style={{ color: C.textDim, flexShrink: 0, transform: aufgeklappt ? "rotate(180deg)" : "none", transition: "transform .15s" }} />
             </button>
             {aufgeklappt && (
@@ -12694,9 +12715,18 @@ function SupportView({ currentUser, members, events, dutyPlan, setDutyPlan, onDi
     ...(dutyOn ? [["helfer", t("sup.helferdienste")]] : []),
     /* Der Bewirtungsplan steht neben den Helferdiensten, nicht darin: Dieselben
        Daten, andere Frage. "Helferdienste" beantwortet "wo kann ich mithelfen",
-       der Plan "steht die Saison". Deshalb sieht ihn auch jeder, der die
-       Helferdienste sieht - nur anwenden darf ihn die Leitung. */
-    ...(dutyOn ? [["plan", t("bwp.titel")]] : []),
+       der Plan "steht die Saison". Deshalb sieht ihn jeder, der die
+       Helferdienste sieht - nur anwenden darf ihn die Leitung.
+       Ein reiner Fan aber nicht (Betreiber, 12.10.2026). Der Plan beantwortet
+       eine Frage, die ein Fan nicht hat: Er kann keinen Dienst uebernehmen und
+       keinen vergeben - eintragen kann ihn nur die Leitung (20261002200000,
+       20261004190000). Was er SEHEN soll, steht eine Ueberschrift hoeher:
+       "Fuer dich eingeteilt" nennt seinen eigenen Dienst. Der Plan dagegen
+       zeigt die ganze Saison mit allen Stationen und allen Namen - fuer ihn
+       nur eine Namensliste des Vereins, an der er nichts tun kann.
+       Der Riegel reicht: bereichWunsch springt nur in einen Bereich, der in
+       dieser Liste steht, und aktiv faellt sonst auf "aufgaben" zurueck. */
+    ...(dutyOn && !istNurFan(currentUser) ? [["plan", t("bwp.titel")]] : []),
     ...(darfEinteilen ? [["einteilen", t("sup.einteilen")]] : []),
   ];
   const [bereich, setBereich] = useState("aufgaben");
@@ -12848,7 +12878,21 @@ function AdminDutyPanel({ members, events, dutyPlan, setDutyPlan, onSetzen, gast
                   {formatDate(ev.date)} · {formatTime(ev.date)} · {mitWerten(t("sup.plaetzeBelegt"), { belegt, gesamt })}
                 </div>
               </div>
-              <div className="flex-shrink-0"><Pill bg={ev.home ? C.red : typeMeta[ev.type].color}>{ev.home ? t("ev.heimspiel") : terminArt(t, ev.type)}</Pill></div>
+              {/* Die Mannschaft UNTER das Abzeichen, nicht daneben und nicht in
+                  die graue Zeile darunter: Dort stehen schon Datum, Uhrzeit,
+                  Belegung und "Du bist dabei" - auf dem Telefon bricht sie
+                  ohnehin um. Hier kostet die Mannschaft keine Breite, weil die
+                  Spalte so breit ist wie das laengere ihrer beiden Stuecke,
+                  und der Titel daneben verliert nichts.
+                  Gewuenscht vom Betreiber (12.10.2026): Am 15.11. stehen drei
+                  Heimspiele untereinander, alle mit demselben Abzeichen - ohne
+                  die Mannschaft sieht man nicht, welches davon das eigene ist.
+                  Ein vereinsweiter Termin hat keine Mannschaft; dann bleibt die
+                  Zeile weg, statt leer dazustehen. */}
+              <div className="flex-shrink-0 flex flex-col items-end gap-0.5">
+                <Pill bg={ev.home ? C.red : typeMeta[ev.type].color}>{ev.home ? t("ev.heimspiel") : terminArt(t, ev.type)}</Pill>
+                {ev.team && <span className="text-[10px] font-bold truncate" style={{ color: C.textDim, fontFamily: "Inter", maxWidth: 110 }}>{ev.team}</span>}
+              </div>
               <ChevronDown size={16} style={{ color: C.textDim, flexShrink: 0, transform: aufgeklappt ? "rotate(180deg)" : "none", transition: "transform .15s" }} />
             </button>
             {aufgeklappt && (
