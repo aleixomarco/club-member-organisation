@@ -10839,7 +10839,10 @@ function MemberDetailPanel({ member, onClose, leitung = false, clubId = null }) 
 function SysAdminUserManager({ members, setMembers, currentUser = null }) {
   const t = useT();
   const [selectedId, setSelectedId] = useState("");
-  const [suche, setSuche] = useState("");
+  /* Je Gruppe ein eigenes Suchfeld - ein gemeinsamer Zustand haette beim
+     Umschalten zwischen den Listen den Text der anderen mitgeschleppt. */
+  const [sucheMitglied, setSucheMitglied] = useState("");
+  const [sucheFan, setSucheFan] = useState("");
   const [section, setSection] = useState("overview");
   const [form, setForm] = useState({ name: "", email: "", birthdate: "", since: "", status: "active" });
   const [teams, setTeams] = useState([]);
@@ -10907,49 +10910,74 @@ function SysAdminUserManager({ members, setMembers, currentUser = null }) {
 
   return <div>
     <div className="text-[11px] mb-3" style={{ color: C.textDim }}>{t("sys.einstellungenAllerNutzer")}</div>
-    {/* Suchfeld statt Auswahlliste.
-        Das native <select> zeigte hinter jedem Namen alle Rollen - bei sieben
-        Rollen wurde daraus ein dreizeiliger Eintrag, und die Liste war weder
-        zu ueberblicken noch zu durchsuchen. Hier steht nur der Name; gesucht
-        wird ueber Name UND Rollen, damit t("rol.vorstand") weiter zum Ziel fuehrt,
-        ohne die Liste zu verstopfen. Sortiert nach Vorname, weil die Namen so
-        gefuehrt werden. */}
-    <div className="mb-4">
-      <input value={suche} onChange={(e) => setSuche(e.target.value)}
-        placeholder={selected ? t("ph.anderenNutzerSuchen") : t("ph.nutzerSuchen")}
-        aria-label={t("feld.nutzerSuchen")}
-        className="w-full px-3.5 py-3 rounded-xl text-sm outline-none"
-        style={{ background: C.glass, border: `1px solid ${C.line}`, color: C.ink }} />
-      {(!selected || suche.trim()) && (() => {
-        const q = suche.trim().toLowerCase();
-        const treffer = members.slice()
-          .sort((a, b) => String(a.name || "").trim().localeCompare(String(b.name || "").trim(), "de", { sensitivity: "base" }))
-          .filter((m) => !q || String(m.name || "").toLowerCase().includes(q)
-            || m.roles.some((r) => (rollenLabel(t, r)).toLowerCase().includes(q)));
-        return (
-          <div className="mt-2 rounded-xl overflow-hidden" style={{ border: `1px solid ${C.line}`, background: C.glass, maxHeight: 260, overflowY: "auto" }}>
-            {treffer.length === 0 ? (
-              <div className="px-3.5 py-3 text-sm" style={{ color: C.textDim }}>{t("allg.niemandGefunden")}</div>
-            ) : treffer.map((member, i) => (
-              <button key={member.id} onClick={() => { setSelectedId(member.id); setSuche(""); }}
-                className="w-full text-left px-3.5 py-3 text-sm"
-                style={{ color: C.ink, fontFamily: "Inter", fontWeight: member.id === selectedId ? 700 : 500,
-                         borderTop: i ? `1px solid ${C.line}` : "none",
-                         background: member.id === selectedId ? C.paperDim : "transparent" }}>
-                {member.name}
-              </button>
-            ))}
-          </div>
-        );
-      })()}
-    </div>
+    {/* ZWEIGETEILT: oben die Mitglieder, darunter die Fans (Betreiber,
+        12.10.2026). Vorher lagen beide in EINER Liste, und ein Fan stand
+        zwischen dreissig Mitgliedern - wer einen Fan bearbeiten wollte, musste
+        seinen Namen schon kennen. Die Trennung macht ihn auffindbar, ohne
+        tippen zu muessen, und sagt nebenbei, wie viele es sind.
+        Die Trennlinie ist dieselbe, die das ganze Haus benutzt: istNurFan -
+        'fan' und keine andere Rolle. Wer neben 'fan' noch etwas traegt, ist
+        Mitglied und steht oben; die Datenbank laesst das seit 20260911110000
+        ohnehin nicht mehr zu, die Bedingung haelt trotzdem fest, was gemeint
+        ist.
+        Gesucht wird in beiden Listen ueber Name UND Rollen, damit
+        t("rol.vorstand") weiter zum Ziel fuehrt; sortiert nach Vorname, weil
+        die Namen so gefuehrt werden.
+        Ist jemand geoeffnet, steht nur noch SEIN Suchfeld da - sonst haette
+        man ueber dem Formular zwei Felder, von denen eines nicht zur gerade
+        bearbeiteten Person passt. */}
+    {[
+      { key: "mitglieder", titel: t("sys.gruppeMitglieder"), leute: members.filter((m) => !istNurFan(m)),
+        q: sucheMitglied, setQ: setSucheMitglied,
+        platzhalter: selected ? t("ph.anderesMitgliedSuchen") : t("ph.mitgliedSuchen"), leer: t("allg.niemandGefunden") },
+      { key: "fans", titel: t("sys.gruppeFans"), leute: members.filter((m) => istNurFan(m)),
+        q: sucheFan, setQ: setSucheFan,
+        platzhalter: selected ? t("ph.anderenFanSuchen") : t("ph.fanSuchen"), leer: t("sys.nochKeineFans") },
+    ].filter((g) => !selected || g.key === (istNurFan(selected) ? "fans" : "mitglieder")).map((g) => (
+      <div key={g.key} className="mb-4">
+        <div className="flex items-baseline justify-between mb-1.5">
+          <div className="text-[10px] uppercase tracking-widest font-bold" style={{ color: C.textDim, fontFamily: "Inter" }}>{g.titel}</div>
+          <span className="text-[10px]" style={{ color: C.textDim, fontFamily: "JetBrains Mono" }}>{g.leute.length}</span>
+        </div>
+        <input value={g.q} onChange={(e) => g.setQ(e.target.value)}
+          placeholder={g.platzhalter}
+          aria-label={g.platzhalter}
+          className="w-full px-3.5 py-3 rounded-xl text-sm outline-none"
+          style={{ background: C.glass, border: `1px solid ${C.line}`, color: C.ink }} />
+        {(!selected || g.q.trim()) && (() => {
+          const q = g.q.trim().toLowerCase();
+          const treffer = g.leute.slice()
+            .sort((a, b) => String(a.name || "").trim().localeCompare(String(b.name || "").trim(), "de", { sensitivity: "base" }))
+            .filter((m) => !q || String(m.name || "").toLowerCase().includes(q)
+              || m.roles.some((r) => (rollenLabel(t, r)).toLowerCase().includes(q)));
+          return (
+            <div className="mt-2 rounded-xl overflow-hidden" style={{ border: `1px solid ${C.line}`, background: C.glass, maxHeight: 260, overflowY: "auto" }}>
+              {treffer.length === 0 ? (
+                /* Zwei verschiedene Saetze: "Niemand gefunden" stimmt nur,
+                   wenn gesucht wurde. Steht die Fan-Liste leer da, weil es
+                   keinen Fan gibt, ist das keine erfolglose Suche. */
+                <div className="px-3.5 py-3 text-sm" style={{ color: C.textDim }}>{q ? t("allg.niemandGefunden") : g.leer}</div>
+              ) : treffer.map((member, i) => (
+                <button key={member.id} onClick={() => { setSelectedId(member.id); setSucheMitglied(""); setSucheFan(""); }}
+                  className="w-full text-left px-3.5 py-3 text-sm"
+                  style={{ color: C.ink, fontFamily: "Inter", fontWeight: member.id === selectedId ? 700 : 500,
+                           borderTop: i ? `1px solid ${C.line}` : "none",
+                           background: member.id === selectedId ? C.paperDim : "transparent" }}>
+                  {member.name}
+                </button>
+              ))}
+            </div>
+          );
+        })()}
+      </div>
+    ))}
     {/* Zurueck zur Nutzeruebersicht.
         Wer einen Nutzer geoeffnet hatte, kam nur ueber das Suchfeld zurueck -
         man musste erst tippen, um die Liste wiederzusehen. Ein Weg zurueck,
         der aussieht wie einer, fehlte ganz.
         In Vereinsfarbe, weil er die Hauptbewegung auf diesem Bildschirm ist. */}
     {selected && (
-      <button onClick={() => { setSelectedId(""); setSuche(""); setSection("overview"); }}
+      <button onClick={() => { setSelectedId(""); setSucheMitglied(""); setSucheFan(""); setSection("overview"); }}
         className="flex items-center gap-1.5 mb-3 px-3 py-2 rounded-full text-xs"
         style={{ background: C.primaerWeich, border: `1px solid ${C.red}`, color: C.red, fontFamily: "Inter", fontWeight: 700 }}>
         <ArrowLeft size={14} style={{ color: C.red }} /> {t("betr.zurUebersicht")}
