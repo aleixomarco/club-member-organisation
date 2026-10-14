@@ -77,7 +77,7 @@ const abschnitte = [
    "Wird jemand aufgenommen, bekommen Vereinsadmin und Organisation die Benachrichtigung „Neues Mitglied“; die übrigen Mitglieder bekommen keine.",
    "Unter „Mitgliedschaften verwalten“ beendest du eine Mitgliedschaft („Beenden“), holst sie zurück („Reaktivieren“) oder sperrst jemanden dauerhaft („Sperren“); nur die Sperre hält eine neue Anfrage auf.",
    "„Entfernen“ löscht die Mitgliedschaft endgültig samt Rollen, Mannschaft und Helfereinteilungen; das Konto der Person bleibt.",
-   "Name, Kontaktmail, Geburtstag, Mitglied seit, Status, Rollen, Teams und Familie änderst du im Profil unter „Verein & Mitgliedschaft“ > „Benutzerverwaltung“. Der Bildschirm ist zweigeteilt: oben die Mitglieder, darunter die Fans – jeweils mit eigenem Suchfeld und der Zahl daneben."
+   "Name, Kontaktmail, Geburtstag, Mitglied seit, Status, Rollen, Teams und Familie änderst du im Profil unter „Verein & Mitgliedschaft“ > „Benutzerverwaltung“. Der Bildschirm ist zweigeteilt: oben die Mitglieder, darunter die Fans – jeweils mit eigenem Suchfeld und der Anzahl in der Überschrift."
   ],
   "hinweis": "Sind alle bezahlten Zugänge belegt, kannst du niemanden mehr freigeben; dann braucht ihr mehr Zugänge.",
   "sprung": {

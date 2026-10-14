@@ -99,7 +99,7 @@ const abschnitte = [
   "wo": "Reiter \"Profil\" > \"Verein & Mitgliedschaft\"; Reiter \"Support\" > offene Punkte",
   "punkte": [
    "Unter \"Beitrittsanfragen\" nimmst du neue Mitglieder an oder lehnst sie ab; neue Anfragen und neue Mitglieder meldet dir die Glocke. Dabei entscheidest du, ob jemand als Mitglied oder als Fan aufgenommen wird.",
-   "Unter \"Benutzerverwaltung\" pflegst du Name, E-Mail, Geburtsdatum, Eintrittsjahr und Mannschaften. Der Bildschirm ist zweigeteilt: oben die Mitglieder, darunter die Fans – jeweils mit eigenem Suchfeld und der Zahl daneben. So findest du einen Fan, ohne seinen Namen zu kennen.",
+   "Unter \"Benutzerverwaltung\" pflegst du Name, E-Mail, Geburtsdatum, Eintrittsjahr und Mannschaften. Der Bildschirm ist zweigeteilt: oben die Mitglieder, darunter die Fans – jeweils mit eigenem Suchfeld und der Anzahl in der Überschrift. So findest du einen Fan, ohne seinen Namen zu kennen.",
    "\"Mitgliederübersicht\" zeigt dir alle Mitglieder zum Nachlesen; ein Tipp auf ein Mitglied zeigt seine Strafen (nur bei Athlet/innen) und Aufgaben. Ein Fan hat keine Strafen; Aufgaben kann er haben, wenn du ihn eingetragen hast.",
    "Oben im Reiter \"Support\" stehen die offenen Punkte: wartende Anträge, fehlende Spielergebnisse, fällige Aufgaben, unbesetzte Helferstationen und Fahrzeuganfragen. Ein Tipp bringt dich hin."
   ],
