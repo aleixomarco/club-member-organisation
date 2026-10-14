@@ -38,7 +38,46 @@ import { Capacitor, type PluginListenerHandle } from "@capacitor/core";
    ^12.6.0) - solange es fest eingebunden ist, nuetzt das Nachladen oben nichts.
    Gebraucht wird es ausschliesslich in der nativen Huelle; im Browser laeuft
    jeder Zweig, der es anfasst, ohnehin nie. */
-const plugin = () => import("@capacitor-firebase/messaging").then((m) => m.FirebaseMessaging);
+/* Das Plugin kommt in einer SCHACHTEL zurueck, nicht nackt - und das ist der
+   ganze Witz dieser Zeile.
+ *
+ * WAS VORHER PASSIERTE
+ * Hier stand: import(...).then((m) => m.FirebaseMessaging).
+ * Ein Capacitor-Plugin ist ein Proxy: JEDER Eigenschaftszugriff liefert eine
+ * Funktion, die einen nativen Aufruf dieses Namens macht - auch der Zugriff
+ * auf "then". Gibt man so ein Objekt aus einem then-Rumpf (oder aus einer
+ * async-Funktion) zurueck, haelt die Promise-Maschinerie es fuer ein
+ * Thenable und ruft sein then(resolve, reject) auf, um es zu uebernehmen.
+ * Capacitor macht daraus einen nativen Aufruf namens "then" - den es nicht
+ * gibt - und wirft:
+ *     "FirebaseMessaging.then()" is not implemented on ios
+ * Das Versprechen wurde damit NIE erfuellt. Jeder native Push-Weg hing: kein
+ * Token holen, kein Token speichern, keine Zuhoerer fuer angetippte
+ * Mitteilungen.
+ *
+ * BELEGT, nicht vermutet (14.10.2026):
+ *   - 113 Fehlerberichte in PROD, alle mit genau diesem Satz, von acht
+ *     verschiedenen Personen, alle auf ios, taeglich seit dem 04.10. (dem
+ *     Tag, an dem die App anfing, ihre Abstuerze selbst zu melden).
+ *   - push_subscriptions.last_seen_at endet am 27.09. - seit 17 Tagen hat
+ *     sich kein einziges Geraet mehr erfolgreich angemeldet.
+ *   - Der Umbau auf Nachladen (361fc21) ist vom 28.09. Davor war das Plugin
+ *     fest eingebunden und wurde direkt benutzt; da konnte es nicht
+ *     passieren. Die Daten brechen am Tag davor ab.
+ *
+ * WARUM EINE SCHACHTEL UND NICHT ETWAS KUERZERES
+ * Es gibt keine kuerzere Form: Solange der Proxy SELBST der Wert ist, mit dem
+ * ein Versprechen erfuellt wird, probiert die Maschinerie sein then. Weder
+ * eine async-Funktion mit "return m.FirebaseMessaging" noch ein Umweg ueber
+ * eine Zwischenvariable aendert daran etwas - der Rueckgabewert geht in
+ * jedem Fall durch die Erfuellung. Er muss in etwas liegen, das kein then
+ * hat. Ein schlichtes Objekt mit einem Feld ist das Einfachste, was das
+ * leistet. */
+type Plugin = typeof import("@capacitor-firebase/messaging").FirebaseMessaging;
+const plugin = async (): Promise<{ fm: Plugin }> => {
+  const m = await import("@capacitor-firebase/messaging");
+  return { fm: m.FirebaseMessaging };
+};
 
 /* Zwei Wege zum selben Ziel - und bis zum 04.09.2026 gab es nur den falschen.
  *
@@ -153,7 +192,7 @@ export async function pushTokenAuffrischen(membershipId: string): Promise<boolea
 
   try {
     if (imGeraet()) {
-      const FM = await plugin();
+      const { fm: FM } = await plugin();
       const stand = await FM.checkPermissions();
       if (stand.receive !== "granted") return false;
       const { token } = await FM.getToken();
@@ -198,7 +237,7 @@ export async function enablePushNotifications(membershipId: string): Promise<Ena
          iOS-Einstellungen dauerhaft verweigert, oeffnet requestPermissions
          keinen Dialog mehr und liefert stumm "denied". Dann soll die App das
          auch sagen koennen, statt scheinbar nichts zu tun. */
-      const FM = await plugin();
+      const { fm: FM } = await plugin();
       let stand = await FM.checkPermissions();
       if (stand.receive === "prompt" || stand.receive === "prompt-with-rationale") {
         stand = await FM.requestPermissions();
@@ -292,7 +331,7 @@ export function meldungsTippsAbonnieren(beiTipp: (tipp: MeldungsTipp) => void): 
   if (imGeraet()) {
     let griff: PluginListenerHandle | null = null;
     let beendet = false;
-    plugin().then((FM) => FM.addListener("notificationActionPerformed", (ereignis) => {
+    plugin().then(({ fm: FM }) => FM.addListener("notificationActionPerformed", (ereignis) => {
       const tipp = tippAusDaten(ereignis?.notification?.data);
       if (tipp) beiTipp(tipp);
     }).then((g) => { if (beendet) g.remove(); else griff = g; }).catch(() => {}));
@@ -331,7 +370,7 @@ export function listenForForegroundMessages() {
     /* iOS zeigt eine Mitteilung NICHT von selbst an, solange die App im
        Vordergrund ist. Ohne diesen Zuhoerer bekaeme man sie nur, wenn die App
        geschlossen ist - was beim Testen zuverlaessig fuer Verwirrung sorgt. */
-    plugin().then((FM) => FM.addListener("notificationReceived", () => {})).catch(() => {});
+    plugin().then(({ fm: FM }) => FM.addListener("notificationReceived", () => {})).catch(() => {});
     return;
   }
 
@@ -372,10 +411,10 @@ export async function zugestellteEntfernen(notificationId?: string) {
   if (!imGeraet()) return;
   try {
     if (!notificationId) {
-      await (await plugin()).removeAllDeliveredNotifications();
+      await (await plugin()).fm.removeAllDeliveredNotifications();
       return;
     }
-    const FMd = await plugin();
+    const { fm: FMd } = await plugin();
     const { notifications } = await FMd.getDeliveredNotifications();
     const passend = notifications.filter((n) => (n.data as Record<string, unknown> | undefined)?.notification_id === notificationId);
     if (passend.length) await FMd.removeDeliveredNotifications({ notifications: passend });
@@ -394,7 +433,7 @@ export async function disablePushNotifications(membershipId: string): Promise<{ 
          Erst wenn auch der leer ist, bleibt nichts als alle Zeilen zu
          loeschen; dann ist dieses Geraet das einzige, von dem wir je etwas
          wussten. */
-      const FMt = await plugin();
+      const { fm: FMt } = await plugin();
       const { token } = await FMt.getToken().catch(() => ({ token: "" }));
       const meiner = token || gemerkterToken(membershipId);
       if (supabase) {
