@@ -18101,15 +18101,19 @@ export default function ClubMemberOrganisationApp() {
   const updateCurrentClubLogo = (logoUrl) => setClubs((items) => items.map((club) => club.id === currentClub?.id ? { ...club, logoUrl } : club));
   const updateCurrentClubColors = (primaryColor, secondaryColor) => setClubs((items) => items.map((club) => club.id === currentClub?.id ? { ...club, primaryColor, secondaryColor } : club));
 
-  const enterApp = (member, clubRoster = null) => {
+  /* ansichtBehalten: Beim Anmelden und beim Vereinswechsel gehoert man auf die
+     Startseite - man kommt von aussen. Beim Aktualisieren an Ort und Stelle
+     (Ziehen nach unten) waere derselbe Sprung ein Fehler: Wer auf den Terminen
+     zieht, will Termine sehen und nicht auf der Startseite landen. */
+  const enterApp = (member, clubRoster = null, ansichtBehalten = false) => {
     setMembers((current) => clubRoster
       ? [...current.filter((item) => item.clubId !== member.clubId), ...clubRoster]
       : [...current.filter((item) => item.id !== member.id), member]);
     setSelectedClubId(member.clubId);
     setCurrentUserId(member.id);
-    setTab("home"); setSubView(null);
+    if (!ansichtBehalten) { setTab("home"); setSubView(null); }
   };
-  const loadSupabaseMembership = async (profileId, clubId) => {
+  const loadSupabaseMembership = async (profileId, clubId, ansichtBehalten = false) => {
     /* Ohne Verein gibt es nichts zu laden. Ohne diese Zeile ging die Abfrage
        mit club_id=eq.null an eine uuid-Spalte, PostgREST antwortete mit 400,
        und der Nutzer bekam t("verein.profilNichtGeladen") zu
@@ -18215,7 +18219,7 @@ export default function ClubMemberOrganisationApp() {
        und verlor es beim naechsten Oeffnen. Die Tabellen dafuer gab es seit dem
        ersten Tag; benutzt hat sie nur niemand. */
     await ladeVereinsdaten(clubId, profileId, hydratedRoster);
-    enterApp(member, hydratedRoster);
+    enterApp(member, hydratedRoster, ansichtBehalten);
     return { ok: true };
   };
   /* Wer angemeldet ist, soll das auch merken.
@@ -18657,6 +18661,42 @@ export default function ClubMemberOrganisationApp() {
     const ergebnis = await loadSupabaseMembership(profileId, mitgliedschaft.club_id);
     setVereinLaedt(false);
     return ergebnis;
+  };
+
+  /* Nach unten ziehen laedt jetzt ALLES neu - dasselbe, was ein Vereinswechsel
+     laedt (Wunsch des Betreibers, 14.10.2026).
+     WARUM DAS NOETIG WAR: datenNeuLaden zaehlt nur datenStand hoch, und daran
+     haengen vier Effekte - die Mitgliederliste, die Kanaele, der
+     Ungelesen-Zaehler und die Werbeplaetze. Termine, Umfragen, Helferplan,
+     Fahrgemeinschaften und News kommen aus ladeVereinsdaten, und das haengt
+     NICHT an datenStand. Genauso wenig die eigenen Rollen und Mannschaften:
+     Die entstehen in loadSupabaseMembership. Wer also zog, weil ein neuer
+     Termin fehlte oder weil er gerade zum Trainer gemacht worden war, zog
+     vergeblich - und musste die App schliessen oder den Verein wechseln.
+     Jetzt geht die Geste denselben Weg wie vereinOeffnen, nur mit
+     ansichtBehalten: Reiter und Unteransicht bleiben stehen. Das Zuruecksetzen
+     auf die Startseite steckt in enterApp und ist dort richtig - wer von
+     aussen kommt, gehoert nach Hause; wer an Ort und Stelle aktualisiert,
+     nicht.
+     Der Riegel fuer den Demo-Betrieb und fuer die Zeit vor der Anmeldung
+     bleibt der alte Weg: Ohne Datenbank gibt es nichts hart zu laden.
+     Scheitert der Lauf (kein Netz, Sitzung abgelaufen), faellt er auf den
+     alten Weg zurueck UND sagt es. Eine Geste, die aussieht, als habe sie
+     geladen, und es nicht getan hat, ist schlimmer als eine sichtbare
+     Fehlermeldung. */
+  /* Bewusst OHNE useCallback: loadSupabaseMembership und ladeVereinsdaten sind
+     einfache Konstanten, die bei jedem Rendern neu entstehen. In einer
+     gemerkten Fassung haette diese Geste eine ALTE davon festgehalten - und
+     damit alte Werte aus deren Umgebung. Die Geste wird einmal je Zug
+     aufgerufen; eine neue Funktion je Rendern kostet hier nichts, weil
+     ZumAktualisierenZiehen sie nur im Loslassen liest und nicht in einer
+     Abhaengigkeitsliste fuehrt. */
+  const hartAktualisieren = async () => {
+    if (!supabase || !isDbId(selectedClubId) || !isDbId(currentUserId)) { datenNeuLaden(); return; }
+    const profileId = offeneSitzung?.profileId || (await supabase.auth.getUser()).data.user?.id;
+    if (!profileId) { datenNeuLaden(); return; }
+    const ergebnis = await loadSupabaseMembership(profileId, selectedClubId, true);
+    if (ergebnis?.error) { setSchreibFehler(ergebnis.error); datenNeuLaden(); }
   };
 
   /* Der angetippte Push - im Browser auch /?meldung=... - wartet hier, bis
@@ -19377,7 +19417,7 @@ export default function ClubMemberOrganisationApp() {
               </div>
             )}
 
-            <ZumAktualisierenZiehen key={`${tab}-${subView || ""}`} onAktualisieren={datenNeuLaden} className="tabFade flex-1 overflow-y-auto" style={{ background: C.paper }}>
+            <ZumAktualisierenZiehen key={`${tab}-${subView || ""}`} onAktualisieren={hartAktualisieren} className="tabFade flex-1 overflow-y-auto" style={{ background: C.paper }}>
               {/* Stuerzt EIN Reiter ab, bleibt der Rest der App bedienbar - und der
                   naechste Reiterwechsel fuehrt aus dem Fehler heraus, weil der
                   Schluessel die Grenze zuruecksetzt. */}
