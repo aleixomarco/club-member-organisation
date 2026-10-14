@@ -47,26 +47,39 @@
    entstehen die Funktionen frueher; sollte eine fehlen, bleibt der Auftrag
    aus, statt die Migration abzubrechen - und sagt warum. Ein fehlender
    Auftrag laesst sich nachtragen, ein abgebrochener Lauf kostet alles
-   dahinter. */
+   dahinter.
+
+   Vier Mal dasselbe ausgeschrieben statt einer Schleife ueber eine
+   Werteliste - mit Absicht. Eine Schleife haette die Namen in Variablen
+   versteckt, und scripts/schema-drift.py sucht genau nach
+   cron.schedule('<name>'. Eine Migration, die einplant, ohne dass man es
+   lesen kann, ist fuer jede Pruefung dasselbe wie keine. Lieber vier Zeilen
+   mehr, die man findet. */
 do $$
-declare
-  auftrag record;
 begin
-  for auftrag in
-    select * from (values
-      ('birthday-reminders',      '0 7 * * *', 'run_birthday_reminders'),
-      ('duty-task-due-reminders', '0 7 * * *', 'run_duty_task_due_reminders'),
-      ('duty-gap-check',          '0 9 * * *', 'run_duty_gap_check'),
-      ('carpool-gap-check',       '0 9 * * *', 'run_carpool_gap_check')
-    ) as t(name, plan, funktion)
-  loop
-    if to_regprocedure('public.' || auftrag.funktion || '()') is null then
-      raise warning 'public.%() fehlt - Auftrag % nicht eingeplant.', auftrag.funktion, auftrag.name;
-    else
-      perform cron.schedule(auftrag.name, auftrag.plan,
-                            format('select public.%I();', auftrag.funktion));
-    end if;
-  end loop;
+  if to_regprocedure('public.run_birthday_reminders()') is not null then
+    perform cron.schedule('birthday-reminders', '0 7 * * *', 'select public.run_birthday_reminders();');
+  else
+    raise warning 'public.run_birthday_reminders() fehlt - birthday-reminders nicht eingeplant.';
+  end if;
+
+  if to_regprocedure('public.run_duty_task_due_reminders()') is not null then
+    perform cron.schedule('duty-task-due-reminders', '0 7 * * *', 'select public.run_duty_task_due_reminders();');
+  else
+    raise warning 'public.run_duty_task_due_reminders() fehlt - duty-task-due-reminders nicht eingeplant.';
+  end if;
+
+  if to_regprocedure('public.run_duty_gap_check()') is not null then
+    perform cron.schedule('duty-gap-check', '0 9 * * *', 'select public.run_duty_gap_check();');
+  else
+    raise warning 'public.run_duty_gap_check() fehlt - duty-gap-check nicht eingeplant.';
+  end if;
+
+  if to_regprocedure('public.run_carpool_gap_check()') is not null then
+    perform cron.schedule('carpool-gap-check', '0 9 * * *', 'select public.run_carpool_gap_check();');
+  else
+    raise warning 'public.run_carpool_gap_check() fehlt - carpool-gap-check nicht eingeplant.';
+  end if;
 end $$;
 
 -- -------------------------------------------------------------- Kontrolle

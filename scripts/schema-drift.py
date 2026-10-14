@@ -48,22 +48,28 @@ def prod_spalten():
     if "PGHOST" not in umgebung:
         print("Keine Anmeldung bekommen - ist das Projekt verknuepft (supabase link)?", file=sys.stderr)
         sys.exit(2)
-    abfrage = ("set role postgres; select c.relname || '|' || a.attname "
-               "from pg_class c join pg_namespace n on n.oid = c.relnamespace "
-               "join pg_attribute a on a.attrelid = c.oid "
-               "where n.nspname = 'public' and c.relkind = 'r' "
-               "and a.attnum > 0 and not a.attisdropped;")
-    lauf = subprocess.run([f"{PG_BIN}/psql", "-t", "-A", "-c", abfrage],
-                          env=umgebung, capture_output=True, text=True)
-    if lauf.returncode != 0:
-        print(lauf.stderr.strip(), file=sys.stderr)
-        sys.exit(2)
+    def frage(sql):
+        lauf = subprocess.run([f"{PG_BIN}/psql", "-t", "-A", "-c", "set role postgres; " + sql],
+                              env=umgebung, capture_output=True, text=True)
+        if lauf.returncode != 0:
+            print(lauf.stderr.strip(), file=sys.stderr)
+            sys.exit(2)
+        return lauf.stdout.splitlines()
+
     prod = {}
-    for zeile in lauf.stdout.splitlines():
+    for zeile in frage("select c.relname || '|' || a.attname "
+                       "from pg_class c join pg_namespace n on n.oid = c.relnamespace "
+                       "join pg_attribute a on a.attrelid = c.oid "
+                       "where n.nspname = 'public' and c.relkind = 'r' "
+                       "and a.attnum > 0 and not a.attisdropped;"):
         if "|" in zeile:
             tab, sp = zeile.split("|", 1)
             prod.setdefault(tab.strip(), set()).add(sp.strip())
-    return prod
+    # "set role postgres" quittiert psql mit einer Zeile "SET" - die ist kein
+    # Auftragsname und stand beim ersten Lauf mit in der Liste.
+    auftraege = [z.strip() for z in frage("select jobname from cron.job;")
+                 if z.strip() and z.strip() != "SET"]
+    return prod, auftraege
 
 
 def schema_aus_migrationen():
@@ -101,8 +107,32 @@ def schema_aus_migrationen():
     return schema
 
 
-prod = prod_spalten()
+def cron_aus_migrationen():
+    """Welche Auftraege eine Migration wirklich EINPLANT.
+
+    Gesucht wird cron.schedule, nicht der blosse Name: Am 14.10.2026 kamen
+    vier Auftraege in Migrationen vor - im Fliesstext und in Kontrollbloecken
+    ("where jobname in (...)") -, angelegt hatte sie keine. Wer auf den Namen
+    zaehlt, haelt eine Erwaehnung fuer eine Einplanung und uebersieht sie."""
+    namen = set()
+    for datei in sorted((WURZEL / "supabase" / "migrations").glob("*.sql")):
+        t = re.sub(r"--[^\n]*", "", datei.read_text())
+        # In der Reihenfolge, in der es dasteht - nicht erst alle schedule und
+        # dann alle unschedule. Das uebliche Muster ist
+        # "unschedule('x'); schedule('x', ...)", und wer getrennt durchgeht,
+        # loescht damit seinen eigenen Treffer wieder. Genau das ist mir am
+        # 14.10.2026 passiert: Das Skript meldete einen von fuenf.
+        for m in re.finditer(r"cron\.(un)?schedule\(\s*'([^']+)'", t):
+            if m.group(1):
+                namen.discard(m.group(2))
+            else:
+                namen.add(m.group(2))
+    return namen
+
+
+prod, auftraege = prod_spalten()
 schema = schema_aus_migrationen()
+eingeplant = cron_aus_migrationen()
 fehlende_tabellen = sorted(t for t in prod if t not in schema)
 fehlende_spalten = sorted((t, sp) for t in prod if t in schema for sp in sorted(prod[t] - schema[t]))
 
@@ -115,8 +145,14 @@ if fehlende_spalten:
     print(f"\nSpalten, die keine Migration anlegt ({len(fehlende_spalten)}):")
     for t, sp in fehlende_spalten:
         print(f"  {t}.{sp}")
-if not fehlende_tabellen and not fehlende_spalten:
-    print("Nichts von Hand: jede Tabelle und jede Spalte steht in einer Migration.")
+fehlende_auftraege = sorted(a for a in auftraege if a not in eingeplant)
+if fehlende_auftraege:
+    print(f"\nCron-Auftraege, die keine Migration einplant ({len(fehlende_auftraege)}):")
+    for a in fehlende_auftraege:
+        print(f"  {a}")
+print(f"\n{len(auftraege)} Cron-Auftraege in der Produktion, {len(eingeplant)} in den Migrationen")
+if not fehlende_tabellen and not fehlende_spalten and not fehlende_auftraege:
+    print("Nichts von Hand: jede Tabelle, jede Spalte und jeder Auftrag steht in einer Migration.")
     sys.exit(0)
 print("\nSo etwas gehoert in eine Migration - sonst laesst sich dieser Stand nicht nachbauen.")
 sys.exit(1)
