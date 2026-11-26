@@ -1721,6 +1721,7 @@ const de: Woerterbuch = {
   "kal.tagSo": "So",
   "ev.keineTrainingsHinterlegt": "Aktuell sind keine Trainingstermine hinterlegt.",
   "ev.keineSpieleHinterlegt": "Aktuell sind keine Spiele hinterlegt.",
+  "ev.nichtsKommendes": "Kein kommender Termin. Die vergangenen stehen weiter im Kalender oben.",
   "ev.keineHeimspiele": "Aktuell sind keine Heimspiele hinterlegt.",
   "ev.spielort": "Heim oder auswärts",
   "ev.keineAuswaertsspiele": "Aktuell sind keine Auswärtsspiele hinterlegt.",

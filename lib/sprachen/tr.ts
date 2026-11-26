@@ -1698,6 +1698,7 @@ const woerter: Record<string, string> = {
   "kal.tagSo": "Paz",
   "ev.keineTrainingsHinterlegt": "Şu anda antrenman yok.",
   "ev.keineSpieleHinterlegt": "Şu anda maç yok.",
+  "ev.nichtsKommendes": "Yaklaşan bir tarih yok. Geçmiş tarihler yukarıdaki takvimde duruyor.",
   "ev.keineHeimspiele": "Şu anda iç saha maçı yok.",
   "ev.spielort": "İç saha veya deplasman",
   "ev.keineAuswaertsspiele": "Şu anda deplasman maçı yok.",

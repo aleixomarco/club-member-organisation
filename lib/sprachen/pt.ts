@@ -1698,6 +1698,7 @@ const woerter: Record<string, string> = {
   "kal.tagSo": "Dom",
   "ev.keineTrainingsHinterlegt": "De momento não há treinos.",
   "ev.keineSpieleHinterlegt": "De momento não há jogos.",
+  "ev.nichtsKommendes": "Nada a chegar. As datas passadas continuam no calendário acima.",
   "ev.keineHeimspiele": "De momento não há jogos em casa.",
   "ev.spielort": "Em casa ou fora",
   "ev.keineAuswaertsspiele": "De momento não há jogos fora.",

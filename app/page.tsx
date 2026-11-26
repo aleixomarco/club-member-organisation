@@ -5548,6 +5548,34 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
     if (!e.team) return true;
     return e.team === teamFilter;
   });
+  /* Die Liste zeigt nur, was noch kommt (Wunsch des Betreibers, 26.11.2026).
+     Die Abfrage holt zwei Jahre rueckwaerts und sortiert aufsteigend - wer die
+     Uebersicht oeffnete, sah also zuerst den aeltesten Termin und musste an
+     allem Vergangenen vorbeiscrollen, um den naechsten zu finden. Genau
+     verkehrt herum fuer die Frage, die man an diesen Bildschirm hat.
+     VORBEI heisst: zu Ende, nicht angefangen. Gemessen wird am Ende
+     (endDate), und nur wo keines steht, am Beginn. Sonst verschwaende das
+     Sommerfest um 15:01 aus der Liste, waehrend man davorsteht.
+     Der KALENDER bekommt weiter die ungefilterte Menge: Er laesst sich in
+     vergangene Monate blaettern, und dort nichts mehr zu finden waere ein
+     neuer Fehler statt eines behobenen. Ueber ihn bleibt jeder alte Termin
+     erreichbar - ein Tipp auf den Tag oeffnet dasselbe Blatt wie die Liste.
+     Was sonst noch auf Vergangenes zeigt, bleibt unberuehrt: Ergebnisse
+     werden in einer eigenen Ansicht eingetragen, die ohnehin nur Gespieltes
+     zeigt, und ein Sprung aus der Glocke loest den Termin aus der vollen
+     Liste auf (openEvent), nicht aus dieser. */
+  /* Sortiert wird HIER, nicht nur in der Abfrage. Die Datenbank liefert zwar
+     schon nach starts_at aufsteigend, aber die Liste darf nicht davon
+     abhaengen, woher ihre Termine kommen: Im Demo-Betrieb stehen sie in einem
+     festen Feld, und dort stand am 26.11.2026 der 5. Dezember hinter dem 17.
+     "Der naechste Termin steht oben" ist die ganze Zusage dieser Ansicht -
+     die muss aus der Liste selbst kommen. filter() gibt ein neues Feld
+     zurueck, sort() veraendert also nichts an filtered (das der Kalender
+     bekommt). */
+  const jetzt = Date.now();
+  const kommende = filtered
+    .filter((ev) => new Date(ev.endDate || ev.date).getTime() >= jetzt)
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   const userId = currentUser.id;
   const myCarpools = carpools[userId] || {};
   const isAdminUser = isAdmin(currentUser);
@@ -6137,7 +6165,7 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
         </div>
       )}
       {calendarOpen && <EventMonthCalendar events={filtered} onSelect={(ev) => setSelectedEvent(ev.id)} />}
-      {filtered.map((ev) => (
+      {kommende.map((ev) => (
         <EventCard key={ev.id} ev={ev}
           carpoolOn={!!myCarpools[ev.id]} onCarpool={handleCarpool}
           currentUser={currentUser} members={members} isAdminUser={isAdminUser}
@@ -6148,7 +6176,12 @@ function EventsView({ onNeuLaden, currentUser, members, events, setEvents, carpo
           ergebnis={tippResults?.[ev.id] || null} darfErgebnis={darfErgebnisEintragen(currentUser, ev, { streng: !!supabase })} onErgebnisOeffnen={onErgebnisOeffnen}
         />
       ))}
-      {filtered.length===0&&<div className="rounded-2xl p-6 text-center text-xs" style={{background:C.paperDim,color:C.textDim}}>{filter === "training" ? t("ev.keineTrainingsHinterlegt") : filter === "spiel" && spielOrtFilter === "heim" ? t("ev.keineHeimspiele") : filter === "spiel" && spielOrtFilter === "auswaerts" ? t("ev.keineAuswaertsspiele") : t("ev.keineSpieleHinterlegt")}</div>}
+      {/* Zwei verschiedene Saetze. "Aktuell sind keine Spiele hinterlegt" ist
+          falsch, wenn fuenfzig Spiele hinterlegt sind und nur alle gespielt -
+          am Saisonende haette ein Verein geglaubt, seine Daten seien weg.
+          Steht nichts Kommendes an, es gab aber etwas, sagt die Zeile das und
+          nennt den Weg dorthin. */}
+      {kommende.length===0&&<div className="rounded-2xl p-6 text-center text-xs" style={{background:C.paperDim,color:C.textDim}}>{filtered.length > 0 ? t("ev.nichtsKommendes") : filter === "training" ? t("ev.keineTrainingsHinterlegt") : filter === "spiel" && spielOrtFilter === "heim" ? t("ev.keineHeimspiele") : filter === "spiel" && spielOrtFilter === "auswaerts" ? t("ev.keineAuswaertsspiele") : t("ev.keineSpieleHinterlegt")}</div>}
 
       {/* Termin aus dem Kalender. Bewusst dieselbe EventCard wie in der Liste —
           damit gelten hier zwangsläufig dieselben Lese- und Schreibrechte,
